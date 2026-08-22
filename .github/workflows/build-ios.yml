@@ -1,4 +1,4 @@
-﻿name: Build Unsigned iOS IPA
+name: Build Unsigned iOS IPA
 
 on:
   workflow_dispatch:
@@ -29,7 +29,6 @@ jobs:
       - name: Build unsigned .app (Code Signing Disabled for AltStore)
         run: |
           cd ios/App
-          # If workspace exists (CocoaPods/SPM), use workspace; otherwise use xcode project
           if [ -d "App.xcworkspace" ]; then
             TARGET_ARG="-workspace App.xcworkspace"
           else
@@ -47,11 +46,13 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE_SPECIFIER="" \
+            ENABLE_USER_SCRIPT_SANDBOXING=NO \
             -derivedDataPath build
 
       - name: Package into .ipa
         run: |
-          cd ios/App/build/Build/Products/Release-iphoneos
+          BUILD_DIR="ios/App/build/Build/Products/Release-iphoneos"
+          cd "$BUILD_DIR"
           mkdir -p Payload
           cp -r App.app Payload/
           zip -r Trouvaille-unsigned.ipa Payload
