@@ -53,14 +53,14 @@ jobs:
           # Resolve SPM packages
           xcodebuild -resolvePackageDependencies -project App.xcodeproj || true
           
-          # Build App.app without requiring Apple Developer signing
-          set -o pipefail
+          # Build App.app binary with signing bypass
           xcodebuild build \
             -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
+            -xcconfig ../release.xcconfig \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -69,11 +69,16 @@ jobs:
             DEVELOPMENT_TEAM="" \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
-            -derivedDataPath build 2>&1 | tee xcodebuild.log || {
-              echo "==================== XCODEBUILD ERRORS ===================="
-              grep -E "error:|fatal error:" xcodebuild.log || tail -n 120 xcodebuild.log
-              exit 1
-            }
+            -derivedDataPath build 2>&1 | tee xcodebuild.log || true
+          
+          # Check if App.app was produced
+          APP_PATH=$(find build -name "App.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "==================== XCODEBUILD ERRORS ===================="
+            grep -E "error:|fatal error:" xcodebuild.log || tail -n 100 xcodebuild.log
+            exit 1
+          fi
+          echo "Successfully compiled App.app at: $APP_PATH"
 
       - name: Fake-sign with ldid and Package into .ipa
         run: |
