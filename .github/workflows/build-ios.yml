@@ -26,41 +26,44 @@ jobs:
       - name: Sync Capacitor iOS
         run: npx cap sync ios
 
-      - name: Build unsigned .app (Code Signing Disabled for AltStore)
+      - name: Build Ad-Hoc unsigned .app (AltStore Sideloading)
         run: |
           cd ios/App
-          if [ -d "App.xcworkspace" ]; then
-            TARGET_ARG="-workspace App.xcworkspace"
-          else
-            TARGET_ARG="-project App.xcodeproj"
-          fi
           
+          # Resolve SPM packages
+          xcodebuild -resolvePackageDependencies -project App.xcodeproj -clonedSourcePackagesDirPath .spm || true
+          
+          # Build .app with ad-hoc signing (no Apple Developer account required)
           xcodebuild clean build \
-            $TARGET_ARG \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_IDENTITY="-" \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="" \
+            CODE_SIGNING_REQUIRED=NO \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            -clonedSourcePackagesDirPath .spm \
             -derivedDataPath build
 
       - name: Package into .ipa
         run: |
-          BUILD_DIR="ios/App/build/Build/Products/Release-iphoneos"
-          cd "$BUILD_DIR"
+          APP_PATH=$(find ios/App/build -name "App.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: App.app not found!"
+            exit 1
+          fi
+          echo "Packaging App.app from: $APP_PATH"
           mkdir -p Payload
-          cp -r App.app Payload/
+          cp -r "$APP_PATH" Payload/
           zip -r Trouvaille-unsigned.ipa Payload
 
       - name: Upload .ipa as GitHub Artifact
         uses: actions/upload-artifact@v4
         with:
           name: trouvaille-unsigned-ipa
-          path: ios/App/build/Build/Products/Release-iphoneos/Trouvaille-unsigned.ipa
+          path: Trouvaille-unsigned.ipa
           if-no-files-found: error
 
