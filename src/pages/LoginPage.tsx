@@ -41,14 +41,14 @@ export function LoginPage() {
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6"
       style={{ background: "var(--bg-canvas)", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
-      <motion.div className="mb-12 text-center"
+      <motion.div className="mb-10 text-center"
         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}>
-        <div className="w-16 h-16 mx-auto mb-5 rounded-3xl glass flex items-center justify-center"><div className="w-6 h-6 rounded-full border-[3px] border-[var(--ink-primary)]"></div></div>
-        <h1 className="text-3xl font-bold" style={{ color: "var(--ink-primary)", letterSpacing: "-0.02em" }}>
+        <img src="/icon.png" alt="Trouvaille" className="w-16 h-16 mx-auto mb-4 rounded-2xl object-contain shadow-2xl" onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+        <h1 className="text-3xl font-extrabold" style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
           Trouvaille
         </h1>
-        <p className="mt-2 text-sm" style={{ color: "var(--ink-secondary)" }}>Personal expense tracker</p>
+        <p className="mt-1.5 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Personal expense tracker</p>
       </motion.div>
 
       <motion.div className="w-full max-w-sm"

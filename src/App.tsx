@@ -51,7 +51,18 @@ function AppShell() {
 }
 
 export default function App() {
-  const { session } = useAuth()
+  const { session, loading } = useAuth()
+  
+  if (loading) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center animate-pulse" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+          <img src="/icon.png" alt="Trouvaille" className="w-8 h-8 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+        </div>
+      </div>
+    )
+  }
+
   if (!session) return <LoginPage />
   return <AppShell />
 }
