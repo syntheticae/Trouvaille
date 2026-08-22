@@ -28,7 +28,7 @@ jobs:
 
       - name: Install ldid for fake-signing
         run: |
-          brew install ldid || true
+          HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew install ldid || true
 
       - name: Setup CodeSign bypass wrapper
         run: |
@@ -39,7 +39,7 @@ jobs:
             /usr/bin/codesign "$@"
             exit $?
           fi
-          echo "Codesign wrapper invoked for: ${@: -1}"
+          echo "Bypassing codesign for: ${@: -1}"
           /usr/bin/codesign --force --sign - "${@: -1}" 2>/dev/null || true
           exit 0
           EOF
@@ -51,10 +51,11 @@ jobs:
           cd ios/App
           
           # Resolve SPM packages
-          xcodebuild -resolvePackageDependencies -project App.xcodeproj -clonedSourcePackagesDirPath .spm || true
+          xcodebuild -resolvePackageDependencies -project App.xcodeproj || true
           
           # Build App.app without requiring Apple Developer signing
-          xcodebuild clean build \
+          set -o pipefail
+          xcodebuild build \
             -project App.xcodeproj \
             -scheme App \
             -configuration Release \
@@ -67,8 +68,12 @@ jobs:
             PROVISIONING_PROFILE_SPECIFIER="" \
             DEVELOPMENT_TEAM="" \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
-            -clonedSourcePackagesDirPath .spm \
-            -derivedDataPath build
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            -derivedDataPath build 2>&1 | tee xcodebuild.log || {
+              echo "==================== XCODEBUILD ERRORS ===================="
+              grep -E "error:|fatal error:" xcodebuild.log || tail -n 120 xcodebuild.log
+              exit 1
+            }
 
       - name: Fake-sign with ldid and Package into .ipa
         run: |
@@ -88,7 +93,7 @@ jobs:
           # Apply ldid fake signature
           if command -v ldid &> /dev/null; then
             echo "Applying ldid fake-signature..."
-            ldid -S "$APP_PATH" || ldid -S "$APP_PATH/App" || true
+            ldid -S "$APP_PATH/App" 2>/dev/null || ldid -S "$APP_PATH" 2>/dev/null || true
           fi
           
           # Package into Payload/
