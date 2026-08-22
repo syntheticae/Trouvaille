@@ -1,0 +1,279 @@
+@import url("https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,300..900;1,300..900&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Urbanist", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+}
+
+/* ============================================================
+   DARK THEME (Default) — 70% Dark, 30% Crisp White Contrast
+   ============================================================ */
+:root, :root[data-theme="dark"] {
+  --bg-base: #0E0E10;
+  --bg-elevated: #1A1A1D;
+  --bg-elevated-2: #242428;
+  --bg-card: #1E1E21;
+
+  --bg-card-contrast: #FFFFFF;
+  --text-contrast: #121212;
+  --text-contrast-sub: #52525B;
+
+  --glass-fill: rgba(255, 255, 255, 0.055);
+  --glass-fill-strong: rgba(255, 255, 255, 0.10);
+  --glass-border: rgba(255, 255, 255, 0.11);
+  --glass-highlight: rgba(255, 255, 255, 0.18);
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #D4D4D8;
+  --text-tertiary: #71717A;
+
+  --accent: #FFFFFF;
+  --accent-secondary: #D4D4D8;
+  --accent-ink: #121212;
+
+  --dock-bg: rgba(20, 20, 24, 0.72);
+  --dock-border: rgba(255, 255, 255, 0.14);
+  --dock-active-pill: rgba(255, 255, 255, 0.12);
+
+  --card-gradient-hero: linear-gradient(155deg, #222226 0%, #141416 100%);
+  --card-gradient-subtle: linear-gradient(145deg, #1E1E22 0%, #151517 100%);
+
+  --shadow-strength: rgba(0, 0, 0, 0.65);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+
+  /* Chart color tokens — dark theme uses whites/grays */
+  --chart-bar-high: #FFFFFF;
+  --chart-bar-mid: #A1A1AA;
+  --chart-bar-low: #52525B;
+  --chart-line: #FFFFFF;
+  --chart-area-stroke: #FFFFFF;
+  --chart-area-fill-start: rgba(255, 255, 255, 0.28);
+  --chart-area-fill-end: rgba(255, 255, 255, 0.0);
+  --chart-donut-1: #FFFFFF;
+  --chart-donut-2: #D4D4D8;
+  --chart-donut-3: #A1A1AA;
+  --chart-donut-4: #71717A;
+  --chart-donut-5: #3F3F46;
+  --chart-donut-6: #27272A;
+  --chart-label: #121212;
+
+  --bg-canvas: var(--bg-base);
+  --ink-primary: var(--text-primary);
+  --ink-secondary: var(--text-secondary);
+  --ink-tertiary: var(--text-tertiary);
+  --hairline: var(--glass-border);
+}
+
+/* ============================================================
+   LIGHT THEME — 70% Soft Smoke Canvas, 30% Matte Black Cards
+   ============================================================ */
+:root[data-theme="light"] {
+  --bg-base: #F2F2F5;
+  --bg-elevated: #FFFFFF;
+  --bg-elevated-2: #E8E8EC;
+  --bg-card: #FFFFFF;
+
+  --bg-card-contrast: #141416;
+  --text-contrast: #FFFFFF;
+  --text-contrast-sub: #A1A1AA;
+
+  --glass-fill: rgba(255, 255, 255, 0.82);
+  --glass-fill-strong: rgba(255, 255, 255, 0.98);
+  --glass-border: rgba(0, 0, 0, 0.09);
+  --glass-highlight: rgba(255, 255, 255, 0.95);
+
+  --text-primary: #121212;
+  --text-secondary: #3F3F46;
+  --text-tertiary: #71717A;
+
+  --accent: #121212;
+  --accent-secondary: #27272A;
+  --accent-ink: #FFFFFF;
+
+  --dock-bg: rgba(255, 255, 255, 0.78);
+  --dock-border: rgba(0, 0, 0, 0.10);
+  --dock-active-pill: rgba(0, 0, 0, 0.08);
+
+  --card-gradient-hero: linear-gradient(155deg, #1C1C1F 0%, #121214 100%);
+  --card-gradient-subtle: linear-gradient(145deg, #FFFFFF 0%, #F4F4F6 100%);
+
+  --shadow-strength: rgba(0, 0, 0, 0.07);
+  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.05);
+
+  /* Chart color tokens — light theme uses darks */
+  --chart-bar-high: #18181B;
+  --chart-bar-mid: #52525B;
+  --chart-bar-low: #A1A1AA;
+  --chart-line: #18181B;
+  --chart-area-stroke: #18181B;
+  --chart-area-fill-start: rgba(18, 18, 27, 0.14);
+  --chart-area-fill-end: rgba(18, 18, 27, 0.0);
+  --chart-donut-1: #18181B;
+  --chart-donut-2: #3F3F46;
+  --chart-donut-3: #71717A;
+  --chart-donut-4: #A1A1AA;
+  --chart-donut-5: #D4D4D8;
+  --chart-donut-6: #E4E4E7;
+  --chart-label: #FFFFFF;
+
+  --bg-canvas: var(--bg-base);
+  --ink-primary: var(--text-primary);
+  --ink-secondary: var(--text-secondary);
+  --ink-tertiary: var(--text-tertiary);
+  --hairline: var(--glass-border);
+}
+
+/* ============================================================
+   GLOBAL BASE
+   ============================================================ */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  min-height: 100dvh;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: "Urbanist", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ============================================================
+   GLASS & CARD COMPONENTS
+   ============================================================ */
+@layer components {
+  .glass-surface,
+  .glass-card,
+  .glass {
+    background: var(--glass-fill);
+    backdrop-filter: blur(28px) saturate(200%) brightness(1.04);
+    -webkit-backdrop-filter: blur(28px) saturate(200%) brightness(1.04);
+    border: 1px solid var(--glass-border);
+    border-radius: 22px;
+    box-shadow:
+      var(--shadow-card),
+      inset 0 1px 0 var(--glass-highlight),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+    position: relative;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  /* Specular shimmer layer */
+  .glass-surface::before,
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--glass-highlight) 0%, transparent 50%);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .card-contrast-hero {
+    background: var(--card-gradient-hero);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Subtle noise/grain texture for depth */
+  .card-contrast-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 20%, rgba(255,255,255,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-family: "Urbanist", sans-serif;
+  }
+
+  /* Section label style — consistent across all pages */
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+}
+
+/* ============================================================
+   iOS TOGGLE
+   ============================================================ */
+.ios-toggle {
+  position: relative;
+  width: 51px;
+  height: 31px;
+  flex-shrink: 0;
+}
+.ios-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.ios-toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 34px;
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+.ios-toggle input:checked + .ios-toggle-track { background: var(--accent); }
+.ios-toggle-knob {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 27px; height: 27px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  pointer-events: none;
+}
+:root[data-theme="dark"] .ios-toggle input:checked ~ .ios-toggle-knob {
+  background: #121212;
+  transform: translateX(20px);
+}
+:root[data-theme="light"] .ios-toggle input:checked ~ .ios-toggle-knob {
+  background: #FFFFFF;
+  transform: translateX(20px);
+}
+
+/* ============================================================
+   SAFE AREAS & SCROLLBAR
+   ============================================================ */
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-area-top { padding-top: env(safe-area-inset-top); }
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ============================================================
+   RECHARTS glass tooltip override
+   ============================================================ */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 24px var(--shadow-strength) !important;
+  font-family: "Urbanist", sans-serif !important;
+  color: var(--text-primary) !important;
+}
+
+/* ============================================================
+   ACTIVE STATE ANIMATIONS
+   ============================================================ */
+button { touch-action: manipulation; }
