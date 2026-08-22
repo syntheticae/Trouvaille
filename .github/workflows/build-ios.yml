@@ -1,0 +1,64 @@
+﻿name: Build Unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies & build web project
+        run: |
+          npm ci || npm install
+          npm run build
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Build unsigned .app (Code Signing Disabled for AltStore)
+        run: |
+          cd ios/App
+          # If workspace exists (CocoaPods/SPM), use workspace; otherwise use xcode project
+          if [ -d "App.xcworkspace" ]; then
+            TARGET_ARG="-workspace App.xcworkspace"
+          else
+            TARGET_ARG="-project App.xcodeproj"
+          fi
+          
+          xcodebuild clean build \
+            $TARGET_ARG \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            -derivedDataPath build
+
+      - name: Package into .ipa
+        run: |
+          cd ios/App/build/Build/Products/Release-iphoneos
+          mkdir -p Payload
+          cp -r App.app Payload/
+          zip -r Trouvaille-unsigned.ipa Payload
+
+      - name: Upload .ipa as GitHub Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trouvaille-unsigned-ipa
+          path: ios/App/build/Build/Products/Release-iphoneos/Trouvaille-unsigned.ipa
+          if-no-files-found: error
