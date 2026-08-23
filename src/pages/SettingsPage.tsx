@@ -33,7 +33,7 @@ export function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
   const { showToast } = useToast()
   const { budgetTarget, setBudgetTarget } = useBudgetTarget()
-  const { shortcuts, deleteShortcut } = useShortcuts()
+  const { shortcuts, saveShortcut, deleteShortcut } = useShortcuts()
 
   const addBill = useAddBill()
   const updateBill = useUpdateBill()
@@ -64,6 +64,9 @@ export function SettingsPage() {
   const [resetOpen, setResetOpen] = useState(false)
   const [budgetTargetOpen, setBudgetTargetOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [addShortcutOpen, setAddShortcutOpen] = useState(false)
+  const [shortcutTitle, setShortcutTitle] = useState("")
+  const [shortcutAmount, setShortcutAmount] = useState("")
 
   // Profile Form state
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -76,7 +79,7 @@ export function SettingsPage() {
   const [isUploading, setIsUploading] = useState(false)
 
   // Bill Form
-  const [billTitle, setBillTitle] = useState("")
+  const [billTitle, setBillTitle] = useState("🎯")
   const [billAmount, setBillAmount] = useState("")
   const [billDate, setBillDate] = useState<Date>(new Date())
   const [billRepeat, setBillRepeat] = useState<"none" | "weekly" | "monthly" | "yearly">("monthly")
@@ -85,7 +88,7 @@ export function SettingsPage() {
   const [goalTitle, setGoalTitle] = useState("")
   const [goalTarget, setGoalTarget] = useState("")
   const [goalSaved, setGoalSaved] = useState("")
-  const [goalIcon, setGoalIcon] = useState("ðŸŽ¯")
+  const [goalIcon, setGoalIcon] = useState("🎯")
 
   // Budget Form
   const [budgetName, setBudgetName] = useState("")
@@ -557,7 +560,7 @@ export function SettingsPage() {
               <div key={b.id} onClick={() => { setBillListOpen(false); setTimeout(() => handleOpenEditBill(b), 300) }}
                 className="glass-surface p-4 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition-all">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>ðŸ§¾</div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-tertiary)" }}><Bell size={20} /></div>
                   <div className="min-w-0">
                     <p className="font-bold text-[14px] truncate" style={{ color: "var(--text-primary)" }}>{b.title}</p>
                     <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
@@ -666,7 +669,7 @@ export function SettingsPage() {
             {goals.map((g: any) => (
               <div key={g.id} className="p-3 rounded-2xl flex items-center justify-between" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
                 <div className="flex items-center gap-3">
-                  <div className="text-2xl">{g.icon}</div>
+                  <div className="text-2xl">{g.icon === "dYZ_" ? "🎯" : g.icon}</div>
                   <div>
                     <p className="font-bold text-[13px]">{g.title}</p>
                     <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{formatRupiah(g.currentAmount)} / {formatRupiah(g.targetAmount)}</p>
@@ -773,7 +776,7 @@ export function SettingsPage() {
         <div className="p-5 pb-10 space-y-4 max-h-[85vh] overflow-y-auto">
           <div className="flex items-center justify-between sticky top-0 bg-transparent z-10 pb-2">
             <div>
-              <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Quick-Add Shortcuts</h3>
+              <div className="flex justify-between items-center w-full"><h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Quick-Add Shortcuts</h3><button onClick={() => { setShortcutsOpen(false); setTimeout(() => setAddShortcutOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button></div>
               <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>Tap chips on transaction form for fast entry</p>
             </div>
           </div>
@@ -791,7 +794,45 @@ export function SettingsPage() {
           </div>
         </div>
       </BottomSheet>
+
+      {/* Add Shortcut Sheet */}
+      <BottomSheet isOpen={addShortcutOpen} onClose={() => setAddShortcutOpen(false)}>
+        <div className="p-5 pb-10 space-y-4">
+          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Shortcut</h3>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Shortcut Title & Emoji</label>
+            <input type="text" value={shortcutTitle} onChange={e => setShortcutTitle(e.target.value)} placeholder="e.g. ☕ Coffee"
+              className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[15px]"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          </div>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Nominal Amount (IDR)</label>
+            <input type="text" inputMode="numeric" pattern="[0-9]*" value={shortcutAmount ? formatRupiah(Number(shortcutAmount)) : ""}
+              onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ""); setShortcutAmount(raw) }} placeholder="Rp 0"
+              className="w-full p-3.5 rounded-2xl outline-none font-bold text-[16px] amount"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          </div>
+          <button onClick={() => {
+            if (!shortcutTitle || !shortcutAmount) return;
+            saveShortcut({
+              id: Date.now().toString(),
+              title: shortcutTitle,
+              amount: Number(shortcutAmount),
+              type: "expense",
+              note: shortcutTitle,
+              category_id: "",
+              wallet_id: ""
+            });
+            setAddShortcutOpen(false);
+            setShortcutTitle("");
+            setShortcutAmount("");
+            showToast("Shortcut added", "add", () => {});
+          }} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg mt-2"
+            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save Shortcut</button>
+        </div>
+      </BottomSheet>
     </div>
   )
 }
+
 
