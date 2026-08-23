@@ -1,4 +1,3 @@
-import { syncAllTransactionsWithFamfina } from "../lib/famfinaResolver"
 ﻿import { useState, useRef } from "react"
 import {
   Plus, Trash2, Calendar as CalendarIcon, LogOut, ChevronRight,
@@ -65,8 +64,7 @@ export function SettingsPage() {
   const [resetOpen, setResetOpen] = useState(false)
   const [budgetTargetOpen, setBudgetTargetOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [isSyncingFamfina, setIsSyncingFamfina] = useState(false)
-  const [addShortcutOpen, setAddShortcutOpen] = useState(false)
+    const [addShortcutOpen, setAddShortcutOpen] = useState(false)
   const [shortcutTitle, setShortcutTitle] = useState("")
   const [shortcutAmount, setShortcutAmount] = useState("")
   const [shortcutCategoryId, setShortcutCategoryId] = useState("")
@@ -445,40 +443,7 @@ export function SettingsPage() {
       <section>
         <h2 className="text-[13px] font-bold mb-3 px-1" style={{ color: "var(--text-tertiary)" }}>Data & Storage</h2>
         <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
-          {/* Re-link Wallets & Accounts (Famfina Sync) */}
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
-                <RotateCcw size={16} className={isSyncingFamfina ? "animate-spin" : ""} />
-              </div>
-              <div>
-                <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Sinkronkan Akun Transaksi</span>
-                <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Hubungkan 887 transaksi ke akun aslinya</p>
-              </div>
-            </div>
-            <button
-              disabled={isSyncingFamfina}
-              onClick={async () => {
-                try {
-                  setIsSyncingFamfina(true)
-                  showToast("Menyinkronkan akun transaksi...", "update", () => {})
-                  const res = await syncAllTransactionsWithFamfina()
-                  showToast(`Sukses! ${res.updated} transaksi terhubung ke akun masing-masing`, "add", () => {})
-                  window.location.reload()
-                } catch (e: any) {
-                  showToast("Gagal sinkronisasi: " + (e.message || "Error"), "delete", () => {})
-                } finally {
-                  setIsSyncingFamfina(false)
-                }
-              }}
-              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all disabled:opacity-50"
-              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-            >
-              {isSyncingFamfina ? "Syncing..." : "Sinkronkan"}
-            </button>
-          </div>
-          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
-          {/* Offline Storage */}
+                    {/* Offline Storage */}
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>

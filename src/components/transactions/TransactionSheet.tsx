@@ -452,14 +452,14 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
           >
             {isSaving ? "Menyimpan..." : (transaction ? "Update Transaction" : "Save Transaction")}
           </button>
-        </div>
+                </div>
       </div>
 
       {/* More Categories Glass Sheet */}
       <BottomSheet isOpen={moreCatOpen} onClose={() => setMoreCatOpen(false)}>
-        <div className="p-5 pb-32">
-          <h3 className="font-extrabold text-lg mb-4" style={{ color: "var(--text-primary)" }}>Select Category</h3>
-          <div className="grid grid-cols-3 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+        <div className="p-5 pb-12">
+          <h3 className="font-extrabold text-lg mb-3" style={{ color: "var(--text-primary)" }}>Select Category</h3>
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 max-h-[68vh] overflow-y-auto pr-1">
             {categories.map(cat => {
               const isSelected = categoryId === cat.id
               return (
@@ -489,9 +489,9 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
 
       {/* More Accounts Glass Sheet */}
       <BottomSheet isOpen={moreWalletOpen} onClose={() => setMoreWalletOpen(false)}>
-        <div className="p-5 pb-32">
-          <h3 className="font-extrabold text-lg mb-4" style={{ color: "var(--text-primary)" }}>Select Account</h3>
-          <div className="grid grid-cols-3 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+        <div className="p-5 pb-12">
+          <h3 className="font-extrabold text-lg mb-3" style={{ color: "var(--text-primary)" }}>Select Account</h3>
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 max-h-[68vh] overflow-y-auto pr-1">
             {wallets.map(w => {
               const isSelected = (walletTarget === "from" ? walletId : toWalletId) === w.id
               return (
@@ -523,7 +523,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
           </div>
         </div>
       </BottomSheet>
-      
+
       {/* Date Picker Sheet */}
       <BottomSheet isOpen={dateOpen} onClose={() => setDateOpen(false)}>
         <div className="p-5 pb-10 flex flex-col items-center">
