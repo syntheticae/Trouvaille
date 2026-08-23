@@ -2,7 +2,7 @@
 import {
   Plus, Trash2, Calendar as CalendarIcon, LogOut, ChevronRight,
   CreditCard, LayoutGrid, Target, Sun, Camera, User as UserIcon, RotateCcw,
-  Bell, Archive, Zap
+  Bell, Archive, Zap, MoreHorizontal
 } from "lucide-react"
 import { useBills, useAddBill, useUpdateBill, useDeleteBill } from "../hooks/useBills"
 import { useToast } from "../contexts/ToastContext"
@@ -962,3 +962,4 @@ export function SettingsPage() {
     </div>
   )
 }
+
