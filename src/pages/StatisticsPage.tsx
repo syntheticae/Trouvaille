@@ -1,3 +1,6 @@
+import { useWallets, getWalletIcon } from "../hooks/useWallets"
+import { resolveFamfinaWallet } from "../lib/famfinaResolver"
+import { CreditCard } from "lucide-react"
 ﻿import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
 import { ShieldCheck, ArrowDownCircle, ArrowUpCircle, TrendingUp, ChevronRight } from "lucide-react"
@@ -114,6 +117,8 @@ export function StatisticsPage() {
   const [allDetailsOpen, setAllDetailsOpen] = useState(false)
   const now = new Date()
   const { data: allTxs = [] } = useAllTransactions()
+  const { data: wallets = [] } = useWallets()
+  const [walletFilterType, setWalletFilterType] = useState<"all" | "expense" | "income">("all")
   const colors = useChartColors()
 
   // 1. Filter by range
@@ -241,6 +246,49 @@ export function StatisticsPage() {
       return { label: d.label, net: cumulative }
     })
   }, [trendData])
+
+
+  // Most Active Accounts Calculation (Apple macOS Style)
+  const walletUsageStats = useMemo(() => {
+    const map = new Map<string, { name: string; icon: string; count: number; totalExpense: number; totalIncome: number }>()
+
+    rangeTxs.forEach(tx => {
+      if (tx.type === "transfer") return
+      const resolved = resolveFamfinaWallet(tx, wallets)
+      const walletName = resolved.from || "Cash"
+      const amt = Number(tx.amount || 0)
+
+      const entry = map.get(walletName) || {
+        name: walletName,
+        icon: getWalletIcon(walletName),
+        count: 0,
+        totalExpense: 0,
+        totalIncome: 0
+      }
+
+      entry.count += 1
+      if (tx.type === "expense") entry.totalExpense += amt
+      else if (tx.type === "income") entry.totalIncome += amt
+
+      map.set(walletName, entry)
+    })
+
+    const list = Array.from(map.values())
+    if (walletFilterType === "expense") {
+      return list.filter(w => w.totalExpense > 0).sort((a, b) => b.totalExpense - a.totalExpense)
+    }
+    if (walletFilterType === "income") {
+      return list.filter(w => w.totalIncome > 0).sort((a, b) => b.totalIncome - a.totalIncome)
+    }
+    return list.sort((a, b) => (b.totalExpense + b.totalIncome) - (a.totalExpense + a.totalIncome))
+  }, [rangeTxs, wallets, walletFilterType])
+
+  const maxWalletVolume = useMemo(() => {
+    if (walletUsageStats.length === 0) return 1
+    return Math.max(...walletUsageStats.map(w =>
+      walletFilterType === "expense" ? w.totalExpense : walletFilterType === "income" ? w.totalIncome : (w.totalExpense + w.totalIncome)
+    ))
+  }, [walletUsageStats, walletFilterType])
 
   // 4. Category breakdown
   const categoryStats = useMemo(() => {
@@ -447,6 +495,107 @@ export function StatisticsPage() {
           <div className="py-10 text-center rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
             <p className="text-[13px] font-bold" style={{ color: "var(--text-secondary)" }}>No {breakdownType} recorded</p>
             <p className="text-[11px] mt-1" style={{ color: "var(--text-tertiary)" }}>Try another timeframe</p>
+          </div>
+        )}
+      </div>
+
+
+      {/* 🍎 Apple macOS Style: Most Active Accounts & Volume Distribution */}
+      <div className="p-5 rounded-[24px] glass-surface">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <CreditCard size={16} style={{ color: "var(--text-tertiary)" }} />
+              <h2 className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
+                Most Active Accounts
+              </h2>
+            </div>
+            <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+              {walletUsageStats.length} accounts · {rangeTitle}
+            </p>
+          </div>
+          <div className="flex p-1 rounded-full" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+            {(["all", "expense", "income"] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setWalletFilterType(t)}
+                className="px-2.5 py-1 rounded-full text-[10px] font-bold capitalize transition-all"
+                style={{
+                  background: walletFilterType === t ? "var(--accent)" : "transparent",
+                  color: walletFilterType === t ? "var(--accent-ink)" : "var(--text-secondary)"
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {walletUsageStats.length > 0 ? (
+          <div className="space-y-2.5">
+            {walletUsageStats.slice(0, 6).map((w, idx) => {
+              const activeVal = walletFilterType === "expense" ? w.totalExpense : walletFilterType === "income" ? w.totalIncome : (w.totalExpense + w.totalIncome)
+              const pct = maxWalletVolume > 0 ? Math.min(100, Math.max(8, (activeVal / maxWalletVolume) * 100)) : 0
+
+              return (
+                <div
+                  key={w.name}
+                  className="p-3.5 rounded-2xl transition-all"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    boxShadow: "var(--shadow-card)"
+                  }}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                      >
+                        <IconRenderer icon={w.icon} size="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{w.name}</p>
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ background: "var(--glass-fill-strong)", color: "var(--text-tertiary)", border: "1px solid var(--glass-border)" }}
+                          >
+                            {w.count} txs
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                          {walletFilterType === "all" ? `In: ${formatRupiah(w.totalIncome)} · Out: ${formatRupiah(w.totalExpense)}` : `Total ${walletFilterType}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="amount font-extrabold text-[14px]" style={{ color: "var(--text-primary)" }}>
+                        {formatRupiah(activeVal)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* macOS Sleek Progress Gauge */}
+                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${pct}%`,
+                        background: idx === 0 ? "var(--accent)" : idx === 1 ? "var(--text-primary)" : "var(--text-secondary)",
+                        opacity: idx === 0 ? 1 : idx === 1 ? 0.75 : 0.45
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="py-8 text-center rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+            <p className="text-[12px] font-bold" style={{ color: "var(--text-secondary)" }}>No account activity recorded</p>
+            <p className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>Try selecting another timeframe</p>
           </div>
         )}
       </div>

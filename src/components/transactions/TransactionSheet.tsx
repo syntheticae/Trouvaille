@@ -1,3 +1,4 @@
+import { getFamfinaMatch } from "../../lib/famfinaResolver"
 
 function getTop3Slots<T extends { id: string }>(items: T[], selectedId: string | null): T[] {
   if (items.length <= 3) return items
@@ -77,9 +78,39 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         setNote(transaction.note || "")
         setDate(transaction.occurred_on ? new Date(transaction.occurred_on) : new Date())
         setTime(transaction.created_at ? format(new Date(transaction.created_at), "HH:mm") : format(new Date(), "HH:mm"))
-        setCategoryId(transaction.category_id || null)
-        setWalletId(transaction.wallet_id || (wallets.length > 0 ? wallets[0].id : null))
-        setToWalletId(transaction.to_wallet_id || (wallets.length > 1 ? wallets[1].id : null))
+
+        const match = getFamfinaMatch(transaction)
+
+        // 1. Resolve Category
+        if (transaction.category_id) {
+          setCategoryId(transaction.category_id)
+        } else if (match?.categoryName) {
+          const foundCat = categories.find(c => c.name.toLowerCase() === match.categoryName.toLowerCase())
+          setCategoryId(foundCat ? foundCat.id : null)
+        } else {
+          setCategoryId(categories.length > 0 ? categories[0].id : null)
+        }
+
+        // 2. Resolve Wallet (From Account)
+        if (transaction.wallet_id) {
+          setWalletId(transaction.wallet_id)
+        } else if (match?.fromWallet) {
+          const foundWallet = wallets.find(w => w.name.toLowerCase() === match.fromWallet.toLowerCase())
+          setWalletId(foundWallet ? foundWallet.id : (wallets.length > 0 ? wallets[0].id : null))
+        } else {
+          setWalletId(wallets.length > 0 ? wallets[0].id : null)
+        }
+
+        // 3. Resolve To Wallet (Transfer)
+        if (transaction.to_wallet_id) {
+          setToWalletId(transaction.to_wallet_id)
+        } else if (match?.toWallet) {
+          const toW = match?.toWallet
+          const foundTo = toW ? wallets.find(w => w.name.toLowerCase() === toW.toLowerCase()) : null
+          setToWalletId(foundTo ? foundTo.id : (wallets.length > 1 ? wallets[1].id : null))
+        } else {
+          setToWalletId(wallets.length > 1 ? wallets[1].id : null)
+        }
       } else {
         setType("expense")
         setAmount("0")
@@ -91,7 +122,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         setToWalletId(wallets.length > 1 ? wallets[1].id : null)
       }
     }
-  }, [transaction, isOpen])
+  }, [transaction, isOpen, categories, wallets])
 
   useEffect(() => {
     if (!categoryId && type !== "transfer" && categories.length > 0) {
@@ -121,6 +152,8 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
   }
 
   const handleSave = () => {
+    const isUUID = (id?: string | null) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+
     const numAmount = Number(amount)
     if (numAmount <= 0 || isSaving || addTx.isPending || updateTx.isPending) return
     setIsSaving(true)
@@ -144,9 +177,9 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
       note,
       occurred_on: format(date, "yyyy-MM-dd"),
       created_at: txDate.toISOString(),
-      category_id: type === "transfer" ? null : effectiveCatId,
-      wallet_id: effectiveWalletId,
-      to_wallet_id: type === "transfer" ? effectiveToWalletId : null
+      category_id: type === "transfer" ? null : (isUUID(effectiveCatId) ? effectiveCatId : null),
+      wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
+      to_wallet_id: type === "transfer" && isUUID(effectiveToWalletId) ? effectiveToWalletId : null
     }
 
     // Close sheet immediately for instant response
