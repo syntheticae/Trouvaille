@@ -36,6 +36,21 @@ const GlassTooltip = ({ active, payload, label }: any) => {
 type FilterType = "all" | "expense" | "income" | "transfer"
 type TimeRangeType = "this_month" | "last_month" | "last_30" | "custom_month" | "all"
 
+const MONTHS_LIST = [
+  { code: "01", short: "Jan", full: "January" },
+  { code: "02", short: "Feb", full: "February" },
+  { code: "03", short: "Mar", full: "March" },
+  { code: "04", short: "Apr", full: "April" },
+  { code: "05", short: "May", full: "May" },
+  { code: "06", short: "Jun", full: "June" },
+  { code: "07", short: "Jul", full: "July" },
+  { code: "08", short: "Aug", full: "August" },
+  { code: "09", short: "Sep", full: "September" },
+  { code: "10", short: "Oct", full: "October" },
+  { code: "11", short: "Nov", full: "November" },
+  { code: "12", short: "Dec", full: "December" },
+]
+
 export function TransactionsPage() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
@@ -44,6 +59,7 @@ export function TransactionsPage() {
   const [filter, setFilter] = useState<FilterType>("all")
   const [timeRange, setTimeRange] = useState<TimeRangeType>("this_month")
   const [selectedCustomMonth, setSelectedCustomMonth] = useState<string>(format(new Date(), "yyyy-MM"))
+  const [pickerYear, setPickerYear] = useState<number>(new Date().getFullYear())
   const [monthPickerOpen, setMonthPickerOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [visibleCount, setVisibleCount] = useState(35)
@@ -109,21 +125,6 @@ export function TransactionsPage() {
   const totalPeriodAmount = useMemo(() => {
     return dynamicWeeklyData.reduce((s, d) => s + d.activeValue, 0)
   }, [dynamicWeeklyData])
-
-  // Generate selectable months for the Month Picker (Past 24 months)
-  const availableMonths = useMemo(() => {
-    const months = []
-    const now = new Date()
-    for (let i = 0; i < 24; i++) {
-      const d = subMonths(now, i)
-      months.push({
-        key: format(d, "yyyy-MM"),
-        label: format(d, "MMMM yyyy"),
-        shortLabel: format(d, "MMM yyyy")
-      })
-    }
-    return months
-  }, [])
 
   // 2. Filter & Search transactions with smart date range scoping & auto-archive
   const filteredTxs = useMemo(() => {
@@ -221,9 +222,13 @@ export function TransactionsPage() {
     if (timeRange === "last_month") return "Last Month"
     if (timeRange === "last_30") return "Last 30 Days"
     if (timeRange === "all") return "All Time"
-    const m = availableMonths.find(am => am.key === selectedCustomMonth)
-    return m ? m.label : "Custom Month"
-  }, [timeRange, selectedCustomMonth, availableMonths])
+    try {
+      const parsed = parse(selectedCustomMonth, "yyyy-MM", new Date())
+      return format(parsed, "MMMM yyyy")
+    } catch {
+      return "Custom Month"
+    }
+  }, [timeRange, selectedCustomMonth])
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-base)" }}>
@@ -258,10 +263,28 @@ export function TransactionsPage() {
           </button>
         </div>
 
-        {/* 7-DAY CRISP CONTRAST BAR CHART */}
+        {/* 7-DAY RADIANT GRADIENT BAR CHART */}
         <div className="h-[95px] w-full mb-3.5">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={dynamicWeeklyData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="activeBarGradDark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#D4D4D8" stopOpacity={0.9} />
+                </linearGradient>
+                <linearGradient id="inactiveBarGradDark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.65} />
+                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.18} />
+                </linearGradient>
+                <linearGradient id="activeBarGradLight" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#18181B" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#3F3F46" stopOpacity={0.85} />
+                </linearGradient>
+                <linearGradient id="inactiveBarGradLight" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#18181B" stopOpacity={0.50} />
+                  <stop offset="100%" stopColor="#18181B" stopOpacity={0.12} />
+                </linearGradient>
+              </defs>
               <Tooltip content={<GlassTooltip />} cursor={{ fill: "transparent" }} />
               <XAxis
                 dataKey="label"
@@ -273,17 +296,14 @@ export function TransactionsPage() {
               <Bar dataKey="activeValue" radius={[6, 6, 6, 6]} maxBarSize={30}>
                 {dynamicWeeklyData.map((_, index) => {
                   const isCurrentDay = index === dynamicWeeklyData.length - 1
-                  
-                  // Crisp high-contrast bar colors for Dark and Light modes
-                  let barFill = isDark ? "rgba(255, 255, 255, 0.40)" : "rgba(24, 24, 27, 0.22)"
-                  if (isCurrentDay) {
-                    barFill = isDark ? "#FFFFFF" : "#18181B"
-                  }
-                  
+                  const fillId = isDark
+                    ? (isCurrentDay ? "url(#activeBarGradDark)" : "url(#inactiveBarGradDark)")
+                    : (isCurrentDay ? "url(#activeBarGradLight)" : "url(#inactiveBarGradLight)")
+
                   return (
                     <Cell
                       key={`cell-${index}`}
-                      fill={barFill}
+                      fill={fillId}
                       style={{ transition: "fill 0.3s ease" }}
                     />
                   )
@@ -457,13 +477,13 @@ export function TransactionsPage() {
         )}
       </div>
 
-      {/* ====== MONTH & TIMEFRAME SELECTOR BOTTOM SHEET ====== */}
+      {/* ====== 12-MONTH & YEAR SELECTOR BOTTOM SHEET ====== */}
       <BottomSheet isOpen={monthPickerOpen} onClose={() => setMonthPickerOpen(false)}>
         <div className="p-5 pb-16 space-y-4">
           <div className="flex justify-between items-center mb-1">
             <div>
               <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Select Timeframe</h3>
-              <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Filter transactions by month or period</p>
+              <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Filter transactions by month or year</p>
             </div>
           </div>
 
@@ -498,31 +518,58 @@ export function TransactionsPage() {
             })}
           </div>
 
-          {/* Select Specific Month (e.g. 3 Months Ago, 6 Months Ago) */}
+          {/* Elegant Year Selector Tabs */}
           <div className="pt-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider mb-2.5 px-1" style={{ color: "var(--text-tertiary)" }}>
-              Specific Month
-            </p>
-            <div className="grid grid-cols-3 gap-2 max-h-[35vh] overflow-y-auto pr-1">
-              {availableMonths.map(m => {
-                const isSelected = timeRange === "custom_month" && selectedCustomMonth === m.key
+            <div className="flex justify-between items-center mb-2 px-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                Specific Month in Year
+              </span>
+              <span className="text-[12px] font-extrabold" style={{ color: "var(--text-primary)" }}>{pickerYear}</span>
+            </div>
+
+            {/* Year Selector Bar */}
+            <div className="flex p-1 rounded-2xl mb-3" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+              {[2026, 2025, 2024, 2023].map(y => {
+                const isYSelected = pickerYear === y
                 return (
                   <button
-                    key={m.key}
+                    key={y}
+                    onClick={() => setPickerYear(y)}
+                    className="flex-1 py-1.5 rounded-xl text-[12px] font-extrabold transition-all"
+                    style={{
+                      background: isYSelected ? "var(--accent)" : "transparent",
+                      color: isYSelected ? "var(--accent-ink)" : "var(--text-secondary)"
+                    }}
+                  >
+                    {y}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* 12-Month iOS Grid */}
+            <div className="grid grid-cols-4 gap-2">
+              {MONTHS_LIST.map(m => {
+                const monthKey = `${pickerYear}-${m.code}`
+                const isSelected = timeRange === "custom_month" && selectedCustomMonth === monthKey
+                return (
+                  <button
+                    key={m.code}
                     onClick={() => {
-                      setSelectedCustomMonth(m.key)
+                      setSelectedCustomMonth(monthKey)
                       setTimeRange("custom_month")
                       setVisibleCount(35)
                       setMonthPickerOpen(false)
                     }}
-                    className="p-2.5 rounded-xl text-[11px] font-bold text-center active:scale-95 transition-all truncate"
+                    className="p-3 rounded-2xl text-[12px] font-extrabold text-center active:scale-95 transition-all"
                     style={{
-                      background: isSelected ? "var(--glass-fill-strong)" : "var(--bg-elevated)",
-                      color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
-                      border: isSelected ? "1.5px solid rgba(255, 255, 255, 0.45)" : "1px solid var(--glass-border)",
+                      background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
+                      color: isSelected ? "var(--accent-ink)" : "var(--text-primary)",
+                      border: isSelected ? "1.5px solid var(--accent)" : "1px solid var(--glass-border)",
+                      boxShadow: isSelected ? "0 0 0 1px var(--accent-glow)" : "none"
                     }}
                   >
-                    {m.shortLabel}
+                    {m.short}
                   </button>
                 )
               })}

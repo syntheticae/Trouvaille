@@ -1,11 +1,13 @@
 import { useState, useRef } from "react"
 import {
   Plus, Trash2, Calendar as CalendarIcon, LogOut, ChevronRight,
-  CreditCard, LayoutGrid, Target, Sun, Camera, User as UserIcon, RotateCcw
+  CreditCard, LayoutGrid, Target, Sun, Camera, User as UserIcon, RotateCcw,
+  Bell, Archive, Edit2
 } from "lucide-react"
-import { useBills, useAddBill, useDeleteBill } from "../hooks/useBills"
+import { useBills, useAddBill, useUpdateBill, useDeleteBill } from "../hooks/useBills"
 import { useToast } from "../contexts/ToastContext"
 import { useAuth } from "../contexts/AuthContext"
+import { useTheme } from "../contexts/ThemeContext"
 import { useCategories, useAddCategory, useDeleteCategory, useUpdateCategory } from "../hooks/useCategories"
 import { useWallets, useAddWallet, useUpdateWallet, useDeleteWallet } from "../hooks/useWallets"
 import { useGoals } from "../hooks/useGoals"
@@ -17,6 +19,7 @@ import { supabase } from "../lib/supabase"
 import { useAllTransactions } from "../hooks/useTransactions"
 import { IconRenderer } from "../components/ui/IconRenderer"
 import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet"
+import { requestNotificationPermission } from "../lib/notifications"
 
 export function SettingsPage() {
   const { data: bills = [] } = useBills()
@@ -25,9 +28,11 @@ export function SettingsPage() {
   const { goals, addGoal, deleteGoal, depositToGoal } = useGoals()
   const { data: allTxs = [] } = useAllTransactions()
   const { session } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const { showToast } = useToast()
 
   const addBill = useAddBill()
+  const updateBill = useUpdateBill()
   const deleteBill = useDeleteBill()
   const addCategory = useAddCategory()
   const deleteCategory = useDeleteCategory()
@@ -37,6 +42,7 @@ export function SettingsPage() {
   const deleteWallet = useDeleteWallet()
 
   // Editing state
+  const [editingBill, setEditingBill] = useState<{ id: string; title: string; amount: number | null; due_date: string; repeat_rule: "none" | "weekly" | "monthly" | "yearly" } | null>(null)
   const [editWallet, setEditWallet] = useState<{ id: string; name: string } | null>(null)
   const [editCategory, setEditCategory] = useState<{ id: string; name: string } | null>(null)
 
@@ -144,21 +150,53 @@ export function SettingsPage() {
     }
   }
 
+  const handleOpenAddBill = () => {
+    setEditingBill(null)
+    setBillTitle("")
+    setBillAmount("")
+    setBillDate(new Date())
+    setBillRepeat("monthly")
+    setBillSheetOpen(true)
+  }
+
+  const handleOpenEditBill = (b: any) => {
+    setEditingBill(b)
+    setBillTitle(b.title || "")
+    setBillAmount(b.amount ? String(b.amount) : "")
+    setBillDate(b.due_date ? new Date(b.due_date) : new Date())
+    setBillRepeat(b.repeat_rule || "monthly")
+    setBillSheetOpen(true)
+  }
+
   const handleSaveBill = () => {
-    if (!billTitle || !billAmount) return
-    addBill.mutate({
+    if (!billTitle) return
+    const num = Number(billAmount)
+    const payload = {
       title: billTitle,
-      amount: Number(billAmount),
+      amount: num > 0 ? num : null,
       due_date: format(billDate, "yyyy-MM-dd"),
       repeat_rule: billRepeat
-    }, {
-      onSuccess: () => {
-        setBillSheetOpen(false)
-        setBillTitle("")
-        setBillAmount("")
-        showToast("Bill created", "add", () => {})
-      }
-    })
+    }
+    if (editingBill) {
+      updateBill.mutate({ id: editingBill.id, ...payload }, {
+        onSuccess: () => {
+          setBillSheetOpen(false)
+          setEditingBill(null)
+          setBillTitle("")
+          setBillAmount("")
+          showToast("Bill updated", "update", () => {})
+        }
+      })
+    } else {
+      addBill.mutate(payload, {
+        onSuccess: () => {
+          setBillSheetOpen(false)
+          setBillTitle("")
+          setBillAmount("")
+          showToast("Bill created", "add", () => {})
+        }
+      })
+    }
   }
 
   const handleSaveGoal = () => {
@@ -392,12 +430,15 @@ export function SettingsPage() {
       {/* Recurring Bills Management */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[13px] font-bold" style={{ color: "var(--text-tertiary)" }}>
-            Recurring Bills
-          </h2>
+          <div>
+            <h2 className="text-[13px] font-bold" style={{ color: "var(--text-tertiary)" }}>
+              Recurring Bills
+            </h2>
+            <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Tap any bill to edit details</p>
+          </div>
           <button
-            onClick={() => setBillSheetOpen(true)}
-            className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95"
+            onClick={handleOpenAddBill}
+            className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 transition-transform"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             <Plus size={16} />
@@ -405,28 +446,41 @@ export function SettingsPage() {
         </div>
         <div className="space-y-2.5">
           {bills.map((b: any) => (
-            <div key={b.id} className="glass-surface p-4 rounded-2xl flex items-center justify-between">
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+            <div
+              key={b.id}
+              onClick={() => handleOpenEditBill(b)}
+              className="glass-surface p-4 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition-all"
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
                   style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
                   🧾
                 </div>
-                <div>
-                  <p className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>{b.title}</p>
-                  <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                    {b.repeat_rule} · {formatRupiah(Number(b.amount))}
+                <div className="min-w-0">
+                  <p className="font-bold text-[14px] truncate" style={{ color: "var(--text-primary)" }}>{b.title}</p>
+                  <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                    <span className="capitalize">{b.repeat_rule}</span> · Due {b.due_date} · {formatRupiah(Number(b.amount || 0))}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  showToast("Bill deleted", "delete", () => deleteBill.mutate(b.id))
-                }}
-                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95"
-                style={{ background: "rgba(239, 68, 68, 0.12)", color: "#ef4444" }}
-              >
-                <Trash2 size={14} />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={() => handleOpenEditBill(b)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95"
+                  style={{ background: "var(--bg-elevated)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
+                >
+                  <Edit2 size={13} />
+                </button>
+                <button
+                  onClick={() => {
+                    showToast("Bill deleted", "delete", () => deleteBill.mutate(b.id))
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95"
+                  style={{ background: "rgba(239, 68, 68, 0.12)", color: "#ef4444" }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
           {bills.length === 0 && (
@@ -437,6 +491,58 @@ export function SettingsPage() {
         </div>
       </section>
 
+      {/* Push Notifications & Bill Reminders */}
+      <section className="glass-surface p-4 rounded-[24px] flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+            <Bell size={18} />
+          </div>
+          <div>
+            <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Bill Reminders</span>
+            <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>Native iPhone notifications</p>
+          </div>
+        </div>
+        <button
+          onClick={async () => {
+            const granted = await requestNotificationPermission()
+            if (granted) {
+              showToast("Bill reminders enabled!", "add", () => {})
+            } else {
+              showToast("Notification permission denied", "delete", () => {})
+            }
+          }}
+          className="px-3.5 py-1.5 rounded-full text-[12px] font-bold active:scale-95 transition-all"
+          style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+        >
+          Active
+        </button>
+      </section>
+
+      {/* On-Device Persistent Storage */}
+      <section className="glass-surface p-4 rounded-[24px] flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+            <Archive size={18} />
+          </div>
+          <div>
+            <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>On-Device Storage</span>
+            <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{allTxs.length} records offline in iPhone (0ms load)</p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            localStorage.removeItem("TROUVAILLE_OFFLINE_CACHE_V1")
+            window.location.reload()
+          }}
+          className="px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-secondary)" }}
+        >
+          Sync Now
+        </button>
+      </section>
+
       {/* Appearance */}
       <section className="glass-surface p-4 rounded-[24px] flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -444,14 +550,16 @@ export function SettingsPage() {
             style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
             <Sun size={18} />
           </div>
-          <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Light Appearance</span>
+          <div>
+            <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Light Appearance</span>
+            <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>High-contrast clean style</p>
+          </div>
         </div>
-        <label className="ios-toggle">
+        <label className="ios-toggle cursor-pointer">
           <input
             type="checkbox"
-            onChange={(e) => {
-              document.documentElement.dataset.theme = e.target.checked ? "light" : "dark"
-            }}
+            checked={theme === "light"}
+            onChange={toggleTheme}
           />
           <div className="ios-toggle-track"></div>
           <div className="ios-toggle-knob"></div>
@@ -836,50 +944,77 @@ export function SettingsPage() {
         </div>
       </BottomSheet>
 
-      {/* 8. Add Bill Sheet */}
+      {/* 8. Add/Edit Bill Sheet */}
       <BottomSheet isOpen={billSheetOpen} onClose={() => setBillSheetOpen(false)}>
         <div className="p-5 pb-10 space-y-4">
-          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Recurring Bill</h3>
-          <input
-            type="text"
-            value={billTitle}
-            onChange={e => setBillTitle(e.target.value)}
-            placeholder="Bill Title (e.g. Netflix, Gym, Internet)"
-            className="w-full p-3.5 rounded-2xl outline-none"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-          />
-          <input
-            type="number"
-            value={billAmount}
-            onChange={e => setBillAmount(e.target.value)}
-            placeholder="Nominal Amount (IDR)"
-            className="w-full p-3.5 rounded-2xl outline-none"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-          />
+          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>
+            {editingBill ? "Edit Recurring Bill" : "Add Recurring Bill"}
+          </h3>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
+              Bill Title
+            </label>
+            <input
+              type="text"
+              value={billTitle}
+              onChange={e => setBillTitle(e.target.value)}
+              placeholder="e.g. Netflix, Gym, Internet, Rent"
+              className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[15px]"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
+              Nominal Amount (IDR)
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={billAmount ? formatRupiah(Number(billAmount)) : ""}
+              onChange={e => {
+                const raw = e.target.value.replace(/[^0-9]/g, "")
+                setBillAmount(raw)
+              }}
+              placeholder="Rp 0"
+              className="w-full p-3.5 rounded-2xl outline-none font-bold text-[16px] amount"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+            />
+          </div>
           
-          <button
-            onClick={() => setPickerOpen(true)}
-            className="w-full p-3.5 rounded-2xl flex justify-between items-center"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-          >
-            <span className="font-medium text-sm">Due Date: {format(billDate, "dd MMM yyyy")}</span>
-            <CalendarIcon size={18} style={{ color: "var(--accent)" }} />
-          </button>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
+              Due Date
+            </label>
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="w-full p-3.5 rounded-2xl flex justify-between items-center"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+            >
+              <span className="font-medium text-sm">Due Date: {format(billDate, "dd MMM yyyy")}</span>
+              <CalendarIcon size={18} style={{ color: "var(--accent)" }} />
+            </button>
+          </div>
 
-          <div className="flex p-1 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-            {(["none", "weekly", "monthly", "yearly"] as const).map(r => (
-              <button
-                key={r}
-                onClick={() => setBillRepeat(r)}
-                className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all"
-                style={{
-                  background: billRepeat === r ? "var(--accent)" : "transparent",
-                  color: billRepeat === r ? "var(--accent-ink)" : "var(--text-tertiary)"
-                }}
-              >
-                {r === "none" ? "None" : r === "weekly" ? "Weekly" : r === "monthly" ? "Monthly" : "Yearly"}
-              </button>
-            ))}
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
+              Repeat Frequency
+            </label>
+            <div className="flex p-1 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+              {(["none", "weekly", "monthly", "yearly"] as const).map(r => (
+                <button
+                  key={r}
+                  onClick={() => setBillRepeat(r)}
+                  className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all"
+                  style={{
+                    background: billRepeat === r ? "var(--accent)" : "transparent",
+                    color: billRepeat === r ? "var(--accent-ink)" : "var(--text-tertiary)"
+                  }}
+                >
+                  {r === "none" ? "None" : r === "weekly" ? "Weekly" : r === "monthly" ? "Monthly" : "Yearly"}
+                </button>
+              ))}
+            </div>
           </div>
           
           <button
@@ -887,7 +1022,7 @@ export function SettingsPage() {
             className="w-full py-4 rounded-[20px] font-extrabold text-[15px] shadow-lg active:scale-95"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
-            Save Bill
+            {editingBill ? "Update Bill" : "Save Bill"}
           </button>
         </div>
       </BottomSheet>

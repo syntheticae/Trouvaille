@@ -1,7 +1,8 @@
-﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
 import type { Bill, RepeatRule } from "../lib/types"
 import { addWeeks, addMonths, addYears, format, parseISO, addDays } from "date-fns"
+import { syncBillNotifications } from "../lib/notifications"
 
 interface BillInput {
   title: string; amount?: number | null; due_date: string
@@ -14,7 +15,9 @@ export function useBills() {
     queryFn: async () => {
       const { data, error } = await supabase.from("bills").select("*").order("due_date", { ascending: true })
       if (error) throw error
-      return data as Bill[]
+      const bills = data as Bill[]
+      syncBillNotifications(bills).catch(() => {})
+      return bills
     },
   })
 }
