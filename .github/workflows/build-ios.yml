@@ -48,7 +48,7 @@ jobs:
           EOF
           chmod +x /tmp/codesign-bin/codesign
 
-      - name: Build unsigned .app with Xcode
+      - name: Archive and Package iOS App
         run: |
           export PATH="/tmp/codesign-bin:$PATH"
           cd ios/App
@@ -56,13 +56,14 @@ jobs:
           # Resolve SPM packages
           xcodebuild -resolvePackageDependencies -project App.xcodeproj || true
           
-          # Build App.app binary with signing bypass
-          xcodebuild build \
+          # Archive App.xcarchive with complete embedded frameworks
+          xcodebuild archive \
             -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
+            -archivePath App.xcarchive \
             -xcconfig ../release.xcconfig \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
@@ -71,33 +72,24 @@ jobs:
             PROVISIONING_PROFILE_SPECIFIER="" \
             DEVELOPMENT_TEAM="" \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO \
-            -derivedDataPath build 2>&1 | tee xcodebuild.log || true
+            COMPILER_INDEX_STORE_ENABLE=NO 2>&1 | tee xcodebuild.log || true
           
-          # Check if App.app was produced
-          APP_PATH=$(find build -name "App.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            echo "==================== XCODEBUILD ERRORS ===================="
-            grep -E "error:|fatal error:" xcodebuild.log || tail -n 100 xcodebuild.log
-            exit 1
-          fi
-          echo "Successfully compiled App.app at: $APP_PATH"
-
-      - name: Format, Fake-sign, and Package into native IPA
-        run: |
-          APP_PATH=$(find ios/App/build -name "App.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ]; then
+          # Locate App.app
+          if [ -d "App.xcarchive/Products/Applications/App.app" ]; then
+            APP_PATH="App.xcarchive/Products/Applications/App.app"
+          else
             APP_PATH=$(find . -name "App.app" -type d | head -n 1)
           fi
           
           if [ -z "$APP_PATH" ]; then
-            echo "Error: App.app was not found!"
+            echo "Error: App.app was not produced!"
+            grep -E "error:|fatal error:" xcodebuild.log || tail -n 100 xcodebuild.log
             exit 1
           fi
           
-          echo "Found compiled App.app at: $APP_PATH"
+          echo "Successfully located App.app at: $APP_PATH"
           
-          # Ensure executable permissions on App binary
+          # Ensure executable permissions
           chmod -R 755 "$APP_PATH"
           if [ -f "$APP_PATH/App" ]; then
             chmod +x "$APP_PATH/App"
@@ -109,16 +101,14 @@ jobs:
             ldid -S "$APP_PATH/App" 2>/dev/null || ldid -S "$APP_PATH" 2>/dev/null || true
           fi
           
-          # Clean old artifacts
-          rm -rf Payload Trouvaille.ipa Trouvaille-unsigned.ipa
-          
           # Package strict IPA format (Payload/App.app)
+          rm -rf Payload ../../Trouvaille.ipa ../../Trouvaille-unsigned.ipa
           mkdir -p Payload
           cp -RP "$APP_PATH" Payload/
-          zip -qry Trouvaille.ipa Payload
-          cp Trouvaille.ipa Trouvaille-unsigned.ipa
+          zip -qry ../../Trouvaille.ipa Payload
+          cp ../../Trouvaille.ipa ../../Trouvaille-unsigned.ipa
           
-          echo "Successfully created IPA: $(ls -lh Trouvaille.ipa)"
+          echo "Created IPA: $(ls -lh ../../Trouvaille.ipa)"
 
       - name: Upload .ipa as GitHub Artifact
         uses: actions/upload-artifact@v4
