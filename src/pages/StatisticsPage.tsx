@@ -153,18 +153,22 @@ export function StatisticsPage() {
     totalExpense: rangeTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0),
   }), [rangeTxs])
 
-  const spendingRatio = totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0
   const savingsRate = totalIncome > 0 ? Math.max(0, ((totalIncome - totalExpense) / totalIncome) * 100) : 0
 
   const healthScore = useMemo(() => {
-    if (totalIncome === 0 && totalExpense === 0) return 85
-    if (totalIncome === 0) return 40
-    if (spendingRatio <= 50) return 98
-    if (spendingRatio <= 70) return 88
-    if (spendingRatio <= 90) return 74
-    if (spendingRatio <= 100) return 60
-    return 35
-  }, [totalIncome, totalExpense, spendingRatio])
+    if (totalIncome === 0 && totalExpense === 0) return 80
+    if (totalIncome === 0) {
+      // Only expenses: score decreases dynamically with expense volume
+      return Math.max(20, Math.round(55 - Math.min(35, totalExpense / 400000)))
+    }
+    const ratio = totalExpense / totalIncome
+    if (ratio <= 0.3) return Math.min(100, Math.round(95 + (0.3 - ratio) * 16))
+    if (ratio <= 0.6) return Math.round(85 + (0.6 - ratio) * 33)
+    if (ratio <= 0.9) return Math.round(70 + (0.9 - ratio) * 50)
+    if (ratio <= 1.0) return Math.round(60 + (1.0 - ratio) * 100)
+    if (ratio <= 1.3) return Math.round(45 - (ratio - 1.0) * 50)
+    return Math.max(15, Math.round(30 - Math.min(15, (ratio - 1.3) * 10)))
+  }, [totalIncome, totalExpense])
 
   // 2. Trend bar chart data with exact mathematical consistency
   const trendData = useMemo(() => {
@@ -712,19 +716,32 @@ export function StatisticsPage() {
         <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-tertiary)" }}>
           Period Summary · {rangeTitle}
         </p>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Total In", value: totalIncome, icon: "↑" },
             { label: "Total Out", value: totalExpense, icon: "↓" },
             { label: "Net", value: totalIncome - totalExpense, icon: "=" },
-          ].map(({ label, value, icon }) => (
-            <div key={label} className="text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: "var(--text-tertiary)" }}>{icon} {label}</p>
-              <p className="amount text-[13px] font-extrabold" style={{ color: "var(--text-primary)" }}>
-                {value >= 1000000 ? (value / 1000000).toFixed(1) + "M" : value >= 1000 ? (value / 1000).toFixed(0) + "K" : value.toFixed(0)}
-              </p>
-            </div>
-          ))}
+          ].map(({ label, value, icon }) => {
+            const isNet = label === "Net"
+            const abs = Math.abs(value)
+            let formatted = "0"
+            if (abs >= 1000000) {
+              formatted = (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M"
+            } else if (abs >= 1000) {
+              formatted = (abs / 1000).toFixed(0) + "K"
+            } else {
+              formatted = abs.toLocaleString("id-ID")
+            }
+            const sign = isNet ? (value < 0 ? "-" : value > 0 ? "+" : "") : ""
+            return (
+              <div key={label} className="text-center p-2 rounded-2xl" style={{ background: "var(--glass-fill)" }}>
+                <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: "var(--text-tertiary)" }}>{icon} {label}</p>
+                <p className="amount text-[14px] font-extrabold leading-tight" style={{ color: "var(--text-primary)" }}>
+                  {sign}{formatted}
+                </p>
+              </div>
+            )
+          })}
         </div>
       </div>
 
