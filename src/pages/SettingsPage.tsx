@@ -960,10 +960,5 @@ export function SettingsPage() {
       </BottomSheet>
 
     </div>
-    </div>
   )
 }
-
-
-
-
