@@ -65,6 +65,7 @@ export function TransactionsPage() {
   const [visibleCount, setVisibleCount] = useState(35)
 
   const { data: allTxs = [], isLoading } = useAllTransactions()
+  const { data: categories = [] } = useCategories()
   const { data: wallets = [] } = useWallets()
 
   const isDark = document.documentElement.getAttribute("data-theme") !== "light"

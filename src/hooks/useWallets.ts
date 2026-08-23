@@ -41,16 +41,13 @@ export function useEnsureDefaultWallets() {
   return useMutation({
     mutationFn: async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user;
+      if (!user) return
         const { data: existing } = await supabase.from("wallets").select("name").eq("user_id", user.id)
         if (existing && existing.length > 0) {
-          const existingNames = new Set(existing.map((w: { name: string }) => w.name.toLowerCase()))
-          const missing = DEFAULT_WALLETS.filter(w => !existingNames.has(w.toLowerCase()))
-          if (missing.length === 0) return
-          await supabase.from("wallets").insert(
-            missing.map(name => ({ name, icon: getWalletIcon(name), user_id: user.id }))
-          )
+          // If any wallets exist, do NOT auto-recreate missing ones (user might have deleted them).
+          return
         } else {
           await supabase.from("wallets").insert(
             DEFAULT_WALLETS.map(name => ({ name, icon: getWalletIcon(name), user_id: user.id }))
@@ -69,8 +66,9 @@ export function useWallets() {
     queryKey: ["wallets"],
     queryFn: async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return FALLBACK_WALLETS
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user;
+      if (!user) return FALLBACK_WALLETS
         const { data, error } = await supabase
           .from("wallets")
           .select("*")
@@ -110,7 +108,8 @@ export function useAddWallet() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (w: { name: string; icon?: string }) => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user;
       if (!user) throw new Error("Not authenticated")
       const finalIcon = w.icon || getWalletIcon(w.name)
       const { data, error } = await supabase.from("wallets").insert({ name: w.name, icon: finalIcon, user_id: user.id }).select().single()

@@ -76,7 +76,8 @@ export function useEnsureDefaultCategories() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user;
       if (!user) return
 
       // Check if any default categories exist
@@ -108,7 +109,8 @@ export function useResetDefaultCategories() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user;
       if (!user) return
       // Delete all default categories
       await supabase.from("categories").delete().eq("user_id", user.id).eq("is_default", true)
@@ -125,7 +127,8 @@ export function useAddCategory() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (cat: { name: string; emoji: string; type: TransactionType }) => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user;
       if (!user) throw new Error("Not authenticated")
       const { data, error } = await supabase.from("categories")
         .insert({ ...cat, user_id: user.id, is_default: false }).select().single()

@@ -911,7 +911,7 @@ export function SettingsPage() {
       <BottomSheet isOpen={shortcutMoreCatOpen} onClose={() => setShortcutMoreCatOpen(false)}>
         <div className="p-5 pb-32">
           <h3 className="font-extrabold text-lg mb-4" style={{ color: "var(--text-primary)" }}>Select Category</h3>
-          <div className="grid grid-cols-4 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
             {categories.filter(c => c.type === shortcutType).map(cat => {
               const isSelected = shortcutCategoryId === cat.id
               return (
@@ -937,7 +937,7 @@ export function SettingsPage() {
       <BottomSheet isOpen={shortcutMoreWalletOpen} onClose={() => setShortcutMoreWalletOpen(false)}>
         <div className="p-5 pb-32">
           <h3 className="font-extrabold text-lg mb-4" style={{ color: "var(--text-primary)" }}>Select Account</h3>
-          <div className="grid grid-cols-4 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
             {wallets.map(w => {
               const isSelected = shortcutWalletId === w.id
               return (

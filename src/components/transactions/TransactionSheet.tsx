@@ -119,7 +119,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     const effectiveToWalletId = toWalletId || (wallets.length > 1 ? wallets[1].id : null)
     const effectiveCatId = categoryId || (categories.length > 0 ? categories[0].id : null)
 
-    const isUUID = (id: string | null) => id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+    
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number)
@@ -133,9 +133,10 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
       amount: numAmount,
       note,
       occurred_on: format(date, "yyyy-MM-dd"),
+      created_at: txDate.toISOString(),
       category_id: type === "transfer" ? null : effectiveCatId,
-      wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
-      to_wallet_id: type === "transfer" && isUUID(effectiveToWalletId) ? effectiveToWalletId : null
+      wallet_id: effectiveWalletId,
+      to_wallet_id: type === "transfer" ? effectiveToWalletId : null
     }
 
     // Close sheet immediately for instant response
@@ -173,15 +174,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
   }
 
   const renderWalletRow = (selectedId: string | null, onSelect: (id: string) => void, label: string, isTo = false) => {
-    const list = [...wallets]
-    if (selectedId) {
-      const idx = list.findIndex(w => w.id === selectedId)
-      if (idx > -1) {
-        const item = list.splice(idx, 1)[0]
-        list.unshift(item)
-      }
-    }
-    const top3 = list.slice(0, 3)
+    const top3 = wallets.slice(0, 3)
     return (
       <div className="mb-3">
         <div className="flex justify-between items-end mb-1.5 px-1">
@@ -226,7 +219,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="px-5 pt-2 pb-36">
+      <div className="px-5 pt-2 pb-8">
 {/* Header Segmented Tabs */}
         <div className="flex p-1 rounded-full mb-5 glass-surface" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
           {(["expense", "income", "transfer"] as TransactionType[]).map(t => {
@@ -281,7 +274,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         </div>
 
         {/* Selectors */}
-        <div className="space-y-3 mb-4">
+        <div className="space-y-2 mb-3">
           {type !== "transfer" && (
             <div className="mb-3">
               <div className="flex justify-between items-end mb-1.5 px-1">
@@ -370,7 +363,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
             <button
               key={n}
               onClick={() => handleNum(n)}
-              className="rounded-2xl py-3.5 text-2xl font-extrabold amount active:scale-95 transition-all"
+              className="rounded-2xl py-3 text-2xl font-extrabold amount active:scale-95 transition-all"
               style={{
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
@@ -382,7 +375,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
           ))}
           <button
             onClick={handleDel}
-            className="rounded-2xl py-3.5 text-2xl font-bold amount flex items-center justify-center active:scale-95 transition-all"
+            className="rounded-2xl py-3 text-2xl font-bold amount flex items-center justify-center active:scale-95 transition-all"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
@@ -395,7 +388,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
       </div>
 
       {/* Floating Glass Action Bar */}
-      <div className="fixed bottom-[24px] left-5 right-5 z-50 flex gap-2">
+      <div className="flex gap-2 mt-4">
         {transaction && (
           <button
             onClick={handleDelete}
@@ -423,7 +416,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
       <BottomSheet isOpen={moreCatOpen} onClose={() => setMoreCatOpen(false)}>
         <div className="p-5 pb-32">
           <h3 className="font-extrabold text-lg mb-4" style={{ color: "var(--text-primary)" }}>Select Category</h3>
-          <div className="grid grid-cols-4 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
             {categories.map(cat => {
               const isSelected = categoryId === cat.id
               return (
@@ -542,5 +535,6 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     </BottomSheet>
   )
 }
+
 
 

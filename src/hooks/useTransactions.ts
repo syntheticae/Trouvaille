@@ -84,7 +84,8 @@ export function useAddTransaction() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (input: TransactionInput) => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user;
       if (!user) throw new Error("Not authenticated")
       const { data, error } = await supabase.from("transactions")
         .insert({ ...input, user_id: user.id }).select("*, categories(*)").single()
