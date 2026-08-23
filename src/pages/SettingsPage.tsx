@@ -2,7 +2,7 @@ import { useState, useRef } from "react"
 import {
   Plus, Trash2, Calendar as CalendarIcon, LogOut, ChevronRight,
   CreditCard, LayoutGrid, Target, Sun, Camera, User as UserIcon, RotateCcw,
-  Bell, Archive, Edit2
+  Bell, Archive, Edit2, Zap
 } from "lucide-react"
 import { useBills, useAddBill, useUpdateBill, useDeleteBill } from "../hooks/useBills"
 import { useToast } from "../contexts/ToastContext"
@@ -11,6 +11,8 @@ import { useTheme } from "../contexts/ThemeContext"
 import { useCategories, useAddCategory, useDeleteCategory, useUpdateCategory } from "../hooks/useCategories"
 import { useWallets, useAddWallet, useUpdateWallet, useDeleteWallet } from "../hooks/useWallets"
 import { useGoals } from "../hooks/useGoals"
+import { useBudgetTarget } from "../hooks/useBudgetTarget"
+import { useShortcuts } from "../hooks/useShortcuts"
 import { formatRupiah } from "../lib/utils"
 import { BottomSheet } from "../components/ui/BottomSheet"
 import { GlassDatePicker } from "../components/ui/GlassDatePicker"
@@ -30,6 +32,8 @@ export function SettingsPage() {
   const { session } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { showToast } = useToast()
+  const { budgetTarget, setBudgetTarget } = useBudgetTarget()
+  const { shortcuts, deleteShortcut } = useShortcuts()
 
   const addBill = useAddBill()
   const updateBill = useUpdateBill()
@@ -41,8 +45,8 @@ export function SettingsPage() {
   const updateWallet = useUpdateWallet()
   const deleteWallet = useDeleteWallet()
 
-  // Editing state
-  const [editingBill, setEditingBill] = useState<{ id: string; title: string; amount: number | null; due_date: string; repeat_rule: "none" | "weekly" | "monthly" | "yearly" } | null>(null)
+  // Editing states
+  const [editingBill, setEditingBill] = useState<any>(null)
   const [editWallet, setEditWallet] = useState<{ id: string; name: string } | null>(null)
   const [editCategory, setEditCategory] = useState<{ id: string; name: string } | null>(null)
 
@@ -54,9 +58,12 @@ export function SettingsPage() {
   const [addBudgetOpen, setAddBudgetOpen] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [addCatOpen, setAddCatOpen] = useState(false)
+  const [billListOpen, setBillListOpen] = useState(false)
   const [billSheetOpen, setBillSheetOpen] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
+  const [budgetTargetOpen, setBudgetTargetOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
 
   // Profile Form state
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -86,12 +93,14 @@ export function SettingsPage() {
   // Category Form
   const [catName, setCatName] = useState("")
   const [catType, setCatType] = useState<"expense" | "income">("expense")
+  
+  // Budget Target Form
+  const [tempBudgetTarget, setTempBudgetTarget] = useState(String(budgetTarget))
 
-  // Handle Image File Selection & Compression (Canvas 256x256)
+  // ... (Upload & Action handlers)
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     setIsUploading(true)
     const reader = new FileReader()
     reader.onload = (event) => {
@@ -101,28 +110,23 @@ export function SettingsPage() {
         const maxSize = 256
         let width = img.width
         let height = img.height
-
         if (width > height) {
           if (width > maxSize) {
-            height = Math.round((height * maxSize) / width)
+            height *= maxSize / width
             width = maxSize
           }
         } else {
           if (height > maxSize) {
-            width = Math.round((width * maxSize) / height)
+            width *= maxSize / height
             height = maxSize
           }
         }
-
         canvas.width = width
         canvas.height = height
         const ctx = canvas.getContext("2d")
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height)
-          const base64 = canvas.toDataURL("image/jpeg", 0.85)
-          setAvatarUrl(base64)
-          localStorage.setItem("trouvaille_avatar", base64)
-        }
+        ctx?.drawImage(img, 0, 0, width, height)
+        const compressed = canvas.toDataURL("image/jpeg", 0.7)
+        setAvatarUrl(compressed)
         setIsUploading(false)
       }
       img.src = event.target?.result as string
@@ -130,19 +134,13 @@ export function SettingsPage() {
     reader.readAsDataURL(file)
   }
 
-  const handleRemovePhoto = () => {
-    setAvatarUrl("")
-    localStorage.removeItem("trouvaille_avatar")
-  }
-
-  const handleSaveProfile = async () => {
+  const handleUpdateProfile = async () => {
     try {
-      await supabase.auth.updateUser({
+      localStorage.setItem("trouvaille_avatar", avatarUrl)
+      const { error } = await supabase.auth.updateUser({
         data: { display_name: displayName, avatar_url: avatarUrl }
       })
-      if (avatarUrl) localStorage.setItem("trouvaille_avatar", avatarUrl)
-      else localStorage.removeItem("trouvaille_avatar")
-      
+      if (error) throw error
       setProfileOpen(false)
       showToast("Profile updated successfully", "update", () => {})
     } catch (e: any) {
@@ -217,10 +215,7 @@ export function SettingsPage() {
 
   const handleSaveBudget = () => {
     if (!budgetName) return
-    addWallet.mutate({
-      name: budgetName,
-      icon: "/icons/wallet.png"
-    }, {
+    addWallet.mutate({ name: budgetName, icon: "/icons/wallet.png" }, {
       onSuccess: () => {
         setAddBudgetOpen(false)
         setBudgetName("")
@@ -231,11 +226,7 @@ export function SettingsPage() {
 
   const handleSaveCategory = () => {
     if (!catName) return
-    addCategory.mutate({
-      name: catName,
-      emoji: "/icons/lainnya.png",
-      type: catType
-    }, {
+    addCategory.mutate({ name: catName, emoji: "/icons/lainnya.png", type: catType }, {
       onSuccess: () => {
         setAddCatOpen(false)
         setCatName("")
@@ -279,9 +270,10 @@ export function SettingsPage() {
   return (
     <div className="px-5 py-6 space-y-6 pb-36">
       <h1 className="text-[24px] font-extrabold mb-1" style={{ color: "var(--text-primary)" }}>Settings</h1>
-      <p className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>Preferences & Account Controls</p>
       
-      {/* Profile Card */}
+      {/* ============================================================ */}
+      {/* 1. PROFILE SECTION */}
+      {/* ============================================================ */}
       <section className="glass-surface p-4 rounded-[24px] flex items-center justify-between">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center relative shrink-0"
@@ -289,741 +281,367 @@ export function SettingsPage() {
             {avatarUrl ? (
               <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
-              <UserIcon size={22} style={{ color: "var(--text-tertiary)" }} />
+              <UserIcon size={20} style={{ color: "var(--text-secondary)" }} />
             )}
           </div>
           <div>
-            <p className="font-extrabold text-[16px]" style={{ color: "var(--text-primary)" }}>{displayName}</p>
-            <p className="text-[11px] truncate max-w-[170px]" style={{ color: "var(--text-tertiary)" }}>{session?.user?.email}</p>
+            <p className="font-extrabold text-[16px] truncate" style={{ color: "var(--text-primary)" }}>
+              {displayName}
+            </p>
+            <p className="text-[11px] font-medium truncate" style={{ color: "var(--text-tertiary)" }}>
+              {session?.user?.email}
+            </p>
           </div>
         </div>
         <button
           onClick={() => setProfileOpen(true)}
-          className="px-3.5 py-1.5 rounded-full text-[12px] font-bold active:scale-95 transition-all"
-          style={{ background: "var(--glass-fill-strong)", color: "var(--text-primary)", border: "1px solid var(--glass-border)" }}
+          className="px-4 py-2 rounded-full text-[12px] font-bold active:scale-95 transition-transform"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
         >
-          Edit Profile
+          Edit
         </button>
       </section>
 
-      {/* Financial Goals Overview */}
-      <section className="glass-surface p-5 rounded-[24px] relative overflow-hidden">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "var(--glass-fill-strong)", color: "var(--text-primary)" }}>
-              <Target size={16} />
-            </div>
-            <span className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
-              Financial Goals
-            </span>
-          </div>
-          <button
-            onClick={() => setGoalsOpen(true)}
-            className="text-[12px] font-bold flex items-center gap-1 active:scale-95"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Manage ({goals.length}) <ChevronRight size={14} />
-          </button>
-        </div>
-        <div className="space-y-2.5">
-          {goals.slice(0, 2).map(goal => {
-            const pct = Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100))
-            return (
-              <div key={goal.id} className="p-3.5 rounded-2xl"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-                <div className="flex justify-between items-center mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span>{goal.icon}</span>
-                    <span className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>{goal.title}</span>
-                  </div>
-                  <span className="text-[12px] font-bold amount" style={{ color: "var(--text-primary)" }}>{pct}%</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: "var(--bg-card)" }}>
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "var(--text-primary)" }} />
-                </div>
-                <div className="flex justify-between text-[11px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
-                  <span>{formatRupiah(goal.currentAmount)}</span>
-                  <span>Target: {formatRupiah(goal.targetAmount)}</span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* Main Settings Navigation */}
-      <section className="glass-surface rounded-[24px] overflow-hidden">
-        <button
-          onClick={() => setBudgetsOpen(true)}
-          className="w-full p-4 flex items-center justify-between active:bg-white/5 transition-colors text-left"
-          style={{ borderBottom: "1px solid var(--glass-border)" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ background: "var(--glass-fill-strong)", color: "var(--text-primary)" }}>
-              <CreditCard size={18} />
-            </div>
-            <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>
-              Manage Budgets ({wallets.length})
-            </span>
-          </div>
-          <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-        </button>
-
-        <button
-          onClick={() => setCategoriesOpen(true)}
-          className="w-full p-4 flex items-center justify-between active:bg-white/5 transition-colors text-left"
-          style={{ borderBottom: "1px solid var(--glass-border)" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)" }}>
-              <LayoutGrid size={18} />
-            </div>
-            <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>
-              Manage Categories ({categories.length})
-            </span>
-          </div>
-          <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-        </button>
-
-        <button
-          onClick={handleExportCSV}
-          className="w-full p-4 flex items-center justify-between active:bg-white/5 transition-colors text-left"
-          style={{ borderBottom: "1px solid var(--glass-border)" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)" }}>
-              <LogOut size={18} className="rotate-90" />
-            </div>
-            <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>
-              Export Data (CSV)
-            </span>
-          </div>
-          <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-        </button>
-
-        <button
-          onClick={() => setResetOpen(true)}
-          className="w-full p-4 flex items-center justify-between active:bg-white/5 transition-colors text-left"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ background: "rgba(239, 68, 68, 0.12)", color: "#ef4444" }}>
-              <RotateCcw size={18} />
-            </div>
-            <div>
-              <p className="font-bold text-[14px]" style={{ color: "#ef4444" }}>
-                Reset Data Transaksi
-              </p>
-              <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                Hapus transaksi per hari, minggu, bulan, atau tahun
-              </p>
-            </div>
-          </div>
-          <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-        </button>
-      </section>
-
-      {/* Recurring Bills Management */}
+      {/* ============================================================ */}
+      {/* 2. FINANCIAL SETUP SECTION */}
+      {/* ============================================================ */}
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-[13px] font-bold" style={{ color: "var(--text-tertiary)" }}>
-              Recurring Bills
-            </h2>
-            <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Tap any bill to edit details</p>
-          </div>
-          <button
-            onClick={handleOpenAddBill}
-            className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 transition-transform"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-          >
-            <Plus size={16} />
+        <h2 className="text-[13px] font-bold mb-3 px-1" style={{ color: "var(--text-tertiary)" }}>Financial Setup</h2>
+        <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
+          {/* Categories */}
+          <button onClick={() => setCategoriesOpen(true)} className="flex items-center justify-between p-4 active:bg-black/5 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <LayoutGrid size={16} />
+              </div>
+              <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Manage Categories</span>
+            </div>
+            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+          </button>
+          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
+          
+          {/* Accounts & Wallets */}
+          <button onClick={() => setBudgetsOpen(true)} className="flex items-center justify-between p-4 active:bg-black/5 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <CreditCard size={16} />
+              </div>
+              <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Accounts & Wallets</span>
+            </div>
+            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+          </button>
+          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
+
+          {/* Recurring Bills */}
+          <button onClick={() => setBillListOpen(true)} className="flex items-center justify-between p-4 active:bg-black/5 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <CalendarIcon size={16} />
+              </div>
+              <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Recurring Bills</span>
+            </div>
+            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+          </button>
+          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
+
+          {/* Financial Goals */}
+          <button onClick={() => setGoalsOpen(true)} className="flex items-center justify-between p-4 active:bg-black/5 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <Target size={16} />
+              </div>
+              <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Financial Goals</span>
+            </div>
+            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+          </button>
+          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
+
+          {/* Monthly Budget Target */}
+          <button onClick={() => setBudgetTargetOpen(true)} className="flex items-center justify-between p-4 active:bg-black/5 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <Target size={16} />
+              </div>
+              <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Monthly Budget Target</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-bold" style={{ color: "var(--text-tertiary)" }}>{formatRupiah(budgetTarget)}</span>
+              <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+            </div>
           </button>
         </div>
-        <div className="space-y-2.5">
-          {bills.map((b: any) => (
-            <div
-              key={b.id}
-              onClick={() => handleOpenEditBill(b)}
-              className="glass-surface p-4 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition-all"
-            >
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-                  style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-                  🧾
-                </div>
-                <div className="min-w-0">
-                  <p className="font-bold text-[14px] truncate" style={{ color: "var(--text-primary)" }}>{b.title}</p>
-                  <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    <span className="capitalize">{b.repeat_rule}</span> · Due {b.due_date} · {formatRupiah(Number(b.amount || 0))}
-                  </p>
-                </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* 3. PREFERENCES SECTION */}
+      {/* ============================================================ */}
+      <section>
+        <h2 className="text-[13px] font-bold mb-3 px-1" style={{ color: "var(--text-tertiary)" }}>App Preferences</h2>
+        <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
+          {/* Appearance Toggle */}
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <Sun size={16} />
               </div>
-              <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                <button
-                  onClick={() => handleOpenEditBill(b)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95"
-                  style={{ background: "var(--bg-elevated)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
-                >
-                  <Edit2 size={13} />
-                </button>
-                <button
-                  onClick={() => {
-                    showToast("Bill deleted", "delete", () => deleteBill.mutate(b.id))
-                  }}
-                  className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95"
-                  style={{ background: "rgba(239, 68, 68, 0.12)", color: "#ef4444" }}
-                >
-                  <Trash2 size={14} />
-                </button>
+              <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Light Appearance</span>
+            </div>
+            <label className="ios-toggle cursor-pointer">
+              <input type="checkbox" checked={theme === "light"} onChange={toggleTheme} />
+              <div className="ios-toggle-track"></div>
+              <div className="ios-toggle-knob"></div>
+            </label>
+          </div>
+          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
+
+          {/* Notifications */}
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <Bell size={16} />
+              </div>
+              <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Bill Reminders</span>
+            </div>
+            <button
+              onClick={async () => {
+                const granted = await requestNotificationPermission()
+                if (granted) showToast("Bill reminders enabled!", "add", () => {})
+                else showToast("Notification permission denied", "delete", () => {})
+              }}
+              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            >
+              Active
+            </button>
+          </div>
+          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
+
+          {/* Quick Shortcuts */}
+          <button onClick={() => setShortcutsOpen(true)} className="flex items-center justify-between p-4 active:bg-black/5 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <Zap size={16} />
+              </div>
+              <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Quick-Add Shortcuts</span>
+            </div>
+            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+          </button>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* 4. DATA & STORAGE SECTION */}
+      {/* ============================================================ */}
+      <section>
+        <h2 className="text-[13px] font-bold mb-3 px-1" style={{ color: "var(--text-tertiary)" }}>Data & Storage</h2>
+        <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
+          {/* Offline Storage */}
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <Archive size={16} />
+              </div>
+              <div>
+                <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>On-Device Storage</span>
+                <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{allTxs.length} records offline</p>
               </div>
             </div>
-          ))}
-          {bills.length === 0 && (
-            <p className="text-sm text-center py-4" style={{ color: "var(--text-tertiary)" }}>
-              No recurring bills registered.
-            </p>
-          )}
+            <button
+              onClick={() => {
+                localStorage.removeItem("TROUVAILLE_OFFLINE_CACHE_V1")
+                window.location.reload()
+              }}
+              className="px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-secondary)" }}
+            >
+              Sync Now
+            </button>
+          </div>
+          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
+
+          {/* Export CSV */}
+          <button onClick={handleExportCSV} className="flex items-center justify-between p-4 active:bg-black/5 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <Archive size={16} />
+              </div>
+              <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Export to CSV</span>
+            </div>
+            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+          </button>
+          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
+
+          {/* Reset Data */}
+          <button onClick={() => setResetOpen(true)} className="flex items-center justify-between p-4 active:bg-black/5 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)", color: "#ef4444" }}>
+                <RotateCcw size={16} />
+              </div>
+              <div>
+                <p className="font-bold text-[14px]" style={{ color: "#ef4444" }}>Reset Data</p>
+              </div>
+            </div>
+            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+          </button>
         </div>
       </section>
 
-      {/* Push Notifications & Bill Reminders */}
-      <section className="glass-surface p-4 rounded-[24px] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
-            <Bell size={18} />
-          </div>
-          <div>
-            <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Bill Reminders</span>
-            <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>Native iPhone notifications</p>
-          </div>
-        </div>
-        <button
-          onClick={async () => {
-            const granted = await requestNotificationPermission()
-            if (granted) {
-              showToast("Bill reminders enabled!", "add", () => {})
-            } else {
-              showToast("Notification permission denied", "delete", () => {})
-            }
-          }}
-          className="px-3.5 py-1.5 rounded-full text-[12px] font-bold active:scale-95 transition-all"
-          style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-        >
-          Active
-        </button>
-      </section>
-
-      {/* On-Device Persistent Storage */}
-      <section className="glass-surface p-4 rounded-[24px] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
-            <Archive size={18} />
-          </div>
-          <div>
-            <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>On-Device Storage</span>
-            <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{allTxs.length} records offline in iPhone (0ms load)</p>
-          </div>
-        </div>
-        <button
-          onClick={() => {
-            localStorage.removeItem("TROUVAILLE_OFFLINE_CACHE_V1")
-            window.location.reload()
-          }}
-          className="px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-secondary)" }}
-        >
-          Sync Now
-        </button>
-      </section>
-
-      {/* Appearance */}
-      <section className="glass-surface p-4 rounded-[24px] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
-            <Sun size={18} />
-          </div>
-          <div>
-            <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Light Appearance</span>
-            <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>High-contrast clean style</p>
-          </div>
-        </div>
-        <label className="ios-toggle cursor-pointer">
-          <input
-            type="checkbox"
-            checked={theme === "light"}
-            onChange={toggleTheme}
-          />
-          <div className="ios-toggle-track"></div>
-          <div className="ios-toggle-knob"></div>
-        </label>
-      </section>
-
-      {/* Logout */}
+      {/* ============================================================ */}
+      {/* 5. LOGOUT */}
+      {/* ============================================================ */}
       <button
         onClick={handleLogout}
-        className="w-full p-4 rounded-[24px] font-bold text-[14px] flex items-center justify-center gap-2 active:scale-98 transition-transform"
+        className="w-full p-4 rounded-[24px] font-bold text-[14px] flex items-center justify-center gap-2 active:scale-98 transition-transform mb-6"
         style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)", color: "#ef4444" }}
       >
         <LogOut size={16} /> Sign Out
       </button>
+      
+      <p className="text-center text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+        Trouvaille for iOS<br/>Version 2.0.0
+      </p>
 
       {/* ============================================================ */}
       {/* BOTTOM SHEETS / MODALS */}
       {/* ============================================================ */}
 
-      {/* 1. Profile Sheet with Photo Upload */}
+      {/* Profile Sheet */}
       <BottomSheet isOpen={profileOpen} onClose={() => setProfileOpen(false)}>
         <div className="p-5 pb-10 space-y-5">
           <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Edit Profile</h3>
-          
-          {/* Avatar Preview & Upload Controls */}
           <div className="flex flex-col items-center gap-3 py-2">
             <div className="w-24 h-24 rounded-full overflow-hidden relative flex items-center justify-center shadow-lg"
               style={{ background: "var(--bg-elevated)", border: "2px solid var(--glass-border)" }}>
               {avatarUrl ? (
-                <img src={avatarUrl} alt="Preview" className="w-full h-full object-cover" />
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <UserIcon size={36} style={{ color: "var(--text-tertiary)" }} />
+                <UserIcon size={40} style={{ color: "var(--text-secondary)" }} />
               )}
               {isUploading && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-xs text-white font-bold">
-                  Loading...
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 </div>
               )}
             </div>
-
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageUpload}
-            />
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 rounded-full text-[12px] font-bold flex items-center gap-1.5 active:scale-95"
-                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-              >
-                <Camera size={14} /> Upload Photo
-              </button>
-              {avatarUrl && (
-                <button
-                  type="button"
-                  onClick={handleRemovePhoto}
-                  className="px-3 py-2 rounded-full text-[12px] font-bold active:scale-95"
-                  style={{ background: "rgba(239, 68, 68, 0.12)", color: "#ef4444" }}
-                >
-                  Remove
-                </button>
-              )}
-            </div>
+            <button onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-bold active:scale-95 transition-transform"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+              <Camera size={14} /> Change Photo
+            </button>
+            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
           </div>
-
           <div>
-            <label className="text-[12px] font-bold mb-1.5 block" style={{ color: "var(--text-tertiary)" }}>Display Name</label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              className="w-full p-3.5 rounded-2xl outline-none font-semibold"
-              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-            />
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Display Name</label>
+            <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+              className="w-full p-4 rounded-2xl outline-none font-bold text-[15px]"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
           </div>
-
-          <button
-            onClick={handleSaveProfile}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] shadow-lg active:scale-95"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-          >
-            Save Profile
-          </button>
+          <button onClick={handleUpdateProfile} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95"
+            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save Profile</button>
         </div>
       </BottomSheet>
 
-      {/* 2. Financial Goals Sheet */}
-      <BottomSheet isOpen={goalsOpen} onClose={() => setGoalsOpen(false)}>
-        <div className="p-5 pb-16 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Financial Goals</h3>
-            <button
-              onClick={() => { setGoalsOpen(false); setAddGoalOpen(true) }}
-              className="px-3 py-1.5 rounded-full font-bold text-[12px] flex items-center gap-1"
-              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-            >
-              <Plus size={14} /> New Goal
-            </button>
-          </div>
-
-          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-            {goals.map(goal => {
-              const pct = Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100))
-              return (
-                <div key={goal.id} className="p-4 rounded-2xl space-y-2"
-                  style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{goal.icon}</span>
-                      <span className="font-bold text-[15px]" style={{ color: "var(--text-primary)" }}>{goal.title}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          const amt = prompt("Deposit amount (IDR):", "500000")
-                          if (amt) depositToGoal(goal.id, Number(amt))
-                        }}
-                        className="px-2.5 py-1 rounded-full font-bold text-[11px]"
-                        style={{ background: "var(--glass-fill-strong)", color: "var(--text-primary)", border: "1px solid var(--glass-border)" }}
-                      >
-                        + Deposit
-                      </button>
-                      <button onClick={() => deleteGoal(goal.id)} className="p-1" style={{ color: "#ef4444" }}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: "var(--bg-card)" }}>
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "var(--accent)" }} />
-                  </div>
-                  <div className="flex justify-between text-[11px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
-                    <span>Saved: {formatRupiah(goal.currentAmount)} ({pct}%)</span>
-                    <span>Target: {formatRupiah(goal.targetAmount)}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </BottomSheet>
-
-      {/* 3. Add Goal Sheet */}
-      <BottomSheet isOpen={addGoalOpen} onClose={() => setAddGoalOpen(false)}>
-        <div className="p-5 pb-10 space-y-3.5">
-          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Create New Goal</h3>
-          
-          <div className="flex gap-2">
-            {["🎯", "💻", "✈️", "🚗", "🏠", "🛡️"].map(ico => (
-              <button
-                key={ico}
-                onClick={() => setGoalIcon(ico)}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
-                  goalIcon === ico ? "scale-105" : ""
-                }`}
-                style={{
-                  background: goalIcon === ico ? "var(--accent)" : "var(--bg-elevated)",
-                  border: `1px solid ${goalIcon === ico ? "transparent" : "var(--glass-border)"}`
-                }}
-              >
-                {ico}
-              </button>
-            ))}
-          </div>
-
-          <input
-            type="text"
-            value={goalTitle}
-            onChange={e => setGoalTitle(e.target.value)}
-            placeholder="Goal Title (e.g. Dream Trip)"
-            className="w-full p-3.5 rounded-2xl outline-none"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-          />
-          <input
-            type="number"
-            value={goalTarget}
-            onChange={e => setGoalTarget(e.target.value)}
-            placeholder="Target Amount (IDR)"
-            className="w-full p-3.5 rounded-2xl outline-none"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-          />
-          <input
-            type="number"
-            value={goalSaved}
-            onChange={e => setGoalSaved(e.target.value)}
-            placeholder="Initial Saved Amount (optional)"
-            className="w-full p-3.5 rounded-2xl outline-none"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-          />
-
-          <button
-            onClick={handleSaveGoal}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] mt-2 shadow-lg active:scale-95"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-          >
-            Save Goal
-          </button>
-        </div>
-      </BottomSheet>
-
-      {/* 4. Manage Budgets Sheet */}
-      <BottomSheet isOpen={budgetsOpen} onClose={() => setBudgetsOpen(false)}>
-        <div className="p-5 pb-16 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Manage Budgets</h3>
-            <button onClick={() => setAddBudgetOpen(true)}
-              className="px-3 py-1.5 rounded-full font-bold text-[12px] flex items-center gap-1"
+      {/* Bill List Sheet */}
+      <BottomSheet isOpen={billListOpen} onClose={() => setBillListOpen(false)}>
+        <div className="p-5 pb-10 space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="flex items-center justify-between sticky top-0 bg-transparent z-10 pb-2">
+            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Recurring Bills</h3>
+            <button onClick={() => { setBillListOpen(false); setTimeout(() => handleOpenAddBill(), 300) }}
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95"
               style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
-              <Plus size={14} /> Add
+              <Plus size={16} />
             </button>
           </div>
-          <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
-            {wallets.map(w => (
-              <div key={w.id} className="p-3.5 rounded-2xl flex items-center gap-3"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-                  <IconRenderer icon={w.icon} size="w-5 h-5" />
+          <div className="space-y-2">
+            {bills.map((b: any) => (
+              <div key={b.id} onClick={() => { setBillListOpen(false); setTimeout(() => handleOpenEditBill(b), 300) }}
+                className="glass-surface p-4 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition-all">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>🧾</div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[14px] truncate" style={{ color: "var(--text-primary)" }}>{b.title}</p>
+                    <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                      <span className="capitalize">{b.repeat_rule}</span> · Due {b.due_date} · {formatRupiah(Number(b.amount || 0))}
+                    </p>
+                  </div>
                 </div>
-                <span className="font-bold text-[14px] flex-1 truncate" style={{ color: "var(--text-primary)" }}>{w.name}</span>
-                <button onClick={() => setEditWallet({ id: w.id, name: w.name })}
-                  className="text-[11px] font-bold px-2.5 py-1 rounded-full"
-                  style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>
-                  Rename
-                </button>
-                <button onClick={() => {
-                  if (confirm(`Delete "${w.name}"? Transactions linked to it will remain.`)) {
-                    deleteWallet.mutate(w.id, { onSuccess: () => showToast(`${w.name} removed`, "delete", () => {}) })
-                  }
-                }} className="w-8 h-8 flex items-center justify-center rounded-full active:scale-90"
-                  style={{ color: "#ef4444" }}>
-                  <Trash2 size={14} />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => { showToast("Bill deleted", "delete", () => deleteBill.mutate(b.id)) }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95"
+                    style={{ background: "rgba(239, 68, 68, 0.12)", color: "#ef4444" }}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             ))}
+            {bills.length === 0 && (
+              <p className="text-sm text-center py-4" style={{ color: "var(--text-tertiary)" }}>No recurring bills registered.</p>
+            )}
           </div>
         </div>
       </BottomSheet>
 
-      {/* 4b. Rename Wallet Sheet */}
-      <BottomSheet isOpen={!!editWallet} onClose={() => setEditWallet(null)}>
-        <div className="p-5 pb-10 space-y-4">
-          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Rename Budget</h3>
-          <input type="text" value={editWallet?.name || ""}
-            onChange={e => setEditWallet(prev => prev ? { ...prev, name: e.target.value } : null)}
-            className="w-full p-3.5 rounded-2xl outline-none font-semibold"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
-          <button onClick={() => {
-            if (!editWallet?.name.trim()) return
-            updateWallet.mutate({ id: editWallet.id, name: editWallet.name.trim() }, {
-              onSuccess: () => { setEditWallet(null); showToast("Renamed successfully", "update", () => {}) }
-            })
-          }} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
-            Save
-          </button>
-        </div>
-      </BottomSheet>
-
-      {/* 5. Add Budget Sheet */}
-      <BottomSheet isOpen={addBudgetOpen} onClose={() => setAddBudgetOpen(false)}>
-        <div className="p-5 pb-10 space-y-4">
-          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Budget Account</h3>
-          <input
-            type="text"
-            value={budgetName}
-            onChange={e => setBudgetName(e.target.value)}
-            placeholder="Budget Name (e.g. Bank Central, Crypto Wallet)"
-            className="w-full p-3.5 rounded-2xl outline-none font-semibold"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-          />
-          <button
-            onClick={handleSaveBudget}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] shadow-lg active:scale-95"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-          >
-            Save Budget
-          </button>
-        </div>
-      </BottomSheet>
-
-      {/* 6. Manage Categories Sheet */}
-      <BottomSheet isOpen={categoriesOpen} onClose={() => setCategoriesOpen(false)}>
-        <div className="p-5 pb-16 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Manage Categories</h3>
-            <button onClick={() => setAddCatOpen(true)}
-              className="px-3 py-1.5 rounded-full font-bold text-[12px] flex items-center gap-1"
-              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
-              <Plus size={14} /> Add
-            </button>
-          </div>
-          <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
-            {categories.map(cat => (
-              <div key={cat.id} className="p-3 rounded-2xl flex items-center gap-2.5"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-                  <IconRenderer icon={cat.emoji} size="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{cat.name}</p>
-                  <p className="text-[10px] capitalize font-semibold" style={{ color: "var(--text-tertiary)" }}>{cat.type}</p>
-                </div>
-                <button onClick={() => setEditCategory({ id: cat.id, name: cat.name })}
-                  className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
-                  style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>
-                  Rename
-                </button>
-                <button onClick={() => {
-                  if (confirm(`Delete "${cat.name}"?`)) {
-                    deleteCategory.mutate(cat.id, { onSuccess: () => showToast(`${cat.name} removed`, "delete", () => {}) })
-                  }
-                }} className="w-8 h-8 flex items-center justify-center rounded-full"
-                  style={{ color: "#ef4444" }}>
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </BottomSheet>
-
-      {/* 6b. Rename Category Sheet */}
-      <BottomSheet isOpen={!!editCategory} onClose={() => setEditCategory(null)}>
-        <div className="p-5 pb-10 space-y-4">
-          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Rename Category</h3>
-          <input type="text" value={editCategory?.name || ""}
-            onChange={e => setEditCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
-            className="w-full p-3.5 rounded-2xl outline-none font-semibold"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
-          <button onClick={() => {
-            if (!editCategory?.name.trim()) return
-            updateCategory.mutate({ id: editCategory.id, name: editCategory.name.trim(), emoji: categories.find(c => c.id === editCategory.id)?.emoji || "/icons/lainnya.png" }, {
-              onSuccess: () => { setEditCategory(null); showToast("Category renamed", "update", () => {}) }
-            })
-          }} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
-            Save
-          </button>
-        </div>
-      </BottomSheet>
-
-      {/* 7. Add Category Sheet */}
-      <BottomSheet isOpen={addCatOpen} onClose={() => setAddCatOpen(false)}>
-        <div className="p-5 pb-10 space-y-4">
-          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Category</h3>
-          <div className="flex p-1 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-            {(["expense", "income"] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => setCatType(t)}
-                className="flex-1 py-2 rounded-xl text-[12px] font-bold transition-all"
-                style={{
-                  background: catType === t ? "var(--accent)" : "transparent",
-                  color: catType === t ? "var(--accent-ink)" : "var(--text-tertiary)"
-                }}
-              >
-                {t === "expense" ? "Expense" : "Income"}
-              </button>
-            ))}
-          </div>
-          <input
-            type="text"
-            value={catName}
-            onChange={e => setCatName(e.target.value)}
-            placeholder="Category Name"
-            className="w-full p-3.5 rounded-2xl outline-none font-semibold"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-          />
-          <button
-            onClick={handleSaveCategory}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] shadow-lg active:scale-95"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-          >
-            Save Category
-          </button>
-        </div>
-      </BottomSheet>
-
-      {/* 8. Add/Edit Bill Sheet */}
+      {/* Add/Edit Bill Sheet */}
       <BottomSheet isOpen={billSheetOpen} onClose={() => setBillSheetOpen(false)}>
         <div className="p-5 pb-10 space-y-4">
           <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>
             {editingBill ? "Edit Recurring Bill" : "Add Recurring Bill"}
           </h3>
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
-              Bill Title
-            </label>
-            <input
-              type="text"
-              value={billTitle}
-              onChange={e => setBillTitle(e.target.value)}
-              placeholder="e.g. Netflix, Gym, Internet, Rent"
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Bill Title</label>
+            <input type="text" value={billTitle} onChange={e => setBillTitle(e.target.value)} placeholder="e.g. Netflix, Gym, Internet"
               className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[15px]"
-              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-            />
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
           </div>
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
-              Nominal Amount (IDR)
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={billAmount ? formatRupiah(Number(billAmount)) : ""}
-              onChange={e => {
-                const raw = e.target.value.replace(/[^0-9]/g, "")
-                setBillAmount(raw)
-              }}
-              placeholder="Rp 0"
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Nominal Amount (IDR)</label>
+            <input type="text" inputMode="numeric" pattern="[0-9]*" value={billAmount ? formatRupiah(Number(billAmount)) : ""}
+              onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ""); setBillAmount(raw) }} placeholder="Rp 0"
               className="w-full p-3.5 rounded-2xl outline-none font-bold text-[16px] amount"
-              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-            />
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
           </div>
-          
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
-              Due Date
-            </label>
-            <button
-              onClick={() => setPickerOpen(true)}
-              className="w-full p-3.5 rounded-2xl flex justify-between items-center"
-              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-            >
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Due Date</label>
+            <button onClick={() => setPickerOpen(true)} className="w-full p-3.5 rounded-2xl flex justify-between items-center"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
               <span className="font-medium text-sm">Due Date: {format(billDate, "dd MMM yyyy")}</span>
               <CalendarIcon size={18} style={{ color: "var(--accent)" }} />
             </button>
           </div>
-
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
-              Repeat Frequency
-            </label>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Repeat Frequency</label>
             <div className="flex p-1 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
               {(["none", "weekly", "monthly", "yearly"] as const).map(r => (
-                <button
-                  key={r}
-                  onClick={() => setBillRepeat(r)}
+                <button key={r} onClick={() => setBillRepeat(r)}
                   className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all"
-                  style={{
-                    background: billRepeat === r ? "var(--accent)" : "transparent",
-                    color: billRepeat === r ? "var(--accent-ink)" : "var(--text-tertiary)"
-                  }}
-                >
+                  style={{ background: billRepeat === r ? "var(--accent)" : "transparent", color: billRepeat === r ? "var(--accent-ink)" : "var(--text-tertiary)" }}>
                   {r === "none" ? "None" : r === "weekly" ? "Weekly" : r === "monthly" ? "Monthly" : "Yearly"}
                 </button>
               ))}
             </div>
           </div>
-          
-          <button
-            onClick={handleSaveBill}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] shadow-lg active:scale-95"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-          >
+          <button onClick={handleSaveBill} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] shadow-lg active:scale-95"
+            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
             {editingBill ? "Update Bill" : "Save Bill"}
           </button>
+        </div>
+      </BottomSheet>
+
+      {/* Monthly Budget Target Sheet */}
+      <BottomSheet isOpen={budgetTargetOpen} onClose={() => setBudgetTargetOpen(false)}>
+        <div className="p-5 pb-10 space-y-4">
+          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Set Monthly Budget</h3>
+          <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>Set a monthly spending limit to monitor your budget progress on the dashboard.</p>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Target Amount</label>
+            <input type="text" inputMode="numeric" pattern="[0-9]*" value={tempBudgetTarget ? formatRupiah(Number(tempBudgetTarget)) : ""}
+              onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ""); setTempBudgetTarget(raw) }} placeholder="Rp 0"
+              className="w-full p-4 rounded-2xl outline-none font-bold text-[18px] amount"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          </div>
+          <button onClick={() => { setBudgetTarget(Number(tempBudgetTarget) || 0); setBudgetTargetOpen(false); showToast("Budget target saved", "add", () => {}) }} 
+            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95"
+            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save Target</button>
         </div>
       </BottomSheet>
 
@@ -1037,6 +655,142 @@ export function SettingsPage() {
 
       {/* Reset Transactions Sheet */}
       <ResetTransactionsSheet isOpen={resetOpen} onClose={() => setResetOpen(false)} />
+
+      <BottomSheet isOpen={goalsOpen} onClose={() => setGoalsOpen(false)}>
+        <div className="p-5 pb-10 space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="flex items-center justify-between sticky top-0 bg-transparent z-10 pb-2">
+            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Financial Goals</h3>
+            <button onClick={() => { setGoalsOpen(false); setTimeout(() => setAddGoalOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button>
+          </div>
+          <div className="space-y-2">
+            {goals.map((g: any) => (
+              <div key={g.id} className="p-3 rounded-2xl flex items-center justify-between" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl">{g.icon}</div>
+                  <div>
+                    <p className="font-bold text-[13px]">{g.title}</p>
+                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{formatRupiah(g.currentAmount)} / {formatRupiah(g.targetAmount)}</p>
+                  </div>
+                </div>
+                <button onClick={() => { if (confirm(`Delete goal ${g.title}?`)) deleteGoal(g.id) }} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ color: "#ef4444" }}><Trash2 size={14} /></button>
+              </div>
+            ))}
+            {goals.length === 0 && <p className="text-sm text-center py-4" style={{ color: "var(--text-tertiary)" }}>No financial goals yet.</p>}
+          </div>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet isOpen={addGoalOpen} onClose={() => setAddGoalOpen(false)}>
+        <div className="p-5 pb-10 space-y-4">
+          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Goal</h3>
+          <div className="flex gap-2">
+            <input type="text" value={goalIcon} onChange={e => setGoalIcon(e.target.value)} className="w-14 p-3.5 rounded-2xl text-center text-xl outline-none" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }} />
+            <input type="text" value={goalTitle} onChange={e => setGoalTitle(e.target.value)} placeholder="Goal Name (e.g. MacBook)" className="flex-1 p-3.5 rounded-2xl outline-none font-semibold" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          </div>
+          <input type="number" value={goalTarget} onChange={e => setGoalTarget(e.target.value)} placeholder="Target Amount (IDR)" className="w-full p-3.5 rounded-2xl outline-none font-semibold" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          <input type="number" value={goalSaved} onChange={e => setGoalSaved(e.target.value)} placeholder="Already Saved (IDR)" className="w-full p-3.5 rounded-2xl outline-none font-semibold" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          <button onClick={handleSaveGoal} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save Goal</button>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet isOpen={categoriesOpen} onClose={() => setCategoriesOpen(false)}>
+        <div className="p-5 pb-10 flex flex-col h-[85vh]">
+          <div className="flex items-center justify-between mb-4 shrink-0">
+            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Categories</h3>
+            <button onClick={() => { setCategoriesOpen(false); setTimeout(() => setAddCatOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button>
+          </div>
+          <div className="space-y-2 overflow-y-auto">
+            {categories.map(cat => (
+              <div key={cat.id} className="p-3 rounded-2xl flex items-center gap-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><IconRenderer icon={cat.emoji} size="w-5 h-5" /></div>
+                <div className="flex-1 min-w-0"><p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{cat.name}</p><p className="text-[10px] capitalize font-semibold" style={{ color: "var(--text-tertiary)" }}>{cat.type}</p></div>
+                <button onClick={() => setEditCategory({ id: cat.id, name: cat.name })} className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0" style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>Rename</button>
+                <button onClick={() => { if (confirm(`Delete "${cat.name}"?`)) deleteCategory.mutate(cat.id) }} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ color: "#ef4444" }}><Trash2 size={13} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet isOpen={!!editCategory} onClose={() => setEditCategory(null)}>
+        <div className="p-5 pb-10 space-y-4">
+          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Rename Category</h3>
+          <input type="text" value={editCategory?.name || ""} onChange={e => setEditCategory(prev => prev ? { ...prev, name: e.target.value } : null)} className="w-full p-3.5 rounded-2xl outline-none font-semibold" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          <button onClick={() => { if (!editCategory?.name.trim()) return; updateCategory.mutate({ id: editCategory.id, name: editCategory.name.trim(), emoji: categories.find(c => c.id === editCategory.id)?.emoji || "/icons/lainnya.png" }, { onSuccess: () => { setEditCategory(null); showToast("Category renamed", "update", () => {}) } }) }} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save</button>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet isOpen={addCatOpen} onClose={() => setAddCatOpen(false)}>
+        <div className="p-5 pb-10 space-y-4">
+          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Category</h3>
+          <div className="flex p-1 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+            {(["expense", "income"] as const).map(t => (
+              <button key={t} onClick={() => setCatType(t)} className="flex-1 py-2 rounded-xl text-[12px] font-bold transition-all" style={{ background: catType === t ? "var(--accent)" : "transparent", color: catType === t ? "var(--accent-ink)" : "var(--text-tertiary)" }}>{t === "expense" ? "Expense" : "Income"}</button>
+            ))}
+          </div>
+          <input type="text" value={catName} onChange={e => setCatName(e.target.value)} placeholder="Category Name" className="w-full p-3.5 rounded-2xl outline-none font-semibold" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          <button onClick={handleSaveCategory} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save Category</button>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet isOpen={budgetsOpen} onClose={() => setBudgetsOpen(false)}>
+        <div className="p-5 pb-10 flex flex-col h-[85vh]">
+          <div className="flex items-center justify-between mb-4 shrink-0">
+            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Accounts & Wallets</h3>
+            <button onClick={() => { setBudgetsOpen(false); setTimeout(() => setAddBudgetOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button>
+          </div>
+          <div className="space-y-2 overflow-y-auto">
+            {wallets.map(w => (
+              <div key={w.id} className="p-3 rounded-2xl flex items-center gap-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><IconRenderer icon={w.icon || "/icons/wallet.png"} size="w-5 h-5" /></div>
+                <div className="flex-1 min-w-0"><p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{w.name}</p></div>
+                <button onClick={() => setEditWallet({ id: w.id, name: w.name })} className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0" style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>Rename</button>
+                <button onClick={() => { if (confirm(`Delete account "${w.name}"?`)) deleteWallet.mutate(w.id) }} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ color: "#ef4444" }}><Trash2 size={13} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet isOpen={!!editWallet} onClose={() => setEditWallet(null)}>
+        <div className="p-5 pb-10 space-y-4">
+          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Rename Account</h3>
+          <input type="text" value={editWallet?.name || ""} onChange={e => setEditWallet(prev => prev ? { ...prev, name: e.target.value } : null)} className="w-full p-3.5 rounded-2xl outline-none font-semibold" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          <button onClick={() => { if (!editWallet?.name.trim()) return; updateWallet.mutate({ id: editWallet.id, name: editWallet.name.trim(), icon: wallets.find(w => w.id === editWallet.id)?.icon || "/icons/wallet.png" }, { onSuccess: () => { setEditWallet(null); showToast("Account renamed", "update", () => {}) } }) }} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save</button>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet isOpen={addBudgetOpen} onClose={() => setAddBudgetOpen(false)}>
+        <div className="p-5 pb-10 space-y-4">
+          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Account</h3>
+          <input type="text" value={budgetName} onChange={e => setBudgetName(e.target.value)} placeholder="Account Name (e.g. BCA, OVO)" className="w-full p-3.5 rounded-2xl outline-none font-semibold" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          <button onClick={handleSaveBudget} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save Account</button>
+        </div>
+      </BottomSheet>
+      
+      {/* Shortcuts Modal */}
+      <BottomSheet isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)}>
+        <div className="p-5 pb-10 space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="flex items-center justify-between sticky top-0 bg-transparent z-10 pb-2">
+            <div>
+              <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Quick-Add Shortcuts</h3>
+              <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>Tap chips on transaction form for fast entry</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {shortcuts.map(s => (
+              <div key={s.id} className="p-3 rounded-2xl flex items-center justify-between" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                <div>
+                  <p className="font-bold text-[13px]">{s.title}</p>
+                  <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{formatRupiah(s.amount)}</p>
+                </div>
+                <button onClick={() => deleteShortcut(s.id)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ color: "#ef4444" }}><Trash2 size={14} /></button>
+              </div>
+            ))}
+            {shortcuts.length === 0 && <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>No shortcuts yet. (Default ones apply if cleared)</p>}
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   )
 }

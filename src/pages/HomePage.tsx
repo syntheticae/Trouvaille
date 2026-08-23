@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+﻿import { useState, useMemo } from "react"
 import { Bell, ArrowUpRight, TrendingUp, TrendingDown, Sparkles, PiggyBank, Flame } from "lucide-react"
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from "recharts"
 import { useAllTransactions } from "../hooks/useTransactions"
@@ -13,6 +13,7 @@ import { BottomSheet } from "../components/ui/BottomSheet"
 import { BalanceCard } from "../components/ui/BalanceCard"
 import { NotificationSheet } from "../components/ui/NotificationSheet"
 import { useAuth } from "../contexts/AuthContext"
+import { useBudgetTarget } from "../hooks/useBudgetTarget"
 
 interface HomePageProps {
   onOpenAdd?: () => void
@@ -51,6 +52,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const [stockRange, setStockRange] = useState<StockRange>("1W")
 
   const upcomingBills = useUpcomingBills()
+  const { budgetTarget } = useBudgetTarget()
   const { data: allTxs = [] } = useAllTransactions()
 
   // 1. Total Balance and Apple Stocks Layout Data Calculation
@@ -340,7 +342,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         </button>
       </header>
 
-      {/* 1. TOTAL ASSETS HERO CARD — Refined Compact Apple Stocks Layout */}
+      {/* 1. TOTAL ASSETS HERO CARD â€” Refined Compact Apple Stocks Layout */}
       <section className="card-contrast-hero p-4 pb-3 relative overflow-hidden">
         {/* Title Header */}
         <div className="flex items-baseline justify-between mb-1">
@@ -365,7 +367,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
             <span className="opacity-80">({assetData.percent > 0 ? "+" : ""}{assetData.percent.toFixed(2)}%)</span>
           </div>
           <span className="text-[11px] font-semibold text-white/50 shrink-0">
-            {stockRangeLabels[stockRange]} · IDR
+            {stockRangeLabels[stockRange]} Â· IDR
           </span>
         </div>
 
@@ -466,199 +468,6 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         </div>
       </section>
 
-      {/* 2. PORTFOLIO & ACCOUNTS CARD */}
-      <BalanceCard />
-
-      {/* 3. 2x2 FINANCIAL INSIGHTS GRID */}
-      <section className="grid grid-cols-2 gap-3">
-        {/* Net Cashflow */}
-        <div className="p-4 rounded-[22px]"
-          style={{
-            background: "#FFFFFF",
-            border: "1px solid rgba(0,0,0,0.06)",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
-          }}>
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "#71717A" }}>Net Cashflow</p>
-            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(18,18,18,0.07)" }}>
-              {isPositiveCashflow ? <TrendingUp size={12} color="#121212" /> : <TrendingDown size={12} color="#121212" />}
-            </div>
-          </div>
-          <div className="amount text-[18px] font-extrabold mb-0.5" style={{ color: "#121212" }}>
-            {formatRupiah(Math.abs(netCashflow))}
-          </div>
-          <p className="text-[11px] font-semibold" style={{ color: "#71717A" }}>
-            {isPositiveCashflow ? "Surplus bulan ini" : "Defisit bulan ini"}
-          </p>
-        </div>
-
-        {/* Monthly Outflow */}
-        <div className="p-4 rounded-[22px] glass-surface">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>Total Outflow</p>
-            <Flame size={13} style={{ color: "var(--text-primary)" }} />
-          </div>
-          <div className="amount text-[18px] font-extrabold leading-tight mb-0.5" style={{ color: "var(--text-primary)" }}>
-            {formatRupiah(totalExpense)}
-          </div>
-          <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Pengeluaran bulan ini</p>
-        </div>
-
-        {/* Daily Average */}
-        <div className="p-4 rounded-[22px] glass-surface">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>Daily Spending</p>
-            <Sparkles size={13} style={{ color: "var(--text-primary)" }} />
-          </div>
-          <div className="amount text-[18px] font-extrabold mb-0.5" style={{ color: "var(--text-primary)" }}>
-            {formatRupiah(dailyAverage)}
-          </div>
-          <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Rata-rata {daysInMonth} hari</p>
-        </div>
-
-        {/* Inflow vs Outflow Ratio */}
-        <div className="p-4 rounded-[22px]"
-          style={{
-            background: "#FFFFFF",
-            border: "1px solid rgba(0,0,0,0.06)",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
-          }}>
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "#71717A" }}>
-              {totalIncome >= totalExpense ? "Savings Rate" : "Income Inflow"}
-            </p>
-            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(18,18,18,0.07)" }}>
-              <PiggyBank size={12} color="#121212" />
-            </div>
-          </div>
-          <div className="amount text-[18px] font-extrabold mb-0.5" style={{ color: "#121212" }}>
-            {totalIncome >= totalExpense
-              ? `${(totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0).toFixed(0)}%`
-              : formatRupiah(totalIncome)}
-          </div>
-          <p className="text-[11px] font-semibold" style={{ color: "#71717A" }}>
-            {totalIncome >= totalExpense ? "Tersimpan bulan ini" : "Pemasukan bulan ini"}
-          </p>
-        </div>
-      </section>
-
-      {/* 4. TOP EXPENSE CARD */}
-      {topExpense && (
-        <section className="p-4 rounded-[22px] flex items-center justify-between"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: "var(--glass-fill-strong)", border: "1px solid var(--glass-border)" }}>
-              <IconRenderer icon={topExpense.emoji} size="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>Highest Outflow</p>
-              <p className="text-[14px] font-bold" style={{ color: "var(--text-primary)" }}>{topExpense.name}</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="amount text-[14px] font-bold" style={{ color: "var(--text-primary)" }}>{formatRupiah(topExpense.total)}</p>
-            <p className="text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>{topExpense.count} txs</p>
-          </div>
-        </section>
-      )}
-
-      {/* 5. HEATMAP CALENDAR — Clean without shadows or bottom dots */}
-      <section>
-        <span className="text-[11px] font-bold uppercase tracking-widest px-1 mb-2 block" style={{ color: "var(--text-tertiary)" }}>
-          Monthly Activity
-        </span>
-        <div className="glass-surface p-4 rounded-[24px]">
-          <div className="grid grid-cols-7 gap-y-2.5 gap-x-1 text-center">
-            {["S","M","T","W","T","F","S"].map((w, i) => (
-              <div key={i} className="text-[10px] font-bold mb-1.5" style={{ color: "var(--text-tertiary)" }}>{w}</div>
-            ))}
-            {Array.from({ length: calPad }).map((_, i) => <div key={`pad-${i}`} />)}
-            {calDays.map(d => {
-              const { income, expense, hasTx } = dayData(d)
-              const isT = isToday(d)
-              const isSel = selectedDate && isSameDay(d, selectedDate)
-              const net = income - expense
-              const isSurplus = hasTx && net >= 0
-              const isDeficit = hasTx && net < 0
-
-              let bg = "transparent"
-              let textColor = "var(--text-tertiary)"
-              let border = "none"
-
-              if (isSurplus && monthlyStats.maxSurplus > 0) {
-                const intensity = Math.min(1, net / monthlyStats.maxSurplus)
-                bg = lerpHex([212, 212, 216], [255, 255, 255], Math.max(0.2, intensity))
-                textColor = "#121212"
-              } else if (isDeficit && monthlyStats.maxDeficit > 0) {
-                const intensity = Math.min(1, Math.abs(net) / monthlyStats.maxDeficit)
-                bg = lerpHex([82, 82, 91], [24, 24, 27], Math.max(0.2, intensity))
-                textColor = "#FFFFFF"
-                border = "1px solid rgba(255,255,255,0.18)"
-              }
-
-              if (isT && !hasTx) {
-                border = "1px solid var(--glass-border)"
-                textColor = "var(--text-primary)"
-              }
-              if (isSel) {
-                border = "2px solid var(--text-primary)"
-              }
-
-              return (
-                <button
-                  key={d.toISOString()}
-                  onClick={() => setSelectedDate(d)}
-                  className="flex items-center justify-center rounded-xl active:scale-90 transition-transform py-0.5"
-                >
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-[12px] font-extrabold transition-all"
-                    style={{
-                      background: bg,
-                      color: textColor,
-                      border,
-                    }}
-                  >
-                    {format(d, "d")}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* 6. UPCOMING BILLS */}
-      {upcomingBills.length > 0 && (
-        <section>
-          <span className="text-[11px] font-bold uppercase tracking-widest px-1 mb-2 block" style={{ color: "var(--text-tertiary)" }}>
-            Upcoming Bills
-          </span>
-          <div className="space-y-2">
-            {upcomingBills.slice(0, 3).map((bill: any) => {
-              const days = getDaysUntilDue(bill.due_date)
-              return (
-                <div key={bill.id} className="glass-surface flex items-center gap-3 px-4 py-3 rounded-2xl">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[16px]"
-                    style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-                    🧾
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[14px] font-bold" style={{ color: "var(--text-primary)" }}>{bill.title}</p>
-                    <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                      {days <= 0 ? "Due today" : `Due in ${days} days`}
-                    </p>
-                  </div>
-                  <span className="amount text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
-                    {formatRupiah(Number(bill.amount))}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
       {/* Day Transactions Sheet */}
       <BottomSheet isOpen={!!selectedDate} onClose={() => setSelectedDate(null)}>
         <div className="px-5 pb-10">
@@ -697,3 +506,5 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
     </div>
   )
 }
+
+

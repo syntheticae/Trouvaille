@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+﻿import { useState, useEffect, useMemo } from "react"
 import { Calendar as CalendarIcon, Clock, ArrowUpCircle, ArrowDownCircle, RefreshCcw, Delete, MoreHorizontal, Trash2 } from "lucide-react"
 import { BottomSheet } from "../ui/BottomSheet"
 import { useCategories } from "../../hooks/useCategories"
@@ -10,6 +10,7 @@ import { format, isToday } from "date-fns"
 import { IconRenderer } from "../ui/IconRenderer"
 import { GlassDatePicker } from "../ui/GlassDatePicker"
 import type { Transaction, TransactionType } from "../../lib/types"
+import { useShortcuts } from "../../hooks/useShortcuts"
 
 interface TransactionSheetProps {
   isOpen: boolean
@@ -28,6 +29,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
   const [categoryId, setCategoryId] = useState<string | null>(transaction?.category_id || null)
   const [walletId, setWalletId] = useState<string | null>(transaction?.wallet_id || null)
   const [toWalletId, setToWalletId] = useState<string | null>(transaction?.to_wallet_id || null)
+  const { shortcuts } = useShortcuts()
 
   const [moreCatOpen, setMoreCatOpen] = useState(false)
   const [moreWalletOpen, setMoreWalletOpen] = useState(false)
@@ -225,6 +227,29 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="px-5 pt-2 pb-36">
+        {/* Quick Add Shortcuts */}
+        {shortcuts.length > 0 && !transaction && (
+          <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
+            {shortcuts.map(s => (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setType(s.type);
+                  setAmount(String(s.amount));
+                  setNote(s.note);
+                  if (s.category_id) setCategoryId(s.category_id);
+                  if (s.wallet_id) setWalletId(s.wallet_id);
+                }}
+                className="whitespace-nowrap px-3.5 py-1.5 rounded-full text-[12px] font-bold shrink-0 transition-transform active:scale-95 flex items-center gap-1.5"
+                style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+              >
+                <span>⚡</span>
+                {s.title}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Header Segmented Tabs */}
         <div className="flex p-1 rounded-full mb-5 glass-surface" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
           {(["expense", "income", "transfer"] as TransactionType[]).map(t => {
@@ -517,3 +542,4 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     </BottomSheet>
   )
 }
+

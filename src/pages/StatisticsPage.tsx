@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+﻿import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
 import { ShieldCheck, ArrowDownCircle, ArrowUpCircle, TrendingUp, ChevronRight } from "lucide-react"
 import {
@@ -256,6 +256,28 @@ export function StatisticsPage() {
     return Array.from(catMap.values()).sort((a, b) => b.total - a.total)
   }, [rangeTxs, breakdownType])
 
+  // 5. Hashtag breakdown
+  const hashtagStats = useMemo(() => {
+    const hashMap = new Map<string, { total: number; count: number }>()
+    rangeTxs.forEach(t => {
+      const amt = Number(t.amount || 0)
+      if (t.note) {
+        const matches = t.note.match(/#\w+/g)
+        if (matches) {
+          matches.forEach(m => {
+            const tag = m.toLowerCase()
+            const ex = hashMap.get(tag)
+            if (ex) { ex.total += amt; ex.count++ }
+            else hashMap.set(tag, { total: amt, count: 1 })
+          })
+        }
+      }
+    })
+    return Array.from(hashMap.entries())
+      .map(([tag, data]) => ({ tag, ...data }))
+      .sort((a, b) => b.total - a.total)
+  }, [rangeTxs])
+  
   const totalBreakdownAmount = categoryStats.reduce((s, c) => s + c.total, 0)
   const rangeTitle = range === "week" ? "This Week" : range === "month" ? "This Month" : range === "year" ? "This Year" : "All Time"
 
@@ -358,7 +380,7 @@ export function StatisticsPage() {
               )}
             </div>
             <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-              {categoryStats.length} categories · {rangeTitle}
+              {categoryStats.length} categories Â· {rangeTitle}
             </p>
           </div>
           <div className="flex p-1 rounded-full" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
@@ -502,12 +524,12 @@ export function StatisticsPage() {
       <div className="p-5 rounded-[24px]"
         style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
         <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-tertiary)" }}>
-          Period Summary · {rangeTitle}
+          Period Summary Â· {rangeTitle}
         </p>
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "Total In", value: totalIncome, icon: "↑" },
-            { label: "Total Out", value: totalExpense, icon: "↓" },
+            { label: "Total In", value: totalIncome, icon: "â†‘" },
+            { label: "Total Out", value: totalExpense, icon: "â†“" },
             { label: "Net", value: totalIncome - totalExpense, icon: "=" },
           ].map(({ label, value, icon }) => (
             <div key={label} className="text-center">
@@ -520,6 +542,27 @@ export function StatisticsPage() {
         </div>
       </div>
 
+      {/* Hashtag Summary */}
+      {hashtagStats.length > 0 && (
+        <div className="p-5 rounded-[24px]" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>Event & Hashtag Tracking</h2>
+            <span className="text-[10px] font-bold uppercase" style={{ color: "var(--text-tertiary)" }}>{rangeTitle}</span>
+          </div>
+          <div className="space-y-2">
+            {hashtagStats.slice(0, 5).map(h => (
+              <div key={h.tag} className="flex justify-between items-center p-2 rounded-xl" style={{ background: "var(--glass-fill)" }}>
+                <div>
+                  <p className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>{h.tag}</p>
+                  <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{h.count} txs</p>
+                </div>
+                <p className="text-[13px] font-bold amount" style={{ color: "var(--text-primary)" }}>{formatRupiah(h.total)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Comprehensive Category Breakdown BottomSheet */}
       <BottomSheet isOpen={allDetailsOpen} onClose={() => setAllDetailsOpen(false)}>
         <div className="p-5 pb-16 space-y-4">
@@ -529,7 +572,7 @@ export function StatisticsPage() {
                 {breakdownType === "expense" ? "All Expense Categories" : "All Income Categories"}
               </h3>
               <p className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                {categoryStats.length} categories · Total {formatRupiah(totalBreakdownAmount)}
+                {categoryStats.length} categories Â· Total {formatRupiah(totalBreakdownAmount)}
               </p>
             </div>
           </div>
@@ -582,3 +625,4 @@ export function StatisticsPage() {
     </div>
   )
 }
+
