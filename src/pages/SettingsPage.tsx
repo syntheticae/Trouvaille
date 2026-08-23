@@ -830,7 +830,7 @@ export function SettingsPage() {
           
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Category</label>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex flex-wrap gap-2 pb-1">
               {categories.filter(c => c.type === shortcutType).map(cat => (
                 <button key={cat.id} onClick={() => setShortcutCategoryId(cat.id)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 transition-transform active:scale-95"
@@ -848,7 +848,7 @@ export function SettingsPage() {
 
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Account / Wallet</label>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex flex-wrap gap-2 pb-1">
               {wallets.map(w => (
                 <button key={w.id} onClick={() => setShortcutWalletId(w.id)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 transition-transform active:scale-95"
@@ -892,5 +892,6 @@ export function SettingsPage() {
     </div>
   )
 }
+
 
 
