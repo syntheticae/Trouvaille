@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useMemo } from "react"
-import { Calendar as CalendarIcon, Clock, ArrowUpCircle, ArrowDownCircle, RefreshCcw, Delete, MoreHorizontal, Trash2 } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, ArrowUpCircle, ArrowDownCircle, RefreshCcw, Delete, MoreHorizontal, Trash2, Zap } from "lucide-react"
 import { BottomSheet } from "../ui/BottomSheet"
 import { useCategories } from "../../hooks/useCategories"
 import { useWallets } from "../../hooks/useWallets"
@@ -227,30 +227,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="px-5 pt-2 pb-36">
-        {/* Quick Add Shortcuts */}
-        {shortcuts.length > 0 && !transaction && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
-            {shortcuts.map(s => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setType(s.type);
-                  setAmount(String(s.amount));
-                  setNote(s.note);
-                  if (s.category_id) setCategoryId(s.category_id);
-                  if (s.wallet_id) setWalletId(s.wallet_id);
-                }}
-                className="whitespace-nowrap px-3.5 py-1.5 rounded-full text-[12px] font-bold shrink-0 transition-transform active:scale-95 flex items-center gap-1.5"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-              >
-                <span>⚡</span>
-                {s.title}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Header Segmented Tabs */}
+{/* Header Segmented Tabs */}
         <div className="flex p-1 rounded-full mb-5 glass-surface" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
           {(["expense", "income", "transfer"] as TransactionType[]).map(t => {
             const isSelected = type === t
@@ -272,6 +249,29 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
             )
           })}
         </div>
+
+                {/* Quick Add Shortcuts (Moved below tabs) */}
+        {shortcuts.length > 0 && !transaction && (
+          <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1 mt-3">
+            {shortcuts.map(s => (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setType(s.type);
+                  setAmount(String(s.amount));
+                  setNote(s.note);
+                  if (s.category_id) setCategoryId(s.category_id);
+                  if (s.wallet_id) setWalletId(s.wallet_id);
+                }}
+                className="whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0 transition-transform active:scale-95 flex items-center gap-1.5"
+                style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+              >
+                <Zap size={12} fill="currentColor" />
+                {s.title}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Hero Amount Input */}
         <div className="text-center py-2 mb-4">
@@ -542,4 +542,5 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     </BottomSheet>
   )
 }
+
 

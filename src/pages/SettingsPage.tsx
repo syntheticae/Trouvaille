@@ -67,6 +67,9 @@ export function SettingsPage() {
   const [addShortcutOpen, setAddShortcutOpen] = useState(false)
   const [shortcutTitle, setShortcutTitle] = useState("")
   const [shortcutAmount, setShortcutAmount] = useState("")
+  const [shortcutCategoryId, setShortcutCategoryId] = useState("")
+  const [shortcutWalletId, setShortcutWalletId] = useState("")
+  const [shortcutType, setShortcutType] = useState<"expense" | "income">("expense")
 
   // Profile Form state
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -795,10 +798,22 @@ export function SettingsPage() {
         </div>
       </BottomSheet>
 
+      
       {/* Add Shortcut Sheet */}
       <BottomSheet isOpen={addShortcutOpen} onClose={() => setAddShortcutOpen(false)}>
-        <div className="p-5 pb-10 space-y-4">
+        <div className="p-5 pb-10 space-y-4 max-h-[85vh] overflow-y-auto">
           <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Shortcut</h3>
+          
+          <div className="flex p-1 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+            {(["expense", "income"] as const).map(t => (
+              <button key={t} onClick={() => setShortcutType(t)}
+                className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all"
+                style={{ background: shortcutType === t ? "var(--accent)" : "transparent", color: shortcutType === t ? "var(--accent-ink)" : "var(--text-tertiary)" }}>
+                {t === "expense" ? "Expense" : "Income"}
+              </button>
+            ))}
+          </div>
+
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Shortcut Title & Emoji</label>
             <input type="text" value={shortcutTitle} onChange={e => setShortcutTitle(e.target.value)} placeholder="e.g. ☕ Coffee"
@@ -812,25 +827,68 @@ export function SettingsPage() {
               className="w-full p-3.5 rounded-2xl outline-none font-bold text-[16px] amount"
               style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
           </div>
+          
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Category</label>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+              {categories.filter(c => c.type === shortcutType).map(cat => (
+                <button key={cat.id} onClick={() => setShortcutCategoryId(cat.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 transition-transform active:scale-95"
+                  style={{
+                    background: shortcutCategoryId === cat.id ? "var(--glass-fill-strong)" : "var(--bg-elevated)",
+                    color: "var(--text-primary)",
+                    border: shortcutCategoryId === cat.id ? "1.5px solid var(--accent)" : "1px solid var(--glass-border)"
+                  }}>
+                  <IconRenderer icon={cat.emoji} size="w-3.5 h-3.5" />
+                  <span className="text-[11px] font-bold">{cat.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Account / Wallet</label>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+              {wallets.map(w => (
+                <button key={w.id} onClick={() => setShortcutWalletId(w.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 transition-transform active:scale-95"
+                  style={{
+                    background: shortcutWalletId === w.id ? "var(--glass-fill-strong)" : "var(--bg-elevated)",
+                    color: "var(--text-primary)",
+                    border: shortcutWalletId === w.id ? "1.5px solid var(--accent)" : "1px solid var(--glass-border)"
+                  }}>
+                  <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
+                  <span className="text-[11px] font-bold">{w.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button onClick={() => {
-            if (!shortcutTitle || !shortcutAmount) return;
+            if (!shortcutTitle || !shortcutAmount || !shortcutCategoryId || !shortcutWalletId) {
+              showToast("Please fill all fields", "delete", () => {});
+              return;
+            }
             saveShortcut({
               id: Date.now().toString(),
               title: shortcutTitle,
               amount: Number(shortcutAmount),
-              type: "expense",
-              note: shortcutTitle,
-              category_id: "",
-              wallet_id: ""
+              type: shortcutType,
+              note: shortcutTitle.replace(/[🌀-🧿]/gu, '').trim(), // Remove emojis from note if any
+              category_id: shortcutCategoryId,
+              wallet_id: shortcutWalletId
             });
             setAddShortcutOpen(false);
             setShortcutTitle("");
             setShortcutAmount("");
+            setShortcutCategoryId("");
+            setShortcutWalletId("");
             showToast("Shortcut added", "add", () => {});
           }} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg mt-2"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save Shortcut</button>
         </div>
       </BottomSheet>
+
     </div>
   )
 }
