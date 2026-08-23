@@ -428,7 +428,7 @@ export function TransactionsPage() {
                                 color: isTransfer ? "var(--bg-base)" : isIncome ? "var(--accent-ink)" : "var(--text-tertiary)",
                                 border: "1.5px solid var(--bg-elevated)"
                               }}>
-                              {isTransfer ? "â‡„" : isIncome ? "+" : "-"}
+                              {isTransfer ? "⇄" : isIncome ? "+" : "-"}
                             </div>
                           </div>
                           <div className="min-w-0">
@@ -439,7 +439,7 @@ export function TransactionsPage() {
                               {timeLabel && (
                                 <span className="flex items-center gap-0.5 font-bold amount">
                                   <Clock size={10} />
-                                  {timeLabel} Â·
+                                  {timeLabel} ·
                                 </span>
                               )}
                               <span className="truncate">{tx.note || (isTransfer ? "Transfer" : fromWalletName)}</span>

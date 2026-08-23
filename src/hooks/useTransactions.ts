@@ -4,8 +4,14 @@ import type { Transaction, TransactionType } from "../lib/types"
 import { format } from "date-fns"
 
 interface TransactionInput {
-  type: TransactionType; amount: number
-  category_id: string | null; wallet_id?: string | null; to_wallet_id?: string | null; note?: string | null; occurred_on: string
+  type: TransactionType
+  amount: number
+  category_id: string | null
+  wallet_id?: string | null
+  to_wallet_id?: string | null
+  note?: string | null
+  occurred_on: string
+  created_at?: string
 }
 
 export function useRecentTransactions(limit = 10) {
@@ -106,7 +112,7 @@ export function useAddTransaction() {
           to_wallet_id: newTx.to_wallet_id || null,
           note: newTx.note || null,
           occurred_on: newTx.occurred_on,
-          created_at: new Date().toISOString(),
+          created_at: newTx.created_at || new Date().toISOString(),
           categories: null
         }
         qc.setQueryData<Transaction[]>(["transactions", "all", undefined], [optimisticItem, ...prevAll])

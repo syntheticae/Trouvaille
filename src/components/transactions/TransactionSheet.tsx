@@ -1,3 +1,13 @@
+
+function getTop3Slots<T extends { id: string }>(items: T[], selectedId: string | null): T[] {
+  if (items.length <= 3) return items
+  const idx = items.findIndex(item => item.id === selectedId)
+  if (idx === -1 || idx < 3) {
+    return items.slice(0, 3)
+  }
+  return [items[0], items[1], items[idx]]
+}
+
 ﻿import { useState, useEffect, useMemo } from "react"
 import { Calendar as CalendarIcon, Clock, ArrowUpCircle, ArrowDownCircle, RefreshCcw, Delete, MoreHorizontal, Trash2, Zap } from "lucide-react"
 import { BottomSheet } from "../ui/BottomSheet"
@@ -174,7 +184,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
   }
 
   const renderWalletRow = (selectedId: string | null, onSelect: (id: string) => void, label: string, isTo = false) => {
-    const top3 = wallets.slice(0, 3)
+    const top3 = getTop3Slots(wallets, selectedId)
     return (
       <div className="mb-3">
         <div className="flex justify-between items-end mb-1.5 px-1">
@@ -384,32 +394,32 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
           >
             <Delete size={22} />
           </button>
-        </div>
-      </div>
+                </div>
 
-      {/* Floating Glass Action Bar */}
-      <div className="flex gap-2 mt-4">
-        {transaction && (
+        {/* Action Button Bar */}
+        <div className="flex gap-2 mt-3 mb-2">
+          {transaction && (
+            <button
+              onClick={handleDelete}
+              className="w-[52px] rounded-[20px] flex items-center justify-center active:scale-95 shrink-0"
+              style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)" }}
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
           <button
-            onClick={handleDelete}
-            className="w-[56px] rounded-[22px] flex items-center justify-center active:scale-95"
-            style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)" }}
+            onClick={handleSave}
+            disabled={isSaving || Number(amount) <= 0}
+            className="flex-1 font-extrabold text-[15px] rounded-[20px] py-3.5 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            style={{
+              background: "var(--accent)",
+              color: "var(--accent-ink)",
+              border: "1px solid var(--dock-border)"
+            }}
           >
-            <Trash2 size={20} />
+            {isSaving ? "Menyimpan..." : (transaction ? "Update Transaction" : "Save Transaction")}
           </button>
-        )}
-        <button
-          onClick={handleSave}
-          disabled={isSaving || Number(amount) <= 0}
-          className="flex-1 font-extrabold text-[15px] rounded-[22px] py-4 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            background: "var(--accent)",
-            color: "var(--accent-ink)",
-            border: "1px solid var(--dock-border)"
-          }}
-        >
-          {isSaving ? "Menyimpan..." : (transaction ? "Update Transaction" : "Save Transaction")}
-        </button>
+        </div>
       </div>
 
       {/* More Categories Glass Sheet */}
