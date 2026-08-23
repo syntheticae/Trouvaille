@@ -1,6 +1,6 @@
 import { triggerHaptic } from "../lib/haptics"
 ﻿import { useState, useMemo, useEffect } from "react"
-import { Search, X, ArrowLeftRight, Calendar, Clock, ChevronDown, Archive } from "lucide-react"
+import { Search, X, ArrowLeftRight, Calendar, Clock, ChevronDown, Archive, Wallet } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts"
 import { useAllTransactions } from "../hooks/useTransactions"
 import { useWallets } from "../hooks/useWallets"
@@ -59,6 +59,7 @@ export function TransactionsPage() {
   const [selectedCustomMonth, setSelectedCustomMonth] = useState<string>(format(new Date(), "yyyy-MM"))
   const [pickerYear, setPickerYear] = useState<number>(new Date().getFullYear())
   const [monthPickerOpen, setMonthPickerOpen] = useState(false)
+  const [accountPickerOpen, setAccountPickerOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [visibleCount, setVisibleCount] = useState(35)
 
@@ -237,22 +238,40 @@ export function TransactionsPage() {
             <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>Past 7 days volume</p>
           </div>
 
-          {/* Month Selector Trigger */}
-          <button
-            onClick={() => setMonthPickerOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl active:scale-95 transition-all"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "0 2px 8px var(--shadow-strength)"
-            }}
-          >
-            <Calendar size={14} style={{ color: "var(--text-secondary)" }} />
-            <span className="text-[12px] font-extrabold" style={{ color: "var(--text-primary)" }}>
-              {selectedMonthLabel}
-            </span>
-            <ChevronDown size={13} style={{ color: "var(--text-tertiary)" }} />
-          </button>
+          {/* Month & Account Dropdown Triggers */}
+          <div className="flex flex-col gap-1.5 items-end">
+            <button
+              onClick={() => { setMonthPickerOpen(true); triggerHaptic("light"); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl active:scale-95 transition-all"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                boxShadow: "0 2px 8px var(--shadow-strength)"
+              }}
+            >
+              <Calendar size={13} style={{ color: "var(--text-secondary)" }} />
+              <span className="text-[11px] font-extrabold max-w-[85px] truncate" style={{ color: "var(--text-primary)" }}>
+                {selectedMonthLabel}
+              </span>
+              <ChevronDown size={12} style={{ color: "var(--text-tertiary)" }} />
+            </button>
+
+            <button
+              onClick={() => { setAccountPickerOpen(true); triggerHaptic("light"); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl active:scale-95 transition-all"
+              style={{
+                background: selectedWalletName ? "var(--accent)" : "var(--bg-elevated)",
+                border: selectedWalletName ? "1px solid var(--accent)" : "1px solid var(--glass-border)",
+                boxShadow: "0 2px 8px var(--shadow-strength)"
+              }}
+            >
+              <Wallet size={13} style={{ color: selectedWalletName ? "var(--accent-ink)" : "var(--text-secondary)" }} />
+              <span className="text-[11px] font-extrabold max-w-[85px] truncate" style={{ color: selectedWalletName ? "var(--accent-ink)" : "var(--text-primary)" }}>
+                {selectedWalletName || "All Accounts"}
+              </span>
+              <ChevronDown size={12} style={{ color: selectedWalletName ? "var(--accent-ink)" : "var(--text-tertiary)" }} />
+            </button>
+          </div>
         </div>
 
         {/* 7-DAY RADIANT GRADIENT BAR CHART */}
@@ -633,7 +652,73 @@ export function TransactionsPage() {
         onClose={() => { setSheetOpen(false); setEditingTx(null) }}
         transaction={editingTx}
       />
+
+      {/* Account Picker Glass Sheet */}
+      <BottomSheet isOpen={accountPickerOpen} onClose={() => setAccountPickerOpen(false)}>
+        <div className="p-5 pb-12 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Filter by Account</h3>
+              <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>Tampilkan transaksi dari akun tertentu</p>
+            </div>
+            {selectedWalletName && (
+              <button
+                onClick={() => { setSelectedWalletName(null); setAccountPickerOpen(false); triggerHaptic("light"); }}
+                className="text-[12px] font-bold px-3 py-1 rounded-full"
+                style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+            {/* All Accounts Option */}
+            <button
+              onClick={() => { setSelectedWalletName(null); setAccountPickerOpen(false); triggerHaptic("light"); }}
+              className="flex flex-col items-center gap-1.5 p-2 rounded-2xl active:scale-95 transition-transform"
+              style={{
+                background: selectedWalletName === null ? "var(--glass-fill-strong)" : "transparent",
+                color: "var(--text-primary)",
+                border: selectedWalletName === null ? "1.5px solid rgba(255, 255, 255, 0.45)" : "1px solid transparent"
+              }}
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: selectedWalletName === null ? "rgba(255, 255, 255, 0.18)" : "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                <Wallet size={18} style={{ color: "var(--text-primary)" }} />
+              </div>
+              <span className="text-[11px] font-bold text-center line-clamp-1">
+                All Accounts
+              </span>
+            </button>
+
+            {/* Wallets */}
+            {wallets.map(w => {
+              const isSelected = selectedWalletName === w.name
+              return (
+                <button
+                  key={w.id}
+                  onClick={() => { setSelectedWalletName(w.name); setAccountPickerOpen(false); triggerHaptic("light"); }}
+                  className="flex flex-col items-center gap-1.5 p-2 rounded-2xl active:scale-95 transition-transform"
+                  style={{
+                    background: isSelected ? "var(--glass-fill-strong)" : "transparent",
+                    color: "var(--text-primary)",
+                    border: isSelected ? "1.5px solid rgba(255, 255, 255, 0.45)" : "1px solid transparent"
+                  }}
+                >
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: isSelected ? "rgba(255, 255, 255, 0.18)" : "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                    <IconRenderer icon={w.icon} size="w-6 h-6" />
+                  </div>
+                  <span className="text-[11px] font-bold text-center line-clamp-1">
+                    {w.name}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   )
 }
-

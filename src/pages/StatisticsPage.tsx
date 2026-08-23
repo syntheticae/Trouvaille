@@ -131,8 +131,9 @@ export function StatisticsPage() {
       start = subDays(now, 6)
       end = now
     } else if (range === "month") {
-      start = startOfMonth(now)
-      end = endOfMonth(now)
+      const targetMonth = subMonths(now, monthOffset)
+      start = startOfMonth(targetMonth)
+      end = endOfMonth(targetMonth)
     } else if (range === "year") {
       start = startOfYear(now)
       end = endOfYear(now)
@@ -180,9 +181,10 @@ export function StatisticsPage() {
         }
       })
     } else if (range === "month") {
-      // 5 Weeks of the current month
-      const currentYear = now.getFullYear()
-      const currentMonth = now.getMonth()
+      // 5 Weeks of the selected month
+      const targetMonthDate = subMonths(now, monthOffset)
+      const currentYear = targetMonthDate.getFullYear()
+      const currentMonth = targetMonthDate.getMonth()
       const weeks = [
         { label: "W1 (1-7)", startDay: 1, endDay: 7 },
         { label: "W2 (8-14)", startDay: 8, endDay: 14 },
