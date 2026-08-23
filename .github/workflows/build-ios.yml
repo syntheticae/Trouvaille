@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -80,11 +83,10 @@ jobs:
           fi
           echo "Successfully compiled App.app at: $APP_PATH"
 
-      - name: Fake-sign with ldid and Package into .ipa
+      - name: Format, Fake-sign, and Package into native IPA
         run: |
           APP_PATH=$(find ios/App/build -name "App.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
-            echo "Searching in alternate paths..."
             APP_PATH=$(find . -name "App.app" -type d | head -n 1)
           fi
           
@@ -93,7 +95,13 @@ jobs:
             exit 1
           fi
           
-          echo "Found App.app at: $APP_PATH"
+          echo "Found compiled App.app at: $APP_PATH"
+          
+          # Ensure executable permissions on App binary
+          chmod -R 755 "$APP_PATH"
+          if [ -f "$APP_PATH/App" ]; then
+            chmod +x "$APP_PATH/App"
+          fi
           
           # Apply ldid fake signature
           if command -v ldid &> /dev/null; then
@@ -101,15 +109,37 @@ jobs:
             ldid -S "$APP_PATH/App" 2>/dev/null || ldid -S "$APP_PATH" 2>/dev/null || true
           fi
           
-          # Package into Payload/
+          # Clean old artifacts
+          rm -rf Payload Trouvaille.ipa Trouvaille-unsigned.ipa
+          
+          # Package strict IPA format (Payload/App.app)
           mkdir -p Payload
-          cp -r "$APP_PATH" Payload/
-          zip -r Trouvaille-unsigned.ipa Payload
-          echo "Successfully created Trouvaille-unsigned.ipa ($(du -h Trouvaille-unsigned.ipa | cut -f1))"
+          cp -RP "$APP_PATH" Payload/
+          zip -qry Trouvaille.ipa Payload
+          cp Trouvaille.ipa Trouvaille-unsigned.ipa
+          
+          echo "Successfully created IPA: $(ls -lh Trouvaille.ipa)"
 
       - name: Upload .ipa as GitHub Artifact
         uses: actions/upload-artifact@v4
         with:
           name: trouvaille-unsigned-ipa
-          path: Trouvaille-unsigned.ipa
+          path: Trouvaille.ipa
           if-no-files-found: error
+
+      - name: Publish Direct .ipa Download to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: latest
+          name: "Trouvaille iOS Unsigned IPA (AltStore)"
+          body: |
+            ### 📱 Trouvaille iOS Native App (.ipa)
+            Direct download for AltStore sideloading:
+            - Tap **Trouvaille.ipa** below in Safari on your iPhone.
+            - Open in **AltStore** to install and re-sign with your free Apple ID.
+          files: |
+            Trouvaille.ipa
+            Trouvaille-unsigned.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
