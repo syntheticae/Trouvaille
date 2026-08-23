@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from "react"
+﻿import { useState, useMemo, useEffect } from "react"
 import { Search, X, ArrowLeftRight, Calendar, Clock, ChevronDown, Archive } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts"
 import { useAllTransactions } from "../hooks/useTransactions"
-import { useWallets } from "../hooks/useWallets"
+import { useWallets } from "../hooks/useWallets"`nimport { useCategories } from "../hooks/useCategories"
 import { TransactionSheet } from "../components/transactions/TransactionSheet"
 import { BottomSheet } from "../components/ui/BottomSheet"
 import type { Transaction } from "../lib/types"
@@ -427,7 +427,7 @@ export function TransactionsPage() {
                                 color: isTransfer ? "var(--bg-base)" : isIncome ? "var(--accent-ink)" : "var(--text-tertiary)",
                                 border: "1.5px solid var(--bg-elevated)"
                               }}>
-                              {isTransfer ? "⇄" : isIncome ? "+" : "-"}
+                              {isTransfer ? "â‡„" : isIncome ? "+" : "-"}
                             </div>
                           </div>
                           <div className="min-w-0">
@@ -438,7 +438,7 @@ export function TransactionsPage() {
                               {timeLabel && (
                                 <span className="flex items-center gap-0.5 font-bold amount">
                                   <Clock size={10} />
-                                  {timeLabel} ·
+                                  {timeLabel} Â·
                                 </span>
                               )}
                               <span className="truncate">{tx.note || (isTransfer ? "Transfer" : fromWalletName)}</span>
@@ -513,7 +513,7 @@ export function TransactionsPage() {
                   }}
                 >
                   <span>{preset.label}</span>
-                  {isSelected && <span className="text-[11px]">✓</span>}
+                  {isSelected && <span className="text-[11px]">âœ“</span>}
                 </button>
               )
             })}
@@ -607,3 +607,4 @@ export function TransactionsPage() {
     </div>
   )
 }
+
