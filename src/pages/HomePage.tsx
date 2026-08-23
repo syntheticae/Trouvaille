@@ -55,6 +55,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const upcomingBills = useUpcomingBills()
   const { budgetTarget } = useBudgetTarget()
   const { data: allTxs = [] } = useAllTransactions()
+  const { data: categories = [] } = useCategories()
 
   // 1. Total Balance and Apple Stocks Layout Data Calculation
   const assetData = useMemo(() => {
