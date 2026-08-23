@@ -13,6 +13,7 @@ import { BottomSheet } from "../components/ui/BottomSheet"
 import { BalanceCard } from "../components/ui/BalanceCard"
 import { NotificationSheet } from "../components/ui/NotificationSheet"
 import { useAuth } from "../contexts/AuthContext"
+import { useCategories } from "../hooks/useCategories"
 import { useBudgetTarget } from "../hooks/useBudgetTarget"
 
 interface HomePageProps {
@@ -706,10 +707,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                       style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-                      <IconRenderer icon={tx.categories?.emoji || "/icons/lainnya.png"} size="w-6 h-6" />
+                      <IconRenderer icon={tx.categories?.emoji || categories.find(c => c.id === tx.category_id)?.emoji || "/icons/lainnya.png"} size="w-6 h-6" />
                     </div>
                     <div>
-                      <p className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>{tx.categories?.name || "Transfer"}</p>
+                      <p className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>{tx.categories?.name || categories.find(c => c.id === tx.category_id)?.name || "Transfer"}</p>
                       <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{tx.note || "No note"}</p>
                     </div>
                   </div>

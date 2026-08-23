@@ -420,7 +420,7 @@ export function TransactionsPage() {
                             {isTransfer ? (
                               <ArrowLeftRight size={18} style={{ color: "var(--text-primary)" }} />
                             ) : (
-                              <IconRenderer icon={tx.categories?.emoji || "/icons/lainnya.png"} size="w-6 h-6" />
+                              <IconRenderer icon={tx.categories?.emoji || categories.find(c => c.id === tx.category_id)?.emoji || "/icons/lainnya.png"} size="w-6 h-6" />
                             )}
                             <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shadow"
                               style={{
@@ -433,7 +433,7 @@ export function TransactionsPage() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-bold text-[14px] leading-tight truncate" style={{ color: "var(--text-primary)" }}>
-                              {isTransfer ? `${fromWalletName} to ${toWalletName}` : (tx.categories?.name || "General")}
+                              {isTransfer ? `${fromWalletName} to ${toWalletName}` : (tx.categories?.name || categories.find(c => c.id === tx.category_id)?.name || "General")}
                             </p>
                             <div className="flex items-center gap-1.5 text-[11px] font-semibold mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
                               {timeLabel && (
