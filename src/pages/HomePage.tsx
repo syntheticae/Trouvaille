@@ -615,10 +615,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         <span className="text-[11px] font-bold uppercase tracking-widest px-1 mb-2 block" style={{ color: "var(--text-tertiary)" }}>
           Monthly Activity
         </span>
-        <div className="glass-surface p-4 rounded-[24px]">
-          <div className="grid grid-cols-7 gap-y-2.5 gap-x-1 text-center">
+        <div className="glass-surface p-3.5 rounded-[22px]">
+          <div className="grid grid-cols-7 gap-y-1 gap-x-1 text-center">
             {["S","M","T","W","T","F","S"].map((w, i) => (
-              <div key={i} className="text-[10px] font-bold mb-1.5" style={{ color: "var(--text-tertiary)" }}>{w}</div>
+              <div key={i} className="text-[9px] font-bold mb-0.5" style={{ color: "var(--text-tertiary)" }}>{w}</div>
             ))}
             {Array.from({ length: calPad }).map((_, i) => <div key={`pad-${i}`} />)}
             {calDays.map(d => {
@@ -656,10 +656,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                 <button
                   key={d.toISOString()}
                   onClick={() => setSelectedDate(d)}
-                  className="flex flex-col items-center justify-center rounded-xl active:scale-90 transition-transform py-0.5"
+                  className="flex flex-col items-center justify-center rounded-lg active:scale-90 transition-transform py-0.5"
                 >
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-[12px] font-extrabold transition-all"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-extrabold transition-all"
                     style={{
                       background: bg,
                       color: textColor,
@@ -669,10 +669,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                   >
                     {format(d, "d")}
                   </div>
-                  <div className="h-[12px] flex items-center justify-center mt-1">
-                    {hasTx ? (
+                  <div className="h-[10px] flex items-center justify-center mt-0.5">
+                    {hasTx && net !== 0 ? (
                       <span
-                        className="text-[9px] font-extrabold tracking-tighter leading-none truncate max-w-[38px]"
+                        className="text-[8px] font-extrabold tracking-tighter leading-none truncate max-w-[34px]"
                         style={{
                           color: isSurplus ? "var(--text-primary)" : "var(--text-tertiary)",
                           opacity: isSurplus ? 0.95 : 0.65
@@ -681,7 +681,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                         {formatNetAmount(net)}
                       </span>
                     ) : (
-                      <span className="text-[9px] opacity-0 select-none">-</span>
+                      <span className="text-[8px] opacity-0 select-none">-</span>
                     )}
                   </div>
                 </button>

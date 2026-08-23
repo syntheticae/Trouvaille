@@ -10,12 +10,7 @@ import type { Transaction } from "../lib/types"
 import { formatRupiah, getDateLabel } from "../lib/utils"
 import { IconRenderer } from "../components/ui/IconRenderer"
 import { format, subDays, startOfMonth, endOfMonth, subMonths, isWithinInterval, parse } from "date-fns"
-import famfinaRaw from "../data/famfina_transactions.json"
-
-const famfinaMap = new Map<string, any>()
-famfinaRaw.forEach((t: any) => {
-  famfinaMap.set(`${t.occurred_on}_${t.amount}_${t.type}_${t.created_at}`, t)
-})
+import { resolveFamfinaWallet } from "../lib/famfinaResolver"
 
 const GlassTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -77,22 +72,7 @@ export function TransactionsPage() {
     return () => clearTimeout(timer)
   }, [search])
 
-  const resolveWalletNames = (tx: Transaction) => {
-    let fromName = wallets.find(w => w.id === tx.wallet_id)?.name
-    let toName = wallets.find(w => w.id === tx.to_wallet_id)?.name
-    if (!fromName || (tx.type === "transfer" && !toName)) {
-      const sig = `${tx.occurred_on}_${tx.amount}_${tx.type}_${tx.created_at}`
-      const hint = famfinaMap.get(sig)
-      if (hint) {
-        if (!fromName && hint.fromWallet) fromName = hint.fromWallet
-        if (!toName && hint.toWallet) toName = hint.toWallet
-      }
-    }
-    return {
-      from: fromName || "Cash",
-      to: toName || "BNI"
-    }
-  }
+  const resolveWalletNames = (tx: Transaction) => resolveFamfinaWallet(tx, wallets)
 
   // 1. Direct computation of past 7 days trend (Inflow + Outflow only, transfers excluded)
   const dynamicWeeklyData = useMemo(() => {

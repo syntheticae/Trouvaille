@@ -1,3 +1,4 @@
+import { syncAllTransactionsWithFamfina } from "../lib/famfinaResolver"
 ﻿import { useState, useRef } from "react"
 import {
   Plus, Trash2, Calendar as CalendarIcon, LogOut, ChevronRight,
@@ -64,6 +65,7 @@ export function SettingsPage() {
   const [resetOpen, setResetOpen] = useState(false)
   const [budgetTargetOpen, setBudgetTargetOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [isSyncingFamfina, setIsSyncingFamfina] = useState(false)
   const [addShortcutOpen, setAddShortcutOpen] = useState(false)
   const [shortcutTitle, setShortcutTitle] = useState("")
   const [shortcutAmount, setShortcutAmount] = useState("")
@@ -443,6 +445,39 @@ export function SettingsPage() {
       <section>
         <h2 className="text-[13px] font-bold mb-3 px-1" style={{ color: "var(--text-tertiary)" }}>Data & Storage</h2>
         <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
+          {/* Re-link Wallets & Accounts (Famfina Sync) */}
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                <RotateCcw size={16} className={isSyncingFamfina ? "animate-spin" : ""} />
+              </div>
+              <div>
+                <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>Sinkronkan Akun Transaksi</span>
+                <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Hubungkan 887 transaksi ke akun aslinya</p>
+              </div>
+            </div>
+            <button
+              disabled={isSyncingFamfina}
+              onClick={async () => {
+                try {
+                  setIsSyncingFamfina(true)
+                  showToast("Menyinkronkan akun transaksi...", "update", () => {})
+                  const res = await syncAllTransactionsWithFamfina()
+                  showToast(`Sukses! ${res.updated} transaksi terhubung ke akun masing-masing`, "add", () => {})
+                  window.location.reload()
+                } catch (e: any) {
+                  showToast("Gagal sinkronisasi: " + (e.message || "Error"), "delete", () => {})
+                } finally {
+                  setIsSyncingFamfina(false)
+                }
+              }}
+              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all disabled:opacity-50"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            >
+              {isSyncingFamfina ? "Syncing..." : "Sinkronkan"}
+            </button>
+          </div>
+          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
           {/* Offline Storage */}
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
@@ -909,9 +944,9 @@ export function SettingsPage() {
 
       {/* Shortcut More Categories Sheet */}
       <BottomSheet isOpen={shortcutMoreCatOpen} onClose={() => setShortcutMoreCatOpen(false)}>
-        <div className="p-5 pb-32">
-          <h3 className="font-extrabold text-lg mb-4" style={{ color: "var(--text-primary)" }}>Select Category</h3>
-          <div className="grid grid-cols-3 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+        <div className="p-5 pb-12">
+          <h3 className="font-extrabold text-lg mb-3" style={{ color: "var(--text-primary)" }}>Select Category</h3>
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 max-h-[68vh] overflow-y-auto pr-1">
             {categories.filter(c => c.type === shortcutType).map(cat => {
               const isSelected = shortcutCategoryId === cat.id
               return (
@@ -935,9 +970,9 @@ export function SettingsPage() {
 
       {/* Shortcut More Wallets Sheet */}
       <BottomSheet isOpen={shortcutMoreWalletOpen} onClose={() => setShortcutMoreWalletOpen(false)}>
-        <div className="p-5 pb-32">
-          <h3 className="font-extrabold text-lg mb-4" style={{ color: "var(--text-primary)" }}>Select Account</h3>
-          <div className="grid grid-cols-3 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+        <div className="p-5 pb-12">
+          <h3 className="font-extrabold text-lg mb-3" style={{ color: "var(--text-primary)" }}>Select Account</h3>
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 max-h-[68vh] overflow-y-auto pr-1">
             {wallets.map(w => {
               const isSelected = shortcutWalletId === w.id
               return (
