@@ -380,7 +380,7 @@ export function StatisticsPage() {
               )}
             </div>
             <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-              {categoryStats.length} categories Â· {rangeTitle}
+              {categoryStats.length} categories · {rangeTitle}
             </p>
           </div>
           <div className="flex p-1 rounded-full" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
@@ -524,12 +524,12 @@ export function StatisticsPage() {
       <div className="p-5 rounded-[24px]"
         style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
         <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-tertiary)" }}>
-          Period Summary Â· {rangeTitle}
+          Period Summary · {rangeTitle}
         </p>
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "Total In", value: totalIncome, icon: "â†‘" },
-            { label: "Total Out", value: totalExpense, icon: "â†“" },
+            { label: "Total In", value: totalIncome, icon: "↑" },
+            { label: "Total Out", value: totalExpense, icon: "↓" },
             { label: "Net", value: totalIncome - totalExpense, icon: "=" },
           ].map(({ label, value, icon }) => (
             <div key={label} className="text-center">
@@ -572,7 +572,7 @@ export function StatisticsPage() {
                 {breakdownType === "expense" ? "All Expense Categories" : "All Income Categories"}
               </h3>
               <p className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                {categoryStats.length} categories Â· Total {formatRupiah(totalBreakdownAmount)}
+                {categoryStats.length} categories · Total {formatRupiah(totalBreakdownAmount)}
               </p>
             </div>
           </div>

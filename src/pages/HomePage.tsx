@@ -358,7 +358,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         </button>
       </header>
 
-      {/* 1. TOTAL ASSETS HERO CARD â€” Refined Compact Apple Stocks Layout */}
+      {/* 1. TOTAL ASSETS HERO CARD — Refined Compact Apple Stocks Layout */}
       <section className="card-contrast-hero p-4 pb-3 relative overflow-hidden">
         {/* Title Header */}
         <div className="flex items-baseline justify-between mb-1">
@@ -383,7 +383,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
             <span className="opacity-80">({assetData.percent > 0 ? "+" : ""}{assetData.percent.toFixed(2)}%)</span>
           </div>
           <span className="text-[11px] font-semibold text-white/50 shrink-0">
-            {stockRangeLabels[stockRange]} Â· IDR
+            {stockRangeLabels[stockRange]} · IDR
           </span>
         </div>
 

@@ -569,7 +569,7 @@ export function SettingsPage() {
                   <div className="min-w-0">
                     <p className="font-bold text-[14px] truncate" style={{ color: "var(--text-primary)" }}>{b.title}</p>
                     <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                      <span className="capitalize">{b.repeat_rule}</span> Â· Due {b.due_date} Â· {formatRupiah(Number(b.amount || 0))}
+                      <span className="capitalize">{b.repeat_rule}</span> · Due {b.due_date} · {formatRupiah(Number(b.amount || 0))}
                     </p>
                   </div>
                 </div>

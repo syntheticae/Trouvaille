@@ -514,7 +514,7 @@ export function TransactionsPage() {
                   }}
                 >
                   <span>{preset.label}</span>
-                  {isSelected && <span className="text-[11px]">âœ“</span>}
+                  {isSelected && <span className="text-[11px]">✓</span>}
                 </button>
               )
             })}
