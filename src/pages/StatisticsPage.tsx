@@ -1,4 +1,3 @@
-import { useBudgetTarget } from "../hooks/useBudgetTarget"
 import { triggerHaptic } from "../lib/haptics"
 import { useWallets, getWalletIcon } from "../hooks/useWallets"
 import { resolveFamfinaWallet } from "../lib/famfinaResolver"
@@ -122,8 +121,7 @@ export function StatisticsPage() {
   const { data: wallets = [] } = useWallets()
   const [walletFilterType, setWalletFilterType] = useState<"all" | "expense" | "income">("all")
   const [monthOffset, setMonthOffset] = useState(0)
-  const { budgetTarget } = useBudgetTarget()
-  const colors = useChartColors()
+    const colors = useChartColors()
 
   // 1. Filter by range with exact ISO string boundaries
   const rangeTxs = useMemo(() => {
@@ -157,56 +155,37 @@ export function StatisticsPage() {
   const savingsRate = totalIncome > 0 ? Math.max(0, ((totalIncome - totalExpense) / totalIncome) * 100) : 0
 
   const healthScore = useMemo(() => {
-    if (totalIncome === 0 && totalExpense === 0) return 85
+    // 1. Both 0 -> Neutral
+    if (totalIncome === 0 && totalExpense === 0) return 80
 
-    if (range === "week") {
-      // Weekly benchmark based on weekly budget (budgetTarget / 4)
-      const weeklyBudget = Math.max(500000, budgetTarget / 4)
-      if (totalIncome > 0) {
-        const ratio = totalExpense / totalIncome
-        if (ratio <= 0.4) return Math.min(100, Math.round(92 + (0.4 - ratio) * 20))
-        if (ratio <= 0.8) return Math.round(80 + (0.8 - ratio) * 30)
-        if (ratio <= 1.0) return Math.round(65 + (1.0 - ratio) * 75)
-        return Math.max(20, Math.round(60 - (ratio - 1.0) * 40))
-      } else {
-        // Normal weekly spending evaluation against budget
-        const usage = totalExpense / weeklyBudget
-        if (usage <= 0.4) return Math.min(98, Math.round(90 + (0.4 - usage) * 20))
-        if (usage <= 0.8) return Math.round(80 + (0.8 - usage) * 25)
-        if (usage <= 1.0) return Math.round(68 + (1.0 - usage) * 60)
-        if (usage <= 1.4) return Math.round(45 - (usage - 1.0) * 40)
-        return Math.max(20, Math.round(30 - Math.min(15, (usage - 1.4) * 10)))
-      }
+    // 2. Outflow Only (No Inflow at all) -> Strictly Low / Deficit
+    if (totalIncome === 0 && totalExpense > 0) {
+      if (totalExpense > 5000000) return 15
+      if (totalExpense > 2000000) return 20
+      if (totalExpense > 1000000) return 25
+      if (totalExpense > 500000) return 30
+      return Math.max(20, Math.round(38 - (totalExpense / 500000) * 8))
     }
 
-    if (range === "month") {
-      if (totalIncome > 0) {
-        const ratio = totalExpense / totalIncome
-        if (ratio <= 0.3) return Math.min(100, Math.round(95 + (0.3 - ratio) * 16))
-        if (ratio <= 0.6) return Math.round(85 + (0.6 - ratio) * 33)
-        if (ratio <= 0.9) return Math.round(70 + (0.9 - ratio) * 50)
-        if (ratio <= 1.0) return Math.round(60 + (1.0 - ratio) * 100)
-        if (ratio <= 1.3) return Math.round(45 - (ratio - 1.0) * 50)
-        return Math.max(15, Math.round(30 - Math.min(15, (ratio - 1.3) * 10)))
-      } else {
-        const usage = totalExpense / (budgetTarget || 5000000)
-        if (usage <= 0.5) return Math.min(95, Math.round(85 + (0.5 - usage) * 20))
-        if (usage <= 0.8) return Math.round(75 + (0.8 - usage) * 33)
-        if (usage <= 1.0) return Math.round(60 + (1.0 - usage) * 75)
-        return Math.max(20, Math.round(45 - (usage - 1.0) * 35))
-      }
-    }
+    // 3. Inflow Only (No Outflow) -> Near Perfect
+    if (totalIncome > 0 && totalExpense === 0) return 99
 
-    // Year or All Time
-    if (totalIncome > 0) {
-      const ratio = totalExpense / totalIncome
-      if (ratio <= 0.5) return Math.min(100, Math.round(92 + (0.5 - ratio) * 16))
-      if (ratio <= 0.8) return Math.round(80 + (0.8 - ratio) * 40)
-      if (ratio <= 1.0) return Math.round(65 + (1.0 - ratio) * 75)
-      return Math.max(20, Math.round(50 - (ratio - 1.0) * 40))
-    }
-    return 75
-  }, [range, totalIncome, totalExpense, budgetTarget])
+    // 4. Inflow & Outflow exists -> Direct Cashflow Ratio
+    const ratio = totalExpense / totalIncome
+
+    // Heavy Deficit (Spent > 150% of income)
+    if (ratio >= 1.5) return Math.max(15, Math.round(30 - Math.min(15, (ratio - 1.5) * 10)))
+    // Moderate Deficit (Spent 100% - 150% of income)
+    if (ratio > 1.0) return Math.round(45 - (ratio - 1.0) * 30)
+    // Break-even (Spent ~100% of income)
+    if (ratio >= 0.9) return Math.round(55 + (1.0 - ratio) * 50)
+    // Healthy (Spent 60% - 90% of income)
+    if (ratio >= 0.6) return Math.round(70 + (0.9 - ratio) * 40)
+    // Very Healthy (Spent 30% - 60% of income)
+    if (ratio >= 0.3) return Math.round(85 + (0.6 - ratio) * 40)
+    // Super Surplus (Spent < 30% of income)
+    return Math.min(99, Math.round(95 + (0.3 - ratio) * 13))
+  }, [totalIncome, totalExpense])
 
   // 2. Trend bar chart data with exact mathematical consistency
   const trendData = useMemo(() => {
@@ -451,7 +430,7 @@ export function StatisticsPage() {
           </div>
           <span className="text-[11px] font-bold px-2.5 py-1 rounded-full"
             style={{ background: "rgba(255,255,255,0.12)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.18)" }}>
-            {healthScore >= 80 ? "Excellent" : healthScore >= 60 ? "Good" : "Moderate"}
+            {healthScore >= 80 ? "Excellent" : healthScore >= 60 ? "Good" : healthScore >= 40 ? "Moderate" : "Low"}
           </span>
         </div>
         <div className="flex items-end gap-3 mb-3">
