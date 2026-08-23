@@ -38,9 +38,7 @@ function AppShell() {
       </div>
 
       {!addSheetOpen && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
-          <BottomTabBar onOpenAdd={() => setAddSheetOpen(true)} />
-        </div>
+        <BottomTabBar onOpenAdd={() => setAddSheetOpen(true)} />
       )}
 
       {addSheetOpen && (

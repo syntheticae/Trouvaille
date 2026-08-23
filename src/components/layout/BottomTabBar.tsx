@@ -18,7 +18,7 @@ export function BottomTabBar({ onOpenAdd }: BottomTabBarProps) {
   ]
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pointer-events-none flex justify-center">
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-[calc(10px+env(safe-area-inset-bottom))] pointer-events-none flex justify-center">
       <div
         className="w-full max-w-[370px] rounded-full p-1.5 flex items-center justify-between pointer-events-auto transition-all"
         style={{

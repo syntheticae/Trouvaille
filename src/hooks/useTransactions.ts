@@ -1,4 +1,4 @@
-﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
 import type { Transaction, TransactionType } from "../lib/types"
 import { format } from "date-fns"
@@ -8,7 +8,7 @@ interface TransactionInput {
   category_id: string | null; wallet_id?: string | null; to_wallet_id?: string | null; note?: string | null; occurred_on: string
 }
 
-export function useRecentTransactions(limit = 5) {
+export function useRecentTransactions(limit = 10) {
   return useQuery({
     queryKey: ["transactions", "recent", limit],
     queryFn: async () => {
@@ -17,6 +17,7 @@ export function useRecentTransactions(limit = 5) {
       if (error) throw error
       return data as Transaction[]
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -32,6 +33,7 @@ export function useMonthTransactions(year: number, month: number) {
       if (error) throw error
       return data as Transaction[]
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -53,6 +55,7 @@ export function useAllTransactions(filters?: { categoryId?: string; search?: str
       }
       return result
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -65,6 +68,7 @@ export function useDayTransactions(date: string) {
       if (error) throw error
       return data as Transaction[]
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -83,11 +87,40 @@ export function useAddTransaction() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Not authenticated")
       const { data, error } = await supabase.from("transactions")
-        .insert({ ...input, user_id: user.id }).select().single()
+        .insert({ ...input, user_id: user.id }).select("*, categories(*)").single()
       if (error) throw error
-      return data
+      return data as Transaction
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["transactions"] }),
+    onMutate: async (newTx) => {
+      await qc.cancelQueries({ queryKey: ["transactions"] })
+      const prevAll = qc.getQueryData<Transaction[]>(["transactions", "all", undefined])
+      if (prevAll) {
+        const optimisticItem: Transaction = {
+          id: `temp-${Date.now()}`,
+          user_id: "",
+          amount: newTx.amount,
+          type: newTx.type,
+          category_id: newTx.category_id,
+          wallet_id: newTx.wallet_id || null,
+          to_wallet_id: newTx.to_wallet_id || null,
+          note: newTx.note || null,
+          occurred_on: newTx.occurred_on,
+          created_at: new Date().toISOString(),
+          categories: null
+        }
+        qc.setQueryData<Transaction[]>(["transactions", "all", undefined], [optimisticItem, ...prevAll])
+      }
+      return { prevAll }
+    },
+    onError: (_err, _newTx, context) => {
+      if (context?.prevAll) {
+        qc.setQueryData(["transactions", "all", undefined], context.prevAll)
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["transactions"] })
+      qc.invalidateQueries({ queryKey: ["wallets"] })
+    },
   })
 }
 
@@ -96,11 +129,30 @@ export function useUpdateTransaction() {
   return useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
       const { data, error } = await supabase.from("transactions")
-        .update(input).eq("id", id).select().single()
+        .update(input).eq("id", id).select("*, categories(*)").single()
       if (error) throw error
-      return data
+      return data as Transaction
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["transactions"] }),
+    onMutate: async ({ id, ...updated }) => {
+      await qc.cancelQueries({ queryKey: ["transactions"] })
+      const prevAll = qc.getQueryData<Transaction[]>(["transactions", "all", undefined])
+      if (prevAll) {
+        qc.setQueryData<Transaction[]>(
+          ["transactions", "all", undefined],
+          prevAll.map(t => (t.id === id ? { ...t, ...updated } : t))
+        )
+      }
+      return { prevAll }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prevAll) {
+        qc.setQueryData(["transactions", "all", undefined], context.prevAll)
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["transactions"] })
+      qc.invalidateQueries({ queryKey: ["wallets"] })
+    },
   })
 }
 
@@ -111,7 +163,26 @@ export function useDeleteTransaction() {
       const { error } = await supabase.from("transactions").delete().eq("id", id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["transactions"] }),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["transactions"] })
+      const prevAll = qc.getQueryData<Transaction[]>(["transactions", "all", undefined])
+      if (prevAll) {
+        qc.setQueryData<Transaction[]>(
+          ["transactions", "all", undefined],
+          prevAll.filter(t => t.id !== id)
+        )
+      }
+      return { prevAll }
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prevAll) {
+        qc.setQueryData(["transactions", "all", undefined], context.prevAll)
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["transactions"] })
+      qc.invalidateQueries({ queryKey: ["wallets"] })
+    },
   })
 }
 

@@ -1,6 +1,5 @@
-import { useState, useMemo } from "react"
-import { motion } from "framer-motion"
-import { Search, X, ArrowLeftRight, TrendingDown, TrendingUp } from "lucide-react"
+import { useState, useMemo, useEffect } from "react"
+import { Search, X, ArrowLeftRight, Calendar, Clock } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts"
 import { useAllTransactions } from "../hooks/useTransactions"
 import { useWallets } from "../hooks/useWallets"
@@ -8,7 +7,7 @@ import { TransactionSheet } from "../components/transactions/TransactionSheet"
 import type { Transaction } from "../lib/types"
 import { formatRupiah, getDateLabel } from "../lib/utils"
 import { IconRenderer } from "../components/ui/IconRenderer"
-import { format, subDays } from "date-fns"
+import { format, subDays, startOfMonth, endOfMonth, subMonths, isWithinInterval } from "date-fns"
 import famfinaRaw from "../data/famfina_transactions.json"
 
 const famfinaMap = new Map<string, any>()
@@ -34,15 +33,25 @@ const GlassTooltip = ({ active, payload, label }: any) => {
 }
 
 type FilterType = "all" | "income" | "expense" | "transfer"
+type TimeRangeType = "this_month" | "last_month" | "last_30" | "all"
 
 export function TransactionsPage() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [filter, setFilter] = useState<FilterType>("all")
+  const [timeRange, setTimeRange] = useState<TimeRangeType>("this_month")
+  const [visibleCount, setVisibleCount] = useState(35)
 
   const { data: allTxs = [], isLoading } = useAllTransactions()
   const { data: wallets = [] } = useWallets()
+
+  // Debounce search by 150ms for snappy typing
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 150)
+    return () => clearTimeout(timer)
+  }, [search])
 
   const resolveWalletNames = (tx: Transaction) => {
     let fromName = wallets.find(w => w.id === tx.wallet_id)?.name
@@ -95,12 +104,42 @@ export function TransactionsPage() {
     return dynamicWeeklyData.reduce((s, d) => s + d.activeValue, 0)
   }, [dynamicWeeklyData])
 
-  // 2. Filter & Search transactions
+  // 2. Filter & Search transactions with smart date range scoping
   const filteredTxs = useMemo(() => {
+    const now = new Date()
     let txs = allTxs
+
+    // Apply Time Range scoping
+    if (timeRange === "this_month") {
+      const start = startOfMonth(now)
+      const end = endOfMonth(now)
+      txs = txs.filter(t => {
+        if (!t.occurred_on) return false
+        const d = new Date(t.occurred_on)
+        return isWithinInterval(d, { start, end })
+      })
+    } else if (timeRange === "last_month") {
+      const prev = subMonths(now, 1)
+      const start = startOfMonth(prev)
+      const end = endOfMonth(prev)
+      txs = txs.filter(t => {
+        if (!t.occurred_on) return false
+        const d = new Date(t.occurred_on)
+        return isWithinInterval(d, { start, end })
+      })
+    } else if (timeRange === "last_30") {
+      const start = subDays(now, 30)
+      txs = txs.filter(t => {
+        if (!t.occurred_on) return false
+        const d = new Date(t.occurred_on)
+        return d >= start && d <= now
+      })
+    }
+
     if (filter !== "all") txs = txs.filter(t => t.type === filter)
-    if (search) {
-      const q = search.toLowerCase()
+
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase()
       txs = txs.filter(t => {
         const { from, to } = resolveWalletNames(t)
         return (
@@ -112,18 +151,23 @@ export function TransactionsPage() {
       })
     }
     return txs
-  }, [allTxs, filter, search, wallets])
+  }, [allTxs, filter, debouncedSearch, timeRange, wallets])
 
-  // 3. Group by date
+  // 3. Paginated slice for smooth DOM performance
+  const paginatedTxs = useMemo(() => {
+    return filteredTxs.slice(0, visibleCount)
+  }, [filteredTxs, visibleCount])
+
+  // 4. Group by date
   const grouped = useMemo(() => {
     const g: Record<string, Transaction[]> = {}
-    filteredTxs.forEach(tx => {
+    paginatedTxs.forEach(tx => {
       const dateKey = tx.occurred_on || "Unknown"
       if (!g[dateKey]) g[dateKey] = []
       g[dateKey].push(tx)
     })
     return g
-  }, [filteredTxs])
+  }, [paginatedTxs])
 
   const filterTabs: { key: FilterType; label: string }[] = [
     { key: "all", label: "All" },
@@ -132,13 +176,20 @@ export function TransactionsPage() {
     { key: "transfer", label: "Transfer" },
   ]
 
+  const timeRangeTabs: { key: TimeRangeType; label: string }[] = [
+    { key: "this_month", label: "Bulan Ini" },
+    { key: "last_month", label: "Bulan Lalu" },
+    { key: "last_30", label: "30 Hari" },
+    { key: "all", label: "Semua" },
+  ]
+
   const maxBar = Math.max(...dynamicWeeklyData.map(d => d.activeValue), 1)
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-base)" }}>
       {/* ====== HEADER ====== */}
-      <div className="px-5 pt-5 pb-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="px-5 pt-5 pb-3">
+        <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-[12px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
               {filter === "income" ? "Weekly Inflow" : filter === "expense" ? "Weekly Outflow" : filter === "transfer" ? "Weekly Transfers" : "Weekly Activity"}
@@ -148,56 +199,35 @@ export function TransactionsPage() {
             </p>
             <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>Past 7 days volume</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full glass-surface flex items-center justify-center">
-              {filter === "income" ? (
-                <TrendingUp size={18} style={{ color: "var(--accent)" }} />
-              ) : (
-                <TrendingDown size={18} style={{ color: "var(--accent)" }} />
-              )}
-            </div>
-          </div>
         </div>
 
-        {/* Dynamic Bar chart weekly */}
-        {dynamicWeeklyData.some(d => d.activeValue > 0) && (
-          <div className="h-[95px] mb-4 -mx-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dynamicWeeklyData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barSize={22}>
-                <defs>
-                  <linearGradient id="txBarHigh" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity={1}/>
-                    <stop offset="100%" stopColor="#A1A1AA" stopOpacity={0.85}/>
-                  </linearGradient>
-                  <linearGradient id="txBarMid" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#D4D4D8" stopOpacity={0.85}/>
-                    <stop offset="100%" stopColor="#52525B" stopOpacity={0.6}/>
-                  </linearGradient>
-                  <linearGradient id="txBarLow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#71717A" stopOpacity={0.5}/>
-                    <stop offset="100%" stopColor="#27272A" stopOpacity={0.25}/>
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 11, fill: "var(--text-tertiary)", fontFamily: "Urbanist, sans-serif", fontWeight: 600 }}
-                  axisLine={false}
-                  tickLine={false}
-                  dy={6}
-                />
-                <YAxis hide />
-                <Tooltip content={<GlassTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 6 }} />
-                <Bar dataKey="activeValue" radius={[6, 6, 0, 0]}>
-                  {dynamicWeeklyData.map((entry, index) => {
-                    const ratio = entry.activeValue / maxBar
-                    const fill = ratio > 0.65 ? "url(#txBarHigh)" : ratio > 0.3 ? "url(#txBarMid)" : "url(#txBarLow)"
-                    return <Cell key={`cell-${index}`} fill={fill} />
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        {/* 7-DAY MINI BAR CHART */}
+        <div className="h-[95px] w-full mb-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={dynamicWeeklyData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+              <Tooltip content={<GlassTooltip />} cursor={{ fill: "transparent" }} />
+              <XAxis
+                dataKey="label"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "var(--text-tertiary)", fontSize: 10, fontWeight: 700 }}
+              />
+              <YAxis hide domain={[0, maxBar * 1.15]} />
+              <Bar dataKey="activeValue" radius={[6, 6, 6, 6]} maxBarSize={30}>
+                {dynamicWeeklyData.map((_, index) => {
+                  const isCurrentDay = index === dynamicWeeklyData.length - 1
+                  return (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={isCurrentDay ? "var(--accent)" : "var(--glass-fill-strong)"}
+                      style={{ transition: "fill 0.3s ease" }}
+                    />
+                  )
+                })}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
         {/* Search */}
         <div className="relative mb-3">
@@ -207,7 +237,7 @@ export function TransactionsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search note, category, wallet..."
-            className="w-full pl-10 pr-9 py-2.5 rounded-2xl text-[13px] outline-none font-semibold"
+            className="w-full pl-10 pr-9 py-2.5 rounded-2xl text-[16px] outline-none font-semibold"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
@@ -221,23 +251,44 @@ export function TransactionsPage() {
           )}
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex p-1 rounded-full glass-surface">
+        {/* Time Range Pills (Bulan Ini, Bulan Lalu, 30 Hari, Semua) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 mb-3">
+          <Calendar size={13} className="shrink-0 ml-1" style={{ color: "var(--text-tertiary)" }} />
+          {timeRangeTabs.map(tab => {
+            const isSelected = timeRange === tab.key
+            return (
+              <button
+                key={tab.key}
+                onClick={() => { setTimeRange(tab.key); setVisibleCount(35) }}
+                className="px-3 py-1 rounded-full text-[11px] font-bold shrink-0 active:scale-95 transition-all"
+                style={{
+                  background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
+                  color: isSelected ? "var(--accent-ink)" : "var(--text-secondary)",
+                  border: isSelected ? "1px solid transparent" : "1px solid var(--glass-border)"
+                }}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Transaction Type Filter Pills */}
+        <div className="flex p-1 rounded-full glass-surface" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
           {filterTabs.map(tab => {
             const isSelected = filter === tab.key
             return (
-              <motion.button
+              <button
                 key={tab.key}
                 onClick={() => setFilter(tab.key)}
-                className="flex-1 py-1.5 rounded-full text-[13px] font-bold transition-all duration-200"
+                className="flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all"
                 style={{
                   background: isSelected ? "var(--accent)" : "transparent",
                   color: isSelected ? "var(--accent-ink)" : "var(--text-secondary)",
                 }}
-                whileTap={{ scale: 0.97 }}
               >
                 {tab.label}
-              </motion.button>
+              </button>
             )
           })}
         </div>
@@ -247,17 +298,17 @@ export function TransactionsPage() {
       <div className="px-5 pb-36 space-y-5">
         {isLoading ? (
           <div className="space-y-3 pt-2">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3, 4].map(i => (
               <div key={i} className="h-16 rounded-[22px] animate-pulse" style={{ background: "var(--bg-elevated)" }} />
             ))}
           </div>
         ) : Object.keys(grouped).length === 0 ? (
           <div className="text-center py-16">
             <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
-              {search ? "No matching transactions" : "No transactions yet"}
+              {search ? "No matching transactions" : "Tidak ada transaksi pada periode ini"}
             </p>
             <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
-              {search ? "Try searching with another keyword" : "Start logging your expenses & income"}
+              {search ? "Try searching with another keyword" : "Pilih periode 'Semua' atau catat transaksi baru"}
             </p>
           </div>
         ) : (
@@ -286,9 +337,10 @@ export function TransactionsPage() {
                     const isIncome = tx.type === "income"
                     const isTransfer = tx.type === "transfer"
                     const { from: fromWalletName, to: toWalletName } = resolveWalletNames(tx)
+                    const timeLabel = tx.created_at ? format(new Date(tx.created_at), "HH:mm") : ""
 
                     return (
-                      <motion.div
+                      <div
                         key={tx.id}
                         onClick={() => { setEditingTx(tx); setSheetOpen(true) }}
                         className="p-3.5 rounded-[22px] flex items-center justify-between cursor-pointer active:scale-98 transition-transform"
@@ -297,7 +349,6 @@ export function TransactionsPage() {
                           border: "1px solid var(--glass-border)",
                           boxShadow: "var(--shadow-card)"
                         }}
-                        whileTap={{ scale: 0.98 }}
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-10 h-10 rounded-2xl flex items-center justify-center relative shrink-0"
@@ -320,9 +371,15 @@ export function TransactionsPage() {
                             <p className="font-bold text-[14px] leading-tight truncate" style={{ color: "var(--text-primary)" }}>
                               {isTransfer ? `${fromWalletName} to ${toWalletName}` : (tx.categories?.name || "General")}
                             </p>
-                            <p className="text-[11px] font-semibold mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
-                              {tx.note || (isTransfer ? "Transfer" : fromWalletName)}
-                            </p>
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
+                              {timeLabel && (
+                                <span className="flex items-center gap-0.5 font-bold amount">
+                                  <Clock size={10} />
+                                  {timeLabel} ·
+                                </span>
+                              )}
+                              <span className="truncate">{tx.note || (isTransfer ? "Transfer" : fromWalletName)}</span>
+                            </div>
                           </div>
                         </div>
 
@@ -335,13 +392,26 @@ export function TransactionsPage() {
                             {isTransfer ? "Transfer" : isIncome ? "Inflow" : "Outflow"}
                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     )
                   })}
                 </div>
               </div>
             )
           })
+        )}
+
+        {/* Load More Button for 'All' / High Volume Filter */}
+        {filteredTxs.length > visibleCount && (
+          <div className="pt-2 text-center">
+            <button
+              onClick={() => setVisibleCount(c => c + 35)}
+              className="px-6 py-2.5 rounded-full text-[12px] font-bold active:scale-95 transition-all"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+            >
+              Muat Lebih Banyak ({filteredTxs.length - visibleCount} tersisa)
+            </button>
+          </div>
         )}
       </div>
 

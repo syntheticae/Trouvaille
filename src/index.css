@@ -274,6 +274,20 @@ html, body, #root {
 }
 
 /* ============================================================
-   ACTIVE STATE ANIMATIONS
+   ACTIVE STATE ANIMATIONS & TOUCH OPTIMIZATIONS
    ============================================================ */
-button { touch-action: manipulation; }
+button, a, input, textarea, select {
+  touch-action: manipulation;
+}
+
+input, textarea, select {
+  font-size: 16px !important; /* Prevents iOS WebKit auto-zoom */
+}
+
+/* Hardware accelerated smooth rendering */
+.glass-surface, .card-contrast-hero, .glass {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
