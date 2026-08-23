@@ -205,12 +205,12 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
                 style={{
                   background: isSelected ? "var(--glass-fill-strong)" : "var(--bg-elevated)",
                   color: "var(--text-primary)",
-                  border: isSelected ? "1.5px solid rgba(255, 255, 255, 0.45)" : "1px solid var(--glass-border)",
-                  boxShadow: isSelected ? "0 0 0 1px rgba(255, 255, 255, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.2)" : "none"
+                  border: isSelected ? "1.5px solid var(--accent)" : "1px solid var(--glass-border)",
+                  boxShadow: isSelected ? "0 0 0 1px var(--accent-glow)" : "none"
                 }}
               >
                 <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: isSelected ? "rgba(255, 255, 255, 0.18)" : "var(--glass-fill)" }}>
+                  style={{ background: isSelected ? "var(--glass-fill-strong)" : "var(--glass-fill)" }}>
                   <IconRenderer icon={w.icon} size="w-4 h-4" />
                 </div>
                 <span className="text-[12px] font-bold truncate leading-tight">{w.name}</span>
@@ -282,12 +282,12 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
                       style={{
                         background: isSelected ? "var(--glass-fill-strong)" : "var(--bg-elevated)",
                         color: "var(--text-primary)",
-                        border: isSelected ? "1.5px solid rgba(255, 255, 255, 0.45)" : "1px solid var(--glass-border)",
-                        boxShadow: isSelected ? "0 0 0 1px rgba(255, 255, 255, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.2)" : "none"
+                        border: isSelected ? "1.5px solid var(--accent)" : "1px solid var(--glass-border)",
+                        boxShadow: isSelected ? "0 0 0 1px var(--accent-glow)" : "none"
                       }}
                     >
                       <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: isSelected ? "rgba(255, 255, 255, 0.18)" : "var(--glass-fill)" }}>
+                        style={{ background: isSelected ? "var(--glass-fill-strong)" : "var(--glass-fill)" }}>
                         <IconRenderer icon={cat.emoji} size="w-4 h-4" />
                       </div>
                       <span className="text-[12px] font-bold truncate leading-tight">{cat.name}</span>

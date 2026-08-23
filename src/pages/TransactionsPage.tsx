@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect } from "react"
-import { Search, X, ArrowLeftRight, Calendar, Clock } from "lucide-react"
+import { Search, X, ArrowLeftRight, Calendar, Clock, ChevronDown, Archive } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts"
 import { useAllTransactions } from "../hooks/useTransactions"
 import { useWallets } from "../hooks/useWallets"
 import { TransactionSheet } from "../components/transactions/TransactionSheet"
+import { BottomSheet } from "../components/ui/BottomSheet"
 import type { Transaction } from "../lib/types"
 import { formatRupiah, getDateLabel } from "../lib/utils"
 import { IconRenderer } from "../components/ui/IconRenderer"
-import { format, subDays, startOfMonth, endOfMonth, subMonths, isWithinInterval } from "date-fns"
+import { format, subDays, startOfMonth, endOfMonth, subMonths, isWithinInterval, parse } from "date-fns"
 import famfinaRaw from "../data/famfina_transactions.json"
 
 const famfinaMap = new Map<string, any>()
@@ -32,8 +33,8 @@ const GlassTooltip = ({ active, payload, label }: any) => {
   )
 }
 
-type FilterType = "all" | "income" | "expense" | "transfer"
-type TimeRangeType = "this_month" | "last_month" | "last_30" | "all"
+type FilterType = "all" | "expense" | "income" | "transfer"
+type TimeRangeType = "this_month" | "last_month" | "last_30" | "custom_month" | "all"
 
 export function TransactionsPage() {
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -42,12 +43,17 @@ export function TransactionsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [filter, setFilter] = useState<FilterType>("all")
   const [timeRange, setTimeRange] = useState<TimeRangeType>("this_month")
+  const [selectedCustomMonth, setSelectedCustomMonth] = useState<string>(format(new Date(), "yyyy-MM"))
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const [visibleCount, setVisibleCount] = useState(35)
 
   const { data: allTxs = [], isLoading } = useAllTransactions()
   const { data: wallets = [] } = useWallets()
 
-  // Debounce search by 150ms for snappy typing
+  const isDark = document.documentElement.getAttribute("data-theme") !== "light"
+
+  // Debounce search by 150ms for snappy 120Hz typing
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 150)
     return () => clearTimeout(timer)
@@ -70,7 +76,7 @@ export function TransactionsPage() {
     }
   }
 
-  // 1. Direct computation of past 7 days trend for all 4 filter types
+  // 1. Direct computation of past 7 days trend (Inflow + Outflow only, transfers excluded)
   const dynamicWeeklyData = useMemo(() => {
     const days = []
     const now = new Date()
@@ -104,7 +110,22 @@ export function TransactionsPage() {
     return dynamicWeeklyData.reduce((s, d) => s + d.activeValue, 0)
   }, [dynamicWeeklyData])
 
-  // 2. Filter & Search transactions with smart date range scoping
+  // Generate selectable months for the Month Picker (Past 24 months)
+  const availableMonths = useMemo(() => {
+    const months = []
+    const now = new Date()
+    for (let i = 0; i < 24; i++) {
+      const d = subMonths(now, i)
+      months.push({
+        key: format(d, "yyyy-MM"),
+        label: format(d, "MMMM yyyy"),
+        shortLabel: format(d, "MMM yyyy")
+      })
+    }
+    return months
+  }, [])
+
+  // 2. Filter & Search transactions with smart date range scoping & auto-archive
   const filteredTxs = useMemo(() => {
     const now = new Date()
     let txs = allTxs
@@ -134,6 +155,23 @@ export function TransactionsPage() {
         const d = new Date(t.occurred_on)
         return d >= start && d <= now
       })
+    } else if (timeRange === "custom_month") {
+      const parsedMonth = parse(selectedCustomMonth, "yyyy-MM", new Date())
+      const start = startOfMonth(parsedMonth)
+      const end = endOfMonth(parsedMonth)
+      txs = txs.filter(t => {
+        if (!t.occurred_on) return false
+        const d = new Date(t.occurred_on)
+        return isWithinInterval(d, { start, end })
+      })
+    } else if (timeRange === "all" && !showArchived) {
+      // Auto-archive transactions older than 4 months in All view unless showArchived is checked
+      const fourMonthsAgo = subMonths(now, 4)
+      txs = txs.filter(t => {
+        if (!t.occurred_on) return false
+        const d = new Date(t.occurred_on)
+        return d >= fourMonthsAgo
+      })
     }
 
     if (filter !== "all") txs = txs.filter(t => t.type === filter)
@@ -151,9 +189,9 @@ export function TransactionsPage() {
       })
     }
     return txs
-  }, [allTxs, filter, debouncedSearch, timeRange, wallets])
+  }, [allTxs, filter, debouncedSearch, timeRange, selectedCustomMonth, showArchived, wallets])
 
-  // 3. Paginated slice for smooth DOM performance
+  // 3. Paginated slice for instant 120Hz DOM rendering
   const paginatedTxs = useMemo(() => {
     return filteredTxs.slice(0, visibleCount)
   }, [filteredTxs, visibleCount])
@@ -176,14 +214,16 @@ export function TransactionsPage() {
     { key: "transfer", label: "Transfer" },
   ]
 
-  const timeRangeTabs: { key: TimeRangeType; label: string }[] = [
-    { key: "this_month", label: "Bulan Ini" },
-    { key: "last_month", label: "Bulan Lalu" },
-    { key: "last_30", label: "30 Hari" },
-    { key: "all", label: "Semua" },
-  ]
-
   const maxBar = Math.max(...dynamicWeeklyData.map(d => d.activeValue), 1)
+
+  const selectedMonthLabel = useMemo(() => {
+    if (timeRange === "this_month") return "This Month"
+    if (timeRange === "last_month") return "Last Month"
+    if (timeRange === "last_30") return "Last 30 Days"
+    if (timeRange === "all") return "All Time"
+    const m = availableMonths.find(am => am.key === selectedCustomMonth)
+    return m ? m.label : "Custom Month"
+  }, [timeRange, selectedCustomMonth, availableMonths])
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-base)" }}>
@@ -199,10 +239,27 @@ export function TransactionsPage() {
             </p>
             <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>Past 7 days volume</p>
           </div>
+
+          {/* Month Selector Trigger */}
+          <button
+            onClick={() => setMonthPickerOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl active:scale-95 transition-all"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "0 2px 8px var(--shadow-strength)"
+            }}
+          >
+            <Calendar size={14} style={{ color: "var(--text-secondary)" }} />
+            <span className="text-[12px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+              {selectedMonthLabel}
+            </span>
+            <ChevronDown size={13} style={{ color: "var(--text-tertiary)" }} />
+          </button>
         </div>
 
-        {/* 7-DAY MINI BAR CHART */}
-        <div className="h-[95px] w-full mb-4">
+        {/* 7-DAY CRISP CONTRAST BAR CHART */}
+        <div className="h-[95px] w-full mb-3.5">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={dynamicWeeklyData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
               <Tooltip content={<GlassTooltip />} cursor={{ fill: "transparent" }} />
@@ -216,10 +273,17 @@ export function TransactionsPage() {
               <Bar dataKey="activeValue" radius={[6, 6, 6, 6]} maxBarSize={30}>
                 {dynamicWeeklyData.map((_, index) => {
                   const isCurrentDay = index === dynamicWeeklyData.length - 1
+                  
+                  // Crisp high-contrast bar colors for Dark and Light modes
+                  let barFill = isDark ? "rgba(255, 255, 255, 0.40)" : "rgba(24, 24, 27, 0.22)"
+                  if (isCurrentDay) {
+                    barFill = isDark ? "#FFFFFF" : "#18181B"
+                  }
+                  
                   return (
                     <Cell
                       key={`cell-${index}`}
-                      fill={isCurrentDay ? "var(--accent)" : "var(--glass-fill-strong)"}
+                      fill={barFill}
                       style={{ transition: "fill 0.3s ease" }}
                     />
                   )
@@ -229,7 +293,7 @@ export function TransactionsPage() {
           </ResponsiveContainer>
         </div>
 
-        {/* Search */}
+        {/* Search Bar */}
         <div className="relative mb-3">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--text-tertiary)" }} />
           <input
@@ -251,29 +315,7 @@ export function TransactionsPage() {
           )}
         </div>
 
-        {/* Time Range Pills (Bulan Ini, Bulan Lalu, 30 Hari, Semua) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 mb-3">
-          <Calendar size={13} className="shrink-0 ml-1" style={{ color: "var(--text-tertiary)" }} />
-          {timeRangeTabs.map(tab => {
-            const isSelected = timeRange === tab.key
-            return (
-              <button
-                key={tab.key}
-                onClick={() => { setTimeRange(tab.key); setVisibleCount(35) }}
-                className="px-3 py-1 rounded-full text-[11px] font-bold shrink-0 active:scale-95 transition-all"
-                style={{
-                  background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
-                  color: isSelected ? "var(--accent-ink)" : "var(--text-secondary)",
-                  border: isSelected ? "1px solid transparent" : "1px solid var(--glass-border)"
-                }}
-              >
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Transaction Type Filter Pills */}
+        {/* Unified Clean Filter Tabs */}
         <div className="flex p-1 rounded-full glass-surface" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
           {filterTabs.map(tab => {
             const isSelected = filter === tab.key
@@ -294,7 +336,7 @@ export function TransactionsPage() {
         </div>
       </div>
 
-      {/* ====== LIST TRANSAKSI ====== */}
+      {/* ====== TRANSACTION LIST ====== */}
       <div className="px-5 pb-36 space-y-5">
         {isLoading ? (
           <div className="space-y-3 pt-2">
@@ -305,10 +347,10 @@ export function TransactionsPage() {
         ) : Object.keys(grouped).length === 0 ? (
           <div className="text-center py-16">
             <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
-              {search ? "No matching transactions" : "Tidak ada transaksi pada periode ini"}
+              {search ? "No matching transactions found" : "No transactions recorded for this period"}
             </p>
             <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
-              {search ? "Try searching with another keyword" : "Pilih periode 'Semua' atau catat transaksi baru"}
+              {search ? "Try searching with different keywords" : "Select another month or record a new transaction"}
             </p>
           </div>
         ) : (
@@ -401,7 +443,7 @@ export function TransactionsPage() {
           })
         )}
 
-        {/* Load More Button for 'All' / High Volume Filter */}
+        {/* Load More Button for 'All Time' / High Volume Filter */}
         {filteredTxs.length > visibleCount && (
           <div className="pt-2 text-center">
             <button
@@ -409,11 +451,105 @@ export function TransactionsPage() {
               className="px-6 py-2.5 rounded-full text-[12px] font-bold active:scale-95 transition-all"
               style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
             >
-              Muat Lebih Banyak ({filteredTxs.length - visibleCount} tersisa)
+              Load More ({filteredTxs.length - visibleCount} remaining)
             </button>
           </div>
         )}
       </div>
+
+      {/* ====== MONTH & TIMEFRAME SELECTOR BOTTOM SHEET ====== */}
+      <BottomSheet isOpen={monthPickerOpen} onClose={() => setMonthPickerOpen(false)}>
+        <div className="p-5 pb-16 space-y-4">
+          <div className="flex justify-between items-center mb-1">
+            <div>
+              <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Select Timeframe</h3>
+              <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Filter transactions by month or period</p>
+            </div>
+          </div>
+
+          {/* Quick Presets */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { key: "this_month", label: "This Month" },
+              { key: "last_month", label: "Last Month" },
+              { key: "last_30", label: "Last 30 Days" },
+              { key: "all", label: "All Time" }
+            ].map(preset => {
+              const isSelected = timeRange === preset.key
+              return (
+                <button
+                  key={preset.key}
+                  onClick={() => {
+                    setTimeRange(preset.key as TimeRangeType)
+                    setVisibleCount(35)
+                    setMonthPickerOpen(false)
+                  }}
+                  className="py-2.5 px-3 rounded-2xl text-[12px] font-extrabold flex items-center justify-between active:scale-95 transition-all"
+                  style={{
+                    background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
+                    color: isSelected ? "var(--accent-ink)" : "var(--text-primary)",
+                    border: isSelected ? "1px solid transparent" : "1px solid var(--glass-border)"
+                  }}
+                >
+                  <span>{preset.label}</span>
+                  {isSelected && <span className="text-[11px]">✓</span>}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Select Specific Month (e.g. 3 Months Ago, 6 Months Ago) */}
+          <div className="pt-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider mb-2.5 px-1" style={{ color: "var(--text-tertiary)" }}>
+              Specific Month
+            </p>
+            <div className="grid grid-cols-3 gap-2 max-h-[35vh] overflow-y-auto pr-1">
+              {availableMonths.map(m => {
+                const isSelected = timeRange === "custom_month" && selectedCustomMonth === m.key
+                return (
+                  <button
+                    key={m.key}
+                    onClick={() => {
+                      setSelectedCustomMonth(m.key)
+                      setTimeRange("custom_month")
+                      setVisibleCount(35)
+                      setMonthPickerOpen(false)
+                    }}
+                    className="p-2.5 rounded-xl text-[11px] font-bold text-center active:scale-95 transition-all truncate"
+                    style={{
+                      background: isSelected ? "var(--glass-fill-strong)" : "var(--bg-elevated)",
+                      color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
+                      border: isSelected ? "1.5px solid rgba(255, 255, 255, 0.45)" : "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {m.shortLabel}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Smart Auto-Archive Option for All Time */}
+          {timeRange === "all" && (
+            <div className="p-3.5 rounded-2xl flex items-center justify-between mt-2"
+              style={{ background: "var(--bg-card)", border: "1px solid var(--glass-border)" }}>
+              <div className="flex items-center gap-2.5">
+                <Archive size={16} style={{ color: "var(--text-tertiary)" }} />
+                <div>
+                  <p className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>Include Archived Data</p>
+                  <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Show records older than 4 months</p>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={e => setShowArchived(e.target.checked)}
+                className="w-4 h-4 rounded cursor-pointer accent-white"
+              />
+            </div>
+          )}
+        </div>
+      </BottomSheet>
 
       <TransactionSheet
         isOpen={sheetOpen}

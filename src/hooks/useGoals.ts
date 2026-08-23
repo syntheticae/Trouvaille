@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 
 export interface Goal {
   id: string
@@ -10,51 +10,28 @@ export interface Goal {
   targetDate?: string
 }
 
-const DEFAULT_GOALS: Goal[] = [
-  {
-    id: "1",
-    title: "Emergency Fund",
-    targetAmount: 50000000,
-    currentAmount: 32500000,
-    icon: "🛡️",
-    color: "#B8FA4E",
-    targetDate: "2026-12-31"
-  },
-  {
-    id: "2",
-    title: "New MacBook Pro",
-    targetAmount: 30000000,
-    currentAmount: 18000000,
-    icon: "💻",
-    color: "#305CFF",
-    targetDate: "2026-10-15"
-  },
-  {
-    id: "3",
-    title: "Japan Vacation",
-    targetAmount: 40000000,
-    currentAmount: 12000000,
-    icon: "✈️",
-    color: "#84A6FF",
-    targetDate: "2027-04-01"
-  }
-]
-
-const STORAGE_KEY = "trouvaille_financial_goals"
+const STORAGE_KEY = "trouvaille_financial_goals_v2"
+const INITIALIZED_KEY = "trouvaille_goals_initialized_v2"
 
 export function useGoals() {
   const [goals, setGoals] = useState<Goal[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      return stored ? JSON.parse(stored) : DEFAULT_GOALS
+      const isInit = localStorage.getItem(INITIALIZED_KEY)
+      if (isInit) {
+        const stored = localStorage.getItem(STORAGE_KEY)
+        return stored ? JSON.parse(stored) : []
+      }
+      localStorage.setItem(INITIALIZED_KEY, "true")
+      return []
     } catch {
-      return DEFAULT_GOALS
+      return []
     }
   })
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(goals))
+      localStorage.setItem(INITIALIZED_KEY, "true")
     } catch (e) {
       console.warn("Failed to persist goals:", e)
     }

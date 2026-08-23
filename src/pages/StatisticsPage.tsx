@@ -1,12 +1,14 @@
 import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
-import { ShieldCheck, ArrowDownCircle, ArrowUpCircle, TrendingUp } from "lucide-react"
+import { ShieldCheck, ArrowDownCircle, ArrowUpCircle, TrendingUp, ChevronRight } from "lucide-react"
 import {
   PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, ResponsiveContainer, AreaChart, Area
 } from "recharts"
 import { useAllTransactions } from "../hooks/useTransactions"
 import { formatRupiah } from "../lib/utils"
+import { BottomSheet } from "../components/ui/BottomSheet"
+import { IconRenderer } from "../components/ui/IconRenderer"
 import { format, subDays, subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns"
 
 type Range = "week" | "month" | "year" | "all"
@@ -109,6 +111,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 export function StatisticsPage() {
   const [range, setRange] = useState<Range>("month")
   const [breakdownType, setBreakdownType] = useState<BreakdownType>("expense")
+  const [allDetailsOpen, setAllDetailsOpen] = useState(false)
   const now = new Date()
   const { data: allTxs = [] } = useAllTransactions()
   const colors = useChartColors()
@@ -340,9 +343,20 @@ export function StatisticsPage() {
       <div className="p-5 rounded-[24px] glass-surface">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
-              {breakdownType === "expense" ? "Expense Breakdown" : "Income Breakdown"}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
+                {breakdownType === "expense" ? "Expense Breakdown" : "Income Breakdown"}
+              </h2>
+              {categoryStats.length > 0 && (
+                <button
+                  onClick={() => setAllDetailsOpen(true)}
+                  className="text-[11px] font-extrabold flex items-center gap-0.5 active:scale-95 transition-transform"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  All Details <ChevronRight size={13} />
+                </button>
+              )}
+            </div>
             <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
               {categoryStats.length} categories · {rangeTitle}
             </p>
@@ -505,6 +519,66 @@ export function StatisticsPage() {
           ))}
         </div>
       </div>
+
+      {/* Comprehensive Category Breakdown BottomSheet */}
+      <BottomSheet isOpen={allDetailsOpen} onClose={() => setAllDetailsOpen(false)}>
+        <div className="p-5 pb-16 space-y-4">
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>
+                {breakdownType === "expense" ? "All Expense Categories" : "All Income Categories"}
+              </h3>
+              <p className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                {categoryStats.length} categories · Total {formatRupiah(totalBreakdownAmount)}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+            {categoryStats.map((cat, i) => {
+              const pct = totalBreakdownAmount > 0 ? ((cat.total / totalBreakdownAmount) * 100).toFixed(1) : "0.0"
+              const barColor = colors.donut[i % colors.donut.length]
+
+              return (
+                <div
+                  key={cat.name}
+                  className="p-3.5 rounded-2xl flex items-center justify-between"
+                  style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+                      <IconRenderer icon={cat.emoji} size="w-6 h-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-bold truncate" style={{ color: "var(--text-primary)" }}>
+                        {cat.name}
+                      </p>
+                      <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                        {cat.count} {cat.count === 1 ? "transaction" : "transactions"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="amount text-[14px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+                      {formatRupiah(cat.total)}
+                    </p>
+                    <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                      <div className="w-12 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated-2)" }}>
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor }} />
+                      </div>
+                      <span className="amount text-[11px] font-bold" style={{ color: "var(--text-tertiary)" }}>
+                        {pct}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   )
 }
