@@ -1,9 +1,10 @@
+import { triggerHaptic } from "../lib/haptics"
 import { useWallets, getWalletIcon } from "../hooks/useWallets"
 import { resolveFamfinaWallet } from "../lib/famfinaResolver"
 import { CreditCard } from "lucide-react"
 ﻿import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
-import { ShieldCheck, ArrowDownCircle, ArrowUpCircle, TrendingUp, ChevronRight } from "lucide-react"
+import { ShieldCheck, ArrowDownCircle, ArrowUpCircle, TrendingUp, ChevronRight, ChevronLeft } from "lucide-react"
 import {
   PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, ResponsiveContainer, AreaChart, Area
@@ -119,6 +120,7 @@ export function StatisticsPage() {
   const { data: allTxs = [] } = useAllTransactions()
   const { data: wallets = [] } = useWallets()
   const [walletFilterType, setWalletFilterType] = useState<"all" | "expense" | "income">("all")
+  const [monthOffset, setMonthOffset] = useState(0)
   const colors = useChartColors()
 
   // 1. Filter by range
@@ -143,7 +145,7 @@ export function StatisticsPage() {
       const d = new Date(t.occurred_on)
       return !isNaN(d.getTime()) && d >= start && d <= end
     })
-  }, [allTxs, range])
+  }, [allTxs, range, monthOffset])
 
   const { totalIncome, totalExpense } = useMemo(() => ({
     totalIncome: rangeTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0),
@@ -236,7 +238,7 @@ export function StatisticsPage() {
         }
       })
     }
-  }, [allTxs, range])
+  }, [allTxs, range, monthOffset])
 
   // 3. Cumulative Net Worth trend
   const netWorthData = useMemo(() => {
@@ -327,7 +329,14 @@ export function StatisticsPage() {
   }, [rangeTxs])
   
   const totalBreakdownAmount = categoryStats.reduce((s, c) => s + c.total, 0)
-  const rangeTitle = range === "week" ? "This Week" : range === "month" ? "This Month" : range === "year" ? "This Year" : "All Time"
+  const rangeTitle = useMemo(() => {
+    if (range === "week") return "This Week"
+    if (range === "month") {
+      return format(subMonths(now, monthOffset), "MMMM yyyy")
+    }
+    if (range === "year") return "This Year"
+    return "All Time"
+  }, [range, monthOffset])
 
   return (
     <div className="px-5 py-6 space-y-5 pb-32" style={{ minHeight: "100vh" }}>
@@ -343,7 +352,7 @@ export function StatisticsPage() {
       <div className="flex p-1 rounded-full glass-surface">
         {(["week", "month", "year", "all"] as Range[]).map(r => (
           <motion.button key={r}
-            onClick={() => setRange(r)}
+            onClick={() => { setRange(r); triggerHaptic("light"); }}
             className="flex-1 py-1.5 rounded-full text-[13px] font-bold transition-all duration-200"
             style={{
               background: range === r ? "var(--accent)" : "transparent",
@@ -354,6 +363,32 @@ export function StatisticsPage() {
           </motion.button>
         ))}
       </div>
+
+      {/* Month Navigator when Month is active */}
+      {range === "month" && (
+        <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl glass-surface" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+          <button
+            onClick={() => { setMonthOffset(o => o + 1); triggerHaptic("light"); }}
+            className="w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-transform"
+            style={{ background: "var(--glass-fill)", color: "var(--text-primary)" }}
+            title="Previous Month"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="font-extrabold text-[13px]" style={{ color: "var(--text-primary)" }}>
+            {format(subMonths(now, monthOffset), "MMMM yyyy")}
+          </span>
+          <button
+            disabled={monthOffset === 0}
+            onClick={() => { setMonthOffset(o => Math.max(0, o - 1)); triggerHaptic("light"); }}
+            className="w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30 disabled:pointer-events-none"
+            style={{ background: "var(--glass-fill)", color: "var(--text-primary)" }}
+            title="Next Month"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Financial Health Hero */}
       <section className="card-contrast-hero p-5 relative overflow-hidden">

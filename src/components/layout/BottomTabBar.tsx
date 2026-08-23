@@ -1,3 +1,4 @@
+import { triggerHaptic } from "../../lib/haptics"
 import { NavLink, useLocation } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Home, History, Plus, PieChart, Settings } from "lucide-react"
@@ -37,7 +38,7 @@ export function BottomTabBar({ onOpenAdd }: BottomTabBarProps) {
             return (
               <button 
                 key="add"
-                onClick={onOpenAdd}
+                onClick={() => { triggerHaptic("medium"); if (onOpenAdd) onOpenAdd(); }}
                 className="w-10 h-10 flex items-center justify-center relative rounded-full active:scale-95 transition-transform"
                 style={{ 
                   background: "var(--accent)", 
@@ -56,7 +57,7 @@ export function BottomTabBar({ onOpenAdd }: BottomTabBarProps) {
             <NavLink 
               key={tab.path} 
               to={tab.path!} 
-              className="w-10 h-10 flex items-center justify-center relative rounded-full"
+              onClick={() => triggerHaptic("light")} className="w-10 h-10 flex items-center justify-center relative rounded-full"
             >
               {isActive && (
                 <motion.div 

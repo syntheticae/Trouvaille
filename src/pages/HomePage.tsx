@@ -1,3 +1,4 @@
+import { triggerHaptic } from "../lib/haptics"
 
 function formatNetAmount(net: number): string {
   const abs = Math.abs(net)
@@ -13,7 +14,7 @@ function formatNetAmount(net: number): string {
 }
 
 ﻿import { useState, useMemo } from "react"
-import { Bell, ArrowUpRight, TrendingUp, TrendingDown, Sparkles, PiggyBank, Flame } from "lucide-react"
+import { Bell, ArrowUpRight, TrendingUp, TrendingDown, Sparkles, PiggyBank, Flame, Eye, EyeOff } from "lucide-react"
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from "recharts"
 import { useAllTransactions } from "../hooks/useTransactions"
 import { useUpcomingBills, getDaysUntilDue } from "../hooks/useBills"
@@ -65,6 +66,16 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [notifOpen, setNotifOpen] = useState(false)
   const [stockRange, setStockRange] = useState<StockRange>("1W")
+  const [hideBalance, setHideBalance] = useState(() => localStorage.getItem("trouvaille_hide_balance") === "true")
+
+  const toggleHideBalance = () => {
+    setHideBalance(prev => {
+      const next = !prev
+      localStorage.setItem("trouvaille_hide_balance", String(next))
+      triggerHaptic("medium")
+      return next
+    })
+  }
 
   const upcomingBills = useUpcomingBills()
   const { budgetTarget } = useBudgetTarget()
@@ -361,16 +372,23 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       {/* 1. TOTAL ASSETS HERO CARD — Refined Compact Apple Stocks Layout */}
       <section className="card-contrast-hero p-4 pb-3 relative overflow-hidden">
         {/* Title Header */}
-        <div className="flex items-baseline justify-between mb-1">
+        <div className="flex items-center justify-between mb-1">
           <h2 className="text-[13px] font-extrabold tracking-wider text-white/90 leading-none">
             Net Portfolio
           </h2>
+          <button
+            onClick={toggleHideBalance}
+            className="text-white/60 hover:text-white active:scale-90 transition-all p-1 -mr-1"
+            title={hideBalance ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
+          >
+            {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
         </div>
 
         {/* Amount */}
         <div className="mb-1.5">
           <span className="text-[28px] font-extrabold tracking-tight amount leading-tight text-white">
-            {formatRupiah(assetData.currentBalance)}
+            {hideBalance ? "Rp ••••••••" : formatRupiah(assetData.currentBalance)}
           </span>
         </div>
 
@@ -394,7 +412,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
             return (
               <button
                 key={r}
-                onClick={() => setStockRange(r)}
+                onClick={() => { setStockRange(r); triggerHaptic("light"); }}
                 className="px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 transition-all"
                 style={{
                   background: isActive ? "rgba(255,255,255,0.25)" : "transparent",

@@ -1,3 +1,4 @@
+import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics"
 import { getFamfinaMatch } from "../../lib/famfinaResolver"
 
 function getTop3Slots<T extends { id: string }>(items: T[], selectedId: string | null): T[] {
@@ -188,7 +189,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     if (transaction) {
       updateTx.mutate({ id: transaction.id, ...payload }, {
         onSuccess: () => {
-          showToast("Transaksi diperbarui", "update", () => {})
+          triggerSuccessHaptic(); showToast("Transaksi diperbarui", "update", () => {})
         },
         onError: () => {
           showToast("Gagal memperbarui transaksi", "delete", () => {})
@@ -270,7 +271,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
             return (
               <button
                 key={t}
-                onClick={() => setType(t)}
+                onClick={() => { setType(t); triggerHaptic("light"); }}
                 className="flex-1 py-2 rounded-full text-[12px] font-extrabold flex items-center justify-center gap-1.5 transition-all"
                 style={{
                   background: isSelected ? "var(--accent)" : "transparent",
