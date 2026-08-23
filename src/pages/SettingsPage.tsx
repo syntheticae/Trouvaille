@@ -1,8 +1,8 @@
-import { useState, useRef } from "react"
+﻿import { useState, useRef } from "react"
 import {
   Plus, Trash2, Calendar as CalendarIcon, LogOut, ChevronRight,
   CreditCard, LayoutGrid, Target, Sun, Camera, User as UserIcon, RotateCcw,
-  Bell, Archive, Edit2, Zap
+  Bell, Archive, Zap
 } from "lucide-react"
 import { useBills, useAddBill, useUpdateBill, useDeleteBill } from "../hooks/useBills"
 import { useToast } from "../contexts/ToastContext"
@@ -27,7 +27,7 @@ export function SettingsPage() {
   const { data: bills = [] } = useBills()
   const { data: categories = [] } = useCategories()
   const { data: wallets = [] } = useWallets()
-  const { goals, addGoal, deleteGoal, depositToGoal } = useGoals()
+  const { goals, addGoal, deleteGoal } = useGoals()
   const { data: allTxs = [] } = useAllTransactions()
   const { session } = useAuth()
   const { theme, toggleTheme } = useTheme()
@@ -85,7 +85,7 @@ export function SettingsPage() {
   const [goalTitle, setGoalTitle] = useState("")
   const [goalTarget, setGoalTarget] = useState("")
   const [goalSaved, setGoalSaved] = useState("")
-  const [goalIcon, setGoalIcon] = useState("🎯")
+  const [goalIcon, setGoalIcon] = useState("ðŸŽ¯")
 
   // Budget Form
   const [budgetName, setBudgetName] = useState("")
@@ -557,11 +557,11 @@ export function SettingsPage() {
               <div key={b.id} onClick={() => { setBillListOpen(false); setTimeout(() => handleOpenEditBill(b), 300) }}
                 className="glass-surface p-4 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition-all">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>🧾</div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>ðŸ§¾</div>
                   <div className="min-w-0">
                     <p className="font-bold text-[14px] truncate" style={{ color: "var(--text-primary)" }}>{b.title}</p>
                     <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                      <span className="capitalize">{b.repeat_rule}</span> · Due {b.due_date} · {formatRupiah(Number(b.amount || 0))}
+                      <span className="capitalize">{b.repeat_rule}</span> Â· Due {b.due_date} Â· {formatRupiah(Number(b.amount || 0))}
                     </p>
                   </div>
                 </div>
@@ -794,3 +794,4 @@ export function SettingsPage() {
     </div>
   )
 }
+

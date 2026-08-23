@@ -592,7 +592,38 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         </section>
       )}
 
-      {/* 5. HEATMAP CALENDAR â€” Clean without shadows or bottom dots */}
+      {/* 6. UPCOMING BILLS (MOVED ABOVE CALENDAR) */}
+      {upcomingBills.length > 0 && (
+        <section className="mb-6">
+          <span className="text-[11px] font-bold uppercase tracking-widest px-1 mb-2 block" style={{ color: "var(--text-tertiary)" }}>
+            Upcoming Bills
+          </span>
+          <div className="space-y-2">
+            {upcomingBills.slice(0, 3).map((bill: any) => {
+              const days = getDaysUntilDue(bill.due_date)
+              return (
+                <div key={bill.id} className="glass-surface flex items-center gap-3 px-4 py-3 rounded-2xl">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[16px]"
+                    style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                    🧾
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[14px] font-bold" style={{ color: "var(--text-primary)" }}>{bill.title}</p>
+                    <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                      {days <= 0 ? "Due today" : `Due in ${days} days`}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="amount text-[14px] font-extrabold" style={{ color: "var(--text-primary)" }}>{formatRupiah(Number(bill.amount))}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* 5. HEATMAP CALENDAR */}
       <section>
         <span className="text-[11px] font-bold uppercase tracking-widest px-1 mb-2 block" style={{ color: "var(--text-tertiary)" }}>
           Monthly Activity
@@ -695,4 +726,5 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
     </div>
   )
 }
+
 
