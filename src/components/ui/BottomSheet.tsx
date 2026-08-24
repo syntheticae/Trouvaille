@@ -12,12 +12,18 @@ interface BottomSheetProps {
 
 export function BottomSheet({ isOpen, onClose, children, title }: BottomSheetProps) {
   useEffect(() => {
+    const scrollEl = document.getElementById("app-scroll-container")
     if (isOpen) {
       document.body.style.overflow = "hidden"
+      if (scrollEl) scrollEl.style.overflow = "hidden"
     } else {
       document.body.style.overflow = ""
+      if (scrollEl) scrollEl.style.overflow = ""
     }
-    return () => { document.body.style.overflow = "" }
+    return () => {
+      document.body.style.overflow = ""
+      if (scrollEl) scrollEl.style.overflow = ""
+    }
   }, [isOpen])
 
   if (typeof document === "undefined") return null

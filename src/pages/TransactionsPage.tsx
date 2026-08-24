@@ -12,7 +12,7 @@ import { BottomSheet } from "../components/ui/BottomSheet"
 import type { Transaction } from "../lib/types"
 import { formatRupiah, getDateLabel } from "../lib/utils"
 import { IconRenderer } from "../components/ui/IconRenderer"
-import { format, subDays, startOfMonth, endOfMonth, subMonths, isWithinInterval, parse, eachDayOfInterval } from "date-fns"
+import { format, subDays, startOfMonth, endOfMonth, subMonths, isWithinInterval, parse, eachDayOfInterval, startOfDay, endOfDay } from "date-fns"
 import { GroupedVirtuoso } from "react-virtuoso"
 import { useDeferredRender } from "../hooks/useDeferredRender"
 import { TransactionItem } from "../components/transactions/TransactionItem"
@@ -90,11 +90,13 @@ export function TransactionsPage() {
     return () => clearTimeout(timer)
   }, [search])
 
-  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null)
+  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(() => typeof document !== "undefined" ? document.getElementById("app-scroll-container") : null)
 
   useEffect(() => {
-    setScrollParent(document.getElementById("app-scroll-container"))
-  }, [])
+    if (!scrollParent && typeof document !== "undefined") {
+      setScrollParent(document.getElementById("app-scroll-container"))
+    }
+  }, [scrollParent])
 
   const resolveWalletNames = (tx: Transaction) => resolveFamfinaWallet(tx, wallets)
 
@@ -209,11 +211,12 @@ export function TransactionsPage() {
         return isWithinInterval(d, { start, end })
       })
     } else if (timeRange === "last_30") {
-      const start = subDays(now, 30)
+      const start = startOfDay(subDays(now, 30))
+      const end = endOfDay(now)
       txs = txs.filter(t => {
         if (!t.occurred_on) return false
         const d = new Date(t.occurred_on)
-        return isWithinInterval(d, { start, end: now })
+        return isWithinInterval(d, { start, end })
       })
     } else if (timeRange === "custom_month") {
       const parsedMonth = parse(selectedCustomMonth, "yyyy-MM", new Date())
