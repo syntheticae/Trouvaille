@@ -1,3 +1,5 @@
+import { triggerHaptic } from "../lib/haptics"
+import { GoalDetailModal } from "../components/goals/GoalDetailModal"
 ﻿import { useState, useRef } from "react"
 import {
   Plus, Trash2, Calendar as CalendarIcon, LogOut, ChevronRight,
@@ -27,7 +29,8 @@ export function SettingsPage() {
   const { data: bills = [] } = useBills()
   const { data: categories = [] } = useCategories()
   const { data: wallets = [] } = useWallets()
-  const { goals, addGoal, deleteGoal } = useGoals()
+  const { goals, addGoal, updateGoal, deleteGoal, depositToGoal } = useGoals()
+  const [selectedGoalSetting, setSelectedGoalSetting] = useState<any | null>(null)
   const { data: allTxs = [] } = useAllTransactions()
   const { session } = useAuth()
   const { theme, toggleTheme } = useTheme()
@@ -672,7 +675,7 @@ export function SettingsPage() {
           </div>
           <div className="space-y-2">
             {goals.map((g: any) => (
-              <div key={g.id} className="p-3 rounded-2xl flex items-center justify-between" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+              <div key={g.id} onClick={() => { setSelectedGoalSetting(g); triggerHaptic("light"); }} className="p-3 rounded-2xl flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
                 <div className="flex items-center gap-3">
                   <div className="text-2xl">{g.icon === "dYZ_" ? "🎯" : g.icon}</div>
                   <div>
@@ -959,6 +962,7 @@ export function SettingsPage() {
         </div>
       </BottomSheet>
 
+      <GoalDetailModal goal={selectedGoalSetting} isOpen={!!selectedGoalSetting} onClose={() => setSelectedGoalSetting(null)} onDeposit={depositToGoal} onUpdate={updateGoal} onDelete={deleteGoal} />
     </div>
   )
 }

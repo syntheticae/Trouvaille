@@ -1,3 +1,4 @@
+import { GoalDetailModal } from "../components/goals/GoalDetailModal"
 import { usePullToRefresh } from "../hooks/usePullToRefresh"
 import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator"
 import { useGoals } from "../hooks/useGoals"
@@ -89,7 +90,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const { data: categories = [], refetch: refetchCategories } = useCategories()
   const { refetch: refetchWallets } = useWallets()
   const { refetch: refetchBills } = useBills()
-  const { goals } = useGoals()
+  const { goals, depositToGoal, updateGoal, deleteGoal } = useGoals()
+  const [selectedGoal, setSelectedGoal] = useState<any | null>(null)
 
   const { pullDistance, isRefreshing, threshold } = usePullToRefresh({
     onRefresh: async () => {
@@ -748,7 +750,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
               return (
                 <div
                   key={g.id}
-                  className="p-4 rounded-[22px] glass-surface"
+                  onClick={() => { setSelectedGoal(g); triggerHaptic("light"); }}
+                  className="p-4 rounded-[22px] glass-surface cursor-pointer active:scale-[0.98] transition-transform"
                   style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -866,6 +869,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       </BottomSheet>
 
       <NotificationSheet isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
+      <GoalDetailModal goal={selectedGoal} isOpen={!!selectedGoal} onClose={() => setSelectedGoal(null)} onDeposit={depositToGoal} onUpdate={updateGoal} onDelete={deleteGoal} />
     </div>
   )
 }
