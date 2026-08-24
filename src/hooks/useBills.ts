@@ -16,7 +16,7 @@ export function useBills() {
       const { data, error } = await supabase.from("bills").select("*").order("due_date", { ascending: true })
       if (error) throw error
       const bills = data as Bill[]
-      syncBillNotifications(bills).catch(() => {})
+      setTimeout(() => { syncBillNotifications(bills).catch(() => {}) }, 300)
       return bills
     },
   })

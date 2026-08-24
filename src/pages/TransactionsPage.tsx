@@ -1,3 +1,5 @@
+import { usePullToRefresh } from "../hooks/usePullToRefresh"
+import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator"
 import { triggerHaptic } from "../lib/haptics"
 ﻿import { useState, useMemo, useEffect } from "react"
 import { Search, X, ArrowLeftRight, Calendar, Clock, ChevronDown, Archive, Wallet } from "lucide-react"
@@ -61,11 +63,21 @@ export function TransactionsPage() {
   const [monthPickerOpen, setMonthPickerOpen] = useState(false)
   const [accountPickerOpen, setAccountPickerOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
-  const [visibleCount, setVisibleCount] = useState(35)
+  const [visibleCount, setVisibleCount] = useState(25)
 
-  const { data: allTxs = [], isLoading } = useAllTransactions()
-  const { data: categories = [] } = useCategories()
-  const { data: wallets = [] } = useWallets()
+  const { data: allTxs = [], isLoading, refetch: refetchTxs } = useAllTransactions()
+  const { data: wallets = [], refetch: refetchWallets } = useWallets()
+  const { data: categories = [], refetch: refetchCategories } = useCategories()
+
+  const { pullDistance, isRefreshing, threshold } = usePullToRefresh({
+    onRefresh: async () => {
+      await Promise.all([
+        refetchTxs(),
+        refetchWallets(),
+        refetchCategories(),
+      ])
+    }
+  })
 
   const isDark = document.documentElement.getAttribute("data-theme") !== "light"
 
@@ -224,7 +236,8 @@ export function TransactionsPage() {
   }, [timeRange, selectedCustomMonth])
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-base)" }}>
+    <div className="min-h-screen relative" style={{ background: "var(--bg-base)" }}>
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} threshold={threshold} />
       {/* ====== HEADER ====== */}
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">

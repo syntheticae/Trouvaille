@@ -87,13 +87,8 @@ export function useEnsureDefaultCategories() {
         .eq("is_default", true)
 
       if (existing && existing.length > 0) {
-        // Upsert: add any categories that might be missing
-        const existingNames = new Set(existing.map((c: { name: string }) => c.name))
-        const missing = DEFAULT_CATEGORIES.filter(c => !existingNames.has(c.name))
-        if (missing.length === 0) return
-        await supabase.from("categories").insert(
-          missing.map(c => ({ ...c, user_id: user.id }))
-        )
+        // Categories already exist for user, do NOT re-insert deleted categories
+        return
       } else {
         // Fresh insert
         await supabase.from("categories").insert(

@@ -24,7 +24,7 @@ export function getWalletIcon(name: string): string {
 }
 
 export const DEFAULT_WALLETS = [
-  "Cash", "BNI", "BCA", "Crypto", "Dana", "Shopeepay", "Gopay", "Jago", "BLU", "Krom",
+  "Cash", "BNI", "Crypto", "Dana", "Shopeepay", "Gopay", "Jago", "BLU", "Krom",
   "Liabilities", "Piutang", "Saham", "Seabank", "Superbank", "Tapcash"
 ]
 

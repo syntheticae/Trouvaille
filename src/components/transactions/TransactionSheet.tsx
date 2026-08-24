@@ -10,7 +10,7 @@ function getTop3Slots<T extends { id: string }>(items: T[], selectedId: string |
   return [items[0], items[1], items[idx]]
 }
 
-﻿import { useState, useEffect, useMemo } from "react"
+﻿import { useState, useEffect, useMemo, useRef } from "react"
 import { Calendar as CalendarIcon, Clock, ArrowUpCircle, ArrowDownCircle, RefreshCcw, Delete, MoreHorizontal, Trash2, Zap } from "lucide-react"
 import { BottomSheet } from "../ui/BottomSheet"
 import { useCategories } from "../../hooks/useCategories"
@@ -69,9 +69,15 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     return list.slice(0, 3)
   }, [categories, categoryId])
 
-  // Sync state whenever transaction or isOpen changes
+  // Keep track of when modal opens or incoming transaction changes
+  const prevOpenRef = useRef(false)
+  const prevTxIdRef = useRef<string | null>(null)
+
   useEffect(() => {
-    if (isOpen) {
+    const isOpening = isOpen && !prevOpenRef.current
+    const isTxChanged = transaction && transaction.id !== prevTxIdRef.current
+
+    if (isOpen && (isOpening || isTxChanged)) {
       setIsSaving(false)
       if (transaction) {
         setType(transaction.type)
@@ -87,7 +93,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
           setCategoryId(transaction.category_id)
         } else if (match?.categoryName) {
           const foundCat = categories.find(c => c.name.toLowerCase() === match.categoryName.toLowerCase())
-          setCategoryId(foundCat ? foundCat.id : null)
+          setCategoryId(foundCat ? foundCat.id : (categories.length > 0 ? categories[0].id : null))
         } else {
           setCategoryId(categories.length > 0 ? categories[0].id : null)
         }
@@ -123,11 +129,18 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         setToWalletId(wallets.length > 1 ? wallets[1].id : null)
       }
     }
-  }, [transaction, isOpen, categories, wallets])
 
+    prevOpenRef.current = isOpen
+    prevTxIdRef.current = transaction?.id || null
+  }, [isOpen, transaction, categories, wallets])
+
+  // Sync categoryId and walletId when type or list changes, WITHOUT resetting type
   useEffect(() => {
-    if (!categoryId && type !== "transfer" && categories.length > 0) {
-      setCategoryId(categories[0].id)
+    if (type !== "transfer" && categories.length > 0) {
+      const exists = categories.some(c => c.id === categoryId)
+      if (!exists) {
+        setCategoryId(categories[0].id)
+      }
     }
     if (!walletId && wallets.length > 0) {
       setWalletId(wallets[0].id)

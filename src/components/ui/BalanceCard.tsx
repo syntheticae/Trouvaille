@@ -15,24 +15,6 @@ famfinaRaw.forEach((t: any) => {
   famfinaKeyMap.get(k)!.push(t)
 })
 
-const DEFAULT_PORTFOLIO_ACCOUNTS = [
-  { name: "Crypto", icon: "/icons/Budgets/Crypto.png" },
-  { name: "Piutang", icon: "/icons/Budgets/Piutang.png" },
-  { name: "Seabank", icon: "/icons/Budgets/Seabank.png" },
-  { name: "BNI", icon: "/icons/Budgets/BNI.png" },
-  { name: "Cash", icon: "/icons/Budgets/Cash.png" },
-  { name: "Shopeepay", icon: "/icons/Budgets/Shopeepay.png" },
-  { name: "BLU", icon: "/icons/Budgets/BLU.png" },
-  { name: "Superbank", icon: "/icons/Budgets/Superbank.png" },
-  { name: "Jago", icon: "/icons/Budgets/Jago.png" },
-  { name: "Tapcash", icon: "/icons/Budgets/Tapcash.png" },
-  { name: "Krom", icon: "/icons/Budgets/Krom.png" },
-  { name: "Dana", icon: "/icons/Budgets/Dana.png" },
-  { name: "Gopay", icon: "/icons/Budgets/Gopay.png" },
-  { name: "Liabilities", icon: "/icons/Budgets/Liabilities.png" },
-  { name: "Saham", icon: "/icons/Budgets/Saham.png" },
-  { name: "BCA", icon: "/icons/Budgets/BNI.png" },
-]
 
 const SEGMENT_COLORS_DARK = [
   "#FFFFFF", "#E4E4E7", "#D4D4D8", "#A1A1AA", "#8E8E93",
@@ -52,19 +34,31 @@ export function BalanceCard() {
   const SEGMENT_COLORS = isDark ? SEGMENT_COLORS_DARK : SEGMENT_COLORS_LIGHT
 
   const { items, accounts, totalAssets, isEmpty } = useMemo(() => {
-    // 1. Initialize Map with all standard portfolio accounts
+    // 1. Initialize Map strictly from user's active wallets
     const walletMap = new Map<string, { id: string; name: string; icon: string; balance: number; inflow: number; outflow: number }>()
-
-    DEFAULT_PORTFOLIO_ACCOUNTS.forEach(acc => {
-      walletMap.set(acc.name.toLowerCase(), {
-        id: `wallet-${acc.name.toLowerCase()}`,
-        name: acc.name,
-        icon: acc.icon,
+    wallets.forEach(w => {
+      const key = w.name.toLowerCase()
+      const resolvedIcon = (!w.icon || w.icon === "/icons/wallet.png") ? getWalletIcon(w.name) : w.icon
+      walletMap.set(key, {
+        id: w.id,
+        name: w.name,
+        icon: resolvedIcon,
         balance: 0,
         inflow: 0,
         outflow: 0,
       })
     })
+
+    if (walletMap.size === 0) {
+      walletMap.set("cash", {
+        id: "wallet-cash",
+        name: "Cash",
+        icon: "/icons/Budgets/Cash.png",
+        balance: 0,
+        inflow: 0,
+        outflow: 0,
+      })
+    }
 
     // If custom user wallets exist, update icons / IDs
     wallets.forEach(w => {
@@ -94,7 +88,7 @@ export function BalanceCard() {
 
     // Helper to get or create wallet entry
     const getWallet = (nameOrId: string | null | undefined): { id: string; name: string; icon: string; balance: number; inflow: number; outflow: number } => {
-      if (!nameOrId) return walletMap.get("cash")!
+      if (!nameOrId) return walletMap.get("cash") || Array.from(walletMap.values())[0]
       const key = nameOrId.toLowerCase()
       if (walletMap.has(key)) return walletMap.get(key)!
       const byId = wallets.find(w => w.id === nameOrId)
@@ -299,7 +293,7 @@ export function BalanceCard() {
           </div>
 
           {/* Active Accounts 2-Column Compact Grid */}
-          <div className="space-y-1.5 max-h-[55vh] overflow-y-auto pr-1">
+          <div className="space-y-1.5 max-h-[75vh] overflow-y-auto pr-1 pb-16">
             <div className="grid grid-cols-2 gap-2">
               {positiveAccounts.map(acc => (
                 <div

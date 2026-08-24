@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react"
+﻿const fs = require("fs");
+
+const appCode = `import { useEffect, useState } from "react"
 import { Routes, Route } from "react-router-dom"
 import { BottomTabBar } from "./components/layout/BottomTabBar"
 import { HomePage } from "./pages/HomePage"
@@ -78,3 +80,7 @@ export default function App() {
   if (!session) return <LoginPage />
   return <AppShell />
 }
+`;
+
+fs.writeFileSync("src/App.tsx", appCode, "utf8");
+console.log("Updated App.tsx with InitialSyncScreen");

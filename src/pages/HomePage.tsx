@@ -1,3 +1,9 @@
+import { usePullToRefresh } from "../hooks/usePullToRefresh"
+import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator"
+import { useGoals } from "../hooks/useGoals"
+import { useWallets } from "../hooks/useWallets"
+import { useBills } from "../hooks/useBills"
+import { CalendarDays, Target } from "lucide-react"
 import { triggerHaptic } from "../lib/haptics"
 
 function formatNetAmount(net: number): string {
@@ -79,8 +85,22 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
 
   const upcomingBills = useUpcomingBills()
   const { budgetTarget } = useBudgetTarget()
-  const { data: allTxs = [] } = useAllTransactions()
-  const { data: categories = [] } = useCategories()
+  const { data: allTxs = [], refetch: refetchAllTxs } = useAllTransactions()
+  const { data: categories = [], refetch: refetchCategories } = useCategories()
+  const { refetch: refetchWallets } = useWallets()
+  const { refetch: refetchBills } = useBills()
+  const { goals } = useGoals()
+
+  const { pullDistance, isRefreshing, threshold } = usePullToRefresh({
+    onRefresh: async () => {
+      await Promise.all([
+        refetchAllTxs(),
+        refetchWallets(),
+        refetchCategories(),
+        refetchBills(),
+      ])
+    }
+  })
 
   // 1. Total Balance and Apple Stocks Layout Data Calculation
   const assetData = useMemo(() => {
@@ -338,7 +358,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   }
 
   return (
-    <div className="px-5 pt-6 space-y-4 pb-32">
+    <div className="px-5 pt-6 space-y-4 pb-32 relative">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} threshold={threshold} />
       {/* HEADER */}
       <header className="flex justify-between items-center">
         <div className="flex items-center gap-3">
@@ -709,7 +730,61 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         </div>
       </section>
 
-        {/* 6. UPCOMING BILLS (MOVED ABOVE CALENDAR) */}
+        {/* 5.5 FINANCIAL GOALS */}
+      {goals.length > 0 && (
+        <section className="mb-6">
+          <div className="flex justify-between items-center px-1 mb-2.5">
+            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>
+              Financial Goals
+            </span>
+            <span className="text-[11px] font-bold" style={{ color: "var(--text-tertiary)" }}>
+              {goals.length} Target
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {goals.map((g: any) => {
+              const pct = Math.min(100, Math.round((g.currentAmount / (g.targetAmount || 1)) * 100))
+              return (
+                <div
+                  key={g.id}
+                  className="p-4 rounded-[22px] glass-surface"
+                  style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[15px]"
+                        style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+                        <Target size={16} style={{ color: "var(--text-primary)" }} />
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-bold leading-tight" style={{ color: "var(--text-primary)" }}>{g.title}</p>
+                        <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                          {formatRupiah(g.currentAmount)} dari {formatRupiah(g.targetAmount)}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="amount text-[12px] font-extrabold px-2 py-0.5 rounded-full"
+                      style={{ background: "var(--glass-fill)", color: "var(--text-primary)", border: "1px solid var(--glass-border)" }}>
+                      {pct}%
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="h-2 w-full rounded-full overflow-hidden mt-2" style={{ background: "rgba(255,255,255,0.08)" }}>
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${pct}%`, background: "var(--text-primary)" }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* 6. UPCOMING BILLS (MOVED ABOVE CALENDAR) */}
       {upcomingBills.length > 0 && (
         <section className="mb-6">
           <span className="text-[11px] font-bold uppercase tracking-widest px-1 mb-2 block" style={{ color: "var(--text-tertiary)" }}>
@@ -736,6 +811,22 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                 </div>
               )
             })}
+            
+            {/* Total Kebutuhan Tagihan */}
+            <div
+              className="p-3.5 rounded-2xl glass-surface flex items-center justify-between mt-2.5"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}>
+                  <CalendarDays size={13} />
+                </div>
+                <span className="text-[12px] font-bold" style={{ color: "var(--text-tertiary)" }}>Total Kebutuhan Tagihan</span>
+              </div>
+              <span className="amount text-[14px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+                {formatRupiah(upcomingBills.reduce((s: number, b: any) => s + Number(b.amount || 0), 0))}
+              </span>
+            </div>
           </div>
         </section>
       )}
