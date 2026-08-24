@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react"
+import { useState, useRef } from "react"
 import { triggerHaptic } from "../lib/haptics"
 import { GoalDetailModal } from "../components/goals/GoalDetailModal"
 import {
@@ -20,9 +20,9 @@ import { BottomSheet } from "../components/ui/BottomSheet"
 import { GlassDatePicker } from "../components/ui/GlassDatePicker"
 import { format } from "date-fns"
 import { supabase } from "../lib/supabase"
-import { useAllTransactions, useAddTransaction } from "../hooks/useTransactions"
+import { useAddTransaction } from "../hooks/useTransactions"
+import { useWalletBalances } from "../hooks/useWalletBalances"
 import { IconRenderer } from "../components/ui/IconRenderer"
-import { resolveFamfinaWallet } from "../lib/famfinaResolver"
 import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet"
 import { requestNotificationPermission } from "../lib/notifications"
 
@@ -32,7 +32,6 @@ export function SettingsPage() {
   const { data: wallets = [] } = useWallets()
   const { goals, addGoal, updateGoal, deleteGoal, depositToGoal } = useGoals()
   const [selectedGoalSetting, setSelectedGoalSetting] = useState<any | null>(null)
-  const { data: allTxs = [] } = useAllTransactions()
   const { session } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { showToast } = useToast()
@@ -50,29 +49,8 @@ export function SettingsPage() {
   const deleteWallet = useDeleteWallet()
   const addTx = useAddTransaction()
 
-  // Live Wallet Balances
-  const walletBalances = useMemo(() => {
-    const balances: Record<string, number> = {}
-    wallets.forEach(w => { balances[w.id] = 0 })
-
-    allTxs.forEach(tx => {
-      const amt = Number(tx.amount || 0)
-      if (amt <= 0) return
-      const { from, to } = resolveFamfinaWallet(tx, wallets)
-      const fromW = wallets.find(w => w.name.toLowerCase() === from.toLowerCase())
-      const toW = wallets.find(w => w.name.toLowerCase() === to.toLowerCase())
-
-      if (tx.type === "income") {
-        if (fromW) balances[fromW.id] = (balances[fromW.id] || 0) + amt
-      } else if (tx.type === "expense") {
-        if (fromW) balances[fromW.id] = (balances[fromW.id] || 0) - amt
-      } else if (tx.type === "transfer") {
-        if (fromW) balances[fromW.id] = (balances[fromW.id] || 0) - amt
-        if (toW) balances[toW.id] = (balances[toW.id] || 0) + amt
-      }
-    })
-    return balances
-  }, [wallets, allTxs])
+  // Centralized Live Wallet Balances (100% synchronized with Portfolio Breakdown)
+  const { balancesById, balancesByName, allTxs } = useWalletBalances()
 
   // Editing states
   const [editingBill, setEditingBill] = useState<any>(null)
@@ -786,7 +764,7 @@ export function SettingsPage() {
           </div>
           <div className="space-y-2 overflow-y-auto pr-0.5">
             {wallets.map(w => {
-              const bal = walletBalances[w.id] || 0
+              const bal = balancesById[w.id] ?? balancesByName[w.name.toLowerCase()] ?? 0
               return (
                 <div key={w.id} className="p-3 rounded-2xl flex items-center gap-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
@@ -869,7 +847,7 @@ export function SettingsPage() {
                 {formatRupiah(Number(correctTargetBalance || 0) - correctWallet.currentBalance)}
                 {" "}
                 <span className="text-[10px] font-bold uppercase">
-                  {(Number(correctTargetBalance || 0) - correctWallet.currentBalance) > 0 ? "(Inflow)" : (Number(correctTargetBalance || 0) - correctWallet.currentBalance) < 0 ? "(Outflow)" : "(No Change)"}
+                  {(Number(correctTargetBalance || 0) - correctWallet.currentBalance) > 0 ? "(+)" : (Number(correctTargetBalance || 0) - correctWallet.currentBalance) < 0 ? "(-)" : "(No Change)"}
                 </span>
               </span>
             </div>
@@ -901,10 +879,10 @@ export function SettingsPage() {
               }
 
               addTx.mutate({
-                type: diff > 0 ? "income" : "expense",
+                type: "adjustment",
                 amount: Math.abs(diff),
                 wallet_id: correctWallet.id,
-                note: correctNote.trim() || `Balance Adjustment: ${correctWallet.name}`,
+                note: correctNote.trim() || `Balance Adjustment (${diff > 0 ? "+" : "-"}) ${correctWallet.name}`,
                 occurred_on: format(new Date(), "yyyy-MM-dd"),
                 created_at: new Date().toISOString(),
                 category_id: null

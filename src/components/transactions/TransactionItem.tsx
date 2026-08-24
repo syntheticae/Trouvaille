@@ -22,7 +22,8 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
 }) => {
   const isIncome = tx.type === "income"
   const isTransfer = tx.type === "transfer"
-  const isAdjustment = tx.note?.toLowerCase().includes("balance adjustment") || tx.note?.toLowerCase().includes("koreksi saldo")
+  const isAdjustment = tx.type === "adjustment" || tx.note?.toLowerCase().includes("balance adjustment") || tx.note?.toLowerCase().includes("koreksi saldo")
+  const isPositiveAdjustment = isAdjustment && (tx.note?.includes("(+)") || tx.type === "income")
   const timeLabel = tx.created_at ? format(new Date(tx.created_at), "HH:mm") : ""
 
   return (
@@ -78,8 +79,16 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
 
       <div className="text-right shrink-0">
         <div className="amount font-extrabold text-[14px]"
-          style={{ color: isTransfer ? "var(--text-primary)" : isIncome ? "var(--accent)" : "var(--text-primary)" }}>
-          {isTransfer ? "" : isIncome ? "+" : "-"}{formatRupiah(Number(tx.amount))}
+          style={{
+            color: isAdjustment
+              ? (isPositiveAdjustment ? "var(--accent)" : "var(--text-primary)")
+              : isTransfer
+              ? "var(--text-primary)"
+              : isIncome
+              ? "var(--accent)"
+              : "var(--text-primary)"
+          }}>
+          {isTransfer ? "" : (isAdjustment ? (isPositiveAdjustment ? "+" : "-") : (isIncome ? "+" : "-"))}{formatRupiah(Number(tx.amount))}
         </div>
         <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
           {isAdjustment ? "Adjustment" : isTransfer ? "Transfer" : isIncome ? "Inflow" : "Outflow"}

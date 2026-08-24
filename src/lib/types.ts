@@ -1,4 +1,4 @@
-﻿export type TransactionType = "income" | "expense" | "transfer"
+export type TransactionType = "income" | "expense" | "transfer" | "adjustment"
 export type RepeatRule = "none" | "weekly" | "monthly" | "yearly"
 
 export interface Category {

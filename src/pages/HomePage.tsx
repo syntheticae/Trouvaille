@@ -37,6 +37,7 @@ import { NotificationSheet } from "../components/ui/NotificationSheet"
 import { useAuth } from "../contexts/AuthContext"
 import { useCategories } from "../hooks/useCategories"
 import { useBudgetTarget } from "../hooks/useBudgetTarget"
+import { useWalletBalances } from "../hooks/useWalletBalances"
 
 interface HomePageProps {
   onOpenAdd?: () => void
@@ -104,13 +105,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
     }
   })
 
+  const { totalAssets } = useWalletBalances()
+
   // 1. Total Balance and Apple Stocks Layout Data Calculation
   const assetData = useMemo(() => {
-    let currentBalance = 0
-    allTxs.forEach(tx => {
-      if (tx.type === "income") currentBalance += Number(tx.amount || 0)
-      else if (tx.type === "expense") currentBalance -= Number(tx.amount || 0)
-    })
+    let currentBalance = totalAssets
 
     const chartData: { label: string; balance: number }[] = []
     let diff = 0
@@ -124,10 +123,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       const todayTxs = allTxs.filter(t => t.occurred_on === todayStr)
       const todayIn = todayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
       const todayOut = todayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
-      const startBalance = currentBalance - (todayIn - todayOut)
+      const todayAdj = todayTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + (t.note?.includes("(-)") ? -Number(t.amount || 0) : Number(t.amount || 0)), 0)
+      const startBalance = currentBalance - (todayIn - todayOut + todayAdj)
 
       chartData.push({ label: "Open", balance: startBalance })
-      chartData.push({ label: "Mid", balance: startBalance + todayIn * 0.5 - todayOut * 0.5 })
+      chartData.push({ label: "Mid", balance: startBalance + (todayIn - todayOut + todayAdj) * 0.5 })
       chartData.push({ label: "Now", balance: currentBalance })
 
       diff = currentBalance - startBalance
@@ -143,11 +143,12 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         const dayTxs = allTxs.filter(t => t.occurred_on === dStr)
         const dayIn = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
         const dayOut = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const dayAdj = dayTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + (t.note?.includes("(-)") ? -Number(t.amount || 0) : Number(t.amount || 0)), 0)
 
         chartData.unshift({ label: format(d, "d"), balance: temp })
         periodInflow += dayIn
         periodOutflow += dayOut
-        temp = temp - (dayIn - dayOut)
+        temp = temp - (dayIn - dayOut + dayAdj)
       }
       const startBal = chartData[0]?.balance ?? 0
       diff = currentBalance - startBal
@@ -161,13 +162,14 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         const dayTxs = allTxs.filter(t => t.occurred_on === dStr)
         const dayIn = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
         const dayOut = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const dayAdj = dayTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + (t.note?.includes("(-)") ? -Number(t.amount || 0) : Number(t.amount || 0)), 0)
 
         if (i % 5 === 0 || i === 0 || i === 29) {
           chartData.unshift({ label: format(d, "d MMM"), balance: temp })
         }
         periodInflow += dayIn
         periodOutflow += dayOut
-        temp = temp - (dayIn - dayOut)
+        temp = temp - (dayIn - dayOut + dayAdj)
       }
       const startBal = temp
       diff = currentBalance - startBal
@@ -184,13 +186,14 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         })
         const wIn = weekTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
         const wOut = weekTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const wAdj = weekTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + (t.note?.includes("(-)") ? -Number(t.amount || 0) : Number(t.amount || 0)), 0)
 
         if (w % 4 === 0 || w === 0) {
           chartData.unshift({ label: format(d, "MMM d"), balance: temp })
         }
         periodInflow += wIn
         periodOutflow += wOut
-        temp = temp - (wIn - wOut)
+        temp = temp - (wIn - wOut + wAdj)
       }
       const startBal = temp
       diff = currentBalance - startBal

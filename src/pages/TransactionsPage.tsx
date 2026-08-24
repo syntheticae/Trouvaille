@@ -35,7 +35,7 @@ const GlassTooltip = ({ active, payload, label }: any) => {
   )
 }
 
-type FilterType = "all" | "expense" | "income" | "transfer"
+type FilterType = "all" | "expense" | "income" | "transfer" | "adjustment"
 type TimeRangeType = "this_month" | "last_month" | "last_30" | "custom_month" | "all"
 
 const MONTHS_LIST = [
@@ -103,7 +103,7 @@ export function TransactionsPage() {
   // 1. Dynamic Multi-Timeframe Chart Data (This Month, Last Month, Last 30 Days, Custom Month, All Time)
   const dynamicChartData = useMemo(() => {
     const now = new Date()
-    let points: { dateStr: string; label: string; income: number; expense: number; transfer: number; activeValue: number }[] = []
+    let points: { dateStr: string; label: string; income: number; expense: number; transfer: number; adjustment: number; activeValue: number }[] = []
 
     if (timeRange === "this_month" || timeRange === "last_month" || timeRange === "custom_month") {
       let targetMonthDate = now
@@ -127,13 +127,15 @@ export function TransactionsPage() {
         const income = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
         const expense = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
         const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const adjustment = dayTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + Number(t.amount || 0), 0)
 
-        let activeValue = expense + income
+        let activeValue = expense + income + transfer + adjustment
         if (filter === "income") activeValue = income
         else if (filter === "expense") activeValue = expense
         else if (filter === "transfer") activeValue = transfer
+        else if (filter === "adjustment") activeValue = adjustment
 
-        return { dateStr, label, income, expense, transfer, activeValue }
+        return { dateStr, label, income, expense, transfer, adjustment, activeValue }
       })
     } else if (timeRange === "last_30") {
       for (let i = 29; i >= 0; i--) {
@@ -144,13 +146,15 @@ export function TransactionsPage() {
         const income = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
         const expense = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
         const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const adjustment = dayTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + Number(t.amount || 0), 0)
 
-        let activeValue = expense + income
+        let activeValue = expense + income + transfer + adjustment
         if (filter === "income") activeValue = income
         else if (filter === "expense") activeValue = expense
         else if (filter === "transfer") activeValue = transfer
+        else if (filter === "adjustment") activeValue = adjustment
 
-        points.push({ dateStr, label, income, expense, transfer, activeValue })
+        points.push({ dateStr, label, income, expense, transfer, adjustment, activeValue })
       }
     } else if (timeRange === "all") {
       // Past 12 months trend
@@ -170,13 +174,15 @@ export function TransactionsPage() {
         const income = mTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
         const expense = mTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
         const transfer = mTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const adjustment = mTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + Number(t.amount || 0), 0)
 
-        let activeValue = expense + income
+        let activeValue = expense + income + transfer + adjustment
         if (filter === "income") activeValue = income
         else if (filter === "expense") activeValue = expense
         else if (filter === "transfer") activeValue = transfer
+        else if (filter === "adjustment") activeValue = adjustment
 
-        points.push({ dateStr, label, income, expense, transfer, activeValue })
+        points.push({ dateStr, label, income, expense, transfer, adjustment, activeValue })
       }
     }
 
@@ -283,6 +289,7 @@ export function TransactionsPage() {
     { key: "expense", label: "Outflow" },
     { key: "income", label: "Inflow" },
     { key: "transfer", label: "Transfer" },
+    { key: "adjustment", label: "Adjustment" },
   ]
 
   const maxBar = Math.max(...dynamicChartData.map(d => d.activeValue), 1)
@@ -314,6 +321,8 @@ export function TransactionsPage() {
                 ? `${selectedMonthLabel} Outflow`
                 : filter === "transfer"
                 ? `${selectedMonthLabel} Transfers`
+                : filter === "adjustment"
+                ? `${selectedMonthLabel} Adjustments`
                 : `${selectedMonthLabel} Activity`}
             </p>
             <p className="text-[32px] font-extrabold tracking-tight leading-tight amount" style={{ color: "var(--text-primary)" }}>
