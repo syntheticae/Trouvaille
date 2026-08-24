@@ -122,12 +122,17 @@ jobs:
         if: github.ref == 'refs/heads/main'
         with:
           tag_name: latest
-          name: "Trouvaille iOS Unsigned IPA (AltStore)"
+          name: "Trouvaille iOS Unsigned IPA (Latest Build)"
+          draft: false
+          prerelease: false
+          overwrite: true
+          make_latest: true
           body: |
             ### 📱 Trouvaille iOS Native App (.ipa)
-            Direct download for AltStore sideloading:
+            **Commit**: `${{ github.sha }}`
+            Direct download for AltStore / Sideloadly / LiveContainer:
             - Tap **Trouvaille.ipa** below in Safari on your iPhone.
-            - Open in **AltStore** to install and re-sign with your free Apple ID.
+            - Open in **AltStore** to install and re-sign with your Apple ID.
           files: |
             Trouvaille.ipa
             Trouvaille-unsigned.ipa
