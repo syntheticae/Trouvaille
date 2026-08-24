@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react"
+﻿const fs = require("fs");
+
+const syncScreenCode = `import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Database } from "lucide-react"
 import { preloadAllIcons } from "../../lib/assetPreloader"
@@ -35,7 +37,7 @@ export function InitialSyncScreen({ onComplete, totalCount }: InitialSyncScreenP
   useEffect(() => {
     if (totalCount && totalCount > 0) {
       setProgress(100)
-      setStatusText(`${totalCount} transaksi & semua ikon siap!`)
+      setStatusText(\`\${totalCount} transaksi & semua ikon siap!\`)
       const t = setTimeout(() => {
         onComplete?.()
       }, 300)
@@ -98,11 +100,11 @@ export function InitialSyncScreen({ onComplete, totalCount }: InitialSyncScreenP
           <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--glass-fill)" }}>
             <motion.div
               className="h-full rounded-full transition-all duration-200"
-              style={{ width: `${progress}%`, background: "var(--text-primary)" }}
+              style={{ width: \`\${progress}%\`, background: "var(--text-primary)" }}
             />
           </div>
           <div className="flex justify-between items-center text-[10px] font-bold px-0.5" style={{ color: "var(--text-tertiary)" }}>
-            <span>{totalCount ? `${totalCount} transaksi` : "Mengunduh data..."}</span>
+            <span>{totalCount ? \`\${totalCount} transaksi\` : "Mengunduh data..."}</span>
             <span>{progress}%</span>
           </div>
         </div>
@@ -110,3 +112,7 @@ export function InitialSyncScreen({ onComplete, totalCount }: InitialSyncScreenP
     </div>
   )
 }
+`;
+
+fs.writeFileSync("src/components/ui/InitialSyncScreen.tsx", syncScreenCode, "utf8");
+console.log("Updated InitialSyncScreen.tsx with full icon preloading & sync");
