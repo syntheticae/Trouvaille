@@ -202,19 +202,19 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     if (transaction) {
       updateTx.mutate({ id: transaction.id, ...payload }, {
         onSuccess: () => {
-          triggerSuccessHaptic(); showToast("Transaksi diperbarui", "update", () => {})
+          triggerSuccessHaptic(); showToast("Transaction updated", "update", () => {})
         },
         onError: () => {
-          showToast("Gagal memperbarui transaksi", "delete", () => {})
+          showToast("Failed to update transaction", "delete", () => {})
         }
       })
     } else {
       addTx.mutate(payload, {
         onSuccess: () => {
-          showToast("Transaksi berhasil disimpan", "add", () => {})
+          showToast("Transaction saved", "add", () => {})
         },
         onError: () => {
-          showToast("Gagal menyimpan transaksi", "delete", () => {})
+          showToast("Failed to save transaction", "delete", () => {})
         }
       })
     }
@@ -464,9 +464,9 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
               border: "1px solid var(--dock-border)"
             }}
           >
-            {isSaving ? "Menyimpan..." : (transaction ? "Update Transaction" : "Save Transaction")}
+            {isSaving ? "Saving..." : (transaction ? "Update Transaction" : "Save Transaction")}
           </button>
-                </div>
+        </div>
       </div>
 
       {/* More Categories Glass Sheet (4-Columns Fullscreen Layout) */}
@@ -475,10 +475,10 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
           <div className="flex items-center justify-between mb-4 shrink-0">
             <div>
               <h3 className="font-extrabold text-[18px] leading-tight" style={{ color: "var(--text-primary)" }}>
-                Pilih Kategori
+                Select Category
               </h3>
               <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                {categories.length} kategori tersedia
+                {categories.length} categories available
               </p>
             </div>
             <button
@@ -486,11 +486,11 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
               className="text-[12px] font-extrabold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform"
               style={{ background: "var(--glass-fill)", color: "var(--text-primary)", border: "1px solid var(--glass-border)" }}
             >
-              Tutup
+              Close
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-x-2 gap-y-3 overflow-y-auto pr-1 flex-1 pb-16">
+          <div className="grid grid-cols-4 gap-x-2 gap-y-3 content-start overflow-y-auto pr-1 flex-1 pb-16">
             {categories.map(cat => {
               const isSelected = categoryId === cat.id
               return (
@@ -525,10 +525,10 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
           <div className="flex items-center justify-between mb-4 shrink-0">
             <div>
               <h3 className="font-extrabold text-[18px] leading-tight" style={{ color: "var(--text-primary)" }}>
-                Pilih Akun / Dompet
+                Select Account / Wallet
               </h3>
               <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                {walletTarget === "from" ? "Akun Asal" : "Akun Tujuan"} · {wallets.length} akun
+                {walletTarget === "from" ? "Source Account" : "Destination Account"} · {wallets.length} accounts
               </p>
             </div>
             <button
@@ -536,11 +536,11 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
               className="text-[12px] font-extrabold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform"
               style={{ background: "var(--glass-fill)", color: "var(--text-primary)", border: "1px solid var(--glass-border)" }}
             >
-              Tutup
+              Close
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 overflow-y-auto pr-1 flex-1 pb-16">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 content-start overflow-y-auto pr-1 flex-1 pb-16">
             {wallets.map(w => {
               const isSelected = (walletTarget === "from" ? walletId : toWalletId) === w.id
               return (
@@ -585,8 +585,8 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
       {/* Glass Time Picker Sheet */}
       <BottomSheet isOpen={timeOpen} onClose={() => setTimeOpen(false)}>
         <div className="p-5 pb-12 flex flex-col items-center">
-          <h3 className="font-extrabold text-lg mb-1" style={{ color: "var(--text-primary)" }}>Pilih Jam Transaksi</h3>
-          <p className="text-[12px] font-medium mb-5" style={{ color: "var(--text-tertiary)" }}>Waktu pencatatan transaksi</p>
+          <h3 className="font-extrabold text-lg mb-1" style={{ color: "var(--text-primary)" }}>Select Time</h3>
+          <p className="text-[12px] font-medium mb-5" style={{ color: "var(--text-tertiary)" }}>Transaction timestamp</p>
           
           <div className="p-4 rounded-3xl w-full max-w-[280px] flex items-center justify-center gap-3 glass-surface"
             style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
@@ -601,7 +601,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
 
           {/* Quick preset buttons */}
           <div className="flex gap-2 mt-5">
-            {["Pagi (08:00)", "Siang (12:30)", "Sore (17:00)", "Malam (20:00)"].map(preset => {
+            {["Morning (08:00)", "Noon (12:30)", "Evening (17:00)", "Night (20:00)"].map(preset => {
               const t = preset.match(/\((.*?)\)/)?.[1] || "12:00"
               return (
                 <button
@@ -621,7 +621,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
             className="w-full max-w-[280px] py-3 mt-6 rounded-2xl font-bold text-[14px] active:scale-95 transition-all"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
-            Selesai
+            Done
           </button>
         </div>
       </BottomSheet>

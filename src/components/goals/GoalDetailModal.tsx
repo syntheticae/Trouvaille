@@ -48,7 +48,7 @@ export function GoalDetailModal({
   const handleQuickDeposit = (add: number) => {
     onDeposit(goal.id, add)
     triggerHaptic("medium")
-    showToast(`+${formatRupiah(add)} ditambahkan ke ${goal.title}`, "add", () => {})
+    showToast(`+${formatRupiah(add)} added to ${goal.title}`, "add", () => {})
     onClose()
   }
 
@@ -57,7 +57,7 @@ export function GoalDetailModal({
     if (amt <= 0) return
     onDeposit(goal.id, amt)
     triggerHaptic("medium")
-    showToast(`+${formatRupiah(amt)} ditambahkan ke ${goal.title}`, "add", () => {})
+    showToast(`+${formatRupiah(amt)} added to ${goal.title}`, "add", () => {})
     onClose()
   }
 
@@ -72,7 +72,7 @@ export function GoalDetailModal({
       currentAmount: current,
     })
     triggerHaptic("medium")
-    showToast("Target finansial diperbarui", "update", () => {})
+    showToast("Financial goal updated", "update", () => {})
     setIsEditing(false)
   }
 
@@ -93,7 +93,7 @@ export function GoalDetailModal({
                 {goal.title}
               </h3>
               <p className="text-[12px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                {progress >= 100 ? "🎉 Target Tercapai!" : `Tersisa ${formatRupiah(remaining)} lagi`}
+                {progress >= 100 ? "🎉 Goal Reached!" : `${formatRupiah(remaining)} remaining`}
               </p>
             </div>
           </div>
@@ -107,7 +107,7 @@ export function GoalDetailModal({
               border: "1px solid var(--glass-border)",
             }}
           >
-            {isEditing ? "Batal" : "Edit"}
+            {isEditing ? "Cancel" : "Edit"}
           </button>
         </div>
 
@@ -121,7 +121,7 @@ export function GoalDetailModal({
             >
               <div className="flex justify-between items-baseline">
                 <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                  Terkumpul
+                  Collected
                 </span>
                 <span className="text-[13px] font-extrabold" style={{ color: "var(--text-primary)" }}>
                   {progress}%
@@ -133,7 +133,7 @@ export function GoalDetailModal({
                   {formatRupiah(goal.currentAmount)}
                 </span>
                 <span className="text-[12px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
-                  dari {formatRupiah(goal.targetAmount)}
+                  of {formatRupiah(goal.targetAmount)}
                 </span>
               </div>
 
@@ -154,7 +154,7 @@ export function GoalDetailModal({
               <div className="flex items-center gap-1.5 px-1">
                 <TrendingUp size={13} style={{ color: "var(--text-tertiary)" }} />
                 <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                  Tambah Tabungan (Top Up)
+                  Add Funds (Top Up)
                 </span>
               </div>
 
@@ -171,7 +171,7 @@ export function GoalDetailModal({
                       color: "var(--text-primary)",
                     }}
                   >
-                    +{val >= 1000000 ? `${val / 1000000} Jt` : `${val / 1000} Rb`}
+                    +{val >= 1000000 ? `${val / 1000000}M` : `${val / 1000}k`}
                   </button>
                 ))}
               </div>
@@ -182,7 +182,7 @@ export function GoalDetailModal({
                   type="number"
                   value={depositAmount}
                   onChange={e => setDepositAmount(e.target.value)}
-                  placeholder="Nominal custom (Rp)"
+                  placeholder="Custom amount (Rp)"
                   className="flex-1 px-4 py-3 rounded-2xl text-[13px] outline-none font-semibold"
                   style={{
                     background: "var(--bg-elevated)",
@@ -196,7 +196,7 @@ export function GoalDetailModal({
                   className="px-5 py-3 rounded-2xl font-extrabold text-[13px] flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-40"
                   style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
                 >
-                  <Plus size={15} /> Simpan
+                  <Plus size={15} /> Save
                 </button>
               </div>
             </div>
@@ -206,7 +206,7 @@ export function GoalDetailModal({
           <div className="space-y-3 pt-1">
             <div>
               <label className="text-[11px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                Nama Target
+                Goal Name
               </label>
               <input
                 type="text"
@@ -219,7 +219,7 @@ export function GoalDetailModal({
 
             <div>
               <label className="text-[11px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                Target Total (Rp)
+                Target Amount (Rp)
               </label>
               <input
                 type="number"
@@ -232,7 +232,7 @@ export function GoalDetailModal({
 
             <div>
               <label className="text-[11px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                Saldo Tersimpan Saat Ini (Rp)
+                Current Saved Balance (Rp)
               </label>
               <input
                 type="number"
@@ -246,16 +246,16 @@ export function GoalDetailModal({
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => {
-                  if (confirm(`Hapus target "${goal.title}"?`)) {
+                  if (confirm(`Delete goal "${goal.title}"?`)) {
                     onDelete(goal.id)
                     triggerHaptic("medium")
-                    showToast("Target finansial dihapus", "delete", () => {})
+                    showToast("Financial goal deleted", "delete", () => {})
                     onClose()
                   }
                 }}
                 className="p-3.5 rounded-2xl flex items-center justify-center text-red-400 active:scale-95"
                 style={{ background: "rgba(239, 68, 68, 0.12)", border: "1px solid rgba(239, 68, 68, 0.25)" }}
-                title="Hapus Goal"
+                title="Delete Goal"
               >
                 <Trash2 size={16} />
               </button>
@@ -265,7 +265,7 @@ export function GoalDetailModal({
                 className="flex-1 py-3.5 rounded-2xl font-extrabold text-[14px] flex items-center justify-center gap-1.5 active:scale-95"
                 style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
               >
-                <CheckCircle2 size={16} /> Simpan Perubahan
+                <CheckCircle2 size={16} /> Save Changes
               </button>
             </div>
           </div>

@@ -547,7 +547,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
             {formatRupiah(Math.abs(netCashflow))}
           </div>
           <p className="text-[11px] font-semibold" style={{ color: "#71717A" }}>
-            {isPositiveCashflow ? "Surplus bulan ini" : "Defisit bulan ini"}
+            {isPositiveCashflow ? "Surplus this month" : "Deficit this month"}
           </p>
         </div>
 
@@ -560,7 +560,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
           <div className="amount text-[18px] font-extrabold leading-tight mb-0.5" style={{ color: "var(--text-primary)" }}>
             {formatRupiah(totalExpense)}
           </div>
-          <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Pengeluaran bulan ini</p>
+          <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Spending this month</p>
         </div>
 
         {/* Daily Average */}
@@ -572,7 +572,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
           <div className="amount text-[18px] font-extrabold mb-0.5" style={{ color: "var(--text-primary)" }}>
             {formatRupiah(dailyAverage)}
           </div>
-          <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Rata-rata {daysInMonth} hari</p>
+          <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Average of {daysInMonth} days</p>
         </div>
 
         {/* Inflow vs Outflow Ratio */}
@@ -596,7 +596,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
               : formatRupiah(totalIncome)}
           </div>
           <p className="text-[11px] font-semibold" style={{ color: "#71717A" }}>
-            {totalIncome >= totalExpense ? "Tersimpan bulan ini" : "Pemasukan bulan ini"}
+            {totalIncome >= totalExpense ? "Saved this month" : "Income this month"}
           </p>
         </div>
       </section>
@@ -606,7 +606,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         <section className="glass-surface p-4 rounded-[24px] mb-3">
           <div className="flex justify-between items-end mb-2">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>Batas Anggaran</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>Budget Limit</p>
               <p className="text-[14px] font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>{formatRupiah(totalExpense)}</p>
             </div>
             <div className="text-right">
@@ -763,7 +763,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                       <div>
                         <p className="text-[13px] font-bold leading-tight" style={{ color: "var(--text-primary)" }}>{g.title}</p>
                         <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                          {formatRupiah(g.currentAmount)} dari {formatRupiah(g.targetAmount)}
+                          {formatRupiah(g.currentAmount)} of {formatRupiah(g.targetAmount)}
                         </p>
                       </div>
                     </div>
@@ -824,7 +824,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                 <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}>
                   <CalendarDays size={13} />
                 </div>
-                <span className="text-[12px] font-bold" style={{ color: "var(--text-tertiary)" }}>Total Kebutuhan Tagihan</span>
+                <span className="text-[12px] font-bold" style={{ color: "var(--text-tertiary)" }}>Total Upcoming Bills</span>
               </div>
               <span className="amount text-[14px] font-extrabold" style={{ color: "var(--text-primary)" }}>
                 {formatRupiah(upcomingBills.reduce((s: number, b: any) => s + Number(b.amount || 0), 0))}

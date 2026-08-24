@@ -2,7 +2,7 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh"
 import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator"
 import { triggerHaptic } from "../lib/haptics"
 ﻿import { useState, useMemo, useEffect } from "react"
-import { Search, X, ArrowLeftRight, Calendar, Clock, ChevronDown, Archive, Wallet } from "lucide-react"
+import { Search, X, Calendar, ChevronDown, Archive, Wallet } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts"
 import { useAllTransactions } from "../hooks/useTransactions"
 import { useWallets } from "../hooks/useWallets"
@@ -13,6 +13,9 @@ import type { Transaction } from "../lib/types"
 import { formatRupiah, getDateLabel } from "../lib/utils"
 import { IconRenderer } from "../components/ui/IconRenderer"
 import { format, subDays, startOfMonth, endOfMonth, subMonths, isWithinInterval, parse } from "date-fns"
+import { GroupedVirtuoso } from "react-virtuoso"
+import { useDeferredRender } from "../hooks/useDeferredRender"
+import { TransactionItem } from "../components/transactions/TransactionItem"
 import { resolveFamfinaWallet } from "../lib/famfinaResolver"
 
 const GlassTooltip = ({ active, payload, label }: any) => {
@@ -63,7 +66,6 @@ export function TransactionsPage() {
   const [monthPickerOpen, setMonthPickerOpen] = useState(false)
   const [accountPickerOpen, setAccountPickerOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
-  const [visibleCount, setVisibleCount] = useState(25)
 
   const { data: allTxs = [], isLoading, refetch: refetchTxs } = useAllTransactions()
   const { data: wallets = [], refetch: refetchWallets } = useWallets()
@@ -80,6 +82,7 @@ export function TransactionsPage() {
   })
 
   const isDark = document.documentElement.getAttribute("data-theme") !== "light"
+  const shouldRenderHeavy = useDeferredRender(150) // Defer chart and list for 150ms
 
   // Debounce search by 150ms for snappy 120Hz typing
   useEffect(() => {
@@ -197,21 +200,21 @@ export function TransactionsPage() {
     return txs
   }, [allTxs, filter, selectedWalletName, debouncedSearch, timeRange, selectedCustomMonth, showArchived, wallets])
 
-  // 3. Paginated slice for instant 120Hz DOM rendering
-  const paginatedTxs = useMemo(() => {
-    return filteredTxs.slice(0, visibleCount)
-  }, [filteredTxs, visibleCount])
-
-  // 4. Group by date
-  const grouped = useMemo(() => {
+  // 4. Group by date using all filteredTxs
+  const { groupKeys, groupedTxs, groupCounts, flatTxs } = useMemo(() => {
     const g: Record<string, Transaction[]> = {}
-    paginatedTxs.forEach(tx => {
+    filteredTxs.forEach(tx => {
       const dateKey = tx.occurred_on || "Unknown"
       if (!g[dateKey]) g[dateKey] = []
       g[dateKey].push(tx)
     })
-    return g
-  }, [paginatedTxs])
+    
+    const keys = Object.keys(g)
+    const counts = keys.map(k => g[k].length)
+    const flat = keys.flatMap(k => g[k])
+
+    return { groupKeys: keys, groupedTxs: g, groupCounts: counts, flatTxs: flat }
+  }, [filteredTxs])
 
   const filterTabs: { key: FilterType; label: string }[] = [
     { key: "all", label: "All" },
@@ -270,53 +273,61 @@ export function TransactionsPage() {
         </div>
 
         {/* 7-DAY RADIANT GRADIENT BAR CHART */}
-        <div className="h-[95px] w-full mb-3.5">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={dynamicWeeklyData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="activeBarGradDark" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#D4D4D8" stopOpacity={0.9} />
-                </linearGradient>
-                <linearGradient id="inactiveBarGradDark" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.65} />
-                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.18} />
-                </linearGradient>
-                <linearGradient id="activeBarGradLight" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#18181B" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#3F3F46" stopOpacity={0.85} />
-                </linearGradient>
-                <linearGradient id="inactiveBarGradLight" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#18181B" stopOpacity={0.50} />
-                  <stop offset="100%" stopColor="#18181B" stopOpacity={0.12} />
-                </linearGradient>
-              </defs>
-              <Tooltip content={<GlassTooltip />} cursor={{ fill: "transparent" }} />
-              <XAxis
-                dataKey="label"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "var(--text-tertiary)", fontSize: 10, fontWeight: 700 }}
-              />
-              <YAxis hide domain={[0, maxBar * 1.15]} />
-              <Bar dataKey="activeValue" radius={[6, 6, 6, 6]} maxBarSize={30}>
-                {dynamicWeeklyData.map((_, index) => {
-                  const isCurrentDay = index === dynamicWeeklyData.length - 1
-                  const fillId = isDark
-                    ? (isCurrentDay ? "url(#activeBarGradDark)" : "url(#inactiveBarGradDark)")
-                    : (isCurrentDay ? "url(#activeBarGradLight)" : "url(#inactiveBarGradLight)")
+        <div className="h-[95px] w-full mb-3.5 flex items-end">
+          {!shouldRenderHeavy ? (
+            <div className="w-full flex justify-around items-end h-full px-2 pb-5">
+              {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                <div key={i} className="w-8 rounded-md bg-white/5 animate-pulse" style={{ height: `${Math.max(20, Math.random() * 80)}%` }} />
+              ))}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dynamicWeeklyData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="activeBarGradDark" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#D4D4D8" stopOpacity={0.9} />
+                  </linearGradient>
+                  <linearGradient id="inactiveBarGradDark" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.65} />
+                    <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.18} />
+                  </linearGradient>
+                  <linearGradient id="activeBarGradLight" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#18181B" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#3F3F46" stopOpacity={0.85} />
+                  </linearGradient>
+                  <linearGradient id="inactiveBarGradLight" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#18181B" stopOpacity={0.50} />
+                    <stop offset="100%" stopColor="#18181B" stopOpacity={0.12} />
+                  </linearGradient>
+                </defs>
+                <Tooltip content={<GlassTooltip />} cursor={{ fill: "transparent" }} />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--text-tertiary)", fontSize: 10, fontWeight: 700 }}
+                />
+                <YAxis hide domain={[0, maxBar * 1.15]} />
+                <Bar dataKey="activeValue" radius={[6, 6, 6, 6]} maxBarSize={30}>
+                  {dynamicWeeklyData.map((_, index) => {
+                    const isCurrentDay = index === dynamicWeeklyData.length - 1
+                    const fillId = isDark
+                      ? (isCurrentDay ? "url(#activeBarGradDark)" : "url(#inactiveBarGradDark)")
+                      : (isCurrentDay ? "url(#activeBarGradLight)" : "url(#inactiveBarGradLight)")
 
-                  return (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={fillId}
-                      style={{ transition: "fill 0.3s ease" }}
-                    />
-                  )
-                })}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                    return (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={fillId}
+                        style={{ transition: "fill 0.3s ease" }}
+                      />
+                    )
+                  })}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Full-Width Search Bar with Inline Account Filter */}
@@ -385,13 +396,13 @@ export function TransactionsPage() {
 
       {/* ====== TRANSACTION LIST ====== */}
       <div className="px-5 pb-36 space-y-5">
-        {isLoading ? (
+        {isLoading || !shouldRenderHeavy ? (
           <div className="space-y-3 pt-2">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className="h-16 rounded-[22px] animate-pulse" style={{ background: "var(--bg-elevated)" }} />
             ))}
           </div>
-        ) : Object.keys(grouped).length === 0 ? (
+        ) : groupKeys.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
               {search ? "No matching transactions found" : "No transactions recorded for this period"}
@@ -401,17 +412,19 @@ export function TransactionsPage() {
             </p>
           </div>
         ) : (
-          Object.entries(grouped).map(([dateKey, txs]) => {
-            const dayTotal = txs.reduce((s, t) => {
-              if (t.type === "income") return s + Number(t.amount)
-              if (t.type === "expense") return s - Number(t.amount)
-              return s
-            }, 0)
-
-            return (
-              <div key={dateKey} className="space-y-2">
-                {/* Date Header */}
-                <div className="flex justify-between items-center px-1">
+          <GroupedVirtuoso
+            useWindowScroll
+            groupCounts={groupCounts}
+            groupContent={index => {
+              const dateKey = groupKeys[index]
+              const txs = groupedTxs[dateKey]
+              const dayTotal = txs.reduce((s, t) => {
+                if (t.type === "income") return s + Number(t.amount)
+                if (t.type === "expense") return s - Number(t.amount)
+                return s
+              }, 0)
+              return (
+                <div className="flex justify-between items-center px-1 pb-2 pt-4 bg-[var(--bg-base)]">
                   <span className="text-[12px] font-extrabold" style={{ color: "var(--text-secondary)" }}>
                     {getDateLabel(dateKey)}
                   </span>
@@ -419,88 +432,24 @@ export function TransactionsPage() {
                     {dayTotal > 0 ? "+" : ""}{formatRupiah(dayTotal)}
                   </span>
                 </div>
-
-                {/* Items in Day */}
-                <div className="space-y-2">
-                  {txs.map(tx => {
-                    const isIncome = tx.type === "income"
-                    const isTransfer = tx.type === "transfer"
-                    const { from: fromWalletName, to: toWalletName } = resolveWalletNames(tx)
-                    const timeLabel = tx.created_at ? format(new Date(tx.created_at), "HH:mm") : ""
-
-                    return (
-                      <div
-                        key={tx.id}
-                        onClick={() => { setEditingTx(tx); setSheetOpen(true) }}
-                        className="p-3.5 rounded-[22px] flex items-center justify-between cursor-pointer active:scale-98 transition-transform"
-                        style={{
-                          background: "var(--bg-elevated)",
-                          border: "1px solid var(--glass-border)",
-                          boxShadow: "var(--shadow-card)"
-                        }}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-2xl flex items-center justify-center relative shrink-0"
-                            style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-                            {isTransfer ? (
-                              <ArrowLeftRight size={18} style={{ color: "var(--text-primary)" }} />
-                            ) : (
-                              <IconRenderer icon={tx.categories?.emoji || categories.find(c => c.id === tx.category_id)?.emoji || "/icons/lainnya.png"} size="w-6 h-6" />
-                            )}
-                            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shadow"
-                              style={{
-                                background: isTransfer ? "var(--text-primary)" : isIncome ? "var(--accent)" : "var(--bg-elevated)",
-                                color: isTransfer ? "var(--bg-base)" : isIncome ? "var(--accent-ink)" : "var(--text-tertiary)",
-                                border: "1.5px solid var(--bg-elevated)"
-                              }}>
-                              {isTransfer ? "⇄" : isIncome ? "+" : "-"}
-                            </div>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-[14px] leading-tight truncate" style={{ color: "var(--text-primary)" }}>
-                              {isTransfer ? `${fromWalletName} to ${toWalletName}` : (tx.categories?.name || categories.find(c => c.id === tx.category_id)?.name || "General")}
-                            </p>
-                            <div className="flex items-center gap-1.5 text-[11px] font-semibold mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
-                              {timeLabel && (
-                                <span className="flex items-center gap-0.5 font-bold amount">
-                                  <Clock size={10} />
-                                  {timeLabel} ·
-                                </span>
-                              )}
-                              <span className="truncate">{tx.note || (isTransfer ? "Transfer" : fromWalletName)}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="text-right shrink-0">
-                          <div className="amount font-extrabold text-[14px]"
-                            style={{ color: isTransfer ? "var(--text-primary)" : isIncome ? "var(--accent)" : "var(--text-primary)" }}>
-                            {isTransfer ? "" : isIncome ? "+" : "-"}{formatRupiah(Number(tx.amount))}
-                          </div>
-                          <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                            {isTransfer ? "Transfer" : isIncome ? "Inflow" : "Outflow"}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
+              )
+            }}
+            itemContent={index => {
+              const tx = flatTxs[index]
+              const { from, to } = resolveWalletNames(tx)
+              return (
+                <div className="pb-2">
+                  <TransactionItem
+                    tx={tx}
+                    categories={categories}
+                    fromWalletName={from}
+                    toWalletName={to}
+                    onClick={(t) => { setEditingTx(t); setSheetOpen(true) }}
+                  />
                 </div>
-              </div>
-            )
-          })
-        )}
-
-        {/* Load More Button for 'All Time' / High Volume Filter */}
-        {filteredTxs.length > visibleCount && (
-          <div className="pt-2 text-center">
-            <button
-              onClick={() => setVisibleCount(c => c + 35)}
-              className="px-6 py-2.5 rounded-full text-[12px] font-bold active:scale-95 transition-all"
-              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-            >
-              Load More ({filteredTxs.length - visibleCount} remaining)
-            </button>
-          </div>
+              )
+            }}
+          />
         )}
       </div>
 
@@ -528,7 +477,6 @@ export function TransactionsPage() {
                   key={preset.key}
                   onClick={() => {
                     setTimeRange(preset.key as TimeRangeType)
-                    setVisibleCount(35)
                     setMonthPickerOpen(false)
                   }}
                   className="py-2.5 px-3 rounded-2xl text-[12px] font-extrabold flex items-center justify-between active:scale-95 transition-all"
@@ -585,7 +533,6 @@ export function TransactionsPage() {
                     onClick={() => {
                       setSelectedCustomMonth(monthKey)
                       setTimeRange("custom_month")
-                      setVisibleCount(35)
                       setMonthPickerOpen(false)
                     }}
                     className="p-3 rounded-2xl text-[12px] font-extrabold text-center active:scale-95 transition-all"
@@ -637,7 +584,7 @@ export function TransactionsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Filter by Account</h3>
-              <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>Tampilkan transaksi dari akun tertentu</p>
+              <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>Show transactions from a specific account</p>
             </div>
             {selectedWalletName && (
               <button
