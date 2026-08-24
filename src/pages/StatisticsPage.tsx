@@ -155,36 +155,35 @@ export function StatisticsPage() {
   const savingsRate = totalIncome > 0 ? Math.max(0, ((totalIncome - totalExpense) / totalIncome) * 100) : 0
 
   const healthScore = useMemo(() => {
-    // 1. Both 0 -> Neutral
-    if (totalIncome === 0 && totalExpense === 0) return 80
+    // 1. Both 0 -> Neutral / Idle
+    if (totalIncome === 0 && totalExpense === 0) return 75
 
-    // 2. Outflow Only (No Inflow at all) -> Strictly Low / Deficit
+    // 2. Outflow Only (No Inflow at all -> Pure Deficit) -> 0 pts
     if (totalIncome === 0 && totalExpense > 0) {
-      if (totalExpense > 5000000) return 15
-      if (totalExpense > 2000000) return 20
-      if (totalExpense > 1000000) return 25
-      if (totalExpense > 500000) return 30
-      return Math.max(20, Math.round(38 - (totalExpense / 500000) * 8))
+      return 0
     }
 
-    // 3. Inflow Only (No Outflow) -> Near Perfect
-    if (totalIncome > 0 && totalExpense === 0) return 99
+    // 3. Inflow Only (No Outflow at all) -> 100 pts
+    if (totalIncome > 0 && totalExpense === 0) return 100
 
-    // 4. Inflow & Outflow exists -> Direct Cashflow Ratio
+    // 4. Both exist -> Direct Cashflow Ratio
     const ratio = totalExpense / totalIncome
 
-    // Heavy Deficit (Spent > 150% of income)
-    if (ratio >= 1.5) return Math.max(15, Math.round(30 - Math.min(15, (ratio - 1.5) * 10)))
-    // Moderate Deficit (Spent 100% - 150% of income)
-    if (ratio > 1.0) return Math.round(45 - (ratio - 1.0) * 30)
-    // Break-even (Spent ~100% of income)
-    if (ratio >= 0.9) return Math.round(55 + (1.0 - ratio) * 50)
-    // Healthy (Spent 60% - 90% of income)
-    if (ratio >= 0.6) return Math.round(70 + (0.9 - ratio) * 40)
-    // Very Healthy (Spent 30% - 60% of income)
-    if (ratio >= 0.3) return Math.round(85 + (0.6 - ratio) * 40)
-    // Super Surplus (Spent < 30% of income)
-    return Math.min(99, Math.round(95 + (0.3 - ratio) * 13))
+    // Heavy Deficit: Spent > 150% of income -> 5 to 15 pts
+    if (ratio >= 2.0) return 5
+    if (ratio >= 1.5) return Math.max(5, Math.round(15 - (ratio - 1.5) * 20))
+
+    // Moderate Deficit: Spent 100% - 150% of income -> 16 to 45 pts
+    if (ratio > 1.0) return Math.round(45 - (ratio - 1.0) * 58)
+
+    // Break-even to mild surplus: Spent 80% - 100% of income -> 50 to 68 pts
+    if (ratio >= 0.8) return Math.round(50 + (1.0 - ratio) * 90)
+
+    // Healthy Surplus: Spent 40% - 80% of income -> 70 to 88 pts
+    if (ratio >= 0.4) return Math.round(70 + (0.8 - ratio) * 45)
+
+    // Super Surplus: Spent < 40% of income -> 90 to 100 pts
+    return Math.min(100, Math.round(90 + (0.4 - ratio) * 25))
   }, [totalIncome, totalExpense])
 
   // 2. Trend bar chart data with exact mathematical consistency
@@ -430,7 +429,7 @@ export function StatisticsPage() {
           </div>
           <span className="text-[11px] font-bold px-2.5 py-1 rounded-full"
             style={{ background: "rgba(255,255,255,0.12)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.18)" }}>
-            {healthScore >= 80 ? "Excellent" : healthScore >= 60 ? "Good" : healthScore >= 40 ? "Moderate" : "Low"}
+            {healthScore >= 85 ? "Excellent" : healthScore >= 70 ? "Good" : healthScore >= 50 ? "Moderate" : healthScore >= 16 ? "Deficit" : "Critical"}
           </span>
         </div>
         <div className="flex items-end gap-3 mb-3">
