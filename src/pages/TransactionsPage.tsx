@@ -12,7 +12,7 @@ import { BottomSheet } from "../components/ui/BottomSheet"
 import type { Transaction } from "../lib/types"
 import { formatRupiah, getDateLabel } from "../lib/utils"
 import { IconRenderer } from "../components/ui/IconRenderer"
-import { format, subDays, startOfMonth, endOfMonth, subMonths, isWithinInterval, parse } from "date-fns"
+import { format, subDays, startOfMonth, endOfMonth, subMonths, isWithinInterval, parse, eachDayOfInterval } from "date-fns"
 import { GroupedVirtuoso } from "react-virtuoso"
 import { useDeferredRender } from "../hooks/useDeferredRender"
 import { TransactionItem } from "../components/transactions/TransactionItem"
@@ -90,41 +90,100 @@ export function TransactionsPage() {
     return () => clearTimeout(timer)
   }, [search])
 
+  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null)
+
+  useEffect(() => {
+    setScrollParent(document.getElementById("app-scroll-container"))
+  }, [])
+
   const resolveWalletNames = (tx: Transaction) => resolveFamfinaWallet(tx, wallets)
 
-  // 1. Direct computation of past 7 days trend (Inflow + Outflow only, transfers excluded)
-  const dynamicWeeklyData = useMemo(() => {
-    const days = []
+  // 1. Dynamic Multi-Timeframe Chart Data (This Month, Last Month, Last 30 Days, Custom Month, All Time)
+  const dynamicChartData = useMemo(() => {
     const now = new Date()
-    for (let i = 6; i >= 0; i--) {
-      const d = subDays(now, i)
-      const dateStr = format(d, "yyyy-MM-dd")
-      const label = format(d, "EEE")
-      const dayTxs = allTxs.filter(t => t.occurred_on === dateStr)
-      const income = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
-      const expense = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
-      const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
+    let points: { dateStr: string; label: string; income: number; expense: number; transfer: number; activeValue: number }[] = []
 
-      let activeValue = expense + income
-      if (filter === "income") activeValue = income
-      else if (filter === "expense") activeValue = expense
-      else if (filter === "transfer") activeValue = transfer
+    if (timeRange === "this_month" || timeRange === "last_month" || timeRange === "custom_month") {
+      let targetMonthDate = now
+      if (timeRange === "last_month") targetMonthDate = subMonths(now, 1)
+      else if (timeRange === "custom_month") {
+        try {
+          targetMonthDate = parse(selectedCustomMonth, "yyyy-MM", new Date())
+        } catch {
+          targetMonthDate = now
+        }
+      }
 
-      days.push({
-        dateStr,
-        label,
-        income,
-        expense,
-        transfer,
-        activeValue
+      const start = startOfMonth(targetMonthDate)
+      const end = endOfMonth(targetMonthDate)
+      const days = eachDayOfInterval({ start, end })
+
+      points = days.map(d => {
+        const dateStr = format(d, "yyyy-MM-dd")
+        const label = format(d, "d")
+        const dayTxs = allTxs.filter(t => t.occurred_on === dateStr)
+        const income = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const expense = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
+
+        let activeValue = expense + income
+        if (filter === "income") activeValue = income
+        else if (filter === "expense") activeValue = expense
+        else if (filter === "transfer") activeValue = transfer
+
+        return { dateStr, label, income, expense, transfer, activeValue }
       })
+    } else if (timeRange === "last_30") {
+      for (let i = 29; i >= 0; i--) {
+        const d = subDays(now, i)
+        const dateStr = format(d, "yyyy-MM-dd")
+        const label = format(d, "d")
+        const dayTxs = allTxs.filter(t => t.occurred_on === dateStr)
+        const income = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const expense = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
+
+        let activeValue = expense + income
+        if (filter === "income") activeValue = income
+        else if (filter === "expense") activeValue = expense
+        else if (filter === "transfer") activeValue = transfer
+
+        points.push({ dateStr, label, income, expense, transfer, activeValue })
+      }
+    } else if (timeRange === "all") {
+      // Past 12 months trend
+      for (let i = 11; i >= 0; i--) {
+        const mDate = subMonths(now, i)
+        const mStart = startOfMonth(mDate)
+        const mEnd = endOfMonth(mDate)
+        const label = format(mDate, "MMM")
+        const dateStr = format(mDate, "yyyy-MM")
+
+        const mTxs = allTxs.filter(t => {
+          if (!t.occurred_on) return false
+          const d = new Date(t.occurred_on)
+          return isWithinInterval(d, { start: mStart, end: mEnd })
+        })
+
+        const income = mTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const expense = mTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const transfer = mTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
+
+        let activeValue = expense + income
+        if (filter === "income") activeValue = income
+        else if (filter === "expense") activeValue = expense
+        else if (filter === "transfer") activeValue = transfer
+
+        points.push({ dateStr, label, income, expense, transfer, activeValue })
+      }
     }
-    return days
-  }, [allTxs, filter])
+
+    return points
+  }, [allTxs, filter, timeRange, selectedCustomMonth])
 
   const totalPeriodAmount = useMemo(() => {
-    return dynamicWeeklyData.reduce((s, d) => s + d.activeValue, 0)
-  }, [dynamicWeeklyData])
+    return dynamicChartData.reduce((s, d) => s + d.activeValue, 0)
+  }, [dynamicChartData])
 
   // 2. Filter & Search transactions with smart date range scoping & auto-archive
   const filteredTxs = useMemo(() => {
@@ -154,7 +213,7 @@ export function TransactionsPage() {
       txs = txs.filter(t => {
         if (!t.occurred_on) return false
         const d = new Date(t.occurred_on)
-        return d >= start && d <= now
+        return isWithinInterval(d, { start, end: now })
       })
     } else if (timeRange === "custom_month") {
       const parsedMonth = parse(selectedCustomMonth, "yyyy-MM", new Date())
@@ -200,7 +259,7 @@ export function TransactionsPage() {
     return txs
   }, [allTxs, filter, selectedWalletName, debouncedSearch, timeRange, selectedCustomMonth, showArchived, wallets])
 
-  // 4. Group by date using all filteredTxs
+  // 3. Group by date using all filteredTxs
   const { groupKeys, groupedTxs, groupCounts, flatTxs } = useMemo(() => {
     const g: Record<string, Transaction[]> = {}
     filteredTxs.forEach(tx => {
@@ -223,7 +282,7 @@ export function TransactionsPage() {
     { key: "transfer", label: "Transfer" },
   ]
 
-  const maxBar = Math.max(...dynamicWeeklyData.map(d => d.activeValue), 1)
+  const maxBar = Math.max(...dynamicChartData.map(d => d.activeValue), 1)
 
   const selectedMonthLabel = useMemo(() => {
     if (timeRange === "this_month") return "This Month"
@@ -246,12 +305,20 @@ export function TransactionsPage() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-[12px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
-              {filter === "income" ? "Weekly Inflow" : filter === "expense" ? "Weekly Outflow" : filter === "transfer" ? "Weekly Transfers" : "Weekly Activity"}
+              {filter === "income"
+                ? `${selectedMonthLabel} Inflow`
+                : filter === "expense"
+                ? `${selectedMonthLabel} Outflow`
+                : filter === "transfer"
+                ? `${selectedMonthLabel} Transfers`
+                : `${selectedMonthLabel} Activity`}
             </p>
             <p className="text-[32px] font-extrabold tracking-tight leading-tight amount" style={{ color: "var(--text-primary)" }}>
               {formatRupiah(totalPeriodAmount)}
             </p>
-            <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>Past 7 days volume</p>
+            <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+              {dynamicChartData.length} data points · {selectedMonthLabel}
+            </p>
           </div>
 
           {/* Month Selector Trigger */}
@@ -272,7 +339,7 @@ export function TransactionsPage() {
           </button>
         </div>
 
-        {/* 7-DAY RADIANT GRADIENT BAR CHART */}
+        {/* DYNAMIC TIMEFRAME GRADIENT BAR CHART */}
         <div className="h-[95px] w-full mb-3.5 flex items-end">
           {!shouldRenderHeavy ? (
             <div className="w-full flex justify-around items-end h-full px-2 pb-5">
@@ -282,7 +349,7 @@ export function TransactionsPage() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dynamicWeeklyData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+              <BarChart data={dynamicChartData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="activeBarGradDark" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
@@ -306,12 +373,17 @@ export function TransactionsPage() {
                   dataKey="label"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "var(--text-tertiary)", fontSize: 10, fontWeight: 700 }}
+                  interval={dynamicChartData.length > 20 ? 4 : dynamicChartData.length > 10 ? 2 : 0}
+                  tick={{ fill: "var(--text-tertiary)", fontSize: 9, fontWeight: 700 }}
                 />
                 <YAxis hide domain={[0, maxBar * 1.15]} />
-                <Bar dataKey="activeValue" radius={[6, 6, 6, 6]} maxBarSize={30}>
-                  {dynamicWeeklyData.map((_, index) => {
-                    const isCurrentDay = index === dynamicWeeklyData.length - 1
+                <Bar
+                  dataKey="activeValue"
+                  radius={[4, 4, 4, 4]}
+                  maxBarSize={dynamicChartData.length > 20 ? 8 : dynamicChartData.length > 10 ? 16 : 28}
+                >
+                  {dynamicChartData.map((_, index) => {
+                    const isCurrentDay = index === dynamicChartData.length - 1
                     const fillId = isDark
                       ? (isCurrentDay ? "url(#activeBarGradDark)" : "url(#inactiveBarGradDark)")
                       : (isCurrentDay ? "url(#activeBarGradLight)" : "url(#inactiveBarGradLight)")
@@ -413,7 +485,7 @@ export function TransactionsPage() {
           </div>
         ) : (
           <GroupedVirtuoso
-            useWindowScroll
+            customScrollParent={scrollParent || undefined}
             groupCounts={groupCounts}
             groupContent={index => {
               const dateKey = groupKeys[index]

@@ -45,7 +45,7 @@ function AppShell() {
 
   return (
     <div className="h-screen w-full relative overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      <div className="h-full overflow-y-auto overflow-x-hidden safe-area-top pb-[80px]">
+      <div id="app-scroll-container" className="h-full overflow-y-auto overflow-x-hidden safe-area-top pb-[80px] overscroll-y-contain">
         <Routes>
           <Route path="/" element={<HomePage onOpenAdd={() => setAddSheetOpen(true)} />} />
           <Route path="/transactions" element={<TransactionsPage />} />

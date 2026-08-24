@@ -11,8 +11,13 @@ export function usePullToRefresh({ onRefresh, threshold = 65 }: UsePullToRefresh
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [startY, setStartY] = useState(0)
 
+  const getScrollTop = () => {
+    const el = document.getElementById("app-scroll-container")
+    return el ? el.scrollTop : (window.scrollY || 0)
+  }
+
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (window.scrollY <= 5) {
+    if (getScrollTop() <= 2) {
       setStartY(e.touches[0].clientY)
     } else {
       setStartY(0)
@@ -24,13 +29,15 @@ export function usePullToRefresh({ onRefresh, threshold = 65 }: UsePullToRefresh
     const currentY = e.touches[0].clientY
     const diff = currentY - startY
 
-    if (diff > 0 && window.scrollY <= 5) {
+    if (diff > 5 && getScrollTop() <= 2) {
       const distance = Math.min(threshold * 1.4, Math.pow(diff, 0.85))
       setPullDistance(distance)
 
       if (distance >= threshold && pullDistance < threshold) {
         triggerHaptic("medium")
       }
+    } else if (pullDistance > 0) {
+      setPullDistance(0)
     }
   }, [startY, isRefreshing, threshold, pullDistance])
 
@@ -54,14 +61,15 @@ export function usePullToRefresh({ onRefresh, threshold = 65 }: UsePullToRefresh
   }, [pullDistance, threshold, isRefreshing, onRefresh])
 
   useEffect(() => {
-    window.addEventListener("touchstart", handleTouchStart, { passive: true })
-    window.addEventListener("touchmove", handleTouchMove, { passive: true })
-    window.addEventListener("touchend", handleTouchEnd)
+    const el = document.getElementById("app-scroll-container") || window
+    el.addEventListener("touchstart", handleTouchStart as any, { passive: true })
+    el.addEventListener("touchmove", handleTouchMove as any, { passive: true })
+    el.addEventListener("touchend", handleTouchEnd as any)
 
     return () => {
-      window.removeEventListener("touchstart", handleTouchStart)
-      window.removeEventListener("touchmove", handleTouchMove)
-      window.removeEventListener("touchend", handleTouchEnd)
+      el.removeEventListener("touchstart", handleTouchStart as any)
+      el.removeEventListener("touchmove", handleTouchMove as any)
+      el.removeEventListener("touchend", handleTouchEnd as any)
     }
   }, [handleTouchStart, handleTouchMove, handleTouchEnd])
 

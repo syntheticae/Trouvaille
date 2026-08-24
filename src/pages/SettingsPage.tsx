@@ -1,10 +1,10 @@
+import { useState, useRef, useMemo } from "react"
 import { triggerHaptic } from "../lib/haptics"
 import { GoalDetailModal } from "../components/goals/GoalDetailModal"
-﻿import { useState, useRef } from "react"
 import {
   Plus, Trash2, Calendar as CalendarIcon, LogOut, ChevronRight,
   CreditCard, LayoutGrid, Target, Sun, Camera, User as UserIcon, RotateCcw,
-  Bell, Archive, Zap, MoreHorizontal
+  Bell, Archive, Zap, MoreHorizontal, Scale
 } from "lucide-react"
 import { useBills, useAddBill, useUpdateBill, useDeleteBill } from "../hooks/useBills"
 import { useToast } from "../contexts/ToastContext"
@@ -20,8 +20,9 @@ import { BottomSheet } from "../components/ui/BottomSheet"
 import { GlassDatePicker } from "../components/ui/GlassDatePicker"
 import { format } from "date-fns"
 import { supabase } from "../lib/supabase"
-import { useAllTransactions } from "../hooks/useTransactions"
+import { useAllTransactions, useAddTransaction } from "../hooks/useTransactions"
 import { IconRenderer } from "../components/ui/IconRenderer"
+import { resolveFamfinaWallet } from "../lib/famfinaResolver"
 import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet"
 import { requestNotificationPermission } from "../lib/notifications"
 
@@ -47,10 +48,38 @@ export function SettingsPage() {
   const addWallet = useAddWallet()
   const updateWallet = useUpdateWallet()
   const deleteWallet = useDeleteWallet()
+  const addTx = useAddTransaction()
+
+  // Live Wallet Balances
+  const walletBalances = useMemo(() => {
+    const balances: Record<string, number> = {}
+    wallets.forEach(w => { balances[w.id] = 0 })
+
+    allTxs.forEach(tx => {
+      const amt = Number(tx.amount || 0)
+      if (amt <= 0) return
+      const { from, to } = resolveFamfinaWallet(tx, wallets)
+      const fromW = wallets.find(w => w.name.toLowerCase() === from.toLowerCase())
+      const toW = wallets.find(w => w.name.toLowerCase() === to.toLowerCase())
+
+      if (tx.type === "income") {
+        if (fromW) balances[fromW.id] = (balances[fromW.id] || 0) + amt
+      } else if (tx.type === "expense") {
+        if (fromW) balances[fromW.id] = (balances[fromW.id] || 0) - amt
+      } else if (tx.type === "transfer") {
+        if (fromW) balances[fromW.id] = (balances[fromW.id] || 0) - amt
+        if (toW) balances[toW.id] = (balances[toW.id] || 0) + amt
+      }
+    })
+    return balances
+  }, [wallets, allTxs])
 
   // Editing states
   const [editingBill, setEditingBill] = useState<any>(null)
   const [editWallet, setEditWallet] = useState<{ id: string; name: string } | null>(null)
+  const [correctWallet, setCorrectWallet] = useState<{ id: string; name: string; icon: string; currentBalance: number } | null>(null)
+  const [correctTargetBalance, setCorrectTargetBalance] = useState("")
+  const [correctNote, setCorrectNote] = useState("")
   const [editCategory, setEditCategory] = useState<{ id: string; name: string } | null>(null)
 
   // Modals state
@@ -747,19 +776,153 @@ export function SettingsPage() {
       <BottomSheet isOpen={budgetsOpen} onClose={() => setBudgetsOpen(false)}>
         <div className="p-5 pb-10 flex flex-col h-[85vh]">
           <div className="flex items-center justify-between mb-4 shrink-0">
-            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Accounts & Wallets</h3>
+            <div>
+              <h3 className="font-extrabold text-lg leading-tight" style={{ color: "var(--text-primary)" }}>Accounts & Wallets</h3>
+              <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                {wallets.length} active accounts · Tap ⚖️ to adjust balance
+              </p>
+            </div>
             <button onClick={() => { setBudgetsOpen(false); setTimeout(() => setAddBudgetOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button>
           </div>
-          <div className="space-y-2 overflow-y-auto">
-            {wallets.map(w => (
-              <div key={w.id} className="p-3 rounded-2xl flex items-center gap-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><IconRenderer icon={w.icon || "/icons/wallet.png"} size="w-5 h-5" /></div>
-                <div className="flex-1 min-w-0"><p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{w.name}</p></div>
-                <button onClick={() => setEditWallet({ id: w.id, name: w.name })} className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0" style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>Rename</button>
-                <button onClick={() => { if (confirm(`Delete account "${w.name}"?`)) deleteWallet.mutate(w.id) }} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ color: "#ef4444" }}><Trash2 size={13} /></button>
-              </div>
-            ))}
+          <div className="space-y-2 overflow-y-auto pr-0.5">
+            {wallets.map(w => {
+              const bal = walletBalances[w.id] || 0
+              return (
+                <div key={w.id} className="p-3 rounded-2xl flex items-center gap-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+                    <IconRenderer icon={w.icon || "/icons/wallet.png"} size="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{w.name}</p>
+                    <p className="amount text-[12px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>{formatRupiah(bal)}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setBudgetsOpen(false)
+                      setTimeout(() => {
+                        setCorrectWallet({ id: w.id, name: w.name, icon: w.icon || "/icons/wallet.png", currentBalance: bal })
+                        setCorrectTargetBalance(String(bal))
+                        setCorrectNote("")
+                      }, 300)
+                    }}
+                    className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all"
+                    style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+                    title="Koreksi Saldo"
+                  >
+                    <Scale size={12} />
+                    <span>Adjust</span>
+                  </button>
+                  <button onClick={() => setEditWallet({ id: w.id, name: w.name })} className="text-[11px] font-bold px-2 py-1.5 rounded-full shrink-0" style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>Rename</button>
+                  <button onClick={() => { if (confirm(`Delete account "${w.name}"?`)) deleteWallet.mutate(w.id) }} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ color: "#ef4444" }}><Trash2 size={13} /></button>
+                </div>
+              )
+            })}
           </div>
+        </div>
+      </BottomSheet>
+
+      {/* Balance Correction Sheet */}
+      <BottomSheet isOpen={!!correctWallet} onClose={() => setCorrectWallet(null)}>
+        <div className="p-5 pb-10 space-y-4">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+              <IconRenderer icon={correctWallet?.icon || "/icons/wallet.png"} size="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-lg leading-tight" style={{ color: "var(--text-primary)" }}>
+                Adjust Balance ({correctWallet?.name})
+              </h3>
+              <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                Current Balance: <span className="amount font-bold text-[var(--text-primary)]">{formatRupiah(correctWallet?.currentBalance || 0)}</span>
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
+              Actual / Correct Balance (IDR)
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={correctTargetBalance ? formatRupiah(Number(correctTargetBalance)) : ""}
+              onChange={e => {
+                const raw = e.target.value.replace(/[^0-9]/g, "")
+                setCorrectTargetBalance(raw)
+              }}
+              placeholder="Rp 0"
+              className="w-full p-3.5 rounded-2xl outline-none font-bold text-[16px] amount"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+            />
+          </div>
+
+          {/* Difference Preview */}
+          {correctWallet && (
+            <div className="p-3.5 rounded-2xl flex items-center justify-between"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+              <span className="text-[12px] font-bold" style={{ color: "var(--text-tertiary)" }}>Adjustment Delta:</span>
+              <span className="amount text-[13px] font-extrabold" style={{
+                color: (Number(correctTargetBalance || 0) - correctWallet.currentBalance) > 0 ? "var(--text-primary)" : (Number(correctTargetBalance || 0) - correctWallet.currentBalance) < 0 ? "#ef4444" : "var(--text-tertiary)"
+              }}>
+                {(Number(correctTargetBalance || 0) - correctWallet.currentBalance) > 0 ? "+" : ""}
+                {formatRupiah(Number(correctTargetBalance || 0) - correctWallet.currentBalance)}
+                {" "}
+                <span className="text-[10px] font-bold uppercase">
+                  {(Number(correctTargetBalance || 0) - correctWallet.currentBalance) > 0 ? "(Inflow)" : (Number(correctTargetBalance || 0) - correctWallet.currentBalance) < 0 ? "(Outflow)" : "(No Change)"}
+                </span>
+              </span>
+            </div>
+          )}
+
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
+              Reason / Note (Optional)
+            </label>
+            <input
+              type="text"
+              value={correctNote}
+              onChange={e => setCorrectNote(e.target.value)}
+              placeholder="e.g. Balance correction"
+              className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              if (!correctWallet) return
+              const target = Number(correctTargetBalance || 0)
+              const diff = target - correctWallet.currentBalance
+              if (diff === 0) {
+                setCorrectWallet(null)
+                showToast("No balance change", "update", () => {})
+                return
+              }
+
+              addTx.mutate({
+                type: diff > 0 ? "income" : "expense",
+                amount: Math.abs(diff),
+                wallet_id: correctWallet.id,
+                note: correctNote.trim() || `Balance Adjustment: ${correctWallet.name}`,
+                occurred_on: format(new Date(), "yyyy-MM-dd"),
+                created_at: new Date().toISOString(),
+                category_id: null
+              }, {
+                onSuccess: () => {
+                  setCorrectWallet(null)
+                  showToast(`Balance adjusted to ${formatRupiah(target)}`, "update", () => {})
+                },
+                onError: () => {
+                  showToast("Failed to adjust balance", "delete", () => {})
+                }
+              })
+            }}
+            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg"
+            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+          >
+            Save Adjustment
+          </button>
         </div>
       </BottomSheet>
 

@@ -1,5 +1,5 @@
 import React, { memo } from 'react'
-import { ArrowLeftRight, Clock } from 'lucide-react'
+import { ArrowLeftRight, Clock, Scale } from 'lucide-react'
 import { format } from 'date-fns'
 import { formatRupiah } from '../../lib/utils'
 import { IconRenderer } from '../ui/IconRenderer'
@@ -22,6 +22,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
 }) => {
   const isIncome = tx.type === "income"
   const isTransfer = tx.type === "transfer"
+  const isAdjustment = tx.note?.toLowerCase().includes("balance adjustment") || tx.note?.toLowerCase().includes("koreksi saldo")
   const timeLabel = tx.created_at ? format(new Date(tx.created_at), "HH:mm") : ""
 
   return (
@@ -37,23 +38,29 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-10 h-10 rounded-2xl flex items-center justify-center relative shrink-0"
           style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-          {isTransfer ? (
+          {isAdjustment ? (
+            <Scale size={18} style={{ color: "var(--text-primary)" }} />
+          ) : isTransfer ? (
             <ArrowLeftRight size={18} style={{ color: "var(--text-primary)" }} />
           ) : (
             <IconRenderer icon={tx.categories?.emoji || categories.find(c => c.id === tx.category_id)?.emoji || "/icons/lainnya.png"} size="w-6 h-6" />
           )}
           <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shadow"
             style={{
-              background: isTransfer ? "var(--text-primary)" : isIncome ? "var(--accent)" : "var(--bg-elevated)",
-              color: isTransfer ? "var(--bg-base)" : isIncome ? "var(--accent-ink)" : "var(--text-tertiary)",
+              background: isAdjustment ? "var(--text-primary)" : isTransfer ? "var(--text-primary)" : isIncome ? "var(--accent)" : "var(--bg-elevated)",
+              color: isAdjustment ? "var(--bg-base)" : isTransfer ? "var(--bg-base)" : isIncome ? "var(--accent-ink)" : "var(--text-tertiary)",
               border: "1.5px solid var(--bg-elevated)"
             }}>
-            {isTransfer ? "⇄" : isIncome ? "+" : "-"}
+            {isAdjustment ? "⚖" : isTransfer ? "⇄" : isIncome ? "+" : "-"}
           </div>
         </div>
         <div className="min-w-0">
           <p className="font-bold text-[14px] leading-tight truncate" style={{ color: "var(--text-primary)" }}>
-            {isTransfer ? `${fromWalletName} to ${toWalletName}` : (tx.categories?.name || categories.find(c => c.id === tx.category_id)?.name || "General")}
+            {isAdjustment
+              ? (tx.note || `Adjustment (${fromWalletName})`)
+              : isTransfer
+              ? `${fromWalletName} to ${toWalletName}`
+              : (tx.categories?.name || categories.find(c => c.id === tx.category_id)?.name || "General")}
           </p>
           <div className="flex items-center gap-1.5 text-[11px] font-semibold mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
             {timeLabel && (
@@ -62,7 +69,9 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
                 {timeLabel} ·
               </span>
             )}
-            <span className="truncate">{tx.note || (isTransfer ? "Transfer" : fromWalletName)}</span>
+            <span className="truncate">
+              {isAdjustment ? fromWalletName : (tx.note || (isTransfer ? "Transfer" : fromWalletName))}
+            </span>
           </div>
         </div>
       </div>
@@ -73,7 +82,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
           {isTransfer ? "" : isIncome ? "+" : "-"}{formatRupiah(Number(tx.amount))}
         </div>
         <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-          {isTransfer ? "Transfer" : isIncome ? "Inflow" : "Outflow"}
+          {isAdjustment ? "Adjustment" : isTransfer ? "Transfer" : isIncome ? "Inflow" : "Outflow"}
         </div>
       </div>
     </div>
