@@ -227,14 +227,33 @@ export function TransactionsPage() {
     <div className="min-h-screen" style={{ background: "var(--bg-base)" }}>
       {/* ====== HEADER ====== */}
       <div className="px-5 pt-5 pb-3">
-        <div className="mb-3">
-          <p className="text-[12px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
-            {filter === "income" ? "Weekly Inflow" : filter === "expense" ? "Weekly Outflow" : filter === "transfer" ? "Weekly Transfers" : "Weekly Activity"}
-          </p>
-          <p className="text-[32px] font-extrabold tracking-tight leading-tight amount" style={{ color: "var(--text-primary)" }}>
-            {formatRupiah(totalPeriodAmount)}
-          </p>
-          <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>Past 7 days volume</p>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-[12px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
+              {filter === "income" ? "Weekly Inflow" : filter === "expense" ? "Weekly Outflow" : filter === "transfer" ? "Weekly Transfers" : "Weekly Activity"}
+            </p>
+            <p className="text-[32px] font-extrabold tracking-tight leading-tight amount" style={{ color: "var(--text-primary)" }}>
+              {formatRupiah(totalPeriodAmount)}
+            </p>
+            <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>Past 7 days volume</p>
+          </div>
+
+          {/* Month Selector Trigger */}
+          <button
+            onClick={() => { setMonthPickerOpen(true); triggerHaptic("light"); }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl active:scale-95 transition-all"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "0 2px 8px var(--shadow-strength)"
+            }}
+          >
+            <Calendar size={14} style={{ color: "var(--text-secondary)" }} />
+            <span className="text-[12px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+              {selectedMonthLabel}
+            </span>
+            <ChevronDown size={13} style={{ color: "var(--text-tertiary)" }} />
+          </button>
         </div>
 
         {/* 7-DAY RADIANT GRADIENT BAR CHART */}
@@ -287,69 +306,51 @@ export function TransactionsPage() {
           </ResponsiveContainer>
         </div>
 
-        {/* Search & Dropdown Filter Row */}
-        <div className="flex items-center gap-2 mb-3">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-tertiary)" }} />
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search note, category..."
-              className="w-full pl-8 pr-7 py-2 rounded-2xl text-[13px] outline-none font-semibold"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)"
-              }}
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-full" style={{ color: "var(--text-tertiary)" }}>
-                <X size={13} />
-              </button>
-            )}
-          </div>
+        {/* Full-Width Search Bar with Inline Account Filter */}
+        <div
+          className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-3 glass-surface"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <Search size={16} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search note, category, wallet..."
+            className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold"
+            style={{ color: "var(--text-primary)" }}
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="p-1 rounded-full shrink-0 mr-1" style={{ color: "var(--text-tertiary)" }}>
+              <X size={14} />
+            </button>
+          )}
 
-          {/* Month Selector Trigger */}
-          <button
-            onClick={() => { setMonthPickerOpen(true); triggerHaptic("light"); }}
-            className="flex items-center gap-1 px-2.5 py-2 rounded-2xl active:scale-95 transition-all shrink-0"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "0 2px 8px var(--shadow-strength)"
-            }}
-            title="Filter Month"
-          >
-            <Calendar size={13} style={{ color: "var(--text-secondary)" }} />
-            <span className="text-[11px] font-extrabold max-w-[65px] truncate" style={{ color: "var(--text-primary)" }}>
-              {selectedMonthLabel}
-            </span>
-            <ChevronDown size={11} style={{ color: "var(--text-tertiary)" }} />
-          </button>
-
-          {/* Account Selector Trigger */}
+          {/* Inline Account Filter Pill */}
+          <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
           <button
             onClick={() => { setAccountPickerOpen(true); triggerHaptic("light"); }}
-            className="flex items-center gap-1 px-2.5 py-2 rounded-2xl active:scale-95 transition-all shrink-0"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0"
             style={{
-              background: selectedWalletName ? "var(--accent)" : "var(--bg-elevated)",
-              border: selectedWalletName ? "1px solid var(--accent)" : "1px solid var(--glass-border)",
-              boxShadow: "0 2px 8px var(--shadow-strength)"
+              background: selectedWalletName ? "var(--accent)" : "var(--glass-fill)",
+              color: selectedWalletName ? "var(--accent-ink)" : "var(--text-secondary)",
+              border: selectedWalletName ? "1px solid var(--accent)" : "1px solid var(--glass-border)"
             }}
-            title="Filter Account"
+            title="Filter by Account"
           >
-            <Wallet size={13} style={{ color: selectedWalletName ? "var(--accent-ink)" : "var(--text-secondary)" }} />
-            <span className="text-[11px] font-extrabold max-w-[60px] truncate" style={{ color: selectedWalletName ? "var(--accent-ink)" : "var(--text-primary)" }}>
+            <Wallet size={13} />
+            <span className="text-[11px] font-extrabold max-w-[65px] truncate">
               {selectedWalletName || "Account"}
             </span>
-            <ChevronDown size={11} style={{ color: selectedWalletName ? "var(--accent-ink)" : "var(--text-tertiary)" }} />
+            <ChevronDown size={11} className="opacity-70" />
           </button>
         </div>
 
         {/* Unified Clean Filter Tabs */}
-        <div className="flex p-1 rounded-full glass-surface mb-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+        <div className="flex p-1 rounded-full glass-surface" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
           {filterTabs.map(tab => {
             const isSelected = filter === tab.key
             return (
@@ -363,44 +364,6 @@ export function TransactionsPage() {
                 }}
               >
                 {tab.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Horizontal Account Filter Pills */}
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
-          <button
-            onClick={() => { setSelectedWalletName(null); triggerHaptic("light"); }}
-            className="px-3 py-1 rounded-full text-[11px] font-extrabold shrink-0 transition-all active:scale-95"
-            style={{
-              background: selectedWalletName === null ? "var(--accent)" : "var(--bg-elevated)",
-              color: selectedWalletName === null ? "var(--accent-ink)" : "var(--text-secondary)",
-              border: selectedWalletName === null ? "1px solid var(--accent)" : "1px solid var(--glass-border)"
-            }}
-          >
-            All Accounts
-          </button>
-          {wallets.map(w => {
-            const isSelected = selectedWalletName === w.name
-            return (
-              <button
-                key={w.id}
-                onClick={() => {
-                  setSelectedWalletName(isSelected ? null : w.name);
-                  triggerHaptic("light");
-                }}
-                className="px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 transition-all flex items-center gap-1.5 active:scale-95"
-                style={{
-                  background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
-                  color: isSelected ? "var(--accent-ink)" : "var(--text-primary)",
-                  border: isSelected ? "1px solid var(--accent)" : "1px solid var(--glass-border)"
-                }}
-              >
-                <div className="w-3.5 h-3.5 rounded-full overflow-hidden flex items-center justify-center shrink-0">
-                  <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
-                </div>
-                <span>{w.name}</span>
               </button>
             )
           })}
