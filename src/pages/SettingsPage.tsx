@@ -878,28 +878,38 @@ export function SettingsPage() {
                 return
               }
 
+              const matchingWallet = wallets.find(w => w.id === correctWallet.id || w.name.toLowerCase() === correctWallet.name.toLowerCase())
+              const isValidUuid = (id?: string | null) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+              const walletIdToSave = isValidUuid(matchingWallet?.id) ? matchingWallet!.id : null
+
+              const isPositive = diff > 0
+              const noteToSave = correctNote.trim()
+                ? `Correction (${isPositive ? "+" : "-"}) ${correctWallet.name}: ${correctNote.trim()}`
+                : `Correction (${isPositive ? "+" : "-"}) ${correctWallet.name}`
+
               addTx.mutate({
-                type: "adjustment",
+                type: isPositive ? "income" : "expense",
                 amount: Math.abs(diff),
-                wallet_id: correctWallet.id,
-                note: correctNote.trim() || `Balance Adjustment (${diff > 0 ? "+" : "-"}) ${correctWallet.name}`,
+                wallet_id: walletIdToSave,
+                note: noteToSave,
                 occurred_on: format(new Date(), "yyyy-MM-dd"),
                 created_at: new Date().toISOString(),
                 category_id: null
               }, {
                 onSuccess: () => {
                   setCorrectWallet(null)
-                  showToast(`Balance adjusted to ${formatRupiah(target)}`, "update", () => {})
+                  showToast(`Balance corrected to ${formatRupiah(target)}`, "update", () => {})
                 },
-                onError: () => {
-                  showToast("Failed to adjust balance", "delete", () => {})
+                onError: (err: any) => {
+                  console.error("Balance correction error:", err)
+                  showToast(err?.message || "Failed to adjust balance", "delete", () => {})
                 }
               })
             }}
             className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
-            Save Adjustment
+            Save Correction
           </button>
         </div>
       </BottomSheet>

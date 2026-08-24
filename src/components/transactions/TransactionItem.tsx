@@ -22,8 +22,8 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
 }) => {
   const isIncome = tx.type === "income"
   const isTransfer = tx.type === "transfer"
-  const isAdjustment = tx.type === "adjustment" || tx.note?.toLowerCase().includes("balance adjustment") || tx.note?.toLowerCase().includes("koreksi saldo")
-  const isPositiveAdjustment = isAdjustment && (tx.note?.includes("(+)") || tx.type === "income")
+  const isCorrection = tx.type === "adjustment" || tx.note?.toLowerCase().includes("correction") || tx.note?.toLowerCase().includes("balance adjustment") || tx.note?.toLowerCase().includes("koreksi saldo")
+  const isPositiveCorrection = isCorrection && (tx.note?.includes("(+)") || tx.type === "income")
   const timeLabel = tx.created_at ? format(new Date(tx.created_at), "HH:mm") : ""
 
   return (
@@ -39,7 +39,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-10 h-10 rounded-2xl flex items-center justify-center relative shrink-0"
           style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-          {isAdjustment ? (
+          {isCorrection ? (
             <Scale size={18} style={{ color: "var(--text-primary)" }} />
           ) : isTransfer ? (
             <ArrowLeftRight size={18} style={{ color: "var(--text-primary)" }} />
@@ -48,17 +48,17 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
           )}
           <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shadow"
             style={{
-              background: isAdjustment ? "var(--text-primary)" : isTransfer ? "var(--text-primary)" : isIncome ? "var(--accent)" : "var(--bg-elevated)",
-              color: isAdjustment ? "var(--bg-base)" : isTransfer ? "var(--bg-base)" : isIncome ? "var(--accent-ink)" : "var(--text-tertiary)",
+              background: isCorrection ? "var(--text-primary)" : isTransfer ? "var(--text-primary)" : isIncome ? "var(--accent)" : "var(--bg-elevated)",
+              color: isCorrection ? "var(--bg-base)" : isTransfer ? "var(--bg-base)" : isIncome ? "var(--accent-ink)" : "var(--text-tertiary)",
               border: "1.5px solid var(--bg-elevated)"
             }}>
-            {isAdjustment ? "⚖" : isTransfer ? "⇄" : isIncome ? "+" : "-"}
+            {isCorrection ? "⚖" : isTransfer ? "⇄" : isIncome ? "+" : "-"}
           </div>
         </div>
         <div className="min-w-0">
           <p className="font-bold text-[14px] leading-tight truncate" style={{ color: "var(--text-primary)" }}>
-            {isAdjustment
-              ? (tx.note || `Adjustment (${fromWalletName})`)
+            {isCorrection
+              ? (tx.note || `Correction (${fromWalletName})`)
               : isTransfer
               ? `${fromWalletName} to ${toWalletName}`
               : (tx.categories?.name || categories.find(c => c.id === tx.category_id)?.name || "General")}
@@ -71,7 +71,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
               </span>
             )}
             <span className="truncate">
-              {isAdjustment ? fromWalletName : (tx.note || (isTransfer ? "Transfer" : fromWalletName))}
+              {isCorrection ? fromWalletName : (tx.note || (isTransfer ? "Transfer" : fromWalletName))}
             </span>
           </div>
         </div>
@@ -80,18 +80,18 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
       <div className="text-right shrink-0">
         <div className="amount font-extrabold text-[14px]"
           style={{
-            color: isAdjustment
-              ? (isPositiveAdjustment ? "var(--accent)" : "var(--text-primary)")
+            color: isCorrection
+              ? (isPositiveCorrection ? "var(--accent)" : "var(--text-primary)")
               : isTransfer
               ? "var(--text-primary)"
               : isIncome
               ? "var(--accent)"
               : "var(--text-primary)"
           }}>
-          {isTransfer ? "" : (isAdjustment ? (isPositiveAdjustment ? "+" : "-") : (isIncome ? "+" : "-"))}{formatRupiah(Number(tx.amount))}
+          {isTransfer ? "" : (isCorrection ? (isPositiveCorrection ? "+" : "-") : (isIncome ? "+" : "-"))}{formatRupiah(Number(tx.amount))}
         </div>
         <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-          {isAdjustment ? "Adjustment" : isTransfer ? "Transfer" : isIncome ? "Inflow" : "Outflow"}
+          {isCorrection ? "Correction" : isTransfer ? "Transfer" : isIncome ? "Inflow" : "Outflow"}
         </div>
       </div>
     </div>

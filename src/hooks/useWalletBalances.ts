@@ -1,4 +1,4 @@
-﻿import { useMemo } from "react"
+import { useMemo } from "react"
 import { useWallets, getWalletIcon } from "./useWallets"
 import { useAllTransactions } from "./useTransactions"
 import famfinaRaw from "../data/famfina_transactions.json"
@@ -100,10 +100,29 @@ export function useWalletBalances() {
         if (found) toName = found.name
       }
 
+      // If fromName is still not found, check if note mentions a known wallet name
+      if (!fromName && tx.note) {
+        for (const w of wallets) {
+          if (tx.note.toLowerCase().includes(w.name.toLowerCase())) {
+            fromName = w.name
+            break
+          }
+        }
+      }
+
       const fromEntry = getWallet(fromName || "Cash")
       const toEntry = getWallet(toName || "BNI")
 
-      if (tx.type === "income") {
+      const isCorrection = tx.type === "adjustment" || tx.note?.toLowerCase().includes("correction") || tx.note?.toLowerCase().includes("balance adjustment") || tx.note?.toLowerCase().includes("koreksi saldo")
+
+      if (isCorrection) {
+        const isNegative = tx.note?.includes("(-)") || tx.type === "expense"
+        if (isNegative) {
+          fromEntry.balance -= amt
+        } else {
+          fromEntry.balance += amt
+        }
+      } else if (tx.type === "income") {
         fromEntry.inflow += amt
         fromEntry.balance += amt
       } else if (tx.type === "expense") {
@@ -114,13 +133,6 @@ export function useWalletBalances() {
         fromEntry.balance -= amt
         toEntry.inflow += amt
         toEntry.balance += amt
-      } else if (tx.type === "adjustment") {
-        const isNegative = tx.note?.includes("(-)") || tx.note?.toLowerCase().includes("outflow")
-        if (isNegative) {
-          fromEntry.balance -= amt
-        } else {
-          fromEntry.balance += amt
-        }
       }
     })
 

@@ -100,6 +100,8 @@ export function TransactionsPage() {
 
   const resolveWalletNames = (tx: Transaction) => resolveFamfinaWallet(tx, wallets)
 
+  const isTxCorrection = (t: Transaction) => t.type === "adjustment" || t.note?.toLowerCase().includes("correction") || t.note?.toLowerCase().includes("balance adjustment") || t.note?.toLowerCase().includes("koreksi saldo")
+
   // 1. Dynamic Multi-Timeframe Chart Data (This Month, Last Month, Last 30 Days, Custom Month, All Time)
   const dynamicChartData = useMemo(() => {
     const now = new Date()
@@ -124,10 +126,10 @@ export function TransactionsPage() {
         const dateStr = format(d, "yyyy-MM-dd")
         const label = format(d, "d")
         const dayTxs = allTxs.filter(t => t.occurred_on === dateStr)
-        const income = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const expense = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const income = dayTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
+        const expense = dayTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
         const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const adjustment = dayTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const adjustment = dayTxs.filter(t => isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
 
         let activeValue = expense + income + transfer + adjustment
         if (filter === "income") activeValue = income
@@ -143,10 +145,10 @@ export function TransactionsPage() {
         const dateStr = format(d, "yyyy-MM-dd")
         const label = format(d, "d")
         const dayTxs = allTxs.filter(t => t.occurred_on === dateStr)
-        const income = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const expense = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const income = dayTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
+        const expense = dayTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
         const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const adjustment = dayTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const adjustment = dayTxs.filter(t => isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
 
         let activeValue = expense + income + transfer + adjustment
         if (filter === "income") activeValue = income
@@ -171,10 +173,10 @@ export function TransactionsPage() {
           return isWithinInterval(d, { start: mStart, end: mEnd })
         })
 
-        const income = mTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const expense = mTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const income = mTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
+        const expense = mTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
         const transfer = mTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const adjustment = mTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + Number(t.amount || 0), 0)
+        const adjustment = mTxs.filter(t => isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
 
         let activeValue = expense + income + transfer + adjustment
         if (filter === "income") activeValue = income
@@ -243,7 +245,15 @@ export function TransactionsPage() {
       })
     }
 
-    if (filter !== "all") txs = txs.filter(t => t.type === filter)
+    if (filter === "income") {
+      txs = txs.filter(t => t.type === "income" && !isTxCorrection(t))
+    } else if (filter === "expense") {
+      txs = txs.filter(t => t.type === "expense" && !isTxCorrection(t))
+    } else if (filter === "transfer") {
+      txs = txs.filter(t => t.type === "transfer")
+    } else if (filter === "adjustment") {
+      txs = txs.filter(t => isTxCorrection(t))
+    }
 
     if (selectedWalletName) {
       const target = selectedWalletName.toLowerCase()
@@ -289,7 +299,7 @@ export function TransactionsPage() {
     { key: "expense", label: "Outflow" },
     { key: "income", label: "Inflow" },
     { key: "transfer", label: "Transfer" },
-    { key: "adjustment", label: "Adjustment" },
+    { key: "adjustment", label: "Correction" },
   ]
 
   const maxBar = Math.max(...dynamicChartData.map(d => d.activeValue), 1)
@@ -322,7 +332,7 @@ export function TransactionsPage() {
                 : filter === "transfer"
                 ? `${selectedMonthLabel} Transfers`
                 : filter === "adjustment"
-                ? `${selectedMonthLabel} Adjustments`
+                ? `${selectedMonthLabel} Corrections`
                 : `${selectedMonthLabel} Activity`}
             </p>
             <p className="text-[32px] font-extrabold tracking-tight leading-tight amount" style={{ color: "var(--text-primary)" }}>
