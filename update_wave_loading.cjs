@@ -1,4 +1,6 @@
-import { motion } from "framer-motion"
+﻿const fs = require("fs");
+
+const code = `import { motion } from "framer-motion"
 
 export function LoadingScreen() {
   const dotAnimation = {
@@ -43,3 +45,7 @@ export function LoadingScreen() {
     </div>
   )
 }
+`;
+
+fs.writeFileSync("src/components/ui/LoadingScreen.tsx", code, "utf8");
+console.log("Updated LoadingScreen.tsx with 3 theme-adaptive wave dots and no text");
