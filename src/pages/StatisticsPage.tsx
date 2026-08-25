@@ -1,8 +1,9 @@
 import { triggerHaptic } from "../lib/haptics"
 import { useWallets, getWalletIcon } from "../hooks/useWallets"
 import { resolveFamfinaWallet } from "../lib/famfinaResolver"
-import { CreditCard } from "lucide-react"
-﻿import { useState, useMemo } from "react"
+import { useCategories, getCategoryParent } from "../hooks/useCategories"
+import { CreditCard, Layers, Calendar } from "lucide-react"
+import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
 import { ShieldCheck, ArrowDownCircle, ArrowUpCircle, TrendingUp, ChevronRight, ChevronLeft } from "lucide-react"
 import {
@@ -13,10 +14,12 @@ import { useAllTransactions } from "../hooks/useTransactions"
 import { formatRupiah } from "../lib/utils"
 import { BottomSheet } from "../components/ui/BottomSheet"
 import { IconRenderer } from "../components/ui/IconRenderer"
-import { format, subDays, subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns"
+import { useTheme } from "../contexts/ThemeContext"
+import { format, subDays, subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, getDay, isToday } from "date-fns"
 
 type Range = "week" | "month" | "year" | "all"
 type BreakdownType = "expense" | "income"
+type GroupMode = "category" | "parent"
 
 const GlassTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -43,85 +46,73 @@ const GlassTooltip = ({ active, payload, label }: any) => {
 }
 
 function SavingsRing({ rate, size = 130 }: { rate: number; size?: number }) {
-  const r = (size - 20) / 2
-  const circ = 2 * Math.PI * r
-  const filled = Math.min(1, Math.max(0, rate / 100)) * circ
-  const cx = size / 2
-  const cy = size / 2
-
-  const getColor = (isDark: boolean, pct: number) => {
-    if (pct >= 70) return isDark ? "#FFFFFF" : "#18181B"
-    if (pct >= 40) return isDark ? "#D4D4D8" : "#3F3F46"
-    return isDark ? "#71717A" : "#71717A"
-  }
-
-  const isDark = document.documentElement.getAttribute("data-theme") !== "light"
-  const ringColor = getColor(isDark, rate)
+  const { theme } = useTheme()
+  const isDark = theme !== "light"
+  const strokeWidth = 10
+  const radius = (size - strokeWidth) / 2
+  const circ = 2 * Math.PI * radius
+  const strokeDashoffset = circ - (rate / 100) * circ
+  const ringColor = isDark ? "#FFFFFF" : "#121212"
+  const trackColor = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)"
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--bg-elevated-2)" strokeWidth={10} />
-      <circle
-        cx={cx} cy={cy} r={r} fill="none"
-        stroke={ringColor} strokeWidth={10}
-        strokeDasharray={`${filled} ${circ - filled}`}
-        strokeLinecap="round"
-        transform={`rotate(-90 ${cx} ${cy})`}
-        style={{ transition: "stroke-dasharray 0.8s cubic-bezier(0.4, 0, 0.2, 1)" }}
-      />
-      <text x={cx} y={cy - 5} textAnchor="middle" fontSize={22} fontWeight="800"
-        fontFamily="Urbanist, sans-serif" fill="var(--text-primary)">
-        {rate.toFixed(0)}%
-      </text>
-      <text x={cx} y={cy + 16} textAnchor="middle" fontSize={10} fontWeight="600"
-        fontFamily="Urbanist, sans-serif" fill="var(--text-tertiary)">
-        Savings
-      </text>
-    </svg>
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={trackColor} strokeWidth={strokeWidth} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={ringColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circ}
+          strokeDashoffset={isNaN(strokeDashoffset) ? circ : strokeDashoffset}
+          strokeLinecap="round"
+          style={{ transition: "stroke-dashoffset 0.8s ease-in-out" }}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center">
+        <span className="amount text-[20px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+          {rate.toFixed(0)}%
+        </span>
+        <span className="text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>Saved</span>
+      </div>
+    </div>
   )
 }
 
 function useChartColors() {
-  const isDark = document.documentElement.getAttribute("data-theme") !== "light"
-  return {
-    barHigh: isDark ? "#FFFFFF" : "#18181B",
-    barMid: isDark ? "#A1A1AA" : "#52525B",
-    barLow: isDark ? "#52525B" : "#A1A1AA",
-    lineStroke: isDark ? "#FFFFFF" : "#18181B",
-    areaFillStart: isDark ? "rgba(255,255,255,0.2)" : "rgba(18,18,27,0.12)",
-    areaFillEnd: "rgba(0,0,0,0)",
+  const { theme } = useTheme()
+  const isDark = theme !== "light"
+  return useMemo(() => ({
     donut: isDark
-      ? ["#FFFFFF", "#D4D4D8", "#A1A1AA", "#71717A", "#3F3F46", "#27272A"]
-      : ["#18181B", "#3F3F46", "#52525B", "#71717A", "#A1A1AA", "#D4D4D8"],
-    labelFill: isDark ? "#121212" : "#FFFFFF",
-    cursorFill: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
-  }
-}
-
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5
-  const x = cx + radius * Math.cos(-midAngle * Math.PI / 180)
-  const y = cy + radius * Math.sin(-midAngle * Math.PI / 180)
-  if (percent < 0.05) return null
-  const isDark = document.documentElement.getAttribute("data-theme") !== "light"
-  return (
-    <text x={x} y={y} fill={isDark ? "#121212" : "#FFFFFF"} textAnchor="middle" dominantBaseline="central"
-      fontSize={10} fontWeight="800" fontFamily="Urbanist">
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  )
+      ? ["#FFFFFF", "#D1D1D6", "#AEAEB2", "#8E8E93", "#636366", "#48484A", "#3A3A3C"]
+      : ["#121212", "#2C2C2E", "#3A3A3C", "#636366", "#8E8E93", "#AEAEB2", "#D1D1D6"],
+    barHigh: isDark ? "#FFFFFF" : "#121212",
+    barMid: isDark ? "#AEAEB2" : "#636366",
+    barLow: isDark ? "#3A3A3C" : "#D1D1D6",
+    lineStroke: isDark ? "#FFFFFF" : "#121212",
+    cursorFill: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)"
+  }), [isDark])
 }
 
 export function StatisticsPage() {
+  const { theme } = useTheme()
+  const isDark = theme !== "light"
   const [range, setRange] = useState<Range>("month")
   const [breakdownType, setBreakdownType] = useState<BreakdownType>("expense")
+  const [groupMode, setGroupMode] = useState<GroupMode>("category")
   const [allDetailsOpen, setAllDetailsOpen] = useState(false)
   const now = new Date()
   const { data: allTxs = [] } = useAllTransactions()
   const { data: wallets = [] } = useWallets()
+  const { data: categories = [] } = useCategories()
   const [walletFilterType, setWalletFilterType] = useState<"all" | "expense" | "income">("all")
   const [monthOffset, setMonthOffset] = useState(0)
-    const colors = useChartColors()
+  const colors = useChartColors()
+
+  const isTxCorrection = (t: any) => t.type === "adjustment" || t.note?.toLowerCase().includes("correction") || t.note?.toLowerCase().includes("balance adjustment") || t.note?.toLowerCase().includes("koreksi saldo")
 
   // 1. Filter by range with exact ISO string boundaries
   const rangeTxs = useMemo(() => {
@@ -138,7 +129,6 @@ export function StatisticsPage() {
       startStr = format(startOfYear(now), "yyyy-MM-dd")
       endStr = format(endOfYear(now), "yyyy-MM-dd")
     } else {
-      // All time
       return allTxs
     }
     return allTxs.filter(t => {
@@ -148,60 +138,85 @@ export function StatisticsPage() {
   }, [allTxs, range, monthOffset])
 
   const { totalIncome, totalExpense } = useMemo(() => ({
-    totalIncome: rangeTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0),
-    totalExpense: rangeTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0),
+    totalIncome: rangeTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0),
+    totalExpense: rangeTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0),
   }), [rangeTxs])
 
   const savingsRate = totalIncome > 0 ? Math.max(0, ((totalIncome - totalExpense) / totalIncome) * 100) : 0
 
-  const healthScore = useMemo(() => {
-    // 1. Both 0 -> Neutral / Idle
-    if (totalIncome === 0 && totalExpense === 0) return 75
-
-    // 2. Outflow Only (No Inflow at all -> Pure Deficit) -> 0 pts
-    if (totalIncome === 0 && totalExpense > 0) {
-      return 0
+  // Month-over-Month Delta Calculation (comparing to previous month)
+  const { prevIncome, prevExpense } = useMemo(() => {
+    const prevDate = subMonths(now, monthOffset + 1)
+    const start = format(startOfMonth(prevDate), "yyyy-MM-dd")
+    const end = format(endOfMonth(prevDate), "yyyy-MM-dd")
+    const pTxs = allTxs.filter(t => t.occurred_on && t.occurred_on >= start && t.occurred_on <= end)
+    return {
+      prevIncome: pTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0),
+      prevExpense: pTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
     }
+  }, [allTxs, now, monthOffset])
 
-    // 3. Inflow Only (No Outflow at all) -> 100 pts
+  const getDelta = (curr: number, prev: number) => {
+    if (prev === 0) return curr > 0 ? { pct: 100, isUp: true } : null
+    const diff = curr - prev
+    const pct = Math.round((Math.abs(diff) / prev) * 100)
+    return { pct, isUp: diff >= 0, diff }
+  }
+
+  const incomeDelta = useMemo(() => getDelta(totalIncome, prevIncome), [totalIncome, prevIncome])
+  const expenseDelta = useMemo(() => getDelta(totalExpense, prevExpense), [totalExpense, prevExpense])
+  const netDelta = useMemo(() => getDelta(totalIncome - totalExpense, prevIncome - prevExpense), [totalIncome, totalExpense, prevIncome, prevExpense])
+
+  const healthScore = useMemo(() => {
+    if (totalIncome === 0 && totalExpense === 0) return 75
     if (totalIncome > 0 && totalExpense === 0) return 100
-
-    // 4. Both exist -> Direct Cashflow Ratio
+    if (totalIncome === 0 && totalExpense > 0) {
+      if (totalExpense < 1000000) return 65
+      if (totalExpense < 5000000) return 50
+      return 35
+    }
     const ratio = totalExpense / totalIncome
-
-    // Heavy Deficit: Spent > 150% of income -> 5 to 15 pts
-    if (ratio >= 2.0) return 5
-    if (ratio >= 1.5) return Math.max(5, Math.round(15 - (ratio - 1.5) * 20))
-
-    // Moderate Deficit: Spent 100% - 150% of income -> 16 to 45 pts
-    if (ratio > 1.0) return Math.round(45 - (ratio - 1.0) * 58)
-
-    // Break-even to mild surplus: Spent 80% - 100% of income -> 50 to 68 pts
-    if (ratio >= 0.8) return Math.round(50 + (1.0 - ratio) * 90)
-
-    // Healthy Surplus: Spent 40% - 80% of income -> 70 to 88 pts
-    if (ratio >= 0.4) return Math.round(70 + (0.8 - ratio) * 45)
-
-    // Super Surplus: Spent < 40% of income -> 90 to 100 pts
+    if (ratio >= 2.0) return 20
+    if (ratio >= 1.5) return Math.max(20, Math.round(35 - (ratio - 1.5) * 30))
+    if (ratio > 1.0) return Math.round(55 - (ratio - 1.0) * 40)
+    if (ratio >= 0.8) return Math.round(65 + (1.0 - ratio) * 50)
+    if (ratio >= 0.4) return Math.round(75 + (0.8 - ratio) * 35)
     return Math.min(100, Math.round(90 + (0.4 - ratio) * 25))
   }, [totalIncome, totalExpense])
 
-  // 2. Trend bar chart data with exact mathematical consistency
+  // Single-pass Pre-aggregated Monthly Map for ultra-fast All-Time and Year rendering
+  const monthlyAggregates = useMemo(() => {
+    const map = new Map<string, { income: number; expense: number }>()
+    for (let i = 0; i < allTxs.length; i++) {
+      const t = allTxs[i]
+      if (!t.occurred_on || t.type === "transfer" || isTxCorrection(t)) continue
+      const key = t.occurred_on.slice(0, 7)
+      let entry = map.get(key)
+      if (!entry) {
+        entry = { income: 0, expense: 0 }
+        map.set(key, entry)
+      }
+      const amt = Number(t.amount || 0)
+      if (t.type === "income") entry.income += amt
+      else if (t.type === "expense") entry.expense += amt
+    }
+    return map
+  }, [allTxs])
+
+  // 2. Trend bar chart data with high performance O(1) monthly lookups
   const trendData = useMemo(() => {
     if (range === "week") {
-      // 7 Days
       return Array.from({ length: 7 }, (_, i) => {
         const d = subDays(now, 6 - i)
         const dStr = format(d, "yyyy-MM-dd")
         const txs = allTxs.filter(t => t.occurred_on === dStr)
         return {
           label: format(d, "EEE"),
-          income: txs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0),
-          expense: txs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0),
+          income: txs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0),
+          expense: txs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0),
         }
       })
     } else if (range === "month") {
-      // 5 Weeks of the selected month
       const targetMonthDate = subMonths(now, monthOffset)
       const currentYear = targetMonthDate.getFullYear()
       const currentMonth = targetMonthDate.getMonth()
@@ -222,45 +237,36 @@ export function StatisticsPage() {
         })
         return {
           label: w.label,
-          income: txs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0),
-          expense: txs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0),
+          income: txs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0),
+          expense: txs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0),
         }
       })
     } else if (range === "year") {
-      // 12 Months of current year
       const currentYear = now.getFullYear()
       return Array.from({ length: 12 }, (_, m) => {
         const d = new Date(currentYear, m, 1)
-        const txs = allTxs.filter(t => {
-          if (!t.occurred_on) return false
-          const td = new Date(t.occurred_on)
-          return td.getFullYear() === currentYear && td.getMonth() === m
-        })
+        const key = format(d, "yyyy-MM")
+        const agg = monthlyAggregates.get(key) || { income: 0, expense: 0 }
         return {
           label: format(d, "MMM"),
-          income: txs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0),
-          expense: txs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0),
+          income: agg.income,
+          expense: agg.expense,
         }
       })
     } else {
-      // All Time (8 Months history)
+      // All Time: 8 recent aggregated monthly points with instant O(1) retrieval
       return Array.from({ length: 8 }, (_, i) => {
         const d = subMonths(now, 7 - i)
-        const y = d.getFullYear()
-        const m = d.getMonth()
-        const txs = allTxs.filter(t => {
-          if (!t.occurred_on) return false
-          const td = new Date(t.occurred_on)
-          return td.getFullYear() === y && td.getMonth() === m
-        })
+        const key = format(d, "yyyy-MM")
+        const agg = monthlyAggregates.get(key) || { income: 0, expense: 0 }
         return {
           label: format(d, "MMM"),
-          income: txs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0),
-          expense: txs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0),
+          income: agg.income,
+          expense: agg.expense,
         }
       })
     }
-  }, [allTxs, range, monthOffset])
+  }, [allTxs, range, monthOffset, monthlyAggregates])
 
   // 3. Cumulative Net Worth trend
   const netWorthData = useMemo(() => {
@@ -314,19 +320,55 @@ export function StatisticsPage() {
     ))
   }, [walletUsageStats, walletFilterType])
 
-  // 4. Category breakdown
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5
+  const x = cx + radius * Math.cos(-midAngle * Math.PI / 180)
+  const y = cy + radius * Math.sin(-midAngle * Math.PI / 180)
+  if (percent < 0.05) return null
+  const isDark = document.documentElement.getAttribute("data-theme") !== "light"
+  return (
+    <text x={x} y={y} fill={isDark ? "#121212" : "#FFFFFF"} textAnchor="middle" dominantBaseline="central"
+      fontSize={10} fontWeight="800" fontFamily="Urbanist">
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  )
+}
+
+  // 4. Category breakdown (Detailed) with Envelope Budget metadata
   const categoryStats = useMemo(() => {
-    const catMap = new Map<string, { name: string; emoji: string; total: number; count: number }>()
+    const catMap = new Map<string, { name: string; emoji: string; total: number; count: number; budget_amount: number | null }>()
+    const userCatMap = new Map<string, { emoji: string; budget_amount: number | null }>()
+    categories.forEach(c => userCatMap.set(c.name.trim().toLowerCase(), { emoji: c.emoji, budget_amount: c.budget_amount ?? null }))
+
     rangeTxs.filter(t => t.type === breakdownType).forEach(t => {
       const name = t.categories?.name || "Lainnya"
-      const emoji = t.categories?.emoji || (breakdownType === "income" ? "/icons/gaji.png" : "/icons/lainnya.png")
+      const meta = userCatMap.get(name.trim().toLowerCase())
+      const emoji = t.categories?.emoji || meta?.emoji || (breakdownType === "income" ? "/icons/gaji.png" : "/icons/lainnya.png")
+      const budget_amount = t.categories?.budget_amount ?? meta?.budget_amount ?? null
       const amt = Number(t.amount || 0)
       const ex = catMap.get(name)
       if (ex) { ex.total += amt; ex.count++ }
-      else catMap.set(name, { name, emoji, total: amt, count: 1 })
+      else catMap.set(name, { name, emoji, total: amt, count: 1, budget_amount })
     })
     return Array.from(catMap.values()).sort((a, b) => b.total - a.total)
+  }, [rangeTxs, breakdownType, categories])
+
+  // 4b. Macro Parent (Induk) breakdown
+  const parentCategoryStats = useMemo(() => {
+    const parentMap = new Map<string, { name: string; total: number; count: number }>()
+    rangeTxs.filter(t => t.type === breakdownType).forEach(t => {
+      const catName = t.categories?.name || "Lainnya"
+      const parentName = getCategoryParent(catName)
+      const amt = Number(t.amount || 0)
+      const ex = parentMap.get(parentName)
+      if (ex) { ex.total += amt; ex.count++ }
+      else parentMap.set(parentName, { name: parentName, total: amt, count: 1 })
+    })
+    return Array.from(parentMap.values()).sort((a, b) => b.total - a.total)
   }, [rangeTxs, breakdownType])
+
+  const activeBreakdownData = groupMode === "parent" ? parentCategoryStats : categoryStats
+  const totalBreakdownAmount = activeBreakdownData.reduce((s, c) => s + c.total, 0)
 
   // 5. Hashtag breakdown
   const hashtagStats = useMemo(() => {
@@ -349,8 +391,95 @@ export function StatisticsPage() {
       .map(([tag, data]) => ({ tag, ...data }))
       .sort((a, b) => b.total - a.total)
   }, [rangeTxs])
+
+  // Priority 4: Largest Category Change (MoM)
+  const categoryMoMShifts = useMemo(() => {
+    const prevDate = subMonths(now, monthOffset + 1)
+    const start = format(startOfMonth(prevDate), "yyyy-MM-dd")
+    const end = format(endOfMonth(prevDate), "yyyy-MM-dd")
+    const prevTxs = allTxs.filter(t => t.occurred_on && t.occurred_on >= start && t.occurred_on <= end && t.type === breakdownType && !isTxCorrection(t))
+
+    const prevMap = new Map<string, number>()
+    prevTxs.forEach(t => {
+      const key = groupMode === "parent" ? getCategoryParent(t.categories?.name || "Lainnya") : (t.categories?.name || "Lainnya")
+      prevMap.set(key, (prevMap.get(key) || 0) + Number(t.amount || 0))
+    })
+
+    const shifts: { name: string; current: number; prev: number; diff: number; pct: number }[] = []
+    activeBreakdownData.forEach(cat => {
+      const current = cat.total
+      const prev = prevMap.get(cat.name) || 0
+      const diff = current - prev
+      const pct = prev > 0 ? Math.round((diff / prev) * 100) : (current > 0 ? 100 : 0)
+      shifts.push({ name: cat.name, current, prev, diff, pct })
+    })
+
+    const sortedByIncrease = [...shifts].filter(s => s.diff > 0).sort((a, b) => b.diff - a.diff)
+    const sortedByDecrease = [...shifts].filter(s => s.diff < 0).sort((a, b) => a.diff - b.diff)
+
+    return {
+      biggestIncrease: sortedByIncrease[0] || null,
+      biggestDecrease: sortedByDecrease[0] || null
+    }
+  }, [allTxs, now, monthOffset, breakdownType, groupMode, activeBreakdownData])
+
+  // Priority 5: Expense Frequency vs Volume Insights
+  const frequencyStats = useMemo(() => {
+    if (activeBreakdownData.length === 0) return null
+    const mostFrequent = [...activeBreakdownData].sort((a, b) => b.count - a.count)[0]
+    const largestTicket = [...activeBreakdownData].sort((a, b) => (b.total / Math.max(1, b.count)) - (a.total / Math.max(1, a.count)))[0]
+    return { mostFrequent, largestTicket }
+  }, [activeBreakdownData])
+
+  // Priority 6: Average Transaction Size & MoM Comparison
+  const avgTransactionStats = useMemo(() => {
+    const expenseTxs = rangeTxs.filter(t => t.type === "expense" && !isTxCorrection(t))
+    const avgExpense = expenseTxs.length > 0 ? Math.round(totalExpense / expenseTxs.length) : 0
+
+    const prevDate = subMonths(now, monthOffset + 1)
+    const start = format(startOfMonth(prevDate), "yyyy-MM-dd")
+    const end = format(endOfMonth(prevDate), "yyyy-MM-dd")
+    const prevExpenseTxs = allTxs.filter(t => t.occurred_on && t.occurred_on >= start && t.occurred_on <= end && t.type === "expense" && !isTxCorrection(t))
+    const prevAvgExpense = prevExpenseTxs.length > 0 ? Math.round(prevExpense / prevExpenseTxs.length) : 0
+    const avgDelta = getDelta(avgExpense, prevAvgExpense)
+
+    return {
+      avgExpense,
+      avgDelta,
+      count: expenseTxs.length
+    }
+  }, [rangeTxs, totalExpense, allTxs, now, monthOffset, prevExpense])
+
+  // Priority 10: Calendar Spending Heatmap Data
+  const calendarSpendingHeatmap = useMemo(() => {
+    const targetMonth = subMonths(now, monthOffset)
+    const start = startOfMonth(targetMonth)
+    const end = endOfMonth(targetMonth)
+    const days = eachDayOfInterval({ start, end })
+
+    const dailySpendMap = new Map<string, number>()
+    days.forEach(d => dailySpendMap.set(format(d, "yyyy-MM-dd"), 0))
+
+    allTxs.forEach(t => {
+      if (t.type !== "expense" || !t.occurred_on || isTxCorrection(t)) return
+      if (dailySpendMap.has(t.occurred_on)) {
+        dailySpendMap.set(t.occurred_on, (dailySpendMap.get(t.occurred_on) || 0) + Number(t.amount || 0))
+      }
+    })
+
+    const amounts = Array.from(dailySpendMap.values())
+    const maxSpend = Math.max(1, ...amounts)
+    const pad = getDay(start)
+
+    return {
+      days,
+      pad,
+      dailySpendMap,
+      maxSpend,
+      targetMonth
+    }
+  }, [allTxs, now, monthOffset])
   
-  const totalBreakdownAmount = categoryStats.reduce((s, c) => s + c.total, 0)
   const rangeTitle = useMemo(() => {
     if (range === "week") return "This Week"
     if (range === "month") {
@@ -441,34 +570,44 @@ export function StatisticsPage() {
         </div>
       </section>
 
-      {/* 2-column mini stat cards */}
+      {/* 2-column mini stat cards (Savings Rate & Average Expense) */}
       <div className="grid grid-cols-2 gap-3">
         {/* Savings Ring card */}
         <div className="p-4 rounded-[22px] glass-surface flex flex-col items-center">
           <p className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: "var(--text-tertiary)" }}>Savings Rate</p>
           <SavingsRing rate={savingsRate} size={110} />
         </div>
-        {/* Cash Flow card */}
+        {/* Average Transaction Size & Count Card (Priority 6) */}
         <div className="p-4 rounded-[22px] glass-surface flex flex-col justify-between">
-          <p className="text-[11px] font-bold uppercase tracking-wide mb-3" style={{ color: "var(--text-tertiary)" }}>Cash Flow</p>
           <div>
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ background: colors.barHigh }} />
-              <p className="text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>Inflow</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: "var(--text-tertiary)" }}>Avg Expense</p>
+            <div className="flex items-baseline gap-1.5 mb-1.5">
+              <p className="amount text-[17px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+                {formatRupiah(avgTransactionStats.avgExpense)}
+              </p>
+              {avgTransactionStats.avgDelta && range === "month" && (
+                <span className="text-[10px] font-bold" style={{ color: "var(--text-secondary)" }}>
+                  {avgTransactionStats.avgDelta.isUp ? "↑" : "↓"} {avgTransactionStats.avgDelta.pct}%
+                </span>
+              )}
             </div>
-            <p className="amount text-[16px] font-extrabold mb-1" style={{ color: "var(--text-primary)" }}>{formatRupiah(totalIncome)}</p>
-            <div className="flex items-center gap-1.5 mb-1 mt-2">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ background: colors.barMid }} />
-              <p className="text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>Outflow</p>
+          </div>
+          <div className="pt-2 border-t border-[var(--glass-border)]">
+            <div className="flex justify-between items-center text-[10px]">
+              <span style={{ color: "var(--text-tertiary)" }}>Activity:</span>
+              <span className="font-bold" style={{ color: "var(--text-primary)" }}>{avgTransactionStats.count} txs</span>
             </div>
-            <p className="amount text-[16px] font-extrabold" style={{ color: "var(--text-primary)" }}>{formatRupiah(totalExpense)}</p>
+            <div className="flex justify-between items-center text-[10px] mt-1">
+              <span style={{ color: "var(--text-tertiary)" }}>Total Out:</span>
+              <span className="amount font-bold" style={{ color: "var(--text-primary)" }}>{formatRupiah(totalExpense)}</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Category Breakdown */}
       <div className="p-5 rounded-[24px] glass-surface">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-3">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
@@ -485,7 +624,7 @@ export function StatisticsPage() {
               )}
             </div>
             <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-              {categoryStats.length} categories · {rangeTitle}
+              {activeBreakdownData.length} {groupMode === "parent" ? "parent groups" : "categories"} · {rangeTitle}
             </p>
           </div>
           <div className="flex p-1 rounded-full" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
@@ -502,15 +641,40 @@ export function StatisticsPage() {
           </div>
         </div>
 
-        {categoryStats.length > 0 ? (
+        {/* Sub-toggle: By Category vs By Parent (Induk) */}
+        <div className="flex items-center gap-1.5 mb-4 p-1 rounded-xl w-fit" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+          <button
+            onClick={() => setGroupMode("category")}
+            className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all"
+            style={{
+              background: groupMode === "category" ? "var(--glass-fill-strong)" : "transparent",
+              color: groupMode === "category" ? "var(--text-primary)" : "var(--text-tertiary)"
+            }}
+          >
+            By Category
+          </button>
+          <button
+            onClick={() => setGroupMode("parent")}
+            className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all flex items-center gap-1"
+            style={{
+              background: groupMode === "parent" ? "var(--glass-fill-strong)" : "transparent",
+              color: groupMode === "parent" ? "var(--text-primary)" : "var(--text-tertiary)"
+            }}
+          >
+            <Layers size={10} />
+            By Parent (Induk)
+          </button>
+        </div>
+
+        {activeBreakdownData.length > 0 ? (
           <>
             <div className="flex justify-center mb-5">
               <div className="relative w-[200px] h-[200px] flex items-center justify-center">
                 <PieChart width={200} height={200}>
-                  <Pie data={categoryStats.map((c, i) => ({ name: c.name, value: c.total, fill: colors.donut[i % colors.donut.length] }))}
+                  <Pie data={activeBreakdownData.map((c, i) => ({ name: c.name, value: c.total, fill: colors.donut[i % colors.donut.length] }))}
                     cx="50%" cy="50%" innerRadius={62} outerRadius={92} dataKey="value" paddingAngle={3}
                     stroke="none" labelLine={false} label={renderCustomizedLabel}>
-                    {categoryStats.map((_, i) => (
+                    {activeBreakdownData.map((_, i) => (
                       <Cell key={i} fill={colors.donut[i % colors.donut.length]} />
                     ))}
                   </Pie>
@@ -529,14 +693,18 @@ export function StatisticsPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {categoryStats.slice(0, 6).map((cat, i) => {
+              {activeBreakdownData.slice(0, 6).map((cat, i) => {
                 const pct = totalBreakdownAmount > 0 ? Math.round((cat.total / totalBreakdownAmount) * 100) : 0
+                const avgCat = cat.count > 0 ? Math.round(cat.total / cat.count) : 0
                 return (
                   <div key={cat.name} className="flex items-center justify-between px-2.5 py-2 rounded-xl"
                     style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
                     <div className="flex items-center gap-1.5 min-w-0">
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.donut[i % colors.donut.length] }} />
-                      <span className="text-[11px] font-bold truncate max-w-[65px]" style={{ color: "var(--text-primary)" }}>{cat.name}</span>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold truncate max-w-[65px]" style={{ color: "var(--text-primary)" }}>{cat.name}</p>
+                        <p className="text-[9px] font-medium" style={{ color: "var(--text-tertiary)" }}>Avg {formatRupiah(avgCat)}</p>
+                      </div>
                     </div>
                     <div className="text-right shrink-0">
                       <span className="amount text-[11px] font-extrabold" style={{ color: "var(--text-primary)" }}>
@@ -547,6 +715,104 @@ export function StatisticsPage() {
                 )
               })}
             </div>
+
+            {/* Largest Category Change (Priority 4 — Strict Monochrome) & Frequency Insights (Priority 5) */}
+            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[var(--glass-border)]">
+              {categoryMoMShifts.biggestIncrease && (
+                <div className="p-2.5 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                  <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Biggest Increase</p>
+                  <p className="text-[12px] font-extrabold truncate mt-0.5" style={{ color: "var(--text-primary)" }}>
+                    {categoryMoMShifts.biggestIncrease.name}
+                  </p>
+                  <p className="text-[10px] font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>
+                    ↑ {categoryMoMShifts.biggestIncrease.pct}% (+{formatRupiah(categoryMoMShifts.biggestIncrease.diff)})
+                  </p>
+                </div>
+              )}
+              {categoryMoMShifts.biggestDecrease ? (
+                <div className="p-2.5 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                  <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Biggest Decrease</p>
+                  <p className="text-[12px] font-extrabold truncate mt-0.5" style={{ color: "var(--text-primary)" }}>
+                    {categoryMoMShifts.biggestDecrease.name}
+                  </p>
+                  <p className="text-[10px] font-bold mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                    ↓ {Math.abs(categoryMoMShifts.biggestDecrease.pct)}% (-{formatRupiah(Math.abs(categoryMoMShifts.biggestDecrease.diff))})
+                  </p>
+                </div>
+              ) : frequencyStats?.mostFrequent && (
+                <div className="p-2.5 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                  <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Most Frequent</p>
+                  <p className="text-[12px] font-extrabold truncate mt-0.5" style={{ color: "var(--text-primary)" }}>
+                    {frequencyStats.mostFrequent.name}
+                  </p>
+                  <p className="text-[10px] font-bold" style={{ color: "var(--text-secondary)" }}>
+                    {frequencyStats.mostFrequent.count} txs · Avg {formatRupiah(Math.round(frequencyStats.mostFrequent.total / frequencyStats.mostFrequent.count))}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Category Envelope Budgets Progress with Budget Risk Badges (Strict Monochrome) */}
+            {breakdownType === "expense" && categoryStats.some(c => c.budget_amount && c.budget_amount > 0) && (
+              <div className="mt-4 pt-3 border-t border-[var(--glass-border)] space-y-2.5">
+                <div className="flex justify-between items-center px-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                    Category Budget Progress
+                  </span>
+                  <span className="text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
+                    Envelope Tracking
+                  </span>
+                </div>
+                {categoryStats.filter(c => c.budget_amount && c.budget_amount > 0).map(cat => {
+                  const budget = cat.budget_amount!
+                  const spent = cat.total
+                  const pct = Math.round((spent / budget) * 100)
+                  const daysElapsed = now.getDate()
+                  const timePct = (daysElapsed / 30) * 100
+                  let catRisk: "SAFE" | "WATCH" | "AT RISK" = "SAFE"
+                  if (pct >= 95 || pct > timePct + 20) catRisk = "AT RISK"
+                  else if (pct > timePct + 5) catRisk = "WATCH"
+
+                  return (
+                    <div key={cat.name} className="p-3 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <IconRenderer icon={cat.emoji} size="w-4 h-4" />
+                          <span className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>{cat.name}</span>
+                          <span
+                            className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full"
+                            style={{
+                              background: catRisk === "AT RISK" ? "var(--text-primary)" : "var(--glass-fill-strong)",
+                              color: catRisk === "AT RISK" ? "var(--bg-canvas)" : "var(--text-primary)",
+                              border: "1px solid var(--glass-border)"
+                            }}
+                          >
+                            {catRisk}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="amount text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>
+                            {formatRupiah(spent)} / {formatRupiah(budget)}
+                          </span>
+                          <span className="text-[11px] font-extrabold ml-1.5" style={{ color: "var(--text-secondary)" }}>
+                            {pct}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}>
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.min(100, pct)}%`,
+                            background: "var(--text-primary)"
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </>
         ) : (
           <div className="py-10 text-center rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
@@ -554,6 +820,88 @@ export function StatisticsPage() {
             <p className="text-[11px] mt-1" style={{ color: "var(--text-tertiary)" }}>Try another timeframe</p>
           </div>
         )}
+      </div>
+
+      {/* 📅 Financial Calendar Spending Heatmap (Priority 10) */}
+      <div className="p-5 rounded-[24px] glass-surface">
+        <div className="flex justify-between items-center mb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Calendar size={16} style={{ color: "var(--text-tertiary)" }} />
+              <h2 className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
+                Spending Density & Heatmap
+              </h2>
+            </div>
+            <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+              Daily expense cluster · {rangeTitle}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-3 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+          <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
+            {["S","M","T","W","T","F","S"].map((w, i) => (
+              <div key={i} className="text-[9px] font-bold" style={{ color: "var(--text-tertiary)" }}>{w}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: calendarSpendingHeatmap.pad }).map((_, i) => <div key={`pad-${i}`} />)}
+            {calendarSpendingHeatmap.days.map(d => {
+              const dStr = format(d, "yyyy-MM-dd")
+              const spent = calendarSpendingHeatmap.dailySpendMap.get(dStr) || 0
+              const intensity = calendarSpendingHeatmap.maxSpend > 0 ? spent / calendarSpendingHeatmap.maxSpend : 0
+              const isT = isToday(d)
+
+              let bg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"
+              let textColor = "var(--text-tertiary)"
+              if (spent > 0) {
+                if (isDark) {
+                  if (intensity > 0.6) {
+                    bg = "#FFFFFF"
+                    textColor = "#0A0A0B"
+                  } else if (intensity > 0.3) {
+                    bg = "rgba(255,255,255,0.45)"
+                    textColor = "#FFFFFF"
+                  } else {
+                    bg = "rgba(255,255,255,0.18)"
+                    textColor = "rgba(255,255,255,0.9)"
+                  }
+                } else {
+                  if (intensity > 0.6) {
+                    bg = "#18181B"
+                    textColor = "#FFFFFF"
+                  } else if (intensity > 0.3) {
+                    bg = "rgba(24,24,27,0.5)"
+                    textColor = "#FFFFFF"
+                  } else {
+                    bg = "rgba(24,24,27,0.18)"
+                    textColor = "#18181B"
+                  }
+                }
+              }
+
+              return (
+                <div
+                  key={dStr}
+                  className="aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all"
+                  style={{
+                    background: bg,
+                    color: textColor,
+                    border: isT ? "1px solid var(--accent)" : "1px solid transparent"
+                  }}
+                  title={`${format(d, "dd MMM")}: ${spent > 0 ? formatRupiah(spent) : "No spend"}`}
+                >
+                  <span className="text-[10px] font-extrabold">{d.getDate()}</span>
+                  {spent > 0 && (
+                    <span className="text-[7px] font-bold opacity-80 scale-90 leading-none mt-0.5">
+                      {spent >= 1000000 ? (spent / 1000000).toFixed(0) + "M" : spent >= 1000 ? (spent / 1000).toFixed(0) + "K" : spent}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
 
@@ -635,7 +983,7 @@ export function StatisticsPage() {
                   </div>
 
                   {/* macOS Sleek Progress Gauge */}
-                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
                     <div
                       className="h-full rounded-full transition-all duration-700"
                       style={{
@@ -726,19 +1074,25 @@ export function StatisticsPage() {
         </div>
       </div>
 
-      {/* Net Income Summary Row */}
+      {/* Net Income Summary Row with MoM Delta */}
       <div className="p-5 rounded-[24px]"
         style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
-        <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-tertiary)" }}>
-          Period Summary · {rangeTitle}
-        </p>
+        <div className="flex justify-between items-center mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>
+            Period Summary · {rangeTitle}
+          </p>
+          {range === "month" && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--glass-fill)", color: "var(--text-tertiary)", border: "1px solid var(--glass-border)" }}>
+              vs prev month
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Total In", value: totalIncome, icon: "↑" },
-            { label: "Total Out", value: totalExpense, icon: "↓" },
-            { label: "Net", value: totalIncome - totalExpense, icon: "=" },
-          ].map(({ label, value, icon }) => {
-            const isNet = label === "Net"
+            { label: "Total In", value: totalIncome, delta: range === "month" ? incomeDelta : null, isExpense: false },
+            { label: "Total Out", value: totalExpense, delta: range === "month" ? expenseDelta : null, isExpense: true },
+            { label: "Net", value: totalIncome - totalExpense, delta: range === "month" ? netDelta : null, isNet: true },
+          ].map(({ label, value, delta, isExpense, isNet }) => {
             const abs = Math.abs(value)
             let formatted = "0"
             if (abs >= 1000000) {
@@ -750,11 +1104,27 @@ export function StatisticsPage() {
             }
             const sign = isNet ? (value < 0 ? "-" : value > 0 ? "+" : "") : ""
             return (
-              <div key={label} className="text-center p-2 rounded-2xl" style={{ background: "var(--glass-fill)" }}>
-                <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: "var(--text-tertiary)" }}>{icon} {label}</p>
-                <p className="amount text-[14px] font-extrabold leading-tight" style={{ color: "var(--text-primary)" }}>
-                  {sign}{formatted}
-                </p>
+              <div key={label} className="text-center p-2 rounded-2xl flex flex-col justify-between" style={{ background: "var(--glass-fill)" }}>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: "var(--text-tertiary)" }}>{label}</p>
+                  <p className="amount text-[14px] font-extrabold leading-tight" style={{ color: "var(--text-primary)" }}>
+                    {sign}{formatted}
+                  </p>
+                </div>
+                {delta && (
+                  <div className="mt-1.5 pt-1 border-t border-[var(--glass-border)] flex items-center justify-center gap-0.5">
+                    <span
+                      className="text-[10px] font-bold flex items-center"
+                      style={{
+                        color: isExpense
+                          ? (delta.isUp ? "#ef4444" : "var(--accent)")
+                          : (delta.isUp ? "var(--accent)" : "var(--text-tertiary)")
+                      }}
+                    >
+                      {delta.isUp ? "↑" : "↓"} {delta.pct}%
+                    </span>
+                  </div>
+                )}
               </div>
             )
           })}

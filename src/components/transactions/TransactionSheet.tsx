@@ -15,7 +15,8 @@ import { Calendar as CalendarIcon, Clock, ArrowUpCircle, ArrowDownCircle, Refres
 import { BottomSheet } from "../ui/BottomSheet"
 import { useCategories } from "../../hooks/useCategories"
 import { useWallets } from "../../hooks/useWallets"
-import { useAddTransaction, useUpdateTransaction, useDeleteTransaction } from "../../hooks/useTransactions"
+import { useAddTransaction, useUpdateTransaction, useDeleteTransaction, useAllTransactions } from "../../hooks/useTransactions"
+import { useCategorySuggestions } from "../../hooks/useCategorySuggestions"
 import { useToast } from "../../contexts/ToastContext"
 import { formatRupiah } from "../../lib/utils"
 import { format, isToday } from "date-fns"
@@ -49,16 +50,29 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
   const [timeOpen, setTimeOpen] = useState(false)
   const [walletTarget, setWalletTarget] = useState<"from" | "to">("from")
 
-  const { data: categories = [] } = useCategories(type === "transfer" ? undefined : type)
+  const { data: allCategories = [] } = useCategories()
+  const categories = useMemo(() => {
+    if (type === "transfer") return allCategories
+    return allCategories.filter(c => c.type === type)
+  }, [allCategories, type])
   const { data: wallets = [] } = useWallets()
+  const { data: allTxs = [] } = useAllTransactions()
   
   const addTx = useAddTransaction()
   const updateTx = useUpdateTransaction()
   const deleteTx = useDeleteTransaction()
   const { showToast } = useToast()
 
+  // Smart Contextual & Recency Category Ranking
+  const suggestedCategories = useCategorySuggestions({
+    categories,
+    transactions: allTxs,
+    type,
+    selectedWalletId: walletId
+  })
+
   const topCategories = useMemo(() => {
-    const list = [...categories]
+    const list = [...suggestedCategories]
     if (categoryId) {
       const idx = list.findIndex(c => c.id === categoryId)
       if (idx > -1) {
@@ -67,7 +81,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
       }
     }
     return list.slice(0, 3)
-  }, [categories, categoryId])
+  }, [suggestedCategories, categoryId])
 
   // Keep track of when modal opens or incoming transaction changes
   const prevOpenRef = useRef(false)
@@ -86,37 +100,52 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         setDate(transaction.occurred_on ? new Date(transaction.occurred_on) : new Date())
         setTime(transaction.created_at ? format(new Date(transaction.created_at), "HH:mm") : format(new Date(), "HH:mm"))
 
-        const match = getFamfinaMatch(transaction)
-
-        // 1. Resolve Category
+        // 1. Resolve Category accurately without resetting
         if (transaction.category_id) {
           setCategoryId(transaction.category_id)
-        } else if (match?.categoryName) {
-          const foundCat = categories.find(c => c.name.toLowerCase() === match.categoryName.toLowerCase())
-          setCategoryId(foundCat ? foundCat.id : (categories.length > 0 ? categories[0].id : null))
+        } else if (transaction.categories?.name) {
+          const foundCat = allCategories.find(c => c.name.toLowerCase() === transaction.categories!.name.toLowerCase())
+          if (foundCat) setCategoryId(foundCat.id)
         } else {
-          setCategoryId(categories.length > 0 ? categories[0].id : null)
+          const match = getFamfinaMatch(transaction)
+          if (match?.categoryName) {
+            const foundCat = allCategories.find(c => c.name.toLowerCase() === match.categoryName.toLowerCase())
+            setCategoryId(foundCat ? foundCat.id : (categories.length > 0 ? categories[0].id : null))
+          } else {
+            let foundByNote = null
+            if (transaction.note) {
+              const noteLower = transaction.note.toLowerCase()
+              foundByNote = allCategories.find(c => noteLower.includes(c.name.toLowerCase()))
+            }
+            setCategoryId(foundByNote ? foundByNote.id : (categories.length > 0 ? categories[0].id : null))
+          }
         }
 
         // 2. Resolve Wallet (From Account)
         if (transaction.wallet_id) {
           setWalletId(transaction.wallet_id)
-        } else if (match?.fromWallet) {
-          const foundWallet = wallets.find(w => w.name.toLowerCase() === match.fromWallet.toLowerCase())
-          setWalletId(foundWallet ? foundWallet.id : (wallets.length > 0 ? wallets[0].id : null))
         } else {
-          setWalletId(wallets.length > 0 ? wallets[0].id : null)
+          const match = getFamfinaMatch(transaction)
+          if (match?.fromWallet) {
+            const foundWallet = wallets.find(w => w.name.toLowerCase() === match.fromWallet.toLowerCase())
+            setWalletId(foundWallet ? foundWallet.id : (wallets.length > 0 ? wallets[0].id : null))
+          } else {
+            setWalletId(wallets.length > 0 ? wallets[0].id : null)
+          }
         }
 
         // 3. Resolve To Wallet (Transfer)
         if (transaction.to_wallet_id) {
           setToWalletId(transaction.to_wallet_id)
-        } else if (match?.toWallet) {
-          const toW = match?.toWallet
-          const foundTo = toW ? wallets.find(w => w.name.toLowerCase() === toW.toLowerCase()) : null
-          setToWalletId(foundTo ? foundTo.id : (wallets.length > 1 ? wallets[1].id : null))
         } else {
-          setToWalletId(wallets.length > 1 ? wallets[1].id : null)
+          const match = getFamfinaMatch(transaction)
+          const toW = match?.toWallet
+          if (toW) {
+            const foundTo = wallets.find(w => w.name.toLowerCase() === toW.toLowerCase())
+            setToWalletId(foundTo ? foundTo.id : (wallets.length > 1 ? wallets[1].id : null))
+          } else {
+            setToWalletId(wallets.length > 1 ? wallets[1].id : null)
+          }
         }
       } else {
         setType("expense")
@@ -132,19 +161,10 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
 
     prevOpenRef.current = isOpen
     prevTxIdRef.current = transaction?.id || null
-  }, [isOpen, transaction, categories, wallets])
+  }, [isOpen, transaction, allCategories, categories, wallets])
 
-  // Sync categoryId and walletId when type or list changes, WITHOUT resetting type
+  // Ensure valid toWalletId when type is transfer
   useEffect(() => {
-    if (type !== "transfer" && categories.length > 0) {
-      const exists = categories.some(c => c.id === categoryId)
-      if (!exists) {
-        setCategoryId(categories[0].id)
-      }
-    }
-    if (!walletId && wallets.length > 0) {
-      setWalletId(wallets[0].id)
-    }
     if (type === "transfer") {
       if (!toWalletId && wallets.length > 1) {
         const other = wallets.find(w => w.id !== walletId)
@@ -154,7 +174,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         if (other) setToWalletId(other.id)
       }
     }
-  }, [type, categories, wallets, categoryId, walletId, toWalletId])
+  }, [type, wallets, walletId, toWalletId])
 
   const handleNum = (num: string) => {
     if (amount === "0") setAmount(num)
@@ -199,7 +219,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     // Close sheet immediately for instant response
     onClose()
 
-    if (transaction) {
+    if (transaction && transaction.id) {
       updateTx.mutate({ id: transaction.id, ...payload }, {
         onSuccess: () => {
           triggerSuccessHaptic(); showToast("Transaction updated", "update", () => {})
@@ -209,9 +229,26 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         }
       })
     } else {
+      // Compute transient contextual feedback (Priority 8)
+      const cat = allCategories.find(c => c.id === effectiveCatId)
+      let contextMsg = "Transaction saved"
+      if (type === "expense" && cat) {
+        const currentMonthKey = format(date, "yyyy-MM")
+        const categoryMonthSpent = allTxs
+          .filter(t => t.type === "expense" && t.occurred_on?.startsWith(currentMonthKey) && (t.category_id === cat.id || t.categories?.name.toLowerCase() === cat.name.toLowerCase()))
+          .reduce((s, t) => s + Number(t.amount || 0), 0) + numAmount
+
+        contextMsg = `${cat.name} · ${formatRupiah(numAmount)} (${formatRupiah(categoryMonthSpent)} spent this mo)`
+      } else if (type === "income") {
+        contextMsg = `Inflow ${formatRupiah(numAmount)} recorded`
+      } else if (type === "transfer") {
+        contextMsg = `Transfer ${formatRupiah(numAmount)} recorded`
+      }
+
       addTx.mutate(payload, {
         onSuccess: () => {
-          showToast("Transaction saved", "add", () => {})
+          triggerSuccessHaptic()
+          showToast(contextMsg, "add", () => {})
         },
         onError: () => {
           showToast("Failed to save transaction", "delete", () => {})
@@ -471,7 +508,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
 
       {/* More Categories Glass Sheet (4-Columns Fullscreen Layout) */}
       <BottomSheet isOpen={moreCatOpen} onClose={() => setMoreCatOpen(false)}>
-        <div className="p-5 pb-16 flex flex-col h-[85vh] max-h-[85vh]">
+        <div className="p-5 flex flex-col max-h-[82vh] h-full">
           <div className="flex items-center justify-between mb-4 shrink-0">
             <div>
               <h3 className="font-extrabold text-[18px] leading-tight" style={{ color: "var(--text-primary)" }}>
@@ -490,8 +527,8 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-x-2 gap-y-3 content-start overflow-y-auto pr-1 flex-1 pb-16">
-            {categories.map(cat => {
+          <div className="grid grid-cols-4 gap-x-2 gap-y-3 content-start overflow-y-auto pr-1 flex-1 pb-[max(env(safe-area-inset-bottom,0px),36px)]">
+            {suggestedCategories.map(cat => {
               const isSelected = categoryId === cat.id
               return (
                 <button
@@ -521,7 +558,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
 
       {/* More Accounts Glass Sheet (Tall 3-Column Layout with pb-16) */}
       <BottomSheet isOpen={moreWalletOpen} onClose={() => setMoreWalletOpen(false)}>
-        <div className="p-5 pb-16 flex flex-col h-[85vh] max-h-[85vh]">
+        <div className="p-5 flex flex-col max-h-[82vh] h-full">
           <div className="flex items-center justify-between mb-4 shrink-0">
             <div>
               <h3 className="font-extrabold text-[18px] leading-tight" style={{ color: "var(--text-primary)" }}>
@@ -540,7 +577,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 content-start overflow-y-auto pr-1 flex-1 pb-16">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 content-start overflow-y-auto pr-1 flex-1 pb-[max(env(safe-area-inset-bottom,0px),36px)]">
             {wallets.map(w => {
               const isSelected = (walletTarget === "from" ? walletId : toWalletId) === w.id
               return (

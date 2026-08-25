@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useMemo } from "react"
 import { triggerHaptic } from "../lib/haptics"
 import { GoalDetailModal } from "../components/goals/GoalDetailModal"
 import {
@@ -11,7 +11,7 @@ import { useToast } from "../contexts/ToastContext"
 import { useAuth } from "../contexts/AuthContext"
 import { useTheme } from "../contexts/ThemeContext"
 import { useCategories, useAddCategory, useDeleteCategory, useUpdateCategory } from "../hooks/useCategories"
-import { useWallets, useAddWallet, useUpdateWallet, useDeleteWallet } from "../hooks/useWallets"
+import { useWallets, useAddWallet, useUpdateWallet, useDeleteWallet, DEFAULT_WALLETS, getWalletIcon } from "../hooks/useWallets"
 import { useGoals } from "../hooks/useGoals"
 import { useBudgetTarget } from "../hooks/useBudgetTarget"
 import { useShortcuts } from "../hooks/useShortcuts"
@@ -38,6 +38,9 @@ export function SettingsPage() {
   const { budgetTarget, setBudgetTarget } = useBudgetTarget()
   const { shortcuts, saveShortcut, deleteShortcut } = useShortcuts()
 
+  const activeWalletNames = useMemo(() => new Set(wallets.map(w => w.name.trim().toLowerCase())), [wallets])
+  const availableDefaultWallets = useMemo(() => DEFAULT_WALLETS.filter(name => !activeWalletNames.has(name.toLowerCase())), [activeWalletNames])
+
   const addBill = useAddBill()
   const updateBill = useUpdateBill()
   const deleteBill = useDeleteBill()
@@ -54,11 +57,13 @@ export function SettingsPage() {
 
   // Editing states
   const [editingBill, setEditingBill] = useState<any>(null)
-  const [editWallet, setEditWallet] = useState<{ id: string; name: string } | null>(null)
+  const [editWallet, setEditWallet] = useState<{ id: string; name: string; icon: string } | null>(null)
   const [correctWallet, setCorrectWallet] = useState<{ id: string; name: string; icon: string; currentBalance: number } | null>(null)
   const [correctTargetBalance, setCorrectTargetBalance] = useState("")
   const [correctNote, setCorrectNote] = useState("")
-  const [editCategory, setEditCategory] = useState<{ id: string; name: string } | null>(null)
+  const [isSavingCorrection, setIsSavingCorrection] = useState(false)
+  const [editCategory, setEditCategory] = useState<{ id: string; name: string; budget_amount?: number | null; type?: string } | null>(null)
+  const [editCategoryBudget, setEditCategoryBudget] = useState("")
 
   // Modals state
   const [profileOpen, setProfileOpen] = useState(false)
@@ -232,12 +237,15 @@ export function SettingsPage() {
   }
 
   const handleSaveBudget = () => {
-    if (!budgetName) return
-    addWallet.mutate({ name: budgetName, icon: "/icons/wallet.png" }, {
+    if (!budgetName.trim()) return
+    const name = budgetName.trim()
+    const autoIcon = getWalletIcon(name)
+    const chosenIcon = autoIcon !== "/icons/Budgets/custom.png" ? autoIcon : "/icons/Budgets/custom.png"
+    addWallet.mutate({ name, icon: chosenIcon }, {
       onSuccess: () => {
         setAddBudgetOpen(false)
         setBudgetName("")
-        showToast("Budget account added", "add", () => {})
+        showToast("Account added", "add", () => {})
       }
     })
   }
@@ -721,8 +729,25 @@ export function SettingsPage() {
             {categories.map(cat => (
               <div key={cat.id} className="p-3 rounded-2xl flex items-center gap-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><IconRenderer icon={cat.emoji} size="w-5 h-5" /></div>
-                <div className="flex-1 min-w-0"><p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{cat.name}</p><p className="text-[10px] capitalize font-semibold" style={{ color: "var(--text-tertiary)" }}>{cat.type}</p></div>
-                <button onClick={() => setEditCategory({ id: cat.id, name: cat.name })} className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0" style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>Rename</button>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{cat.name}</p>
+                  <div className="flex items-center gap-2 text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
+                    <span className="capitalize">{cat.type}</span>
+                    {cat.budget_amount && cat.budget_amount > 0 ? (
+                      <span className="text-emerald-400 font-bold">· Budget: {formatRupiah(cat.budget_amount)}/mo</span>
+                    ) : null}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setEditCategory({ id: cat.id, name: cat.name, budget_amount: cat.budget_amount, type: cat.type })
+                    setEditCategoryBudget(cat.budget_amount ? String(cat.budget_amount) : "")
+                  }}
+                  className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
+                  style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
+                >
+                  Edit
+                </button>
                 <button onClick={() => { if (confirm(`Delete "${cat.name}"?`)) deleteCategory.mutate(cat.id) }} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ color: "#ef4444" }}><Trash2 size={13} /></button>
               </div>
             ))}
@@ -732,9 +757,59 @@ export function SettingsPage() {
 
       <BottomSheet isOpen={!!editCategory} onClose={() => setEditCategory(null)}>
         <div className="p-5 pb-10 space-y-4">
-          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Rename Category</h3>
-          <input type="text" value={editCategory?.name || ""} onChange={e => setEditCategory(prev => prev ? { ...prev, name: e.target.value } : null)} className="w-full p-3.5 rounded-2xl outline-none font-semibold" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
-          <button onClick={() => { if (!editCategory?.name.trim()) return; updateCategory.mutate({ id: editCategory.id, name: editCategory.name.trim(), emoji: categories.find(c => c.id === editCategory.id)?.emoji || "/icons/lainnya.png" }, { onSuccess: () => { setEditCategory(null); showToast("Category renamed", "update", () => {}) } }) }} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save</button>
+          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Edit Category</h3>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Category Name</label>
+            <input
+              type="text"
+              value={editCategory?.name || ""}
+              onChange={e => setEditCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
+              placeholder="Category Name"
+              className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+            />
+          </div>
+
+          {editCategory?.type === "expense" && (
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
+                Monthly Budget Target (Optional)
+              </label>
+              <input
+                type="text"
+                value={editCategoryBudget ? formatRupiah(Number(editCategoryBudget.replace(/\D/g, ""))) : ""}
+                onChange={e => setEditCategoryBudget(e.target.value.replace(/\D/g, ""))}
+                placeholder="e.g. Rp 1.000.000 (leave blank for no budget)"
+                className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
+                style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+              />
+              <p className="text-[10px] font-medium mt-1 px-1" style={{ color: "var(--text-tertiary)" }}>
+                Used to track category envelope progress in Statistics.
+              </p>
+            </div>
+          )}
+
+          <button
+            onClick={() => {
+              if (!editCategory?.name.trim()) return
+              const numBudget = editCategoryBudget.trim() ? Number(editCategoryBudget.replace(/\D/g, "")) : null
+              updateCategory.mutate({
+                id: editCategory.id,
+                name: editCategory.name.trim(),
+                budget_amount: numBudget,
+                emoji: categories.find(c => c.id === editCategory.id)?.emoji || "/icons/lainnya.png"
+              }, {
+                onSuccess: () => {
+                  setEditCategory(null)
+                  showToast("Category updated", "update", () => {})
+                }
+              })
+            }}
+            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg"
+            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+          >
+            Save Changes
+          </button>
         </div>
       </BottomSheet>
 
@@ -752,7 +827,7 @@ export function SettingsPage() {
       </BottomSheet>
 
       <BottomSheet isOpen={budgetsOpen} onClose={() => setBudgetsOpen(false)}>
-        <div className="p-5 pb-10 flex flex-col h-[85vh]">
+        <div className="p-5 flex flex-col max-h-[82vh] h-full">
           <div className="flex items-center justify-between mb-4 shrink-0">
             <div>
               <h3 className="font-extrabold text-lg leading-tight" style={{ color: "var(--text-primary)" }}>Accounts & Wallets</h3>
@@ -760,15 +835,15 @@ export function SettingsPage() {
                 {wallets.length} active accounts · Tap ⚖️ to adjust balance
               </p>
             </div>
-            <button onClick={() => { setBudgetsOpen(false); setTimeout(() => setAddBudgetOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button>
+            <button onClick={() => { setBudgetsOpen(false); setTimeout(() => setAddBudgetOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 shrink-0" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button>
           </div>
-          <div className="space-y-2 overflow-y-auto pr-0.5">
+          <div className="space-y-2 overflow-y-auto pr-0.5 flex-1 pb-[max(env(safe-area-inset-bottom,0px),36px)]">
             {wallets.map(w => {
               const bal = balancesById[w.id] ?? balancesByName[w.name.toLowerCase()] ?? 0
               return (
                 <div key={w.id} className="p-3 rounded-2xl flex items-center gap-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-                    <IconRenderer icon={w.icon || "/icons/wallet.png"} size="w-5 h-5" />
+                    <IconRenderer icon={w.icon || getWalletIcon(w.name)} size="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{w.name}</p>
@@ -778,7 +853,7 @@ export function SettingsPage() {
                     onClick={() => {
                       setBudgetsOpen(false)
                       setTimeout(() => {
-                        setCorrectWallet({ id: w.id, name: w.name, icon: w.icon || "/icons/wallet.png", currentBalance: bal })
+                        setCorrectWallet({ id: w.id, name: w.name, icon: w.icon || getWalletIcon(w.name), currentBalance: bal })
                         setCorrectTargetBalance(String(bal))
                         setCorrectNote("")
                       }, 300)
@@ -790,7 +865,13 @@ export function SettingsPage() {
                     <Scale size={12} />
                     <span>Adjust</span>
                   </button>
-                  <button onClick={() => setEditWallet({ id: w.id, name: w.name })} className="text-[11px] font-bold px-2 py-1.5 rounded-full shrink-0" style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>Rename</button>
+                  <button
+                    onClick={() => setEditWallet({ id: w.id, name: w.name, icon: w.icon || getWalletIcon(w.name) })}
+                    className="text-[11px] font-bold px-2.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-transform"
+                    style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
+                  >
+                    Edit
+                  </button>
                   <button onClick={() => { if (confirm(`Delete account "${w.name}"?`)) deleteWallet.mutate(w.id) }} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ color: "#ef4444" }}><Trash2 size={13} /></button>
                 </div>
               )
@@ -800,7 +881,7 @@ export function SettingsPage() {
       </BottomSheet>
 
       {/* Balance Correction Sheet */}
-      <BottomSheet isOpen={!!correctWallet} onClose={() => setCorrectWallet(null)}>
+      <BottomSheet isOpen={!!correctWallet} onClose={() => { if (!isSavingCorrection) setCorrectWallet(null) }}>
         <div className="p-5 pb-10 space-y-4">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
@@ -868,8 +949,9 @@ export function SettingsPage() {
           </div>
 
           <button
+            disabled={isSavingCorrection}
             onClick={() => {
-              if (!correctWallet) return
+              if (!correctWallet || isSavingCorrection) return
               const target = Number(correctTargetBalance || 0)
               const diff = target - correctWallet.currentBalance
               if (diff === 0) {
@@ -878,6 +960,7 @@ export function SettingsPage() {
                 return
               }
 
+              setIsSavingCorrection(true)
               const matchingWallet = wallets.find(w => w.id === correctWallet.id || w.name.toLowerCase() === correctWallet.name.toLowerCase())
               const isValidUuid = (id?: string | null) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
               const walletIdToSave = isValidUuid(matchingWallet?.id) ? matchingWallet!.id : null
@@ -897,36 +980,144 @@ export function SettingsPage() {
                 category_id: null
               }, {
                 onSuccess: () => {
+                  setIsSavingCorrection(false)
                   setCorrectWallet(null)
                   showToast(`Balance corrected to ${formatRupiah(target)}`, "update", () => {})
                 },
                 onError: (err: any) => {
+                  setIsSavingCorrection(false)
                   console.error("Balance correction error:", err)
                   showToast(err?.message || "Failed to adjust balance", "delete", () => {})
+                }
+              })
+            }}
+            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+          >
+            {isSavingCorrection ? "Saving Correction..." : "Save Correction"}
+          </button>
+        </div>
+      </BottomSheet>
+
+      {/* Edit Account Modal */}
+      <BottomSheet isOpen={!!editWallet} onClose={() => setEditWallet(null)}>
+        <div className="p-5 pb-10 space-y-4 max-h-[82vh] overflow-y-auto">
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Edit Account</h3>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+              <IconRenderer icon={editWallet?.icon || getWalletIcon(editWallet?.name || "")} size="w-6 h-6" />
+            </div>
+          </div>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>
+              Account Name
+            </label>
+            <input
+              type="text"
+              value={editWallet?.name || ""}
+              onChange={e => setEditWallet(prev => prev ? { ...prev, name: e.target.value } : null)}
+              placeholder="Account Name"
+              className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              if (!editWallet?.name.trim()) return
+              updateWallet.mutate({
+                id: editWallet.id,
+                name: editWallet.name.trim(),
+                icon: editWallet.icon || getWalletIcon(editWallet.name)
+              }, {
+                onSuccess: () => {
+                  setEditWallet(null)
+                  showToast("Account updated", "update", () => {})
                 }
               })
             }}
             className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
-            Save Correction
+            Save Changes
           </button>
         </div>
       </BottomSheet>
 
-      <BottomSheet isOpen={!!editWallet} onClose={() => setEditWallet(null)}>
-        <div className="p-5 pb-10 space-y-4">
-          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Rename Account</h3>
-          <input type="text" value={editWallet?.name || ""} onChange={e => setEditWallet(prev => prev ? { ...prev, name: e.target.value } : null)} className="w-full p-3.5 rounded-2xl outline-none font-semibold" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
-          <button onClick={() => { if (!editWallet?.name.trim()) return; updateWallet.mutate({ id: editWallet.id, name: editWallet.name.trim(), icon: wallets.find(w => w.id === editWallet.id)?.icon || "/icons/wallet.png" }, { onSuccess: () => { setEditWallet(null); showToast("Account renamed", "update", () => {}) } }) }} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save</button>
-        </div>
-      </BottomSheet>
-
+      {/* Add Account Modal with Available Defaults & Custom Creator */}
       <BottomSheet isOpen={addBudgetOpen} onClose={() => setAddBudgetOpen(false)}>
-        <div className="p-5 pb-10 space-y-4">
-          <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Account</h3>
-          <input type="text" value={budgetName} onChange={e => setBudgetName(e.target.value)} placeholder="Account Name (e.g. BCA, OVO)" className="w-full p-3.5 rounded-2xl outline-none font-semibold" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
-          <button onClick={handleSaveBudget} className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>Save Account</button>
+        <div className="p-5 pb-10 space-y-4 max-h-[82vh] overflow-y-auto">
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Account</h3>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+              <IconRenderer icon={budgetName.trim() ? getWalletIcon(budgetName) : "/icons/Budgets/custom.png"} size="w-6 h-6" />
+            </div>
+          </div>
+
+          {/* Section 1: Quick Add Available Default Accounts */}
+          {availableDefaultWallets.length > 0 && (
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block px-1" style={{ color: "var(--text-tertiary)" }}>
+                Available Preset Accounts ({availableDefaultWallets.length})
+              </label>
+              <div className="grid grid-cols-3 gap-2 max-h-[160px] overflow-y-auto p-1.5 rounded-2xl"
+                style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                {availableDefaultWallets.map(name => {
+                  const icon = getWalletIcon(name)
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => {
+                        addWallet.mutate({ name, icon }, {
+                          onSuccess: () => {
+                            setAddBudgetOpen(false)
+                            showToast(`${name} added`, "add", () => {})
+                          }
+                        })
+                        triggerHaptic("medium")
+                      }}
+                      className="flex items-center gap-2 p-2 rounded-xl active:scale-95 transition-all text-left"
+                      style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                    >
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--bg-elevated)" }}>
+                        <IconRenderer icon={icon} size="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-bold truncate" style={{ color: "var(--text-primary)" }}>{name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Section 2: Create Custom Account */}
+          <div className="pt-2 border-t border-[var(--glass-border)] space-y-3">
+            <label className="text-[11px] font-bold uppercase tracking-wider block px-1" style={{ color: "var(--text-tertiary)" }}>
+              Or Create Custom Account
+            </label>
+            <div className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--glass-fill)" }}>
+                <IconRenderer icon="/icons/Budgets/custom.png" size="w-6 h-6" />
+              </div>
+              <input
+                type="text"
+                value={budgetName}
+                onChange={e => setBudgetName(e.target.value)}
+                placeholder="Account Name (e.g. Tabungan, Dompet Saku)"
+                className="w-full bg-transparent outline-none font-semibold text-[14px]"
+                style={{ color: "var(--text-primary)" }}
+              />
+            </div>
+
+            <button
+              onClick={handleSaveBudget}
+              className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            >
+              Save Custom Account
+            </button>
+          </div>
         </div>
       </BottomSheet>
       

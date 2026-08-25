@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react"
 import { ChevronRight, Wallet as WalletIcon } from "lucide-react"
 import { useWalletBalances } from "../../hooks/useWalletBalances"
+import { useBills } from "../../hooks/useBills"
 import { formatRupiah } from "../../lib/utils"
 import { BottomSheet } from "./BottomSheet"
 import { IconRenderer } from "./IconRenderer"
+import { useTheme } from "../../contexts/ThemeContext"
 
 const SEGMENT_COLORS_DARK = [
   "#FFFFFF", "#E4E4E7", "#D4D4D8", "#A1A1AA", "#8E8E93",
@@ -14,11 +16,21 @@ const SEGMENT_COLORS_LIGHT = [
   "#8E8E93", "#A1A1AA", "#D4D4D8", "#E4E4E7", "#F4F4F6"
 ]
 
-export function BalanceCard() {
+interface BalanceCardProps {
+  hideBalance?: boolean
+}
+
+export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   const [detailOpen, setDetailOpen] = useState(false)
   const { allAccounts, positiveAccounts: posAccs, totalAssets: totalAssetsSum, allTxs } = useWalletBalances()
+  const { data: bills = [] } = useBills()
+  const { theme } = useTheme()
 
-  const isDark = document.documentElement.getAttribute("data-theme") !== "light"
+  const unpaidBills = useMemo(() => bills.filter(b => !b.is_paid), [bills])
+  const committedAmount = useMemo(() => unpaidBills.reduce((s, b) => s + Number(b.amount || 0), 0), [unpaidBills])
+  const safeToSpend = Math.max(0, totalAssetsSum - committedAmount)
+
+  const isDark = theme !== "light"
   const SEGMENT_COLORS = isDark ? SEGMENT_COLORS_DARK : SEGMENT_COLORS_LIGHT
 
   const { items, accounts, totalAssets, isEmpty } = useMemo(() => {
@@ -141,6 +153,25 @@ export function BalanceCard() {
                 </button>
               )}
             </div>
+
+            {/* Balance Safety Buffer (Priority 11) */}
+            {committedAmount > 0 && (
+              <div className="mt-3 pt-2 border-t border-[var(--glass-border)] flex items-center justify-between text-[11px]">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--text-primary)" }} />
+                  <span className="truncate" style={{ color: "var(--text-tertiary)" }}>Safe to Spend:</span>
+                  <span className="amount font-extrabold" style={{ color: "var(--text-primary)" }}>
+                    {hideBalance ? "Rp ••••••••" : formatRupiah(safeToSpend)}
+                  </span>
+                </div>
+                <div className="text-right shrink-0" style={{ color: "var(--text-tertiary)" }}>
+                  <span>Committed: </span>
+                  <span className="amount font-bold text-[var(--text-secondary)]">
+                    {hideBalance ? "Rp ••••••••" : formatRupiah(committedAmount)}
+                  </span>
+                </div>
+              </div>
+            )}
           </>
         )}
       </section>
@@ -160,7 +191,7 @@ export function BalanceCard() {
             <div className="text-right">
               <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Total Assets</p>
               <p className="amount text-[16px] font-extrabold leading-tight" style={{ color: "var(--text-primary)" }}>
-                {formatRupiah(totalAssets)}
+                {hideBalance ? "Rp ••••••••" : formatRupiah(totalAssets)}
               </p>
             </div>
           </div>
@@ -191,7 +222,7 @@ export function BalanceCard() {
                   </div>
                   <div>
                     <p className="amount font-extrabold text-[13px]" style={{ color: "var(--text-primary)" }}>
-                      {formatRupiah(acc.balance)}
+                      {hideBalance ? "Rp ••••••••" : formatRupiah(acc.balance)}
                     </p>
                   </div>
                 </div>

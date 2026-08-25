@@ -1,47 +1,69 @@
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { Database } from "lucide-react"
+import { Database, CheckCircle2 } from "lucide-react"
 import { preloadAllIcons } from "../../lib/assetPreloader"
 
 interface InitialSyncScreenProps {
   onComplete?: () => void
   totalCount?: number
+  isDataReady?: boolean
 }
 
-export function InitialSyncScreen({ onComplete, totalCount }: InitialSyncScreenProps) {
+export function InitialSyncScreen({ onComplete, totalCount = 0, isDataReady = false }: InitialSyncScreenProps) {
   const [progress, setProgress] = useState(25)
-  const [statusText, setStatusText] = useState("Mengunduh aset & ikon...")
+  const [statusText, setStatusText] = useState("Downloading app icons & assets...")
+  const [isAssetsLoaded, setIsAssetsLoaded] = useState(false)
 
   useEffect(() => {
-    // Preload all 50+ icons into memory cache
+    let isMounted = true
+
     preloadAllIcons().then(() => {
-      setProgress(prev => Math.max(prev, 65))
-      setStatusText("Sinkronisasi data cloud...")
+      if (!isMounted) return
+      setIsAssetsLoaded(true)
+      setProgress(prev => Math.max(prev, 85))
+      setStatusText("Syncing cloud data & accounts...")
+    }).catch(() => {
+      if (!isMounted) return
+      setIsAssetsLoaded(true)
+      setProgress(prev => Math.max(prev, 85))
     })
 
     const interval = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 95) {
-          clearInterval(interval)
-          return 95
-        }
-        return prev + Math.floor(Math.random() * 10) + 5
+        if (prev >= 90) return prev
+        return prev + 6
       })
-    }, 140)
+    }, 120)
 
-    return () => clearInterval(interval)
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
   }, [])
 
   useEffect(() => {
-    if (totalCount && totalCount > 0) {
+    if (isAssetsLoaded && (isDataReady || totalCount >= 0)) {
       setProgress(100)
-      setStatusText(`${totalCount} transaksi & semua ikon siap!`)
+      setStatusText("Setup complete! Entering Trouvaille...")
       const t = setTimeout(() => {
         onComplete?.()
-      }, 300)
+      }, 450)
       return () => clearTimeout(t)
     }
-  }, [totalCount, onComplete])
+  }, [isAssetsLoaded, isDataReady, totalCount, onComplete])
+
+  // Safety fallback: maximum 2.5s display before entering
+  useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      setProgress(100)
+      setStatusText("Ready!")
+      setTimeout(() => {
+        onComplete?.()
+      }, 300)
+    }, 2500)
+
+    return () => clearTimeout(safetyTimer)
+  }, [onComplete])
 
   return (
     <div
@@ -81,12 +103,12 @@ export function InitialSyncScreen({ onComplete, totalCount }: InitialSyncScreenP
       >
         <div className="w-10 h-10 mx-auto rounded-full flex items-center justify-center"
           style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
-          <Database size={18} />
+          {progress === 100 ? <CheckCircle2 size={20} style={{ color: "var(--accent)" }} /> : <Database size={18} />}
         </div>
 
         <div>
           <h3 className="font-extrabold text-[15px] tracking-tight leading-tight" style={{ color: "var(--text-primary)" }}>
-            Sinkronisasi Total
+            Initial Sync
           </h3>
           <p className="text-[11px] font-medium mt-1" style={{ color: "var(--text-tertiary)" }}>
             {statusText}
@@ -97,13 +119,16 @@ export function InitialSyncScreen({ onComplete, totalCount }: InitialSyncScreenP
         <div className="space-y-1.5 pt-1">
           <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--glass-fill)" }}>
             <motion.div
-              className="h-full rounded-full transition-all duration-200"
-              style={{ width: `${progress}%`, background: "var(--text-primary)" }}
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${Math.min(100, Math.max(5, progress))}%`,
+                background: "var(--accent)",
+              }}
             />
           </div>
-          <div className="flex justify-between items-center text-[10px] font-bold px-0.5" style={{ color: "var(--text-tertiary)" }}>
-            <span>{totalCount ? `${totalCount} transaksi` : "Mengunduh data..."}</span>
-            <span>{progress}%</span>
+          <div className="flex justify-between items-center text-[10px] font-bold" style={{ color: "var(--text-tertiary)" }}>
+            <span>Progress</span>
+            <span>{Math.min(100, Math.round(progress))}%</span>
           </div>
         </div>
       </div>

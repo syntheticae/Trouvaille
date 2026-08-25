@@ -1,10 +1,15 @@
-﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
 import type { Wallet } from "../lib/types"
 
 export function getWalletIcon(name: string): string {
-  if (!name) return "/icons/Budgets/Cash.png"
+  if (!name) return "/icons/Budgets/custom.png"
   const n = name.trim().toLowerCase()
+  if (n === "bca") return "/icons/Budgets/BCA.png"
+  if (n === "bri") return "/icons/Budgets/BRI.png"
+  if (n === "mandiri") return "/icons/Budgets/Mandiri.png"
+  if (n === "link" || n === "linkaja") return "/icons/Budgets/Link.png"
+  if (n === "ovo") return "/icons/Budgets/Ovo.png"
   if (n === "blu") return "/icons/Budgets/BLU.png"
   if (n === "bni") return "/icons/Budgets/BNI.png"
   if (n === "cash") return "/icons/Budgets/Cash.png"
@@ -20,12 +25,12 @@ export function getWalletIcon(name: string): string {
   if (n === "shopeepay" || n === "shopee") return "/icons/Budgets/Shopeepay.png"
   if (n === "superbank") return "/icons/Budgets/Superbank.png"
   if (n === "tapcash") return "/icons/Budgets/Tapcash.png"
-  return "/icons/Budgets/Cash.png"
+  return "/icons/Budgets/custom.png"
 }
 
 export const DEFAULT_WALLETS = [
-  "Cash", "BNI", "Crypto", "Dana", "Shopeepay", "Gopay", "Jago", "BLU", "Krom",
-  "Liabilities", "Piutang", "Saham", "Seabank", "Superbank", "Tapcash"
+  "Cash", "BNI", "BCA", "BRI", "Mandiri", "Dana", "Gopay", "Ovo", "Link", "Shopeepay",
+  "Jago", "BLU", "Krom", "Seabank", "Superbank", "Tapcash", "Crypto", "Saham", "Piutang", "Liabilities"
 ]
 
 export const FALLBACK_WALLETS: Wallet[] = DEFAULT_WALLETS.map((name, i) => ({
@@ -36,19 +41,45 @@ export const FALLBACK_WALLETS: Wallet[] = DEFAULT_WALLETS.map((name, i) => ({
   created_at: new Date().toISOString()
 }))
 
+export const AVAILABLE_WALLET_ICONS = [
+  "/icons/Budgets/Cash.png",
+  "/icons/Budgets/BCA.png",
+  "/icons/Budgets/BNI.png",
+  "/icons/Budgets/BRI.png",
+  "/icons/Budgets/Mandiri.png",
+  "/icons/Budgets/Dana.png",
+  "/icons/Budgets/Gopay.png",
+  "/icons/Budgets/Ovo.png",
+  "/icons/Budgets/Link.png",
+  "/icons/Budgets/Shopeepay.png",
+  "/icons/Budgets/Jago.png",
+  "/icons/Budgets/BLU.png",
+  "/icons/Budgets/Krom.png",
+  "/icons/Budgets/Seabank.png",
+  "/icons/Budgets/Superbank.png",
+  "/icons/Budgets/Tapcash.png",
+  "/icons/Budgets/Crypto.png",
+  "/icons/Budgets/Saham.png",
+  "/icons/Budgets/Piutang.png",
+  "/icons/Budgets/Liabilities.png",
+  "/icons/tabungan.png",
+  "/icons/investasi.png",
+  "/icons/trading.png",
+  "/icons/wallet.png",
+]
+
 export function useEnsureDefaultWallets() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        const user = session?.user;
-      if (!user) return
-        const { data: existing } = await supabase.from("wallets").select("name").eq("user_id", user.id)
-        if (existing && existing.length > 0) {
-          // If any wallets exist, do NOT auto-recreate missing ones (user might have deleted them).
-          return
-        } else {
+        const user = session?.user
+        if (!user) return
+
+        const { data: existing } = await supabase.from("wallets").select("id").eq("user_id", user.id).limit(1)
+        // Only seed on brand new user with 0 wallets. Never restore deleted wallets.
+        if (!existing || existing.length === 0) {
           await supabase.from("wallets").insert(
             DEFAULT_WALLETS.map(name => ({ name, icon: getWalletIcon(name), user_id: user.id }))
           )

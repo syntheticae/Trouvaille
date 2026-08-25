@@ -14,6 +14,8 @@ import { useEnsureDefaultWallets } from "./hooks/useWallets"
 import { useAllTransactions } from "./hooks/useTransactions"
 import { LoadingScreen } from "./components/ui/LoadingScreen"
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen"
+import { useQueryClient } from "@tanstack/react-query"
+import { forceReinjectAllFamfinaTransactions } from "./lib/famfinaResolver"
 
 function AppShell() {
   const [addSheetOpen, setAddSheetOpen] = useState(false)
@@ -24,17 +26,36 @@ function AppShell() {
   
   const ensureCategories = useEnsureDefaultCategories()
   const ensureWallets = useEnsureDefaultWallets()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
-    ensureCategories.mutate()
-    ensureWallets.mutate()
+    async function init() {
+      try {
+        await ensureCategories.mutateAsync()
+        await ensureWallets.mutateAsync()
+
+        const flag = localStorage.getItem("trouvaille_famfina_v4_injected")
+        if (flag !== "true") {
+          console.log("Auto re-injecting clean Famfina transactions...")
+          await forceReinjectAllFamfinaTransactions()
+          localStorage.setItem("trouvaille_famfina_v4_injected", "true")
+          queryClient.invalidateQueries({ queryKey: ["transactions"] })
+          queryClient.invalidateQueries({ queryKey: ["wallets"] })
+          queryClient.invalidateQueries({ queryKey: ["categories"] })
+        }
+      } catch (err) {
+        console.warn("Init error:", err)
+      }
+    }
+    init()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (!hasInitialSynced && isLoadingTxs) {
+  if (!hasInitialSynced) {
     return (
       <InitialSyncScreen
         totalCount={allTxs.length}
+        isDataReady={!isLoadingTxs}
         onComplete={() => {
           localStorage.setItem("trouvaille_initial_synced", "true")
           setHasInitialSynced(true)

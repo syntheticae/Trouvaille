@@ -165,3 +165,124 @@ export async function syncAllTransactionsWithFamfina(
 
   return { updated: updatedCount, total: userTxs.length }
 }
+
+export const FAMFINA_CAT_MAP: Record<string, string | null> = {
+  "koreksi saldo": null,
+  "biaya admin": "Admin & Fee",
+  "admin & fee": "Admin & Fee",
+  "makanan": "Makanan",
+  "perawatan": "Perawatan",
+  "cafe": "Cafe",
+  "pindah saldo": null, // transfer
+  "bbm": "Bensin",
+  "bensin": "Bensin",
+  "internet": "Internet",
+  "hilang": "Kerugian",
+  "kerugian": "Kerugian",
+  "laundry": "Laundry",
+  "parkir": "Parkir",
+  "tagihan": "Hunian",
+  "kendaraan": "Kendaraan",
+  "trading": "Trading",
+  "fashion": "Fashion",
+  "gaji": "Gaji",
+  "peralatan": "Peralatan",
+  "langganan": "Subscription",
+  "subscription": "Subscription",
+  "minuman": "Minuman",
+  "bunga": "Bunga",
+  "lain-lain": "Lainnya",
+  "lainnya": "Lainnya",
+  "groceries": "Groceries",
+  "hadiah": "Hadiah",
+  "pajak/legal": "Pajak & Legal",
+  "pajak & legal": "Pajak & Legal",
+  "donasi": "Donasi",
+  "sampingan": "Side Job",
+  "side job": "Side Job",
+  "kopi": "Kopi",
+  "kesehatan": "Kesehatan",
+  "gadget": "Gadget",
+  "pendidikan": "Pendidikan",
+  "hiburan": "Hiburan",
+  "bonus": "Bonus",
+  "transportasi": "Transportasi"
+}
+
+export async function forceReinjectAllFamfinaTransactions(): Promise<{ inserted: number }> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
+  if (!user) throw new Error("Not authenticated. Please log in first.")
+
+  // 1. Fetch user categories
+  const { data: userCats } = await supabase
+    .from("categories")
+    .select("id, name, type")
+    .eq("user_id", user.id)
+
+  const catMap = new Map<string, string>()
+  ;(userCats || []).forEach(c => {
+    catMap.set(c.name.trim().toLowerCase(), c.id)
+  })
+
+  // 2. Fetch user wallets
+  const { data: userWallets } = await supabase
+    .from("wallets")
+    .select("id, name")
+    .eq("user_id", user.id)
+
+  const walletMap = new Map<string, string>()
+  ;(userWallets || []).forEach(w => {
+    walletMap.set(w.name.trim().toLowerCase(), w.id)
+  })
+
+  // 3. Clean wipe existing transactions for this user
+  console.log("Wiping existing transactions for user:", user.id)
+  const { error: delErr } = await supabase.from("transactions").delete().eq("user_id", user.id)
+  if (delErr) console.warn("Delete error (continuing):", delErr)
+
+  // 4. Map all records
+  const recordsToInsert = records.map(r => {
+    const fromWName = (r.fromWallet || "").trim().toLowerCase()
+    const toWName = (r.toWallet || "").trim().toLowerCase()
+    const catNameKey = (r.categoryName || "").trim().toLowerCase()
+    const mappedCatName = FAMFINA_CAT_MAP[catNameKey]
+
+    let categoryId: string | null = null
+    if (r.type !== "transfer" && mappedCatName) {
+      categoryId = catMap.get(mappedCatName.toLowerCase()) || null
+    }
+
+    const walletId = walletMap.get(fromWName) || null
+    const toWalletId = r.type === "transfer" ? (walletMap.get(toWName) || null) : null
+
+    return {
+      user_id: user.id,
+      type: r.type,
+      amount: Number(r.amount),
+      occurred_on: r.occurred_on,
+      created_at: r.created_at || `${r.occurred_on}T12:00:00Z`,
+      note: r.note || null,
+      wallet_id: walletId,
+      to_wallet_id: toWalletId,
+      category_id: categoryId,
+    }
+  })
+
+  // 5. Batch insert in chunks of 100
+  const batchSize = 100
+  let totalInserted = 0
+
+  for (let i = 0; i < recordsToInsert.length; i += batchSize) {
+    const chunk = recordsToInsert.slice(i, i + batchSize)
+    const { error: insErr } = await supabase.from("transactions").insert(chunk)
+    if (insErr) {
+      console.error("Batch insert error at index", i, insErr)
+      throw insErr
+    }
+    totalInserted += chunk.length
+  }
+
+  console.log(`Successfully re-injected ${totalInserted} Famfina transactions!`)
+  return { inserted: totalInserted }
+}

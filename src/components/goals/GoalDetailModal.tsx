@@ -138,12 +138,12 @@ export function GoalDetailModal({
               </div>
 
               {/* Progress Bar */}
-              <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+              <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
                 <div
                   className="h-full rounded-full transition-all duration-700"
                   style={{
                     width: `${progress}%`,
-                    background: progress >= 100 ? "#22c55e" : "var(--text-primary)",
+                    background: "var(--text-primary)",
                   }}
                 />
               </div>

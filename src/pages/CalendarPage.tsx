@@ -7,8 +7,11 @@ import { useBills } from "../hooks/useBills"
 import { BottomSheet } from "../components/ui/BottomSheet"
 import { formatRupiah } from "../lib/utils"
 import { IconRenderer } from "../components/ui/IconRenderer"
+import { useTheme } from "../contexts/ThemeContext"
 
 export function CalendarPage() {
+  const { theme } = useTheme()
+  const isDark = theme !== "light"
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const { data: transactions = [] } = useMonthTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
@@ -74,11 +77,11 @@ export function CalendarPage() {
             let border = "none"
 
             if (isSurplus) {
-              bg = "#FFFFFF"
-              textColor = "#121212"
+              bg = isDark ? "#FFFFFF" : "#18181B"
+              textColor = isDark ? "#121212" : "#FFFFFF"
             } else if (isDeficit) {
-              bg = "#3F3F46"
-              textColor = "#FFFFFF"
+              bg = isDark ? "#3F3F46" : "#E4E4E7"
+              textColor = isDark ? "#FFFFFF" : "#18181B"
             }
 
             if (isT && !hasData) {
@@ -92,7 +95,9 @@ export function CalendarPage() {
                 style={{
                   background: bg,
                   border,
-                  boxShadow: isSel ? "0 0 10px rgba(255,255,255,0.45), inset 0 0 0 1px #FFFFFF" : "none"
+                  boxShadow: isSel
+                    ? (isDark ? "0 0 10px rgba(255,255,255,0.45), inset 0 0 0 1px #FFFFFF" : "0 0 10px rgba(0,0,0,0.15), inset 0 0 0 1px #18181B")
+                    : "none"
                 }}>
                 <span className="text-[13px] font-bold"
                   style={{ color: textColor }}>
@@ -100,9 +105,9 @@ export function CalendarPage() {
                 </span>
                 {hasData && (
                   <div className="flex gap-1 mt-1">
-                    {income > 0 && <div className="w-[4px] h-[4px] rounded-full" style={{ background: isSurplus ? "#121212" : "#FFFFFF" }} />}
-                    {expense > 0 && <div className="w-[4px] h-[4px] rounded-full" style={{ background: isSurplus ? "#71717A" : "#D4D4D8" }} />}
-                    {dayBills.length > 0 && <div className="w-[4px] h-[4px] rounded-full" style={{ background: isSurplus ? "#52525B" : "#A1A1AA" }} />}
+                    {income > 0 && <div className="w-[4px] h-[4px] rounded-full" style={{ background: isSurplus ? (isDark ? "#121212" : "#FFFFFF") : (isDark ? "#FFFFFF" : "#18181B") }} />}
+                    {expense > 0 && <div className="w-[4px] h-[4px] rounded-full" style={{ background: isSurplus ? (isDark ? "#71717A" : "#D4D4D8") : (isDark ? "#D4D4D8" : "#71717A") }} />}
+                    {dayBills.length > 0 && <div className="w-[4px] h-[4px] rounded-full" style={{ background: isSurplus ? (isDark ? "#52525B" : "#A1A1AA") : (isDark ? "#A1A1AA" : "#52525B") }} />}
                   </div>
                 )}
               </button>

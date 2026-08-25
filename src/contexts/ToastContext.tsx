@@ -13,7 +13,7 @@ interface Toast {
 }
 
 interface ToastContextType {
-  showToast: (message: string, actionType: ActionType, onExecute: () => void, delayMs?: number) => void
+  showToast: (message: string, actionType: ActionType, onExecute: () => void, delayMs?: number, onCancel?: () => void) => void
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined)
@@ -21,7 +21,7 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined)
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<Toast | null>(null)
 
-  const showToast = useCallback((message: string, actionType: ActionType, onExecute: () => void, delayMs = 3000) => {
+  const showToast = useCallback((message: string, actionType: ActionType, onExecute: () => void, delayMs = 3000, onCancel?: () => void) => {
     const id = Math.random().toString(36)
     
     const timer = setTimeout(() => {
@@ -31,6 +31,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
     const onUndo = () => {
       clearTimeout(timer)
+      onCancel?.()
       setToast(null)
     }
 

@@ -1,12 +1,13 @@
 import { usePullToRefresh } from "../hooks/usePullToRefresh"
 import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator"
 import { triggerHaptic } from "../lib/haptics"
-﻿import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Search, X, Calendar, ChevronDown, Archive, Wallet } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts"
-import { useAllTransactions } from "../hooks/useTransactions"
+import { useAllTransactions, useDeleteTransaction } from "../hooks/useTransactions"
 import { useWallets } from "../hooks/useWallets"
 import { useCategories } from "../hooks/useCategories"
+import { useToast } from "../contexts/ToastContext"
 import { TransactionSheet } from "../components/transactions/TransactionSheet"
 import { BottomSheet } from "../components/ui/BottomSheet"
 import type { Transaction } from "../lib/types"
@@ -17,6 +18,7 @@ import { GroupedVirtuoso } from "react-virtuoso"
 import { useDeferredRender } from "../hooks/useDeferredRender"
 import { TransactionItem } from "../components/transactions/TransactionItem"
 import { resolveFamfinaWallet } from "../lib/famfinaResolver"
+import { useUnusualSpending } from "../hooks/useUnusualSpending"
 
 const GlassTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -66,10 +68,53 @@ export function TransactionsPage() {
   const [monthPickerOpen, setMonthPickerOpen] = useState(false)
   const [accountPickerOpen, setAccountPickerOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  const [pendingDeletedIds, setPendingDeletedIds] = useState<Set<string>>(() => new Set())
 
   const { data: allTxs = [], isLoading, refetch: refetchTxs } = useAllTransactions()
   const { data: wallets = [], refetch: refetchWallets } = useWallets()
   const { data: categories = [], refetch: refetchCategories } = useCategories()
+  const deleteTx = useDeleteTransaction()
+  const { showToast } = useToast()
+  const { checkUnusual } = useUnusualSpending(allTxs)
+
+  const visibleTxs = useMemo(() => allTxs.filter(t => !pendingDeletedIds.has(t.id)), [allTxs, pendingDeletedIds])
+
+  const handleDeleteTransaction = (tx: Transaction) => {
+    setPendingDeletedIds(prev => new Set(prev).add(tx.id))
+    showToast(
+      "Transaction deleted",
+      "delete",
+      () => {
+        deleteTx.mutate(tx.id, {
+          onSuccess: () => {
+            setPendingDeletedIds(prev => {
+              const next = new Set(prev)
+              next.delete(tx.id)
+              return next
+            })
+          }
+        })
+      },
+      4000,
+      () => {
+        setPendingDeletedIds(prev => {
+          const next = new Set(prev)
+          next.delete(tx.id)
+          return next
+        })
+      }
+    )
+  }
+
+  const handleDuplicateTransaction = (tx: Transaction) => {
+    setEditingTx({
+      ...tx,
+      id: "",
+      occurred_on: format(new Date(), "yyyy-MM-dd"),
+      created_at: new Date().toISOString()
+    })
+    setSheetOpen(true)
+  }
 
   const { pullDistance, isRefreshing, threshold } = usePullToRefresh({
     onRefresh: async () => {
@@ -82,9 +127,8 @@ export function TransactionsPage() {
   })
 
   const isDark = document.documentElement.getAttribute("data-theme") !== "light"
-  const shouldRenderHeavy = useDeferredRender(150) // Defer chart and list for 150ms
+  const shouldRenderHeavy = useDeferredRender(150)
 
-  // Debounce search by 150ms for snappy 120Hz typing
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 150)
     return () => clearTimeout(timer)
@@ -102,7 +146,6 @@ export function TransactionsPage() {
 
   const isTxCorrection = (t: Transaction) => t.type === "adjustment" || t.note?.toLowerCase().includes("correction") || t.note?.toLowerCase().includes("balance adjustment") || t.note?.toLowerCase().includes("koreksi saldo")
 
-  // 1. Dynamic Multi-Timeframe Chart Data (This Month, Last Month, Last 30 Days, Custom Month, All Time)
   const dynamicChartData = useMemo(() => {
     const now = new Date()
     let points: { dateStr: string; label: string; income: number; expense: number; transfer: number; adjustment: number; activeValue: number }[] = []
@@ -125,7 +168,7 @@ export function TransactionsPage() {
       points = days.map(d => {
         const dateStr = format(d, "yyyy-MM-dd")
         const label = format(d, "d")
-        const dayTxs = allTxs.filter(t => t.occurred_on === dateStr)
+        const dayTxs = visibleTxs.filter(t => t.occurred_on === dateStr)
         const income = dayTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
         const expense = dayTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
         const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
@@ -144,7 +187,7 @@ export function TransactionsPage() {
         const d = subDays(now, i)
         const dateStr = format(d, "yyyy-MM-dd")
         const label = format(d, "d")
-        const dayTxs = allTxs.filter(t => t.occurred_on === dateStr)
+        const dayTxs = visibleTxs.filter(t => t.occurred_on === dateStr)
         const income = dayTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
         const expense = dayTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
         const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
@@ -198,51 +241,55 @@ export function TransactionsPage() {
   // 2. Filter & Search transactions with smart date range scoping & auto-archive
   const filteredTxs = useMemo(() => {
     const now = new Date()
-    let txs = allTxs
+    let txs = visibleTxs
 
-    // Apply Time Range scoping
-    if (timeRange === "this_month") {
-      const start = startOfMonth(now)
-      const end = endOfMonth(now)
-      txs = txs.filter(t => {
-        if (!t.occurred_on) return false
-        const d = new Date(t.occurred_on)
-        return isWithinInterval(d, { start, end })
-      })
-    } else if (timeRange === "last_month") {
-      const prev = subMonths(now, 1)
-      const start = startOfMonth(prev)
-      const end = endOfMonth(prev)
-      txs = txs.filter(t => {
-        if (!t.occurred_on) return false
-        const d = new Date(t.occurred_on)
-        return isWithinInterval(d, { start, end })
-      })
-    } else if (timeRange === "last_30") {
-      const start = startOfDay(subDays(now, 30))
-      const end = endOfDay(now)
-      txs = txs.filter(t => {
-        if (!t.occurred_on) return false
-        const d = new Date(t.occurred_on)
-        return isWithinInterval(d, { start, end })
-      })
-    } else if (timeRange === "custom_month") {
-      const parsedMonth = parse(selectedCustomMonth, "yyyy-MM", new Date())
-      const start = startOfMonth(parsedMonth)
-      const end = endOfMonth(parsedMonth)
-      txs = txs.filter(t => {
-        if (!t.occurred_on) return false
-        const d = new Date(t.occurred_on)
-        return isWithinInterval(d, { start, end })
-      })
-    } else if (timeRange === "all" && !showArchived) {
-      // Auto-archive transactions older than 4 months in All view unless showArchived is checked
-      const fourMonthsAgo = subMonths(now, 4)
-      txs = txs.filter(t => {
-        if (!t.occurred_on) return false
-        const d = new Date(t.occurred_on)
-        return d >= fourMonthsAgo
-      })
+    const isSearching = !!debouncedSearch.trim()
+
+    // Apply Time Range scoping only when NOT actively searching
+    if (!isSearching) {
+      if (timeRange === "this_month") {
+        const start = startOfMonth(now)
+        const end = endOfMonth(now)
+        txs = txs.filter(t => {
+          if (!t.occurred_on) return false
+          const d = new Date(t.occurred_on)
+          return isWithinInterval(d, { start, end })
+        })
+      } else if (timeRange === "last_month") {
+        const prev = subMonths(now, 1)
+        const start = startOfMonth(prev)
+        const end = endOfMonth(prev)
+        txs = txs.filter(t => {
+          if (!t.occurred_on) return false
+          const d = new Date(t.occurred_on)
+          return isWithinInterval(d, { start, end })
+        })
+      } else if (timeRange === "last_30") {
+        const start = startOfDay(subDays(now, 30))
+        const end = endOfDay(now)
+        txs = txs.filter(t => {
+          if (!t.occurred_on) return false
+          const d = new Date(t.occurred_on)
+          return isWithinInterval(d, { start, end })
+        })
+      } else if (timeRange === "custom_month") {
+        const parsedMonth = parse(selectedCustomMonth, "yyyy-MM", new Date())
+        const start = startOfMonth(parsedMonth)
+        const end = endOfMonth(parsedMonth)
+        txs = txs.filter(t => {
+          if (!t.occurred_on) return false
+          const d = new Date(t.occurred_on)
+          return isWithinInterval(d, { start, end })
+        })
+      } else if (timeRange === "all" && !showArchived) {
+        // Auto-archive transactions older than 4 months in All view unless showArchived is checked
+        const fourMonthsAgo = subMonths(now, 4)
+        txs = txs.filter(t => {
+          if (!t.occurred_on) return false
+          const d = new Date(t.occurred_on)
+          return d >= fourMonthsAgo
+        })
+      }
     }
 
     if (filter === "income") {
@@ -263,20 +310,22 @@ export function TransactionsPage() {
       })
     }
 
-    if (debouncedSearch) {
-      const q = debouncedSearch.toLowerCase()
+    if (isSearching) {
+      const q = debouncedSearch.toLowerCase().trim()
       txs = txs.filter(t => {
         const { from, to } = resolveWalletNames(t)
+        const catName = t.categories?.name || categories.find(c => c.id === t.category_id)?.name || ""
         return (
-          t.note?.toLowerCase().includes(q) ||
-          t.categories?.name?.toLowerCase().includes(q) ||
+          (t.note && t.note.toLowerCase().includes(q)) ||
+          catName.toLowerCase().includes(q) ||
           from.toLowerCase().includes(q) ||
-          to.toLowerCase().includes(q)
+          to.toLowerCase().includes(q) ||
+          String(t.amount || "").includes(q)
         )
       })
     }
     return txs
-  }, [allTxs, filter, selectedWalletName, debouncedSearch, timeRange, selectedCustomMonth, showArchived, wallets])
+  }, [visibleTxs, filter, selectedWalletName, debouncedSearch, timeRange, selectedCustomMonth, showArchived, wallets, categories])
 
   // 3. Group by date using all filteredTxs
   const { groupKeys, groupedTxs, groupCounts, flatTxs } = useMemo(() => {
@@ -508,6 +557,7 @@ export function TransactionsPage() {
         ) : (
           <GroupedVirtuoso
             customScrollParent={scrollParent || undefined}
+            computeItemKey={index => flatTxs[index]?.id || String(index)}
             groupCounts={groupCounts}
             groupContent={index => {
               const dateKey = groupKeys[index]
@@ -531,6 +581,7 @@ export function TransactionsPage() {
             itemContent={index => {
               const tx = flatTxs[index]
               const { from, to } = resolveWalletNames(tx)
+              const isUnusual = checkUnusual(tx).isUnusual
               return (
                 <div className="pb-2">
                   <TransactionItem
@@ -538,7 +589,10 @@ export function TransactionsPage() {
                     categories={categories}
                     fromWalletName={from}
                     toWalletName={to}
+                    isUnusual={isUnusual}
                     onClick={(t) => { setEditingTx(t); setSheetOpen(true) }}
+                    onDelete={handleDeleteTransaction}
+                    onDuplicate={handleDuplicateTransaction}
                   />
                 </div>
               )

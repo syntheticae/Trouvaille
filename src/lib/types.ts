@@ -4,6 +4,7 @@ export type RepeatRule = "none" | "weekly" | "monthly" | "yearly"
 export interface Category {
   id: string; user_id: string; name: string; emoji: string
   type: TransactionType; is_default: boolean; created_at: string
+  budget_amount?: number | null
 }
 
 export interface Wallet {

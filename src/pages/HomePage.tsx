@@ -35,9 +35,11 @@ import { BottomSheet } from "../components/ui/BottomSheet"
 import { BalanceCard } from "../components/ui/BalanceCard"
 import { NotificationSheet } from "../components/ui/NotificationSheet"
 import { useAuth } from "../contexts/AuthContext"
+import { useTheme } from "../contexts/ThemeContext"
 import { useCategories } from "../hooks/useCategories"
 import { useBudgetTarget } from "../hooks/useBudgetTarget"
 import { useWalletBalances } from "../hooks/useWalletBalances"
+import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence"
 
 interface HomePageProps {
   onOpenAdd?: () => void
@@ -71,6 +73,8 @@ function formatAxisY(val: number): string {
 export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const now = new Date()
   const { session } = useAuth()
+  const { theme } = useTheme()
+  const isDark = theme !== "light"
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [notifOpen, setNotifOpen] = useState(false)
   const [stockRange, setStockRange] = useState<StockRange>("1W")
@@ -90,9 +94,17 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const { data: allTxs = [], refetch: refetchAllTxs } = useAllTransactions()
   const { data: categories = [], refetch: refetchCategories } = useCategories()
   const { refetch: refetchWallets } = useWallets()
-  const { refetch: refetchBills } = useBills()
+  const { data: allBills = [], refetch: refetchBills } = useBills()
   const { goals, depositToGoal, updateGoal, deleteGoal } = useGoals()
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null)
+
+  const { totalAssets } = useWalletBalances()
+  const intel = useFinancialIntelligence({
+    transactions: allTxs,
+    budgetTarget,
+    totalAssets,
+    bills: allBills
+  })
 
   const { pullDistance, isRefreshing, threshold } = usePullToRefresh({
     onRefresh: async () => {
@@ -104,8 +116,6 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       ])
     }
   })
-
-  const { totalAssets } = useWalletBalances()
 
   // 1. Total Balance and Apple Stocks Layout Data Calculation
   const assetData = useMemo(() => {
@@ -266,37 +276,47 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
     const currentMonth = now.getMonth()
     let income = 0
     let expense = 0
-    const catMap = new Map<string, { name: string; emoji: string; total: number; count: number }>()
+    const expCatMap = new Map<string, { name: string; emoji: string; total: number; count: number }>()
+    const incCatMap = new Map<string, { name: string; emoji: string; total: number; count: number }>()
 
     allTxs.forEach(t => {
       if (!t.occurred_on) return
       const d = new Date(t.occurred_on)
       if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
         const amt = Number(t.amount || 0)
-        if (t.type === "income") income += amt
-        else if (t.type === "expense") {
-          expense += amt
-          const catName = t.categories?.name || "Lainnya"
-          const emoji = t.categories?.emoji || "/icons/lainnya.png"
-          const ex = catMap.get(catName) || { name: catName, emoji, total: 0, count: 0 }
+        const catName = t.categories?.name || "Lainnya"
+        if (t.type === "income") {
+          income += amt
+          const emoji = t.categories?.emoji || "/icons/gaji.png"
+          const ex = incCatMap.get(catName) || { name: catName, emoji, total: 0, count: 0 }
           ex.total += amt
           ex.count += 1
-          catMap.set(catName, ex)
+          incCatMap.set(catName, ex)
+        } else if (t.type === "expense") {
+          expense += amt
+          const emoji = t.categories?.emoji || "/icons/lainnya.png"
+          const ex = expCatMap.get(catName) || { name: catName, emoji, total: 0, count: 0 }
+          ex.total += amt
+          ex.count += 1
+          expCatMap.set(catName, ex)
         }
       }
     })
 
-    const topExpList = Array.from(catMap.values()).sort((a, b) => b.total - a.total)
+    const topExpList = Array.from(expCatMap.values()).sort((a, b) => b.total - a.total)
+    const topIncList = Array.from(incCatMap.values()).sort((a, b) => b.total - a.total)
     return {
       income,
       expense,
-      topExpense: topExpList[0] || null
+      topExpense: topExpList[0] || null,
+      topIncome: topIncList[0] || null
     }
   }, [allTxs])
 
   const totalIncome = currentMonthStats.income
   const totalExpense = currentMonthStats.expense
   const topExpense = currentMonthStats.topExpense
+  const topIncome = currentMonthStats.topIncome
 
   const netCashflow = totalIncome - totalExpense
   const isPositiveCashflow = netCashflow >= 0
@@ -405,7 +425,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
           <button
             onClick={toggleHideBalance}
             className="text-white/60 hover:text-white active:scale-90 transition-all p-1 -mr-1"
-            title={hideBalance ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
+            title={hideBalance ? "Show Balance" : "Hide Balance"}
           >
             {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
@@ -423,8 +443,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
           <div className="flex items-center gap-1 text-[12px] font-extrabold"
             style={{ color: assetData.diff >= 0 ? "#FFFFFF" : "#A1A1AA" }}>
             <ArrowUpRight size={13} className={assetData.diff < 0 ? "rotate-90" : ""} />
-            <span>{assetData.diff >= 0 ? "+" : ""}{formatRupiah(assetData.diff)}</span>
-            <span className="opacity-80">({assetData.percent > 0 ? "+" : ""}{assetData.percent.toFixed(2)}%)</span>
+            <span>{hideBalance ? "••••" : `${assetData.diff >= 0 ? "+" : ""}${formatRupiah(assetData.diff)}`}</span>
+            <span className="opacity-80">({hideBalance ? "••••" : `${assetData.percent > 0 ? "+" : ""}${assetData.percent.toFixed(2)}%`})</span>
           </div>
           <span className="text-[11px] font-semibold text-white/50 shrink-0">
             {stockRangeLabels[stockRange]} · IDR
@@ -504,52 +524,52 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
           <div>
             <p className="text-[9px] font-bold uppercase text-white/45">High</p>
             <p className="text-[11px] font-extrabold amount text-white mt-0.5">
-              {assetData.highBalance >= 1000 ? "Rp " + formatAxisY(assetData.highBalance) : formatRupiah(assetData.highBalance)}
+              {hideBalance ? "••••" : (assetData.highBalance >= 1000 ? "Rp " + formatAxisY(assetData.highBalance) : formatRupiah(assetData.highBalance))}
             </p>
           </div>
           <div>
             <p className="text-[9px] font-bold uppercase text-white/45">Low</p>
             <p className="text-[11px] font-extrabold amount text-white mt-0.5">
-              {assetData.lowBalance >= 1000 ? "Rp " + formatAxisY(assetData.lowBalance) : formatRupiah(assetData.lowBalance)}
+              {hideBalance ? "••••" : (assetData.lowBalance >= 1000 ? "Rp " + formatAxisY(assetData.lowBalance) : formatRupiah(assetData.lowBalance))}
             </p>
           </div>
           <div>
             <p className="text-[9px] font-bold uppercase text-white/45">Inflow</p>
             <p className="text-[11px] font-extrabold amount text-white mt-0.5">
-              {assetData.periodInflow > 0 ? "+Rp " + formatAxisY(assetData.periodInflow) : "Rp 0"}
+              {hideBalance ? "••••" : (assetData.periodInflow > 0 ? "+Rp " + formatAxisY(assetData.periodInflow) : "Rp 0")}
             </p>
           </div>
           <div>
             <p className="text-[9px] font-bold uppercase text-white/45">Outflow</p>
             <p className="text-[11px] font-extrabold amount text-white mt-0.5">
-              {assetData.periodOutflow > 0 ? "-Rp " + formatAxisY(assetData.periodOutflow) : "Rp 0"}
+              {hideBalance ? "••••" : (assetData.periodOutflow > 0 ? "-Rp " + formatAxisY(assetData.periodOutflow) : "Rp 0")}
             </p>
           </div>
         </div>
       </section>
 
       {/* 2. PORTFOLIO & ACCOUNTS CARD */}
-      <BalanceCard />
+      <BalanceCard hideBalance={hideBalance} />
 
       {/* 3. 2x2 FINANCIAL INSIGHTS GRID */}
       <section className="grid grid-cols-2 gap-3">
         {/* Net Cashflow */}
         <div className="p-4 rounded-[22px]"
           style={{
-            background: "#FFFFFF",
-            border: "1px solid rgba(0,0,0,0.06)",
+            background: isDark ? "#FFFFFF" : "#18181B",
+            border: isDark ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.12)",
             boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
           }}>
           <div className="flex justify-between items-start mb-2">
-            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "#71717A" }}>Net Cashflow</p>
-            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(18,18,18,0.07)" }}>
-              {isPositiveCashflow ? <TrendingUp size={12} color="#121212" /> : <TrendingDown size={12} color="#121212" />}
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: isDark ? "#71717A" : "rgba(255,255,255,0.6)" }}>Net Cashflow</p>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: isDark ? "rgba(18,18,18,0.07)" : "rgba(255,255,255,0.12)" }}>
+              {isPositiveCashflow ? <TrendingUp size={12} color={isDark ? "#121212" : "#FFFFFF"} /> : <TrendingDown size={12} color={isDark ? "#121212" : "#FFFFFF"} />}
             </div>
           </div>
-          <div className="amount text-[18px] font-extrabold mb-0.5" style={{ color: "#121212" }}>
-            {formatRupiah(Math.abs(netCashflow))}
+          <div className="amount text-[18px] font-extrabold mb-0.5" style={{ color: isDark ? "#121212" : "#FFFFFF" }}>
+            {hideBalance ? "Rp ••••••••" : formatRupiah(Math.abs(netCashflow))}
           </div>
-          <p className="text-[11px] font-semibold" style={{ color: "#71717A" }}>
+          <p className="text-[11px] font-semibold" style={{ color: isDark ? "#71717A" : "rgba(255,255,255,0.6)" }}>
             {isPositiveCashflow ? "Surplus this month" : "Deficit this month"}
           </p>
         </div>
@@ -561,7 +581,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
             <Flame size={13} style={{ color: "var(--text-primary)" }} />
           </div>
           <div className="amount text-[18px] font-extrabold leading-tight mb-0.5" style={{ color: "var(--text-primary)" }}>
-            {formatRupiah(totalExpense)}
+            {hideBalance ? "Rp ••••••••" : formatRupiah(totalExpense)}
           </div>
           <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Spending this month</p>
         </div>
@@ -573,7 +593,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
             <Sparkles size={13} style={{ color: "var(--text-primary)" }} />
           </div>
           <div className="amount text-[18px] font-extrabold mb-0.5" style={{ color: "var(--text-primary)" }}>
-            {formatRupiah(dailyAverage)}
+            {hideBalance ? "Rp ••••••••" : formatRupiah(dailyAverage)}
           </div>
           <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Average of {daysInMonth} days</p>
         </div>
@@ -581,42 +601,94 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         {/* Inflow vs Outflow Ratio */}
         <div className="p-4 rounded-[22px]"
           style={{
-            background: "#FFFFFF",
-            border: "1px solid rgba(0,0,0,0.06)",
+            background: isDark ? "#FFFFFF" : "#18181B",
+            border: isDark ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.12)",
             boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
           }}>
           <div className="flex justify-between items-start mb-2">
-            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "#71717A" }}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: isDark ? "#71717A" : "rgba(255,255,255,0.6)" }}>
               {totalIncome >= totalExpense ? "Savings Rate" : "Income Inflow"}
             </p>
-            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(18,18,18,0.07)" }}>
-              <PiggyBank size={12} color="#121212" />
+            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: isDark ? "rgba(18,18,18,0.07)" : "rgba(255,255,255,0.12)" }}>
+              <PiggyBank size={12} color={isDark ? "#121212" : "#FFFFFF"} />
             </div>
           </div>
-          <div className="amount text-[18px] font-extrabold mb-0.5" style={{ color: "#121212" }}>
-            {totalIncome >= totalExpense
-              ? `${(totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0).toFixed(0)}%`
-              : formatRupiah(totalIncome)}
+          <div className="amount text-[18px] font-extrabold mb-0.5" style={{ color: isDark ? "#121212" : "#FFFFFF" }}>
+            {hideBalance
+              ? "••••"
+              : (totalIncome >= totalExpense
+                ? `${(totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0).toFixed(0)}%`
+                : formatRupiah(totalIncome))}
           </div>
-          <p className="text-[11px] font-semibold" style={{ color: "#71717A" }}>
+          <p className="text-[11px] font-semibold" style={{ color: isDark ? "#71717A" : "rgba(255,255,255,0.6)" }}>
             {totalIncome >= totalExpense ? "Saved this month" : "Income this month"}
           </p>
         </div>
       </section>
 
-      {/* 4.5 MONTHLY BUDGET PROGRESS */}
+      {/* 4. FINANCIAL MOMENTUM (Priority 9 — Strict Monochrome) */}
+      <section className="p-3.5 rounded-[22px] glass-surface flex items-center justify-between mb-3"
+        style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--glass-border)"
+            }}>
+            {intel.momentum === "positive" ? <TrendingUp size={16} /> : intel.momentum === "negative" ? <TrendingDown size={16} /> : <Sparkles size={16} />}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[12px] font-extrabold capitalize" style={{ color: "var(--text-primary)" }}>
+              {intel.momentum} Momentum
+            </p>
+            <p className="text-[10px] font-medium truncate" style={{ color: "var(--text-tertiary)" }}>
+              {intel.momentumReason}
+            </p>
+          </div>
+        </div>
+        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ml-2"
+          style={{
+            background: "var(--glass-fill-strong)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--glass-border)"
+          }}>
+          {hideBalance ? "••%" : `${intel.savingsRate.toFixed(0)}% saved`}
+        </span>
+      </section>
+
+      {/* 4.5 MONTHLY BUDGET PROGRESS WITH SPENDING PACE & RISK (Strict Monochrome) */}
       {budgetTarget > 0 && (
         <section className="glass-surface p-4 rounded-[24px] mb-3">
-          <div className="flex justify-between items-end mb-2">
+          <div className="flex justify-between items-start mb-2">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>Budget Limit</p>
-              <p className="text-[14px] font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>{formatRupiah(totalExpense)}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>Budget Limit</p>
+                <span
+                  className="text-[9px] font-extrabold px-2 py-0.5 rounded-full"
+                  style={{
+                    background: intel.budgetRisk === "AT RISK" ? "var(--text-primary)" : "var(--glass-fill-strong)",
+                    color: intel.budgetRisk === "AT RISK" ? "var(--bg-canvas)" : "var(--text-primary)",
+                    border: "1px solid var(--glass-border)"
+                  }}
+                >
+                  {intel.budgetRisk}
+                </span>
+              </div>
+              <p className="text-[14px] font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>
+                {hideBalance ? "Rp ••••••••" : formatRupiah(totalExpense)}
+              </p>
             </div>
             <div className="text-right">
-              <p className="text-[11px] font-semibold" style={{ color: "var(--text-tertiary)" }}>dari {formatRupiah(budgetTarget)}</p>
+              <p className="text-[11px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
+                of {hideBalance ? "Rp ••••••••" : formatRupiah(budgetTarget)}
+              </p>
+              <p className="text-[10px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                {hideBalance ? "••%" : `${((totalExpense / budgetTarget) * 100).toFixed(1)}% used`}
+              </p>
             </div>
           </div>
-          <div className="h-2 w-full rounded-full overflow-hidden mt-1" style={{ background: "rgba(255,255,255,0.08)" }}>
+          <div className="h-2 w-full rounded-full overflow-hidden mt-1" style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}>
             <div 
               className="h-full rounded-full transition-all duration-1000" 
               style={{ 
@@ -625,34 +697,83 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
               }} 
             />
           </div>
-          <p className="text-[10px] font-bold text-right mt-1.5" style={{ color: "var(--text-tertiary)" }}>
-            {((totalExpense / budgetTarget) * 100).toFixed(1)}% Terpakai
-          </p>
-        </section>
-      )}
 
-      {/* 4. TOP EXPENSE CARD */}
-      {topExpense && (
-        <section className="p-4 rounded-[22px] flex items-center justify-between"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: "var(--glass-fill-strong)", border: "1px solid var(--glass-border)" }}>
-              <IconRenderer icon={topExpense.emoji} size="w-6 h-6" />
-            </div>
+          {/* Spending Pace & Projected Month-End Footer */}
+          <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-[var(--glass-border)]">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>Highest Outflow</p>
-              <p className="text-[14px] font-bold" style={{ color: "var(--text-primary)" }}>{topExpense.name}</p>
+              <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Spending Pace</p>
+              <p className="text-[11px] font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
+                {hideBalance ? "Rp ••••••••" : formatRupiah(totalExpense)}{" "}
+                <span className="text-[10px] font-bold" style={{ color: "var(--text-secondary)" }}>
+                  ({intel.isAheadOfPace ? `+${hideBalance ? "••••" : formatRupiah(intel.paceDiff)} ahead` : "under pace"})
+                </span>
+              </p>
             </div>
-          </div>
-          <div className="text-right">
-            <p className="amount text-[14px] font-bold" style={{ color: "var(--text-primary)" }}>{formatRupiah(topExpense.total)}</p>
-            <p className="text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>{topExpense.count} txs</p>
+            <div className="text-right">
+              <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Projected Month-End</p>
+              <p className="text-[11px] font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
+                ~{hideBalance ? "Rp ••••••••" : formatRupiah(intel.projectedMonthEnd)}{" "}
+                <span className="text-[10px] font-bold" style={{ color: "var(--text-secondary)" }}>
+                  {intel.projectedVariance > 0 ? `(↑ ${hideBalance ? "••••" : formatRupiah(intel.projectedVariance)} over)` : "(on track)"}
+                </span>
+              </p>
+            </div>
           </div>
         </section>
       )}
 
-      
+      {/* 4.6 HIGHEST OUTFLOW & HIGHEST INFLOW CARDS (Revision Item 1) */}
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        {/* Highest Outflow */}
+        <div className="p-3.5 rounded-[22px] flex flex-col justify-between"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "var(--glass-fill-strong)", border: "1px solid var(--glass-border)" }}>
+              {topExpense ? <IconRenderer icon={topExpense.emoji} size="w-5 h-5" /> : <Flame size={15} style={{ color: "var(--text-tertiary)" }} />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Highest Outflow</p>
+              <p className="text-[12px] font-extrabold truncate" style={{ color: "var(--text-primary)" }}>
+                {topExpense ? topExpense.name : "None"}
+              </p>
+            </div>
+          </div>
+          <div>
+            <p className="amount text-[14px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+              {topExpense ? (hideBalance ? "Rp ••••••••" : formatRupiah(topExpense.total)) : "Rp 0"}
+            </p>
+            <p className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+              {topExpense ? `${topExpense.count} txs this month` : "No outflow recorded"}
+            </p>
+          </div>
+        </div>
+
+        {/* Highest Inflow */}
+        <div className="p-3.5 rounded-[22px] flex flex-col justify-between"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "var(--glass-fill-strong)", border: "1px solid var(--glass-border)" }}>
+              {topIncome ? <IconRenderer icon={topIncome.emoji} size="w-5 h-5" /> : <TrendingUp size={15} style={{ color: "var(--text-tertiary)" }} />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Highest Inflow</p>
+              <p className="text-[12px] font-extrabold truncate" style={{ color: "var(--text-primary)" }}>
+                {topIncome ? topIncome.name : "None"}
+              </p>
+            </div>
+          </div>
+          <div>
+            <p className="amount text-[14px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+              {topIncome ? (hideBalance ? "Rp ••••••••" : formatRupiah(topIncome.total)) : "Rp 0"}
+            </p>
+            <p className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+              {topIncome ? `${topIncome.count} txs this month` : "No inflow recorded"}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* 5. HEATMAP CALENDAR */}
       <section>
@@ -673,19 +794,30 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
               const isSurplus = hasTx && net >= 0
               const isDeficit = hasTx && net < 0
 
-              let bg = "transparent"
+              let bg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"
               let textColor = "var(--text-tertiary)"
-              let border = "none"
+              let border = "1px solid transparent"
 
               if (isSurplus && monthlyStats.maxSurplus > 0) {
                 const intensity = Math.min(1, net / monthlyStats.maxSurplus)
-                bg = lerpHex([212, 212, 216], [255, 255, 255], Math.max(0.2, intensity))
-                textColor = "#121212"
+                if (isDark) {
+                  bg = lerpHex([160, 160, 175], [255, 255, 255], Math.max(0.2, intensity))
+                  textColor = "#121212"
+                } else {
+                  bg = lerpHex([85, 85, 95], [24, 24, 27], Math.max(0.2, intensity))
+                  textColor = "#FFFFFF"
+                }
               } else if (isDeficit && monthlyStats.maxDeficit > 0) {
                 const intensity = Math.min(1, Math.abs(net) / monthlyStats.maxDeficit)
-                bg = lerpHex([82, 82, 91], [24, 24, 27], Math.max(0.2, intensity))
-                textColor = "#FFFFFF"
-                border = "1px solid rgba(255,255,255,0.18)"
+                if (isDark) {
+                  bg = lerpHex([82, 82, 91], [30, 30, 34], Math.max(0.2, intensity))
+                  textColor = "#FFFFFF"
+                  border = "1px solid rgba(255,255,255,0.18)"
+                } else {
+                  bg = lerpHex([225, 225, 230], [180, 180, 190], Math.max(0.2, intensity))
+                  textColor = "#18181B"
+                  border = "1px solid rgba(0,0,0,0.14)"
+                }
               }
 
               if (isT && !hasTx) {
@@ -777,7 +909,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="h-2 w-full rounded-full overflow-hidden mt-2" style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <div className="h-2 w-full rounded-full overflow-hidden mt-2" style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}>
                     <div
                       className="h-full rounded-full transition-all duration-700"
                       style={{ width: `${pct}%`, background: "var(--text-primary)" }}
