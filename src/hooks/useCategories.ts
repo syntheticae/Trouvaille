@@ -235,9 +235,15 @@ export function useAddCategory() {
       const { data, error } = await supabase.from("categories")
         .insert({ ...cat, user_id: user.id, is_default: false }).select().single()
       if (error) throw error
-      return data
+      return data as Category
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+    onSuccess: (newCat) => {
+      qc.setQueriesData<Category[]>({ queryKey: ["categories"] }, (old) => {
+        if (!old) return [newCat]
+        return [...old.filter(c => c.id !== newCat.id), newCat]
+      })
+      qc.invalidateQueries({ queryKey: ["categories"] })
+    },
   })
 }
 
@@ -247,8 +253,15 @@ export function useDeleteCategory() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("categories").delete().eq("id", id)
       if (error) throw error
+      return id
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+    onSuccess: (deletedId) => {
+      qc.setQueriesData<Category[]>({ queryKey: ["categories"] }, (old) => {
+        if (!old) return []
+        return old.filter(c => c.id !== deletedId)
+      })
+      qc.invalidateQueries({ queryKey: ["categories"] })
+    },
   })
 }
 
@@ -260,9 +273,16 @@ export function useUpdateCategory() {
       if (name !== undefined) updates.name = name
       if (emoji !== undefined) updates.emoji = emoji
       if (budget_amount !== undefined) updates.budget_amount = budget_amount
-      const { error } = await supabase.from("categories").update(updates).eq("id", id)
+      const { data, error } = await supabase.from("categories").update(updates).eq("id", id).select().single()
       if (error) throw error
+      return data as Category
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+    onSuccess: (updated) => {
+      qc.setQueriesData<Category[]>({ queryKey: ["categories"] }, (old) => {
+        if (!old) return []
+        return old.map(c => c.id === updated.id ? updated : c)
+      })
+      qc.invalidateQueries({ queryKey: ["categories"] })
+    },
   })
 }

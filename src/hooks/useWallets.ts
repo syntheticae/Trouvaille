@@ -145,9 +145,15 @@ export function useAddWallet() {
       const finalIcon = w.icon || getWalletIcon(w.name)
       const { data, error } = await supabase.from("wallets").insert({ name: w.name, icon: finalIcon, user_id: user.id }).select().single()
       if (error) throw error
-      return data
+      return data as Wallet
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["wallets"] }),
+    onSuccess: (newWallet) => {
+      qc.setQueryData<Wallet[]>(["wallets"], (old) => {
+        if (!old) return [newWallet]
+        return [...old.filter(w => w.id !== newWallet.id), newWallet]
+      })
+      qc.invalidateQueries({ queryKey: ["wallets"] })
+    },
   })
 }
 
@@ -158,10 +164,17 @@ export function useUpdateWallet() {
       const payload: any = { name }
       if (icon) payload.icon = icon
       else payload.icon = getWalletIcon(name)
-      const { error } = await supabase.from("wallets").update(payload).eq("id", id)
+      const { data, error } = await supabase.from("wallets").update(payload).eq("id", id).select().single()
       if (error) throw error
+      return data as Wallet
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["wallets"] }),
+    onSuccess: (updated) => {
+      qc.setQueryData<Wallet[]>(["wallets"], (old) => {
+        if (!old) return []
+        return old.map(w => w.id === updated.id ? updated : w)
+      })
+      qc.invalidateQueries({ queryKey: ["wallets"] })
+    },
   })
 }
 
@@ -171,7 +184,14 @@ export function useDeleteWallet() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("wallets").delete().eq("id", id)
       if (error) throw error
+      return id
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["wallets"] }),
+    onSuccess: (deletedId) => {
+      qc.setQueryData<Wallet[]>(["wallets"], (old) => {
+        if (!old) return []
+        return old.filter(w => w.id !== deletedId)
+      })
+      qc.invalidateQueries({ queryKey: ["wallets"] })
+    },
   })
 }

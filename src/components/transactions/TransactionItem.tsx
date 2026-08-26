@@ -57,6 +57,8 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
   const categoryDisplayName = resolvedCategory?.name || (isIncome ? "Income" : "Expense")
   const categoryDisplayEmoji = resolvedCategory?.emoji || (isIncome ? "/icons/gaji.png" : "/icons/lainnya.png")
 
+  const isDraggingRef = React.useRef(false)
+
   const handleDragEnd = (_: any, info: PanInfo) => {
     // Swipe Left: Delete (Threshold -75px or velocity < -350)
     if (info.offset.x < -75 || info.velocity.x < -350) {
@@ -67,6 +69,15 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
     else if (info.offset.x > 75 || info.velocity.x > 350) {
       triggerHaptic("medium")
       onDuplicate?.(tx)
+    }
+    setTimeout(() => {
+      isDraggingRef.current = false
+    }, 150)
+  }
+
+  const handleTapOrClick = () => {
+    if (!isDraggingRef.current) {
+      onClick(tx)
     }
   }
 
@@ -93,11 +104,14 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
       {/* Foreground Swipeable Card */}
       <motion.div
         drag="x"
+        dragDirectionLock
+        dragMomentum={false}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.35}
         dragSnapToOrigin
+        onDragStart={() => { isDraggingRef.current = true }}
         onDragEnd={handleDragEnd}
-        onClick={() => onClick(tx)}
+        onTap={handleTapOrClick}
         className="p-3.5 rounded-[22px] flex items-center justify-between cursor-pointer active:scale-98 transition-transform relative z-10"
         style={{
           background: "var(--bg-elevated)",

@@ -29,10 +29,10 @@ export function useFinancialIntelligence({
     let totalIncome = 0
     let totalExpense = 0
 
+    const currentMonthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`
+
     transactions.forEach(t => {
-      if (!t.occurred_on) return
-      const d = new Date(t.occurred_on)
-      if (d.getFullYear() !== currentYear || d.getMonth() !== currentMonth) return
+      if (!t.occurred_on || !t.occurred_on.startsWith(currentMonthKey)) return
 
       const isCorrection = t.type === "adjustment" || t.note?.toLowerCase().includes("correction") || t.note?.toLowerCase().includes("koreksi saldo") || t.note?.toLowerCase().includes("balance adjustment")
       if (isCorrection || t.type === "transfer") return

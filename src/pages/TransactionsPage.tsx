@@ -13,7 +13,7 @@ import { BottomSheet } from "../components/ui/BottomSheet"
 import type { Transaction } from "../lib/types"
 import { formatRupiah, getDateLabel } from "../lib/utils"
 import { IconRenderer } from "../components/ui/IconRenderer"
-import { format, subDays, startOfMonth, endOfMonth, subMonths, isWithinInterval, parse, eachDayOfInterval, startOfDay, endOfDay } from "date-fns"
+import { format, subDays, startOfMonth, endOfMonth, subMonths, parse, eachDayOfInterval } from "date-fns"
 import { GroupedVirtuoso } from "react-virtuoso"
 import { useDeferredRender } from "../hooks/useDeferredRender"
 import { TransactionItem } from "../components/transactions/TransactionItem"
@@ -205,16 +205,10 @@ export function TransactionsPage() {
       // Past 12 months trend
       for (let i = 11; i >= 0; i--) {
         const mDate = subMonths(now, i)
-        const mStart = startOfMonth(mDate)
-        const mEnd = endOfMonth(mDate)
         const label = format(mDate, "MMM")
         const dateStr = format(mDate, "yyyy-MM")
 
-        const mTxs = allTxs.filter(t => {
-          if (!t.occurred_on) return false
-          const d = new Date(t.occurred_on)
-          return isWithinInterval(d, { start: mStart, end: mEnd })
-        })
+        const mTxs = allTxs.filter(t => t.occurred_on && t.occurred_on.startsWith(dateStr))
 
         const income = mTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
         const expense = mTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
@@ -248,47 +242,24 @@ export function TransactionsPage() {
     // Apply Time Range scoping only when NOT actively searching
     if (!isSearching) {
       if (timeRange === "this_month") {
-        const start = startOfMonth(now)
-        const end = endOfMonth(now)
-        txs = txs.filter(t => {
-          if (!t.occurred_on) return false
-          const d = new Date(t.occurred_on)
-          return isWithinInterval(d, { start, end })
-        })
+        const startStr = format(startOfMonth(now), "yyyy-MM-dd")
+        const endStr = format(endOfMonth(now), "yyyy-MM-dd")
+        txs = txs.filter(t => t.occurred_on && t.occurred_on >= startStr && t.occurred_on <= endStr)
       } else if (timeRange === "last_month") {
         const prev = subMonths(now, 1)
-        const start = startOfMonth(prev)
-        const end = endOfMonth(prev)
-        txs = txs.filter(t => {
-          if (!t.occurred_on) return false
-          const d = new Date(t.occurred_on)
-          return isWithinInterval(d, { start, end })
-        })
+        const startStr = format(startOfMonth(prev), "yyyy-MM-dd")
+        const endStr = format(endOfMonth(prev), "yyyy-MM-dd")
+        txs = txs.filter(t => t.occurred_on && t.occurred_on >= startStr && t.occurred_on <= endStr)
       } else if (timeRange === "last_30") {
-        const start = startOfDay(subDays(now, 30))
-        const end = endOfDay(now)
-        txs = txs.filter(t => {
-          if (!t.occurred_on) return false
-          const d = new Date(t.occurred_on)
-          return isWithinInterval(d, { start, end })
-        })
+        const startStr = format(subDays(now, 30), "yyyy-MM-dd")
+        const endStr = format(now, "yyyy-MM-dd")
+        txs = txs.filter(t => t.occurred_on && t.occurred_on >= startStr && t.occurred_on <= endStr)
       } else if (timeRange === "custom_month") {
-        const parsedMonth = parse(selectedCustomMonth, "yyyy-MM", new Date())
-        const start = startOfMonth(parsedMonth)
-        const end = endOfMonth(parsedMonth)
-        txs = txs.filter(t => {
-          if (!t.occurred_on) return false
-          const d = new Date(t.occurred_on)
-          return isWithinInterval(d, { start, end })
-        })
+        txs = txs.filter(t => t.occurred_on && t.occurred_on.startsWith(selectedCustomMonth))
       } else if (timeRange === "all" && !showArchived) {
         // Auto-archive transactions older than 4 months in All view unless showArchived is checked
-        const fourMonthsAgo = subMonths(now, 4)
-        txs = txs.filter(t => {
-          if (!t.occurred_on) return false
-          const d = new Date(t.occurred_on)
-          return d >= fourMonthsAgo
-        })
+        const fourMonthsAgoStr = format(subMonths(now, 4), "yyyy-MM-dd")
+        txs = txs.filter(t => t.occurred_on && t.occurred_on >= fourMonthsAgoStr)
       }
     }
 
@@ -312,16 +283,23 @@ export function TransactionsPage() {
 
     if (isSearching) {
       const q = debouncedSearch.toLowerCase().trim()
+      const digitsOnly = q.replace(/[^0-9]/g, "")
       txs = txs.filter(t => {
         const { from, to } = resolveWalletNames(t)
         const catName = t.categories?.name || categories.find(c => c.id === t.category_id)?.name || ""
-        return (
-          (t.note && t.note.toLowerCase().includes(q)) ||
+        const formattedAmount = formatRupiah(Number(t.amount || 0)).toLowerCase()
+        const amountStr = String(t.amount || "")
+
+        const matchesText = (t.note && t.note.toLowerCase().includes(q)) ||
           catName.toLowerCase().includes(q) ||
           from.toLowerCase().includes(q) ||
-          to.toLowerCase().includes(q) ||
-          String(t.amount || "").includes(q)
-        )
+          to.toLowerCase().includes(q)
+
+        const matchesAmount = (digitsOnly.length > 0 && amountStr.includes(digitsOnly)) ||
+          formattedAmount.includes(q) ||
+          amountStr.includes(q)
+
+        return matchesText || matchesAmount
       })
     }
     return txs
@@ -745,7 +723,7 @@ export function TransactionsPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
             {/* All Accounts Option */}
             <button
               onClick={() => { setSelectedWalletName(null); setAccountPickerOpen(false); triggerHaptic("light"); }}

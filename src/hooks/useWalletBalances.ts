@@ -84,23 +84,20 @@ export function useWalletBalances() {
       const amt = Number(tx.amount || 0)
       if (amt <= 0) return
 
-      const k = `${tx.occurred_on}_${tx.amount}_${tx.type}`
-      const matches = keyMapCopy.get(k)
-      const hint = matches && matches.length > 0 ? matches.shift() : null
+      // 1. Explicit database wallet IDs have highest authoritative precedence
+      let fromName = tx.wallet_id ? wallets.find(w => w.id === tx.wallet_id)?.name : null
+      let toName = tx.to_wallet_id ? wallets.find(w => w.id === tx.to_wallet_id)?.name : null
 
-      let fromName = hint?.fromWallet
-      let toName = hint?.toWallet
-
-      if (!fromName && tx.wallet_id) {
-        const found = wallets.find(w => w.id === tx.wallet_id)
-        if (found) fromName = found.name
-      }
-      if (!toName && tx.to_wallet_id) {
-        const found = wallets.find(w => w.id === tx.to_wallet_id)
-        if (found) toName = found.name
+      // 2. If not specified in DB record, fallback to Famfina historical match map
+      if (!fromName || (!toName && tx.type === "transfer")) {
+        const k = `${tx.occurred_on}_${tx.amount}_${tx.type}`
+        const matches = keyMapCopy.get(k)
+        const hint = matches && matches.length > 0 ? matches.shift() : null
+        if (!fromName && hint?.fromWallet) fromName = hint.fromWallet
+        if (!toName && hint?.toWallet) toName = hint.toWallet
       }
 
-      // If fromName is still not found, check if note mentions a known wallet name
+      // 3. If fromName is still not found, check if note mentions a known wallet name
       if (!fromName && tx.note) {
         for (const w of wallets) {
           if (tx.note.toLowerCase().includes(w.name.toLowerCase())) {

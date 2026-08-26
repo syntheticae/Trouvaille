@@ -91,7 +91,7 @@ export function useAddTransaction() {
   return useMutation({
     mutationFn: async (input: TransactionInput) => {
       const { data: { session } } = await supabase.auth.getSession()
-      const user = session?.user;
+      const user = session?.user
       if (!user) throw new Error("Not authenticated")
       const { data, error } = await supabase.from("transactions")
         .insert({ ...input, user_id: user.id }).select("*, categories(*)").single()
@@ -101,9 +101,10 @@ export function useAddTransaction() {
     onMutate: async (newTx) => {
       await qc.cancelQueries({ queryKey: ["transactions"] })
       const prevAll = qc.getQueryData<Transaction[]>(["transactions", "all", undefined])
+      const tempId = "temp-" + Date.now()
       if (prevAll) {
         const optimisticItem: Transaction = {
-          id: `temp-${Date.now()}`,
+          id: tempId,
           user_id: "",
           amount: newTx.amount,
           type: newTx.type,
@@ -117,7 +118,31 @@ export function useAddTransaction() {
         }
         qc.setQueryData<Transaction[]>(["transactions", "all", undefined], [optimisticItem, ...prevAll])
       }
-      return { prevAll }
+      return { prevAll, tempId }
+    },
+    onSuccess: (savedTx, _vars, context) => {
+      qc.setQueriesData<Transaction[]>({ queryKey: ["transactions", "all"] }, (old) => {
+        if (!old) return [savedTx]
+        const filtered = old.filter(t => t.id !== context?.tempId && t.id !== savedTx.id)
+        return [savedTx, ...filtered]
+      })
+      if (savedTx.occurred_on) {
+        const parts = savedTx.occurred_on.split("-").map(Number)
+        if (parts.length >= 2) {
+          const year = parts[0]
+          const month = parts[1]
+          qc.setQueryData<Transaction[]>(["transactions", "month", year, month], (old) => {
+            if (!old) return [savedTx]
+            const filtered = old.filter(t => t.id !== context?.tempId && t.id !== savedTx.id)
+            return [savedTx, ...filtered]
+          })
+        }
+      }
+      qc.setQueriesData<Transaction[]>({ queryKey: ["transactions", "recent"] }, (old) => {
+        if (!old) return [savedTx]
+        const filtered = old.filter(t => t.id !== context?.tempId && t.id !== savedTx.id)
+        return [savedTx, ...filtered]
+      })
     },
     onError: (_err, _newTx, context) => {
       if (context?.prevAll) {
@@ -151,6 +176,12 @@ export function useUpdateTransaction() {
       }
       return { prevAll }
     },
+    onSuccess: (updatedTx) => {
+      qc.setQueriesData<Transaction[]>({ queryKey: ["transactions"] }, (old) => {
+        if (!old || !Array.isArray(old)) return old
+        return old.map(t => (t.id === updatedTx.id ? updatedTx : t))
+      })
+    },
     onError: (_err, _vars, context) => {
       if (context?.prevAll) {
         qc.setQueryData(["transactions", "all", undefined], context.prevAll)
@@ -169,6 +200,7 @@ export function useDeleteTransaction() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("transactions").delete().eq("id", id)
       if (error) throw error
+      return id
     },
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: ["transactions"] })
@@ -180,6 +212,12 @@ export function useDeleteTransaction() {
         )
       }
       return { prevAll }
+    },
+    onSuccess: (deletedId) => {
+      qc.setQueriesData<Transaction[]>({ queryKey: ["transactions"] }, (old) => {
+        if (!old || !Array.isArray(old)) return old
+        return old.filter(t => t.id !== deletedId)
+      })
     },
     onError: (_err, _id, context) => {
       if (context?.prevAll) {
@@ -236,10 +274,6 @@ export function useCategoryStats(year: number, month: number, type: "income" | "
   })
   return { data: Object.values(grouped).sort((a, b) => b.total - a.total), isLoading }
 }
-
-
-
-
 
 export function useSevenDayTrend() {
   return useQuery({

@@ -28,6 +28,7 @@ export function GoalDetailModal({
   const [editTitle, setEditTitle] = useState("")
   const [editTarget, setEditTarget] = useState("")
   const [editCurrent, setEditCurrent] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function GoalDetailModal({
       setEditCurrent(String(goal.currentAmount))
       setDepositAmount("")
       setIsEditing(false)
+      setIsSubmitting(false)
     }
   }, [goal, isOpen])
 
@@ -46,6 +48,8 @@ export function GoalDetailModal({
   const remaining = Math.max(0, goal.targetAmount - goal.currentAmount)
 
   const handleQuickDeposit = (add: number) => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
     onDeposit(goal.id, add)
     triggerHaptic("medium")
     showToast(`+${formatRupiah(add)} added to ${goal.title}`, "add", () => {})
@@ -54,7 +58,8 @@ export function GoalDetailModal({
 
   const handleCustomDeposit = () => {
     const amt = Number(depositAmount)
-    if (amt <= 0) return
+    if (amt <= 0 || isSubmitting) return
+    setIsSubmitting(true)
     onDeposit(goal.id, amt)
     triggerHaptic("medium")
     showToast(`+${formatRupiah(amt)} added to ${goal.title}`, "add", () => {})
@@ -64,8 +69,9 @@ export function GoalDetailModal({
   const handleSaveEdit = () => {
     const target = Number(editTarget)
     const current = Number(editCurrent)
-    if (!editTitle.trim() || target <= 0) return
+    if (!editTitle.trim() || target <= 0 || isSubmitting) return
 
+    setIsSubmitting(true)
     onUpdate(goal.id, {
       title: editTitle.trim(),
       targetAmount: target,
@@ -74,11 +80,12 @@ export function GoalDetailModal({
     triggerHaptic("medium")
     showToast("Financial goal updated", "update", () => {})
     setIsEditing(false)
+    setIsSubmitting(false)
   }
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-12 space-y-4 max-h-[85vh] overflow-y-auto">
+      <div className="p-5 pb-12 space-y-4">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">

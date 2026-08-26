@@ -4,9 +4,10 @@ import { GoalDetailModal } from "../components/goals/GoalDetailModal"
 import {
   Plus, Trash2, Calendar as CalendarIcon, LogOut, ChevronRight,
   CreditCard, LayoutGrid, Target, Sun, Camera, User as UserIcon, RotateCcw,
-  Bell, Archive, Zap, MoreHorizontal, Scale
+  Bell, Archive, Zap, MoreHorizontal, Scale, Check, Loader2
 } from "lucide-react"
-import { useBills, useAddBill, useUpdateBill, useDeleteBill } from "../hooks/useBills"
+import { useQueryClient } from "@tanstack/react-query"
+import { useBills, useAddBill, useUpdateBill, useDeleteBill, useMarkBillPaid } from "../hooks/useBills"
 import { useToast } from "../contexts/ToastContext"
 import { useAuth } from "../contexts/AuthContext"
 import { useTheme } from "../contexts/ThemeContext"
@@ -18,7 +19,7 @@ import { useShortcuts } from "../hooks/useShortcuts"
 import { formatRupiah } from "../lib/utils"
 import { BottomSheet } from "../components/ui/BottomSheet"
 import { GlassDatePicker } from "../components/ui/GlassDatePicker"
-import { format } from "date-fns"
+import { format, isToday } from "date-fns"
 import { supabase } from "../lib/supabase"
 import { useAddTransaction } from "../hooks/useTransactions"
 import { useWalletBalances } from "../hooks/useWalletBalances"
@@ -27,6 +28,7 @@ import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet"
 import { requestNotificationPermission } from "../lib/notifications"
 
 export function SettingsPage() {
+  const queryClient = useQueryClient()
   const { data: bills = [] } = useBills()
   const { data: categories = [] } = useCategories()
   const { data: wallets = [] } = useWallets()
@@ -44,6 +46,7 @@ export function SettingsPage() {
   const addBill = useAddBill()
   const updateBill = useUpdateBill()
   const deleteBill = useDeleteBill()
+  const markBillPaid = useMarkBillPaid()
   const addCategory = useAddCategory()
   const deleteCategory = useDeleteCategory()
   const updateCategory = useUpdateCategory()
@@ -79,7 +82,7 @@ export function SettingsPage() {
   const [resetOpen, setResetOpen] = useState(false)
   const [budgetTargetOpen, setBudgetTargetOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-    const [addShortcutOpen, setAddShortcutOpen] = useState(false)
+  const [addShortcutOpen, setAddShortcutOpen] = useState(false)
   const [shortcutTitle, setShortcutTitle] = useState("")
   const [shortcutAmount, setShortcutAmount] = useState("")
   const [shortcutCategoryId, setShortcutCategoryId] = useState("")
@@ -87,6 +90,51 @@ export function SettingsPage() {
   const [shortcutType, setShortcutType] = useState<"expense" | "income">("expense")
   const [shortcutMoreCatOpen, setShortcutMoreCatOpen] = useState(false)
   const [shortcutMoreWalletOpen, setShortcutMoreWalletOpen] = useState(false)
+
+  // Safe Sync state
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "success" | "error">("idle")
+  const [lastSyncedTime, setLastSyncedTime] = useState<string>(() => {
+    const saved = localStorage.getItem("trouvaille_last_synced")
+    if (!saved) return "Just now"
+    try {
+      const d = new Date(saved)
+      return isToday(d) ? `Today, ${format(d, "HH:mm")}` : format(d, "dd MMM, HH:mm")
+    } catch {
+      return "Just now"
+    }
+  })
+
+  const handleSafeSync = async () => {
+    if (syncStatus === "syncing") return
+    setSyncStatus("syncing")
+    triggerHaptic("light")
+
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["wallets"] }),
+        queryClient.invalidateQueries({ queryKey: ["categories"] }),
+        queryClient.invalidateQueries({ queryKey: ["bills"] }),
+      ])
+
+      const now = new Date()
+      localStorage.setItem("trouvaille_last_synced", now.toISOString())
+      setLastSyncedTime(`Today, ${format(now, "HH:mm")}`)
+      setSyncStatus("success")
+      triggerHaptic("medium")
+      showToast("Data synchronized", "update", () => {})
+
+      setTimeout(() => {
+        setSyncStatus("idle")
+      }, 3500)
+    } catch (err) {
+      setSyncStatus("error")
+      showToast("Sync failed. Local data preserved.", "delete", () => {})
+      setTimeout(() => {
+        setSyncStatus("idle")
+      }, 4000)
+    }
+  }
 
   // Profile Form state
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -103,6 +151,7 @@ export function SettingsPage() {
   const [billAmount, setBillAmount] = useState("")
   const [billDate, setBillDate] = useState<Date>(new Date())
   const [billRepeat, setBillRepeat] = useState<"none" | "weekly" | "monthly" | "yearly">("monthly")
+  const [billIsPaid, setBillIsPaid] = useState(false)
 
   // Goal Form
   const [goalTitle, setGoalTitle] = useState("")
@@ -116,6 +165,7 @@ export function SettingsPage() {
   // Category Form
   const [catName, setCatName] = useState("")
   const [catType, setCatType] = useState<"expense" | "income">("expense")
+  const [manageCatTab, setManageCatTab] = useState<"expense" | "income">("expense")
   
   // Budget Target Form
   const [tempBudgetTarget, setTempBudgetTarget] = useState(String(budgetTarget))
@@ -177,6 +227,7 @@ export function SettingsPage() {
     setBillAmount("")
     setBillDate(new Date())
     setBillRepeat("monthly")
+    setBillIsPaid(false)
     setBillSheetOpen(true)
   }
 
@@ -186,6 +237,7 @@ export function SettingsPage() {
     setBillAmount(b.amount ? String(b.amount) : "")
     setBillDate(b.due_date ? new Date(b.due_date) : new Date())
     setBillRepeat(b.repeat_rule || "monthly")
+    setBillIsPaid(!!b.is_paid)
     setBillSheetOpen(true)
   }
 
@@ -196,7 +248,8 @@ export function SettingsPage() {
       title: billTitle,
       amount: num > 0 ? num : null,
       due_date: format(billDate, "yyyy-MM-dd"),
-      repeat_rule: billRepeat
+      repeat_rule: billRepeat,
+      is_paid: billIsPaid
     }
     if (editingBill) {
       updateBill.mutate({ id: editingBill.id, ...payload }, {
@@ -469,18 +522,36 @@ export function SettingsPage() {
               </div>
               <div>
                 <span className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>On-Device Storage</span>
-                <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{allTxs.length} records offline</p>
+                <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                  {syncStatus === "syncing"
+                    ? "Synchronizing..."
+                    : syncStatus === "error"
+                    ? "Sync error · Local data safe"
+                    : `${allTxs.length} records cached · Last synced ${lastSyncedTime}`}
+                </p>
               </div>
             </div>
             <button
-              onClick={() => {
-                localStorage.removeItem("TROUVAILLE_OFFLINE_CACHE_V1")
-                window.location.reload()
+              onClick={handleSafeSync}
+              disabled={syncStatus === "syncing"}
+              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-60"
+              style={{
+                background: syncStatus === "success" ? "var(--accent)" : "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                color: syncStatus === "success" ? "var(--accent-ink)" : "var(--text-secondary)"
               }}
-              className="px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all"
-              style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-secondary)" }}
             >
-              Sync Now
+              {syncStatus === "syncing" && <Loader2 size={12} className="animate-spin" />}
+              {syncStatus === "success" && <Check size={12} />}
+              <span>
+                {syncStatus === "syncing"
+                  ? "Syncing..."
+                  : syncStatus === "success"
+                  ? "Synced"
+                  : syncStatus === "error"
+                  ? "Retry"
+                  : "Sync Now"}
+              </span>
             </button>
           </div>
           <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
@@ -569,37 +640,79 @@ export function SettingsPage() {
 
       {/* Bill List Sheet */}
       <BottomSheet isOpen={billListOpen} onClose={() => setBillListOpen(false)}>
-        <div className="p-5 pb-10 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div className="p-5 pb-16 space-y-4">
           <div className="flex items-center justify-between sticky top-0 bg-transparent z-10 pb-2">
-            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Recurring Bills</h3>
+            <div>
+              <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Recurring Bills</h3>
+              <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                {bills.filter((b: any) => !b.is_paid).length} unpaid · {bills.filter((b: any) => b.is_paid).length} paid
+              </p>
+            </div>
             <button onClick={() => { setBillListOpen(false); setTimeout(() => handleOpenAddBill(), 300) }}
               className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95"
               style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
               <Plus size={16} />
             </button>
           </div>
-          <div className="space-y-2">
-            {bills.map((b: any) => (
-              <div key={b.id} onClick={() => { setBillListOpen(false); setTimeout(() => handleOpenEditBill(b), 300) }}
-                className="glass-surface p-4 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition-all">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-tertiary)" }}><Bell size={20} /></div>
-                  <div className="min-w-0">
-                    <p className="font-bold text-[14px] truncate" style={{ color: "var(--text-primary)" }}>{b.title}</p>
-                    <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                      <span className="capitalize">{b.repeat_rule}</span> · Due {b.due_date} · {formatRupiah(Number(b.amount || 0))}
-                    </p>
+          <div className="space-y-2 pb-6">
+            {bills.map((b: any) => {
+              const isPaid = !!b.is_paid
+              return (
+                <div key={b.id} onClick={() => { setBillListOpen(false); setTimeout(() => handleOpenEditBill(b), 300) }}
+                  className="glass-surface p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition-all"
+                  style={{ opacity: isPaid ? 0.75 : 1 }}>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: isPaid ? "rgba(16, 185, 129, 0.15)" : "var(--bg-elevated)",
+                        border: isPaid ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid var(--glass-border)",
+                        color: isPaid ? "#34d399" : "var(--text-tertiary)"
+                      }}>
+                      {isPaid ? <Check size={20} /> : <Bell size={20} />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className={`font-bold text-[14px] truncate ${isPaid ? "line-through text-neutral-400" : ""}`} style={{ color: isPaid ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+                          {b.title}
+                        </p>
+                        {isPaid && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            Paid
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                        <span className="capitalize">{b.repeat_rule}</span> · Due {b.due_date} · {formatRupiah(Number(b.amount || 0))}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={() => {
+                        markBillPaid.mutate({ bill: b, paid: !isPaid })
+                        triggerHaptic("medium")
+                        showToast(isPaid ? `Marked ${b.title} as unpaid` : `Marked ${b.title} as paid`, "update", () => {})
+                      }}
+                      className="text-[11px] font-extrabold px-2.5 py-1.5 rounded-full flex items-center gap-1 active:scale-95 transition-all"
+                      style={{
+                        background: isPaid ? "var(--glass-fill-strong)" : "var(--accent)",
+                        color: isPaid ? "var(--text-secondary)" : "var(--accent-ink)",
+                        border: isPaid ? "1px solid var(--glass-border)" : "none"
+                      }}
+                      title={isPaid ? "Tandai Belum Bayar" : "Tandai Sudah Bayar"}
+                    >
+                      <Check size={12} />
+                      <span>{isPaid ? "Unmark" : "Paid"}</span>
+                    </button>
+                    <button onClick={() => { showToast("Bill deleted", "delete", () => deleteBill.mutate(b.id)) }}
+                      className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95"
+                      style={{ background: "rgba(239, 68, 68, 0.12)", color: "#ef4444" }}>
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                  <button onClick={() => { showToast("Bill deleted", "delete", () => deleteBill.mutate(b.id)) }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95"
-                    style={{ background: "rgba(239, 68, 68, 0.12)", color: "#ef4444" }}>
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
             {bills.length === 0 && (
               <p className="text-sm text-center py-4" style={{ color: "var(--text-tertiary)" }}>No recurring bills registered.</p>
             )}
@@ -609,7 +722,7 @@ export function SettingsPage() {
 
       {/* Add/Edit Bill Sheet */}
       <BottomSheet isOpen={billSheetOpen} onClose={() => setBillSheetOpen(false)}>
-        <div className="p-5 pb-10 space-y-4">
+        <div className="p-5 pb-16 space-y-4">
           <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>
             {editingBill ? "Edit Recurring Bill" : "Add Recurring Bill"}
           </h3>
@@ -625,6 +738,22 @@ export function SettingsPage() {
               onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ""); setBillAmount(raw) }} placeholder="Rp 0"
               className="w-full p-3.5 rounded-2xl outline-none font-bold text-[16px] amount"
               style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }} />
+          </div>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Payment Status</label>
+            <div className="flex p-1 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+              <button type="button" onClick={() => setBillIsPaid(false)}
+                className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all"
+                style={{ background: !billIsPaid ? "var(--accent)" : "transparent", color: !billIsPaid ? "var(--accent-ink)" : "var(--text-tertiary)" }}>
+                Unpaid (Belum)
+              </button>
+              <button type="button" onClick={() => setBillIsPaid(true)}
+                className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1"
+                style={{ background: billIsPaid ? "var(--accent)" : "transparent", color: billIsPaid ? "var(--accent-ink)" : "var(--text-tertiary)" }}>
+                <Check size={12} />
+                <span>Paid (Sudah Bayar)</span>
+              </button>
+            </div>
           </div>
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Due Date</label>
@@ -683,7 +812,7 @@ export function SettingsPage() {
       <ResetTransactionsSheet isOpen={resetOpen} onClose={() => setResetOpen(false)} />
 
       <BottomSheet isOpen={goalsOpen} onClose={() => setGoalsOpen(false)}>
-        <div className="p-5 pb-10 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between sticky top-0 bg-transparent z-10 pb-2">
             <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Financial Goals</h3>
             <button onClick={() => { setGoalsOpen(false); setTimeout(() => setAddGoalOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button>
@@ -719,36 +848,95 @@ export function SettingsPage() {
         </div>
       </BottomSheet>
 
+      {/* Manage Categories Sheet */}
       <BottomSheet isOpen={categoriesOpen} onClose={() => setCategoriesOpen(false)}>
-        <div className="p-5 pb-10 flex flex-col h-[85vh]">
-          <div className="flex items-center justify-between mb-4 shrink-0">
-            <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Categories</h3>
-            <button onClick={() => { setCategoriesOpen(false); setTimeout(() => setAddCatOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button>
+        <div className="p-5 pb-16 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Categories</h3>
+              <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                {categories.length} total categories · Tap card to edit
+              </p>
+            </div>
+            <button onClick={() => { setCategoriesOpen(false); setTimeout(() => setAddCatOpen(true), 300) }}
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 shrink-0"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
+              <Plus size={16} />
+            </button>
           </div>
-          <div className="space-y-2 overflow-y-auto">
-            {categories.map(cat => (
-              <div key={cat.id} className="p-3 rounded-2xl flex items-center gap-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><IconRenderer icon={cat.emoji} size="w-5 h-5" /></div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{cat.name}</p>
-                  <div className="flex items-center gap-2 text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
-                    <span className="capitalize">{cat.type}</span>
-                    {cat.budget_amount && cat.budget_amount > 0 ? (
-                      <span className="text-emerald-400 font-bold">· Budget: {formatRupiah(cat.budget_amount)}/mo</span>
-                    ) : null}
+
+          {/* Segmented Filter Tab: Expense vs Income */}
+          <div className="flex p-1 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+            {(["expense", "income"] as const).map(t => {
+              const count = categories.filter(c => c.type === t).length
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setManageCatTab(t)}
+                  className="flex-1 py-2 rounded-xl text-[12px] font-bold transition-all capitalize"
+                  style={{
+                    background: manageCatTab === t ? "var(--accent)" : "transparent",
+                    color: manageCatTab === t ? "var(--accent-ink)" : "var(--text-tertiary)"
+                  }}
+                >
+                  {t} ({count})
+                </button>
+              )
+            })}
+          </div>
+
+          {/* 2-Column Responsive Compact Grid */}
+          <div className="grid grid-cols-2 gap-2.5 pb-6">
+            {categories.filter(c => c.type === manageCatTab).map(cat => (
+              <div
+                key={cat.id}
+                onClick={() => {
+                  setEditCategory({ id: cat.id, name: cat.name, budget_amount: cat.budget_amount, type: cat.type })
+                  setEditCategoryBudget(cat.budget_amount ? String(cat.budget_amount) : "")
+                }}
+                className="p-3 rounded-2xl flex flex-col justify-between cursor-pointer active:scale-98 transition-all relative group"
+                style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
+              >
+                <div className="flex items-center justify-between gap-1.5 mb-2">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+                    <IconRenderer icon={cat.emoji} size="w-5 h-5" />
+                  </div>
+                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditCategory({ id: cat.id, name: cat.name, budget_amount: cat.budget_amount, type: cat.type })
+                        setEditCategoryBudget(cat.budget_amount ? String(cat.budget_amount) : "")
+                      }}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { if (confirm(`Delete "${cat.name}"?`)) deleteCategory.mutate(cat.id) }}
+                      className="w-6 h-6 flex items-center justify-center rounded-full active:scale-95"
+                      style={{ color: "#ef4444" }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => {
-                    setEditCategory({ id: cat.id, name: cat.name, budget_amount: cat.budget_amount, type: cat.type })
-                    setEditCategoryBudget(cat.budget_amount ? String(cat.budget_amount) : "")
-                  }}
-                  className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
-                  style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
-                >
-                  Edit
-                </button>
-                <button onClick={() => { if (confirm(`Delete "${cat.name}"?`)) deleteCategory.mutate(cat.id) }} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ color: "#ef4444" }}><Trash2 size={13} /></button>
+                <div>
+                  <p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>
+                    {cat.name}
+                  </p>
+                  <p className="text-[10px] font-semibold mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
+                    {cat.budget_amount && cat.budget_amount > 0 ? (
+                      <span className="text-emerald-400 font-bold">Limit {formatRupiah(cat.budget_amount)}</span>
+                    ) : (
+                      <span>No monthly limit</span>
+                    )}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -756,7 +944,7 @@ export function SettingsPage() {
       </BottomSheet>
 
       <BottomSheet isOpen={!!editCategory} onClose={() => setEditCategory(null)}>
-        <div className="p-5 pb-10 space-y-4">
+        <div className="p-5 pb-16 space-y-4">
           <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Edit Category</h3>
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1" style={{ color: "var(--text-tertiary)" }}>Category Name</label>
@@ -814,7 +1002,7 @@ export function SettingsPage() {
       </BottomSheet>
 
       <BottomSheet isOpen={addCatOpen} onClose={() => setAddCatOpen(false)}>
-        <div className="p-5 pb-10 space-y-4">
+        <div className="p-5 pb-16 space-y-4">
           <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Category</h3>
           <div className="flex p-1 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
             {(["expense", "income"] as const).map(t => (
@@ -826,53 +1014,75 @@ export function SettingsPage() {
         </div>
       </BottomSheet>
 
+      {/* Manage Accounts & Wallets Sheet */}
       <BottomSheet isOpen={budgetsOpen} onClose={() => setBudgetsOpen(false)}>
-        <div className="p-5 flex flex-col max-h-[82vh] h-full">
-          <div className="flex items-center justify-between mb-4 shrink-0">
+        <div className="p-5 pb-16 space-y-4">
+          <div className="flex items-center justify-between">
             <div>
               <h3 className="font-extrabold text-lg leading-tight" style={{ color: "var(--text-primary)" }}>Accounts & Wallets</h3>
               <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                {wallets.length} active accounts · Tap ⚖️ to adjust balance
+                {wallets.length} active accounts · Tap card to edit
               </p>
             </div>
-            <button onClick={() => { setBudgetsOpen(false); setTimeout(() => setAddBudgetOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 shrink-0" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button>
+            <button onClick={() => { setBudgetsOpen(false); setTimeout(() => setAddBudgetOpen(true), 300) }}
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 shrink-0"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
+              <Plus size={16} />
+            </button>
           </div>
-          <div className="space-y-2 overflow-y-auto pr-0.5 flex-1 pb-[max(env(safe-area-inset-bottom,0px),36px)]">
+
+          {/* 2-Column Responsive Account Cards Grid */}
+          <div className="grid grid-cols-2 gap-2.5 pb-6">
             {wallets.map(w => {
               const bal = balancesById[w.id] ?? balancesByName[w.name.toLowerCase()] ?? 0
               return (
-                <div key={w.id} className="p-3 rounded-2xl flex items-center gap-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-                    <IconRenderer icon={w.icon || getWalletIcon(w.name)} size="w-5 h-5" />
+                <div
+                  key={w.id}
+                  onClick={() => setEditWallet({ id: w.id, name: w.name, icon: w.icon || getWalletIcon(w.name) })}
+                  className="p-3.5 rounded-2xl flex flex-col justify-between cursor-pointer active:scale-98 transition-all relative group"
+                  style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
+                >
+                  <div className="flex items-center justify-between gap-1 mb-2">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+                      <IconRenderer icon={w.icon || getWalletIcon(w.name)} size="w-4.5 h-4.5" />
+                    </div>
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBudgetsOpen(false)
+                          setTimeout(() => {
+                            setCorrectWallet({ id: w.id, name: w.name, icon: w.icon || getWalletIcon(w.name), currentBalance: bal })
+                            setCorrectTargetBalance(String(bal))
+                            setCorrectNote("")
+                          }, 300)
+                        }}
+                        className="flex items-center gap-0.5 text-[10px] font-extrabold px-2 py-1 rounded-full active:scale-95 transition-all"
+                        style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+                        title="Koreksi Saldo"
+                      >
+                        <Scale size={11} />
+                        <span>Adjust</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { if (confirm(`Delete account "${w.name}"?`)) deleteWallet.mutate(w.id) }}
+                        className="w-6 h-6 flex items-center justify-center rounded-full active:scale-95"
+                        style={{ color: "#ef4444" }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>{w.name}</p>
-                    <p className="amount text-[12px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>{formatRupiah(bal)}</p>
+                  <div>
+                    <p className="font-bold text-[13px] truncate" style={{ color: "var(--text-primary)" }}>
+                      {w.name}
+                    </p>
+                    <p className="amount text-[12.5px] font-extrabold mt-0.5 truncate" style={{ color: "var(--text-secondary)" }}>
+                      {formatRupiah(bal)}
+                    </p>
                   </div>
-                  <button
-                    onClick={() => {
-                      setBudgetsOpen(false)
-                      setTimeout(() => {
-                        setCorrectWallet({ id: w.id, name: w.name, icon: w.icon || getWalletIcon(w.name), currentBalance: bal })
-                        setCorrectTargetBalance(String(bal))
-                        setCorrectNote("")
-                      }, 300)
-                    }}
-                    className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all"
-                    style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-                    title="Koreksi Saldo"
-                  >
-                    <Scale size={12} />
-                    <span>Adjust</span>
-                  </button>
-                  <button
-                    onClick={() => setEditWallet({ id: w.id, name: w.name, icon: w.icon || getWalletIcon(w.name) })}
-                    className="text-[11px] font-bold px-2.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-transform"
-                    style={{ background: "var(--glass-fill-strong)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
-                  >
-                    Edit
-                  </button>
-                  <button onClick={() => { if (confirm(`Delete account "${w.name}"?`)) deleteWallet.mutate(w.id) }} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ color: "#ef4444" }}><Trash2 size={13} /></button>
                 </div>
               )
             })}
@@ -971,7 +1181,7 @@ export function SettingsPage() {
                 : `Correction (${isPositive ? "+" : "-"}) ${correctWallet.name}`
 
               addTx.mutate({
-                type: isPositive ? "income" : "expense",
+                type: "adjustment",
                 amount: Math.abs(diff),
                 wallet_id: walletIdToSave,
                 note: noteToSave,
@@ -1001,7 +1211,7 @@ export function SettingsPage() {
 
       {/* Edit Account Modal */}
       <BottomSheet isOpen={!!editWallet} onClose={() => setEditWallet(null)}>
-        <div className="p-5 pb-10 space-y-4 max-h-[82vh] overflow-y-auto">
+        <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Edit Account</h3>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
@@ -1046,7 +1256,7 @@ export function SettingsPage() {
 
       {/* Add Account Modal with Available Defaults & Custom Creator */}
       <BottomSheet isOpen={addBudgetOpen} onClose={() => setAddBudgetOpen(false)}>
-        <div className="p-5 pb-10 space-y-4 max-h-[82vh] overflow-y-auto">
+        <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Account</h3>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
@@ -1123,7 +1333,7 @@ export function SettingsPage() {
       
       {/* Shortcuts Modal */}
       <BottomSheet isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)}>
-        <div className="p-5 pb-10 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between sticky top-0 bg-transparent z-10 pb-2">
             <div>
               <div className="flex justify-between items-center w-full"><h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Quick-Add Shortcuts</h3><button onClick={() => { setShortcutsOpen(false); setTimeout(() => setAddShortcutOpen(true), 300) }} className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}><Plus size={16} /></button></div>
@@ -1148,7 +1358,7 @@ export function SettingsPage() {
       
       {/* Add Shortcut Sheet */}
       <BottomSheet isOpen={addShortcutOpen} onClose={() => setAddShortcutOpen(false)}>
-        <div className="p-5 pb-10 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div className="p-5 pb-12 space-y-4">
           <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Add Shortcut</h3>
           
           <div className="flex p-1 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
@@ -1256,7 +1466,7 @@ export function SettingsPage() {
       <BottomSheet isOpen={shortcutMoreCatOpen} onClose={() => setShortcutMoreCatOpen(false)}>
         <div className="p-5 pb-12">
           <h3 className="font-extrabold text-lg mb-3" style={{ color: "var(--text-primary)" }}>Select Category</h3>
-          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 max-h-[68vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
             {categories.filter(c => c.type === shortcutType).map(cat => {
               const isSelected = shortcutCategoryId === cat.id
               return (
@@ -1282,7 +1492,7 @@ export function SettingsPage() {
       <BottomSheet isOpen={shortcutMoreWalletOpen} onClose={() => setShortcutMoreWalletOpen(false)}>
         <div className="p-5 pb-12">
           <h3 className="font-extrabold text-lg mb-3" style={{ color: "var(--text-primary)" }}>Select Account</h3>
-          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 max-h-[68vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
             {wallets.map(w => {
               const isSelected = shortcutWalletId === w.id
               return (

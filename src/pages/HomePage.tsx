@@ -21,10 +21,11 @@ function formatNetAmount(net: number): string {
 }
 
 ﻿import { useState, useMemo } from "react"
-import { Bell, ArrowUpRight, TrendingUp, TrendingDown, Sparkles, PiggyBank, Flame, Eye, EyeOff } from "lucide-react"
+import { Bell, ArrowUpRight, TrendingUp, TrendingDown, Sparkles, PiggyBank, Flame, Eye, EyeOff, Check } from "lucide-react"
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from "recharts"
 import { useAllTransactions } from "../hooks/useTransactions"
-import { useUpcomingBills, getDaysUntilDue } from "../hooks/useBills"
+import { useUpcomingBills, useMarkBillPaid, getDaysUntilDue } from "../hooks/useBills"
+import { useToast } from "../contexts/ToastContext"
 import { formatRupiah } from "../lib/utils"
 import { IconRenderer } from "../components/ui/IconRenderer"
 import {
@@ -89,6 +90,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
     })
   }
 
+  const { showToast } = useToast()
+  const markBillPaid = useMarkBillPaid()
   const upcomingBills = useUpcomingBills()
   const { budgetTarget } = useBudgetTarget()
   const { data: allTxs = [], refetch: refetchAllTxs } = useAllTransactions()
@@ -214,10 +217,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       let temp = 0
       for (let m = 0; m <= now.getMonth(); m++) {
         const d = new Date(currentYear, m, 1)
+        const mKey = `${currentYear}-${String(m + 1).padStart(2, "0")}`
         const mTxs = allTxs.filter(t => {
           if (!t.occurred_on) return false
-          const td = new Date(t.occurred_on)
-          return td.getFullYear() === currentYear && td.getMonth() === m
+          return t.occurred_on.startsWith(mKey)
         })
         const mIn = mTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
         const mOut = mTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
@@ -235,12 +238,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       let temp = 0
       for (let i = 7; i >= 0; i--) {
         const d = subMonths(now, i)
-        const y = d.getFullYear()
-        const m = d.getMonth()
+        const mKey = format(d, "yyyy-MM")
         const mTxs = allTxs.filter(t => {
           if (!t.occurred_on) return false
-          const td = new Date(t.occurred_on)
-          return td.getFullYear() === y && td.getMonth() === m
+          return t.occurred_on.startsWith(mKey)
         })
         const mIn = mTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
         const mOut = mTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
@@ -272,34 +273,30 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
 
   // 2. Current Month Financial Calculations
   const currentMonthStats = useMemo(() => {
-    const currentYear = now.getFullYear()
-    const currentMonth = now.getMonth()
+    const currentMonthKey = format(now, "yyyy-MM")
     let income = 0
     let expense = 0
     const expCatMap = new Map<string, { name: string; emoji: string; total: number; count: number }>()
     const incCatMap = new Map<string, { name: string; emoji: string; total: number; count: number }>()
 
     allTxs.forEach(t => {
-      if (!t.occurred_on) return
-      const d = new Date(t.occurred_on)
-      if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
-        const amt = Number(t.amount || 0)
-        const catName = t.categories?.name || "Lainnya"
-        if (t.type === "income") {
-          income += amt
-          const emoji = t.categories?.emoji || "/icons/gaji.png"
-          const ex = incCatMap.get(catName) || { name: catName, emoji, total: 0, count: 0 }
-          ex.total += amt
-          ex.count += 1
-          incCatMap.set(catName, ex)
-        } else if (t.type === "expense") {
-          expense += amt
-          const emoji = t.categories?.emoji || "/icons/lainnya.png"
-          const ex = expCatMap.get(catName) || { name: catName, emoji, total: 0, count: 0 }
-          ex.total += amt
-          ex.count += 1
-          expCatMap.set(catName, ex)
-        }
+      if (!t.occurred_on || !t.occurred_on.startsWith(currentMonthKey)) return
+      const amt = Number(t.amount || 0)
+      const catName = t.categories?.name || "Lainnya"
+      if (t.type === "income") {
+        income += amt
+        const emoji = t.categories?.emoji || "/icons/gaji.png"
+        const ex = incCatMap.get(catName) || { name: catName, emoji, total: 0, count: 0 }
+        ex.total += amt
+        ex.count += 1
+        incCatMap.set(catName, ex)
+      } else if (t.type === "expense") {
+        expense += amt
+        const emoji = t.categories?.emoji || "/icons/lainnya.png"
+        const ex = expCatMap.get(catName) || { name: catName, emoji, total: 0, count: 0 }
+        ex.total += amt
+        ex.count += 1
+        expCatMap.set(catName, ex)
       }
     })
 
@@ -383,7 +380,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   }
 
   return (
-    <div className="px-5 pt-6 space-y-4 pb-32 relative">
+    <div className="px-5 pt-6 space-y-4 pb-36 relative">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} threshold={threshold} />
       {/* HEADER */}
       <header className="flex justify-between items-center">
@@ -943,8 +940,27 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                       {days <= 0 ? "Due today" : `Due in ${days} days`}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="flex items-center gap-2.5 shrink-0">
                     <p className="amount text-[14px] font-extrabold" style={{ color: "var(--text-primary)" }}>{formatRupiah(Number(bill.amount))}</p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        markBillPaid.mutate({ bill, paid: true })
+                        triggerHaptic("medium")
+                        showToast(`${bill.title} marked as paid`, "add", () => {})
+                      }}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 active:scale-95 transition-all"
+                      style={{
+                        background: "var(--glass-fill-strong)",
+                        border: "1px solid var(--glass-border)",
+                        color: "var(--text-primary)"
+                      }}
+                      title="Tandai Sudah Bayar"
+                    >
+                      <Check size={11} />
+                      <span>Paid</span>
+                    </button>
                   </div>
                 </div>
               )

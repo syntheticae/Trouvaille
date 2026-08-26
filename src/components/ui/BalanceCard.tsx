@@ -197,7 +197,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           </div>
 
           {/* Active Accounts 2-Column Compact Grid */}
-          <div className="space-y-1.5 max-h-[75vh] overflow-y-auto pr-1 pb-16">
+          <div className="space-y-1.5 pb-12">
             <div className="grid grid-cols-2 gap-2">
               {positiveAccounts.map(acc => (
                 <div

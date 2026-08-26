@@ -17,6 +17,7 @@ import { useCategories } from "../../hooks/useCategories"
 import { useWallets } from "../../hooks/useWallets"
 import { useAddTransaction, useUpdateTransaction, useDeleteTransaction, useAllTransactions } from "../../hooks/useTransactions"
 import { useCategorySuggestions } from "../../hooks/useCategorySuggestions"
+import { useWalletSuggestions } from "../../hooks/useWalletSuggestions"
 import { useToast } from "../../contexts/ToastContext"
 import { formatRupiah } from "../../lib/utils"
 import { format, isToday } from "date-fns"
@@ -71,16 +72,24 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     selectedWalletId: walletId
   })
 
+  // Smart Contextual & Recency Wallet Ranking
+  const suggestedFromWallets = useWalletSuggestions({
+    wallets,
+    transactions: allTxs,
+    type,
+    selectedCategoryId: categoryId,
+    target: "from"
+  })
+
+  const suggestedToWallets = useWalletSuggestions({
+    wallets,
+    transactions: allTxs,
+    type,
+    target: "to"
+  })
+
   const topCategories = useMemo(() => {
-    const list = [...suggestedCategories]
-    if (categoryId) {
-      const idx = list.findIndex(c => c.id === categoryId)
-      if (idx > -1) {
-        const item = list.splice(idx, 1)[0]
-        list.unshift(item)
-      }
-    }
-    return list.slice(0, 3)
+    return getTop3Slots(suggestedCategories, categoryId)
   }, [suggestedCategories, categoryId])
 
   // Keep track of when modal opens or incoming transaction changes
@@ -153,15 +162,18 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         setNote("")
         setDate(new Date())
         setTime(format(new Date(), "HH:mm"))
-        setCategoryId(categories.length > 0 ? categories[0].id : null)
-        setWalletId(wallets.length > 0 ? wallets[0].id : null)
-        setToWalletId(wallets.length > 1 ? wallets[1].id : null)
+        const defaultCatId = suggestedCategories[0]?.id || (categories.length > 0 ? categories[0].id : null)
+        const defaultFromId = suggestedFromWallets[0]?.id || (wallets.length > 0 ? wallets[0].id : null)
+        const defaultToId = suggestedToWallets.find(w => w.id !== defaultFromId)?.id || (wallets.length > 1 ? wallets[1].id : null)
+        setCategoryId(defaultCatId)
+        setWalletId(defaultFromId)
+        setToWalletId(defaultToId)
       }
     }
 
     prevOpenRef.current = isOpen
     prevTxIdRef.current = transaction?.id || null
-  }, [isOpen, transaction, allCategories, categories, wallets])
+  }, [isOpen, transaction, allCategories, categories, wallets, suggestedCategories, suggestedFromWallets, suggestedToWallets])
 
   // Ensure valid toWalletId when type is transfer
   useEffect(() => {
@@ -268,7 +280,8 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
   }
 
   const renderWalletRow = (selectedId: string | null, onSelect: (id: string) => void, label: string, isTo = false) => {
-    const top3 = getTop3Slots(wallets, selectedId)
+    const list = isTo ? suggestedToWallets : suggestedFromWallets
+    const top3 = getTop3Slots(list, selectedId)
     return (
       <div className="mb-3">
         <div className="flex justify-between items-end mb-1.5 px-1">
@@ -493,7 +506,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
           )}
           <button
             onClick={handleSave}
-            disabled={isSaving || Number(amount) <= 0}
+            disabled={isSaving || Number(amount) <= 0 || addTx.isPending || updateTx.isPending}
             className="flex-1 font-extrabold text-[15px] rounded-[20px] py-3.5 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             style={{
               background: "var(--accent)",
@@ -506,10 +519,10 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         </div>
       </div>
 
-      {/* More Categories Glass Sheet (4-Columns Fullscreen Layout) */}
+      {/* More Categories Glass Sheet */}
       <BottomSheet isOpen={moreCatOpen} onClose={() => setMoreCatOpen(false)}>
-        <div className="p-5 flex flex-col max-h-[82vh] h-full">
-          <div className="flex items-center justify-between mb-4 shrink-0">
+        <div className="p-5 pb-12">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-extrabold text-[18px] leading-tight" style={{ color: "var(--text-primary)" }}>
                 Select Category
@@ -527,7 +540,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-x-2 gap-y-3 content-start overflow-y-auto pr-1 flex-1 pb-[max(env(safe-area-inset-bottom,0px),36px)]">
+          <div className="grid grid-cols-4 gap-x-2 gap-y-3">
             {suggestedCategories.map(cat => {
               const isSelected = categoryId === cat.id
               return (
@@ -556,10 +569,10 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         </div>
       </BottomSheet>
 
-      {/* More Accounts Glass Sheet (Tall 3-Column Layout with pb-16) */}
+      {/* More Accounts Glass Sheet */}
       <BottomSheet isOpen={moreWalletOpen} onClose={() => setMoreWalletOpen(false)}>
-        <div className="p-5 flex flex-col max-h-[82vh] h-full">
-          <div className="flex items-center justify-between mb-4 shrink-0">
+        <div className="p-5 pb-12">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-extrabold text-[18px] leading-tight" style={{ color: "var(--text-primary)" }}>
                 Select Account / Wallet
@@ -577,7 +590,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 content-start overflow-y-auto pr-1 flex-1 pb-[max(env(safe-area-inset-bottom,0px),36px)]">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
             {wallets.map(w => {
               const isSelected = (walletTarget === "from" ? walletId : toWalletId) === w.id
               return (

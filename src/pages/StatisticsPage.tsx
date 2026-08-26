@@ -230,10 +230,9 @@ export function StatisticsPage() {
       return weeks.map(w => {
         const txs = allTxs.filter(t => {
           if (!t.occurred_on) return false
-          const td = new Date(t.occurred_on)
-          if (td.getFullYear() !== currentYear || td.getMonth() !== currentMonth) return false
-          const day = td.getDate()
-          return day >= w.startDay && day <= w.endDay
+          const [y, m, d] = t.occurred_on.split("-").map(Number)
+          if (y !== currentYear || (m - 1) !== currentMonth) return false
+          return d >= w.startDay && d <= w.endDay
         })
         return {
           label: w.label,
@@ -490,7 +489,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   }, [range, monthOffset])
 
   return (
-    <div className="px-5 py-6 space-y-5 pb-32" style={{ minHeight: "100vh" }}>
+    <div className="px-5 py-6 space-y-5 pb-36" style={{ minHeight: "100dvh" }}>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -1154,7 +1153,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 
       {/* Comprehensive Category Breakdown BottomSheet */}
       <BottomSheet isOpen={allDetailsOpen} onClose={() => setAllDetailsOpen(false)}>
-        <div className="p-5 pb-16 space-y-4">
+        <div className="p-5 pb-12 space-y-4">
           <div className="flex justify-between items-start mb-2">
             <div>
               <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>
@@ -1166,7 +1165,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
             </div>
           </div>
 
-          <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="space-y-2.5">
             {categoryStats.map((cat, i) => {
               const pct = totalBreakdownAmount > 0 ? ((cat.total / totalBreakdownAmount) * 100).toFixed(1) : "0.0"
               const barColor = colors.donut[i % colors.donut.length]
