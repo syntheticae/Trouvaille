@@ -131,31 +131,44 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         }
 
         // 2. Resolve Wallet (From Account)
-        if (transaction.wallet_id) {
-          setWalletId(transaction.wallet_id)
+        let resolvedFromWalletId: string | null = null
+        if (transaction.wallet_id && wallets.some(w => w.id === transaction.wallet_id)) {
+          resolvedFromWalletId = transaction.wallet_id
         } else {
           const match = getFamfinaMatch(transaction)
           if (match?.fromWallet) {
             const foundWallet = wallets.find(w => w.name.toLowerCase() === match.fromWallet.toLowerCase())
-            setWalletId(foundWallet ? foundWallet.id : (wallets.length > 0 ? wallets[0].id : null))
-          } else {
-            setWalletId(wallets.length > 0 ? wallets[0].id : null)
+            if (foundWallet) resolvedFromWalletId = foundWallet.id
+          }
+          if (!resolvedFromWalletId && transaction.note) {
+            const noteLower = transaction.note.toLowerCase()
+            const foundByNote = wallets.find(w => noteLower.includes(w.name.toLowerCase()))
+            if (foundByNote) resolvedFromWalletId = foundByNote.id
+          }
+          if (!resolvedFromWalletId && wallets.length > 0) {
+            const cashW = wallets.find(w => w.name.toLowerCase() === "cash")
+            resolvedFromWalletId = cashW ? cashW.id : wallets[0].id
           }
         }
+        setWalletId(resolvedFromWalletId)
 
         // 3. Resolve To Wallet (Transfer)
-        if (transaction.to_wallet_id) {
-          setToWalletId(transaction.to_wallet_id)
+        let resolvedToWalletId: string | null = null
+        if (transaction.to_wallet_id && wallets.some(w => w.id === transaction.to_wallet_id)) {
+          resolvedToWalletId = transaction.to_wallet_id
         } else {
           const match = getFamfinaMatch(transaction)
-          const toW = match?.toWallet
-          if (toW) {
-            const foundTo = wallets.find(w => w.name.toLowerCase() === toW.toLowerCase())
-            setToWalletId(foundTo ? foundTo.id : (wallets.length > 1 ? wallets[1].id : null))
-          } else {
-            setToWalletId(wallets.length > 1 ? wallets[1].id : null)
+          if (match && match.toWallet) {
+            const tw = match.toWallet.toLowerCase()
+            const foundTo = wallets.find(w => w.name.toLowerCase() === tw)
+            if (foundTo) resolvedToWalletId = foundTo.id
+          }
+          if (!resolvedToWalletId && wallets.length > 1) {
+            const other = wallets.find(w => w.id !== resolvedFromWalletId)
+            resolvedToWalletId = other ? other.id : wallets[1].id
           }
         }
+        setToWalletId(resolvedToWalletId)
       } else {
         setType("expense")
         setAmount("0")
@@ -204,11 +217,14 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     if (numAmount <= 0 || isSaving || addTx.isPending || updateTx.isPending) return
     setIsSaving(true)
 
-    const effectiveWalletId = walletId || (wallets.length > 0 ? wallets[0].id : null)
-    const effectiveToWalletId = toWalletId || (wallets.length > 1 ? wallets[1].id : null)
-    const effectiveCatId = categoryId || (categories.length > 0 ? categories[0].id : null)
+    // Ensure valid active database foreign keys
+    const matchedFromWallet = wallets.find(w => w.id === walletId) || wallets[0]
+    const matchedToWallet = wallets.find(w => w.id === toWalletId) || (wallets.length > 1 ? wallets[1] : null)
+    const matchedCat = categories.find(c => c.id === categoryId) || (categories.length > 0 ? categories[0] : null)
 
-    
+    const effectiveWalletId = matchedFromWallet?.id || null
+    const effectiveToWalletId = matchedToWallet?.id || null
+    const effectiveCatId = matchedCat?.id || null
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number)
@@ -220,7 +236,7 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
     const payload = {
       type,
       amount: numAmount,
-      note,
+      note: note || null,
       occurred_on: format(date, "yyyy-MM-dd"),
       created_at: txDate.toISOString(),
       category_id: type === "transfer" ? null : (isUUID(effectiveCatId) ? effectiveCatId : null),
@@ -236,7 +252,8 @@ export function TransactionSheet({ isOpen, onClose, transaction }: TransactionSh
         onSuccess: () => {
           triggerSuccessHaptic(); showToast("Transaction updated", "update", () => {})
         },
-        onError: () => {
+        onError: (err) => {
+          console.error("Update tx error:", err)
           showToast("Failed to update transaction", "delete", () => {})
         }
       })

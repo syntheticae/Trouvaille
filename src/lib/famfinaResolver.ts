@@ -37,15 +37,20 @@ records.forEach(r => {
   basicMap.set(basicKey, bList)
 })
 
-export function getFamfinaMatch(tx: { occurred_on: string; amount: number; type: string; note?: string | null }) {
+export function getFamfinaMatch(tx?: { occurred_on?: string; amount?: number | string; type?: string; note?: string | null } | null) {
+  if (!tx) return null
+  const dateStr = (tx.occurred_on || "").slice(0, 10)
+  const amtNum = Number(tx.amount || 0)
+  const typeStr = tx.type || ""
   const noteClean = (tx.note || "").trim().toLowerCase()
-  const fullKey = `${tx.occurred_on}_${tx.amount}_${tx.type}_${noteClean}`
+
+  const fullKey = `${dateStr}_${amtNum}_${typeStr}_${noteClean}`
   const fList = fullMap.get(fullKey)
   if (fList && fList.length > 0) {
     return fList[0]
   }
 
-  const basicKey = `${tx.occurred_on}_${tx.amount}_${tx.type}`
+  const basicKey = `${dateStr}_${amtNum}_${typeStr}`
   const bList = basicMap.get(basicKey)
   if (bList && bList.length > 0) {
     return bList[0]

@@ -284,9 +284,30 @@ export function useUpdateTransaction() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
-      const { data, error } = await supabase.from("transactions")
-        .update(input).eq("id", id).select("*, categories(*)").single()
-      if (error) throw error
+      // 1. Sanitize payload
+      const sanitized: any = {}
+      if (input.type) sanitized.type = input.type
+      if (input.amount !== undefined) sanitized.amount = Number(input.amount)
+      if (input.occurred_on) sanitized.occurred_on = input.occurred_on
+      if (input.created_at) sanitized.created_at = input.created_at
+      sanitized.note = input.note ?? null
+      sanitized.category_id = input.category_id ?? null
+      sanitized.wallet_id = input.wallet_id ?? null
+      sanitized.to_wallet_id = input.to_wallet_id ?? null
+
+      let { data, error } = await supabase.from("transactions")
+        .update(sanitized).eq("id", id).select("*, categories(*)").maybeSingle()
+      
+      if (error || !data) {
+        console.warn("[useUpdateTransaction] Update with join error or empty, retrying without join:", error)
+        const { data: fallback, error: fbErr } = await supabase.from("transactions")
+          .update(sanitized).eq("id", id).select("*").maybeSingle()
+        if (fbErr) {
+          console.error("[useUpdateTransaction] Direct update error:", fbErr)
+          throw fbErr
+        }
+        data = fallback
+      }
       return data as Transaction
     },
     onMutate: async ({ id, ...updated }) => {
