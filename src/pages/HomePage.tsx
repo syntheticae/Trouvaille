@@ -73,6 +73,14 @@ function formatAxisY(val: number): string {
   return String(val)
 }
 
+function getTimeGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour >= 4 && hour < 12) return "Good Morning"
+  if (hour >= 12 && hour < 16) return "Good Afternoon"
+  if (hour >= 16 && hour < 19) return "Good Evening"
+  return "Good Night"
+}
+
 export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const now = new Date()
   const { session } = useAuth()
@@ -405,7 +413,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
           </div>
           <div>
             <p className="text-[14px] font-bold leading-tight" style={{ color: "var(--text-primary)" }}>
-              Welcome, {displayName}
+              {getTimeGreeting()}, {displayName}
             </p>
             <p className="text-[11px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
               Financial Overview

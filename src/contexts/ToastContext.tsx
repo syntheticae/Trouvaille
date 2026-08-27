@@ -1,42 +1,103 @@
-import { createContext, useContext, useState, useCallback } from "react"
+import { createContext, useContext, useState, useCallback, useRef } from "react"
 import type { ReactNode } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { RotateCcw } from "lucide-react"
+import { Check, RotateCcw, Trash2, Plus, Info } from "lucide-react"
 
-type ActionType = "add" | "update" | "delete"
+export type ToastActionType = "add" | "update" | "delete" | "info"
 
 interface Toast {
   id: string
   message: string
-  actionType: ActionType
-  onUndo: () => void
+  actionType: ToastActionType
+  onUndo?: () => void
 }
 
 interface ToastContextType {
-  showToast: (message: string, actionType: ActionType, onExecute: () => void, delayMs?: number, onCancel?: () => void) => void
+  showToast: (
+    message: string,
+    actionType?: ToastActionType,
+    onExecuteOrUndo?: (() => void) | null,
+    delayMs?: number,
+    onCancel?: () => void
+  ) => void
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined)
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<Toast | null>(null)
+  const timerRef = useRef<any>(null)
 
-  const showToast = useCallback((message: string, actionType: ActionType, onExecute: () => void, delayMs = 3000, onCancel?: () => void) => {
-    const id = Math.random().toString(36)
-    
-    const timer = setTimeout(() => {
-      onExecute()
-      setToast(null)
-    }, delayMs)
+  const showToast = useCallback(
+    (
+      message: string,
+      actionType: ToastActionType = "info",
+      onExecuteOrUndo?: (() => void) | null,
+      delayMs = 3000,
+      onCancel?: () => void
+    ) => {
+      const id = Math.random().toString(36)
 
-    const onUndo = () => {
-      clearTimeout(timer)
-      onCancel?.()
-      setToast(null)
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+      }
+
+      timerRef.current = setTimeout(() => {
+        if (onCancel && typeof onExecuteOrUndo === "function") {
+          onExecuteOrUndo()
+        }
+        setToast(null)
+      }, delayMs)
+
+      let onUndo: (() => void) | undefined
+      if (onCancel) {
+        onUndo = () => {
+          if (timerRef.current) clearTimeout(timerRef.current)
+          onCancel()
+          setToast(null)
+        }
+      } else if (
+        typeof onExecuteOrUndo === "function" &&
+        onExecuteOrUndo.length === 0 &&
+        onExecuteOrUndo.toString() !== "() => {}" &&
+        onExecuteOrUndo.toString() !== "()=>{}"
+      ) {
+        onUndo = () => {
+          if (timerRef.current) clearTimeout(timerRef.current)
+          onExecuteOrUndo()
+          setToast(null)
+        }
+      }
+
+      setToast({ id, message, actionType, onUndo })
+    },
+    []
+  )
+
+  const getIcon = (type: ToastActionType) => {
+    switch (type) {
+      case "add":
+        return <Plus size={14} className="stroke-[3]" />
+      case "update":
+        return <Check size={14} className="stroke-[3]" />
+      case "delete":
+        return <Trash2 size={13} />
+      default:
+        return <Info size={14} />
     }
+  }
 
-    setToast({ id, message, actionType, onUndo })
-  }, [])
+  const getIconBg = (type: ToastActionType) => {
+    switch (type) {
+      case "delete":
+        return { bg: "rgba(239, 68, 68, 0.18)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)" }
+      case "add":
+      case "update":
+        return { bg: "var(--accent)", color: "var(--accent-ink)", border: "none" }
+      default:
+        return { bg: "var(--glass-fill)", color: "var(--text-primary)", border: "1px solid var(--glass-border)" }
+    }
+  }
 
   return (
     <ToastContext.Provider value={{ showToast }}>
@@ -45,26 +106,40 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toast && (
           <motion.div
             key={toast.id}
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            initial={{ opacity: 0, y: 35, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-[100px] left-4 right-4 z-[100] flex items-center justify-between p-4 rounded-[22px]"
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: "spring", damping: 25, stiffness: 350 }}
+            className="fixed bottom-[95px] left-4 right-4 z-[99999] flex items-center justify-between p-3.5 px-4 rounded-[24px] pointer-events-auto"
             style={{ 
               background: "var(--bg-elevated)", 
               border: "1px solid var(--glass-border)",
-              boxShadow: "0 8px 32px var(--shadow-strength)"
+              boxShadow: "0 12px 40px var(--shadow-strength)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)"
             }}
           >
-            <p className="text-[14px] font-bold" style={{ color: "var(--text-primary)", fontFamily: "Urbanist, sans-serif" }}>
-              {toast.message}
-            </p>
-            <button
-              onClick={toast.onUndo}
-              className="px-4 py-2 rounded-full text-[13px] font-extrabold flex items-center gap-1.5 active:scale-95 transition-transform"
-              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-            >
-              <RotateCcw size={13} /> Undo
-            </button>
+            <div className="flex items-center gap-3 min-w-0 pr-2">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 shadow-sm"
+                style={getIconBg(toast.actionType)}
+              >
+                {getIcon(toast.actionType)}
+              </div>
+              <p className="text-[13.5px] font-bold truncate leading-tight" style={{ color: "var(--text-primary)" }}>
+                {toast.message}
+              </p>
+            </div>
+
+            {toast.onUndo && (
+              <button
+                onClick={toast.onUndo}
+                className="px-3.5 py-1.5 rounded-full text-[12px] font-extrabold flex items-center gap-1 active:scale-95 transition-transform shrink-0"
+                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+              >
+                <RotateCcw size={12} /> Undo
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

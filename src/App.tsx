@@ -39,20 +39,22 @@ function AppShell() {
         const { data: { session } } = await supabase.auth.getSession()
         const user = session?.user
         if (user) {
+          // Stage 1: Categories & Wallets (25%)
+          setSyncStatusText("Setting up accounts & categories...")
+          setSyncProgress(25)
           try {
-            setSyncStatusText("Setting up accounts & categories...")
-            setSyncProgress(25)
             await ensureCategories.mutateAsync()
             await ensureWallets.mutateAsync()
           } catch (e) {
             console.warn("Ensure categories/wallets non-fatal error:", e)
           }
 
+          // Stage 2: Sync transactions (50% -> 75%)
+          setSyncStatusText("Syncing transactions with Supabase...")
+          setSyncProgress(50)
           try {
-            setSyncStatusText("Syncing transactions with Supabase...")
-            setSyncProgress(35)
             await syncAllFamfinaToSupabase((current, total) => {
-              const pct = Math.round(35 + (current / total) * 50)
+              const pct = Math.round(50 + (current / total) * 25)
               setSyncProgress(pct)
               setSyncStatusText(`Syncing record ${current} of ${total}...`)
             })
@@ -60,9 +62,10 @@ function AppShell() {
             console.warn("Sync Famfina non-fatal error:", e)
           }
 
+          // Stage 3: Fetch & Hydrate portfolio (85% -> 95%)
+          setSyncStatusText("Hydrating portfolio & financial intelligence...")
+          setSyncProgress(85)
           try {
-            setSyncStatusText("Hydrating portfolio & financial intelligence...")
-            setSyncProgress(90)
             const freshTxs = await fetchAllTransactionsFromSupabase({ userId: user.id })
             queryClient.setQueriesData({ queryKey: ["transactions"] }, freshTxs)
 
@@ -71,12 +74,15 @@ function AppShell() {
               queryClient.refetchQueries({ queryKey: ["categories"] }),
               queryClient.refetchQueries({ queryKey: ["bills"] }),
             ])
+            setSyncProgress(95)
           } catch (e) {
             console.warn("Hydrate queries non-fatal error:", e)
           }
 
+          // Stage 4: 100% Ready
           setSyncProgress(100)
           setSyncStatusText("Ready! Welcome to Trouvaille...")
+          await new Promise(r => setTimeout(r, 600))
         }
       } catch (err) {
         console.warn("Init error:", err)

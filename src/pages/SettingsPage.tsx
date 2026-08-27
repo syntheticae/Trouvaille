@@ -614,10 +614,6 @@ export function SettingsPage() {
       >
         <LogOut size={16} /> Sign Out
       </button>
-      
-      <p className="text-center text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-        Trouvaille for iOS<br/>Version 2.0.0
-      </p>
 
       {/* ============================================================ */}
       {/* BOTTOM SHEETS / MODALS */}
@@ -1201,24 +1197,27 @@ export function SettingsPage() {
                 ? `Correction (${isPositive ? "+" : "-"}) ${correctWallet.name}: ${correctNote.trim()}`
                 : `Correction (${isPositive ? "+" : "-"}) ${correctWallet.name}`
 
+              const otherCat = categories.find(c => c.name.toLowerCase() === "lainnya") || categories[0]
+              const catIdToSave = isValidUuid(otherCat?.id) ? otherCat.id : null
+
               addTx.mutate({
-                type: "adjustment",
+                type: isPositive ? "income" : "expense",
                 amount: Math.abs(diff),
                 wallet_id: walletIdToSave,
                 note: noteToSave,
                 occurred_on: format(new Date(), "yyyy-MM-dd"),
                 created_at: new Date().toISOString(),
-                category_id: null
+                category_id: catIdToSave
               }, {
                 onSuccess: () => {
                   setIsSavingCorrection(false)
                   setCorrectWallet(null)
-                  showToast(`Balance corrected to ${formatRupiah(target)}`, "update", () => {})
+                  showToast(`Balance corrected to ${formatRupiah(target)}`, "update")
                 },
                 onError: (err: any) => {
                   setIsSavingCorrection(false)
                   console.error("Balance correction error:", err)
-                  showToast(err?.message || "Failed to adjust balance", "delete", () => {})
+                  showToast(err?.message || "Failed to adjust balance", "delete")
                 }
               })
             }}
