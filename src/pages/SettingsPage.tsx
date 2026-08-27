@@ -124,12 +124,14 @@ export function SettingsPage() {
       if (freshCategories.error) throw freshCategories.error
       if (freshBills.error) throw freshBills.error
 
-      // 3. Atomically update TanStack Query cache
-      queryClient.setQueryData(["transactions", "all", undefined], freshTxs)
+      // 3. Atomically update and invalidate all queries
       queryClient.setQueriesData({ queryKey: ["transactions"] }, freshTxs)
-      queryClient.setQueryData(["wallets"], freshWallets.data || [])
-      queryClient.setQueryData(["categories"], freshCategories.data || [])
-      queryClient.setQueryData(["bills"], freshBills.data || [])
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["wallets"] }),
+        queryClient.invalidateQueries({ queryKey: ["categories"] }),
+        queryClient.invalidateQueries({ queryKey: ["bills"] }),
+      ])
 
       const now = new Date()
       localStorage.setItem("trouvaille_last_synced", now.toISOString())
