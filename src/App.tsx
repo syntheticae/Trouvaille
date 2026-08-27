@@ -15,7 +15,7 @@ import { useAllTransactions } from "./hooks/useTransactions"
 import { LoadingScreen } from "./components/ui/LoadingScreen"
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen"
 import { useQueryClient } from "@tanstack/react-query"
-import { forceReinjectAllFamfinaTransactions } from "./lib/famfinaResolver"
+import { syncAllFamfinaToSupabase } from "./lib/famfinaResolver"
 import { supabase } from "./lib/supabase"
 
 function AppShell() {
@@ -39,18 +39,9 @@ function AppShell() {
           await ensureCategories.mutateAsync()
           await ensureWallets.mutateAsync()
 
-          // Check if current user has any transactions in Supabase
-          const { count } = await supabase
-            .from("transactions")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", user.id)
-
-          console.log(`User ${user.id} has ${count} transactions in Supabase.`)
-
-          if (count === 0 || count === null) {
-            console.log("No transactions in DB for user, auto-populating Famfina dataset...")
-            await forceReinjectAllFamfinaTransactions()
-          }
+          // Automatically sync all 887 Famfina records without duplicating or overwriting manual transactions
+          console.log("Checking and syncing any missing Famfina transactions...")
+          await syncAllFamfinaToSupabase()
 
           // Hydrate all critical queries into TanStack Query cache
           await Promise.all([

@@ -26,6 +26,7 @@ import { useWalletBalances } from "../hooks/useWalletBalances"
 import { IconRenderer } from "../components/ui/IconRenderer"
 import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet"
 import { requestNotificationPermission } from "../lib/notifications"
+import { syncAllFamfinaToSupabase } from "../lib/famfinaResolver"
 
 export function SettingsPage() {
   const queryClient = useQueryClient()
@@ -110,10 +111,13 @@ export function SettingsPage() {
     triggerHaptic("light")
 
     try {
-      // 1. Fetch complete transaction dataset using multi-page chunked engine
+      // 1. Sync any missing Famfina dataset records to Supabase (non-destructive)
+      await syncAllFamfinaToSupabase()
+
+      // 2. Fetch complete transaction dataset using multi-page chunked engine
       const freshTxs = await fetchAllTransactionsFromSupabase()
 
-      // 2. Fetch fresh wallets, categories, and bills
+      // 3. Fetch fresh wallets, categories, and bills
       const [freshWallets, freshCategories, freshBills] = await Promise.all([
         supabase.from("wallets").select("*").order("name"),
         supabase.from("categories").select("*").order("name"),
@@ -124,7 +128,7 @@ export function SettingsPage() {
       if (freshCategories.error) throw freshCategories.error
       if (freshBills.error) throw freshBills.error
 
-      // 3. Atomically update and invalidate all queries
+      // 4. Atomically update and invalidate all queries
       queryClient.setQueriesData({ queryKey: ["transactions"] }, freshTxs)
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["transactions"] }),

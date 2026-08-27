@@ -208,7 +208,9 @@ export const FAMFINA_CAT_MAP: Record<string, string | null> = {
   "transportasi": "Transportasi"
 }
 
-export async function forceReinjectAllFamfinaTransactions(): Promise<{ inserted: number }> {
+export async function syncAllFamfinaToSupabase(
+  onProgress?: (current: number, total: number) => void
+): Promise<{ inserted: number; total: number; alreadySynced: boolean }> {
   const { data: { session } } = await supabase.auth.getSession()
   const user = session?.user
   if (!user) throw new Error("Not authenticated. Please log in first.")
@@ -256,53 +258,74 @@ export async function forceReinjectAllFamfinaTransactions(): Promise<{ inserted:
   const cashWalletId = walletMap.get("cash") || userWallets?.[0]?.id || null
   const defaultCatId = catMap.get("lainnya") || catMap.get("makanan") || userCats?.[0]?.id || null
 
-  // 3. Clean wipe existing transactions for this user
-  console.log("Wiping existing transactions for user:", user.id)
-  const { error: delErr } = await supabase.from("transactions").delete().eq("user_id", user.id)
-  if (delErr) console.warn("Delete error (continuing):", delErr)
+  // 3. Fetch all existing transactions signatures for this user to avoid any duplicates
+  const existingTxs = await fetchAllTransactionsFromSupabase({ userId: user.id })
+  const existingSigSet = new Set<string>()
+  existingTxs.forEach(t => {
+    const sig = `${t.occurred_on}_${Number(t.amount)}_${t.type}_${(t.note || "").trim().toLowerCase()}`
+    existingSigSet.add(sig)
+  })
 
-  // 4. Map all records
-  const recordsToInsert = records.map(r => {
-    const fromWName = (r.fromWallet || "").trim().toLowerCase()
-    const toWName = (r.toWallet || "").trim().toLowerCase()
-    const catNameKey = (r.categoryName || "").trim().toLowerCase()
-    const mappedCatName = FAMFINA_CAT_MAP[catNameKey]
+  // 4. Map all 887 records and filter out any already existing in Supabase
+  const missingRecordsToInsert: any[] = []
+  records.forEach(r => {
+    const noteClean = (r.note || "").trim().toLowerCase()
+    const sig = `${r.occurred_on}_${Number(r.amount)}_${r.type}_${noteClean}`
 
-    let categoryId: string | null = null
-    if (r.type !== "transfer") {
-      categoryId = (mappedCatName ? catMap.get(mappedCatName.toLowerCase()) : null) || catMap.get(catNameKey) || defaultCatId
-    }
+    if (!existingSigSet.has(sig)) {
+      const fromWName = (r.fromWallet || "").trim().toLowerCase()
+      const toWName = (r.toWallet || "").trim().toLowerCase()
+      const catNameKey = (r.categoryName || "").trim().toLowerCase()
+      const mappedCatName = FAMFINA_CAT_MAP[catNameKey]
 
-    const walletId = walletMap.get(fromWName) || cashWalletId
-    const toWalletId = r.type === "transfer" ? (walletMap.get(toWName) || cashWalletId) : null
+      let categoryId: string | null = null
+      if (r.type !== "transfer") {
+        categoryId = (mappedCatName ? catMap.get(mappedCatName.toLowerCase()) : null) || catMap.get(catNameKey) || defaultCatId
+      }
 
-    return {
-      user_id: user.id,
-      type: r.type,
-      amount: Number(r.amount),
-      occurred_on: r.occurred_on,
-      created_at: r.created_at || `${r.occurred_on}T12:00:00Z`,
-      note: r.note || null,
-      wallet_id: walletId,
-      to_wallet_id: toWalletId,
-      category_id: categoryId,
+      const walletId = walletMap.get(fromWName) || cashWalletId
+      const toWalletId = r.type === "transfer" ? (walletMap.get(toWName) || cashWalletId) : null
+
+      missingRecordsToInsert.push({
+        user_id: user.id,
+        type: r.type,
+        amount: Number(r.amount),
+        occurred_on: r.occurred_on,
+        created_at: r.created_at || `${r.occurred_on}T12:00:00Z`,
+        note: r.note || null,
+        wallet_id: walletId,
+        to_wallet_id: toWalletId,
+        category_id: categoryId,
+      })
     }
   })
 
-  // 5. Batch insert in chunks of 100
-  const batchSize = 100
+  if (missingRecordsToInsert.length === 0) {
+    console.log("All Famfina transactions already synced in Supabase.")
+    return { inserted: 0, total: records.length, alreadySynced: true }
+  }
+
+  console.log(`Found ${missingRecordsToInsert.length} missing Famfina records to insert into Supabase...`)
+
+  // 5. Batch insert in safe chunks of 50
+  const batchSize = 50
   let totalInserted = 0
 
-  for (let i = 0; i < recordsToInsert.length; i += batchSize) {
-    const chunk = recordsToInsert.slice(i, i + batchSize)
+  for (let i = 0; i < missingRecordsToInsert.length; i += batchSize) {
+    const chunk = missingRecordsToInsert.slice(i, i + batchSize)
     const { error: insErr } = await supabase.from("transactions").insert(chunk)
     if (insErr) {
       console.error("Batch insert error at index", i, insErr)
       throw insErr
     }
     totalInserted += chunk.length
+    if (onProgress) {
+      onProgress(totalInserted, missingRecordsToInsert.length)
+    }
   }
 
-  console.log(`Successfully re-injected ${totalInserted} Famfina transactions!`)
-  return { inserted: totalInserted }
+  console.log(`Successfully synced ${totalInserted} new Famfina transactions to Supabase!`)
+  return { inserted: totalInserted, total: records.length, alreadySynced: false }
 }
+
+export const forceReinjectAllFamfinaTransactions = syncAllFamfinaToSupabase
