@@ -23,6 +23,7 @@ function AppShell() {
   const [hasInitialSynced, setHasInitialSynced] = useState(() => {
     return localStorage.getItem("trouvaille_initial_synced") === "true"
   })
+  const [isInitDone, setIsInitDone] = useState(false)
   
   const ensureCategories = useEnsureDefaultCategories()
   const ensureWallets = useEnsureDefaultWallets()
@@ -39,12 +40,19 @@ function AppShell() {
           console.log("Auto re-injecting clean Famfina transactions...")
           await forceReinjectAllFamfinaTransactions()
           localStorage.setItem("trouvaille_famfina_v4_injected", "true")
-          queryClient.invalidateQueries({ queryKey: ["transactions"] })
-          queryClient.invalidateQueries({ queryKey: ["wallets"] })
-          queryClient.invalidateQueries({ queryKey: ["categories"] })
         }
+
+        // Hydrate all critical queries into TanStack Query cache
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ["transactions"] }),
+          queryClient.refetchQueries({ queryKey: ["wallets"] }),
+          queryClient.refetchQueries({ queryKey: ["categories"] }),
+          queryClient.refetchQueries({ queryKey: ["bills"] }),
+        ])
       } catch (err) {
         console.warn("Init error:", err)
+      } finally {
+        setIsInitDone(true)
       }
     }
     init()
@@ -55,7 +63,7 @@ function AppShell() {
     return (
       <InitialSyncScreen
         totalCount={allTxs.length}
-        isDataReady={!isLoadingTxs}
+        isDataReady={isInitDone && !isLoadingTxs}
         onComplete={() => {
           localStorage.setItem("trouvaille_initial_synced", "true")
           setHasInitialSynced(true)

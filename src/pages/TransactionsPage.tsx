@@ -372,8 +372,9 @@ export function TransactionsPage() {
 
           {/* Month Selector Trigger */}
           <button
+            type="button"
             onClick={() => { setMonthPickerOpen(true); triggerHaptic("light"); }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl active:scale-95 transition-all touch-manipulation cursor-pointer select-none no-pull"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
@@ -453,7 +454,7 @@ export function TransactionsPage() {
 
         {/* Full-Width Search Bar with Inline Account Filter */}
         <div
-          className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-3 glass-surface"
+          className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-3 glass-surface no-pull"
           style={{
             background: "var(--bg-elevated)",
             border: "1px solid var(--glass-border)",
@@ -465,11 +466,16 @@ export function TransactionsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search note, category, wallet..."
-            className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold"
+            className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold touch-manipulation no-pull"
             style={{ color: "var(--text-primary)" }}
           />
           {search && (
-            <button onClick={() => setSearch("")} className="p-1 rounded-full shrink-0 mr-1" style={{ color: "var(--text-tertiary)" }}>
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="p-1 rounded-full shrink-0 mr-1 touch-manipulation cursor-pointer"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               <X size={14} />
             </button>
           )}
@@ -477,8 +483,9 @@ export function TransactionsPage() {
           {/* Inline Account Filter Pill */}
           <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
           <button
+            type="button"
             onClick={() => { setAccountPickerOpen(true); triggerHaptic("light"); }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
             style={{
               background: selectedWalletName ? "var(--accent)" : "var(--glass-fill)",
               color: selectedWalletName ? "var(--accent-ink)" : "var(--text-secondary)",
@@ -495,14 +502,15 @@ export function TransactionsPage() {
         </div>
 
         {/* Unified Clean Filter Tabs */}
-        <div className="flex p-1 rounded-full glass-surface" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+        <div className="flex p-1 rounded-full glass-surface no-pull" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
           {filterTabs.map(tab => {
             const isSelected = filter === tab.key
             return (
               <button
                 key={tab.key}
+                type="button"
                 onClick={() => { setFilter(tab.key); triggerHaptic("light"); }}
-                className="flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all"
+                className="flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all touch-manipulation cursor-pointer select-none no-pull"
                 style={{
                   background: isSelected ? "var(--accent)" : "transparent",
                   color: isSelected ? "var(--accent-ink)" : "var(--text-secondary)",
@@ -601,11 +609,13 @@ export function TransactionsPage() {
               return (
                 <button
                   key={preset.key}
+                  type="button"
                   onClick={() => {
                     setTimeRange(preset.key as TimeRangeType)
                     setMonthPickerOpen(false)
+                    triggerHaptic("light")
                   }}
-                  className="py-2.5 px-3 rounded-2xl text-[12px] font-extrabold flex items-center justify-between active:scale-95 transition-all"
+                  className="py-2.5 px-3 rounded-2xl text-[12px] font-extrabold flex items-center justify-between active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
                   style={{
                     background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
                     color: isSelected ? "var(--accent-ink)" : "var(--text-primary)",
@@ -635,8 +645,9 @@ export function TransactionsPage() {
                 return (
                   <button
                     key={y}
-                    onClick={() => setPickerYear(y)}
-                    className="flex-1 py-1.5 rounded-xl text-[12px] font-extrabold transition-all"
+                    type="button"
+                    onClick={() => { setPickerYear(y); triggerHaptic("light"); }}
+                    className="flex-1 py-1.5 rounded-xl text-[12px] font-extrabold transition-all touch-manipulation cursor-pointer select-none"
                     style={{
                       background: isYSelected ? "var(--accent)" : "transparent",
                       color: isYSelected ? "var(--accent-ink)" : "var(--text-secondary)"
@@ -656,12 +667,14 @@ export function TransactionsPage() {
                 return (
                   <button
                     key={m.code}
+                    type="button"
                     onClick={() => {
                       setSelectedCustomMonth(monthKey)
                       setTimeRange("custom_month")
                       setMonthPickerOpen(false)
+                      triggerHaptic("light")
                     }}
-                    className="p-3 rounded-2xl text-[12px] font-extrabold text-center active:scale-95 transition-all"
+                    className="p-3 rounded-2xl text-[12px] font-extrabold text-center active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
                     style={{
                       background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
                       color: isSelected ? "var(--accent-ink)" : "var(--text-primary)",
@@ -714,8 +727,9 @@ export function TransactionsPage() {
             </div>
             {selectedWalletName && (
               <button
+                type="button"
                 onClick={() => { setSelectedWalletName(null); setAccountPickerOpen(false); triggerHaptic("light"); }}
-                className="text-[12px] font-bold px-3 py-1 rounded-full"
+                className="text-[12px] font-bold px-3 py-1 rounded-full touch-manipulation cursor-pointer select-none"
                 style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}
               >
                 Reset
@@ -726,8 +740,9 @@ export function TransactionsPage() {
           <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
             {/* All Accounts Option */}
             <button
+              type="button"
               onClick={() => { setSelectedWalletName(null); setAccountPickerOpen(false); triggerHaptic("light"); }}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-2xl active:scale-95 transition-transform"
+              className="flex flex-col items-center gap-1.5 p-2 rounded-2xl active:scale-95 transition-transform touch-manipulation cursor-pointer select-none"
               style={{
                 background: selectedWalletName === null ? "var(--glass-fill-strong)" : "transparent",
                 color: "var(--text-primary)",
@@ -749,8 +764,9 @@ export function TransactionsPage() {
               return (
                 <button
                   key={w.id}
+                  type="button"
                   onClick={() => { setSelectedWalletName(w.name); setAccountPickerOpen(false); triggerHaptic("light"); }}
-                  className="flex flex-col items-center gap-1.5 p-2 rounded-2xl active:scale-95 transition-transform"
+                  className="flex flex-col items-center gap-1.5 p-2 rounded-2xl active:scale-95 transition-transform touch-manipulation cursor-pointer select-none"
                   style={{
                     background: isSelected ? "var(--glass-fill-strong)" : "transparent",
                     color: "var(--text-primary)",

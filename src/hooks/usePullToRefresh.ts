@@ -17,6 +17,12 @@ export function usePullToRefresh({ onRefresh, threshold = 65 }: UsePullToRefresh
   }
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
+    const target = e.target as HTMLElement | null
+    if (target?.closest("button, input, select, textarea, [role='button'], a, .no-pull")) {
+      setStartY(0)
+      return
+    }
+
     if (getScrollTop() <= 2) {
       setStartY(e.touches[0].clientY)
     } else {
@@ -29,19 +35,21 @@ export function usePullToRefresh({ onRefresh, threshold = 65 }: UsePullToRefresh
     const currentY = e.touches[0].clientY
     const diff = currentY - startY
 
-    if (diff > 5 && getScrollTop() <= 2) {
-      const distance = Math.min(threshold * 1.4, Math.pow(diff, 0.85))
+    // Require an intentional downward swipe (> 15px) so taps and micro-gestures don't trigger re-renders
+    if (diff > 15 && getScrollTop() <= 2) {
+      const distance = Math.min(threshold * 1.4, Math.pow(diff - 15, 0.85))
       setPullDistance(distance)
 
       if (distance >= threshold && pullDistance < threshold) {
         triggerHaptic("medium")
       }
-    } else if (pullDistance > 0) {
+    } else if (pullDistance > 0 && diff <= 15) {
       setPullDistance(0)
     }
   }, [startY, isRefreshing, threshold, pullDistance])
 
   const handleTouchEnd = useCallback(async () => {
+    if (startY === 0) return
     if (pullDistance >= threshold && !isRefreshing) {
       setIsRefreshing(true)
       setPullDistance(threshold)
@@ -54,11 +62,11 @@ export function usePullToRefresh({ onRefresh, threshold = 65 }: UsePullToRefresh
           setPullDistance(0)
         }, 400)
       }
-    } else {
+    } else if (pullDistance > 0) {
       setPullDistance(0)
     }
     setStartY(0)
-  }, [pullDistance, threshold, isRefreshing, onRefresh])
+  }, [pullDistance, threshold, isRefreshing, onRefresh, startY])
 
   useEffect(() => {
     const el = document.getElementById("app-scroll-container") || window

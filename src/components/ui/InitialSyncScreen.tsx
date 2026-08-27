@@ -9,7 +9,7 @@ interface InitialSyncScreenProps {
   isDataReady?: boolean
 }
 
-export function InitialSyncScreen({ onComplete, totalCount = 0, isDataReady = false }: InitialSyncScreenProps) {
+export function InitialSyncScreen({ onComplete, totalCount: _totalCount = 0, isDataReady = false }: InitialSyncScreenProps) {
   const [progress, setProgress] = useState(25)
   const [statusText, setStatusText] = useState("Downloading app icons & assets...")
   const [isAssetsLoaded, setIsAssetsLoaded] = useState(false)
@@ -42,25 +42,25 @@ export function InitialSyncScreen({ onComplete, totalCount = 0, isDataReady = fa
   }, [])
 
   useEffect(() => {
-    if (isAssetsLoaded && (isDataReady || totalCount >= 0)) {
+    if (isAssetsLoaded && isDataReady) {
       setProgress(100)
       setStatusText("Setup complete! Entering Trouvaille...")
       const t = setTimeout(() => {
         onComplete?.()
-      }, 450)
+      }, 500)
       return () => clearTimeout(t)
     }
-  }, [isAssetsLoaded, isDataReady, totalCount, onComplete])
+  }, [isAssetsLoaded, isDataReady, onComplete])
 
-  // Safety fallback: maximum 2.5s display before entering
+  // Safety fallback: maximum 8s display in case of network issues
   useEffect(() => {
     const safetyTimer = setTimeout(() => {
       setProgress(100)
       setStatusText("Ready!")
       setTimeout(() => {
         onComplete?.()
-      }, 300)
-    }, 2500)
+      }, 400)
+    }, 8000)
 
     return () => clearTimeout(safetyTimer)
   }, [onComplete])
