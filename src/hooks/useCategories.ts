@@ -127,13 +127,19 @@ export const DEFAULT_CATEGORIES: Omit<Category, "id" | "user_id" | "created_at">
   { name: "Lainnya",     emoji: "/icons/lainnya.png",     type: "expense", is_default: true },
 ]
 
+import { useAuth } from "../contexts/AuthContext"
+
 export function useCategories(type?: TransactionType) {
+  const { user } = useAuth()
+  const userId = user?.id
+
   return useQuery({
-    queryKey: ["categories", type],
+    queryKey: ["categories", userId, type],
     queryFn: async () => {
       let query = supabase.from("categories").select("*")
         .order("is_default", { ascending: false })
         .order("name")
+      if (userId) query = query.eq("user_id", userId)
       if (type) query = query.eq("type", type)
       const { data, error } = await query
       if (error) throw error
@@ -150,7 +156,8 @@ export function useCategories(type?: TransactionType) {
       })
       return uniqueList
     },
-    staleTime: 5 * 60 * 1000,
+    enabled: !!userId,
+    staleTime: 60 * 1000,
   })
 }
 

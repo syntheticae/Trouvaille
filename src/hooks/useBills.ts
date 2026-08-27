@@ -9,11 +9,17 @@ interface BillInput {
   repeat_rule: RepeatRule; is_paid?: boolean; note?: string | null
 }
 
+import { useAuth } from "../contexts/AuthContext"
+
 export function useBills() {
+  const { user } = useAuth()
+  const userId = user?.id
+
   return useQuery({
-    queryKey: ["bills"],
+    queryKey: ["bills", userId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("bills").select("*").order("due_date", { ascending: true })
+      if (!userId) return []
+      const { data, error } = await supabase.from("bills").select("*").eq("user_id", userId).order("due_date", { ascending: true })
       if (error) throw error
       const bills = data as Bill[]
 
@@ -43,6 +49,8 @@ export function useBills() {
       setTimeout(() => { syncBillNotifications(syncedBills).catch(() => {}) }, 300)
       return syncedBills
     },
+    enabled: !!userId,
+    staleTime: 60 * 1000,
   })
 }
 

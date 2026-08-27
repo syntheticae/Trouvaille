@@ -22,6 +22,8 @@ export interface TransactionFilters {
   userId?: string
 }
 
+import { useAuth } from "../contexts/AuthContext"
+
 /**
  * Deterministic chunked pagination fetcher for Supabase transactions.
  * Guarantees 100% retrieval across arbitrarily large datasets without PostgREST row limits.
@@ -54,10 +56,29 @@ export async function fetchAllTransactionsFromSupabase(
     if (filters?.startDate) query = query.gte("occurred_on", filters.startDate)
     if (filters?.endDate) query = query.lte("occurred_on", filters.endDate)
 
-    const { data, error, count } = await query
+    let { data, error, count } = await query
     if (error) {
-      console.error(`[fetchAllTransactionsFromSupabase] Error fetching page [${from} - ${from + pageSize - 1}]:`, error)
-      throw error
+      console.warn(`[fetchAllTransactionsFromSupabase] Error with join at page [${from} - ${from + pageSize - 1}], trying direct select('*'):`, error)
+      let fallbackQuery = supabase
+        .from("transactions")
+        .select("*", { count: "exact" })
+        .order("occurred_on", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, from + pageSize - 1)
+
+      if (effectiveUserId) fallbackQuery = fallbackQuery.eq("user_id", effectiveUserId)
+      if (filters?.categoryId) fallbackQuery = fallbackQuery.eq("category_id", filters.categoryId)
+      if (filters?.startDate) fallbackQuery = fallbackQuery.gte("occurred_on", filters.startDate)
+      if (filters?.endDate) fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate)
+
+      const fallbackRes = await fallbackQuery
+      if (fallbackRes.error) {
+        console.error("[fetchAllTransactionsFromSupabase] Fallback select failed:", fallbackRes.error)
+        throw fallbackRes.error
+      }
+      data = fallbackRes.data
+      count = fallbackRes.count
     }
 
     if (count !== null && count !== undefined) {
@@ -104,46 +125,80 @@ export async function fetchAllTransactionsFromSupabase(
 }
 
 export function useRecentTransactions(limit = 10) {
+  const { user } = useAuth()
+  const userId = user?.id
+
   return useQuery({
-    queryKey: ["transactions", "recent", limit],
+    queryKey: ["transactions", "recent", userId, limit],
     queryFn: async () => {
+      if (!userId) return []
       const { data, error } = await supabase.from("transactions").select("*, categories(*)")
+        .eq("user_id", userId)
         .order("occurred_on", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limit)
-      if (error) throw error
+      if (error) {
+        const { data: fallback, error: fbErr } = await supabase.from("transactions").select("*")
+          .eq("user_id", userId)
+          .order("occurred_on", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limit)
+        if (fbErr) throw fbErr
+        return (fallback || []) as Transaction[]
+      }
       return data as Transaction[]
     },
-    staleTime: 5 * 60 * 1000,
+    enabled: !!userId,
+    staleTime: 60 * 1000,
   })
 }
 
 export function useMonthTransactions(year: number, month: number) {
+  const { user } = useAuth()
+  const userId = user?.id
   const start = format(new Date(year, month - 1, 1), "yyyy-MM-dd")
   const end = format(new Date(year, month, 0), "yyyy-MM-dd")
+
   return useQuery({
-    queryKey: ["transactions", "month", year, month],
-    queryFn: () => fetchAllTransactionsFromSupabase({ startDate: start, endDate: end }),
-    staleTime: 5 * 60 * 1000,
+    queryKey: ["transactions", "month", userId, year, month],
+    queryFn: () => fetchAllTransactionsFromSupabase({ startDate: start, endDate: end, userId }),
+    enabled: !!userId,
+    staleTime: 60 * 1000,
   })
 }
 
 export function useAllTransactions(filters?: TransactionFilters) {
+  const { user } = useAuth()
+  const userId = user?.id
+
   return useQuery({
-    queryKey: ["transactions", "all", filters],
-    queryFn: () => fetchAllTransactionsFromSupabase(filters),
-    staleTime: 5 * 60 * 1000,
+    queryKey: ["transactions", "all", userId, filters],
+    queryFn: () => fetchAllTransactionsFromSupabase({ ...filters, userId }),
+    enabled: !!userId,
+    staleTime: 60 * 1000,
   })
 }
 
 export function useDayTransactions(date: string) {
+  const { user } = useAuth()
+  const userId = user?.id
+
   return useQuery({
-    queryKey: ["transactions", "day", date],
+    queryKey: ["transactions", "day", userId, date],
     queryFn: async () => {
+      if (!userId) return []
       const { data, error } = await supabase.from("transactions").select("*, categories(*)")
-        .eq("occurred_on", date).order("created_at", { ascending: false })
-      if (error) throw error
+        .eq("user_id", userId)
+        .eq("occurred_on", date)
+        .order("created_at", { ascending: false })
+      if (error) {
+        const { data: fb, error: fbErr } = await supabase.from("transactions").select("*")
+          .eq("user_id", userId)
+          .eq("occurred_on", date)
+          .order("created_at", { ascending: false })
+        if (fbErr) throw fbErr
+        return (fb || []) as Transaction[]
+      }
       return data as Transaction[]
     },
-    staleTime: 5 * 60 * 1000,
+    enabled: !!userId,
+    staleTime: 60 * 1000,
   })
 }
 

@@ -92,18 +92,21 @@ export function useEnsureDefaultWallets() {
   })
 }
 
+import { useAuth } from "../contexts/AuthContext"
+
 export function useWallets() {
+  const { user } = useAuth()
+  const userId = user?.id
+
   return useQuery({
-    queryKey: ["wallets"],
+    queryKey: ["wallets", userId],
     queryFn: async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const user = session?.user;
-      if (!user) return FALLBACK_WALLETS
+        if (!userId) return FALLBACK_WALLETS
         const { data, error } = await supabase
           .from("wallets")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .order("created_at", { ascending: true })
         if (!error && data && data.length > 0) {
           const seen = new Set<string>()
@@ -122,7 +125,7 @@ export function useWallets() {
         // Auto-seed if empty
         const { data: inserted } = await supabase
           .from("wallets")
-          .insert(DEFAULT_WALLETS.map(name => ({ name, icon: getWalletIcon(name), user_id: user.id })))
+          .insert(DEFAULT_WALLETS.map(name => ({ name, icon: getWalletIcon(name), user_id: userId })))
           .select()
         if (inserted && inserted.length > 0) return inserted as Wallet[]
         return FALLBACK_WALLETS
@@ -131,6 +134,7 @@ export function useWallets() {
         return FALLBACK_WALLETS
       }
     },
+    enabled: !!userId,
     staleTime: 60 * 1000,
   })
 }
