@@ -7,12 +7,23 @@ interface InitialSyncScreenProps {
   onComplete?: () => void
   totalCount?: number
   isDataReady?: boolean
+  progress?: number
+  statusText?: string
 }
 
-export function InitialSyncScreen({ onComplete, totalCount: _totalCount = 0, isDataReady = false }: InitialSyncScreenProps) {
-  const [progress, setProgress] = useState(25)
-  const [statusText, setStatusText] = useState("Downloading app icons & assets...")
+export function InitialSyncScreen({
+  onComplete,
+  totalCount: _totalCount = 0,
+  isDataReady = false,
+  progress: externalProgress,
+  statusText: externalStatusText,
+}: InitialSyncScreenProps) {
+  const [internalProgress, setInternalProgress] = useState(20)
+  const [internalStatusText, setInternalStatusText] = useState("Downloading app icons & assets...")
   const [isAssetsLoaded, setIsAssetsLoaded] = useState(false)
+
+  const displayProgress = externalProgress !== undefined ? externalProgress : internalProgress
+  const displayStatus = externalStatusText || internalStatusText
 
   useEffect(() => {
     let isMounted = true
@@ -20,50 +31,38 @@ export function InitialSyncScreen({ onComplete, totalCount: _totalCount = 0, isD
     preloadAllIcons().then(() => {
       if (!isMounted) return
       setIsAssetsLoaded(true)
-      setProgress(prev => Math.max(prev, 85))
-      setStatusText("Syncing cloud data & accounts...")
+      setInternalProgress(prev => Math.max(prev, 35))
+      setInternalStatusText("Syncing cloud data & accounts...")
     }).catch(() => {
       if (!isMounted) return
       setIsAssetsLoaded(true)
-      setProgress(prev => Math.max(prev, 85))
+      setInternalProgress(prev => Math.max(prev, 35))
     })
-
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 90) return prev
-        return prev + 6
-      })
-    }, 120)
 
     return () => {
       isMounted = false
-      clearInterval(interval)
     }
   }, [])
 
   useEffect(() => {
     if (isAssetsLoaded && isDataReady) {
-      setProgress(100)
-      setStatusText("Setup complete! Entering Trouvaille...")
       const t = setTimeout(() => {
         onComplete?.()
-      }, 500)
+      }, 400)
       return () => clearTimeout(t)
     }
   }, [isAssetsLoaded, isDataReady, onComplete])
 
-  // Safety fallback: maximum 8s display in case of network issues
+  // Safety fallback: maximum 25s in case of severe network latency
   useEffect(() => {
     const safetyTimer = setTimeout(() => {
-      setProgress(100)
-      setStatusText("Ready!")
-      setTimeout(() => {
+      if (isDataReady) {
         onComplete?.()
-      }, 400)
-    }, 8000)
+      }
+    }, 25000)
 
     return () => clearTimeout(safetyTimer)
-  }, [onComplete])
+  }, [isDataReady, onComplete])
 
   return (
     <div
@@ -103,7 +102,7 @@ export function InitialSyncScreen({ onComplete, totalCount: _totalCount = 0, isD
       >
         <div className="w-10 h-10 mx-auto rounded-full flex items-center justify-center"
           style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}>
-          {progress === 100 ? <CheckCircle2 size={20} style={{ color: "var(--accent)" }} /> : <Database size={18} />}
+          {displayProgress >= 100 ? <CheckCircle2 size={20} style={{ color: "var(--accent)" }} /> : <Database size={18} />}
         </div>
 
         <div>
@@ -111,7 +110,7 @@ export function InitialSyncScreen({ onComplete, totalCount: _totalCount = 0, isD
             Initial Sync
           </h3>
           <p className="text-[11px] font-medium mt-1" style={{ color: "var(--text-tertiary)" }}>
-            {statusText}
+            {displayStatus}
           </p>
         </div>
 
@@ -121,14 +120,14 @@ export function InitialSyncScreen({ onComplete, totalCount: _totalCount = 0, isD
             <motion.div
               className="h-full rounded-full transition-all duration-300"
               style={{
-                width: `${Math.min(100, Math.max(5, progress))}%`,
+                width: `${Math.min(100, Math.max(5, displayProgress))}%`,
                 background: "var(--accent)",
               }}
             />
           </div>
           <div className="flex justify-between items-center text-[10px] font-bold" style={{ color: "var(--text-tertiary)" }}>
             <span>Progress</span>
-            <span>{Math.min(100, Math.round(progress))}%</span>
+            <span>{Math.min(100, Math.round(displayProgress))}%</span>
           </div>
         </div>
       </div>
