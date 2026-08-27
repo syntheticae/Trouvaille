@@ -30,6 +30,10 @@ export async function fetchAllTransactionsFromSupabase(
   filters?: TransactionFilters,
   onPageFetched?: (currentCount: number, totalCount: number | null) => void
 ): Promise<Transaction[]> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
+  const effectiveUserId = filters?.userId || user?.id
+
   const pageSize = 1000
   let from = 0
   const allRecords: Transaction[] = []
@@ -45,7 +49,7 @@ export async function fetchAllTransactionsFromSupabase(
       .order("id", { ascending: false })
       .range(from, from + pageSize - 1)
 
-    if (filters?.userId) query = query.eq("user_id", filters.userId)
+    if (effectiveUserId) query = query.eq("user_id", effectiveUserId)
     if (filters?.categoryId) query = query.eq("category_id", filters.categoryId)
     if (filters?.startDate) query = query.gte("occurred_on", filters.startDate)
     if (filters?.endDate) query = query.lte("occurred_on", filters.endDate)

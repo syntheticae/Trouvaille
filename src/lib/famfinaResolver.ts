@@ -2,6 +2,8 @@ import famfinaRaw from "../data/famfina_transactions.json"
 import { supabase } from "./supabase"
 import type { Transaction, Wallet } from "./types"
 import { fetchAllTransactionsFromSupabase } from "../hooks/useTransactions"
+import { DEFAULT_CATEGORIES } from "../hooks/useCategories"
+import { DEFAULT_WALLETS, getWalletIcon } from "../hooks/useWallets"
 
 interface FamfinaRecord {
   file: string
@@ -211,27 +213,48 @@ export async function forceReinjectAllFamfinaTransactions(): Promise<{ inserted:
   const user = session?.user
   if (!user) throw new Error("Not authenticated. Please log in first.")
 
-  // 1. Fetch user categories
-  const { data: userCats } = await supabase
+  // 1. Fetch user categories (auto-seed if missing)
+  let { data: userCats } = await supabase
     .from("categories")
     .select("id, name, type")
     .eq("user_id", user.id)
+
+  if (!userCats || userCats.length === 0) {
+    console.log("Auto-seeding default categories for user:", user.id)
+    const { data: seededCats } = await supabase
+      .from("categories")
+      .insert(DEFAULT_CATEGORIES.map(c => ({ ...c, user_id: user.id })))
+      .select("id, name, type")
+    userCats = seededCats || []
+  }
 
   const catMap = new Map<string, string>()
   ;(userCats || []).forEach(c => {
     catMap.set(c.name.trim().toLowerCase(), c.id)
   })
 
-  // 2. Fetch user wallets
-  const { data: userWallets } = await supabase
+  // 2. Fetch user wallets (auto-seed if missing)
+  let { data: userWallets } = await supabase
     .from("wallets")
     .select("id, name")
     .eq("user_id", user.id)
+
+  if (!userWallets || userWallets.length === 0) {
+    console.log("Auto-seeding default wallets for user:", user.id)
+    const { data: seededWallets } = await supabase
+      .from("wallets")
+      .insert(DEFAULT_WALLETS.map(name => ({ name, icon: getWalletIcon(name), user_id: user.id })))
+      .select("id, name")
+    userWallets = seededWallets || []
+  }
 
   const walletMap = new Map<string, string>()
   ;(userWallets || []).forEach(w => {
     walletMap.set(w.name.trim().toLowerCase(), w.id)
   })
+
+  const cashWalletId = walletMap.get("cash") || userWallets?.[0]?.id || null
+  const defaultCatId = catMap.get("lainnya") || catMap.get("makanan") || userCats?.[0]?.id || null
 
   // 3. Clean wipe existing transactions for this user
   console.log("Wiping existing transactions for user:", user.id)
@@ -246,12 +269,12 @@ export async function forceReinjectAllFamfinaTransactions(): Promise<{ inserted:
     const mappedCatName = FAMFINA_CAT_MAP[catNameKey]
 
     let categoryId: string | null = null
-    if (r.type !== "transfer" && mappedCatName) {
-      categoryId = catMap.get(mappedCatName.toLowerCase()) || null
+    if (r.type !== "transfer") {
+      categoryId = (mappedCatName ? catMap.get(mappedCatName.toLowerCase()) : null) || catMap.get(catNameKey) || defaultCatId
     }
 
-    const walletId = walletMap.get(fromWName) || null
-    const toWalletId = r.type === "transfer" ? (walletMap.get(toWName) || null) : null
+    const walletId = walletMap.get(fromWName) || cashWalletId
+    const toWalletId = r.type === "transfer" ? (walletMap.get(toWName) || cashWalletId) : null
 
     return {
       user_id: user.id,

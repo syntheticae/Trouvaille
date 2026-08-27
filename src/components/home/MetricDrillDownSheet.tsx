@@ -38,7 +38,7 @@ export function MetricDrillDownSheet({ isOpen, onClose, type, data }: MetricDril
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title={title}>
-      <div className="space-y-4 pb-6 select-none">
+      <div className="px-5 space-y-4 pb-6 select-none">
         {isBudgetRisk ? (
           <>
             <div className="p-4 rounded-2xl flex items-center justify-between" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>

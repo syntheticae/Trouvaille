@@ -16,6 +16,7 @@ import { LoadingScreen } from "./components/ui/LoadingScreen"
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen"
 import { useQueryClient } from "@tanstack/react-query"
 import { forceReinjectAllFamfinaTransactions } from "./lib/famfinaResolver"
+import { supabase } from "./lib/supabase"
 
 function AppShell() {
   const [addSheetOpen, setAddSheetOpen] = useState(false)
@@ -32,23 +33,33 @@ function AppShell() {
   useEffect(() => {
     async function init() {
       try {
-        await ensureCategories.mutateAsync()
-        await ensureWallets.mutateAsync()
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user
+        if (user) {
+          await ensureCategories.mutateAsync()
+          await ensureWallets.mutateAsync()
 
-        const flag = localStorage.getItem("trouvaille_famfina_v4_injected")
-        if (flag !== "true") {
-          console.log("Auto re-injecting clean Famfina transactions...")
-          await forceReinjectAllFamfinaTransactions()
-          localStorage.setItem("trouvaille_famfina_v4_injected", "true")
+          // Check if current user has any transactions in Supabase
+          const { count } = await supabase
+            .from("transactions")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+
+          console.log(`User ${user.id} has ${count} transactions in Supabase.`)
+
+          if (count === 0 || count === null) {
+            console.log("No transactions in DB for user, auto-populating Famfina dataset...")
+            await forceReinjectAllFamfinaTransactions()
+          }
+
+          // Hydrate all critical queries into TanStack Query cache
+          await Promise.all([
+            queryClient.refetchQueries({ queryKey: ["transactions"] }),
+            queryClient.refetchQueries({ queryKey: ["wallets"] }),
+            queryClient.refetchQueries({ queryKey: ["categories"] }),
+            queryClient.refetchQueries({ queryKey: ["bills"] }),
+          ])
         }
-
-        // Hydrate all critical queries into TanStack Query cache
-        await Promise.all([
-          queryClient.refetchQueries({ queryKey: ["transactions"] }),
-          queryClient.refetchQueries({ queryKey: ["wallets"] }),
-          queryClient.refetchQueries({ queryKey: ["categories"] }),
-          queryClient.refetchQueries({ queryKey: ["bills"] }),
-        ])
       } catch (err) {
         console.warn("Init error:", err)
       } finally {

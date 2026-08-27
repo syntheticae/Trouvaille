@@ -108,7 +108,7 @@ export function ActionCenterCard({ insight, onOpenCategoryDetail }: ActionCenter
         onClose={() => setDetailOpen(false)}
         title={insight.drillDownDetails?.headline || "Financial Insight"}
       >
-        <div className="space-y-4 pb-6">
+        <div className="px-5 space-y-4 pb-6">
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             {insight.drillDownDetails?.explanation}
           </p>
