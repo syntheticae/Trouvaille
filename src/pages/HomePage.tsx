@@ -38,6 +38,8 @@ import { NotificationSheet } from "../components/ui/NotificationSheet"
 import { useAuth } from "../contexts/AuthContext"
 import { useTheme } from "../contexts/ThemeContext"
 import { useCategories } from "../hooks/useCategories"
+import { ActionCenterCard } from "../components/home/ActionCenterCard"
+import { MetricDrillDownSheet } from "../components/home/MetricDrillDownSheet"
 import { useBudgetTarget } from "../hooks/useBudgetTarget"
 import { useWalletBalances } from "../hooks/useWalletBalances"
 import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence"
@@ -102,11 +104,17 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null)
 
   const { totalAssets } = useWalletBalances()
+  const [metricDrillDown, setMetricDrillDown] = useState<{
+    type: "expense" | "income" | "budget_risk"
+    data: any
+  } | null>(null)
+
   const intel = useFinancialIntelligence({
     transactions: allTxs,
     budgetTarget,
     totalAssets,
-    bills: allBills
+    bills: allBills,
+    categories
   })
 
   const { pullDistance, isRefreshing, threshold } = usePullToRefresh({
@@ -548,10 +556,30 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       {/* 2. PORTFOLIO & ACCOUNTS CARD */}
       <BalanceCard hideBalance={hideBalance} />
 
+      {/* 2.5 FINANCIAL ACTION CENTER */}
+      {intel.actionCenterInsight && (
+        <ActionCenterCard insight={intel.actionCenterInsight} />
+      )}
+
       {/* 3. 2x2 FINANCIAL INSIGHTS GRID */}
       <section className="grid grid-cols-2 gap-3">
         {/* Net Cashflow */}
-        <div className="p-4 rounded-[22px]"
+        <div
+          onClick={() => {
+            const exp = intel.explainExpenseChange()
+            setMetricDrillDown({
+              type: "expense",
+              data: {
+                totalCurrent: exp.totalCurrent,
+                totalPrevious: exp.totalPrevious,
+                delta: exp.delta,
+                pctChange: exp.pctChange,
+                topContributors: exp.topContributors
+              }
+            })
+            triggerHaptic("light")
+          }}
+          className="p-4 rounded-[22px] cursor-pointer active:scale-98 transition-transform select-none"
           style={{
             background: isDark ? "#FFFFFF" : "#18181B",
             border: isDark ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.12)",
@@ -572,7 +600,23 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         </div>
 
         {/* Monthly Outflow */}
-        <div className="p-4 rounded-[22px] glass-surface">
+        <div
+          onClick={() => {
+            const exp = intel.explainExpenseChange()
+            setMetricDrillDown({
+              type: "expense",
+              data: {
+                totalCurrent: exp.totalCurrent,
+                totalPrevious: exp.totalPrevious,
+                delta: exp.delta,
+                pctChange: exp.pctChange,
+                topContributors: exp.topContributors
+              }
+            })
+            triggerHaptic("light")
+          }}
+          className="p-4 rounded-[22px] glass-surface cursor-pointer active:scale-98 transition-transform select-none"
+        >
           <div className="flex justify-between items-start mb-2">
             <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>Total Outflow</p>
             <Flame size={13} style={{ color: "var(--text-primary)" }} />
@@ -656,7 +700,26 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
 
       {/* 4.5 MONTHLY BUDGET PROGRESS WITH SPENDING PACE & RISK (Strict Monochrome) */}
       {budgetTarget > 0 && (
-        <section className="glass-surface p-4 rounded-[24px] mb-3">
+        <section
+          onClick={() => {
+            setMetricDrillDown({
+              type: "budget_risk",
+              data: {
+                totalCurrent: totalExpense,
+                totalPrevious: 0,
+                delta: 0,
+                pctChange: 0,
+                budget: budgetTarget,
+                consumedPct: intel.consumedPct,
+                timePct: intel.timePct,
+                budgetRisk: intel.budgetRisk,
+                budgetRiskReason: intel.budgetRiskReason
+              }
+            })
+            triggerHaptic("light")
+          }}
+          className="glass-surface p-4 rounded-[24px] mb-3 cursor-pointer active:scale-[0.99] transition-transform select-none"
+        >
           <div className="flex justify-between items-start mb-2">
             <div>
               <div className="flex items-center gap-2">
@@ -1021,6 +1084,12 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
 
       <NotificationSheet isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
       <GoalDetailModal goal={selectedGoal} isOpen={!!selectedGoal} onClose={() => setSelectedGoal(null)} onDeposit={depositToGoal} onUpdate={updateGoal} onDelete={deleteGoal} />
+      <MetricDrillDownSheet
+        isOpen={!!metricDrillDown}
+        onClose={() => setMetricDrillDown(null)}
+        type={metricDrillDown?.type || null}
+        data={metricDrillDown?.data || null}
+      />
     </div>
   )
 }

@@ -15,6 +15,11 @@ import { formatRupiah } from "../lib/utils"
 import { BottomSheet } from "../components/ui/BottomSheet"
 import { IconRenderer } from "../components/ui/IconRenderer"
 import { useTheme } from "../contexts/ThemeContext"
+import { useBudgetTarget } from "../hooks/useBudgetTarget"
+import { useBills } from "../hooks/useBills"
+import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence"
+import { MonthlyReviewSection } from "../components/statistics/MonthlyReviewSection"
+import { CategoryDrillDownSheet } from "../components/statistics/CategoryDrillDownSheet"
 import { format, subDays, subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, getDay, isToday } from "date-fns"
 
 type Range = "week" | "month" | "year" | "all"
@@ -108,9 +113,22 @@ export function StatisticsPage() {
   const { data: allTxs = [] } = useAllTransactions()
   const { data: wallets = [] } = useWallets()
   const { data: categories = [] } = useCategories()
+  const { data: bills = [] } = useBills()
+  const { budgetTarget } = useBudgetTarget()
   const [walletFilterType, setWalletFilterType] = useState<"all" | "expense" | "income">("all")
   const [monthOffset, setMonthOffset] = useState(0)
+  const [selectedCategoryShift, setSelectedCategoryShift] = useState<any | null>(null)
   const colors = useChartColors()
+
+  const activeMonthDate = useMemo(() => subMonths(now, monthOffset), [now, monthOffset])
+  const intel = useFinancialIntelligence({
+    transactions: allTxs,
+    budgetTarget,
+    totalAssets: 0,
+    bills,
+    categories,
+    activeMonthDate
+  })
 
   const isTxCorrection = (t: any) => t.type === "adjustment" || t.note?.toLowerCase().includes("correction") || t.note?.toLowerCase().includes("balance adjustment") || t.note?.toLowerCase().includes("koreksi saldo")
 
@@ -604,6 +622,20 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
         </div>
       </div>
 
+      {/* Monthly Financial Review (when Month view is active) */}
+      {range === "month" && intel.monthlyReview && (
+        <MonthlyReviewSection
+          review={intel.monthlyReview}
+          onCategoryClick={(catName) => {
+            const found = intel.categoryShifts.find(s => s.name.toLowerCase() === catName.toLowerCase())
+            if (found) {
+              setSelectedCategoryShift(found)
+              triggerHaptic("light")
+            }
+          }}
+        />
+      )}
+
       {/* Category Breakdown */}
       <div className="p-5 rounded-[24px] glass-surface">
         <div className="flex justify-between items-center mb-3">
@@ -695,14 +727,26 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
               {activeBreakdownData.slice(0, 6).map((cat, i) => {
                 const pct = totalBreakdownAmount > 0 ? Math.round((cat.total / totalBreakdownAmount) * 100) : 0
                 const avgCat = cat.count > 0 ? Math.round(cat.total / cat.count) : 0
+                const shift = intel.categoryShifts.find(s => s.name.toLowerCase() === cat.name.toLowerCase())
                 return (
-                  <div key={cat.name} className="flex items-center justify-between px-2.5 py-2 rounded-xl"
-                    style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                  <div
+                    key={cat.name}
+                    onClick={() => {
+                      if (shift) {
+                        setSelectedCategoryShift(shift)
+                        triggerHaptic("light")
+                      }
+                    }}
+                    className="flex items-center justify-between px-2.5 py-2 rounded-xl cursor-pointer active:scale-95 transition-transform select-none"
+                    style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
+                  >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.donut[i % colors.donut.length] }} />
                       <div className="min-w-0">
                         <p className="text-[11px] font-bold truncate max-w-[65px]" style={{ color: "var(--text-primary)" }}>{cat.name}</p>
-                        <p className="text-[9px] font-medium" style={{ color: "var(--text-tertiary)" }}>Avg {formatRupiah(avgCat)}</p>
+                        <p className="text-[9px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                          {shift ? `${shift.isIncrease ? "↑" : "↓"}${shift.pctChange}% MoM` : `Avg ${formatRupiah(avgCat)}`}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
@@ -718,7 +762,17 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
             {/* Largest Category Change (Priority 4 — Strict Monochrome) & Frequency Insights (Priority 5) */}
             <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[var(--glass-border)]">
               {categoryMoMShifts.biggestIncrease && (
-                <div className="p-2.5 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                <div
+                  onClick={() => {
+                    const shift = intel.categoryShifts.find(s => s.name.toLowerCase() === categoryMoMShifts.biggestIncrease?.name.toLowerCase())
+                    if (shift) {
+                      setSelectedCategoryShift(shift)
+                      triggerHaptic("light")
+                    }
+                  }}
+                  className="p-2.5 rounded-xl cursor-pointer active:scale-95 transition-transform select-none"
+                  style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
+                >
                   <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Biggest Increase</p>
                   <p className="text-[12px] font-extrabold truncate mt-0.5" style={{ color: "var(--text-primary)" }}>
                     {categoryMoMShifts.biggestIncrease.name}
@@ -729,7 +783,17 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
                 </div>
               )}
               {categoryMoMShifts.biggestDecrease ? (
-                <div className="p-2.5 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                <div
+                  onClick={() => {
+                    const shift = intel.categoryShifts.find(s => s.name.toLowerCase() === categoryMoMShifts.biggestDecrease?.name.toLowerCase())
+                    if (shift) {
+                      setSelectedCategoryShift(shift)
+                      triggerHaptic("light")
+                    }
+                  }}
+                  className="p-2.5 rounded-xl cursor-pointer active:scale-95 transition-transform select-none"
+                  style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
+                >
                   <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Biggest Decrease</p>
                   <p className="text-[12px] font-extrabold truncate mt-0.5" style={{ color: "var(--text-primary)" }}>
                     {categoryMoMShifts.biggestDecrease.name}
@@ -1169,11 +1233,18 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
             {categoryStats.map((cat, i) => {
               const pct = totalBreakdownAmount > 0 ? ((cat.total / totalBreakdownAmount) * 100).toFixed(1) : "0.0"
               const barColor = colors.donut[i % colors.donut.length]
+              const shift = intel.categoryShifts.find(s => s.name.toLowerCase() === cat.name.toLowerCase())
 
               return (
                 <div
                   key={cat.name}
-                  className="p-3.5 rounded-2xl flex items-center justify-between"
+                  onClick={() => {
+                    if (shift) {
+                      setSelectedCategoryShift(shift)
+                      triggerHaptic("light")
+                    }
+                  }}
+                  className="p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition-transform select-none"
                   style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -1186,7 +1257,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
                         {cat.name}
                       </p>
                       <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                        {cat.count} {cat.count === 1 ? "transaction" : "transactions"}
+                        {shift ? `${shift.isIncrease ? "↑" : "↓"}${shift.pctChange}% MoM · ` : ""}{cat.count} {cat.count === 1 ? "transaction" : "transactions"}
                       </p>
                     </div>
                   </div>
@@ -1210,6 +1281,12 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
           </div>
         </div>
       </BottomSheet>
+
+      <CategoryDrillDownSheet
+        isOpen={!!selectedCategoryShift}
+        onClose={() => setSelectedCategoryShift(null)}
+        shift={selectedCategoryShift}
+      />
     </div>
   )
 }

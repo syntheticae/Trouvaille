@@ -1,8 +1,21 @@
 import { useMemo } from "react"
-import { getDaysInMonth } from "date-fns"
-import type { Transaction, Bill } from "../lib/types"
+import { getDaysInMonth, subMonths } from "date-fns"
+import type { Transaction, Bill, Category } from "../lib/types"
+import {
+  computeMonthAggregates,
+  computeSpendingPace,
+  computeBudgetRisk,
+  computeCategoryMoMChanges,
+  generateActionCenterInsight,
+  generateMonthlyFinancialReview,
+  getMonthTransactions,
+  type BudgetRiskLevel,
+  type CategoryMoMShift,
+  type ActionCenterInsight,
+  type MonthlyFinancialReviewData
+} from "../lib/financialMath"
 
-export type BudgetRiskLevel = "SAFE" | "WATCH" | "AT RISK"
+export type { BudgetRiskLevel, CategoryMoMShift, ActionCenterInsight, MonthlyFinancialReviewData }
 export type MomentumState = "positive" | "neutral" | "negative"
 
 interface FinancialIntelligenceOptions {
@@ -10,77 +23,57 @@ interface FinancialIntelligenceOptions {
   budgetTarget: number
   totalAssets: number
   bills: Bill[]
+  categories?: Category[]
+  activeMonthDate?: Date
 }
 
 export function useFinancialIntelligence({
   transactions,
   budgetTarget,
   totalAssets,
-  bills
+  bills,
+  categories = [],
+  activeMonthDate = new Date()
 }: FinancialIntelligenceOptions) {
   return useMemo(() => {
     const now = new Date()
     const currentYear = now.getFullYear()
-    const currentMonth = now.getMonth()
+    const currentMonth = now.getMonth() + 1
     const daysElapsed = now.getDate()
     const totalDays = getDaysInMonth(now)
 
-    // Current Month Transactions Filter
-    let totalIncome = 0
-    let totalExpense = 0
+    // Current Month Aggregates
+    const currentMonthAgg = computeMonthAggregates(transactions, currentYear, currentMonth)
+    const { totalIncome, totalExpense, netCashflow, savingsRate } = currentMonthAgg
 
-    const currentMonthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`
+    // Previous Month Aggregates
+    const prevDate = subMonths(now, 1)
+    const prevYear = prevDate.getFullYear()
+    const prevMonth = prevDate.getMonth() + 1
+    const prevMonthAgg = computeMonthAggregates(transactions, prevYear, prevMonth)
 
-    transactions.forEach(t => {
-      if (!t.occurred_on || !t.occurred_on.startsWith(currentMonthKey)) return
-
-      const isCorrection = t.type === "adjustment" || t.note?.toLowerCase().includes("correction") || t.note?.toLowerCase().includes("koreksi saldo") || t.note?.toLowerCase().includes("balance adjustment")
-      if (isCorrection || t.type === "transfer") return
-
-      const amt = Number(t.amount || 0)
-      if (t.type === "income") totalIncome += amt
-      else if (t.type === "expense") totalExpense += amt
-    })
-
-    const netCashflow = totalIncome - totalExpense
-    const savingsRate = totalIncome > 0 ? Math.max(0, (netCashflow / totalIncome) * 100) : 0
-
-    // 1. Spending Pace
+    // Spending Pace & Projections
     const budget = budgetTarget > 0 ? budgetTarget : 0
-    const expectedPace = budget > 0 ? (daysElapsed / totalDays) * budget : 0
-    const paceDiff = budget > 0 ? totalExpense - expectedPace : 0
-    const isAheadOfPace = paceDiff > 0
+    const pace = computeSpendingPace(totalExpense, budget, daysElapsed, totalDays)
+    const risk = computeBudgetRisk(pace.consumedPct, pace.timePct, budget)
 
-    // 2. Projected Month-End Spending
-    const dailyAvg = totalExpense / Math.max(1, daysElapsed)
-    const projectedMonthEnd = Math.round(dailyAvg * totalDays)
-    const projectedVariance = budget > 0 ? projectedMonthEnd - budget : 0
+    // Category MoM Shifts
+    const currentMonthTxs = getMonthTransactions(transactions, currentYear, currentMonth)
+    const prevMonthTxs = getMonthTransactions(transactions, prevYear, prevMonth)
+    const categoryShifts = computeCategoryMoMChanges(currentMonthTxs, prevMonthTxs, categories)
+    const categoryMoMMap = new Map<string, CategoryMoMShift>()
+    categoryShifts.forEach(c => categoryMoMMap.set(c.categoryId, c))
 
-    // 3. Budget Risk Level (SAFE / WATCH / AT RISK)
-    let budgetRisk: BudgetRiskLevel = "SAFE"
-    const consumedPct = budget > 0 ? (totalExpense / budget) * 100 : 0
-    const timePct = (daysElapsed / totalDays) * 100
-
-    if (budget > 0) {
-      if (consumedPct >= 95 || consumedPct > timePct + 20) {
-        budgetRisk = "AT RISK"
-      } else if (consumedPct > timePct + 5) {
-        budgetRisk = "WATCH"
-      } else {
-        budgetRisk = "SAFE"
-      }
-    }
-
-    // 4. Financial Momentum
+    // Financial Momentum
     let momentum: MomentumState = "neutral"
     let momentumReason = "Balanced income and expense pace"
 
-    if (netCashflow > 0 && (!budget || !isAheadOfPace || savingsRate >= 25)) {
+    if (netCashflow > 0 && (!budget || !pace.isAheadOfPace || savingsRate >= 25)) {
       momentum = "positive"
       momentumReason = savingsRate >= 30 
         ? `Strong ${savingsRate.toFixed(0)}% savings rate with healthy cashflow` 
         : `Surplus cashflow and controlled spending pace`
-    } else if (netCashflow < 0 || (budget > 0 && budgetRisk === "AT RISK")) {
+    } else if (netCashflow < 0 || (budget > 0 && risk.riskLevel === "AT RISK")) {
       momentum = "negative"
       momentumReason = netCashflow < 0 
         ? `Outflow exceeds inflow this month by ${Math.abs(netCashflow).toLocaleString("id-ID")}` 
@@ -90,10 +83,67 @@ export function useFinancialIntelligence({
       momentumReason = `Steady cashflow with ${savingsRate.toFixed(0)}% saved`
     }
 
-    // 5. Balance Safety Buffer
+    // Safety Buffer
     const unpaidUpcomingBills = bills.filter(b => !b.is_paid)
     const committedAmount = unpaidUpcomingBills.reduce((s, b) => s + Number(b.amount || 0), 0)
     const safeToSpend = Math.max(0, totalAssets - committedAmount)
+
+    // Financial Action Center Insight
+    const actionCenterInsight = generateActionCenterInsight({
+      totalExpense,
+      budget,
+      projectedMonthEnd: pace.projectedMonthEnd,
+      projectedVariance: pace.projectedVariance,
+      budgetRisk: risk.riskLevel,
+      isAheadOfPace: pace.isAheadOfPace,
+      paceDiff: pace.paceDiff,
+      consumedPct: pace.consumedPct,
+      timePct: pace.timePct,
+      categoryShifts,
+      safeToSpend,
+      unpaidBillsCount: unpaidUpcomingBills.length
+    })
+
+    // Monthly Financial Review (for Statistics Page)
+    const activeReviewTxs = getMonthTransactions(
+      transactions,
+      activeMonthDate.getFullYear(),
+      activeMonthDate.getMonth() + 1
+    )
+    const activePrevReviewDate = subMonths(activeMonthDate, 1)
+    const activePrevReviewTxs = getMonthTransactions(
+      transactions,
+      activePrevReviewDate.getFullYear(),
+      activePrevReviewDate.getMonth() + 1
+    )
+
+    const monthlyReview = generateMonthlyFinancialReview(
+      activeReviewTxs,
+      activePrevReviewTxs,
+      categories,
+      budget,
+      activeMonthDate
+    )
+
+    // Helpers for "Why?" Drill-Down Insights
+    const explainCategory = (catId: string) => {
+      return categoryMoMMap.get(catId) || null
+    }
+
+    const explainExpenseChange = () => {
+      const topContributors = categoryShifts
+        .filter(s => s.deltaAmount !== 0)
+        .slice(0, 4)
+      return {
+        totalCurrent: totalExpense,
+        totalPrevious: prevMonthAgg.totalExpense,
+        delta: totalExpense - prevMonthAgg.totalExpense,
+        pctChange: prevMonthAgg.totalExpense > 0
+          ? Math.round(((totalExpense - prevMonthAgg.totalExpense) / prevMonthAgg.totalExpense) * 100)
+          : 0,
+        topContributors
+      }
+    }
 
     return {
       daysElapsed,
@@ -104,24 +154,32 @@ export function useFinancialIntelligence({
       savingsRate,
       // Spending Pace
       budget,
-      expectedPace,
-      paceDiff,
-      isAheadOfPace,
+      expectedPace: pace.expectedPace,
+      paceDiff: pace.paceDiff,
+      isAheadOfPace: pace.isAheadOfPace,
       // Projection
-      dailyAvg,
-      projectedMonthEnd,
-      projectedVariance,
+      dailyAvg: pace.dailyAvg,
+      projectedMonthEnd: pace.projectedMonthEnd,
+      projectedVariance: pace.projectedVariance,
       // Risk & Momentum
-      budgetRisk,
-      consumedPct,
-      timePct,
+      budgetRisk: risk.riskLevel,
+      budgetRiskReason: risk.reason,
+      consumedPct: pace.consumedPct,
+      timePct: pace.timePct,
       momentum,
       momentumReason,
       // Safety Buffer
       totalAssets,
       committedAmount,
       safeToSpend,
-      unpaidBillsCount: unpaidUpcomingBills.length
+      unpaidBillsCount: unpaidUpcomingBills.length,
+      // New Intelligence Layers
+      actionCenterInsight,
+      monthlyReview,
+      categoryShifts,
+      categoryMoMMap,
+      explainCategory,
+      explainExpenseChange
     }
-  }, [transactions, budgetTarget, totalAssets, bills])
+  }, [transactions, budgetTarget, totalAssets, bills, categories, activeMonthDate])
 }
