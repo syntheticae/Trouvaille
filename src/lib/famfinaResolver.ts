@@ -1,6 +1,7 @@
 import famfinaRaw from "../data/famfina_transactions.json"
 import { supabase } from "./supabase"
 import type { Transaction, Wallet } from "./types"
+import { fetchAllTransactionsFromSupabase } from "../hooks/useTransactions"
 
 interface FamfinaRecord {
   file: string
@@ -121,12 +122,8 @@ export async function syncAllTransactionsWithFamfina(
     walletByName.set(w.name.trim().toLowerCase(), w.id)
   })
 
-  // 2. Fetch all user transactions
-  const { data: userTxs, error: tErr } = await supabase
-    .from("transactions")
-    .select("id, occurred_on, amount, type, note, wallet_id, to_wallet_id")
-    .eq("user_id", user.id)
-  if (tErr || !userTxs) throw tErr || new Error("Failed to fetch transactions")
+  // 2. Fetch all user transactions via paginated engine
+  const userTxs = await fetchAllTransactionsFromSupabase({ userId: user.id })
 
   let updatedCount = 0
   const updates: Array<{ id: string; wallet_id: string | null; to_wallet_id: string | null }> = []

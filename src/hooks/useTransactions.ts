@@ -14,12 +14,97 @@ interface TransactionInput {
   created_at?: string
 }
 
+export interface TransactionFilters {
+  categoryId?: string
+  search?: string
+  startDate?: string
+  endDate?: string
+  userId?: string
+}
+
+/**
+ * Deterministic chunked pagination fetcher for Supabase transactions.
+ * Guarantees 100% retrieval across arbitrarily large datasets without PostgREST row limits.
+ */
+export async function fetchAllTransactionsFromSupabase(
+  filters?: TransactionFilters,
+  onPageFetched?: (currentCount: number, totalCount: number | null) => void
+): Promise<Transaction[]> {
+  const pageSize = 1000
+  let from = 0
+  const allRecords: Transaction[] = []
+  let hasMore = true
+  let serverTotalCount: number | null = null
+
+  while (hasMore) {
+    let query = supabase
+      .from("transactions")
+      .select("*, categories(*)", { count: "exact" })
+      .order("occurred_on", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + pageSize - 1)
+
+    if (filters?.userId) query = query.eq("user_id", filters.userId)
+    if (filters?.categoryId) query = query.eq("category_id", filters.categoryId)
+    if (filters?.startDate) query = query.gte("occurred_on", filters.startDate)
+    if (filters?.endDate) query = query.lte("occurred_on", filters.endDate)
+
+    const { data, error, count } = await query
+    if (error) {
+      console.error(`[fetchAllTransactionsFromSupabase] Error fetching page [${from} - ${from + pageSize - 1}]:`, error)
+      throw error
+    }
+
+    if (count !== null && count !== undefined) {
+      serverTotalCount = count
+    }
+
+    const chunk = (data as Transaction[]) || []
+    if (chunk.length === 0) {
+      hasMore = false
+      break
+    }
+
+    allRecords.push(...chunk)
+
+    if (onPageFetched) {
+      onPageFetched(allRecords.length, serverTotalCount)
+    }
+
+    if (serverTotalCount !== null && allRecords.length >= serverTotalCount) {
+      hasMore = false
+    } else if (chunk.length < pageSize) {
+      hasMore = false
+    } else {
+      from += pageSize
+    }
+  }
+
+  // Deduplicate by primary key ID to guarantee no duplicates
+  const seenIds = new Set<string>()
+  const uniqueRecords: Transaction[] = []
+  for (const item of allRecords) {
+    if (!seenIds.has(item.id)) {
+      seenIds.add(item.id)
+      uniqueRecords.push(item)
+    }
+  }
+
+  if (filters?.search) {
+    const s = filters.search.toLowerCase()
+    return uniqueRecords.filter(t => t.note?.toLowerCase().includes(s))
+  }
+
+  return uniqueRecords
+}
+
 export function useRecentTransactions(limit = 10) {
   return useQuery({
     queryKey: ["transactions", "recent", limit],
     queryFn: async () => {
       const { data, error } = await supabase.from("transactions").select("*, categories(*)")
-        .order("occurred_on", { ascending: false }).order("created_at", { ascending: false }).limit(limit)
+        .order("occurred_on", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limit)
       if (error) throw error
       return data as Transaction[]
     },
@@ -32,35 +117,15 @@ export function useMonthTransactions(year: number, month: number) {
   const end = format(new Date(year, month, 0), "yyyy-MM-dd")
   return useQuery({
     queryKey: ["transactions", "month", year, month],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("transactions").select("*, categories(*)")
-        .gte("occurred_on", start).lte("occurred_on", end)
-        .order("occurred_on", { ascending: false }).order("created_at", { ascending: false })
-      if (error) throw error
-      return data as Transaction[]
-    },
+    queryFn: () => fetchAllTransactionsFromSupabase({ startDate: start, endDate: end }),
     staleTime: 5 * 60 * 1000,
   })
 }
 
-export function useAllTransactions(filters?: { categoryId?: string; search?: string; startDate?: string; endDate?: string }) {
+export function useAllTransactions(filters?: TransactionFilters) {
   return useQuery({
     queryKey: ["transactions", "all", filters],
-    queryFn: async () => {
-      let query = supabase.from("transactions").select("*, categories(*)")
-        .order("occurred_on", { ascending: false }).order("created_at", { ascending: false })
-      if (filters?.categoryId) query = query.eq("category_id", filters.categoryId)
-      if (filters?.startDate) query = query.gte("occurred_on", filters.startDate)
-      if (filters?.endDate) query = query.lte("occurred_on", filters.endDate)
-      const { data, error } = await query
-      if (error) throw error
-      let result = data as Transaction[]
-      if (filters?.search) {
-        const s = filters.search.toLowerCase()
-        result = result.filter(t => t.note?.toLowerCase().includes(s))
-      }
-      return result
-    },
+    queryFn: () => fetchAllTransactionsFromSupabase(filters),
     staleTime: 5 * 60 * 1000,
   })
 }

@@ -21,7 +21,7 @@ import { BottomSheet } from "../components/ui/BottomSheet"
 import { GlassDatePicker } from "../components/ui/GlassDatePicker"
 import { format, isToday } from "date-fns"
 import { supabase } from "../lib/supabase"
-import { useAddTransaction } from "../hooks/useTransactions"
+import { useAddTransaction, fetchAllTransactionsFromSupabase } from "../hooks/useTransactions"
 import { useWalletBalances } from "../hooks/useWalletBalances"
 import { IconRenderer } from "../components/ui/IconRenderer"
 import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet"
@@ -110,24 +110,39 @@ export function SettingsPage() {
     triggerHaptic("light")
 
     try {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-        queryClient.invalidateQueries({ queryKey: ["wallets"] }),
-        queryClient.invalidateQueries({ queryKey: ["categories"] }),
-        queryClient.invalidateQueries({ queryKey: ["bills"] }),
+      // 1. Fetch complete transaction dataset using multi-page chunked engine
+      const freshTxs = await fetchAllTransactionsFromSupabase()
+
+      // 2. Fetch fresh wallets, categories, and bills
+      const [freshWallets, freshCategories, freshBills] = await Promise.all([
+        supabase.from("wallets").select("*").order("name"),
+        supabase.from("categories").select("*").order("name"),
+        supabase.from("bills").select("*").order("due_date", { ascending: true })
       ])
+
+      if (freshWallets.error) throw freshWallets.error
+      if (freshCategories.error) throw freshCategories.error
+      if (freshBills.error) throw freshBills.error
+
+      // 3. Atomically update TanStack Query cache
+      queryClient.setQueryData(["transactions", "all", undefined], freshTxs)
+      queryClient.setQueriesData({ queryKey: ["transactions"] }, freshTxs)
+      queryClient.setQueryData(["wallets"], freshWallets.data || [])
+      queryClient.setQueryData(["categories"], freshCategories.data || [])
+      queryClient.setQueryData(["bills"], freshBills.data || [])
 
       const now = new Date()
       localStorage.setItem("trouvaille_last_synced", now.toISOString())
       setLastSyncedTime(`Today, ${format(now, "HH:mm")}`)
       setSyncStatus("success")
       triggerHaptic("medium")
-      showToast("Data synchronized", "update", () => {})
+      showToast(`Data synchronized (${freshTxs.length} records)`, "update", () => {})
 
       setTimeout(() => {
         setSyncStatus("idle")
       }, 3500)
     } catch (err) {
+      console.error("[handleSafeSync] Sync error:", err)
       setSyncStatus("error")
       showToast("Sync failed. Local data preserved.", "delete", () => {})
       setTimeout(() => {
