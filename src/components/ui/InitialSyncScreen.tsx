@@ -45,24 +45,22 @@ export function InitialSyncScreen({
   }, [])
 
   useEffect(() => {
-    if (isAssetsLoaded && isDataReady) {
+    if (displayProgress >= 100 || (isAssetsLoaded && isDataReady)) {
       const t = setTimeout(() => {
         onComplete?.()
-      }, 400)
+      }, 500)
       return () => clearTimeout(t)
     }
-  }, [isAssetsLoaded, isDataReady, onComplete])
+  }, [displayProgress, isAssetsLoaded, isDataReady, onComplete])
 
-  // Safety fallback: maximum 25s in case of severe network latency
+  // Safety fallback: maximum 10s timeout guarantee
   useEffect(() => {
     const safetyTimer = setTimeout(() => {
-      if (isDataReady) {
-        onComplete?.()
-      }
-    }, 25000)
+      onComplete?.()
+    }, 10000)
 
     return () => clearTimeout(safetyTimer)
-  }, [isDataReady, onComplete])
+  }, [onComplete])
 
   return (
     <div

@@ -21,7 +21,7 @@ import { supabase } from "./lib/supabase"
 
 function AppShell() {
   const [addSheetOpen, setAddSheetOpen] = useState(false)
-  const { data: allTxs = [], isLoading: isLoadingTxs } = useAllTransactions()
+  const { data: allTxs = [] } = useAllTransactions()
   const [hasInitialSynced, setHasInitialSynced] = useState(() => {
     return localStorage.getItem("trouvaille_initial_synced") === "true"
   })
@@ -39,30 +39,41 @@ function AppShell() {
         const { data: { session } } = await supabase.auth.getSession()
         const user = session?.user
         if (user) {
-          setSyncStatusText("Setting up accounts & categories...")
-          setSyncProgress(25)
-          await ensureCategories.mutateAsync()
-          await ensureWallets.mutateAsync()
+          try {
+            setSyncStatusText("Setting up accounts & categories...")
+            setSyncProgress(25)
+            await ensureCategories.mutateAsync()
+            await ensureWallets.mutateAsync()
+          } catch (e) {
+            console.warn("Ensure categories/wallets non-fatal error:", e)
+          }
 
-          // Automatically sync all 887 Famfina records without duplicating or overwriting manual transactions
-          setSyncStatusText("Syncing transactions with Supabase...")
-          await syncAllFamfinaToSupabase((current, total) => {
-            const pct = Math.round(30 + (current / total) * 55)
-            setSyncProgress(pct)
-            setSyncStatusText(`Syncing record ${current} of ${total}...`)
-          })
+          try {
+            setSyncStatusText("Syncing transactions with Supabase...")
+            setSyncProgress(35)
+            await syncAllFamfinaToSupabase((current, total) => {
+              const pct = Math.round(35 + (current / total) * 50)
+              setSyncProgress(pct)
+              setSyncStatusText(`Syncing record ${current} of ${total}...`)
+            })
+          } catch (e) {
+            console.warn("Sync Famfina non-fatal error:", e)
+          }
 
-          // Hydrate all critical queries into TanStack Query cache directly
-          setSyncStatusText("Hydrating portfolio & financial intelligence...")
-          setSyncProgress(90)
-          const freshTxs = await fetchAllTransactionsFromSupabase({ userId: user.id })
-          queryClient.setQueriesData({ queryKey: ["transactions"] }, freshTxs)
+          try {
+            setSyncStatusText("Hydrating portfolio & financial intelligence...")
+            setSyncProgress(90)
+            const freshTxs = await fetchAllTransactionsFromSupabase({ userId: user.id })
+            queryClient.setQueriesData({ queryKey: ["transactions"] }, freshTxs)
 
-          await Promise.all([
-            queryClient.refetchQueries({ queryKey: ["wallets"] }),
-            queryClient.refetchQueries({ queryKey: ["categories"] }),
-            queryClient.refetchQueries({ queryKey: ["bills"] }),
-          ])
+            await Promise.all([
+              queryClient.refetchQueries({ queryKey: ["wallets"] }),
+              queryClient.refetchQueries({ queryKey: ["categories"] }),
+              queryClient.refetchQueries({ queryKey: ["bills"] }),
+            ])
+          } catch (e) {
+            console.warn("Hydrate queries non-fatal error:", e)
+          }
 
           setSyncProgress(100)
           setSyncStatusText("Ready! Welcome to Trouvaille...")
@@ -70,6 +81,7 @@ function AppShell() {
       } catch (err) {
         console.warn("Init error:", err)
       } finally {
+        setSyncProgress(100)
         setIsInitDone(true)
       }
     }
@@ -83,7 +95,7 @@ function AppShell() {
         totalCount={allTxs.length}
         progress={syncProgress}
         statusText={syncStatusText}
-        isDataReady={isInitDone && (allTxs.length > 0 || !isLoadingTxs)}
+        isDataReady={isInitDone}
         onComplete={() => {
           localStorage.setItem("trouvaille_initial_synced", "true")
           setHasInitialSynced(true)

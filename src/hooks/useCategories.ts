@@ -186,23 +186,6 @@ export function useEnsureDefaultCategories() {
             missing.map(c => ({ ...c, user_id: user.id }))
           )
         }
-
-        // Clean up duplicate categories in DB if any
-        if (existing && existing.length > 0) {
-          const seen = new Set<string>()
-          const duplicateIds: string[] = []
-          existing.forEach(c => {
-            const key = `${c.type}_${c.name.trim().toLowerCase()}`
-            if (seen.has(key)) {
-              duplicateIds.push(c.id)
-            } else {
-              seen.add(key)
-            }
-          })
-          if (duplicateIds.length > 0) {
-            await supabase.from("categories").delete().in("id", duplicateIds)
-          }
-        }
       } catch (err) {
         console.warn("useEnsureDefaultCategories error:", err)
       }
