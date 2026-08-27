@@ -25,5 +25,16 @@ export interface Bill {
   note: string | null; created_at: string
 }
 
+export interface Goal {
+  id: string
+  user_id?: string
+  title: string
+  targetAmount: number
+  currentAmount: number
+  icon?: string
+  color?: string
+  targetDate?: string
+}
+
 
 

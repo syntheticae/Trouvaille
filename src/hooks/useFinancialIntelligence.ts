@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { getDaysInMonth, subMonths } from "date-fns"
-import type { Transaction, Bill, Category } from "../lib/types"
+import type { Transaction, Bill, Category, Goal } from "../lib/types"
 import {
   computeMonthAggregates,
   computeSpendingPace,
@@ -9,13 +9,30 @@ import {
   generateActionCenterInsight,
   generateMonthlyFinancialReview,
   getMonthTransactions,
+  calculatePersonalBaselines,
+  detectBehavioralPatterns,
+  calculateLongitudinalTimeline,
+  calculateGoalPlanning,
   type BudgetRiskLevel,
   type CategoryMoMShift,
   type ActionCenterInsight,
-  type MonthlyFinancialReviewData
+  type MonthlyFinancialReviewData,
+  type PersonalBaselineResult,
+  type BehavioralPattern,
+  type LongitudinalTimelineResult,
+  type GoalPlanningResult
 } from "../lib/financialMath"
 
-export type { BudgetRiskLevel, CategoryMoMShift, ActionCenterInsight, MonthlyFinancialReviewData }
+export type {
+  BudgetRiskLevel,
+  CategoryMoMShift,
+  ActionCenterInsight,
+  MonthlyFinancialReviewData,
+  PersonalBaselineResult,
+  BehavioralPattern,
+  LongitudinalTimelineResult,
+  GoalPlanningResult
+}
 export type MomentumState = "positive" | "neutral" | "negative"
 
 interface FinancialIntelligenceOptions {
@@ -42,29 +59,35 @@ export function useFinancialIntelligence({
     const daysElapsed = now.getDate()
     const totalDays = getDaysInMonth(now)
 
-    // Current Month Aggregates
+    // 1. Current Month Aggregates
     const currentMonthAgg = computeMonthAggregates(transactions, currentYear, currentMonth)
     const { totalIncome, totalExpense, netCashflow, savingsRate } = currentMonthAgg
 
-    // Previous Month Aggregates
+    // 2. Previous Month Aggregates
     const prevDate = subMonths(now, 1)
     const prevYear = prevDate.getFullYear()
     const prevMonth = prevDate.getMonth() + 1
     const prevMonthAgg = computeMonthAggregates(transactions, prevYear, prevMonth)
 
-    // Spending Pace & Projections
+    // 3. Personal Historical Baselines (Phase II)
+    const personalBaselines = calculatePersonalBaselines(transactions, categories, now)
+
+    // 4. Behavioral Spending Patterns (Phase II)
+    const behavioralPatterns = detectBehavioralPatterns(transactions, personalBaselines, now)
+
+    // 5. Spending Pace & Projections
     const budget = budgetTarget > 0 ? budgetTarget : 0
     const pace = computeSpendingPace(totalExpense, budget, daysElapsed, totalDays)
     const risk = computeBudgetRisk(pace.consumedPct, pace.timePct, budget)
 
-    // Category MoM Shifts
+    // 6. Category MoM Shifts
     const currentMonthTxs = getMonthTransactions(transactions, currentYear, currentMonth)
     const prevMonthTxs = getMonthTransactions(transactions, prevYear, prevMonth)
     const categoryShifts = computeCategoryMoMChanges(currentMonthTxs, prevMonthTxs, categories)
     const categoryMoMMap = new Map<string, CategoryMoMShift>()
     categoryShifts.forEach(c => categoryMoMMap.set(c.categoryId, c))
 
-    // Financial Momentum
+    // 7. Financial Momentum
     let momentum: MomentumState = "neutral"
     let momentumReason = "Balanced income and expense pace"
 
@@ -83,12 +106,12 @@ export function useFinancialIntelligence({
       momentumReason = `Steady cashflow with ${savingsRate.toFixed(0)}% saved`
     }
 
-    // Safety Buffer
+    // 8. Safety Buffer
     const unpaidUpcomingBills = bills.filter(b => !b.is_paid)
     const committedAmount = unpaidUpcomingBills.reduce((s, b) => s + Number(b.amount || 0), 0)
     const safeToSpend = Math.max(0, totalAssets - committedAmount)
 
-    // Financial Action Center Insight
+    // 9. Financial Action Center Insight (Extended with Personal Baseline)
     const actionCenterInsight = generateActionCenterInsight({
       totalExpense,
       budget,
@@ -104,7 +127,7 @@ export function useFinancialIntelligence({
       unpaidBillsCount: unpaidUpcomingBills.length
     })
 
-    // Monthly Financial Review (for Statistics Page)
+    // 10. Monthly Financial Review (for Statistics Page)
     const activeReviewTxs = getMonthTransactions(
       transactions,
       activeMonthDate.getFullYear(),
@@ -125,7 +148,32 @@ export function useFinancialIntelligence({
       activeMonthDate
     )
 
-    // Helpers for "Why?" Drill-Down Insights
+    // Enrich Monthly Review with Baseline Comparison if available
+    if (personalBaselines.status !== "insufficient") {
+      const minStr = `Rp ${(personalBaselines.typicalExpenseRange[0] / 1000000).toFixed(1)}M`
+      const maxStr = `Rp ${(personalBaselines.typicalExpenseRange[1] / 1000000).toFixed(1)}M`
+      monthlyReview.baselineComparison = {
+        typicalRangeText: `${minStr} – ${maxStr}`,
+        statusText: personalBaselines.currentMonthStatus === "above_range"
+          ? "Above your typical monthly range"
+          : personalBaselines.currentMonthStatus === "below_range"
+          ? "Below your typical monthly range"
+          : "Within your typical monthly range",
+        isAboveRange: personalBaselines.currentMonthStatus === "above_range"
+      }
+    }
+
+    // 11. Longitudinal Timeline Helper (Phase II)
+    const getLongitudinalTimeline = (range: "3M" | "6M" | "12M" | "ALL" = "6M") => {
+      return calculateLongitudinalTimeline(transactions, range, now)
+    }
+
+    // 12. Planning & Goal Trajectory Helper (Phase II)
+    const getGoalPlanning = (goal: Goal) => {
+      return calculateGoalPlanning(goal, personalBaselines, now)
+    }
+
+    // 13. Helpers for "Why?" Drill-Down Insights
     const explainCategory = (catId: string) => {
       return categoryMoMMap.get(catId) || null
     }
@@ -173,7 +221,12 @@ export function useFinancialIntelligence({
       committedAmount,
       safeToSpend,
       unpaidBillsCount: unpaidUpcomingBills.length,
-      // New Intelligence Layers
+      // Phase II Personal Financial Intelligence
+      personalBaselines,
+      behavioralPatterns,
+      getLongitudinalTimeline,
+      getGoalPlanning,
+      // Intelligence Layers
       actionCenterInsight,
       monthlyReview,
       categoryShifts,

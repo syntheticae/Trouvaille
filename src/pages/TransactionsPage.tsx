@@ -19,6 +19,7 @@ import { useDeferredRender } from "../hooks/useDeferredRender"
 import { TransactionItem } from "../components/transactions/TransactionItem"
 import { resolveFamfinaWallet } from "../lib/famfinaResolver"
 import { useUnusualSpending } from "../hooks/useUnusualSpending"
+import { isCorrectionTx } from "../lib/financialMath"
 
 const GlassTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -144,7 +145,7 @@ export function TransactionsPage() {
 
   const resolveWalletNames = (tx: Transaction) => resolveFamfinaWallet(tx, wallets)
 
-  const isTxCorrection = (t: Transaction) => t.type === "adjustment" || t.note?.toLowerCase().includes("correction") || t.note?.toLowerCase().includes("balance adjustment") || t.note?.toLowerCase().includes("koreksi saldo")
+  const isTxCorrection = isCorrectionTx
 
   const dynamicChartData = useMemo(() => {
     const now = new Date()

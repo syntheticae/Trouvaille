@@ -7,6 +7,7 @@ import { IconRenderer } from '../ui/IconRenderer'
 import { getFamfinaMatch } from '../../lib/famfinaResolver'
 import { triggerHaptic } from '../../lib/haptics'
 import type { Transaction, Category } from '../../lib/types'
+import { isCorrectionTx } from '../../lib/financialMath'
 
 interface TransactionItemProps {
   tx: Transaction
@@ -31,7 +32,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
 }) => {
   const isIncome = tx.type === "income"
   const isTransfer = tx.type === "transfer"
-  const isCorrection = tx.type === "adjustment" || tx.note?.toLowerCase().includes("correction") || tx.note?.toLowerCase().includes("balance adjustment") || tx.note?.toLowerCase().includes("koreksi saldo")
+  const isCorrection = isCorrectionTx(tx)
   const isPositiveCorrection = isCorrection && (tx.note?.includes("(+)") || tx.type === "income")
   const timeLabel = tx.created_at ? format(new Date(tx.created_at), "HH:mm") : ""
 

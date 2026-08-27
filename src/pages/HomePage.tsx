@@ -30,7 +30,7 @@ import { formatRupiah } from "../lib/utils"
 import { IconRenderer } from "../components/ui/IconRenderer"
 import {
   format, isToday, isSameDay, eachDayOfInterval, startOfMonth, endOfMonth,
-  getDay, subDays, subMonths
+  getDay
 } from "date-fns"
 import { BottomSheet } from "../components/ui/BottomSheet"
 import { BalanceCard } from "../components/ui/BalanceCard"
@@ -43,6 +43,7 @@ import { MetricDrillDownSheet } from "../components/home/MetricDrillDownSheet"
 import { useBudgetTarget } from "../hooks/useBudgetTarget"
 import { useWalletBalances } from "../hooks/useWalletBalances"
 import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence"
+import { calculateAssetTrend } from "../lib/financialMath"
 
 interface HomePageProps {
   onOpenAdd?: () => void
@@ -138,154 +139,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
 
   // 1. Total Balance and Apple Stocks Layout Data Calculation
   const assetData = useMemo(() => {
-    let currentBalance = totalAssets
-
-    const chartData: { label: string; balance: number }[] = []
-    let diff = 0
-    let percent = 0
-    let periodInflow = 0
-    let periodOutflow = 0
-
-    if (stockRange === "1D") {
-      // Today (1 Day)
-      const todayStr = format(now, "yyyy-MM-dd")
-      const todayTxs = allTxs.filter(t => t.occurred_on === todayStr)
-      const todayIn = todayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
-      const todayOut = todayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
-      const todayAdj = todayTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + (t.note?.includes("(-)") ? -Number(t.amount || 0) : Number(t.amount || 0)), 0)
-      const startBalance = currentBalance - (todayIn - todayOut + todayAdj)
-
-      chartData.push({ label: "Open", balance: startBalance })
-      chartData.push({ label: "Mid", balance: startBalance + (todayIn - todayOut + todayAdj) * 0.5 })
-      chartData.push({ label: "Now", balance: currentBalance })
-
-      diff = currentBalance - startBalance
-      percent = startBalance === 0 ? 0 : (diff / Math.abs(startBalance)) * 100
-      periodInflow = todayIn
-      periodOutflow = todayOut
-    } else if (stockRange === "1W") {
-      // 1 Week (7 Days)
-      let temp = currentBalance
-      for (let i = 0; i < 7; i++) {
-        const d = subDays(now, i)
-        const dStr = format(d, "yyyy-MM-dd")
-        const dayTxs = allTxs.filter(t => t.occurred_on === dStr)
-        const dayIn = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const dayOut = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const dayAdj = dayTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + (t.note?.includes("(-)") ? -Number(t.amount || 0) : Number(t.amount || 0)), 0)
-
-        chartData.unshift({ label: format(d, "d"), balance: temp })
-        periodInflow += dayIn
-        periodOutflow += dayOut
-        temp = temp - (dayIn - dayOut + dayAdj)
-      }
-      const startBal = chartData[0]?.balance ?? 0
-      diff = currentBalance - startBal
-      percent = startBal === 0 ? 0 : (diff / Math.abs(startBal)) * 100
-    } else if (stockRange === "1M") {
-      // 1 Month (30 Days)
-      let temp = currentBalance
-      for (let i = 0; i < 30; i++) {
-        const d = subDays(now, i)
-        const dStr = format(d, "yyyy-MM-dd")
-        const dayTxs = allTxs.filter(t => t.occurred_on === dStr)
-        const dayIn = dayTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const dayOut = dayTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const dayAdj = dayTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + (t.note?.includes("(-)") ? -Number(t.amount || 0) : Number(t.amount || 0)), 0)
-
-        if (i % 5 === 0 || i === 0 || i === 29) {
-          chartData.unshift({ label: format(d, "d MMM"), balance: temp })
-        }
-        periodInflow += dayIn
-        periodOutflow += dayOut
-        temp = temp - (dayIn - dayOut + dayAdj)
-      }
-      const startBal = temp
-      diff = currentBalance - startBal
-      percent = startBal === 0 ? 0 : (diff / Math.abs(startBal)) * 100
-    } else if (stockRange === "6M") {
-      // 6 Months (Weekly Points)
-      let temp = currentBalance
-      for (let w = 0; w < 24; w++) {
-        const d = subDays(now, w * 7)
-        const weekTxs = allTxs.filter(t => {
-          if (!t.occurred_on) return false
-          const td = new Date(t.occurred_on)
-          return td <= d && td > subDays(d, 7)
-        })
-        const wIn = weekTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const wOut = weekTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const wAdj = weekTxs.filter(t => t.type === "adjustment").reduce((s, t) => s + (t.note?.includes("(-)") ? -Number(t.amount || 0) : Number(t.amount || 0)), 0)
-
-        if (w % 4 === 0 || w === 0) {
-          chartData.unshift({ label: format(d, "MMM d"), balance: temp })
-        }
-        periodInflow += wIn
-        periodOutflow += wOut
-        temp = temp - (wIn - wOut + wAdj)
-      }
-      const startBal = temp
-      diff = currentBalance - startBal
-      percent = startBal === 0 ? 0 : (diff / Math.abs(startBal)) * 100
-    } else if (stockRange === "YTD" || stockRange === "1Y") {
-      // Year to date / 1 Year
-      const currentYear = now.getFullYear()
-      let temp = 0
-      for (let m = 0; m <= now.getMonth(); m++) {
-        const d = new Date(currentYear, m, 1)
-        const mKey = `${currentYear}-${String(m + 1).padStart(2, "0")}`
-        const mTxs = allTxs.filter(t => {
-          if (!t.occurred_on) return false
-          return t.occurred_on.startsWith(mKey)
-        })
-        const mIn = mTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const mOut = mTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
-
-        periodInflow += mIn
-        periodOutflow += mOut
-        temp += (mIn - mOut)
-        chartData.push({ label: format(d, "MMM"), balance: temp })
-      }
-      const startBal = chartData[0]?.balance ?? 0
-      diff = currentBalance - startBal
-      percent = startBal === 0 ? 0 : (diff / Math.abs(startBal)) * 100
-    } else {
-      // ALL Time (8 Monthly Points)
-      let temp = 0
-      for (let i = 7; i >= 0; i--) {
-        const d = subMonths(now, i)
-        const mKey = format(d, "yyyy-MM")
-        const mTxs = allTxs.filter(t => {
-          if (!t.occurred_on) return false
-          return t.occurred_on.startsWith(mKey)
-        })
-        const mIn = mTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const mOut = mTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
-
-        periodInflow += mIn
-        periodOutflow += mOut
-        temp += (mIn - mOut)
-        chartData.push({ label: format(d, "MMM yy"), balance: temp })
-      }
-      diff = currentBalance
-      percent = chartData[0]?.balance ? ((currentBalance - chartData[0].balance) / Math.abs(chartData[0].balance)) * 100 : 100
-    }
-
-    const balances = chartData.map(d => d.balance)
-    const highBalance = Math.max(...balances, currentBalance)
-    const lowBalance = Math.min(...balances, currentBalance)
-
-    return {
-      currentBalance,
-      chartData,
-      diff,
-      percent,
-      highBalance,
-      lowBalance,
-      periodInflow,
-      periodOutflow
-    }
-  }, [allTxs, stockRange])
+    return calculateAssetTrend(allTxs, totalAssets, stockRange, now)
+  }, [allTxs, totalAssets, stockRange, now])
 
   // 2. Current Month Financial Calculations
   const currentMonthStats = useMemo(() => {

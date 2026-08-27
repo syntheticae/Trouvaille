@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
 import type { Transaction, TransactionType } from "../lib/types"
@@ -202,12 +203,21 @@ export function useDayTransactions(date: string) {
   })
 }
 
+import { computeMonthAggregates } from "../lib/financialMath"
+
 export function useMonthSummary(year: number, month: number) {
-  const { data } = useMonthTransactions(year, month)
-  if (!data) return { totalIncome: 0, totalExpense: 0, balance: 0 }
-  const totalIncome = data.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0)
-  const totalExpense = data.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0)
-  return { totalIncome, totalExpense, balance: totalIncome - totalExpense }
+  const { data: monthTxs = [] } = useMonthTransactions(year, month)
+  return useMemo(() => {
+    const agg = computeMonthAggregates(monthTxs, year, month)
+    return {
+      totalIncome: agg.totalIncome,
+      totalExpense: agg.totalExpense,
+      balance: agg.netCashflow,
+      savingsRate: agg.savingsRate,
+      txCount: agg.txCount,
+      avgExpense: agg.avgExpense
+    }
+  }, [monthTxs, year, month])
 }
 
 export function useAddTransaction() {

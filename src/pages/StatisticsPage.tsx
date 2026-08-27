@@ -1,11 +1,11 @@
 import { triggerHaptic } from "../lib/haptics"
 import { useWallets, getWalletIcon } from "../hooks/useWallets"
 import { resolveFamfinaWallet } from "../lib/famfinaResolver"
-import { useCategories, getCategoryParent } from "../hooks/useCategories"
+import { useCategories, getCategoryParent, getParentIcon } from "../hooks/useCategories"
 import { CreditCard, Layers, Calendar } from "lucide-react"
 import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
-import { ShieldCheck, ArrowDownCircle, ArrowUpCircle, TrendingUp, ChevronRight, ChevronLeft } from "lucide-react"
+import { ShieldCheck, ArrowDownCircle, ArrowUpCircle, TrendingUp, ChevronRight, ChevronLeft, Info } from "lucide-react"
 import {
   PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, ResponsiveContainer, AreaChart, Area
@@ -19,7 +19,11 @@ import { useBudgetTarget } from "../hooks/useBudgetTarget"
 import { useBills } from "../hooks/useBills"
 import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence"
 import { MonthlyReviewSection } from "../components/statistics/MonthlyReviewSection"
+import { PersonalBaselineSection } from "../components/statistics/PersonalBaselineSection"
+import { SpendingPatternsSection } from "../components/statistics/SpendingPatternsSection"
 import { CategoryDrillDownSheet } from "../components/statistics/CategoryDrillDownSheet"
+import { FinancialHealthDiagnosticModal } from "../components/statistics/FinancialHealthDiagnosticModal"
+import { isCorrectionTx } from "../lib/financialMath"
 import { format, subDays, subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, getDay, isToday } from "date-fns"
 
 type Range = "week" | "month" | "year" | "all"
@@ -118,6 +122,7 @@ export function StatisticsPage() {
   const [walletFilterType, setWalletFilterType] = useState<"all" | "expense" | "income">("all")
   const [monthOffset, setMonthOffset] = useState(0)
   const [selectedCategoryShift, setSelectedCategoryShift] = useState<any | null>(null)
+  const [healthDiagnosticOpen, setHealthDiagnosticOpen] = useState(false)
   const colors = useChartColors()
 
   const activeMonthDate = useMemo(() => subMonths(now, monthOffset), [now, monthOffset])
@@ -130,7 +135,13 @@ export function StatisticsPage() {
     activeMonthDate
   })
 
-  const isTxCorrection = (t: any) => t.type === "adjustment" || t.note?.toLowerCase().includes("correction") || t.note?.toLowerCase().includes("balance adjustment") || t.note?.toLowerCase().includes("koreksi saldo")
+  const isTxCorrection = isCorrectionTx
+
+  // Phase II: Longitudinal Timeline Trajectory
+  const longitudinal = useMemo(() => {
+    const rangeParam = range === "year" ? "12M" : range === "all" ? "ALL" : "6M"
+    return intel.getLongitudinalTimeline(rangeParam)
+  }, [intel, range])
 
   // 1. Filter by range with exact ISO string boundaries
   const rangeTxs = useMemo(() => {
@@ -372,17 +383,54 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 
   // 4b. Macro Parent (Induk) breakdown
   const parentCategoryStats = useMemo(() => {
-    const parentMap = new Map<string, { name: string; total: number; count: number }>()
+    const parentMap = new Map<string, {
+      name: string
+      emoji: string
+      total: number
+      count: number
+      categoriesList: Array<{ name: string; emoji: string; total: number; count: number }>
+    }>()
+
+    const userCatMap = new Map<string, { emoji: string; budget_amount: number | null }>()
+    categories.forEach(c => userCatMap.set(c.name.trim().toLowerCase(), { emoji: c.emoji, budget_amount: c.budget_amount ?? null }))
+
     rangeTxs.filter(t => t.type === breakdownType).forEach(t => {
       const catName = t.categories?.name || "Lainnya"
       const parentName = getCategoryParent(catName)
+      const meta = userCatMap.get(catName.trim().toLowerCase())
+      const emoji = t.categories?.emoji || meta?.emoji || (breakdownType === "income" ? "/icons/gaji.png" : "/icons/lainnya.png")
       const amt = Number(t.amount || 0)
-      const ex = parentMap.get(parentName)
-      if (ex) { ex.total += amt; ex.count++ }
-      else parentMap.set(parentName, { name: parentName, total: amt, count: 1 })
+
+      let parentEntry = parentMap.get(parentName)
+      if (!parentEntry) {
+        parentEntry = {
+          name: parentName,
+          emoji: getParentIcon(parentName),
+          total: 0,
+          count: 0,
+          categoriesList: []
+        }
+        parentMap.set(parentName, parentEntry)
+      }
+
+      parentEntry.total += amt
+      parentEntry.count++
+
+      let subCat = parentEntry.categoriesList.find(c => c.name === catName)
+      if (!subCat) {
+        subCat = { name: catName, emoji, total: 0, count: 0 }
+        parentEntry.categoriesList.push(subCat)
+      }
+      subCat.total += amt
+      subCat.count++
     })
-    return Array.from(parentMap.values()).sort((a, b) => b.total - a.total)
-  }, [rangeTxs, breakdownType])
+
+    return Array.from(parentMap.values()).map(p => ({
+      ...p,
+      categoriesCount: p.categoriesList.length,
+      categoriesList: p.categoriesList.sort((a, b) => b.total - a.total)
+    })).sort((a, b) => b.total - a.total)
+  }, [rangeTxs, breakdownType, categories])
 
   const activeBreakdownData = groupMode === "parent" ? parentCategoryStats : categoryStats
   const totalBreakdownAmount = activeBreakdownData.reduce((s, c) => s + c.total, 0)
@@ -573,10 +621,20 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
               </p>
             </div>
           </div>
-          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full"
-            style={{ background: "rgba(255,255,255,0.12)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.18)" }}>
-            {healthScore >= 85 ? "Excellent" : healthScore >= 70 ? "Good" : healthScore >= 50 ? "Moderate" : healthScore >= 16 ? "Deficit" : "Critical"}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setHealthDiagnosticOpen(true); triggerHaptic("light"); }}
+              className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+              style={{ background: "rgba(255, 255, 255, 0.15)", color: "#FFFFFF", border: "1px solid rgba(255, 255, 255, 0.2)" }}
+              title="Executive Health Diagnostic"
+            >
+              <Info size={13} />
+            </button>
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full"
+              style={{ background: "rgba(255,255,255,0.12)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.18)" }}>
+              {healthScore >= 85 ? "Excellent" : healthScore >= 70 ? "Good" : healthScore >= 50 ? "Moderate" : healthScore >= 16 ? "Deficit" : "Critical"}
+            </span>
+          </div>
         </div>
         <div className="flex items-end gap-3 mb-3">
           <span className="amount text-[40px] font-extrabold leading-none text-white">{healthScore}</span>
@@ -586,6 +644,32 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
           <div className="h-full rounded-full transition-all duration-700" style={{ width: `${healthScore}%`, background: "#FFFFFF" }} />
         </div>
       </section>
+
+      {/* Monthly Financial Review (when Month view is active - On Top of Personal Baseline) */}
+      {range === "month" && intel.monthlyReview && (
+        <MonthlyReviewSection
+          review={intel.monthlyReview}
+          onCategoryClick={(catName) => {
+            const found = intel.categoryShifts.find(s => s.name.toLowerCase() === catName.toLowerCase())
+            if (found) {
+              setSelectedCategoryShift(found)
+              triggerHaptic("light")
+            }
+          }}
+        />
+      )}
+
+      {/* Personal Baseline (Phase II) */}
+      <PersonalBaselineSection
+        baselines={intel.personalBaselines}
+        onCategoryClick={(catName) => {
+          const found = intel.categoryShifts.find(s => s.name.toLowerCase() === catName.toLowerCase())
+          if (found) {
+            setSelectedCategoryShift(found)
+            triggerHaptic("light")
+          }
+        }}
+      />
 
       {/* 2-column mini stat cards (Savings Rate & Average Expense) */}
       <div className="grid grid-cols-2 gap-3">
@@ -622,19 +706,8 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
         </div>
       </div>
 
-      {/* Monthly Financial Review (when Month view is active) */}
-      {range === "month" && intel.monthlyReview && (
-        <MonthlyReviewSection
-          review={intel.monthlyReview}
-          onCategoryClick={(catName) => {
-            const found = intel.categoryShifts.find(s => s.name.toLowerCase() === catName.toLowerCase())
-            if (found) {
-              setSelectedCategoryShift(found)
-              triggerHaptic("light")
-            }
-          }}
-        />
-      )}
+      {/* Spending Patterns (Phase II) */}
+      <SpendingPatternsSection patterns={intel.behavioralPatterns} />
 
       {/* Category Breakdown */}
       <div className="p-5 rounded-[24px] glass-surface">
@@ -1106,6 +1179,15 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
             <div className="w-2 h-2 rounded-full" style={{ background: colors.barMid }} /> Outflow
           </div>
         </div>
+
+        {/* Phase II: Longitudinal Trajectory Factual Interpretation */}
+        {(range === "year" || range === "all") && (
+          <div className="mt-3.5 pt-3 border-t border-[var(--glass-border)] text-center">
+            <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              {longitudinal.trajectoryInterpretation}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Cumulative Net Worth Line Chart */}
@@ -1215,69 +1297,168 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
         </div>
       )}
 
-      {/* Comprehensive Category Breakdown BottomSheet */}
+      {/* Comprehensive Category & Parent Breakdown BottomSheet (Phase II Relayout) */}
       <BottomSheet isOpen={allDetailsOpen} onClose={() => setAllDetailsOpen(false)}>
-        <div className="p-5 pb-12 space-y-4">
-          <div className="flex justify-between items-start mb-2">
+        <div className="p-5 pb-20 space-y-3.5 safe-area-bottom">
+          {/* Header */}
+          <div className="flex justify-between items-start">
             <div>
               <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>
-                {breakdownType === "expense" ? "All Expense Categories" : "All Income Categories"}
+                {breakdownType === "expense" ? "Expense Breakdown Details" : "Income Breakdown Details"}
               </h3>
-              <p className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                {categoryStats.length} categories · Total {formatRupiah(totalBreakdownAmount)}
+              <p className="text-[12px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                {groupMode === "parent" ? parentCategoryStats.length : categoryStats.length} {groupMode === "parent" ? "parent groups" : "categories"} · Total {formatRupiah(totalBreakdownAmount)}
               </p>
             </div>
           </div>
 
-          <div className="space-y-2.5">
-            {categoryStats.map((cat, i) => {
-              const pct = totalBreakdownAmount > 0 ? ((cat.total / totalBreakdownAmount) * 100).toFixed(1) : "0.0"
-              const barColor = colors.donut[i % colors.donut.length]
-              const shift = intel.categoryShifts.find(s => s.name.toLowerCase() === cat.name.toLowerCase())
+          {/* Group Mode Toggle Inside BottomSheet */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl w-fit" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+            <button
+              onClick={() => { setGroupMode("category"); triggerHaptic("light"); }}
+              className="px-3 py-1 rounded-lg text-[11px] font-bold transition-all"
+              style={{
+                background: groupMode === "category" ? "var(--glass-fill-strong)" : "transparent",
+                color: groupMode === "category" ? "var(--text-primary)" : "var(--text-tertiary)"
+              }}
+            >
+              By Category
+            </button>
+            <button
+              onClick={() => { setGroupMode("parent"); triggerHaptic("light"); }}
+              className="px-3 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1"
+              style={{
+                background: groupMode === "parent" ? "var(--glass-fill-strong)" : "transparent",
+                color: groupMode === "parent" ? "var(--text-primary)" : "var(--text-tertiary)"
+              }}
+            >
+              <Layers size={11} />
+              By Parent (Induk)
+            </button>
+          </div>
 
-              return (
-                <div
-                  key={cat.name}
-                  onClick={() => {
-                    if (shift) {
-                      setSelectedCategoryShift(shift)
-                      triggerHaptic("light")
-                    }
-                  }}
-                  className="p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition-transform select-none"
-                  style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-                      <IconRenderer icon={cat.emoji} size="w-6 h-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-bold truncate" style={{ color: "var(--text-primary)" }}>
+          {/* 2-Column Modern Compact Card Grid */}
+          <div className="grid grid-cols-2 gap-2.5 max-h-[64dvh] overflow-y-auto pb-12 pr-0.5">
+            {groupMode === "category" ? (
+              categoryStats.map((cat, i) => {
+                const pct = totalBreakdownAmount > 0 ? ((cat.total / totalBreakdownAmount) * 100).toFixed(1) : "0.0"
+                const barColor = colors.donut[i % colors.donut.length]
+                const shift = intel.categoryShifts.find(s => s.name.toLowerCase() === cat.name.toLowerCase())
+
+                return (
+                  <div
+                    key={cat.name}
+                    onClick={() => {
+                      if (shift) {
+                        setSelectedCategoryShift(shift)
+                        triggerHaptic("light")
+                      }
+                    }}
+                    className="p-3 rounded-2xl flex flex-col justify-between cursor-pointer active:scale-97 transition-all select-none"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      minHeight: "105px"
+                    }}
+                  >
+                    {/* Top Row: Icon + Name + Percentage */}
+                    <div>
+                      <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+                          <IconRenderer icon={cat.emoji} size="w-4 h-4" />
+                        </div>
+                        <span
+                          className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full amount shrink-0"
+                          style={{
+                            background: "rgba(255, 255, 255, 0.08)",
+                            color: "var(--text-secondary)",
+                            border: "1px solid var(--glass-border)"
+                          }}
+                        >
+                          {pct}%
+                        </span>
+                      </div>
+                      <p className="text-[12px] font-bold truncate" style={{ color: "var(--text-primary)" }} title={cat.name}>
                         {cat.name}
                       </p>
-                      <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                        {shift ? `${shift.isIncrease ? "↑" : "↓"}${shift.pctChange}% MoM · ` : ""}{cat.count} {cat.count === 1 ? "transaction" : "transactions"}
+                    </div>
+
+                    {/* Bottom Row: Amount + Sub-detail + Progress */}
+                    <div className="pt-2">
+                      <p className="amount text-[13px] font-extrabold truncate" style={{ color: "var(--text-primary)" }}>
+                        {formatRupiah(cat.total)}
+                      </p>
+                      <div className="flex items-center justify-between text-[9.5px] mt-0.5 mb-1.5" style={{ color: "var(--text-tertiary)" }}>
+                        <span>{cat.count} txs</span>
+                        {shift && (
+                          <span style={{ color: shift.isIncrease ? "var(--text-primary)" : "var(--text-secondary)" }}>
+                            {shift.isIncrease ? "↑" : "↓"}{shift.pctChange}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: barColor }} />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              parentCategoryStats.map((parent, i) => {
+                const pct = totalBreakdownAmount > 0 ? ((parent.total / totalBreakdownAmount) * 100).toFixed(1) : "0.0"
+                const barColor = colors.donut[i % colors.donut.length]
+
+                return (
+                  <div
+                    key={parent.name}
+                    className="p-3 rounded-2xl flex flex-col justify-between select-none"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      minHeight: "105px"
+                    }}
+                  >
+                    {/* Top Row: Icon + Name + Percentage */}
+                    <div>
+                      <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+                          <IconRenderer icon={parent.emoji} size="w-4 h-4" />
+                        </div>
+                        <span
+                          className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full amount shrink-0"
+                          style={{
+                            background: "rgba(255, 255, 255, 0.08)",
+                            color: "var(--text-secondary)",
+                            border: "1px solid var(--glass-border)"
+                          }}
+                        >
+                          {pct}%
+                        </span>
+                      </div>
+                      <p className="text-[12px] font-bold truncate" style={{ color: "var(--text-primary)" }} title={parent.name}>
+                        {parent.name}
                       </p>
                     </div>
-                  </div>
 
-                  <div className="text-right shrink-0">
-                    <p className="amount text-[14px] font-extrabold" style={{ color: "var(--text-primary)" }}>
-                      {formatRupiah(cat.total)}
-                    </p>
-                    <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                      <div className="w-12 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated-2)" }}>
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor }} />
+                    {/* Bottom Row: Amount + Sub-detail + Progress */}
+                    <div className="pt-2">
+                      <p className="amount text-[13px] font-extrabold truncate" style={{ color: "var(--text-primary)" }}>
+                        {formatRupiah(parent.total)}
+                      </p>
+                      <div className="flex items-center justify-between text-[9.5px] mt-0.5 mb-1.5" style={{ color: "var(--text-tertiary)" }}>
+                        <span>{parent.categoriesCount} categories</span>
+                        <span>{parent.count} txs</span>
                       </div>
-                      <span className="amount text-[11px] font-bold" style={{ color: "var(--text-tertiary)" }}>
-                        {pct}%
-                      </span>
+                      <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: barColor }} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })
+            )}
           </div>
         </div>
       </BottomSheet>
@@ -1286,6 +1467,18 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
         isOpen={!!selectedCategoryShift}
         onClose={() => setSelectedCategoryShift(null)}
         shift={selectedCategoryShift}
+      />
+
+      <FinancialHealthDiagnosticModal
+        isOpen={healthDiagnosticOpen}
+        onClose={() => setHealthDiagnosticOpen(false)}
+        healthScore={healthScore}
+        savingsRate={savingsRate}
+        totalIncome={totalIncome}
+        totalExpense={totalExpense}
+        rangeTitle={rangeTitle}
+        baselines={intel.personalBaselines}
+        categoryShifts={intel.categoryShifts}
       />
     </div>
   )

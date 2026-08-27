@@ -22,7 +22,7 @@ export const CATEGORY_PARENT_MAP: Record<string, string> = {
   "reparasi": "Papan",
   "elektronik": "Papan",
   "laundry": "Papan",
-  "hunian": "Hunian",
+  "hunian": "Papan",
   "asuransi": "Sandang",
   "fashion": "Sandang",
   "perawatan": "Sandang",
@@ -63,9 +63,30 @@ export const CATEGORY_PARENT_MAP: Record<string, string> = {
   "trading": "Keuangan",
 }
 
+export const PARENT_ICON_MAP: Record<string, string> = {
+  "Pangan": "/icons/makanan.png",
+  "Transportasi": "/icons/transportasi.png",
+  "Papan": "/icons/hunian.png",
+  "Sandang": "/icons/fashion.png",
+  "Biaya": "/icons/admin.png",
+  "Sosial": "/icons/donasi.png",
+  "Hiburan": "/icons/hiburan.png",
+  "Komunikasi": "/icons/internet.png",
+  "Keluarga": "/icons/Keluarga.png",
+  "Olahraga": "/icons/olahraga.png",
+  "Keuangan": "/icons/investasi.png",
+  "Personal": "/icons/gadget.png",
+  "Pendapatan": "/icons/gaji.png",
+  "Lainnya": "/icons/lainnya.png"
+}
+
 export function getCategoryParent(categoryName: string): string {
   if (!categoryName) return "Lainnya"
   return CATEGORY_PARENT_MAP[categoryName.trim().toLowerCase()] || "Lainnya"
+}
+
+export function getParentIcon(parentName: string): string {
+  return PARENT_ICON_MAP[parentName] || "/icons/lainnya.png"
 }
 
 // ======================================================================

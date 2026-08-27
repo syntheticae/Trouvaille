@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { BottomSheet } from "../ui/BottomSheet"
 import type { Goal } from "../../hooks/useGoals"
 import { formatRupiah } from "../../lib/utils"
-import { Plus, Trash2, CheckCircle2, TrendingUp } from "lucide-react"
+import { Plus, Trash2, CheckCircle2, TrendingUp, Compass } from "lucide-react"
 import { triggerHaptic } from "../../lib/haptics"
 import { useToast } from "../../contexts/ToastContext"
+import { useAllTransactions } from "../../hooks/useTransactions"
+import { calculatePersonalBaselines, calculateGoalPlanning } from "../../lib/financialMath"
 
 interface GoalDetailModalProps {
   goal: Goal | null
@@ -41,6 +43,14 @@ export function GoalDetailModal({
       setIsSubmitting(false)
     }
   }, [goal, isOpen])
+
+  const { data: allTxs = [] } = useAllTransactions()
+
+  const planning = useMemo(() => {
+    if (!goal) return null
+    const baselines = calculatePersonalBaselines(allTxs)
+    return calculateGoalPlanning(goal, baselines)
+  }, [goal, allTxs])
 
   if (!goal) return null
 
@@ -155,6 +165,52 @@ export function GoalDetailModal({
                 />
               </div>
             </div>
+
+            {/* Planning Trajectory Card (Phase II) */}
+            {planning && (
+              <div
+                className="p-3.5 rounded-[22px] space-y-2.5"
+                style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
+              >
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1.5">
+                    <Compass size={13} style={{ color: "var(--text-tertiary)" }} />
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                      Planning Trajectory
+                    </span>
+                  </div>
+                  <span
+                    className="text-[9px] font-extrabold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: planning.trajectoryStatus === "ON TRACK" || planning.trajectoryStatus === "AHEAD OF TARGET" ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.05)",
+                      color: "var(--text-primary)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {planning.trajectoryStatus}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="p-2 rounded-xl" style={{ background: "var(--glass-fill)" }}>
+                    <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Required Pace</p>
+                    <p className="amount font-extrabold text-[13px] mt-0.5" style={{ color: "var(--text-primary)" }}>
+                      {formatRupiah(planning.requiredMonthlyContribution)} <span className="text-[9px] font-normal" style={{ color: "var(--text-secondary)" }}>/ mo</span>
+                    </p>
+                  </div>
+                  <div className="p-2 rounded-xl" style={{ background: "var(--glass-fill)" }}>
+                    <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Retained Cash</p>
+                    <p className="amount font-extrabold text-[13px] mt-0.5" style={{ color: "var(--text-primary)" }}>
+                      {formatRupiah(planning.historicalRetainedCash)} <span className="text-[9px] font-normal" style={{ color: "var(--text-secondary)" }}>/ mo</span>
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-[11px] leading-relaxed pt-1 border-t border-[var(--glass-border)]" style={{ color: "var(--text-secondary)" }}>
+                  {planning.trajectoryExplanation}
+                </p>
+              </div>
+            )}
 
             {/* Quick Top-Up Section */}
             <div className="space-y-2 pt-1">

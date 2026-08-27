@@ -11,7 +11,7 @@ interface MonthlyReviewSectionProps {
 }
 
 export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   return (
     <section
@@ -98,6 +98,33 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
                   </p>
                 </div>
               </div>
+
+              {/* Baseline Historical Context Banner */}
+              {review.baselineComparison && (
+                <div
+                  className="p-3 rounded-2xl flex items-center justify-between"
+                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                >
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                      Historical Baseline
+                    </p>
+                    <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
+                      {review.baselineComparison.statusText}
+                    </p>
+                  </div>
+                  <span
+                    className="text-[10px] font-extrabold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "rgba(255, 255, 255, 0.08)",
+                      color: "var(--text-secondary)",
+                      border: "1px solid var(--glass-border)"
+                    }}
+                  >
+                    Band: {review.baselineComparison.typicalRangeText}
+                  </span>
+                </div>
+              )}
 
               {/* 2. What Changed (MoM) */}
               {review.whatChanged.length > 0 && (
