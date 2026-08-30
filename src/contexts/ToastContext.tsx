@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef } from "react"
 import type { ReactNode } from "react"
+import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { Check, RotateCcw, Trash2, Plus, Info } from "lucide-react"
 
@@ -33,7 +34,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       message: string,
       actionType: ToastActionType = "info",
       onExecuteOrUndo?: (() => void) | null,
-      delayMs = 3000,
+      delayMs = 3500,
       onCancel?: () => void
     ) => {
       const id = Math.random().toString(36)
@@ -99,50 +100,54 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const toastContent = (
+    <AnimatePresence>
+      {toast && (
+        <motion.div
+          key={toast.id}
+          initial={{ opacity: 0, y: 35, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          transition={{ type: "spring", damping: 25, stiffness: 350 }}
+          className="fixed bottom-[calc(92px+env(safe-area-inset-bottom))] left-4 right-4 z-[999999] flex items-center justify-between p-3.5 px-4 rounded-[24px] pointer-events-auto shadow-2xl"
+          style={{ 
+            background: "var(--bg-elevated)", 
+            border: "1px solid var(--glass-border)",
+            boxShadow: "0 14px 45px rgba(0,0,0,0.5)",
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)"
+          }}
+        >
+          <div className="flex items-center gap-3 min-w-0 pr-2">
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 shadow-sm"
+              style={getIconBg(toast.actionType)}
+            >
+              {getIcon(toast.actionType)}
+            </div>
+            <p className="text-[13.5px] font-bold truncate leading-tight" style={{ color: "var(--text-primary)" }}>
+              {toast.message}
+            </p>
+          </div>
+
+          {toast.onUndo && (
+            <button
+              onClick={toast.onUndo}
+              className="px-3.5 py-1.5 rounded-full text-[12px] font-extrabold flex items-center gap-1 active:scale-95 transition-transform shrink-0"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            >
+              <RotateCcw size={12} /> Undo
+            </button>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: 35, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="fixed bottom-[95px] left-4 right-4 z-[99999] flex items-center justify-between p-3.5 px-4 rounded-[24px] pointer-events-auto"
-            style={{ 
-              background: "var(--bg-elevated)", 
-              border: "1px solid var(--glass-border)",
-              boxShadow: "0 12px 40px var(--shadow-strength)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)"
-            }}
-          >
-            <div className="flex items-center gap-3 min-w-0 pr-2">
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 shadow-sm"
-                style={getIconBg(toast.actionType)}
-              >
-                {getIcon(toast.actionType)}
-              </div>
-              <p className="text-[13.5px] font-bold truncate leading-tight" style={{ color: "var(--text-primary)" }}>
-                {toast.message}
-              </p>
-            </div>
-
-            {toast.onUndo && (
-              <button
-                onClick={toast.onUndo}
-                className="px-3.5 py-1.5 rounded-full text-[12px] font-extrabold flex items-center gap-1 active:scale-95 transition-transform shrink-0"
-                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-              >
-                <RotateCcw size={12} /> Undo
-              </button>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {typeof document !== "undefined" ? createPortal(toastContent, document.body) : toastContent}
     </ToastContext.Provider>
   )
 }
