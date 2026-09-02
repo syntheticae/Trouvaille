@@ -37,7 +37,7 @@ export async function fetchAllTransactionsFromSupabase(
   const user = session?.user
   const effectiveUserId = filters?.userId || user?.id
 
-  const pageSize = 1000
+  const pageSize = 500 // Smaller pages for more realistic progress
   let from = 0
   const allRecords: Transaction[] = []
   let hasMore = true
@@ -96,6 +96,11 @@ export async function fetchAllTransactionsFromSupabase(
 
     if (onPageFetched) {
       onPageFetched(allRecords.length, serverTotalCount)
+    }
+
+    // Add small delay to allow UI to update progress realistically
+    if (serverTotalCount && serverTotalCount > 1000) {
+      await new Promise(resolve => setTimeout(resolve, 50))
     }
 
     if (serverTotalCount !== null && allRecords.length >= serverTotalCount) {

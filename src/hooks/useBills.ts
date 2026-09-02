@@ -167,10 +167,12 @@ export function useMarkBillPaid() {
       return data as Bill
     },
     onSuccess: (updated) => {
+      // Update the bills query cache immediately
       qc.setQueryData<Bill[]>(["bills"], (old) => {
-        if (!old) return []
+        if (!old) return [updated]
         return old.map(b => b.id === updated.id ? updated : b).sort((a, b) => a.due_date.localeCompare(b.due_date))
       })
+      // Also invalidate to ensure sync with server
       qc.invalidateQueries({ queryKey: ["bills"] })
     },
   })
