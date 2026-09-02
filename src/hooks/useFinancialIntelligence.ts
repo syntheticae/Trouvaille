@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { getDaysInMonth, subMonths } from "date-fns"
-import type { Transaction, Bill, Category, Goal } from "../lib/types"
+import type { Transaction, Bill, Category, Goal, Wallet } from "../lib/types"
 import {
   computeMonthAggregates,
   computeSpendingPace,
@@ -13,6 +13,11 @@ import {
   detectBehavioralPatterns,
   calculateLongitudinalTimeline,
   calculateGoalPlanning,
+  detectRecurringTransactions,
+  calculateExpenseStructure,
+  calculateCashflowFloor,
+  calculateLiquidityHorizon,
+  calculateWalletBalances,
   type BudgetRiskLevel,
   type CategoryMoMShift,
   type ActionCenterInsight,
@@ -20,7 +25,11 @@ import {
   type PersonalBaselineResult,
   type BehavioralPattern,
   type LongitudinalTimelineResult,
-  type GoalPlanningResult
+  type GoalPlanningResult,
+  type DetectedRecurringItem,
+  type ExpenseStructureResult,
+  type CashflowFloorResult,
+  type LiquidityHorizonResult
 } from "../lib/financialMath"
 
 export type {
@@ -31,7 +40,11 @@ export type {
   PersonalBaselineResult,
   BehavioralPattern,
   LongitudinalTimelineResult,
-  GoalPlanningResult
+  GoalPlanningResult,
+  DetectedRecurringItem,
+  ExpenseStructureResult,
+  CashflowFloorResult,
+  LiquidityHorizonResult
 }
 export type MomentumState = "positive" | "neutral" | "negative"
 
@@ -41,6 +54,7 @@ interface FinancialIntelligenceOptions {
   totalAssets: number
   bills: Bill[]
   categories?: Category[]
+  wallets?: Wallet[]
   activeMonthDate?: Date
 }
 
@@ -50,6 +64,7 @@ export function useFinancialIntelligence({
   totalAssets,
   bills,
   categories = [],
+  wallets = [],
   activeMonthDate = new Date()
 }: FinancialIntelligenceOptions) {
   return useMemo(() => {
@@ -193,6 +208,43 @@ export function useFinancialIntelligence({
       }
     }
 
+    // ==========================================
+    // PHASE III: CASHFLOW INTELLIGENCE & STRUCTURE
+    // ==========================================
+
+    // 14. Recurring Transaction Detection
+    const recurringItems = useMemo(() => {
+      return detectRecurringTransactions(transactions, bills, categories, now)
+    }, [transactions, bills, categories, now])
+
+    // 15. Expense Structure Analysis (Fixed/Variable/Discretionary)
+    const expenseStructure = useMemo(() => {
+      const currentMonthTxs = getMonthTransactions(transactions, currentYear, currentMonth)
+      return calculateExpenseStructure(currentMonthTxs, recurringItems, {}, now)
+    }, [transactions, recurringItems, currentYear, currentMonth, now])
+
+    // 16. Cashflow Floor Projection (7/14/30 days)
+    const cashflowFloor = useMemo(() => {
+      const walletBalances = calculateWalletBalances(transactions, wallets)
+      const currentBalance = walletBalances.totalAssets
+      return calculateCashflowFloor(currentBalance, bills, recurringItems, transactions, now)
+    }, [transactions, wallets, bills, recurringItems, now])
+
+    // 17. Liquidity Horizon Analysis
+    const liquidityHorizon = useMemo(() => {
+      const walletBalances = calculateWalletBalances(transactions, wallets)
+      const liquidAccounts = walletBalances.allAccounts
+        .filter(a => a.balance > 0)
+        .map(a => ({ name: a.name, balance: a.balance, icon: a.icon }))
+      
+      return calculateLiquidityHorizon(
+        walletBalances.totalAssets,
+        personalBaselines,
+        expenseStructure,
+        liquidAccounts
+      )
+    }, [transactions, wallets, personalBaselines, expenseStructure])
+
     return {
       daysElapsed,
       totalDays,
@@ -232,7 +284,12 @@ export function useFinancialIntelligence({
       categoryShifts,
       categoryMoMMap,
       explainCategory,
-      explainExpenseChange
+      explainExpenseChange,
+      // Phase III Cashflow Intelligence
+      recurringItems,
+      expenseStructure,
+      cashflowFloor,
+      liquidityHorizon
     }
-  }, [transactions, budgetTarget, totalAssets, bills, categories, activeMonthDate])
+  }, [transactions, budgetTarget, totalAssets, bills, categories, wallets, activeMonthDate])
 }

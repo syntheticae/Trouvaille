@@ -150,8 +150,8 @@ export function FinancialHealthDiagnosticModal({
             </div>
             <div className="p-2 rounded-xl" style={{ background: "var(--glass-fill)" }}>
               <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Burn Ratio</p>
-              <p className="amount text-[13px] font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
-                {diagnostic.operatingRatio > 999 ? ">999%" : `${diagnostic.operatingRatio.toFixed(0)}%`}
+              <p className="amount text-[13px] font-extrabold mt-0.5 truncate" style={{ color: "var(--text-primary)" }}>
+                {diagnostic.operatingRatio > 999 ? ">999%" : diagnostic.operatingRatio > 1000 ? `${diagnostic.operatingRatio.toFixed(0)}%` : `${diagnostic.operatingRatio.toFixed(1)}%`}
               </p>
             </div>
           </div>

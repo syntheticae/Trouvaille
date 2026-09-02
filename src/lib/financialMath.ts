@@ -545,7 +545,7 @@ export function calculateAssetTrend(
     const startBal = temp
     diff = currentBalance - startBal
     percent = startBal === 0 ? 0 : (diff / Math.abs(startBal)) * 100
-  } else if (stockRange === "YTD" || stockRange === "1Y") {
+  } else if (stockRange === "YTD") {
     const currentYear = now.getFullYear()
     let temp = 0
     for (let m = 0; m <= now.getMonth(); m++) {
@@ -563,11 +563,11 @@ export function calculateAssetTrend(
     const startBal = chartData[0]?.balance ?? 0
     diff = currentBalance - startBal
     percent = startBal === 0 ? 0 : (diff / Math.abs(startBal)) * 100
-  } else {
-    // ALL Time
-    let temp = 0
-    for (let i = 7; i >= 0; i--) {
-      const d = subMonths(now, i)
+  } else if (stockRange === "1Y") {
+    // Last 12 months ending current month
+    let temp = currentBalance
+    for (let m = 11; m >= 0; m--) {
+      const d = subMonths(now, m)
       const mKey = format(d, "yyyy-MM")
       const mTxs = transactions.filter(t => t.occurred_on?.startsWith(mKey))
       const mIn = mTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
@@ -575,11 +575,37 @@ export function calculateAssetTrend(
 
       periodInflow += mIn
       periodOutflow += mOut
-      temp += (mIn - mOut)
-      chartData.push({ label: format(d, "MMM yy"), balance: temp })
+      temp = temp - (mIn - mOut)
+      chartData.unshift({ label: format(d, "MMM yy"), balance: temp })
     }
-    diff = currentBalance
-    percent = chartData[0]?.balance ? ((currentBalance - chartData[0].balance) / Math.abs(chartData[0].balance)) * 100 : 100
+    const startBal = chartData[0]?.balance ?? 0
+    diff = currentBalance - startBal
+    percent = startBal === 0 ? 0 : (diff / Math.abs(startBal)) * 100
+  } else {
+    // ALL Time - cumulative from beginning
+    let temp = 0
+    const allMonths = new Set<string>()
+    transactions.forEach(t => {
+      if (t.occurred_on && /^\d{4}-\d{2}/.test(t.occurred_on)) {
+        allMonths.add(t.occurred_on.substring(0, 7))
+      }
+    })
+    const sortedMonths = Array.from(allMonths).sort()
+    
+    for (const mKey of sortedMonths) {
+      const mTxs = transactions.filter(t => t.occurred_on?.startsWith(mKey))
+      const mIn = mTxs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
+      const mOut = mTxs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+
+      periodInflow += mIn
+      periodOutflow += mOut
+      temp += (mIn - mOut)
+      const [year, month] = mKey.split("-").map(Number)
+      chartData.push({ label: format(new Date(year, month - 1, 1), "MMM yy"), balance: temp })
+    }
+    const startBal = chartData[0]?.balance ?? 0
+    diff = currentBalance - startBal
+    percent = startBal === 0 ? 0 : (diff / Math.abs(startBal)) * 100
   }
 
   const balances = chartData.map(d => d.balance)
