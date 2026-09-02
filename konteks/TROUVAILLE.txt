@@ -1,0 +1,19 @@
+TROUVAILLE — Comprehensive Project Overview & Architecture Guide
+
+> Trouvaille (bahasa Prancis: penemuan berharga yang tak disengaja) adalah aplikasi pelacak dan manajemen keuangan pribadi (personal expense tracker & financial intelligence) yang didesain secara elegan dengan bahasa visual Monochrome Glassmorphism, performa instan setara aplikasi native iOS, serta integrasi cloud backend Supabase dan distribusi sideload tanpa komputer menggunakan SideStore.
+
+---
+
+1. 🏗️ Identitas & Arsitektur Teknologi
+
+A. Core Tech Stack
+| Layer | Teknologi | Fungsi & Peran |
+| :--- | :--- | :--- |
+| Frontend Framework | React 18 + TypeScript | Logika komponen antarmuka modular, type safety ketat, dan pengelolaan state reaktif. |
+| Build Tool & Bundler | Vite + SWC | Kompilasi ultra-cepat dengan Hot Module Replacement (HMR) dan optimalisasi bundle produksi. |
+| Styling & Design System | Tailwind CSS + CSS Variables | Desain bertema pure monochrome (hitam-putih minimalis), frosted glass backdrop-filter, tabular-nums, dan safe-area iOS. |
+| Animation Engine | Framer Motion | Animasi spring physics, transisi halus bottom sheet, pull-to-refresh, dan efek interaktif swipe. |
+| Data Fetching & Cache | TanStack Query (React Query) | Pengelolaan cache in-memory instan, optimistic updates, sinkronisasi background, dan zero-latency screen transitions. |
+| Backend & Database | Supabase (PostgreSQL) | Relational database PostgreSQL, Row Level Security (RLS) per user UUID, Supabase Auth, dan RESTful PostgREST API. |
+| Native Bridge & Hardware | Capacitor iOS Core & Haptics | Hardware tactile vibration (light, medium, heavy, success), safe-area insets, dan akses sistem operasi iOS. |
+| CI/CD & Mobile Packaging | GitHub Actions + SideStore | Otomasi build cloud macOS yang menghasilkan file `.ipa` (unsigned IPA) setiap kali push ke repository `main`, siap di-sideload langsung via iPhone. |
