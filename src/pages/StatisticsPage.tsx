@@ -39,6 +39,7 @@ import { IconRenderer } from "../components/ui/IconRenderer";
 import { useTheme } from "../contexts/ThemeContext";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useBills } from "../hooks/useBills";
+import { useGoals } from "../hooks/useGoals";
 import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { MonthlyReviewSection } from "../components/statistics/MonthlyReviewSection";
@@ -47,7 +48,14 @@ import { SpendingPatternsSection } from "../components/statistics/SpendingPatter
 import { ExpenseStructureCard } from "../components/statistics/ExpenseStructureCard";
 import { CategoryDrillDownSheet } from "../components/statistics/CategoryDrillDownSheet";
 import { FinancialHealthDiagnosticModal } from "../components/statistics/FinancialHealthDiagnosticModal";
-import { isCorrectionTx } from "../lib/financialMath";
+import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
+import { PersonalFinancialModelCard } from "../components/home/PersonalFinancialModelCard";
+import { PersonalFinancialModelSheet } from "../components/home/PersonalFinancialModelSheet";
+import {
+  calculateAssetTrend,
+  calculateWhatIfScenario,
+  isCorrectionTx,
+} from "../lib/financialMath";
 import {
   format,
   subDays,
@@ -221,9 +229,11 @@ export function StatisticsPage() {
   const now = new Date();
   const { data: allTxs = [] } = useAllTransactions();
   const { data: wallets = [] } = useWallets();
-  const { totalAssets, liquidAssets, liquidAccounts } = useWalletBalances();
+  const { totalAssets, liquidAssets, liquidAccounts, netWorth, zeroAccounts } =
+    useWalletBalances();
   const { data: categories = [] } = useCategories();
   const { data: bills = [] } = useBills();
+  const { goals } = useGoals();
   const { budgetTarget } = useBudgetTarget();
   const [walletFilterType, setWalletFilterType] = useState<
     "all" | "expense" | "income"
@@ -233,6 +243,10 @@ export function StatisticsPage() {
     any | null
   >(null);
   const [healthDiagnosticOpen, setHealthDiagnosticOpen] = useState(false);
+  const [personalModelOpen, setPersonalModelOpen] = useState(false);
+  const [hideBalance] = useState(
+    () => localStorage.getItem("trouvaille_hide_balance") === "true",
+  );
   const colors = useChartColors();
 
   const activeMonthDate = useMemo(
@@ -336,6 +350,133 @@ export function StatisticsPage() {
     () => getDelta(totalIncome - totalExpense, prevIncome - prevExpense),
     [totalIncome, totalExpense, prevIncome, prevExpense],
   );
+
+  const modelRange =
+    range === "week" ? "1W" : range === "month" ? "1M" : range === "year" ? "1Y" : "ALL";
+
+  const assetTrend = useMemo(
+    () => calculateAssetTrend(allTxs, totalAssets, modelRange),
+    [allTxs, modelRange, totalAssets],
+  );
+
+  const debtBalance = useMemo(() => {
+    return zeroAccounts.reduce(
+      (sum: number, account: { balance: number }) =>
+        account.balance < 0 ? sum + Math.abs(account.balance) : sum,
+      0,
+    );
+  }, [zeroAccounts]);
+
+  const modelScenario = useMemo(
+    () =>
+      calculateWhatIfScenario({
+        monthlyIncome: intel.totalIncome,
+        monthlyExpense: intel.totalExpense,
+        type: "expense_cut",
+        value: 500000,
+      }),
+    [intel.totalExpense, intel.totalIncome],
+  );
+
+  const goalTrajectoryText = useMemo(() => {
+    if (!goals.length) return "Add a goal to simulate timeline scenarios.";
+    const primaryGoal = goals[0];
+    const planning = intel.getGoalPlanning(primaryGoal);
+    const required =
+      planning.requiredMonthlyContribution.toLocaleString("id-ID");
+    return `${primaryGoal.title}: need ~Rp ${required}/month (${planning.trajectoryStatus}).`;
+  }, [goals, intel]);
+
+  const personalBaselineText = useMemo(() => {
+    const baseline = intel.personalBaselines;
+    if (baseline.status === "insufficient") {
+      return (
+        baseline.message ||
+        "Not enough history yet for a stable personal baseline."
+      );
+    }
+    return `Typical expense ${formatRupiah(baseline.medianExpense)}/month with median retained cash ${formatRupiah(Math.max(0, baseline.medianNetCashflow))}/month.`;
+  }, [intel.personalBaselines]);
+
+  const personalFinancialModel = useMemo(() => {
+    const actualCommitted = Math.max(0, intel.committedAmount);
+    const actualVariable = Math.max(0, intel.totalExpense - actualCommitted);
+    const actualRetained = intel.netCashflow;
+
+    const baselineCommitted = Math.max(
+      0,
+      intel.liquidityHorizon.typicalCommittedOutflow,
+    );
+    const baselineExpense = Math.max(0, intel.personalBaselines.medianExpense);
+    const baselineVariable = Math.max(0, baselineExpense - baselineCommitted);
+    const baselineRetained = intel.personalBaselines.medianNetCashflow;
+
+    const scenarioCommitted = actualCommitted;
+    const scenarioVariable = Math.max(
+      0,
+      modelScenario.adjustedMonthlyExpense - scenarioCommitted,
+    );
+    const scenarioRetained =
+      modelScenario.adjustedMonthlyIncome -
+      modelScenario.adjustedMonthlyExpense;
+
+    return {
+      actual: {
+        income: Math.max(0, intel.totalIncome),
+        committedExpenses: actualCommitted,
+        variableExpenses: actualVariable,
+        retainedCash: actualRetained,
+        savingsInvestment: Math.max(0, actualRetained),
+        assets: Math.max(0, totalAssets),
+        liabilities: debtBalance,
+        netWorth,
+      },
+      baseline: {
+        income: Math.max(0, intel.personalBaselines.medianIncome),
+        committedExpenses: baselineCommitted,
+        variableExpenses: baselineVariable,
+        retainedCash: baselineRetained,
+        savingsInvestment: Math.max(0, baselineRetained),
+        assets: Math.max(0, totalAssets),
+        liabilities: debtBalance,
+        netWorth,
+      },
+      scenario: {
+        income: Math.max(0, modelScenario.adjustedMonthlyIncome),
+        committedExpenses: scenarioCommitted,
+        variableExpenses: scenarioVariable,
+        retainedCash: scenarioRetained,
+        savingsInvestment: Math.max(0, scenarioRetained),
+        assets: Math.max(0, totalAssets + modelScenario.monthlyDifference),
+        liabilities: debtBalance,
+        netWorth: netWorth + modelScenario.monthlyDifference,
+      },
+      insights: {
+        currentNetWorth: netWorth,
+        historicalTrendLabel: `Historical Trend (${modelRange})`,
+        historicalTrendValue: `${assetTrend.diff >= 0 ? "+" : "-"}${formatRupiah(Math.abs(assetTrend.diff))} (${assetTrend.percent.toFixed(1)}%)`,
+        currentCashflow: intel.netCashflow,
+        personalBaseline: personalBaselineText,
+        upcomingCommitments: intel.committedAmount,
+        goalTrajectory: goalTrajectoryText,
+        scenarioImpact: `If expense drops Rp500K/month, retained cash changes by ${modelScenario.annualDifference >= 0 ? "+" : "-"}${formatRupiah(Math.abs(modelScenario.annualDifference))}/year.`,
+      },
+    };
+  }, [
+    assetTrend.diff,
+    assetTrend.percent,
+    debtBalance,
+    goalTrajectoryText,
+    intel,
+    modelRange,
+    modelScenario.adjustedMonthlyExpense,
+    modelScenario.adjustedMonthlyIncome,
+    modelScenario.annualDifference,
+    modelScenario.monthlyDifference,
+    netWorth,
+    personalBaselineText,
+    totalAssets,
+  ]);
 
   const healthScore = useMemo(() => {
     if (totalIncome === 0 && totalExpense === 0) return 75;
@@ -957,6 +1098,23 @@ export function StatisticsPage() {
           </button>
         </div>
       )}
+
+      <WhatIfSimulatorCard
+        monthlyIncome={intel.totalIncome}
+        monthlyExpense={intel.totalExpense}
+        hideBalance={hideBalance}
+      />
+      <PersonalFinancialModelCard
+        hideBalance={hideBalance}
+        actual={personalFinancialModel.actual}
+        baseline={personalFinancialModel.baseline}
+        scenario={personalFinancialModel.scenario}
+        insights={personalFinancialModel.insights}
+        onOpenDetails={() => {
+          setPersonalModelOpen(true);
+          triggerHaptic("light");
+        }}
+      />
 
       {/* Financial Health Hero */}
       <section className="card-contrast-hero p-5 relative overflow-hidden">
@@ -2541,6 +2699,16 @@ export function StatisticsPage() {
         isOpen={!!selectedCategoryShift}
         onClose={() => setSelectedCategoryShift(null)}
         shift={selectedCategoryShift}
+      />
+
+      <PersonalFinancialModelSheet
+        isOpen={personalModelOpen}
+        onClose={() => setPersonalModelOpen(false)}
+        hideBalance={hideBalance}
+        actual={personalFinancialModel.actual}
+        baseline={personalFinancialModel.baseline}
+        scenario={personalFinancialModel.scenario}
+        insights={personalFinancialModel.insights}
       />
 
       <FinancialHealthDiagnosticModal

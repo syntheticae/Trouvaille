@@ -66,8 +66,11 @@ import {
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet";
+import { FinancialSnapshotCard } from "../components/home/FinancialSnapshotCard";
 import { requestNotificationPermission } from "../lib/notifications";
 import { syncAllFamfinaToSupabase } from "../lib/famfinaResolver";
+import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence";
+import { useFinancialSnapshots } from "../hooks/useFinancialSnapshots";
 import {
   detectRecurringTransactions,
   type DetectedRecurringItem,
@@ -86,6 +89,9 @@ export function SettingsPage() {
   const { session } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
+  const [hideBalance] = useState(
+    () => localStorage.getItem("trouvaille_hide_balance") === "true",
+  );
   const { budgetTarget, setBudgetTarget } = useBudgetTarget();
   const { shortcuts, saveShortcut, deleteShortcut } = useShortcuts();
 
@@ -114,7 +120,52 @@ export function SettingsPage() {
   const addTx = useAddTransaction();
 
   // Centralized Live Wallet Balances (100% synchronized with Portfolio Breakdown)
-  const { balancesById, balancesByName, allTxs } = useWalletBalances();
+  const {
+    balancesById,
+    balancesByName,
+    allTxs,
+    totalAssets,
+    liquidAssets,
+    liquidAccounts,
+    netWorth,
+    zeroAccounts,
+  } = useWalletBalances();
+  const { snapshots, saveSnapshot } = useFinancialSnapshots();
+  const intel = useFinancialIntelligence({
+    transactions: allTxs,
+    budgetTarget,
+    totalAssets,
+    liquidAssets,
+    liquidAccounts,
+    bills,
+    categories,
+  });
+  const debtBalance = useMemo(() => {
+    return zeroAccounts.reduce(
+      (sum: number, account: { balance: number }) =>
+        account.balance < 0 ? sum + Math.abs(account.balance) : sum,
+      0,
+    );
+  }, [zeroAccounts]);
+  const currentSnapshotPreview = useMemo(
+    () => ({
+      periodLabel: format(new Date(), "MMMM yyyy"),
+      totalLiquidAssets: liquidAssets,
+      netWorth,
+      monthlyExpense: intel.totalExpense,
+      savingsRate: intel.savingsRate,
+      committedAmount: intel.committedAmount,
+      debtBalance,
+    }),
+    [
+      debtBalance,
+      intel.committedAmount,
+      intel.savingsRate,
+      intel.totalExpense,
+      liquidAssets,
+      netWorth,
+    ],
+  );
 
   // Editing states
   const [editingBill, setEditingBill] = useState<any>(null);
@@ -944,6 +995,30 @@ export function SettingsPage() {
           </button>
         </div>
       </section>
+
+      <FinancialSnapshotCard
+        currentPreview={currentSnapshotPreview}
+        snapshots={snapshots}
+        hideBalance={hideBalance}
+        onSaveSnapshot={() => {
+          const result = saveSnapshot({
+            totalLiquidAssets: currentSnapshotPreview.totalLiquidAssets,
+            netWorth: currentSnapshotPreview.netWorth,
+            monthlyExpense: currentSnapshotPreview.monthlyExpense,
+            savingsRate: currentSnapshotPreview.savingsRate,
+            committedAmount: currentSnapshotPreview.committedAmount,
+            debtBalance: currentSnapshotPreview.debtBalance,
+          });
+          triggerHaptic("medium");
+          showToast(
+            result.updatedExisting
+              ? `Snapshot ${result.snapshot.periodLabel} updated`
+              : `Snapshot ${result.snapshot.periodLabel} saved`,
+            "add",
+            () => {},
+          );
+        }}
+      />
 
       {/* ============================================================ */}
       {/* 4. DATA & STORAGE SECTION */}
