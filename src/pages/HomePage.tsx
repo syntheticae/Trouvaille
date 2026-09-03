@@ -73,6 +73,7 @@ import { CashflowOutlookCard } from "../components/home/CashflowOutlookCard";
 import { FinancialSnapshotCard } from "../components/home/FinancialSnapshotCard";
 import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
 import { PersonalFinancialModelCard } from "../components/home/PersonalFinancialModelCard";
+import { PersonalFinancialModelSheet } from "../components/home/PersonalFinancialModelSheet";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence";
@@ -136,6 +137,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const isDark = theme !== "light";
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [personalModelOpen, setPersonalModelOpen] = useState(false);
   const [stockRange, setStockRange] = useState<StockRange>("1W");
   const [hideBalance, setHideBalance] = useState(
     () => localStorage.getItem("trouvaille_hide_balance") === "true",
@@ -791,6 +793,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         baseline={personalFinancialModel.baseline}
         scenario={personalFinancialModel.scenario}
         insights={personalFinancialModel.insights}
+        onOpenDetails={() => {
+          setPersonalModelOpen(true);
+          triggerHaptic("light");
+        }}
       />
 
       {/* 3. 2x2 FINANCIAL INSIGHTS GRID */}
@@ -1775,6 +1781,15 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         onClose={() => setMetricDrillDown(null)}
         type={metricDrillDown?.type || null}
         data={metricDrillDown?.data || null}
+      />
+      <PersonalFinancialModelSheet
+        isOpen={personalModelOpen}
+        onClose={() => setPersonalModelOpen(false)}
+        hideBalance={hideBalance}
+        actual={personalFinancialModel.actual}
+        baseline={personalFinancialModel.baseline}
+        scenario={personalFinancialModel.scenario}
+        insights={personalFinancialModel.insights}
       />
     </div>
   );

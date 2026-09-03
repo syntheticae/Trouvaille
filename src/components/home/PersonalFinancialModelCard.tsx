@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { ArrowDown, Layers3 } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 
-type ModelLayer = "actual" | "baseline" | "scenario";
+export type ModelLayer = "actual" | "baseline" | "scenario";
 
-interface ModelFlowValues {
+export interface ModelFlowValues {
   income: number;
   committedExpenses: number;
   variableExpenses: number;
@@ -15,21 +15,24 @@ interface ModelFlowValues {
   netWorth: number;
 }
 
+export interface PersonalFinancialModelInsights {
+  currentNetWorth: number;
+  historicalTrendLabel: string;
+  historicalTrendValue: string;
+  currentCashflow: number;
+  personalBaseline: string;
+  upcomingCommitments: number;
+  goalTrajectory: string;
+  scenarioImpact: string;
+}
+
 interface PersonalFinancialModelCardProps {
   hideBalance?: boolean;
   actual: ModelFlowValues;
   baseline: ModelFlowValues;
   scenario: ModelFlowValues;
-  insights: {
-    currentNetWorth: number;
-    historicalTrendLabel: string;
-    historicalTrendValue: string;
-    currentCashflow: number;
-    personalBaseline: string;
-    upcomingCommitments: number;
-    goalTrajectory: string;
-    scenarioImpact: string;
-  };
+  insights: PersonalFinancialModelInsights;
+  onOpenDetails?: () => void;
 }
 
 function amountLabel(amount: number, hide: boolean) {
@@ -43,6 +46,7 @@ export function PersonalFinancialModelCard({
   baseline,
   scenario,
   insights,
+  onOpenDetails,
 }: PersonalFinancialModelCardProps) {
   const [layer, setLayer] = useState<ModelLayer>("actual");
 
@@ -142,7 +146,10 @@ export function PersonalFinancialModelCard({
             return (
               <div key={row.key}>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-bold" style={{ color: "var(--text-primary)" }}>
+                  <p
+                    className="text-[11px] font-bold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {row.label}
                   </p>
                   <p
@@ -160,7 +167,10 @@ export function PersonalFinancialModelCard({
                 </div>
                 {idx < rows.length - 1 && (
                   <div className="flex justify-center py-0.5">
-                    <ArrowDown size={11} style={{ color: "var(--text-tertiary)" }} />
+                    <ArrowDown
+                      size={11}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
                   </div>
                 )}
               </div>
@@ -170,29 +180,55 @@ export function PersonalFinancialModelCard({
       </div>
 
       <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2">
-        <div className="p-2.5 rounded-xl" style={{ background: "var(--glass-fill)" }}>
+        <div
+          className="p-2.5 rounded-xl"
+          style={{ background: "var(--glass-fill)" }}
+        >
           <p style={{ color: "var(--text-tertiary)" }}>Current Net Worth</p>
-          <p className="font-bold amount mt-0.5" style={{ color: "var(--text-primary)" }}>
+          <p
+            className="font-bold amount mt-0.5"
+            style={{ color: "var(--text-primary)" }}
+          >
             {amountLabel(insights.currentNetWorth, hideBalance)}
           </p>
         </div>
-        <div className="p-2.5 rounded-xl" style={{ background: "var(--glass-fill)" }}>
-          <p style={{ color: "var(--text-tertiary)" }}>{insights.historicalTrendLabel}</p>
-          <p className="font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>
+        <div
+          className="p-2.5 rounded-xl"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <p style={{ color: "var(--text-tertiary)" }}>
+            {insights.historicalTrendLabel}
+          </p>
+          <p
+            className="font-bold mt-0.5"
+            style={{ color: "var(--text-primary)" }}
+          >
             {insights.historicalTrendValue}
           </p>
         </div>
-        <div className="p-2.5 rounded-xl" style={{ background: "var(--glass-fill)" }}>
+        <div
+          className="p-2.5 rounded-xl"
+          style={{ background: "var(--glass-fill)" }}
+        >
           <p style={{ color: "var(--text-tertiary)" }}>Current Cashflow</p>
-          <p className="font-bold amount mt-0.5" style={{ color: "var(--text-primary)" }}>
+          <p
+            className="font-bold amount mt-0.5"
+            style={{ color: "var(--text-primary)" }}
+          >
             {hideBalance
               ? "Rp ••••••••"
               : `${insights.currentCashflow >= 0 ? "+" : "-"}${formatRupiah(Math.abs(insights.currentCashflow))}`}
           </p>
         </div>
-        <div className="p-2.5 rounded-xl" style={{ background: "var(--glass-fill)" }}>
+        <div
+          className="p-2.5 rounded-xl"
+          style={{ background: "var(--glass-fill)" }}
+        >
           <p style={{ color: "var(--text-tertiary)" }}>Upcoming Commitments</p>
-          <p className="font-bold amount mt-0.5" style={{ color: "var(--text-primary)" }}>
+          <p
+            className="font-bold amount mt-0.5"
+            style={{ color: "var(--text-primary)" }}
+          >
             {amountLabel(insights.upcomingCommitments, hideBalance)}
           </p>
         </div>
@@ -207,18 +243,39 @@ export function PersonalFinancialModelCard({
         }}
       >
         <p>
-          <strong style={{ color: "var(--text-primary)" }}>Personal Baseline:</strong>{" "}
+          <strong style={{ color: "var(--text-primary)" }}>
+            Personal Baseline:
+          </strong>{" "}
           {insights.personalBaseline}
         </p>
         <p>
-          <strong style={{ color: "var(--text-primary)" }}>Goal Trajectory:</strong>{" "}
+          <strong style={{ color: "var(--text-primary)" }}>
+            Goal Trajectory:
+          </strong>{" "}
           {insights.goalTrajectory}
         </p>
         <p>
-          <strong style={{ color: "var(--text-primary)" }}>Scenario Impact:</strong>{" "}
+          <strong style={{ color: "var(--text-primary)" }}>
+            Scenario Impact:
+          </strong>{" "}
           {insights.scenarioImpact}
         </p>
       </div>
+
+      {onOpenDetails && (
+        <button
+          type="button"
+          onClick={onOpenDetails}
+          className="w-full py-2.5 rounded-2xl text-[11px] font-extrabold active:scale-95 transition-transform"
+          style={{
+            background: "var(--glass-fill)",
+            color: "var(--text-secondary)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          View Model Details
+        </button>
+      )}
     </section>
   );
 }
