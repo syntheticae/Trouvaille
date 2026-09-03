@@ -1,45 +1,117 @@
-import { usePullToRefresh } from "../hooks/usePullToRefresh"
-import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator"
-import { triggerHaptic } from "../lib/haptics"
-import { useState, useMemo, useEffect } from "react"
-import { Search, X, Calendar, ChevronDown, Archive, Wallet } from "lucide-react"
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts"
-import { useAllTransactions, useDeleteTransaction } from "../hooks/useTransactions"
-import { useWallets } from "../hooks/useWallets"
-import { useCategories } from "../hooks/useCategories"
-import { useToast } from "../contexts/ToastContext"
-import { TransactionSheet } from "../components/transactions/TransactionSheet"
-import { BottomSheet } from "../components/ui/BottomSheet"
-import type { Transaction } from "../lib/types"
-import { formatRupiah, getDateLabel } from "../lib/utils"
-import { IconRenderer } from "../components/ui/IconRenderer"
-import { format, subDays, startOfMonth, endOfMonth, subMonths, parse, eachDayOfInterval } from "date-fns"
-import { GroupedVirtuoso } from "react-virtuoso"
-import { useDeferredRender } from "../hooks/useDeferredRender"
-import { TransactionItem } from "../components/transactions/TransactionItem"
-import { resolveFamfinaWallet } from "../lib/famfinaResolver"
-import { useUnusualSpending } from "../hooks/useUnusualSpending"
-import { isCorrectionTx } from "../lib/financialMath"
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator";
+import { triggerHaptic } from "../lib/haptics";
+import { useState, useMemo, useEffect } from "react";
+import { Search, X, Calendar, ChevronDown, Wallet } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip,
+  Cell,
+} from "recharts";
+import {
+  useAllTransactions,
+  useDeleteTransaction,
+} from "../hooks/useTransactions";
+import { useWallets } from "../hooks/useWallets";
+import { useCategories } from "../hooks/useCategories";
+import { useToast } from "../contexts/ToastContext";
+import { TransactionSheet } from "../components/transactions/TransactionSheet";
+import { BottomSheet } from "../components/ui/BottomSheet";
+import type { Transaction } from "../lib/types";
+import { formatRupiah, getDateLabel } from "../lib/utils";
+import { IconRenderer } from "../components/ui/IconRenderer";
+import {
+  format,
+  subDays,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  parse,
+  eachDayOfInterval,
+} from "date-fns";
+import { GroupedVirtuoso } from "react-virtuoso";
+import { useDeferredRender } from "../hooks/useDeferredRender";
+import { TransactionItem } from "../components/transactions/TransactionItem";
+import { resolveFamfinaWallet } from "../lib/famfinaResolver";
+import { useUnusualSpending } from "../hooks/useUnusualSpending";
+import { isCorrectionTx } from "../lib/financialMath";
 
 const GlassTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null
+  if (!active || !payload?.length) return null;
   return (
-    <div style={{
-      background: "var(--bg-elevated)",
-      border: "1px solid var(--glass-border)",
-      borderRadius: 12,
-      padding: "8px 12px",
-      boxShadow: "0 8px 24px var(--shadow-strength)",
-      fontFamily: "Urbanist, sans-serif",
-    }}>
-      <p style={{ color: "var(--text-tertiary)", fontSize: 11, fontWeight: 700, marginBottom: 2 }}>{label}</p>
-      <p style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 700 }}>{formatRupiah(payload[0]?.value ?? 0)}</p>
+    <div
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        borderRadius: 12,
+        padding: "8px 12px",
+        boxShadow: "0 8px 24px var(--shadow-strength)",
+        fontFamily: "Urbanist, sans-serif",
+      }}
+    >
+      <p
+        style={{
+          color: "var(--text-tertiary)",
+          fontSize: 11,
+          fontWeight: 700,
+          marginBottom: 2,
+        }}
+      >
+        {label}
+      </p>
+      <p
+        style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 700 }}
+      >
+        {formatRupiah(payload[0]?.value ?? 0)}
+      </p>
     </div>
-  )
-}
+  );
+};
 
-type FilterType = "all" | "expense" | "income" | "transfer" | "adjustment"
-type TimeRangeType = "this_month" | "last_month" | "last_30" | "custom_month" | "all"
+type FilterType = "all" | "expense" | "income" | "transfer" | "adjustment";
+type TimeRangeType =
+  "this_month" | "last_month" | "last_30" | "custom_month" | "all";
+
+type ChartPoint = {
+  dateStr: string;
+  label: string;
+  income: number;
+  expense: number;
+  transfer: number;
+  adjustment: number;
+  activeValue: number;
+};
+
+function summarizeTransactionsForChart(
+  txs: Transaction[],
+  filter: FilterType,
+  isTxCorrection: (tx: Transaction) => boolean,
+) {
+  let income = 0;
+  let expense = 0;
+  let transfer = 0;
+  let adjustment = 0;
+
+  txs.forEach((t) => {
+    const amt = Number(t.amount || 0);
+    if (t.type === "income" && !isTxCorrection(t)) income += amt;
+    else if (t.type === "expense" && !isTxCorrection(t)) expense += amt;
+    else if (t.type === "transfer") transfer += amt;
+    else if (isTxCorrection(t)) adjustment += amt;
+  });
+
+  let activeValue = expense + income + transfer + adjustment;
+  if (filter === "income") activeValue = income;
+  else if (filter === "expense") activeValue = expense;
+  else if (filter === "transfer") activeValue = transfer;
+  else if (filter === "adjustment") activeValue = adjustment;
+
+  return { income, expense, transfer, adjustment, activeValue };
+}
 
 const MONTHS_LIST = [
   { code: "01", short: "Jan", full: "January" },
@@ -54,273 +126,336 @@ const MONTHS_LIST = [
   { code: "10", short: "Oct", full: "October" },
   { code: "11", short: "Nov", full: "November" },
   { code: "12", short: "Dec", full: "December" },
-]
+];
 
 export function TransactionsPage() {
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
-  const [search, setSearch] = useState("")
-  const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [filter, setFilter] = useState<FilterType>("all")
-  const [selectedWalletName, setSelectedWalletName] = useState<string | null>(null)
-  const [timeRange, setTimeRange] = useState<TimeRangeType>("this_month")
-  const [selectedCustomMonth, setSelectedCustomMonth] = useState<string>(format(new Date(), "yyyy-MM"))
-  const [pickerYear, setPickerYear] = useState<number>(new Date().getFullYear())
-  const [monthPickerOpen, setMonthPickerOpen] = useState(false)
-  const [accountPickerOpen, setAccountPickerOpen] = useState(false)
-  const [showArchived, setShowArchived] = useState(false)
-  const [pendingDeletedIds, setPendingDeletedIds] = useState<Set<string>>(() => new Set())
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [selectedWalletName, setSelectedWalletName] = useState<string | null>(
+    null,
+  );
+  const [timeRange, setTimeRange] = useState<TimeRangeType>("this_month");
+  const [selectedCustomMonth, setSelectedCustomMonth] = useState<string>(
+    format(new Date(), "yyyy-MM"),
+  );
+  const [pickerYear, setPickerYear] = useState<number>(
+    new Date().getFullYear(),
+  );
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false);
+  const [accountPickerOpen, setAccountPickerOpen] = useState(false);
+  const [pendingDeletedIds, setPendingDeletedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
-  const { data: allTxs = [], isLoading, refetch: refetchTxs } = useAllTransactions()
-  const { data: wallets = [], refetch: refetchWallets } = useWallets()
-  const { data: categories = [], refetch: refetchCategories } = useCategories()
-  const deleteTx = useDeleteTransaction()
-  const { showToast } = useToast()
-  const { checkUnusual } = useUnusualSpending(allTxs)
+  const {
+    data: allTxs = [],
+    isLoading,
+    refetch: refetchTxs,
+  } = useAllTransactions();
+  const { data: wallets = [], refetch: refetchWallets } = useWallets();
+  const { data: categories = [], refetch: refetchCategories } = useCategories();
+  const deleteTx = useDeleteTransaction();
+  const { showToast } = useToast();
+  const { checkUnusual } = useUnusualSpending(allTxs);
 
-  const visibleTxs = useMemo(() => allTxs.filter(t => !pendingDeletedIds.has(t.id)), [allTxs, pendingDeletedIds])
+  const visibleTxs = useMemo(
+    () => allTxs.filter((t) => !pendingDeletedIds.has(t.id)),
+    [allTxs, pendingDeletedIds],
+  );
 
   const handleDeleteTransaction = (tx: Transaction) => {
-    setPendingDeletedIds(prev => new Set(prev).add(tx.id))
+    setPendingDeletedIds((prev) => new Set(prev).add(tx.id));
     showToast(
       "Transaction deleted",
       "delete",
       () => {
         deleteTx.mutate(tx.id, {
           onSuccess: () => {
-            setPendingDeletedIds(prev => {
-              const next = new Set(prev)
-              next.delete(tx.id)
-              return next
-            })
-          }
-        })
+            setPendingDeletedIds((prev) => {
+              const next = new Set(prev);
+              next.delete(tx.id);
+              return next;
+            });
+          },
+        });
       },
       4000,
       () => {
-        setPendingDeletedIds(prev => {
-          const next = new Set(prev)
-          next.delete(tx.id)
-          return next
-        })
-      }
-    )
-  }
+        setPendingDeletedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(tx.id);
+          return next;
+        });
+      },
+    );
+  };
 
   const handleDuplicateTransaction = (tx: Transaction) => {
     setEditingTx({
       ...tx,
       id: "",
       occurred_on: format(new Date(), "yyyy-MM-dd"),
-      created_at: new Date().toISOString()
-    })
-    setSheetOpen(true)
-  }
+      created_at: new Date().toISOString(),
+    });
+    setSheetOpen(true);
+  };
 
   const { pullDistance, isRefreshing, threshold } = usePullToRefresh({
     onRefresh: async () => {
-      await Promise.all([
-        refetchTxs(),
-        refetchWallets(),
-        refetchCategories(),
-      ])
-    }
-  })
+      await Promise.all([refetchTxs(), refetchWallets(), refetchCategories()]);
+    },
+  });
 
-  const isDark = document.documentElement.getAttribute("data-theme") !== "light"
-  const shouldRenderHeavy = useDeferredRender(150)
+  const isDark =
+    document.documentElement.getAttribute("data-theme") !== "light";
+  const shouldRenderHeavy = useDeferredRender(150);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 150)
-    return () => clearTimeout(timer)
-  }, [search])
+    const timer = setTimeout(() => setDebouncedSearch(search), 150);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(() => typeof document !== "undefined" ? document.getElementById("app-scroll-container") : null)
+  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(() =>
+    typeof document !== "undefined"
+      ? document.getElementById("app-scroll-container")
+      : null,
+  );
 
   useEffect(() => {
     if (!scrollParent && typeof document !== "undefined") {
-      setScrollParent(document.getElementById("app-scroll-container"))
+      setScrollParent(document.getElementById("app-scroll-container"));
     }
-  }, [scrollParent])
+  }, [scrollParent]);
 
-  const resolveWalletNames = (tx: Transaction) => resolveFamfinaWallet(tx, wallets)
+  const resolveWalletNames = (tx: Transaction) =>
+    resolveFamfinaWallet(tx, wallets);
 
-  const isTxCorrection = isCorrectionTx
+  const isTxCorrection = isCorrectionTx;
 
-  const dynamicChartData = useMemo(() => {
-    const now = new Date()
-    let points: { dateStr: string; label: string; income: number; expense: number; transfer: number; adjustment: number; activeValue: number }[] = []
+  const scopedTxs = useMemo(() => {
+    const now = new Date();
+    let txs = visibleTxs.filter((t) => !!t.occurred_on);
 
-    if (timeRange === "this_month" || timeRange === "last_month" || timeRange === "custom_month") {
-      let targetMonthDate = now
-      if (timeRange === "last_month") targetMonthDate = subMonths(now, 1)
-      else if (timeRange === "custom_month") {
-        try {
-          targetMonthDate = parse(selectedCustomMonth, "yyyy-MM", new Date())
-        } catch {
-          targetMonthDate = now
-        }
-      }
-
-      const start = startOfMonth(targetMonthDate)
-      const end = endOfMonth(targetMonthDate)
-      const days = eachDayOfInterval({ start, end })
-
-      points = days.map(d => {
-        const dateStr = format(d, "yyyy-MM-dd")
-        const label = format(d, "d")
-        const dayTxs = visibleTxs.filter(t => t.occurred_on === dateStr)
-        const income = dayTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
-        const expense = dayTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
-        const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const adjustment = dayTxs.filter(t => isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
-
-        let activeValue = expense + income + transfer + adjustment
-        if (filter === "income") activeValue = income
-        else if (filter === "expense") activeValue = expense
-        else if (filter === "transfer") activeValue = transfer
-        else if (filter === "adjustment") activeValue = adjustment
-
-        return { dateStr, label, income, expense, transfer, adjustment, activeValue }
-      })
+    if (timeRange === "this_month") {
+      const startStr = format(startOfMonth(now), "yyyy-MM-dd");
+      const endStr = format(endOfMonth(now), "yyyy-MM-dd");
+      txs = txs.filter(
+        (t) => t.occurred_on >= startStr && t.occurred_on <= endStr,
+      );
+    } else if (timeRange === "last_month") {
+      const prev = subMonths(now, 1);
+      const startStr = format(startOfMonth(prev), "yyyy-MM-dd");
+      const endStr = format(endOfMonth(prev), "yyyy-MM-dd");
+      txs = txs.filter(
+        (t) => t.occurred_on >= startStr && t.occurred_on <= endStr,
+      );
     } else if (timeRange === "last_30") {
-      for (let i = 29; i >= 0; i--) {
-        const d = subDays(now, i)
-        const dateStr = format(d, "yyyy-MM-dd")
-        const label = format(d, "d")
-        const dayTxs = visibleTxs.filter(t => t.occurred_on === dateStr)
-        const income = dayTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
-        const expense = dayTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
-        const transfer = dayTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const adjustment = dayTxs.filter(t => isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
-
-        let activeValue = expense + income + transfer + adjustment
-        if (filter === "income") activeValue = income
-        else if (filter === "expense") activeValue = expense
-        else if (filter === "transfer") activeValue = transfer
-        else if (filter === "adjustment") activeValue = adjustment
-
-        points.push({ dateStr, label, income, expense, transfer, adjustment, activeValue })
-      }
-    } else if (timeRange === "all") {
-      // Past 12 months trend
-      for (let i = 11; i >= 0; i--) {
-        const mDate = subMonths(now, i)
-        const label = format(mDate, "MMM")
-        const dateStr = format(mDate, "yyyy-MM")
-
-        const mTxs = allTxs.filter(t => t.occurred_on && t.occurred_on.startsWith(dateStr))
-
-        const income = mTxs.filter(t => t.type === "income" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
-        const expense = mTxs.filter(t => t.type === "expense" && !isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
-        const transfer = mTxs.filter(t => t.type === "transfer").reduce((s, t) => s + Number(t.amount || 0), 0)
-        const adjustment = mTxs.filter(t => isTxCorrection(t)).reduce((s, t) => s + Number(t.amount || 0), 0)
-
-        let activeValue = expense + income + transfer + adjustment
-        if (filter === "income") activeValue = income
-        else if (filter === "expense") activeValue = expense
-        else if (filter === "transfer") activeValue = transfer
-        else if (filter === "adjustment") activeValue = adjustment
-
-        points.push({ dateStr, label, income, expense, transfer, adjustment, activeValue })
-      }
+      const startStr = format(subDays(now, 29), "yyyy-MM-dd");
+      const endStr = format(now, "yyyy-MM-dd");
+      txs = txs.filter(
+        (t) => t.occurred_on >= startStr && t.occurred_on <= endStr,
+      );
+    } else if (timeRange === "custom_month") {
+      txs = txs.filter((t) => t.occurred_on.startsWith(selectedCustomMonth));
     }
 
-    return points
-  }, [allTxs, filter, timeRange, selectedCustomMonth])
+    return txs;
+  }, [visibleTxs, timeRange, selectedCustomMonth]);
 
-  const totalPeriodAmount = useMemo(() => {
-    return dynamicChartData.reduce((s, d) => s + d.activeValue, 0)
-  }, [dynamicChartData])
-
-  // 2. Filter & Search transactions with smart date range scoping & auto-archive
+  // 2. Filter & Search transactions within the active timeframe
   const filteredTxs = useMemo(() => {
-    const now = new Date()
-    let txs = visibleTxs
-
-    const isSearching = !!debouncedSearch.trim()
-
-    // Apply Time Range scoping only when NOT actively searching
-    if (!isSearching) {
-      if (timeRange === "this_month") {
-        const startStr = format(startOfMonth(now), "yyyy-MM-dd")
-        const endStr = format(endOfMonth(now), "yyyy-MM-dd")
-        txs = txs.filter(t => t.occurred_on && t.occurred_on >= startStr && t.occurred_on <= endStr)
-      } else if (timeRange === "last_month") {
-        const prev = subMonths(now, 1)
-        const startStr = format(startOfMonth(prev), "yyyy-MM-dd")
-        const endStr = format(endOfMonth(prev), "yyyy-MM-dd")
-        txs = txs.filter(t => t.occurred_on && t.occurred_on >= startStr && t.occurred_on <= endStr)
-      } else if (timeRange === "last_30") {
-        const startStr = format(subDays(now, 30), "yyyy-MM-dd")
-        const endStr = format(now, "yyyy-MM-dd")
-        txs = txs.filter(t => t.occurred_on && t.occurred_on >= startStr && t.occurred_on <= endStr)
-      } else if (timeRange === "custom_month") {
-        txs = txs.filter(t => t.occurred_on && t.occurred_on.startsWith(selectedCustomMonth))
-      } else if (timeRange === "all" && !showArchived) {
-        // Auto-archive transactions older than 4 months in All view unless showArchived is checked
-        const fourMonthsAgoStr = format(subMonths(now, 4), "yyyy-MM-dd")
-        txs = txs.filter(t => t.occurred_on && t.occurred_on >= fourMonthsAgoStr)
-      }
-    }
+    let txs = scopedTxs;
 
     if (filter === "income") {
-      txs = txs.filter(t => t.type === "income" && !isTxCorrection(t))
+      txs = txs.filter((t) => t.type === "income" && !isTxCorrection(t));
     } else if (filter === "expense") {
-      txs = txs.filter(t => t.type === "expense" && !isTxCorrection(t))
+      txs = txs.filter((t) => t.type === "expense" && !isTxCorrection(t));
     } else if (filter === "transfer") {
-      txs = txs.filter(t => t.type === "transfer")
+      txs = txs.filter((t) => t.type === "transfer");
     } else if (filter === "adjustment") {
-      txs = txs.filter(t => isTxCorrection(t))
+      txs = txs.filter((t) => isTxCorrection(t));
     }
 
     if (selectedWalletName) {
-      const target = selectedWalletName.toLowerCase()
-      txs = txs.filter(t => {
-        const { from, to } = resolveWalletNames(t)
-        return from.toLowerCase() === target || (t.type === "transfer" && to.toLowerCase() === target)
-      })
+      const target = selectedWalletName.toLowerCase();
+      txs = txs.filter((t) => {
+        const { from, to } = resolveWalletNames(t);
+        return (
+          from.toLowerCase() === target ||
+          (t.type === "transfer" && to.toLowerCase() === target)
+        );
+      });
     }
 
-    if (isSearching) {
-      const q = debouncedSearch.toLowerCase().trim()
-      const digitsOnly = q.replace(/[^0-9]/g, "")
-      txs = txs.filter(t => {
-        const { from, to } = resolveWalletNames(t)
-        const catName = t.categories?.name || categories.find(c => c.id === t.category_id)?.name || ""
-        const formattedAmount = formatRupiah(Number(t.amount || 0)).toLowerCase()
-        const amountStr = String(t.amount || "")
+    const q = debouncedSearch.toLowerCase().trim();
+    if (q) {
+      const digitsOnly = q.replace(/[^0-9]/g, "");
+      txs = txs.filter((t) => {
+        const { from, to } = resolveWalletNames(t);
+        const catName =
+          t.categories?.name ||
+          categories.find((c) => c.id === t.category_id)?.name ||
+          "";
+        const formattedAmount = formatRupiah(
+          Number(t.amount || 0),
+        ).toLowerCase();
+        const amountStr = String(t.amount || "");
 
-        const matchesText = (t.note && t.note.toLowerCase().includes(q)) ||
+        const matchesText =
+          (t.note && t.note.toLowerCase().includes(q)) ||
           catName.toLowerCase().includes(q) ||
           from.toLowerCase().includes(q) ||
-          to.toLowerCase().includes(q)
+          to.toLowerCase().includes(q);
 
-        const matchesAmount = (digitsOnly.length > 0 && amountStr.includes(digitsOnly)) ||
+        const matchesAmount =
+          (digitsOnly.length > 0 && amountStr.includes(digitsOnly)) ||
           formattedAmount.includes(q) ||
-          amountStr.includes(q)
+          amountStr.includes(q);
 
-        return matchesText || matchesAmount
-      })
+        return matchesText || matchesAmount;
+      });
     }
-    return txs
-  }, [visibleTxs, filter, selectedWalletName, debouncedSearch, timeRange, selectedCustomMonth, showArchived, wallets, categories])
+    return txs;
+  }, [
+    scopedTxs,
+    filter,
+    selectedWalletName,
+    debouncedSearch,
+    wallets,
+    categories,
+  ]);
+
+  const filteredTxsByDay = useMemo(() => {
+    const dayMap = new Map<string, Transaction[]>();
+    const monthMap = new Map<string, Transaction[]>();
+
+    filteredTxs.forEach((tx) => {
+      const dayKey = tx.occurred_on;
+      const monthKey = tx.occurred_on.slice(0, 7);
+
+      const dayList = dayMap.get(dayKey);
+      if (dayList) dayList.push(tx);
+      else dayMap.set(dayKey, [tx]);
+
+      const monthList = monthMap.get(monthKey);
+      if (monthList) monthList.push(tx);
+      else monthMap.set(monthKey, [tx]);
+    });
+
+    return { dayMap, monthMap };
+  }, [filteredTxs]);
+
+  const dynamicChartData = useMemo(() => {
+    const now = new Date();
+    const points: ChartPoint[] = [];
+
+    if (
+      timeRange === "this_month" ||
+      timeRange === "last_month" ||
+      timeRange === "custom_month"
+    ) {
+      let targetMonthDate = now;
+      if (timeRange === "last_month") targetMonthDate = subMonths(now, 1);
+      else if (timeRange === "custom_month") {
+        try {
+          targetMonthDate = parse(selectedCustomMonth, "yyyy-MM", new Date());
+        } catch {
+          targetMonthDate = now;
+        }
+      }
+
+      const start = startOfMonth(targetMonthDate);
+      const end = endOfMonth(targetMonthDate);
+      eachDayOfInterval({ start, end }).forEach((d) => {
+        const dateStr = format(d, "yyyy-MM-dd");
+        const totals = summarizeTransactionsForChart(
+          filteredTxsByDay.dayMap.get(dateStr) || [],
+          filter,
+          isTxCorrection,
+        );
+        points.push({ dateStr, label: format(d, "d"), ...totals });
+      });
+      return points;
+    }
+
+    if (timeRange === "last_30") {
+      for (let i = 29; i >= 0; i--) {
+        const d = subDays(now, i);
+        const dateStr = format(d, "yyyy-MM-dd");
+        const totals = summarizeTransactionsForChart(
+          filteredTxsByDay.dayMap.get(dateStr) || [],
+          filter,
+          isTxCorrection,
+        );
+        points.push({ dateStr, label: format(d, "d"), ...totals });
+      }
+      return points;
+    }
+
+    if (filteredTxs.length === 0) return [];
+
+    const earliestDate = filteredTxs.reduce(
+      (min, tx) => (tx.occurred_on < min ? tx.occurred_on : min),
+      filteredTxs[0].occurred_on,
+    );
+    const earliestMonth = new Date(`${earliestDate.slice(0, 7)}-01T00:00:00`);
+    const totalMonths =
+      (now.getFullYear() - earliestMonth.getFullYear()) * 12 +
+      (now.getMonth() - earliestMonth.getMonth()) +
+      1;
+
+    for (let i = 0; i < totalMonths; i++) {
+      const monthDate = new Date(
+        earliestMonth.getFullYear(),
+        earliestMonth.getMonth() + i,
+        1,
+      );
+      const monthKey = format(monthDate, "yyyy-MM");
+      const totals = summarizeTransactionsForChart(
+        filteredTxsByDay.monthMap.get(monthKey) || [],
+        filter,
+        isTxCorrection,
+      );
+      points.push({
+        dateStr: monthKey,
+        label:
+          totalMonths > 12
+            ? format(monthDate, "MMM yy")
+            : format(monthDate, "MMM"),
+        ...totals,
+      });
+    }
+
+    return points;
+  }, [filteredTxs, filteredTxsByDay, filter, timeRange, selectedCustomMonth]);
+
+  const totalPeriodAmount = useMemo(() => {
+    return dynamicChartData.reduce((s, d) => s + d.activeValue, 0);
+  }, [dynamicChartData]);
 
   // 3. Group by date using all filteredTxs
   const { groupKeys, groupedTxs, groupCounts, flatTxs } = useMemo(() => {
-    const g: Record<string, Transaction[]> = {}
-    filteredTxs.forEach(tx => {
-      const dateKey = tx.occurred_on || "Unknown"
-      if (!g[dateKey]) g[dateKey] = []
-      g[dateKey].push(tx)
-    })
-    
-    const keys = Object.keys(g)
-    const counts = keys.map(k => g[k].length)
-    const flat = keys.flatMap(k => g[k])
+    const g: Record<string, Transaction[]> = {};
+    filteredTxs.forEach((tx) => {
+      const dateKey = tx.occurred_on || "Unknown";
+      if (!g[dateKey]) g[dateKey] = [];
+      g[dateKey].push(tx);
+    });
 
-    return { groupKeys: keys, groupedTxs: g, groupCounts: counts, flatTxs: flat }
-  }, [filteredTxs])
+    const keys = Object.keys(g);
+    const counts = keys.map((k) => g[k].length);
+    const flat = keys.flatMap((k) => g[k]);
+
+    return {
+      groupKeys: keys,
+      groupedTxs: g,
+      groupCounts: counts,
+      flatTxs: flat,
+    };
+  }, [filteredTxs]);
 
   const filterTabs: { key: FilterType; label: string }[] = [
     { key: "all", label: "All" },
@@ -328,45 +463,61 @@ export function TransactionsPage() {
     { key: "income", label: "Inflow" },
     { key: "transfer", label: "Transfer" },
     { key: "adjustment", label: "Correction" },
-  ]
+  ];
 
-  const maxBar = Math.max(...dynamicChartData.map(d => d.activeValue), 1)
+  const maxBar = Math.max(...dynamicChartData.map((d) => d.activeValue), 1);
 
   const selectedMonthLabel = useMemo(() => {
-    if (timeRange === "this_month") return "This Month"
-    if (timeRange === "last_month") return "Last Month"
-    if (timeRange === "last_30") return "Last 30 Days"
-    if (timeRange === "all") return "All Time"
+    if (timeRange === "this_month") return "This Month";
+    if (timeRange === "last_month") return "Last Month";
+    if (timeRange === "last_30") return "Last 30 Days";
+    if (timeRange === "all") return "All Time";
     try {
-      const parsed = parse(selectedCustomMonth, "yyyy-MM", new Date())
-      return format(parsed, "MMMM yyyy")
+      const parsed = parse(selectedCustomMonth, "yyyy-MM", new Date());
+      return format(parsed, "MMMM yyyy");
     } catch {
-      return "Custom Month"
+      return "Custom Month";
     }
-  }, [timeRange, selectedCustomMonth])
+  }, [timeRange, selectedCustomMonth]);
 
   return (
-    <div className="min-h-screen relative" style={{ background: "var(--bg-base)" }}>
-      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} threshold={threshold} />
+    <div
+      className="min-h-screen relative"
+      style={{ background: "var(--bg-base)" }}
+    >
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        isRefreshing={isRefreshing}
+        threshold={threshold}
+      />
       {/* ====== HEADER ====== */}
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-[12px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
+            <p
+              className="text-[12px] font-semibold"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               {filter === "income"
                 ? `${selectedMonthLabel} Inflow`
                 : filter === "expense"
-                ? `${selectedMonthLabel} Outflow`
-                : filter === "transfer"
-                ? `${selectedMonthLabel} Transfers`
-                : filter === "adjustment"
-                ? `${selectedMonthLabel} Corrections`
-                : `${selectedMonthLabel} Activity`}
+                  ? `${selectedMonthLabel} Outflow`
+                  : filter === "transfer"
+                    ? `${selectedMonthLabel} Transfers`
+                    : filter === "adjustment"
+                      ? `${selectedMonthLabel} Corrections`
+                      : `${selectedMonthLabel} Activity`}
             </p>
-            <p className="text-[32px] font-extrabold tracking-tight leading-tight amount" style={{ color: "var(--text-primary)" }}>
+            <p
+              className="text-[32px] font-extrabold tracking-tight leading-tight amount"
+              style={{ color: "var(--text-primary)" }}
+            >
               {formatRupiah(totalPeriodAmount)}
             </p>
-            <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+            <p
+              className="text-[11px] font-medium mt-0.5"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               {dynamicChartData.length} data points · {selectedMonthLabel}
             </p>
           </div>
@@ -374,16 +525,22 @@ export function TransactionsPage() {
           {/* Month Selector Trigger */}
           <button
             type="button"
-            onClick={() => { setMonthPickerOpen(true); triggerHaptic("light"); }}
+            onClick={() => {
+              setMonthPickerOpen(true);
+              triggerHaptic("light");
+            }}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl active:scale-95 transition-all touch-manipulation cursor-pointer select-none no-pull"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
-              boxShadow: "0 2px 8px var(--shadow-strength)"
+              boxShadow: "0 2px 8px var(--shadow-strength)",
             }}
           >
             <Calendar size={14} style={{ color: "var(--text-secondary)" }} />
-            <span className="text-[12px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+            <span
+              className="text-[12px] font-extrabold"
+              style={{ color: "var(--text-primary)" }}
+            >
               {selectedMonthLabel}
             </span>
             <ChevronDown size={13} style={{ color: "var(--text-tertiary)" }} />
@@ -394,50 +551,116 @@ export function TransactionsPage() {
         <div className="h-[95px] w-full mb-3.5 flex items-end">
           {!shouldRenderHeavy ? (
             <div className="w-full flex justify-around items-end h-full px-2 pb-5">
-              {[1, 2, 3, 4, 5, 6, 7].map(i => (
-                <div key={i} className="w-8 rounded-md bg-white/5 animate-pulse" style={{ height: `${Math.max(20, Math.random() * 80)}%` }} />
+              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                <div
+                  key={i}
+                  className="w-8 rounded-md bg-white/5 animate-pulse"
+                  style={{ height: `${Math.max(20, Math.random() * 80)}%` }}
+                />
               ))}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dynamicChartData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+              <BarChart
+                data={dynamicChartData}
+                margin={{ top: 8, right: 0, left: 0, bottom: 0 }}
+              >
                 <defs>
-                  <linearGradient id="activeBarGradDark" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient
+                    id="activeBarGradDark"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
                     <stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
                     <stop offset="100%" stopColor="#D4D4D8" stopOpacity={0.9} />
                   </linearGradient>
-                  <linearGradient id="inactiveBarGradDark" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient
+                    id="inactiveBarGradDark"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
                     <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.65} />
-                    <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.18} />
+                    <stop
+                      offset="100%"
+                      stopColor="#FFFFFF"
+                      stopOpacity={0.18}
+                    />
                   </linearGradient>
-                  <linearGradient id="activeBarGradLight" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient
+                    id="activeBarGradLight"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
                     <stop offset="0%" stopColor="#18181B" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#3F3F46" stopOpacity={0.85} />
+                    <stop
+                      offset="100%"
+                      stopColor="#3F3F46"
+                      stopOpacity={0.85}
+                    />
                   </linearGradient>
-                  <linearGradient id="inactiveBarGradLight" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#18181B" stopOpacity={0.50} />
-                    <stop offset="100%" stopColor="#18181B" stopOpacity={0.12} />
+                  <linearGradient
+                    id="inactiveBarGradLight"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor="#18181B" stopOpacity={0.5} />
+                    <stop
+                      offset="100%"
+                      stopColor="#18181B"
+                      stopOpacity={0.12}
+                    />
                   </linearGradient>
                 </defs>
-                <Tooltip content={<GlassTooltip />} cursor={{ fill: "transparent" }} />
+                <Tooltip
+                  content={<GlassTooltip />}
+                  cursor={{ fill: "transparent" }}
+                />
                 <XAxis
                   dataKey="label"
                   axisLine={false}
                   tickLine={false}
-                  interval={dynamicChartData.length > 20 ? 4 : dynamicChartData.length > 10 ? 2 : 0}
-                  tick={{ fill: "var(--text-tertiary)", fontSize: 9, fontWeight: 700 }}
+                  interval={
+                    dynamicChartData.length > 20
+                      ? 4
+                      : dynamicChartData.length > 10
+                        ? 2
+                        : 0
+                  }
+                  tick={{
+                    fill: "var(--text-tertiary)",
+                    fontSize: 9,
+                    fontWeight: 700,
+                  }}
                 />
                 <YAxis hide domain={[0, maxBar * 1.15]} />
                 <Bar
                   dataKey="activeValue"
                   radius={[4, 4, 4, 4]}
-                  maxBarSize={dynamicChartData.length > 20 ? 8 : dynamicChartData.length > 10 ? 16 : 28}
+                  maxBarSize={
+                    dynamicChartData.length > 20
+                      ? 8
+                      : dynamicChartData.length > 10
+                        ? 16
+                        : 28
+                  }
                 >
                   {dynamicChartData.map((_, index) => {
-                    const isCurrentDay = index === dynamicChartData.length - 1
+                    const isCurrentDay = index === dynamicChartData.length - 1;
                     const fillId = isDark
-                      ? (isCurrentDay ? "url(#activeBarGradDark)" : "url(#inactiveBarGradDark)")
-                      : (isCurrentDay ? "url(#activeBarGradLight)" : "url(#inactiveBarGradLight)")
+                      ? isCurrentDay
+                        ? "url(#activeBarGradDark)"
+                        : "url(#inactiveBarGradDark)"
+                      : isCurrentDay
+                        ? "url(#activeBarGradLight)"
+                        : "url(#inactiveBarGradLight)";
 
                     return (
                       <Cell
@@ -445,7 +668,7 @@ export function TransactionsPage() {
                         fill={fillId}
                         style={{ transition: "fill 0.3s ease" }}
                       />
-                    )
+                    );
                   })}
                 </Bar>
               </BarChart>
@@ -461,11 +684,15 @@ export function TransactionsPage() {
             border: "1px solid var(--glass-border)",
           }}
         >
-          <Search size={16} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+          <Search
+            size={16}
+            className="shrink-0"
+            style={{ color: "var(--text-tertiary)" }}
+          />
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Search note, category, wallet..."
             className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold touch-manipulation no-pull"
             style={{ color: "var(--text-primary)" }}
@@ -485,12 +712,21 @@ export function TransactionsPage() {
           <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
           <button
             type="button"
-            onClick={() => { setAccountPickerOpen(true); triggerHaptic("light"); }}
+            onClick={() => {
+              setAccountPickerOpen(true);
+              triggerHaptic("light");
+            }}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
             style={{
-              background: selectedWalletName ? "var(--accent)" : "var(--glass-fill)",
-              color: selectedWalletName ? "var(--accent-ink)" : "var(--text-secondary)",
-              border: selectedWalletName ? "1px solid var(--accent)" : "1px solid var(--glass-border)"
+              background: selectedWalletName
+                ? "var(--accent)"
+                : "var(--glass-fill)",
+              color: selectedWalletName
+                ? "var(--accent-ink)"
+                : "var(--text-secondary)",
+              border: selectedWalletName
+                ? "1px solid var(--accent)"
+                : "1px solid var(--glass-border)",
             }}
             title="Filter by Account"
           >
@@ -503,23 +739,34 @@ export function TransactionsPage() {
         </div>
 
         {/* Unified Clean Filter Tabs */}
-        <div className="flex p-1 rounded-full glass-surface no-pull" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-          {filterTabs.map(tab => {
-            const isSelected = filter === tab.key
+        <div
+          className="flex p-1 rounded-full glass-surface no-pull"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          {filterTabs.map((tab) => {
+            const isSelected = filter === tab.key;
             return (
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => { setFilter(tab.key); triggerHaptic("light"); }}
+                onClick={() => {
+                  setFilter(tab.key);
+                  triggerHaptic("light");
+                }}
                 className="flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all touch-manipulation cursor-pointer select-none no-pull"
                 style={{
                   background: isSelected ? "var(--accent)" : "transparent",
-                  color: isSelected ? "var(--accent-ink)" : "var(--text-secondary)",
+                  color: isSelected
+                    ? "var(--accent-ink)"
+                    : "var(--text-secondary)",
                 }}
               >
                 {tab.label}
               </button>
-            )
+            );
           })}
         </div>
       </div>
@@ -528,47 +775,73 @@ export function TransactionsPage() {
       <div className="px-5 pb-36 space-y-5">
         {isLoading || !shouldRenderHeavy ? (
           <div className="space-y-3 pt-2">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-16 rounded-[22px] animate-pulse" style={{ background: "var(--bg-elevated)" }} />
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="h-16 rounded-[22px] animate-pulse"
+                style={{ background: "var(--bg-elevated)" }}
+              />
             ))}
           </div>
         ) : groupKeys.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
-              {search ? "No matching transactions found" : "No transactions recorded for this period"}
+            <p
+              className="text-sm font-semibold"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {search
+                ? "No matching transactions found"
+                : "No transactions recorded for this period"}
             </p>
-            <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
-              {search ? "Try searching with different keywords" : "Select another month or record a new transaction"}
+            <p
+              className="text-xs mt-1"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {search
+                ? "Try searching with different keywords"
+                : "Select another month or record a new transaction"}
             </p>
           </div>
         ) : (
           <GroupedVirtuoso
             customScrollParent={scrollParent || undefined}
-            computeItemKey={index => flatTxs[index]?.id || String(index)}
+            computeItemKey={(index) => flatTxs[index]?.id || String(index)}
             groupCounts={groupCounts}
-            groupContent={index => {
-              const dateKey = groupKeys[index]
-              const txs = groupedTxs[dateKey]
+            groupContent={(index) => {
+              const dateKey = groupKeys[index];
+              const txs = groupedTxs[dateKey];
               const dayTotal = txs.reduce((s, t) => {
-                if (t.type === "income") return s + Number(t.amount)
-                if (t.type === "expense") return s - Number(t.amount)
-                return s
-              }, 0)
+                if (t.type === "income") return s + Number(t.amount);
+                if (t.type === "expense") return s - Number(t.amount);
+                return s;
+              }, 0);
               return (
                 <div className="flex justify-between items-center px-1 pb-2 pt-4 bg-[var(--bg-base)]">
-                  <span className="text-[12px] font-extrabold" style={{ color: "var(--text-secondary)" }}>
+                  <span
+                    className="text-[12px] font-extrabold"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {getDateLabel(dateKey)}
                   </span>
-                  <span className="text-[12px] font-bold amount" style={{ color: dayTotal >= 0 ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-                    {dayTotal > 0 ? "+" : ""}{formatRupiah(dayTotal)}
+                  <span
+                    className="text-[12px] font-bold amount"
+                    style={{
+                      color:
+                        dayTotal >= 0
+                          ? "var(--text-primary)"
+                          : "var(--text-tertiary)",
+                    }}
+                  >
+                    {dayTotal > 0 ? "+" : ""}
+                    {formatRupiah(dayTotal)}
                   </span>
                 </div>
-              )
+              );
             }}
-            itemContent={index => {
-              const tx = flatTxs[index]
-              const { from, to } = resolveWalletNames(tx)
-              const isUnusual = checkUnusual(tx).isUnusual
+            itemContent={(index) => {
+              const tx = flatTxs[index];
+              const { from, to } = resolveWalletNames(tx);
+              const isUnusual = checkUnusual(tx).isUnusual;
               return (
                 <div className="pb-2">
                   <TransactionItem
@@ -577,24 +850,40 @@ export function TransactionsPage() {
                     fromWalletName={from}
                     toWalletName={to}
                     isUnusual={isUnusual}
-                    onClick={(t) => { setEditingTx(t); setSheetOpen(true) }}
+                    onClick={(t) => {
+                      setEditingTx(t);
+                      setSheetOpen(true);
+                    }}
                     onDelete={handleDeleteTransaction}
                     onDuplicate={handleDuplicateTransaction}
                   />
                 </div>
-              )
+              );
             }}
           />
         )}
       </div>
 
       {/* ====== 12-MONTH & YEAR SELECTOR BOTTOM SHEET ====== */}
-      <BottomSheet isOpen={monthPickerOpen} onClose={() => setMonthPickerOpen(false)}>
+      <BottomSheet
+        isOpen={monthPickerOpen}
+        onClose={() => setMonthPickerOpen(false)}
+      >
         <div className="p-5 pb-16 space-y-4">
           <div className="flex justify-between items-center mb-1">
             <div>
-              <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Select Timeframe</h3>
-              <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>Filter transactions by month or year</p>
+              <h3
+                className="font-extrabold text-lg"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Select Timeframe
+              </h3>
+              <p
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Filter transactions by month or year
+              </p>
             </div>
           </div>
 
@@ -604,134 +893,172 @@ export function TransactionsPage() {
               { key: "this_month", label: "This Month" },
               { key: "last_month", label: "Last Month" },
               { key: "last_30", label: "Last 30 Days" },
-              { key: "all", label: "All Time" }
-            ].map(preset => {
-              const isSelected = timeRange === preset.key
+              { key: "all", label: "All Time" },
+            ].map((preset) => {
+              const isSelected = timeRange === preset.key;
               return (
                 <button
                   key={preset.key}
                   type="button"
                   onClick={() => {
-                    setTimeRange(preset.key as TimeRangeType)
-                    setMonthPickerOpen(false)
-                    triggerHaptic("light")
+                    setTimeRange(preset.key as TimeRangeType);
+                    setMonthPickerOpen(false);
+                    triggerHaptic("light");
                   }}
                   className="py-2.5 px-3 rounded-2xl text-[12px] font-extrabold flex items-center justify-between active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
                   style={{
-                    background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
-                    color: isSelected ? "var(--accent-ink)" : "var(--text-primary)",
-                    border: isSelected ? "1px solid transparent" : "1px solid var(--glass-border)"
+                    background: isSelected
+                      ? "var(--accent)"
+                      : "var(--bg-elevated)",
+                    color: isSelected
+                      ? "var(--accent-ink)"
+                      : "var(--text-primary)",
+                    border: isSelected
+                      ? "1px solid transparent"
+                      : "1px solid var(--glass-border)",
                   }}
                 >
                   <span>{preset.label}</span>
                   {isSelected && <span className="text-[11px]">✓</span>}
                 </button>
-              )
+              );
             })}
           </div>
 
           {/* Elegant Year Selector Tabs */}
           <div className="pt-2">
             <div className="flex justify-between items-center mb-2 px-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="text-[11px] font-bold uppercase tracking-wider"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 Specific Month in Year
               </span>
-              <span className="text-[12px] font-extrabold" style={{ color: "var(--text-primary)" }}>{pickerYear}</span>
+              <span
+                className="text-[12px] font-extrabold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {pickerYear}
+              </span>
             </div>
 
             {/* Year Selector Bar */}
-            <div className="flex p-1 rounded-2xl mb-3" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-              {[2026, 2025, 2024, 2023].map(y => {
-                const isYSelected = pickerYear === y
+            <div
+              className="flex p-1 rounded-2xl mb-3"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              {[2026, 2025, 2024, 2023].map((y) => {
+                const isYSelected = pickerYear === y;
                 return (
                   <button
                     key={y}
                     type="button"
-                    onClick={() => { setPickerYear(y); triggerHaptic("light"); }}
+                    onClick={() => {
+                      setPickerYear(y);
+                      triggerHaptic("light");
+                    }}
                     className="flex-1 py-1.5 rounded-xl text-[12px] font-extrabold transition-all touch-manipulation cursor-pointer select-none"
                     style={{
                       background: isYSelected ? "var(--accent)" : "transparent",
-                      color: isYSelected ? "var(--accent-ink)" : "var(--text-secondary)"
+                      color: isYSelected
+                        ? "var(--accent-ink)"
+                        : "var(--text-secondary)",
                     }}
                   >
                     {y}
                   </button>
-                )
+                );
               })}
             </div>
 
             {/* 12-Month iOS Grid */}
             <div className="grid grid-cols-4 gap-2">
-              {MONTHS_LIST.map(m => {
-                const monthKey = `${pickerYear}-${m.code}`
-                const isSelected = timeRange === "custom_month" && selectedCustomMonth === monthKey
+              {MONTHS_LIST.map((m) => {
+                const monthKey = `${pickerYear}-${m.code}`;
+                const isSelected =
+                  timeRange === "custom_month" &&
+                  selectedCustomMonth === monthKey;
                 return (
                   <button
                     key={m.code}
                     type="button"
                     onClick={() => {
-                      setSelectedCustomMonth(monthKey)
-                      setTimeRange("custom_month")
-                      setMonthPickerOpen(false)
-                      triggerHaptic("light")
+                      setSelectedCustomMonth(monthKey);
+                      setTimeRange("custom_month");
+                      setMonthPickerOpen(false);
+                      triggerHaptic("light");
                     }}
                     className="p-3 rounded-2xl text-[12px] font-extrabold text-center active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
                     style={{
-                      background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
-                      color: isSelected ? "var(--accent-ink)" : "var(--text-primary)",
-                      border: isSelected ? "1.5px solid var(--accent)" : "1px solid var(--glass-border)",
-                      boxShadow: isSelected ? "0 0 0 1px var(--accent-glow)" : "none"
+                      background: isSelected
+                        ? "var(--accent)"
+                        : "var(--bg-elevated)",
+                      color: isSelected
+                        ? "var(--accent-ink)"
+                        : "var(--text-primary)",
+                      border: isSelected
+                        ? "1.5px solid var(--accent)"
+                        : "1px solid var(--glass-border)",
+                      boxShadow: isSelected
+                        ? "0 0 0 1px var(--accent-glow)"
+                        : "none",
                     }}
                   >
                     {m.short}
                   </button>
-                )
+                );
               })}
             </div>
           </div>
-
-          {/* Smart Auto-Archive Option for All Time */}
-          {timeRange === "all" && (
-            <div className="p-3.5 rounded-2xl flex items-center justify-between mt-2"
-              style={{ background: "var(--bg-card)", border: "1px solid var(--glass-border)" }}>
-              <div className="flex items-center gap-2.5">
-                <Archive size={16} style={{ color: "var(--text-tertiary)" }} />
-                <div>
-                  <p className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>Include Archived Data</p>
-                  <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Show records older than 4 months</p>
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={e => setShowArchived(e.target.checked)}
-                className="w-4 h-4 rounded cursor-pointer accent-white"
-              />
-            </div>
-          )}
         </div>
       </BottomSheet>
 
       <TransactionSheet
         isOpen={sheetOpen}
-        onClose={() => { setSheetOpen(false); setEditingTx(null) }}
+        onClose={() => {
+          setSheetOpen(false);
+          setEditingTx(null);
+        }}
         transaction={editingTx}
       />
 
       {/* Account Picker Glass Sheet */}
-      <BottomSheet isOpen={accountPickerOpen} onClose={() => setAccountPickerOpen(false)}>
+      <BottomSheet
+        isOpen={accountPickerOpen}
+        onClose={() => setAccountPickerOpen(false)}
+      >
         <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-extrabold text-lg" style={{ color: "var(--text-primary)" }}>Filter by Account</h3>
-              <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>Show transactions from a specific account</p>
+              <h3
+                className="font-extrabold text-lg"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Filter by Account
+              </h3>
+              <p
+                className="text-[12px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Show transactions from a specific account
+              </p>
             </div>
             {selectedWalletName && (
               <button
                 type="button"
-                onClick={() => { setSelectedWalletName(null); setAccountPickerOpen(false); triggerHaptic("light"); }}
+                onClick={() => {
+                  setSelectedWalletName(null);
+                  setAccountPickerOpen(false);
+                  triggerHaptic("light");
+                }}
                 className="text-[12px] font-bold px-3 py-1 rounded-full touch-manipulation cursor-pointer select-none"
-                style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}
+                style={{
+                  background: "var(--glass-fill)",
+                  color: "var(--text-secondary)",
+                }}
               >
                 Reset
               </button>
@@ -742,16 +1069,34 @@ export function TransactionsPage() {
             {/* All Accounts Option */}
             <button
               type="button"
-              onClick={() => { setSelectedWalletName(null); setAccountPickerOpen(false); triggerHaptic("light"); }}
+              onClick={() => {
+                setSelectedWalletName(null);
+                setAccountPickerOpen(false);
+                triggerHaptic("light");
+              }}
               className="flex flex-col items-center gap-1.5 p-2 rounded-2xl active:scale-95 transition-transform touch-manipulation cursor-pointer select-none"
               style={{
-                background: selectedWalletName === null ? "var(--glass-fill-strong)" : "transparent",
+                background:
+                  selectedWalletName === null
+                    ? "var(--glass-fill-strong)"
+                    : "transparent",
                 color: "var(--text-primary)",
-                border: selectedWalletName === null ? "1.5px solid rgba(255, 255, 255, 0.45)" : "1px solid transparent"
+                border:
+                  selectedWalletName === null
+                    ? "1.5px solid rgba(255, 255, 255, 0.45)"
+                    : "1px solid transparent",
               }}
             >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: selectedWalletName === null ? "rgba(255, 255, 255, 0.18)" : "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{
+                  background:
+                    selectedWalletName === null
+                      ? "rgba(255, 255, 255, 0.18)"
+                      : "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
                 <Wallet size={18} style={{ color: "var(--text-primary)" }} />
               </div>
               <span className="text-[11px] font-bold text-center line-clamp-1">
@@ -760,33 +1105,48 @@ export function TransactionsPage() {
             </button>
 
             {/* Wallets */}
-            {wallets.map(w => {
-              const isSelected = selectedWalletName === w.name
+            {wallets.map((w) => {
+              const isSelected = selectedWalletName === w.name;
               return (
                 <button
                   key={w.id}
                   type="button"
-                  onClick={() => { setSelectedWalletName(w.name); setAccountPickerOpen(false); triggerHaptic("light"); }}
+                  onClick={() => {
+                    setSelectedWalletName(w.name);
+                    setAccountPickerOpen(false);
+                    triggerHaptic("light");
+                  }}
                   className="flex flex-col items-center gap-1.5 p-2 rounded-2xl active:scale-95 transition-transform touch-manipulation cursor-pointer select-none"
                   style={{
-                    background: isSelected ? "var(--glass-fill-strong)" : "transparent",
+                    background: isSelected
+                      ? "var(--glass-fill-strong)"
+                      : "transparent",
                     color: "var(--text-primary)",
-                    border: isSelected ? "1.5px solid rgba(255, 255, 255, 0.45)" : "1px solid transparent"
+                    border: isSelected
+                      ? "1.5px solid rgba(255, 255, 255, 0.45)"
+                      : "1px solid transparent",
                   }}
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: isSelected ? "rgba(255, 255, 255, 0.18)" : "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{
+                      background: isSelected
+                        ? "rgba(255, 255, 255, 0.18)"
+                        : "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
                     <IconRenderer icon={w.icon} size="w-6 h-6" />
                   </div>
                   <span className="text-[11px] font-bold text-center line-clamp-1">
                     {w.name}
                   </span>
                 </button>
-              )
+              );
             })}
           </div>
         </div>
       </BottomSheet>
     </div>
-  )
+  );
 }
