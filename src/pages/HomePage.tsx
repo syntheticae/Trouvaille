@@ -70,9 +70,12 @@ import { ActionCenterCard } from "../components/home/ActionCenterCard";
 import { MetricDrillDownSheet } from "../components/home/MetricDrillDownSheet";
 import { LiquidityHorizonCard } from "../components/home/LiquidityHorizonCard";
 import { CashflowOutlookCard } from "../components/home/CashflowOutlookCard";
+import { FinancialSnapshotCard } from "../components/home/FinancialSnapshotCard";
+import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence";
+import { useFinancialSnapshots } from "../hooks/useFinancialSnapshots";
 import { calculateAssetTrend } from "../lib/financialMath";
 
 interface HomePageProps {
@@ -154,7 +157,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const { goals, depositToGoal, updateGoal, deleteGoal } = useGoals();
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null);
 
-  const { totalAssets, liquidAssets, liquidAccounts } = useWalletBalances();
+  const { totalAssets, liquidAssets, liquidAccounts, netWorth, zeroAccounts } =
+    useWalletBalances();
+  const { snapshots, saveSnapshot } = useFinancialSnapshots();
   const [metricDrillDown, setMetricDrillDown] = useState<{
     type: "expense" | "income" | "budget_risk" | "snapshot";
     data: any;
@@ -185,6 +190,37 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const assetData = useMemo(() => {
     return calculateAssetTrend(allTxs, totalAssets, stockRange);
   }, [allTxs, totalAssets, stockRange]);
+
+  const debtBalance = useMemo(() => {
+    return zeroAccounts.reduce(
+      (sum: number, account: { balance: number }) =>
+        account.balance < 0 ? sum + Math.abs(account.balance) : sum,
+      0,
+    );
+  }, [zeroAccounts]);
+
+  const currentMonthLabel = format(now, "MMMM yyyy");
+
+  const currentSnapshotPreview = useMemo(
+    () => ({
+      periodLabel: currentMonthLabel,
+      totalLiquidAssets: liquidAssets,
+      netWorth,
+      monthlyExpense: intel.totalExpense,
+      savingsRate: intel.savingsRate,
+      committedAmount: intel.committedAmount,
+      debtBalance,
+    }),
+    [
+      currentMonthLabel,
+      debtBalance,
+      intel.committedAmount,
+      intel.savingsRate,
+      intel.totalExpense,
+      liquidAssets,
+      netWorth,
+    ],
+  );
 
   // 2. Current Month Financial Calculations
   const currentMonthStats = useMemo(() => {
@@ -604,6 +640,34 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       <CashflowOutlookCard
         defaultForecast={intel.cashflowFloor}
         getCashflowHorizon={intel.getCashflowHorizon}
+        hideBalance={hideBalance}
+      />
+      <FinancialSnapshotCard
+        currentPreview={currentSnapshotPreview}
+        snapshots={snapshots}
+        hideBalance={hideBalance}
+        onSaveSnapshot={() => {
+          const result = saveSnapshot({
+            totalLiquidAssets: currentSnapshotPreview.totalLiquidAssets,
+            netWorth: currentSnapshotPreview.netWorth,
+            monthlyExpense: currentSnapshotPreview.monthlyExpense,
+            savingsRate: currentSnapshotPreview.savingsRate,
+            committedAmount: currentSnapshotPreview.committedAmount,
+            debtBalance: currentSnapshotPreview.debtBalance,
+          });
+          triggerHaptic("medium");
+          showToast(
+            result.updatedExisting
+              ? `Snapshot ${result.snapshot.periodLabel} updated`
+              : `Snapshot ${result.snapshot.periodLabel} saved`,
+            "add",
+            () => {},
+          );
+        }}
+      />
+      <WhatIfSimulatorCard
+        monthlyIncome={intel.totalIncome}
+        monthlyExpense={intel.totalExpense}
         hideBalance={hideBalance}
       />
 

@@ -1,4 +1,11 @@
-import { format, parseISO, startOfYear, subMonths, subDays } from "date-fns";
+import {
+  addMonths,
+  format,
+  parseISO,
+  startOfYear,
+  subMonths,
+  subDays,
+} from "date-fns";
 import type { Transaction, Category, Wallet, Bill } from "./types";
 import famfinaRaw from "../data/famfina_transactions.json";
 
@@ -269,6 +276,34 @@ export interface GoalPlanningResult {
   trajectoryExplanation: string;
 }
 
+export type WhatIfScenarioType =
+  "expense_cut" | "income_boost" | "expense_change_pct" | "saving_plan";
+
+export interface WhatIfScenarioResult {
+  type: WhatIfScenarioType;
+  currentAnnualRetainedCash: number;
+  adjustedAnnualRetainedCash: number;
+  annualDifference: number;
+  monthlyDifference: number;
+  adjustedMonthlyIncome: number;
+  adjustedMonthlyExpense: number;
+  suggestedMonthlySavings: number;
+  remainingFreeCashAfterSavings: number;
+  isOvercommitted: boolean;
+}
+
+export interface GoalScenarioResult {
+  monthlyContribution: number;
+  remainingAmount: number;
+  monthsToTarget: number;
+  yearsToTarget: number;
+  extraMonths: number;
+  projectedCompletionLabel: string;
+  projectedCompletionDate: string | null;
+  isAlreadyCompleted: boolean;
+  isFeasible: boolean;
+}
+
 export interface MonthlyFinancialReviewData {
   monthName: string;
   year: number;
@@ -304,12 +339,52 @@ const famfinaKeyMap = new Map<string, any[]>();
   famfinaKeyMap.get(k)!.push(t);
 });
 
+const OPENING_BALANCE_PATTERNS = [
+  "saldo awal",
+  "opening balance",
+  "initial balance",
+];
+
 const NON_LIQUID_WALLET_NAMES = new Set([
   "crypto",
   "saham",
   "piutang",
   "liabilities",
 ]);
+
+export function isOpeningBalanceTx(tx: Pick<Transaction, "note">): boolean {
+  const note = tx.note?.trim().toLowerCase() || "";
+  return OPENING_BALANCE_PATTERNS.some((pattern) => note.includes(pattern));
+}
+
+function isLiabilityLikeAccountName(name: string): boolean {
+  const key = name.trim().toLowerCase();
+  return (
+    key.includes("liabil") ||
+    key.includes("debt") ||
+    key.includes("hutang") ||
+    key.includes("loan") ||
+    key.includes("paylater") ||
+    key.includes("credit")
+  );
+}
+
+function extractOpeningBalanceAccountName(note?: string | null): string {
+  if (!note) return "";
+  const parts = note.split("-");
+  return parts.length > 1 ? parts[parts.length - 1].trim() : note.trim();
+}
+
+function getOpeningBalanceNetEffect(
+  tx: Pick<Transaction, "amount" | "note">,
+  walletNameHint?: string | null,
+): number {
+  const amount = Math.abs(Number(tx.amount || 0));
+  if (amount === 0) return 0;
+  const accountName =
+    walletNameHint || extractOpeningBalanceAccountName(tx.note);
+  return isLiabilityLikeAccountName(accountName) ? -amount : amount;
+}
 
 export function isLiquidAccountName(name: string): boolean {
   const key = name.trim().toLowerCase();
@@ -442,9 +517,12 @@ export function calculateWalletBalances(
     const fromEntry = getWallet(fromName || "Cash");
     const toEntry = getWallet(toName || "BNI");
 
+    const isOpeningBalance = isOpeningBalanceTx(tx);
     const isCorrection = isCorrectionTx(tx);
 
-    if (isCorrection) {
+    if (isOpeningBalance) {
+      fromEntry.balance += getOpeningBalanceNetEffect(tx, fromEntry.name);
+    } else if (isCorrection) {
       const isNegative = tx.note?.includes("(-)") || tx.type === "expense";
       if (isNegative) {
         fromEntry.balance -= amt;
@@ -497,6 +575,10 @@ function getTransactionNetEffect(tx: Transaction): number {
   const amount = Number(tx.amount || 0);
   if (amount === 0) return 0;
 
+  if (isOpeningBalanceTx(tx)) {
+    return getOpeningBalanceNetEffect(tx);
+  }
+
   if (isCorrectionTx(tx)) {
     return tx.note?.includes("(-)") || tx.type === "expense" ? -amount : amount;
   }
@@ -523,20 +605,50 @@ export function calculateAssetTrend(
   const monthlyInflow = new Map<string, number>();
   const monthlyOutflow = new Map<string, number>();
 
+  const earliestDate =
+    datedTxs.length > 0
+      ? datedTxs.reduce(
+          (min, tx) => (tx.occurred_on < min ? tx.occurred_on : min),
+          datedTxs[0].occurred_on,
+        )
+      : format(now, "yyyy-MM-dd");
+  const earliestMonth = new Date(`${earliestDate.slice(0, 7)}-01T00:00:00`);
+  const openingBalanceTxs = datedTxs.filter(
+    (tx) => tx.occurred_on === earliestDate && isOpeningBalanceTx(tx),
+  );
+  const openingBalanceTxIds = new Set(openingBalanceTxs.map((tx) => tx.id));
+  const operationalTxs = datedTxs.filter(
+    (tx) => !openingBalanceTxIds.has(tx.id),
+  );
+  const openingBalanceAnchor = openingBalanceTxs.reduce(
+    (sum, tx) => sum + getOpeningBalanceNetEffect(tx),
+    0,
+  );
+
   datedTxs.forEach((tx) => {
     const dateKey = tx.occurred_on;
     const monthKey = dateKey.slice(0, 7);
-    const netEffect = getTransactionNetEffect(tx);
+    const netEffect = openingBalanceTxIds.has(tx.id)
+      ? 0
+      : getTransactionNetEffect(tx);
     dailyNet.set(dateKey, (dailyNet.get(dateKey) || 0) + netEffect);
     monthlyNet.set(monthKey, (monthlyNet.get(monthKey) || 0) + netEffect);
 
-    if (tx.type === "income" && !isCorrectionTx(tx)) {
+    if (
+      tx.type === "income" &&
+      !isCorrectionTx(tx) &&
+      !openingBalanceTxIds.has(tx.id)
+    ) {
       const amount = Number(tx.amount || 0);
       dailyInflow.set(dateKey, (dailyInflow.get(dateKey) || 0) + amount);
       monthlyInflow.set(monthKey, (monthlyInflow.get(monthKey) || 0) + amount);
     }
 
-    if (tx.type === "expense" && !isCorrectionTx(tx)) {
+    if (
+      tx.type === "expense" &&
+      !isCorrectionTx(tx) &&
+      !openingBalanceTxIds.has(tx.id)
+    ) {
       const amount = Number(tx.amount || 0);
       dailyOutflow.set(dateKey, (dailyOutflow.get(dateKey) || 0) + amount);
       monthlyOutflow.set(
@@ -546,19 +658,14 @@ export function calculateAssetTrend(
     }
   });
 
-  const totalNetEffect = datedTxs.reduce(
+  const totalNetEffect = operationalTxs.reduce(
     (sum, tx) => sum + getTransactionNetEffect(tx),
     0,
   );
-  const allTimeOpeningBalance = currentBalance - totalNetEffect;
-  const earliestDate =
-    datedTxs.length > 0
-      ? datedTxs.reduce(
-          (min, tx) => (tx.occurred_on < min ? tx.occurred_on : min),
-          datedTxs[0].occurred_on,
-        )
-      : format(now, "yyyy-MM-dd");
-  const earliestMonth = new Date(`${earliestDate.slice(0, 7)}-01T00:00:00`);
+  const allTimeOpeningBalance =
+    openingBalanceAnchor > 0
+      ? openingBalanceAnchor
+      : Math.max(0, currentBalance - totalNetEffect);
   const chartData: { label: string; balance: number }[] = [];
   let diff = 0;
   let percent = 0;
@@ -1698,6 +1805,109 @@ export function calculateLongitudinalTimeline(
 /**
  * Pure goal planning and mathematical trajectory evaluation.
  */
+export function calculateWhatIfScenario(options: {
+  monthlyIncome: number;
+  monthlyExpense: number;
+  type: WhatIfScenarioType;
+  value: number;
+}): WhatIfScenarioResult {
+  const monthlyIncome = Math.max(0, Number(options.monthlyIncome || 0));
+  const monthlyExpense = Math.max(0, Number(options.monthlyExpense || 0));
+  const value = Number(options.value || 0);
+  const currentMonthlyRetainedCash = monthlyIncome - monthlyExpense;
+
+  let adjustedMonthlyIncome = monthlyIncome;
+  let adjustedMonthlyExpense = monthlyExpense;
+  let suggestedMonthlySavings = 0;
+
+  switch (options.type) {
+    case "expense_cut":
+      adjustedMonthlyExpense = Math.max(0, monthlyExpense - Math.max(0, value));
+      break;
+    case "income_boost":
+      adjustedMonthlyIncome = monthlyIncome + Math.max(0, value);
+      break;
+    case "expense_change_pct":
+      adjustedMonthlyExpense = Math.max(0, monthlyExpense * (1 + value / 100));
+      break;
+    case "saving_plan":
+      suggestedMonthlySavings = Math.max(0, value);
+      break;
+  }
+
+  const adjustedMonthlyRetainedCash =
+    adjustedMonthlyIncome - adjustedMonthlyExpense - suggestedMonthlySavings;
+
+  return {
+    type: options.type,
+    currentAnnualRetainedCash: currentMonthlyRetainedCash * 12,
+    adjustedAnnualRetainedCash: adjustedMonthlyRetainedCash * 12,
+    annualDifference:
+      (adjustedMonthlyRetainedCash - currentMonthlyRetainedCash) * 12,
+    monthlyDifference: adjustedMonthlyRetainedCash - currentMonthlyRetainedCash,
+    adjustedMonthlyIncome,
+    adjustedMonthlyExpense,
+    suggestedMonthlySavings,
+    remainingFreeCashAfterSavings: adjustedMonthlyRetainedCash,
+    isOvercommitted: adjustedMonthlyRetainedCash < 0,
+  };
+}
+
+export function calculateGoalScenario(
+  goal: {
+    targetAmount: number;
+    currentAmount: number;
+  },
+  monthlyContribution: number,
+  now = new Date(),
+): GoalScenarioResult {
+  const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
+  const safeContribution = Math.max(0, Number(monthlyContribution || 0));
+
+  if (remainingAmount === 0) {
+    return {
+      monthlyContribution: safeContribution,
+      remainingAmount: 0,
+      monthsToTarget: 0,
+      yearsToTarget: 0,
+      extraMonths: 0,
+      projectedCompletionLabel: "Already completed",
+      projectedCompletionDate: format(now, "yyyy-MM-dd"),
+      isAlreadyCompleted: true,
+      isFeasible: true,
+    };
+  }
+
+  if (safeContribution <= 0) {
+    return {
+      monthlyContribution: safeContribution,
+      remainingAmount,
+      monthsToTarget: 0,
+      yearsToTarget: 0,
+      extraMonths: 0,
+      projectedCompletionLabel: "Set a monthly contribution",
+      projectedCompletionDate: null,
+      isAlreadyCompleted: false,
+      isFeasible: false,
+    };
+  }
+
+  const monthsToTarget = Math.ceil(remainingAmount / safeContribution);
+  const completionDate = addMonths(now, monthsToTarget);
+
+  return {
+    monthlyContribution: safeContribution,
+    remainingAmount,
+    monthsToTarget,
+    yearsToTarget: Math.floor(monthsToTarget / 12),
+    extraMonths: monthsToTarget % 12,
+    projectedCompletionLabel: format(completionDate, "MMMM yyyy"),
+    projectedCompletionDate: format(completionDate, "yyyy-MM-dd"),
+    isAlreadyCompleted: false,
+    isFeasible: true,
+  };
+}
+
 export function calculateGoalPlanning(
   goal: {
     id: string;

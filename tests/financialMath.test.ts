@@ -5,6 +5,8 @@ import {
   computeBudgetRisk,
   computeCategoryMoMChanges,
   calculateAssetTrend,
+  calculateWhatIfScenario,
+  calculateGoalScenario,
 } from "../src/lib/financialMath";
 import type { Transaction, Category } from "../src/lib/types";
 
@@ -235,6 +237,98 @@ describe("Financial Math & Analytics Test Suite", () => {
     expect(oneYear.lowBalance).toBeGreaterThan(17000000);
     expect(allTime.lowBalance).toBeGreaterThan(17000000);
     expect(allTime.chartData.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("treats opening balance imports as all-time portfolio anchors instead of negative operating flow", () => {
+    const txs: Transaction[] = [
+      {
+        id: "open-1",
+        user_id: "u",
+        amount: 7291226,
+        type: "expense",
+        wallet_id: "w1",
+        to_wallet_id: null,
+        category_id: null,
+        note: "Penyesuaian Saldo Awal - Krom Bank",
+        occurred_on: "2025-01-01",
+        created_at: "",
+      },
+      {
+        id: "open-2",
+        user_id: "u",
+        amount: 917254,
+        type: "income",
+        wallet_id: "w2",
+        to_wallet_id: null,
+        category_id: null,
+        note: "Penyesuaian Saldo Awal - BNI",
+        occurred_on: "2025-01-01",
+        created_at: "",
+      },
+      {
+        id: "tx-1",
+        user_id: "u",
+        amount: 3000000,
+        type: "income",
+        wallet_id: "w2",
+        to_wallet_id: null,
+        category_id: null,
+        note: "Salary",
+        occurred_on: "2025-01-10",
+        created_at: "",
+      },
+      {
+        id: "tx-2",
+        user_id: "u",
+        amount: 1250000,
+        type: "expense",
+        wallet_id: "w2",
+        to_wallet_id: null,
+        category_id: null,
+        note: "Living cost",
+        occurred_on: "2025-01-14",
+        created_at: "",
+      },
+    ];
+
+    const trend = calculateAssetTrend(
+      txs,
+      9958480,
+      "ALL",
+      new Date("2025-02-01T12:00:00Z"),
+    );
+
+    expect(trend.lowBalance).toBeGreaterThan(0);
+    expect(trend.chartData[0].balance).toBeGreaterThan(6000000);
+  });
+
+  it("computes deterministic what-if scenarios", () => {
+    const result = calculateWhatIfScenario({
+      monthlyIncome: 5000000,
+      monthlyExpense: 3000000,
+      type: "expense_cut",
+      value: 500000,
+    });
+
+    expect(result.currentAnnualRetainedCash).toBe(24000000);
+    expect(result.adjustedAnnualRetainedCash).toBe(30000000);
+    expect(result.annualDifference).toBe(6000000);
+    expect(result.isOvercommitted).toBe(false);
+  });
+
+  it("projects goal completion from monthly scenario amounts", () => {
+    const scenario = calculateGoalScenario(
+      {
+        targetAmount: 50000000,
+        currentAmount: 18000000,
+      },
+      2000000,
+      new Date("2026-08-01T12:00:00Z"),
+    );
+
+    expect(scenario.remainingAmount).toBe(32000000);
+    expect(scenario.monthsToTarget).toBe(16);
+    expect(scenario.projectedCompletionLabel).toBe("December 2027");
   });
 
   it("handles empty transactions dataset cleanly (0 records)", () => {
