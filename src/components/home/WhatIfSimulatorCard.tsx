@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, ChevronDown } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import {
   calculateWhatIfScenario,
   type WhatIfScenarioType,
 } from "../../lib/financialMath";
+import { motion, AnimatePresence } from "framer-motion";
+import { triggerHaptic } from "../../lib/haptics";
 
 interface WhatIfSimulatorCardProps {
   monthlyIncome: number;
@@ -54,8 +56,10 @@ export function WhatIfSimulatorCard({
   monthlyExpense,
   hideBalance = false,
 }: WhatIfSimulatorCardProps) {
-  const [scenarioType, setScenarioType] = useState<WhatIfScenarioType>("expense_cut");
+  const [scenarioType, setScenarioType] =
+    useState<WhatIfScenarioType>("expense_cut");
   const [rawValue, setRawValue] = useState("500000");
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const activeScenario =
     SCENARIOS.find((item) => item.type === scenarioType) ?? SCENARIOS[0];
@@ -73,150 +77,246 @@ export function WhatIfSimulatorCard({
   );
 
   return (
-    <section className="glass-surface p-4 rounded-[24px] space-y-3.5">
-      <div className="flex items-center gap-2">
-        <SlidersHorizontal size={14} style={{ color: "var(--text-tertiary)" }} />
-        <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>
-            What-if Simulator
-          </p>
-          <p className="text-[14px] font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>
-            Deterministic planning, not prediction
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        {SCENARIOS.map((scenario) => {
-          const isActive = scenario.type === scenarioType;
-          return (
-            <button
-              key={scenario.type}
-              type="button"
-              onClick={() => setScenarioType(scenario.type)}
-              className="px-3 py-2.5 rounded-2xl text-[11px] font-extrabold transition-all active:scale-95"
-              style={{
-                background: isActive ? "var(--accent)" : "var(--glass-fill)",
-                color: isActive ? "var(--accent-ink)" : "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {scenario.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div
-        className="p-3.5 rounded-[20px] space-y-3"
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
+    <section className="glass-surface rounded-3xl overflow-hidden transition-all">
+      <button
+        type="button"
+        onClick={() => {
+          setIsExpanded(!isExpanded);
+          triggerHaptic("light");
         }}
+        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-white/5 transition-colors"
       >
-        <div>
-          <p className="text-[11px] font-bold" style={{ color: "var(--text-primary)" }}>
-            {activeScenario.inputLabel}
-          </p>
-          <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-            {activeScenario.helper}
-          </p>
-        </div>
-
-        <input
-          type="number"
-          inputMode="decimal"
-          value={rawValue}
-          onChange={(e) => setRawValue(e.target.value)}
-          className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
-          placeholder={scenarioType === "expense_change_pct" ? "10" : "500000"}
-          style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
-            color: "var(--text-primary)",
-          }}
-        />
-
-        <div className="flex flex-wrap gap-2">
-          {activeScenario.presets.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => setRawValue(String(preset))}
-              className="px-2.5 py-1.5 rounded-full text-[10px] font-bold active:scale-95 transition-transform"
-              style={{
-                background: "var(--glass-fill)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {scenarioType === "expense_change_pct"
-                ? `${preset > 0 ? "+" : ""}${preset}%`
-                : formatRupiah(preset)}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-3">
-          <div className="p-2.5 rounded-xl" style={{ background: "var(--glass-fill)" }}>
-            <p style={{ color: "var(--text-tertiary)" }}>Current / year</p>
-            <p className="amount font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
-              {hideBalance ? "Rp ••••••••" : formatRupiah(result.currentAnnualRetainedCash)}
-            </p>
-          </div>
-          <div className="p-2.5 rounded-xl" style={{ background: "var(--glass-fill)" }}>
-            <p style={{ color: "var(--text-tertiary)" }}>After adjustment</p>
-            <p className="amount font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
-              {hideBalance ? "Rp ••••••••" : formatRupiah(result.adjustedAnnualRetainedCash)}
-            </p>
-          </div>
-          <div className="p-2.5 rounded-xl" style={{ background: "var(--glass-fill)" }}>
-            <p style={{ color: "var(--text-tertiary)" }}>Difference / year</p>
-            <p
-              className="amount font-extrabold mt-0.5"
-              style={{
-                color:
-                  result.annualDifference >= 0
-                    ? "var(--text-primary)"
-                    : "var(--text-secondary)",
-              }}
-            >
-              {hideBalance
-                ? "Rp ••••••••"
-                : `${result.annualDifference >= 0 ? "+" : ""}${formatRupiah(result.annualDifference)}`}
-            </p>
-          </div>
-        </div>
-
-        <div
-          className="pt-2.5 text-[11px] space-y-1"
-          style={{ borderTop: "1px solid var(--glass-border)" }}
-        >
-          <p style={{ color: "var(--text-secondary)" }}>
-            Adjusted income: {hideBalance ? "Rp ••••••••" : formatRupiah(result.adjustedMonthlyIncome)} / month
-          </p>
-          <p style={{ color: "var(--text-secondary)" }}>
-            Adjusted expense: {hideBalance ? "Rp ••••••••" : formatRupiah(result.adjustedMonthlyExpense)} / month
-          </p>
-          {result.suggestedMonthlySavings > 0 && (
-            <p style={{ color: "var(--text-secondary)" }}>
-              Dedicated savings: {hideBalance ? "Rp ••••••••" : formatRupiah(result.suggestedMonthlySavings)} / month
-            </p>
-          )}
-          <p
-            className="font-semibold"
-            style={{
-              color: result.isOvercommitted
-                ? "var(--text-secondary)"
-                : "var(--text-primary)",
-            }}
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0"
+            style={{ background: "rgba(255, 255, 255, 0.12)" }}
           >
-            {result.isOvercommitted
-              ? "This scenario overcommits monthly cashflow."
-              : "This scenario stays within your current monthly cashflow."}
-          </p>
+            <SlidersHorizontal size={13} />
+          </div>
+          <div>
+            <span
+              className="text-[10px] font-extrabold uppercase tracking-widest"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              What-if Simulator
+            </span>
+            <p
+              className="text-[13px] font-bold mt-0.5"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Deterministic Planning
+            </p>
+          </div>
         </div>
-      </div>
+        <motion.div
+          animate={{ rotate: isExpanded ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          style={{ color: "var(--text-secondary)" }}
+        >
+          <ChevronDown size={18} />
+        </motion.div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="p-4 pt-1 border-t border-(--glass-border) space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                {SCENARIOS.map((scenario) => {
+                  const isActive = scenario.type === scenarioType;
+                  return (
+                    <button
+                      key={scenario.type}
+                      type="button"
+                      onClick={() => {
+                        setScenarioType(scenario.type);
+                        triggerHaptic("light");
+                      }}
+                      className="px-3 py-2.5 rounded-2xl text-[11px] font-extrabold transition-all active:scale-95"
+                      style={{
+                        background: isActive
+                          ? "var(--accent)"
+                          : "var(--glass-fill)",
+                        color: isActive
+                          ? "var(--accent-ink)"
+                          : "var(--text-secondary)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      {scenario.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div
+                className="p-3.5 rounded-[20px] space-y-3"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div>
+                  <p
+                    className="text-[11px] font-bold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {activeScenario.inputLabel}
+                  </p>
+                  <p
+                    className="text-[10px] mt-0.5"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {activeScenario.helper}
+                  </p>
+                </div>
+
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={rawValue}
+                  onChange={(e) => setRawValue(e.target.value)}
+                  className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
+                  placeholder={
+                    scenarioType === "expense_change_pct" ? "10" : "500000"
+                  }
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+
+                <div className="flex flex-wrap gap-2">
+                  {activeScenario.presets.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        setRawValue(String(preset));
+                        triggerHaptic("light");
+                      }}
+                      className="px-2.5 py-1.5 rounded-full text-[10px] font-bold active:scale-95 transition-transform"
+                      style={{
+                        background: "var(--glass-fill)",
+                        color: "var(--text-secondary)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      {scenarioType === "expense_change_pct"
+                        ? `${preset > 0 ? "+" : ""}${preset}%`
+                        : formatRupiah(preset)}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-3">
+                  <div
+                    className="p-2.5 rounded-xl"
+                    style={{ background: "var(--glass-fill)" }}
+                  >
+                    <p style={{ color: "var(--text-tertiary)" }}>
+                      Current / year
+                    </p>
+                    <p
+                      className="amount font-extrabold mt-0.5"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {hideBalance
+                        ? "Rp ••••••••"
+                        : formatRupiah(result.currentAnnualRetainedCash)}
+                    </p>
+                  </div>
+                  <div
+                    className="p-2.5 rounded-xl"
+                    style={{ background: "var(--glass-fill)" }}
+                  >
+                    <p style={{ color: "var(--text-tertiary)" }}>
+                      After adjustment
+                    </p>
+                    <p
+                      className="amount font-extrabold mt-0.5"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {hideBalance
+                        ? "Rp ••••••••"
+                        : formatRupiah(result.adjustedAnnualRetainedCash)}
+                    </p>
+                  </div>
+                  <div
+                    className="p-2.5 rounded-xl"
+                    style={{ background: "var(--glass-fill)" }}
+                  >
+                    <p style={{ color: "var(--text-tertiary)" }}>
+                      Difference / year
+                    </p>
+                    <p
+                      className="amount font-extrabold mt-0.5"
+                      style={{
+                        color:
+                          result.annualDifference >= 0
+                            ? "var(--text-primary)"
+                            : "var(--text-secondary)",
+                      }}
+                    >
+                      {hideBalance
+                        ? "Rp ••••••••"
+                        : `${result.annualDifference >= 0 ? "+" : ""}${formatRupiah(result.annualDifference)}`}
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  className="pt-2.5 text-[11px] space-y-1"
+                  style={{ borderTop: "1px solid var(--glass-border)" }}
+                >
+                  <p style={{ color: "var(--text-secondary)" }}>
+                    Adjusted income:{" "}
+                    {hideBalance
+                      ? "Rp ••••••••"
+                      : formatRupiah(result.adjustedMonthlyIncome)}{" "}
+                    / month
+                  </p>
+                  <p style={{ color: "var(--text-secondary)" }}>
+                    Adjusted expense:{" "}
+                    {hideBalance
+                      ? "Rp ••••••••"
+                      : formatRupiah(result.adjustedMonthlyExpense)}{" "}
+                    / month
+                  </p>
+                  {result.suggestedMonthlySavings > 0 && (
+                    <p style={{ color: "var(--text-secondary)" }}>
+                      Dedicated savings:{" "}
+                      {hideBalance
+                        ? "Rp ••••••••"
+                        : formatRupiah(result.suggestedMonthlySavings)}{" "}
+                      / month
+                    </p>
+                  )}
+                  <p
+                    className="font-semibold"
+                    style={{
+                      color: result.isOvercommitted
+                        ? "var(--text-secondary)"
+                        : "var(--text-primary)",
+                    }}
+                  >
+                    {result.isOvercommitted
+                      ? "This scenario overcommits monthly cashflow."
+                      : "This scenario stays within your current monthly cashflow."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

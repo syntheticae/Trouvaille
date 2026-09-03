@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, Layers3 } from "lucide-react";
+import { ArrowDown, ChevronDown, Layers3 } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import { triggerHaptic } from "../../lib/haptics";
 
 export type ModelLayer = "actual" | "baseline" | "scenario";
-
 export interface ModelFlowValues {
   income: number;
   committedExpenses: number;
@@ -14,7 +15,6 @@ export interface ModelFlowValues {
   liabilities: number;
   netWorth: number;
 }
-
 export interface PersonalFinancialModelInsights {
   currentNetWorth: number;
   historicalTrendLabel: string;
@@ -49,6 +49,7 @@ export function PersonalFinancialModelCard({
   onOpenDetails,
 }: PersonalFinancialModelCardProps) {
   const [layer, setLayer] = useState<ModelLayer>("actual");
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const active = useMemo(() => {
     if (layer === "baseline") return baseline;
@@ -75,207 +76,252 @@ export function PersonalFinancialModelCard({
         : "Scenario";
 
   return (
-    <section className="glass-surface p-4 rounded-[24px] space-y-3.5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Layers3 size={14} style={{ color: "var(--text-tertiary)" }} />
+    <section className="glass-surface rounded-3xl overflow-hidden transition-all">
+      <button
+        type="button"
+        onClick={() => {
+          setIsExpanded(!isExpanded);
+          triggerHaptic("light");
+        }}
+        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-white/5 transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0"
+            style={{ background: "rgba(255, 255, 255, 0.12)" }}
+          >
+            <Layers3 size={13} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[10px] font-extrabold uppercase tracking-widest"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Financial Model
+              </span>
+              <span
+                className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                {layerLabel} Layer
+              </span>
+            </div>
             <p
-              className="text-[11px] font-extrabold uppercase tracking-widest"
-              style={{ color: "var(--text-tertiary)" }}
+              className="text-[13px] font-bold mt-0.5"
+              style={{ color: "var(--text-primary)" }}
             >
-              Personal Financial Model
+              Actual · Baseline · Scenario
             </p>
           </div>
-          <p
-            className="text-[14px] font-bold mt-1"
-            style={{ color: "var(--text-primary)" }}
-          >
-            One model, three layers: Actual · Baseline · Scenario
-          </p>
         </div>
-        <span
-          className="text-[10px] font-bold px-2 py-1 rounded-full"
-          style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
-            color: "var(--text-secondary)",
-          }}
+        <motion.div
+          animate={{ rotate: isExpanded ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          style={{ color: "var(--text-secondary)" }}
         >
-          {layerLabel}
-        </span>
-      </div>
+          <ChevronDown size={18} />
+        </motion.div>
+      </button>
 
-      <div className="grid grid-cols-3 gap-2">
-        {(["actual", "baseline", "scenario"] as ModelLayer[]).map((item) => {
-          const isActive = item === layer;
-          return (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setLayer(item)}
-              className="py-2 rounded-2xl text-[11px] font-extrabold active:scale-95 transition-all"
-              style={{
-                background: isActive ? "var(--accent)" : "var(--glass-fill)",
-                color: isActive ? "var(--accent-ink)" : "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {item === "actual"
-                ? "Actual"
-                : item === "baseline"
-                  ? "Baseline"
-                  : "Scenario"}
-            </button>
-          );
-        })}
-      </div>
-
-      <div
-        className="p-3.5 rounded-[20px]"
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-        }}
-      >
-        <div className="space-y-1.5">
-          {rows.map((row, idx) => {
-            const value = active[row.key];
-            const isNegative = row.key === "liabilities" || value < 0;
-
-            return (
-              <div key={row.key}>
-                <div className="flex items-center justify-between gap-2">
-                  <p
-                    className="text-[11px] font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {row.label}
-                  </p>
-                  <p
-                    className="text-[11px] font-extrabold amount"
-                    style={{
-                      color: isNegative
-                        ? "var(--text-secondary)"
-                        : "var(--text-primary)",
-                    }}
-                  >
-                    {isNegative && !hideBalance
-                      ? `-${formatRupiah(Math.abs(value))}`
-                      : amountLabel(value, hideBalance)}
-                  </p>
-                </div>
-                {idx < rows.length - 1 && (
-                  <div className="flex justify-center py-0.5">
-                    <ArrowDown
-                      size={11}
-                      style={{ color: "var(--text-tertiary)" }}
-                    />
-                  </div>
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="p-4 pt-1 border-t border-(--glass-border) space-y-4">
+              <div className="grid grid-cols-3 gap-2">
+                {(["actual", "baseline", "scenario"] as ModelLayer[]).map(
+                  (item) => {
+                    const isActive = item === layer;
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => {
+                          setLayer(item);
+                          triggerHaptic("light");
+                        }}
+                        className="py-2 rounded-2xl text-[11px] font-extrabold active:scale-95 transition-all"
+                        style={{
+                          background: isActive
+                            ? "var(--accent)"
+                            : "var(--glass-fill)",
+                          color: isActive
+                            ? "var(--accent-ink)"
+                            : "var(--text-secondary)",
+                          border: "1px solid var(--glass-border)",
+                        }}
+                      >
+                        {item.charAt(0).toUpperCase() + item.slice(1)}
+                      </button>
+                    );
+                  },
                 )}
               </div>
-            );
-          })}
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2">
-        <div
-          className="p-2.5 rounded-xl"
-          style={{ background: "var(--glass-fill)" }}
-        >
-          <p style={{ color: "var(--text-tertiary)" }}>Current Net Worth</p>
-          <p
-            className="font-bold amount mt-0.5"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {amountLabel(insights.currentNetWorth, hideBalance)}
-          </p>
-        </div>
-        <div
-          className="p-2.5 rounded-xl"
-          style={{ background: "var(--glass-fill)" }}
-        >
-          <p style={{ color: "var(--text-tertiary)" }}>
-            {insights.historicalTrendLabel}
-          </p>
-          <p
-            className="font-bold mt-0.5"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {insights.historicalTrendValue}
-          </p>
-        </div>
-        <div
-          className="p-2.5 rounded-xl"
-          style={{ background: "var(--glass-fill)" }}
-        >
-          <p style={{ color: "var(--text-tertiary)" }}>Current Cashflow</p>
-          <p
-            className="font-bold amount mt-0.5"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {hideBalance
-              ? "Rp ••••••••"
-              : `${insights.currentCashflow >= 0 ? "+" : "-"}${formatRupiah(Math.abs(insights.currentCashflow))}`}
-          </p>
-        </div>
-        <div
-          className="p-2.5 rounded-xl"
-          style={{ background: "var(--glass-fill)" }}
-        >
-          <p style={{ color: "var(--text-tertiary)" }}>Upcoming Commitments</p>
-          <p
-            className="font-bold amount mt-0.5"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {amountLabel(insights.upcomingCommitments, hideBalance)}
-          </p>
-        </div>
-      </div>
+              <div
+                className="p-3.5 rounded-[20px]"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div className="space-y-1.5">
+                  {rows.map((row, idx) => {
+                    const value = active[row.key];
+                    const isNegative = row.key === "liabilities" || value < 0;
+                    return (
+                      <div key={row.key}>
+                        <div className="flex items-center justify-between gap-2">
+                          <p
+                            className="text-[11px] font-bold"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {row.label}
+                          </p>
+                          <p
+                            className="text-[11px] font-extrabold amount"
+                            style={{
+                              color: isNegative
+                                ? "var(--text-secondary)"
+                                : "var(--text-primary)",
+                            }}
+                          >
+                            {isNegative && !hideBalance
+                              ? `-${formatRupiah(Math.abs(value))}`
+                              : amountLabel(value, hideBalance)}
+                          </p>
+                        </div>
+                        {idx < rows.length - 1 && (
+                          <div className="flex justify-center py-0.5">
+                            <ArrowDown
+                              size={11}
+                              style={{ color: "var(--text-tertiary)" }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-      <div
-        className="p-3 rounded-2xl text-[11px] space-y-1.5"
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          color: "var(--text-secondary)",
-        }}
-      >
-        <p>
-          <strong style={{ color: "var(--text-primary)" }}>
-            Personal Baseline:
-          </strong>{" "}
-          {insights.personalBaseline}
-        </p>
-        <p>
-          <strong style={{ color: "var(--text-primary)" }}>
-            Goal Trajectory:
-          </strong>{" "}
-          {insights.goalTrajectory}
-        </p>
-        <p>
-          <strong style={{ color: "var(--text-primary)" }}>
-            Scenario Impact:
-          </strong>{" "}
-          {insights.scenarioImpact}
-        </p>
-      </div>
+              <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2">
+                <div
+                  className="p-2.5 rounded-xl"
+                  style={{ background: "var(--glass-fill)" }}
+                >
+                  <p style={{ color: "var(--text-tertiary)" }}>
+                    Current Net Worth
+                  </p>
+                  <p
+                    className="font-bold amount mt-0.5"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {amountLabel(insights.currentNetWorth, hideBalance)}
+                  </p>
+                </div>
+                <div
+                  className="p-2.5 rounded-xl"
+                  style={{ background: "var(--glass-fill)" }}
+                >
+                  <p style={{ color: "var(--text-tertiary)" }}>
+                    {insights.historicalTrendLabel}
+                  </p>
+                  <p
+                    className="font-bold mt-0.5"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {insights.historicalTrendValue}
+                  </p>
+                </div>
+                <div
+                  className="p-2.5 rounded-xl"
+                  style={{ background: "var(--glass-fill)" }}
+                >
+                  <p style={{ color: "var(--text-tertiary)" }}>
+                    Current Cashflow
+                  </p>
+                  <p
+                    className="font-bold amount mt-0.5"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {hideBalance
+                      ? "Rp ••••••••"
+                      : `${insights.currentCashflow >= 0 ? "+" : "-"}${formatRupiah(Math.abs(insights.currentCashflow))}`}
+                  </p>
+                </div>
+                <div
+                  className="p-2.5 rounded-xl"
+                  style={{ background: "var(--glass-fill)" }}
+                >
+                  <p style={{ color: "var(--text-tertiary)" }}>
+                    Upcoming Commitments
+                  </p>
+                  <p
+                    className="font-bold amount mt-0.5"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {amountLabel(insights.upcomingCommitments, hideBalance)}
+                  </p>
+                </div>
+              </div>
 
-      {onOpenDetails && (
-        <button
-          type="button"
-          onClick={onOpenDetails}
-          className="w-full py-2.5 rounded-2xl text-[11px] font-extrabold active:scale-95 transition-transform"
-          style={{
-            background: "var(--glass-fill)",
-            color: "var(--text-secondary)",
-            border: "1px solid var(--glass-border)",
-          }}
-        >
-          View Model Details
-        </button>
-      )}
+              <div
+                className="p-3 rounded-2xl text-[11px] space-y-1.5"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                <p>
+                  <strong style={{ color: "var(--text-primary)" }}>
+                    Personal Baseline:
+                  </strong>{" "}
+                  {insights.personalBaseline}
+                </p>
+                <p>
+                  <strong style={{ color: "var(--text-primary)" }}>
+                    Goal Trajectory:
+                  </strong>{" "}
+                  {insights.goalTrajectory}
+                </p>
+                <p>
+                  <strong style={{ color: "var(--text-primary)" }}>
+                    Scenario Impact:
+                  </strong>{" "}
+                  {insights.scenarioImpact}
+                </p>
+              </div>
+
+              {onOpenDetails && (
+                <button
+                  type="button"
+                  onClick={onOpenDetails}
+                  className="w-full py-2.5 rounded-2xl text-[11px] font-extrabold active:scale-95 transition-transform"
+                  style={{
+                    background: "var(--glass-fill)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  View Model Details
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

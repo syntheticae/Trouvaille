@@ -1099,22 +1099,7 @@ export function StatisticsPage() {
         </div>
       )}
 
-      <WhatIfSimulatorCard
-        monthlyIncome={intel.totalIncome}
-        monthlyExpense={intel.totalExpense}
-        hideBalance={hideBalance}
-      />
-      <PersonalFinancialModelCard
-        hideBalance={hideBalance}
-        actual={personalFinancialModel.actual}
-        baseline={personalFinancialModel.baseline}
-        scenario={personalFinancialModel.scenario}
-        insights={personalFinancialModel.insights}
-        onOpenDetails={() => {
-          setPersonalModelOpen(true);
-          triggerHaptic("light");
-        }}
-      />
+      
 
       {/* Financial Health Hero */}
       <section className="card-contrast-hero p-5 relative overflow-hidden">
@@ -1894,6 +1879,23 @@ export function StatisticsPage() {
           </div>
         </div>
       </div>
+
+      <WhatIfSimulatorCard
+        monthlyIncome={intel.totalIncome}
+        monthlyExpense={intel.totalExpense}
+        hideBalance={hideBalance}
+      />
+      <PersonalFinancialModelCard
+        hideBalance={hideBalance}
+        actual={personalFinancialModel.actual}
+        baseline={personalFinancialModel.baseline}
+        scenario={personalFinancialModel.scenario}
+        insights={personalFinancialModel.insights}
+        onOpenDetails={() => {
+          setPersonalModelOpen(true);
+          triggerHaptic("light");
+        }}
+      />
 
       {/* 🍎 Apple macOS Style: Most Active Accounts & Volume Distribution */}
       <div className="p-5 rounded-[24px] glass-surface">
