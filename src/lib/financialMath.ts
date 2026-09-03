@@ -357,35 +357,6 @@ export function isOpeningBalanceTx(tx: Pick<Transaction, "note">): boolean {
   return OPENING_BALANCE_PATTERNS.some((pattern) => note.includes(pattern));
 }
 
-function isLiabilityLikeAccountName(name: string): boolean {
-  const key = name.trim().toLowerCase();
-  return (
-    key.includes("liabil") ||
-    key.includes("debt") ||
-    key.includes("hutang") ||
-    key.includes("loan") ||
-    key.includes("paylater") ||
-    key.includes("credit")
-  );
-}
-
-function extractOpeningBalanceAccountName(note?: string | null): string {
-  if (!note) return "";
-  const parts = note.split("-");
-  return parts.length > 1 ? parts[parts.length - 1].trim() : note.trim();
-}
-
-function getOpeningBalanceNetEffect(
-  tx: Pick<Transaction, "amount" | "note">,
-  walletNameHint?: string | null,
-): number {
-  const amount = Math.abs(Number(tx.amount || 0));
-  if (amount === 0) return 0;
-  const accountName =
-    walletNameHint || extractOpeningBalanceAccountName(tx.note);
-  return isLiabilityLikeAccountName(accountName) ? -amount : amount;
-}
-
 export function isLiquidAccountName(name: string): boolean {
   const key = name.trim().toLowerCase();
   if (!key) return false;
@@ -517,12 +488,9 @@ export function calculateWalletBalances(
     const fromEntry = getWallet(fromName || "Cash");
     const toEntry = getWallet(toName || "BNI");
 
-    const isOpeningBalance = isOpeningBalanceTx(tx);
     const isCorrection = isCorrectionTx(tx);
 
-    if (isOpeningBalance) {
-      fromEntry.balance += getOpeningBalanceNetEffect(tx, fromEntry.name);
-    } else if (isCorrection) {
+    if (isCorrection) {
       const isNegative = tx.note?.includes("(-)") || tx.type === "expense";
       if (isNegative) {
         fromEntry.balance -= amt;
@@ -575,10 +543,6 @@ function getTransactionNetEffect(tx: Transaction): number {
   const amount = Number(tx.amount || 0);
   if (amount === 0) return 0;
 
-  if (isOpeningBalanceTx(tx)) {
-    return getOpeningBalanceNetEffect(tx);
-  }
-
   if (isCorrectionTx(tx)) {
     return tx.note?.includes("(-)") || tx.type === "expense" ? -amount : amount;
   }
@@ -620,11 +584,6 @@ export function calculateAssetTrend(
   const operationalTxs = datedTxs.filter(
     (tx) => !openingBalanceTxIds.has(tx.id),
   );
-  const openingBalanceAnchor = openingBalanceTxs.reduce(
-    (sum, tx) => sum + getOpeningBalanceNetEffect(tx),
-    0,
-  );
-
   datedTxs.forEach((tx) => {
     const dateKey = tx.occurred_on;
     const monthKey = dateKey.slice(0, 7);
@@ -662,10 +621,7 @@ export function calculateAssetTrend(
     (sum, tx) => sum + getTransactionNetEffect(tx),
     0,
   );
-  const allTimeOpeningBalance =
-    openingBalanceAnchor > 0
-      ? openingBalanceAnchor
-      : Math.max(0, currentBalance - totalNetEffect);
+  const allTimeOpeningBalance = currentBalance - totalNetEffect;
   const chartData: { label: string; balance: number }[] = [];
   let diff = 0;
   let percent = 0;
