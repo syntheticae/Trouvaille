@@ -72,11 +72,15 @@ import { LiquidityHorizonCard } from "../components/home/LiquidityHorizonCard";
 import { CashflowOutlookCard } from "../components/home/CashflowOutlookCard";
 import { FinancialSnapshotCard } from "../components/home/FinancialSnapshotCard";
 import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
+import { PersonalFinancialModelCard } from "../components/home/PersonalFinancialModelCard";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence";
 import { useFinancialSnapshots } from "../hooks/useFinancialSnapshots";
-import { calculateAssetTrend } from "../lib/financialMath";
+import {
+  calculateAssetTrend,
+  calculateWhatIfScenario,
+} from "../lib/financialMath";
 
 interface HomePageProps {
   onOpenAdd?: () => void;
@@ -221,6 +225,117 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       netWorth,
     ],
   );
+
+  const modelScenario = useMemo(
+    () =>
+      calculateWhatIfScenario({
+        monthlyIncome: intel.totalIncome,
+        monthlyExpense: intel.totalExpense,
+        type: "expense_cut",
+        value: 500000,
+      }),
+    [intel.totalExpense, intel.totalIncome],
+  );
+
+  const goalTrajectoryText = useMemo(() => {
+    if (!goals.length) return "Add a goal to simulate timeline scenarios.";
+    const primaryGoal = goals[0];
+    const planning = intel.getGoalPlanning(primaryGoal);
+    const required =
+      planning.requiredMonthlyContribution.toLocaleString("id-ID");
+    return `${primaryGoal.title}: need ~Rp ${required}/month (${planning.trajectoryStatus}).`;
+  }, [goals, intel]);
+
+  const personalBaselineText = useMemo(() => {
+    const baseline = intel.personalBaselines;
+    if (baseline.status === "insufficient") {
+      return (
+        baseline.message ||
+        "Not enough history yet for a stable personal baseline."
+      );
+    }
+    return `Typical expense ${formatRupiah(baseline.medianExpense)}/month with median retained cash ${formatRupiah(Math.max(0, baseline.medianNetCashflow))}/month.`;
+  }, [intel.personalBaselines]);
+
+  const personalFinancialModel = useMemo(() => {
+    const actualCommitted = Math.max(0, intel.committedAmount);
+    const actualVariable = Math.max(0, intel.totalExpense - actualCommitted);
+    const actualRetained = intel.netCashflow;
+
+    const baselineCommitted = Math.max(
+      0,
+      intel.liquidityHorizon.typicalCommittedOutflow,
+    );
+    const baselineExpense = Math.max(0, intel.personalBaselines.medianExpense);
+    const baselineVariable = Math.max(0, baselineExpense - baselineCommitted);
+    const baselineRetained = intel.personalBaselines.medianNetCashflow;
+
+    const scenarioCommitted = actualCommitted;
+    const scenarioVariable = Math.max(
+      0,
+      modelScenario.adjustedMonthlyExpense - scenarioCommitted,
+    );
+    const scenarioRetained =
+      modelScenario.adjustedMonthlyIncome -
+      modelScenario.adjustedMonthlyExpense;
+
+    return {
+      actual: {
+        income: Math.max(0, intel.totalIncome),
+        committedExpenses: actualCommitted,
+        variableExpenses: actualVariable,
+        retainedCash: actualRetained,
+        savingsInvestment: Math.max(0, actualRetained),
+        assets: Math.max(0, totalAssets),
+        liabilities: debtBalance,
+        netWorth,
+      },
+      baseline: {
+        income: Math.max(0, intel.personalBaselines.medianIncome),
+        committedExpenses: baselineCommitted,
+        variableExpenses: baselineVariable,
+        retainedCash: baselineRetained,
+        savingsInvestment: Math.max(0, baselineRetained),
+        assets: Math.max(0, totalAssets),
+        liabilities: debtBalance,
+        netWorth,
+      },
+      scenario: {
+        income: Math.max(0, modelScenario.adjustedMonthlyIncome),
+        committedExpenses: scenarioCommitted,
+        variableExpenses: scenarioVariable,
+        retainedCash: scenarioRetained,
+        savingsInvestment: Math.max(0, scenarioRetained),
+        assets: Math.max(0, totalAssets + modelScenario.monthlyDifference),
+        liabilities: debtBalance,
+        netWorth: netWorth + modelScenario.monthlyDifference,
+      },
+      insights: {
+        currentNetWorth: netWorth,
+        historicalTrendLabel: `Historical Trend (${stockRange})`,
+        historicalTrendValue: `${assetData.diff >= 0 ? "+" : "-"}${formatRupiah(Math.abs(assetData.diff))} (${assetData.percent.toFixed(1)}%)`,
+        currentCashflow: intel.netCashflow,
+        personalBaseline: personalBaselineText,
+        upcomingCommitments: intel.committedAmount,
+        goalTrajectory: goalTrajectoryText,
+        scenarioImpact: `If expense drops Rp500K/month, retained cash changes by ${modelScenario.annualDifference >= 0 ? "+" : "-"}${formatRupiah(Math.abs(modelScenario.annualDifference))}/year.`,
+      },
+    };
+  }, [
+    assetData.diff,
+    assetData.percent,
+    debtBalance,
+    goalTrajectoryText,
+    intel,
+    modelScenario.adjustedMonthlyExpense,
+    modelScenario.adjustedMonthlyIncome,
+    modelScenario.annualDifference,
+    modelScenario.monthlyDifference,
+    netWorth,
+    personalBaselineText,
+    stockRange,
+    totalAssets,
+  ]);
 
   // 2. Current Month Financial Calculations
   const currentMonthStats = useMemo(() => {
@@ -669,6 +784,13 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         monthlyIncome={intel.totalIncome}
         monthlyExpense={intel.totalExpense}
         hideBalance={hideBalance}
+      />
+      <PersonalFinancialModelCard
+        hideBalance={hideBalance}
+        actual={personalFinancialModel.actual}
+        baseline={personalFinancialModel.baseline}
+        scenario={personalFinancialModel.scenario}
+        insights={personalFinancialModel.insights}
       />
 
       {/* 3. 2x2 FINANCIAL INSIGHTS GRID */}
