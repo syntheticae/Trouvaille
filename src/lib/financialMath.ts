@@ -79,7 +79,11 @@ export interface ActionCenterInsight {
   badge: string;
   actionLabel: string;
   actionType:
-    "statistics" | "budget" | "bills" | "transactions" | "category_detail";
+    | "statistics"
+    | "budget"
+    | "bills"
+    | "transactions"
+    | "category_detail";
   actionParam?: string;
   drillDownDetails?: {
     headline: string;
@@ -165,7 +169,11 @@ export interface LongitudinalTimelineResult {
 // ==========================================
 
 export type RecurringFrequency =
-  "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
+  | "weekly"
+  | "biweekly"
+  | "monthly"
+  | "quarterly"
+  | "yearly";
 export type RecurringConfidence = "strong" | "moderate" | "insufficient";
 export type RecurringStatus = "detected" | "confirmed" | "ignored" | "inactive";
 
@@ -191,7 +199,10 @@ export interface DetectedRecurringItem {
 }
 
 export type ExpenseClassification =
-  "fixed" | "variable" | "discretionary" | "unclassified";
+  | "fixed"
+  | "variable"
+  | "discretionary"
+  | "unclassified";
 
 export interface ExpenseStructureCategoryItem {
   categoryId: string;
@@ -258,7 +269,12 @@ export interface LiquidityHorizonResult {
   coverageText: string;
   committedCoverageText: string;
   resilienceTier:
-    "CRITICAL" | "LOW" | "MODERATE" | "HEALTHY" | "STRONG" | "EXCEPTIONAL";
+    | "CRITICAL"
+    | "LOW"
+    | "MODERATE"
+    | "HEALTHY"
+    | "STRONG"
+    | "EXCEPTIONAL";
   explanation: string;
 }
 
@@ -277,7 +293,10 @@ export interface GoalPlanningResult {
 }
 
 export type WhatIfScenarioType =
-  "expense_cut" | "income_boost" | "expense_change_pct" | "saving_plan";
+  | "expense_cut"
+  | "income_boost"
+  | "expense_change_pct"
+  | "saving_plan";
 
 export interface WhatIfScenarioResult {
   type: WhatIfScenarioType;
@@ -577,50 +596,39 @@ export function calculateAssetTrend(
         )
       : format(now, "yyyy-MM-dd");
   const earliestMonth = new Date(`${earliestDate.slice(0, 7)}-01T00:00:00`);
-  const openingBalanceTxs = datedTxs.filter(
-    (tx) => tx.occurred_on === earliestDate && isOpeningBalanceTx(tx),
-  );
-  const openingBalanceTxIds = new Set(openingBalanceTxs.map((tx) => tx.id));
-  const operationalTxs = datedTxs.filter(
-    (tx) => !openingBalanceTxIds.has(tx.id),
-  );
+
+  let totalNetEffect = 0;
+
   datedTxs.forEach((tx) => {
     const dateKey = tx.occurred_on;
     const monthKey = dateKey.slice(0, 7);
-    const netEffect = openingBalanceTxIds.has(tx.id)
-      ? 0
-      : getTransactionNetEffect(tx);
-    dailyNet.set(dateKey, (dailyNet.get(dateKey) || 0) + netEffect);
-    monthlyNet.set(monthKey, (monthlyNet.get(monthKey) || 0) + netEffect);
 
-    if (
-      tx.type === "income" &&
-      !isCorrectionTx(tx) &&
-      !openingBalanceTxIds.has(tx.id)
-    ) {
-      const amount = Number(tx.amount || 0);
-      dailyInflow.set(dateKey, (dailyInflow.get(dateKey) || 0) + amount);
-      monthlyInflow.set(monthKey, (monthlyInflow.get(monthKey) || 0) + amount);
+    // INTI PERBAIKAN: Abaikan transaksi buatan (Saldo Awal & Koreksi) dari pergerakan grafik
+    const isArtificial = isOpeningBalanceTx(tx) || isCorrectionTx(tx);
+    let netEffect = 0;
+    const amt = Number(tx.amount || 0);
+
+    if (!isArtificial) {
+      if (tx.type === "income") netEffect = amt;
+      else if (tx.type === "expense") netEffect = -amt;
     }
 
-    if (
-      tx.type === "expense" &&
-      !isCorrectionTx(tx) &&
-      !openingBalanceTxIds.has(tx.id)
-    ) {
-      const amount = Number(tx.amount || 0);
-      dailyOutflow.set(dateKey, (dailyOutflow.get(dateKey) || 0) + amount);
-      monthlyOutflow.set(
-        monthKey,
-        (monthlyOutflow.get(monthKey) || 0) + amount,
-      );
+    dailyNet.set(dateKey, (dailyNet.get(dateKey) || 0) + netEffect);
+    monthlyNet.set(monthKey, (monthlyNet.get(monthKey) || 0) + netEffect);
+    totalNetEffect += netEffect;
+
+    if (tx.type === "income" && !isArtificial) {
+      dailyInflow.set(dateKey, (dailyInflow.get(dateKey) || 0) + amt);
+      monthlyInflow.set(monthKey, (monthlyInflow.get(monthKey) || 0) + amt);
+    }
+
+    if (tx.type === "expense" && !isArtificial) {
+      dailyOutflow.set(dateKey, (dailyOutflow.get(dateKey) || 0) + amt);
+      monthlyOutflow.set(monthKey, (monthlyOutflow.get(monthKey) || 0) + amt);
     }
   });
 
-  const totalNetEffect = operationalTxs.reduce(
-    (sum, tx) => sum + getTransactionNetEffect(tx),
-    0,
-  );
+  // Titik awal dirender secara dinamis berdasarkan arus kas murni
   const allTimeOpeningBalance = currentBalance - totalNetEffect;
   const chartData: { label: string; balance: number }[] = [];
   let diff = 0;
@@ -687,6 +695,7 @@ export function calculateAssetTrend(
       (sum, key) => sum + (monthlyNet.get(key) || 0),
       0,
     );
+
     startBalance =
       startMonthDate.getFullYear() === earliestMonth.getFullYear() &&
       startMonthDate.getMonth() === earliestMonth.getMonth()
@@ -799,7 +808,9 @@ export function computeMonthAggregates(
   const categoryTotals: Record<string, { total: number; count: number }> = {};
 
   monthTxs.forEach((t) => {
-    if (isCorrectionTx(t) || t.type === "transfer") return;
+    // Pastikan Saldo Awal juga diabaikan agar tidak merusak rata-rata (avgTransaction)
+    if (isCorrectionTx(t) || t.type === "transfer" || isOpeningBalanceTx(t))
+      return;
 
     const amt = Number(t.amount || 0);
     if (t.type === "income") {
@@ -2487,8 +2498,12 @@ export function calculateLiquidityHorizon(
   );
 
   let resilienceTier:
-    "CRITICAL" | "LOW" | "MODERATE" | "HEALTHY" | "STRONG" | "EXCEPTIONAL" =
-    "HEALTHY";
+    | "CRITICAL"
+    | "LOW"
+    | "MODERATE"
+    | "HEALTHY"
+    | "STRONG"
+    | "EXCEPTIONAL" = "HEALTHY";
   let explanation = `Your current liquid cash of Rp ${liquidAssets.toLocaleString("id-ID")} covers ${totalCoverageMonths} months of typical spending.`;
 
   if (totalCoverageMonths < 1.0) {
