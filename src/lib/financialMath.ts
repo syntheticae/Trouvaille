@@ -558,19 +558,6 @@ export function calculateWalletBalances(
   };
 }
 
-function getTransactionNetEffect(tx: Transaction): number {
-  const amount = Number(tx.amount || 0);
-  if (amount === 0) return 0;
-
-  if (isCorrectionTx(tx)) {
-    return tx.note?.includes("(-)") || tx.type === "expense" ? -amount : amount;
-  }
-
-  if (tx.type === "income") return amount;
-  if (tx.type === "expense") return -amount;
-  return 0;
-}
-
 /**
  * Pure, deterministic calculation of Apple Stocks-style Net Worth Trend.
  */
