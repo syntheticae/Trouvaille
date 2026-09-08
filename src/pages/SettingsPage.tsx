@@ -21,6 +21,7 @@ import {
   Scale,
   Check,
   Loader2,
+  Search,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -66,11 +67,8 @@ import {
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet";
-import { FinancialSnapshotCard } from "../components/home/FinancialSnapshotCard";
 import { requestNotificationPermission } from "../lib/notifications";
-import { syncAllFamfinaToSupabase } from "../lib/famfinaResolver";
-import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence";
-import { useFinancialSnapshots } from "../hooks/useFinancialSnapshots";
+import { flushPendingMutations } from "../lib/syncEngine";
 import {
   detectRecurringTransactions,
   type DetectedRecurringItem,
@@ -89,9 +87,6 @@ export function SettingsPage() {
   const { session } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
-  const [hideBalance] = useState(
-    () => localStorage.getItem("trouvaille_hide_balance") === "true",
-  );
   const { budgetTarget, setBudgetTarget } = useBudgetTarget();
   const { shortcuts, saveShortcut, deleteShortcut } = useShortcuts();
 
@@ -125,47 +120,7 @@ export function SettingsPage() {
     balancesByName,
     allTxs,
     totalAssets,
-    liquidAssets,
-    liquidAccounts,
-    netWorth,
-    zeroAccounts,
   } = useWalletBalances();
-  const { snapshots, saveSnapshot } = useFinancialSnapshots();
-  const intel = useFinancialIntelligence({
-    transactions: allTxs,
-    budgetTarget,
-    totalAssets,
-    liquidAssets,
-    liquidAccounts,
-    bills,
-    categories,
-  });
-  const debtBalance = useMemo(() => {
-    return zeroAccounts.reduce(
-      (sum: number, account: { balance: number }) =>
-        account.balance < 0 ? sum + Math.abs(account.balance) : sum,
-      0,
-    );
-  }, [zeroAccounts]);
-  const currentSnapshotPreview = useMemo(
-    () => ({
-      periodLabel: format(new Date(), "MMMM yyyy"),
-      totalLiquidAssets: liquidAssets,
-      netWorth,
-      monthlyExpense: intel.totalExpense,
-      savingsRate: intel.savingsRate,
-      committedAmount: intel.committedAmount,
-      debtBalance,
-    }),
-    [
-      debtBalance,
-      intel.committedAmount,
-      intel.savingsRate,
-      intel.totalExpense,
-      liquidAssets,
-      netWorth,
-    ],
-  );
 
   // Editing states
   const [editingBill, setEditingBill] = useState<any>(null);
@@ -198,6 +153,7 @@ export function SettingsPage() {
   const [budgetsOpen, setBudgetsOpen] = useState(false);
   const [addBudgetOpen, setAddBudgetOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
   const [addCatOpen, setAddCatOpen] = useState(false);
   const [billListOpen, setBillListOpen] = useState(false);
   const [billSheetOpen, setBillSheetOpen] = useState(false);
@@ -329,8 +285,8 @@ export function SettingsPage() {
     triggerHaptic("light");
 
     try {
-      // 1. Sync any missing Famfina dataset records to Supabase (non-destructive)
-      await syncAllFamfinaToSupabase();
+      // 1. Flush any pending local mutations first so no new data is lost
+      await flushPendingMutations();
 
       const userId = session?.user?.id;
       if (!userId) throw new Error("Not authenticated");
@@ -995,30 +951,6 @@ export function SettingsPage() {
           </button>
         </div>
       </section>
-
-      <FinancialSnapshotCard
-        currentPreview={currentSnapshotPreview}
-        snapshots={snapshots}
-        hideBalance={hideBalance}
-        onSaveSnapshot={() => {
-          const result = saveSnapshot({
-            totalLiquidAssets: currentSnapshotPreview.totalLiquidAssets,
-            netWorth: currentSnapshotPreview.netWorth,
-            monthlyExpense: currentSnapshotPreview.monthlyExpense,
-            savingsRate: currentSnapshotPreview.savingsRate,
-            committedAmount: currentSnapshotPreview.committedAmount,
-            debtBalance: currentSnapshotPreview.debtBalance,
-          });
-          triggerHaptic("medium");
-          showToast(
-            result.updatedExisting
-              ? `Snapshot ${result.snapshot.periodLabel} updated`
-              : `Snapshot ${result.snapshot.periodLabel} saved`,
-            "add",
-            () => {},
-          );
-        }}
-      />
 
       {/* ============================================================ */}
       {/* 4. DATA & STORAGE SECTION */}
@@ -1873,6 +1805,34 @@ export function SettingsPage() {
             </button>
           </div>
 
+          {/* Quick Search */}
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-2xl"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <Search size={15} style={{ color: "var(--text-tertiary)" }} />
+            <input
+              type="text"
+              value={categorySearch}
+              onChange={(e) => setCategorySearch(e.target.value)}
+              placeholder="Search category name..."
+              className="bg-transparent text-[13px] font-semibold flex-1 outline-none"
+              style={{ color: "var(--text-primary)" }}
+            />
+            {categorySearch && (
+              <button
+                type="button"
+                onClick={() => setCategorySearch("")}
+                className="w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-60 hover:opacity-100"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
           {/* Segmented Filter Tab: Expense vs Income */}
           <div
             className="flex p-1 rounded-2xl"
@@ -1904,10 +1864,17 @@ export function SettingsPage() {
             })}
           </div>
 
-          {/* 2-Column Responsive Compact Grid */}
-          <div className="grid grid-cols-2 gap-2.5 pb-6">
+          {/* Clean iOS-Style Grouped List */}
+          <div className="space-y-2 pb-8 max-h-[55vh] overflow-y-auto no-scrollbar">
             {categories
               .filter((c) => c.type === manageCatTab)
+              .filter(
+                (c) =>
+                  !categorySearch.trim() ||
+                  c.name
+                    .toLowerCase()
+                    .includes(categorySearch.toLowerCase().trim()),
+              )
               .map((cat) => (
                 <div
                   key={cat.id}
@@ -1922,15 +1889,15 @@ export function SettingsPage() {
                       cat.budget_amount ? String(cat.budget_amount) : "",
                     );
                   }}
-                  className="p-3 rounded-2xl flex flex-col justify-between cursor-pointer active:scale-98 transition-all relative group"
+                  className="flex items-center justify-between p-3 rounded-2xl cursor-pointer active:scale-[0.99] transition-all"
                   style={{
                     background: "var(--bg-elevated)",
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  <div className="flex items-center justify-between gap-1.5 mb-2">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[18px]"
                       style={{
                         background: "var(--glass-fill)",
                         border: "1px solid var(--glass-border)",
@@ -1938,75 +1905,76 @@ export function SettingsPage() {
                     >
                       <IconRenderer icon={cat.emoji} size="w-5 h-5" />
                     </div>
-                    <div
-                      className="flex items-center gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditCategory({
-                            id: cat.id,
-                            name: cat.name,
-                            budget_amount: cat.budget_amount,
-                            type: cat.type,
-                          });
-                          setEditCategoryBudget(
-                            cat.budget_amount ? String(cat.budget_amount) : "",
-                          );
-                        }}
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                        style={{
-                          background: "var(--glass-fill-strong)",
-                          color: "var(--text-secondary)",
-                          border: "1px solid var(--glass-border)",
-                        }}
+                    <div className="min-w-0">
+                      <p
+                        className="font-bold text-[14px] truncate"
+                        style={{ color: "var(--text-primary)" }}
                       >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!confirm(`Delete "${cat.name}"?`)) return;
-                          deleteCategory.mutate(cat.id, {
-                            onSuccess: () => {
-                              showToast("Category deleted", "delete", () => {});
-                            },
-                            onError: (error: any) => {
-                              showToast(
-                                error?.message || "Failed to delete category",
-                                "delete",
-                                () => {},
-                              );
-                            },
-                          });
-                        }}
-                        className="w-6 h-6 flex items-center justify-center rounded-full active:scale-95"
-                        style={{ color: "#ef4444" }}
+                        {cat.name}
+                      </p>
+                      <p
+                        className="text-[11px] font-semibold mt-0.5 truncate"
+                        style={{ color: "var(--text-tertiary)" }}
                       >
-                        <Trash2 size={12} />
-                      </button>
+                        {cat.budget_amount && cat.budget_amount > 0 ? (
+                          <span className="text-emerald-400 font-bold">
+                            Limit {formatRupiah(cat.budget_amount)}
+                          </span>
+                        ) : (
+                          <span>No monthly limit</span>
+                        )}
+                      </p>
                     </div>
                   </div>
-                  <div>
-                    <p
-                      className="font-bold text-[13px] truncate"
-                      style={{ color: "var(--text-primary)" }}
+
+                  <div
+                    className="flex items-center gap-1.5 shrink-0 ml-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditCategory({
+                          id: cat.id,
+                          name: cat.name,
+                          budget_amount: cat.budget_amount,
+                          type: cat.type,
+                        });
+                        setEditCategoryBudget(
+                          cat.budget_amount ? String(cat.budget_amount) : "",
+                        );
+                      }}
+                      className="px-2.5 py-1 rounded-full text-[11px] font-bold"
+                      style={{
+                        background: "var(--glass-fill-strong)",
+                        color: "var(--text-primary)",
+                        border: "1px solid var(--glass-border)",
+                      }}
                     >
-                      {cat.name}
-                    </p>
-                    <p
-                      className="text-[10px] font-semibold mt-0.5 truncate"
-                      style={{ color: "var(--text-tertiary)" }}
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!confirm(`Delete "${cat.name}"?`)) return;
+                        deleteCategory.mutate(cat.id, {
+                          onSuccess: () => {
+                            showToast("Category deleted", "delete", () => {});
+                          },
+                          onError: (error: any) => {
+                            showToast(
+                              error?.message || "Failed to delete category",
+                              "delete",
+                              () => {},
+                            );
+                          },
+                        });
+                      }}
+                      className="w-7 h-7 flex items-center justify-center rounded-full active:scale-90 transition-transform text-red-400 hover:text-red-500"
+                      title="Delete Category"
                     >
-                      {cat.budget_amount && cat.budget_amount > 0 ? (
-                        <span className="text-emerald-400 font-bold">
-                          Limit {formatRupiah(cat.budget_amount)}
-                        </span>
-                      ) : (
-                        <span>No monthly limit</span>
-                      )}
-                    </p>
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -2205,44 +2173,117 @@ export function SettingsPage() {
             </button>
           </div>
 
-          {/* 2-Column Responsive Account Cards Grid */}
-          <div className="grid grid-cols-2 gap-2.5 pb-6">
+          {/* Total Liquid Wealth Header */}
+          <div
+            className="p-4 rounded-2xl flex items-center justify-between"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <div>
+              <p
+                className="text-[10px] font-extrabold uppercase tracking-wider"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Total Liquid Assets
+              </p>
+              <p
+                className="amount text-[20px] font-extrabold mt-0.5"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {formatRupiah(totalAssets)}
+              </p>
+            </div>
+            <span
+              className="text-[11px] font-bold px-2.5 py-1 rounded-full"
+              style={{
+                background: "var(--glass-fill-strong)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              {wallets.length} Accounts
+            </span>
+          </div>
+
+          {/* Clean Account Cards List */}
+          <div className="space-y-2.5 pb-8 max-h-[55vh] overflow-y-auto no-scrollbar">
             {wallets.map((w) => {
               const bal =
                 balancesById[w.id] ?? balancesByName[w.name.toLowerCase()] ?? 0;
               return (
                 <div
                   key={w.id}
-                  onClick={() =>
-                    setEditWallet({
-                      id: w.id,
-                      name: w.name,
-                      icon: w.icon || getWalletIcon(w.name),
-                    })
-                  }
-                  className="p-3.5 rounded-2xl flex flex-col justify-between cursor-pointer active:scale-98 transition-all relative group"
+                  className="p-3.5 rounded-2xl space-y-2.5 transition-all select-none"
                   style={{
                     background: "var(--bg-elevated)",
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  <div className="flex items-center justify-between gap-1 mb-2">
-                    <div
-                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                  {/* Top row: Icon, Account Name & Balance */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: "var(--glass-fill)",
+                          border: "1px solid var(--glass-border)",
+                        }}
+                      >
+                        <IconRenderer
+                          icon={w.icon || getWalletIcon(w.name)}
+                          size="w-5 h-5"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <p
+                          className="font-extrabold text-[14px] truncate"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {w.name}
+                        </p>
+                        <p
+                          className="text-[10px] font-semibold uppercase tracking-wider mt-0.5"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          Account
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <p
+                        className="amount text-[15px] font-extrabold"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {formatRupiah(bal)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Bottom Action Row */}
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--glass-border)]">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditWallet({
+                          id: w.id,
+                          name: w.name,
+                          icon: w.icon || getWalletIcon(w.name),
+                        })
+                      }
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-full active:scale-95 transition-all"
                       style={{
                         background: "var(--glass-fill)",
+                        color: "var(--text-secondary)",
                         border: "1px solid var(--glass-border)",
                       }}
                     >
-                      <IconRenderer
-                        icon={w.icon || getWalletIcon(w.name)}
-                        size="w-4.5 h-4.5"
-                      />
-                    </div>
-                    <div
-                      className="flex items-center gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                      Edit Name & Icon
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => {
@@ -2258,16 +2299,17 @@ export function SettingsPage() {
                             setCorrectNote("");
                           }, 300);
                         }}
-                        className="flex items-center gap-0.5 text-[10px] font-extrabold px-2 py-1 rounded-full active:scale-95 transition-all"
+                        className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full active:scale-95 transition-all"
                         style={{
                           background: "var(--accent)",
                           color: "var(--accent-ink)",
                         }}
                         title="Koreksi Saldo"
                       >
-                        <Scale size={11} />
-                        <span>Adjust</span>
+                        <Scale size={12} />
+                        <span>Adjust Balance</span>
                       </button>
+
                       <button
                         type="button"
                         onClick={() => {
@@ -2285,26 +2327,12 @@ export function SettingsPage() {
                             },
                           });
                         }}
-                        className="w-6 h-6 flex items-center justify-center rounded-full active:scale-95"
-                        style={{ color: "#ef4444" }}
+                        className="w-7 h-7 flex items-center justify-center rounded-full active:scale-90 transition-transform text-red-400 hover:text-red-500"
+                        title="Delete Account"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
-                  </div>
-                  <div>
-                    <p
-                      className="font-bold text-[13px] truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {w.name}
-                    </p>
-                    <p
-                      className="amount text-[12.5px] font-extrabold mt-0.5 truncate"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {formatRupiah(bal)}
-                    </p>
                   </div>
                 </div>
               );
@@ -3080,7 +3108,7 @@ export function SettingsPage() {
                         : "transparent",
                       color: "var(--text-primary)",
                       border: isSelected
-                        ? "1.5px solid rgba(255, 255, 255, 0.45)"
+                        ? "1.5px solid var(--accent)"
                         : "1px solid transparent",
                     }}
                   >
@@ -3088,7 +3116,7 @@ export function SettingsPage() {
                       className="w-10 h-10 rounded-xl flex items-center justify-center"
                       style={{
                         background: isSelected
-                          ? "rgba(255, 255, 255, 0.18)"
+                          ? "var(--dock-active-pill)"
                           : "var(--bg-elevated)",
                         border: "1px solid var(--glass-border)",
                       }}
@@ -3134,7 +3162,7 @@ export function SettingsPage() {
                       : "transparent",
                     color: "var(--text-primary)",
                     border: isSelected
-                      ? "1.5px solid rgba(255, 255, 255, 0.45)"
+                      ? "1.5px solid var(--accent)"
                       : "1px solid transparent",
                   }}
                 >
@@ -3142,7 +3170,7 @@ export function SettingsPage() {
                     className="w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{
                       background: isSelected
-                        ? "rgba(255, 255, 255, 0.18)"
+                        ? "var(--dock-active-pill)"
                         : "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                     }}

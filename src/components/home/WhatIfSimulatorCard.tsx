@@ -88,8 +88,12 @@ export function WhatIfSimulatorCard({
       >
         <div className="flex items-center gap-2.5">
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0"
-            style={{ background: "rgba(255, 255, 255, 0.12)" }}
+            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill-strong)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
           >
             <SlidersHorizontal size={13} />
           </div>

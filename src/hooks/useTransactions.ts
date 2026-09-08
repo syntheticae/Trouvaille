@@ -3,6 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import type { Transaction, TransactionType } from "../lib/types";
 import { format } from "date-fns";
+import {
+  enqueuePendingMutation,
+  removePendingMutation,
+  getPendingMutations,
+} from "../lib/syncEngine";
 
 interface TransactionInput {
   type: TransactionType;
@@ -162,26 +167,23 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isLikelyTransientTransactionError(error: unknown) {
-  const message =
-    typeof error === "object" && error !== null && "message" in error
-      ? String((error as { message?: unknown }).message || "")
-      : String(error || "");
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("failed to fetch") ||
-    normalized.includes("network") ||
-    normalized.includes("timeout") ||
-    normalized.includes("tempor") ||
-    normalized.includes("fetch")
-  );
+function withTimeout<T>(promise: PromiseLike<T>, ms = 8000): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Supabase request timed out after ${ms}ms`)), ms),
+    ),
+  ]);
 }
+
+const TX_BACKUP_STORAGE_KEY = "TROUVAILLE_TX_BACKUP_V1";
 
 import { useAuth } from "../contexts/AuthContext";
 
 /**
  * Deterministic chunked pagination fetcher for Supabase transactions.
  * Guarantees 100% retrieval across arbitrarily large datasets without PostgREST row limits.
+ * Resilient against network timeouts, flakiness, and offline cold starts with local backup snapshots.
  */
 export async function fetchAllTransactionsFromSupabase(
   filters?: TransactionFilters,
@@ -193,7 +195,7 @@ export async function fetchAllTransactionsFromSupabase(
   const user = session?.user;
   const effectiveUserId = filters?.userId || user?.id;
 
-  const pageSize = 1000;
+  const pageSize = 250;
   let from = 0;
   const allRecords: Transaction[] = [];
   let hasMore = true;
@@ -201,63 +203,136 @@ export async function fetchAllTransactionsFromSupabase(
 
   while (hasMore) {
     const shouldRequestCount = from === 0;
-    let query = supabase
-      .from("transactions")
-      .select(
-        "*, categories(*)",
-        shouldRequestCount ? { count: "exact" } : undefined,
-      )
-      .order("occurred_on", { ascending: false })
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .range(from, from + pageSize - 1);
+    let chunk: Transaction[] = [];
+    let fetchError: unknown = null;
 
-    if (effectiveUserId) query = query.eq("user_id", effectiveUserId);
-    if (filters?.categoryId)
-      query = query.eq("category_id", filters.categoryId);
-    if (filters?.startDate) query = query.gte("occurred_on", filters.startDate);
-    if (filters?.endDate) query = query.lte("occurred_on", filters.endDate);
+    // Resilient chunk fetcher with auto-retry up to 3 attempts
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        let query = supabase
+          .from("transactions")
+          .select(
+            "*, categories(*)",
+            shouldRequestCount ? { count: "exact" } : undefined,
+          )
+          .order("occurred_on", { ascending: false })
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, from + pageSize - 1);
 
-    let { data, error, count } = await query;
-    if (error) {
-      console.warn(
-        `[fetchAllTransactionsFromSupabase] Error with join at page [${from} - ${from + pageSize - 1}], trying direct select('*'):`,
-        error,
-      );
-      let fallbackQuery = supabase
-        .from("transactions")
-        .select("*", shouldRequestCount ? { count: "exact" } : undefined)
-        .order("occurred_on", { ascending: false })
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .range(from, from + pageSize - 1);
+        if (effectiveUserId) query = query.eq("user_id", effectiveUserId);
+        if (filters?.categoryId)
+          query = query.eq("category_id", filters.categoryId);
+        if (filters?.startDate)
+          query = query.gte("occurred_on", filters.startDate);
+        if (filters?.endDate) query = query.lte("occurred_on", filters.endDate);
 
-      if (effectiveUserId)
-        fallbackQuery = fallbackQuery.eq("user_id", effectiveUserId);
-      if (filters?.categoryId)
-        fallbackQuery = fallbackQuery.eq("category_id", filters.categoryId);
-      if (filters?.startDate)
-        fallbackQuery = fallbackQuery.gte("occurred_on", filters.startDate);
-      if (filters?.endDate)
-        fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate);
+        let { data, error, count } = await withTimeout(query, 8000);
+        if (error) {
+          // Fallback to flat query without join for speed and resilience
+          let fallbackQuery = supabase
+            .from("transactions")
+            .select("*", shouldRequestCount ? { count: "exact" } : undefined)
+            .order("occurred_on", { ascending: false })
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, from + pageSize - 1);
 
-      const fallbackRes = await fallbackQuery;
-      if (fallbackRes.error) {
-        console.error(
-          "[fetchAllTransactionsFromSupabase] Fallback select failed:",
-          fallbackRes.error,
-        );
-        throw fallbackRes.error;
+          if (effectiveUserId)
+            fallbackQuery = fallbackQuery.eq("user_id", effectiveUserId);
+          if (filters?.categoryId)
+            fallbackQuery = fallbackQuery.eq("category_id", filters.categoryId);
+          if (filters?.startDate)
+            fallbackQuery = fallbackQuery.gte("occurred_on", filters.startDate);
+          if (filters?.endDate)
+            fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate);
+
+          const fallbackRes = await withTimeout(fallbackQuery, 8000);
+          if (fallbackRes.error) throw fallbackRes.error;
+          data = fallbackRes.data;
+          count = fallbackRes.count;
+        }
+
+        if (count !== null && count !== undefined) {
+          serverTotalCount = count;
+        }
+
+        chunk = (data as Transaction[]) || [];
+        fetchError = null;
+        break;
+      } catch (err) {
+        fetchError = err;
+        if (attempt < 3) {
+          await delay(300 * attempt);
+        }
       }
-      data = fallbackRes.data;
-      count = fallbackRes.count;
     }
 
-    if (count !== null && count !== undefined) {
-      serverTotalCount = count;
+    if (fetchError && chunk.length === 0) {
+      // If initial page fails, attempt recovery from local backup snapshot
+      if (from === 0) {
+        try {
+          const rawBackup = localStorage.getItem(TX_BACKUP_STORAGE_KEY);
+          if (rawBackup) {
+            const parsed = JSON.parse(rawBackup);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              console.warn(
+                "[fetchAllTransactionsFromSupabase] Network unreachable, successfully recovered from local snapshot:",
+                fetchError,
+              );
+              let restored = parsed as Transaction[];
+              if (filters?.categoryId) {
+                restored = restored.filter((t) => t.category_id === filters.categoryId);
+              }
+              if (filters?.startDate) {
+                restored = restored.filter((t) => t.occurred_on >= filters.startDate!);
+              }
+              if (filters?.endDate) {
+                restored = restored.filter((t) => t.occurred_on <= filters.endDate!);
+              }
+              if (filters?.search) {
+                const s = filters.search.toLowerCase();
+                restored = restored.filter(
+                  (t) =>
+                    t.categories?.name.toLowerCase().includes(s) ||
+                    t.note?.toLowerCase().includes(s),
+                );
+              }
+              // Overlay pending mutations onto restored backup
+              const pendingMutations = getPendingMutations();
+              const pendingDeletes = new Set<string>();
+              const pendingUpserts = new Map<string, Transaction>();
+              for (const m of pendingMutations) {
+                if (m.type === "delete") {
+                  const id = m.payload?.id || m.payload;
+                  if (id) pendingDeletes.add(id);
+                } else if ((m.type === "insert" || m.type === "update") && m.payload?.id) {
+                  pendingUpserts.set(m.payload.id, m.payload as Transaction);
+                }
+              }
+              const map = new Map<string, Transaction>();
+              for (const item of restored) {
+                if (!pendingDeletes.has(item.id)) map.set(item.id, item);
+              }
+              for (const [id, tx] of pendingUpserts) {
+                if (!pendingDeletes.has(id)) map.set(id, tx);
+              }
+              return sortTransactionsDesc(Array.from(map.values()));
+            }
+          }
+        } catch (backupErr) {
+          console.warn("[fetchAllTransactionsFromSupabase] Backup read failed:", backupErr);
+        }
+
+        // If no backup exists, throw the error so React Query marks query as error
+        // instead of empty success, preserving any existing cached transactions!
+        throw fetchError;
+      }
+
+      // If subsequent page fails, throw so we never return a partial/truncated dataset
+      throw fetchError;
     }
 
-    const chunk = (data as Transaction[]) || [];
     if (chunk.length === 0) {
       hasMore = false;
       break;
@@ -278,19 +353,59 @@ export async function fetchAllTransactionsFromSupabase(
     }
   }
 
-  // Deduplicate by primary key ID to guarantee no duplicates
-  const seenIds = new Set<string>();
-  const uniqueRecords: Transaction[] = [];
-  for (const item of allRecords) {
-    if (!seenIds.has(item.id)) {
-      seenIds.add(item.id);
-      uniqueRecords.push(item);
+  // Deduplicate and overlay local pending mutations
+  const pendingMutations = getPendingMutations();
+  const pendingDeletes = new Set<string>();
+  const pendingUpserts = new Map<string, Transaction>();
+
+  for (const m of pendingMutations) {
+    if (m.type === "delete") {
+      const id = m.payload?.id || m.payload;
+      if (id) pendingDeletes.add(id);
+    } else if ((m.type === "insert" || m.type === "update") && m.payload?.id) {
+      pendingUpserts.set(m.payload.id, m.payload as Transaction);
     }
   }
 
+  const recordMap = new Map<string, Transaction>();
+  for (const item of allRecords) {
+    if (!pendingDeletes.has(item.id)) {
+      recordMap.set(item.id, item);
+    }
+  }
+
+  // Preserve and overlay all local pending inserts/updates
+  for (const [id, pendingTx] of pendingUpserts) {
+    if (!pendingDeletes.has(id)) {
+      recordMap.set(id, pendingTx);
+    }
+  }
+
+  let uniqueRecords = sortTransactionsDesc(Array.from(recordMap.values()));
+
   if (filters?.search) {
     const s = filters.search.toLowerCase();
-    return uniqueRecords.filter((t) => t.note?.toLowerCase().includes(s));
+    uniqueRecords = uniqueRecords.filter((t) =>
+      t.note?.toLowerCase().includes(s),
+    );
+  }
+
+  // Persist healthy full dataset to local backup if unfiltered
+  if (
+    !filters?.categoryId &&
+    !filters?.startDate &&
+    !filters?.endDate &&
+    !filters?.search &&
+    uniqueRecords.length > 0
+  ) {
+    try {
+      localStorage.setItem(
+        TX_BACKUP_STORAGE_KEY,
+        JSON.stringify(uniqueRecords.slice(0, 3000)),
+      );
+    } catch (e) {
+      console.warn("[fetchAllTransactionsFromSupabase] Failed to write backup snapshot:", e);
+    }
   }
 
   return uniqueRecords;
@@ -419,64 +534,74 @@ export function useAddTransaction() {
   const userId = user?.id;
 
   return useMutation({
-    mutationFn: async (input: TransactionInput) => {
+    mutationFn: async (input: TransactionInput & { id?: string }) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) throw new Error("Not authenticated");
+      const currentUser = session?.user || (userId ? { id: userId } : null);
 
-      const insertedId =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
+      const effectiveId =
+        input.id ||
+        (typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
-          : `tx-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+          : `tx-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
 
-      let lastError: unknown = null;
+      const fullTx: Transaction = {
+        id: effectiveId,
+        user_id: currentUser?.id || userId || "",
+        amount: Number(input.amount),
+        type: input.type,
+        category_id: input.category_id,
+        wallet_id: input.wallet_id || null,
+        to_wallet_id: input.to_wallet_id || null,
+        note: input.note || null,
+        occurred_on: input.occurred_on,
+        created_at: input.created_at || new Date().toISOString(),
+        categories: null,
+      };
 
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        const { data, error } = await supabase
-          .from("transactions")
-          .insert({ ...input, id: insertedId, user_id: user.id })
-          .select("*")
-          .single();
+      // Always save to persistent pending mutations queue first
+      const mutation = enqueuePendingMutation("insert", fullTx);
 
-        if (!error && data) return data as Transaction;
-
-        const fallback = await supabase
-          .from("transactions")
-          .select("*")
-          .eq("id", insertedId)
-          .maybeSingle();
-
-        if (!fallback.error && fallback.data) {
-          return fallback.data as Transaction;
-        }
-
-        lastError =
-          error || fallback.error || new Error("Failed to save transaction");
-
-        if (attempt < 2 && isLikelyTransientTransactionError(lastError)) {
-          await delay(350);
-          continue;
-        }
-
-        throw lastError;
+      if (!currentUser?.id) {
+        return fullTx;
       }
 
-      throw lastError || new Error("Failed to save transaction");
+      // Attempt immediate sync to Supabase with quick timeout/retry
+      try {
+        const { data, error } = await supabase
+          .from("transactions")
+          .upsert({ ...fullTx, user_id: currentUser.id })
+          .select("*")
+          .maybeSingle();
+
+        if (!error && data) {
+          removePendingMutation(mutation.id);
+          return data as Transaction;
+        }
+      } catch (networkErr) {
+        console.warn(
+          "[useAddTransaction] Network slow/unreachable. Preserved in pending queue:",
+          networkErr,
+        );
+      }
+
+      // Return fullTx safely so UI stays intact and transaction is never dropped
+      return fullTx;
     },
-    onMutate: async (newTx) => {
+    onMutate: async (newTx: any) => {
       await qc.cancelQueries({ queryKey: ["transactions"] });
       const snapshots = snapshotTransactionQueries(qc);
-      const tempId =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? `temp-${crypto.randomUUID()}`
-          : `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const effectiveId =
+        newTx.id ||
+        (typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
       const optimisticItem: Transaction = {
-        id: tempId,
+        id: effectiveId,
         user_id: userId || "",
-        amount: newTx.amount,
+        amount: Number(newTx.amount),
         type: newTx.type,
         category_id: newTx.category_id,
         wallet_id: newTx.wallet_id || null,
@@ -488,17 +613,15 @@ export function useAddTransaction() {
       };
 
       upsertTransactionAcrossCaches(qc, optimisticItem);
-      return { snapshots, tempId };
+      return { snapshots, optimisticItem };
     },
-    onSuccess: (savedTx, _vars, context) => {
-      if (context?.tempId) {
-        removeTransactionFromCaches(qc, context.tempId);
-      }
+    onSuccess: (savedTx) => {
       upsertTransactionAcrossCaches(qc, savedTx);
     },
     onError: (_err, _newTx, context) => {
-      if (context?.snapshots) {
-        restoreTransactionQueries(qc, context.snapshots);
+      // Do NOT rollback if transaction was enqueued
+      if (context?.optimisticItem) {
+        upsertTransactionAcrossCaches(qc, context.optimisticItem);
       }
     },
     onSettled: () => {
@@ -509,10 +632,12 @@ export function useAddTransaction() {
 
 export function useUpdateTransaction() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
-      // 1. Sanitize payload
-      const sanitized: any = {};
+      const sanitized: any = { id };
       if (input.type) sanitized.type = input.type;
       if (input.amount !== undefined) sanitized.amount = Number(input.amount);
       if (input.occurred_on) sanitized.occurred_on = input.occurred_on;
@@ -521,32 +646,27 @@ export function useUpdateTransaction() {
       sanitized.category_id = input.category_id ?? null;
       sanitized.wallet_id = input.wallet_id ?? null;
       sanitized.to_wallet_id = input.to_wallet_id ?? null;
+      if (userId) sanitized.user_id = userId;
 
-      let { data, error } = await supabase
-        .from("transactions")
-        .update(sanitized)
-        .eq("id", id)
-        .select("*, categories(*)")
-        .maybeSingle();
+      const mutation = enqueuePendingMutation("update", sanitized);
 
-      if (error || !data) {
-        console.warn(
-          "[useUpdateTransaction] Update with join error or empty, retrying without join:",
-          error,
-        );
-        const { data: fallback, error: fbErr } = await supabase
+      try {
+        const { data, error } = await supabase
           .from("transactions")
           .update(sanitized)
           .eq("id", id)
           .select("*")
           .maybeSingle();
-        if (fbErr) {
-          console.error("[useUpdateTransaction] Direct update error:", fbErr);
-          throw fbErr;
+
+        if (!error && data) {
+          removePendingMutation(mutation.id);
+          return data as Transaction;
         }
-        data = fallback;
+      } catch (err) {
+        console.warn("[useUpdateTransaction] Update queued locally:", err);
       }
-      return data as Transaction;
+
+      return sanitized as Transaction;
     },
     onMutate: async ({ id, ...updated }) => {
       await qc.cancelQueries({ queryKey: ["transactions"] });
@@ -581,13 +701,22 @@ export function useUpdateTransaction() {
 
 export function useDeleteTransaction() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
+      const mutation = enqueuePendingMutation("delete", { id });
+      try {
+        let q = supabase.from("transactions").delete().eq("id", id);
+        if (userId) q = q.eq("user_id", userId);
+        const { error } = await q;
+        if (!error) {
+          removePendingMutation(mutation.id);
+        }
+      } catch (err) {
+        console.warn("[useDeleteTransaction] Delete queued locally:", err);
+      }
       return id;
     },
     onMutate: async (id) => {

@@ -127,6 +127,17 @@ export function useEnsureDefaultWallets() {
 
 import { useAuth } from "../contexts/AuthContext";
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 6000): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Wallets fetch timeout after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
+const WALLETS_BACKUP_STORAGE_KEY = "TROUVAILLE_WALLETS_BACKUP_V1";
+
 export function useWallets() {
   const { user } = useAuth();
   const userId = user?.id;
@@ -135,27 +146,47 @@ export function useWallets() {
     queryKey: walletKeys.all(userId),
     queryFn: async () => {
       if (!userId) return [];
-      const { data, error } = await supabase
-        .from("wallets")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+      try {
+        const query = supabase
+          .from("wallets")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: true });
 
-      const seen = new Set<string>();
-      const unique: Wallet[] = [];
-      ((data as Wallet[]) || []).forEach((w) => {
-        const k = w.name.trim().toLowerCase();
-        if (!seen.has(k)) {
-          seen.add(k);
-          const resolvedIcon =
-            !w.icon || w.icon === "/icons/wallet.png"
-              ? getWalletIcon(w.name)
-              : w.icon;
-          unique.push({ ...w, icon: resolvedIcon });
+        const { data, error } = await withTimeout(query, 6000);
+        if (error) throw error;
+
+        const seen = new Set<string>();
+        const unique: Wallet[] = [];
+        ((data as Wallet[]) || []).forEach((w) => {
+          const k = w.name.trim().toLowerCase();
+          if (!seen.has(k)) {
+            seen.add(k);
+            const resolvedIcon =
+              !w.icon || w.icon === "/icons/wallet.png"
+                ? getWalletIcon(w.name)
+                : w.icon;
+            unique.push({ ...w, icon: resolvedIcon });
+          }
+        });
+
+        if (unique.length > 0) {
+          try {
+            localStorage.setItem(WALLETS_BACKUP_STORAGE_KEY, JSON.stringify(unique));
+          } catch {}
         }
-      });
-      return unique;
+        return unique;
+      } catch (err) {
+        console.warn("[useWallets] Fetch failed, restoring from backup/fallback:", err);
+        try {
+          const cached = localStorage.getItem(WALLETS_BACKUP_STORAGE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed as Wallet[];
+          }
+        } catch {}
+        return FALLBACK_WALLETS;
+      }
     },
     enabled: !!userId,
     staleTime: 60 * 1000,

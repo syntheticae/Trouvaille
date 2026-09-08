@@ -7,7 +7,16 @@ import {
   calculateAssetTrend,
   calculateWhatIfScenario,
   calculateGoalScenario,
+  calculateExpenseVolatility,
+  calculateDynamicGoalMilestones,
+  calculateDebtPayoffSchedule,
+  type DebtItem,
 } from "../src/lib/financialMath";
+import {
+  convertCurrency,
+  formatCurrencyAmount,
+  DEFAULT_RATES,
+} from "../src/lib/currency";
 import type { Transaction, Category } from "../src/lib/types";
 
 describe("Financial Math & Analytics Test Suite", () => {
@@ -339,4 +348,214 @@ describe("Financial Math & Analytics Test Suite", () => {
     expect(agg.savingsRate).toBe(0);
     expect(agg.txCount).toBe(0);
   });
+
+  describe("calculateExpenseVolatility", () => {
+    it("returns insufficient status when fewer than 3 days or no expense", () => {
+      const now = new Date("2026-08-02T10:00:00Z"); // Day 2
+      const result = calculateExpenseVolatility([], now);
+      expect(result.status).toBe("insufficient");
+      expect(result.stability).toBe("STABLE");
+      expect(result.score).toBe(100);
+    });
+
+    it("identifies STABLE spending when daily expense is uniform", () => {
+      const now = new Date("2026-08-10T12:00:00Z"); // Day 10
+      const txs: Transaction[] = [];
+      for (let day = 1; day <= 10; day++) {
+        txs.push({
+          id: `tx-${day}`,
+          user_id: "u1",
+          amount: 100000,
+          type: "expense",
+          wallet_id: null,
+          to_wallet_id: null,
+          category_id: null,
+          note: `Day ${day} expense`,
+          occurred_on: `2026-08-${String(day).padStart(2, "0")}`,
+          created_at: "",
+        });
+      }
+
+      const result = calculateExpenseVolatility(txs, now);
+      expect(result.status).toBe("sufficient");
+      expect(result.stability).toBe("STABLE");
+      expect(result.coefficientOfVariation).toBe(0);
+      expect(result.score).toBe(100);
+      expect(result.meanDailyExpense).toBe(100000);
+      expect(result.totalExpense).toBe(1000000);
+    });
+
+    it("identifies VOLATILE spending when a large outlier spike occurs", () => {
+      const now = new Date("2026-08-10T12:00:00Z"); // Day 10
+      const txs: Transaction[] = [
+        // 9 days of minimal 20,000 spend
+        ...Array.from({ length: 9 }, (_, i) => ({
+          id: `tx-${i + 1}`,
+          user_id: "u1",
+          amount: 20000,
+          type: "expense" as const,
+          wallet_id: null,
+          to_wallet_id: null,
+          category_id: null,
+          note: "Small snack",
+          occurred_on: `2026-08-${String(i + 1).padStart(2, "0")}`,
+          created_at: "",
+        })),
+        // 1 day of massive 3,000,000 spend
+        {
+          id: "tx-spike",
+          user_id: "u1",
+          amount: 3000000,
+          type: "expense",
+          wallet_id: null,
+          to_wallet_id: null,
+          category_id: null,
+          note: "Laptop purchase",
+          occurred_on: "2026-08-10",
+          created_at: "",
+        },
+      ];
+
+      const result = calculateExpenseVolatility(txs, now);
+      expect(result.status).toBe("sufficient");
+      expect(result.stability).toBe("VOLATILE");
+      expect(result.coefficientOfVariation).toBeGreaterThan(1.6);
+      expect(result.peakDailyExpense).toBe(3000000);
+      expect(result.peakDate).toBe("2026-08-10");
+      expect(result.reason).toContain("fluctuated");
+    });
+  });
+
+  describe("Dynamic Goal Milestones & Savings Velocity (Innovation 10)", () => {
+    it("calculates 4-stage milestones and projected calendar completion dates", () => {
+      const now = new Date("2026-09-01T00:00:00Z");
+      const goal = {
+        id: "goal-emergency",
+        title: "Dana Darurat",
+        targetAmount: 10000000, // 10 Million
+        currentAmount: 3000000,  // 3 Million (30% progress)
+      };
+      const baselines = {
+        medianNetCashflow: 1000000, // 1 Million / month velocity
+      };
+
+      const result = calculateDynamicGoalMilestones(goal, baselines, now);
+
+      expect(result.currentProgressPct).toBe(30);
+      expect(result.remainingAmount).toBe(7000000);
+      expect(result.isAlreadyCompleted).toBe(false);
+
+      // Milestone 1 (25% = 2.5M) -> Already reached!
+      expect(result.milestones[0].percentage).toBe(25);
+      expect(result.milestones[0].isReached).toBe(true);
+      expect(result.milestones[0].projectedDate).toBe("Reached");
+
+      // Milestone 2 (50% = 5M) -> Needs 2M more -> 2 months -> Nov 2026
+      expect(result.milestones[1].percentage).toBe(50);
+      expect(result.milestones[1].isReached).toBe(false);
+      expect(result.milestones[1].monthsAway).toBe(2);
+      expect(result.milestones[1].projectedDate).toBe("Nov 2026");
+
+      // Milestone 4 (100% = 10M) -> Needs 7M more -> 7 months -> Apr 2027
+      expect(result.milestones[3].percentage).toBe(100);
+      expect(result.milestones[3].isReached).toBe(false);
+      expect(result.milestones[3].monthsAway).toBe(7);
+      expect(result.milestones[3].projectedDate).toBe("Apr 2027");
+
+      // Velocity paces: current, conservative, accelerated
+      expect(result.velocityPaces.current.monthly).toBe(1000000);
+      expect(result.velocityPaces.current.months).toBe(7);
+      expect(result.velocityPaces.current.projectedCompletion).toBe("Apr 2027");
+      expect(result.velocityPaces.conservative.monthly).toBe(600000);
+      expect(result.velocityPaces.accelerated.monthly).toBe(1400000);
+    });
+  });
+
+  describe("Debt Payoff Simulator (Snowball vs Avalanche)", () => {
+    const sampleDebts: DebtItem[] = [
+      {
+        id: "d1",
+        name: "Credit Card A",
+        balance: 10000000,
+        minPayment: 500000,
+        interestRate: 24, // High APR
+      },
+      {
+        id: "d2",
+        name: "PayLater B",
+        balance: 2000000,
+        minPayment: 200000,
+        interestRate: 15, // Low balance
+      },
+      {
+        id: "d3",
+        name: "Personal Loan C",
+        balance: 15000000,
+        minPayment: 800000,
+        interestRate: 10, // Moderate APR, large balance
+      },
+    ];
+
+    it("handles empty debts safely", () => {
+      const result = calculateDebtPayoffSchedule([], 0);
+      expect(result.totalInitialDebt).toBe(0);
+      expect(result.snowball.totalMonths).toBe(0);
+      expect(result.avalanche.totalMonths).toBe(0);
+      expect(result.interestSaved).toBe(0);
+    });
+
+    it("simulates snowball (smallest balance first) and avalanche (highest APR first)", () => {
+      const result = calculateDebtPayoffSchedule(sampleDebts, 1000000); // +1M extra payment
+      expect(result.totalInitialDebt).toBe(27000000);
+      expect(result.totalMinPayment).toBe(1500000);
+
+      // Both should eventually clear
+      expect(result.snowball.totalMonths).toBeGreaterThan(0);
+      expect(result.avalanche.totalMonths).toBeGreaterThan(0);
+      expect(result.snowball.totalPaid).toBeGreaterThan(result.totalInitialDebt);
+      expect(result.avalanche.totalPaid).toBeGreaterThan(result.totalInitialDebt);
+
+      // Snowball clears smallest balance (PayLater B) first
+      expect(result.snowball.debtPayoffOrder[0].name).toBe("PayLater B");
+
+      // Avalanche clears highest APR (Credit Card A) first
+      expect(result.avalanche.debtPayoffOrder[0].name).toBe("Credit Card A");
+
+      // Avalanche should save interest compared to Snowball (or be equal)
+      expect(result.avalanche.totalInterest).toBeLessThanOrEqual(result.snowball.totalInterest);
+      expect(result.interestSaved).toBeGreaterThanOrEqual(0);
+    });
+
+    it("faster payoff with larger extra monthly payment", () => {
+      const slow = calculateDebtPayoffSchedule(sampleDebts, 0);
+      const fast = calculateDebtPayoffSchedule(sampleDebts, 2000000);
+      expect(fast.snowball.totalMonths).toBeLessThan(slow.snowball.totalMonths);
+      expect(fast.snowball.totalInterest).toBeLessThan(slow.snowball.totalInterest);
+    });
+  });
+
+  describe("Multi-Currency Ledger Engine", () => {
+    it("converts currency accurately using exchange rates", () => {
+      // 15,850 IDR to USD
+      const usdAmount = convertCurrency(15850, "IDR", "USD", DEFAULT_RATES);
+      expect(usdAmount).toBeCloseTo(1.0, 2);
+
+      // 100 USD to IDR
+      const idrAmount = convertCurrency(100, "USD", "IDR", DEFAULT_RATES);
+      expect(idrAmount).toBeCloseTo(1585000, -2);
+
+      // Same currency conversion returns exact amount
+      expect(convertCurrency(500000, "IDR", "IDR")).toBe(500000);
+      expect(convertCurrency(0, "USD", "IDR")).toBe(0);
+    });
+
+    it("formats currency strings cleanly for IDR, USD, EUR, SGD, JPY", () => {
+      expect(formatCurrencyAmount(1500000, "IDR")).toBe("Rp 1.500.000");
+      expect(formatCurrencyAmount(125.5, "USD")).toBe("$125.50");
+      expect(formatCurrencyAmount(99.9, "EUR", { showCode: true })).toBe("€99.90 EUR");
+      expect(formatCurrencyAmount(5000, "JPY")).toBe("¥5,000");
+    });
+  });
 });
+
+

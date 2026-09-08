@@ -33,7 +33,11 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
         <div className="flex items-center gap-2.5">
           <div
             className="w-6 h-6 rounded-full flex items-center justify-center"
-            style={{ background: "rgba(255, 255, 255, 0.12)", color: "#FFFFFF" }}
+            style={{
+              background: "var(--glass-fill-strong)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
           >
             <TrendingUp size={13} />
           </div>
@@ -165,7 +169,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
                         className="p-2.5 rounded-xl flex items-start gap-2 text-[11px] leading-snug"
                         style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}
                       >
-                        <CheckCircle2 size={13} className="shrink-0 text-white mt-0.5" />
+                        <CheckCircle2 size={13} className="shrink-0 mt-0.5" style={{ color: "var(--text-primary)" }} />
                         <span>{point}</span>
                       </div>
                     ))}
@@ -186,7 +190,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
                         className="p-2.5 rounded-xl flex items-start gap-2 text-[11px] leading-snug"
                         style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}
                       >
-                        <AlertCircle size={13} className="shrink-0 text-white mt-0.5" />
+                        <AlertCircle size={13} className="shrink-0 mt-0.5" style={{ color: "var(--text-primary)" }} />
                         <span>{point}</span>
                       </div>
                     ))}

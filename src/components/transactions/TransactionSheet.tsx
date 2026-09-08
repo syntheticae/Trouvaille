@@ -20,10 +20,15 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   RefreshCcw,
-  Delete,
   MoreHorizontal,
   Trash2,
   Zap,
+  Users,
+  Layers,
+  Plus,
+  Minus,
+  Search,
+  X,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useCategories } from "../../hooks/useCategories";
@@ -85,9 +90,19 @@ export function TransactionSheet({
 
   const [moreCatOpen, setMoreCatOpen] = useState(false);
   const [moreWalletOpen, setMoreWalletOpen] = useState(false);
+  const [searchCatQuery, setSearchCatQuery] = useState("");
+  const [searchWalletQuery, setSearchWalletQuery] = useState("");
   const [dateOpen, setDateOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [walletTarget, setWalletTarget] = useState<"from" | "to">("from");
+
+  // Split Transaction & Piutang State (Innovation 2)
+  const [isSplitOpen, setIsSplitOpen] = useState(false);
+  const [splitMode, setSplitMode] = useState<"friends" | "categories">("friends");
+  const [peopleCount, setPeopleCount] = useState(2);
+  const [friendNames, setFriendNames] = useState("");
+  const [itemCatId2, setItemCatId2] = useState<string | null>(null);
+  const [itemAmount1, setItemAmount1] = useState<number>(0);
 
   const { data: allCategories = [] } = useCategories();
   const categories = useMemo(() => {
@@ -129,6 +144,26 @@ export function TransactionSheet({
   const topCategories = useMemo(() => {
     return getTop3Slots(suggestedCategories, categoryId);
   }, [suggestedCategories, categoryId]);
+
+  const filteredMoreCategories = useMemo(() => {
+    if (!searchCatQuery.trim()) return suggestedCategories;
+    const q = searchCatQuery.toLowerCase();
+    return categories.filter((c) => c.name.toLowerCase().includes(q));
+  }, [categories, suggestedCategories, searchCatQuery]);
+
+  const filteredMoreWallets = useMemo(() => {
+    const list =
+      walletTarget === "to" ? suggestedToWallets : suggestedFromWallets;
+    if (!searchWalletQuery.trim()) return list;
+    const q = searchWalletQuery.toLowerCase();
+    return wallets.filter((w) => w.name.toLowerCase().includes(q));
+  }, [
+    wallets,
+    suggestedToWallets,
+    suggestedFromWallets,
+    walletTarget,
+    searchWalletQuery,
+  ]);
 
   // Keep track of when modal opens or incoming transaction changes
   const prevOpenRef = useRef(false);
@@ -263,6 +298,12 @@ export function TransactionSheet({
         setCategoryId(defaultCatId);
         setWalletId(defaultFromId);
         setToWalletId(defaultToId);
+        setIsSplitOpen(false);
+        setSplitMode("friends");
+        setPeopleCount(2);
+        setFriendNames("");
+        setItemCatId2(null);
+        setItemAmount1(0);
       }
     }
 
@@ -292,14 +333,16 @@ export function TransactionSheet({
     }
   }, [type, wallets, walletId, toWalletId]);
 
-  const handleNum = (num: string) => {
-    if (amount === "0") setAmount(num);
-    else if (amount.length < 11) setAmount(amount + num);
-  };
-  const handleDel = () => {
-    if (amount.length > 1) setAmount(amount.slice(0, -1));
-    else setAmount("0");
-  };
+  // Split Calculated Shares (Innovation 2)
+  const totalAmountNum = Number(amount) || 0;
+  const myShareFriends =
+    peopleCount > 0 ? Math.round(totalAmountNum / peopleCount) : totalAmountNum;
+  const friendsShare = Math.max(0, totalAmountNum - myShareFriends);
+  const cat1Share = Math.min(
+    totalAmountNum,
+    Math.max(0, itemAmount1 || Math.round(totalAmountNum / 2)),
+  );
+  const cat2Share = Math.max(0, totalAmountNum - cat1Share);
 
   const handleSave = () => {
     const isUUID = (id?: string | null) =>
@@ -361,6 +404,121 @@ export function TransactionSheet({
     const txDate = new Date(date);
     if (!isNaN(h) && !isNaN(m)) {
       txDate.setHours(h, m, 0, 0);
+    }
+
+    // Split transaction save logic (Innovation 2)
+    if (isSplitOpen && !transaction && numAmount > 0 && type === "expense") {
+      if (splitMode === "friends" && friendsShare > 0) {
+        const piutangWallet = wallets.find(
+          (w) => w.name.trim().toLowerCase() === "piutang",
+        );
+        const friendsLabel = friendNames.trim()
+          ? friendNames.trim()
+          : `${peopleCount - 1} friend${peopleCount - 1 > 1 ? "s" : ""}`;
+
+        const myNote = note.trim()
+          ? `${note.trim()} [Split: My share]`
+          : "Split bill [My share]";
+        const piutangNote = note.trim()
+          ? `${note.trim()} [Piutang: ${friendsLabel}]`
+          : `Piutang [${friendsLabel}]`;
+
+        const tx1 = {
+          type: "expense" as const,
+          amount: myShareFriends,
+          note: myNote,
+          occurred_on: format(date, "yyyy-MM-dd"),
+          created_at: txDate.toISOString(),
+          category_id: isUUID(effectiveCatId) ? effectiveCatId : null,
+          wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
+          to_wallet_id: null,
+        };
+
+        const tx2 =
+          piutangWallet && isUUID(piutangWallet.id)
+            ? {
+                type: "transfer" as const,
+                amount: friendsShare,
+                note: piutangNote,
+                occurred_on: format(date, "yyyy-MM-dd"),
+                created_at: new Date(txDate.getTime() + 1000).toISOString(),
+                category_id: null,
+                wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
+                to_wallet_id: piutangWallet.id,
+              }
+            : {
+                type: "expense" as const,
+                amount: friendsShare,
+                note: piutangNote,
+                occurred_on: format(date, "yyyy-MM-dd"),
+                created_at: new Date(txDate.getTime() + 1000).toISOString(),
+                category_id: isUUID(effectiveCatId) ? effectiveCatId : null,
+                wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
+                to_wallet_id: null,
+              };
+
+        onClose();
+        showToast("Saving split transaction...", "info", null, 1600);
+        addTx.mutate(tx1, {
+          onSuccess: () => {
+            addTx.mutate(tx2, {
+              onSuccess: () => {
+                triggerSuccessHaptic();
+                showToast("Split bill & Piutang recorded!", "add", () => {});
+              },
+            });
+          },
+        });
+        return;
+      }
+
+      if (splitMode === "categories") {
+        const cat1Amount = cat1Share;
+        const cat2Amount = cat2Share;
+        const effectiveCat2Id =
+          itemCatId2 || (categories.length > 1 ? categories[1].id : effectiveCatId);
+
+        if (cat2Amount > 0) {
+          const tx1 = {
+            type: "expense" as const,
+            amount: cat1Amount,
+            note: note.trim()
+              ? `${note.trim()} [Part 1]`
+              : "Multi-category [Part 1]",
+            occurred_on: format(date, "yyyy-MM-dd"),
+            created_at: txDate.toISOString(),
+            category_id: isUUID(effectiveCatId) ? effectiveCatId : null,
+            wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
+            to_wallet_id: null,
+          };
+          const tx2 = {
+            type: "expense" as const,
+            amount: cat2Amount,
+            note: note.trim()
+              ? `${note.trim()} [Part 2]`
+              : "Multi-category [Part 2]",
+            occurred_on: format(date, "yyyy-MM-dd"),
+            created_at: new Date(txDate.getTime() + 1000).toISOString(),
+            category_id: isUUID(effectiveCat2Id) ? effectiveCat2Id : null,
+            wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
+            to_wallet_id: null,
+          };
+
+          onClose();
+          showToast("Saving multi-category transaction...", "info", null, 1600);
+          addTx.mutate(tx1, {
+            onSuccess: () => {
+              addTx.mutate(tx2, {
+                onSuccess: () => {
+                  triggerSuccessHaptic();
+                  showToast("Multi-category transaction recorded!", "add", () => {});
+                },
+              });
+            },
+          });
+          return;
+        }
+      }
     }
 
     const payload = {
@@ -564,14 +722,38 @@ export function TransactionSheet({
           </div>
         )}
 
-        {/* Hero Amount Input */}
-        <div className="text-center py-2 mb-4">
-          <p
-            className="text-[40px] font-extrabold amount tracking-tight leading-none"
-            style={{ color: "var(--text-primary)" }}
+        {/* Hero Amount Input with Native iOS Numberpad */}
+        <div className="text-center py-2 mb-3">
+          <div
+            className="inline-flex items-baseline justify-center gap-1.5 px-4 py-2.5 rounded-2xl transition-all"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1.5px solid var(--glass-border)",
+            }}
           >
-            {formatRupiah(Number(amount))}
-          </p>
+            <span
+              className="text-lg font-extrabold"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Rp
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={
+                amount === "0" ? "" : Number(amount).toLocaleString("id-ID")
+              }
+              onChange={(e) => {
+                const raw = e.target.value.replace(/\D/g, "");
+                setAmount(raw === "" ? "0" : raw.slice(0, 11));
+              }}
+              placeholder="0"
+              autoFocus={!transaction}
+              className="text-[34px] font-black amount tracking-tight leading-none bg-transparent outline-none text-center min-w-[100px] max-w-[260px]"
+              style={{ color: "var(--text-primary)" }}
+            />
+          </div>
         </div>
 
         {/* Selectors */}
@@ -696,34 +878,337 @@ export function TransactionSheet({
           </div>
         </div>
 
-        {/* Frosted Glass Keypad */}
-        <div className="grid grid-cols-3 gap-2">
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0"].map((n) => (
+        {/* Split Transaction & Piutang (Innovation 2) */}
+        {type === "expense" && !transaction && (
+          <div className="mb-3">
             <button
-              key={n}
-              onClick={() => handleNum(n)}
-              className="rounded-2xl py-3 text-2xl font-extrabold amount active:scale-95 transition-all"
+              type="button"
+              onClick={() => {
+                setIsSplitOpen(!isSplitOpen);
+                triggerHaptic("light");
+              }}
+              className="w-full py-2 px-3.5 rounded-2xl flex items-center justify-between transition-all active:scale-[0.99]"
               style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
+                background: isSplitOpen
+                  ? "var(--glass-fill-strong)"
+                  : "var(--bg-elevated)",
+                border: isSplitOpen
+                  ? "1px solid var(--accent)"
+                  : "1px solid var(--glass-border)",
                 color: "var(--text-primary)",
               }}
             >
-              {n}
+              <div className="flex items-center gap-2">
+                <Users
+                  size={14}
+                  style={{
+                    color: isSplitOpen
+                      ? "var(--accent)"
+                      : "var(--text-secondary)",
+                  }}
+                />
+                <span className="text-[12px] font-bold">
+                  Split Transaction & Piutang
+                </span>
+              </div>
+              <span
+                className="text-[10px] font-extrabold px-2 py-0.5 rounded-full"
+                style={{
+                  background: isSplitOpen
+                    ? "var(--accent)"
+                    : "var(--glass-fill)",
+                  color: isSplitOpen
+                    ? "var(--accent-ink)"
+                    : "var(--text-tertiary)",
+                }}
+              >
+                {isSplitOpen ? "Active" : "Off"}
+              </span>
             </button>
-          ))}
-          <button
-            onClick={handleDel}
-            className="rounded-2xl py-3 text-2xl font-bold amount flex items-center justify-center active:scale-95 transition-all"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            <Delete size={22} />
-          </button>
-        </div>
+
+            {isSplitOpen && (
+              <div
+                className="mt-2 p-3.5 rounded-2xl space-y-3 glass-surface"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                {/* Sub-mode tabs */}
+                <div
+                  className="flex p-1 rounded-xl glass-surface"
+                  style={{ background: "var(--glass-fill)" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSplitMode("friends");
+                      triggerHaptic("light");
+                    }}
+                    className="flex-1 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all"
+                    style={{
+                      background:
+                        splitMode === "friends"
+                          ? "var(--bg-elevated)"
+                          : "transparent",
+                      color:
+                        splitMode === "friends"
+                          ? "var(--text-primary)"
+                          : "var(--text-secondary)",
+                      boxShadow:
+                        splitMode === "friends"
+                          ? "var(--shadow-card)"
+                          : "none",
+                    }}
+                  >
+                    <Users size={12} />
+                    Split with Friends
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSplitMode("categories");
+                      triggerHaptic("light");
+                    }}
+                    className="flex-1 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all"
+                    style={{
+                      background:
+                        splitMode === "categories"
+                          ? "var(--bg-elevated)"
+                          : "transparent",
+                      color:
+                        splitMode === "categories"
+                          ? "var(--text-primary)"
+                          : "var(--text-secondary)",
+                      boxShadow:
+                        splitMode === "categories"
+                          ? "var(--shadow-card)"
+                          : "none",
+                    }}
+                  >
+                    <Layers size={12} />
+                    Multi-Category
+                  </button>
+                </div>
+
+                {splitMode === "friends" ? (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-[11px] font-bold"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        Total Split
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (peopleCount > 2) {
+                              setPeopleCount((p) => p - 1);
+                              triggerHaptic("light");
+                            }
+                          }}
+                          disabled={peopleCount <= 2}
+                          className="w-7 h-7 rounded-xl flex items-center justify-center active:scale-95 disabled:opacity-30"
+                          style={{
+                            background: "var(--glass-fill)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          <Minus size={12} />
+                        </button>
+                        <span
+                          className="text-[12px] font-extrabold px-1"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {peopleCount} People
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (peopleCount < 10) {
+                              setPeopleCount((p) => p + 1);
+                              triggerHaptic("light");
+                            }
+                          }}
+                          disabled={peopleCount >= 10}
+                          className="w-7 h-7 rounded-xl flex items-center justify-center active:scale-95 disabled:opacity-30"
+                          style={{
+                            background: "var(--glass-fill)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      className="rounded-xl px-3 py-2"
+                      style={{
+                        background: "var(--glass-fill)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <input
+                        type="text"
+                        value={friendNames}
+                        onChange={(e) => setFriendNames(e.target.value)}
+                        placeholder="Friend names (e.g. Budi, Andi)"
+                        className="bg-transparent text-[12px] font-semibold w-full outline-none"
+                        style={{
+                          color: "var(--text-primary)",
+                          fontFamily: "Urbanist, sans-serif",
+                        }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div
+                        className="p-2.5 rounded-xl space-y-0.5"
+                        style={{ background: "var(--glass-fill)" }}
+                      >
+                        <p
+                          className="text-[9px] font-bold uppercase tracking-wider"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          Your Share
+                        </p>
+                        <p
+                          className="text-[13px] font-extrabold amount"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {formatRupiah(myShareFriends)}
+                        </p>
+                        <p
+                          className="text-[9px]"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          Personal Expense
+                        </p>
+                      </div>
+                      <div
+                        className="p-2.5 rounded-xl space-y-0.5"
+                        style={{ background: "var(--glass-fill)" }}
+                      >
+                        <p
+                          className="text-[9px] font-bold uppercase tracking-wider"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          Friends' Share
+                        </p>
+                        <p
+                          className="text-[13px] font-extrabold amount"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {formatRupiah(friendsShare)}
+                        </p>
+                        <p
+                          className="text-[9px]"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          Piutang ({peopleCount - 1} friend
+                          {peopleCount - 1 > 1 ? "s" : ""})
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div
+                        className="p-2.5 rounded-xl space-y-1"
+                        style={{ background: "var(--glass-fill)" }}
+                      >
+                        <span
+                          className="text-[9px] font-bold uppercase tracking-wider"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          Part 1 (Primary)
+                        </span>
+                        <p
+                          className="text-[13px] font-extrabold amount"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {formatRupiah(cat1Share)}
+                        </p>
+                        <span
+                          className="text-[10px] font-semibold block truncate"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          {categories.find((c) => c.id === categoryId)?.name ||
+                            "Primary Category"}
+                        </span>
+                      </div>
+
+                      <div
+                        className="p-2.5 rounded-xl space-y-1"
+                        style={{ background: "var(--glass-fill)" }}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span
+                            className="text-[9px] font-bold uppercase tracking-wider"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            Part 2
+                          </span>
+                          <select
+                            value={itemCatId2 || ""}
+                            onChange={(e) => setItemCatId2(e.target.value)}
+                            className="bg-transparent text-[10px] font-extrabold outline-none"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {categories.map((c) => (
+                              <option
+                                key={c.id}
+                                value={c.id}
+                                style={{ background: "#18181B", color: "#fff" }}
+                              >
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <p
+                          className="text-[13px] font-extrabold amount"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {formatRupiah(cat2Share)}
+                        </p>
+                        <span
+                          className="text-[10px] font-semibold block truncate"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          {categories.find(
+                            (c) =>
+                              c.id ===
+                              (itemCatId2 ||
+                                (categories[1] ? categories[1].id : categoryId)),
+                          )?.name || "Secondary Category"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {totalAmountNum > 0 && (
+                      <input
+                        type="range"
+                        min="0"
+                        max={totalAmountNum}
+                        step={Math.max(1000, Math.round(totalAmountNum / 100))}
+                        value={cat1Share}
+                        onChange={(e) => setItemAmount1(Number(e.target.value))}
+                        className="w-full accent-white cursor-pointer"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Action Button Bar */}
         <div className="flex gap-2 mt-3 mb-2">
@@ -765,9 +1250,15 @@ export function TransactionSheet({
       </div>
 
       {/* More Categories Glass Sheet */}
-      <BottomSheet isOpen={moreCatOpen} onClose={() => setMoreCatOpen(false)}>
+      <BottomSheet
+        isOpen={moreCatOpen}
+        onClose={() => {
+          setMoreCatOpen(false);
+          setSearchCatQuery("");
+        }}
+      >
         <div className="p-5 pb-12">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <div>
               <h3
                 className="font-extrabold text-[18px] leading-tight"
@@ -779,11 +1270,14 @@ export function TransactionSheet({
                 className="text-[11px] font-semibold mt-0.5"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {categories.length} categories available
+                {filteredMoreCategories.length} categories available
               </p>
             </div>
             <button
-              onClick={() => setMoreCatOpen(false)}
+              onClick={() => {
+                setMoreCatOpen(false);
+                setSearchCatQuery("");
+              }}
               className="text-[12px] font-extrabold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform"
               style={{
                 background: "var(--glass-fill)",
@@ -795,59 +1289,102 @@ export function TransactionSheet({
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-x-2 gap-y-3">
-            {suggestedCategories.map((cat) => {
-              const isSelected = categoryId === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    setCategoryId(cat.id);
-                    setMoreCatOpen(false);
-                    triggerHaptic("light");
-                  }}
-                  className="flex flex-col items-center justify-center p-2 rounded-2xl active:scale-95 transition-all text-center"
-                  style={{
-                    background: isSelected
-                      ? "var(--glass-fill-strong)"
-                      : "var(--bg-elevated)",
-                    color: "var(--text-primary)",
-                    border: isSelected
-                      ? "1.5px solid rgba(255, 255, 255, 0.45)"
-                      : "1px solid var(--glass-border)",
-                    boxShadow: isSelected
-                      ? "0 4px 16px rgba(255, 255, 255, 0.08)"
-                      : "none",
-                  }}
-                >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-1 shrink-0"
+          {/* Search bar */}
+          <div className="relative mb-3.5">
+            <Search
+              size={14}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2"
+              style={{ color: "var(--text-tertiary)" }}
+            />
+            <input
+              type="text"
+              value={searchCatQuery}
+              onChange={(e) => setSearchCatQuery(e.target.value)}
+              placeholder="Search category..."
+              className="w-full pl-9 pr-8 py-2 rounded-xl text-[12px] font-semibold bg-[var(--glass-fill)] border border-[var(--glass-border)] outline-none"
+              style={{
+                color: "var(--text-primary)",
+                fontFamily: "Urbanist, sans-serif",
+              }}
+            />
+            {searchCatQuery && (
+              <button
+                onClick={() => setSearchCatQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2"
+              >
+                <X size={13} style={{ color: "var(--text-tertiary)" }} />
+              </button>
+            )}
+          </div>
+
+          {filteredMoreCategories.length === 0 ? (
+            <div className="py-8 text-center">
+              <p
+                className="text-[12px] font-semibold"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                No categories found matching "{searchCatQuery}"
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-x-2 gap-y-3 max-h-[60vh] overflow-y-auto no-scrollbar pr-0.5">
+              {filteredMoreCategories.map((cat) => {
+                const isSelected = categoryId === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      setCategoryId(cat.id);
+                      setMoreCatOpen(false);
+                      setSearchCatQuery("");
+                      triggerHaptic("light");
+                    }}
+                    className="flex flex-col items-center justify-center p-2 rounded-2xl active:scale-95 transition-all text-center"
                     style={{
                       background: isSelected
-                        ? "rgba(255, 255, 255, 0.18)"
-                        : "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
+                        ? "var(--glass-fill-strong)"
+                        : "var(--bg-elevated)",
+                      color: "var(--text-primary)",
+                      border: isSelected
+                        ? "1.5px solid var(--accent)"
+                        : "1px solid var(--glass-border)",
+                      boxShadow: isSelected
+                        ? "0 4px 16px var(--shadow-strength)"
+                        : "none",
                     }}
                   >
-                    <IconRenderer icon={cat.emoji} size="w-6 h-6" />
-                  </div>
-                  <span className="text-[10.5px] font-bold text-center line-clamp-1 truncate w-full px-0.5">
-                    {cat.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-1 shrink-0"
+                      style={{
+                        background: isSelected
+                          ? "var(--dock-active-pill)"
+                          : "var(--glass-fill)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <IconRenderer icon={cat.emoji} size="w-6 h-6" />
+                    </div>
+                    <span className="text-[10.5px] font-bold text-center line-clamp-1 truncate w-full px-0.5">
+                      {cat.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </BottomSheet>
 
       {/* More Accounts Glass Sheet */}
       <BottomSheet
         isOpen={moreWalletOpen}
-        onClose={() => setMoreWalletOpen(false)}
+        onClose={() => {
+          setMoreWalletOpen(false);
+          setSearchWalletQuery("");
+        }}
       >
         <div className="p-5 pb-12">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <div>
               <h3
                 className="font-extrabold text-[18px] leading-tight"
@@ -862,11 +1399,14 @@ export function TransactionSheet({
                 {walletTarget === "from"
                   ? "Source Account"
                   : "Destination Account"}{" "}
-                · {wallets.length} accounts
+                · {filteredMoreWallets.length} accounts
               </p>
             </div>
             <button
-              onClick={() => setMoreWalletOpen(false)}
+              onClick={() => {
+                setMoreWalletOpen(false);
+                setSearchWalletQuery("");
+              }}
               className="text-[12px] font-extrabold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform"
               style={{
                 background: "var(--glass-fill)",
@@ -878,51 +1418,91 @@ export function TransactionSheet({
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
-            {wallets.map((w) => {
-              const isSelected =
-                (walletTarget === "from" ? walletId : toWalletId) === w.id;
-              return (
-                <button
-                  key={w.id}
-                  onClick={() => {
-                    if (walletTarget === "from") setWalletId(w.id);
-                    else setToWalletId(w.id);
-                    setMoreWalletOpen(false);
-                    triggerHaptic("light");
-                  }}
-                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl active:scale-95 transition-all text-center"
-                  style={{
-                    background: isSelected
-                      ? "var(--glass-fill-strong)"
-                      : "var(--bg-elevated)",
-                    color: "var(--text-primary)",
-                    border: isSelected
-                      ? "1.5px solid rgba(255, 255, 255, 0.45)"
-                      : "1px solid var(--glass-border)",
-                    boxShadow: isSelected
-                      ? "0 4px 16px rgba(255, 255, 255, 0.08)"
-                      : "none",
-                  }}
-                >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-1 shrink-0"
+          {/* Search bar */}
+          <div className="relative mb-3.5">
+            <Search
+              size={14}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2"
+              style={{ color: "var(--text-tertiary)" }}
+            />
+            <input
+              type="text"
+              value={searchWalletQuery}
+              onChange={(e) => setSearchWalletQuery(e.target.value)}
+              placeholder="Search account..."
+              className="w-full pl-9 pr-8 py-2 rounded-xl text-[12px] font-semibold bg-[var(--glass-fill)] border border-[var(--glass-border)] outline-none"
+              style={{
+                color: "var(--text-primary)",
+                fontFamily: "Urbanist, sans-serif",
+              }}
+            />
+            {searchWalletQuery && (
+              <button
+                onClick={() => setSearchWalletQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2"
+              >
+                <X size={13} style={{ color: "var(--text-tertiary)" }} />
+              </button>
+            )}
+          </div>
+
+          {filteredMoreWallets.length === 0 ? (
+            <div className="py-8 text-center">
+              <p
+                className="text-[12px] font-semibold"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                No accounts found matching "{searchWalletQuery}"
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 max-h-[60vh] overflow-y-auto no-scrollbar pr-0.5">
+              {filteredMoreWallets.map((w) => {
+                const isSelected =
+                  (walletTarget === "from" ? walletId : toWalletId) === w.id;
+                return (
+                  <button
+                    key={w.id}
+                    onClick={() => {
+                      if (walletTarget === "from") setWalletId(w.id);
+                      else setToWalletId(w.id);
+                      setMoreWalletOpen(false);
+                      setSearchWalletQuery("");
+                      triggerHaptic("light");
+                    }}
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl active:scale-95 transition-all text-center"
                     style={{
                       background: isSelected
-                        ? "rgba(255, 255, 255, 0.18)"
-                        : "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
+                        ? "var(--glass-fill-strong)"
+                        : "var(--bg-elevated)",
+                      color: "var(--text-primary)",
+                      border: isSelected
+                        ? "1.5px solid var(--accent)"
+                        : "1px solid var(--glass-border)",
+                      boxShadow: isSelected
+                        ? "0 4px 16px var(--shadow-strength)"
+                        : "none",
                     }}
                   >
-                    <IconRenderer icon={w.icon} size="w-5 h-5" />
-                  </div>
-                  <span className="text-[11px] font-bold truncate w-full text-center">
-                    {w.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-1 shrink-0"
+                      style={{
+                        background: isSelected
+                          ? "var(--dock-active-pill)"
+                          : "var(--glass-fill)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <IconRenderer icon={w.icon} size="w-5 h-5" />
+                    </div>
+                    <span className="text-[11px] font-bold truncate w-full text-center">
+                      {w.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </BottomSheet>
 

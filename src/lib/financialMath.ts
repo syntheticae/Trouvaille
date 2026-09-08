@@ -7,6 +7,7 @@ import {
   subDays,
 } from "date-fns";
 import type { Transaction, Category, Wallet, Bill } from "./types";
+import { formatRupiah } from "./utils";
 import famfinaRaw from "../data/famfina_transactions.json";
 
 export type BudgetRiskLevel = "SAFE" | "WATCH" | "AT RISK";
@@ -1923,6 +1924,103 @@ export function calculateGoalPlanning(
   };
 }
 
+export interface GoalMilestone {
+  percentage: number;
+  targetAmount: number;
+  isReached: boolean;
+  projectedDate: string | null;
+  monthsAway: number;
+}
+
+export interface DynamicGoalMilestonesResult {
+  currentProgressPct: number;
+  remainingAmount: number;
+  currentVelocityMonthly: number;
+  isAlreadyCompleted: boolean;
+  milestones: GoalMilestone[];
+  velocityPaces: {
+    conservative: { monthly: number; projectedCompletion: string | null; months: number };
+    current: { monthly: number; projectedCompletion: string | null; months: number };
+    accelerated: { monthly: number; projectedCompletion: string | null; months: number };
+  };
+}
+
+export function calculateDynamicGoalMilestones(
+  goal: {
+    id: string;
+    title: string;
+    targetAmount: number;
+    currentAmount: number;
+  },
+  baselines: {
+    medianNetCashflow: number;
+    medianIncome?: number;
+    medianExpense?: number;
+  },
+  now = new Date(),
+): DynamicGoalMilestonesResult {
+  const currentAmount = Math.max(0, goal.currentAmount);
+  const targetAmount = Math.max(1, goal.targetAmount);
+  const remainingAmount = Math.max(0, targetAmount - currentAmount);
+  const currentProgressPct = Math.min(100, Math.round((currentAmount / targetAmount) * 100));
+  const isAlreadyCompleted = currentAmount >= targetAmount;
+
+  const baselineVelocity = baselines.medianNetCashflow > 0 ? baselines.medianNetCashflow : 500000;
+  const conservativeVelocity = Math.max(100000, Math.round(baselineVelocity * 0.6));
+  const currentVelocity = baselineVelocity;
+  const acceleratedVelocity = Math.round(baselineVelocity * 1.4);
+
+  const getPaceResult = (monthly: number) => {
+    if (isAlreadyCompleted) {
+      return { monthly, projectedCompletion: format(now, "MMM yyyy"), months: 0 };
+    }
+    if (monthly <= 0) {
+      return { monthly, projectedCompletion: null, months: 999 };
+    }
+    const months = Math.ceil(remainingAmount / monthly);
+    const date = addMonths(now, months);
+    return { monthly, projectedCompletion: format(date, "MMM yyyy"), months };
+  };
+
+  const milestones: GoalMilestone[] = [25, 50, 75, 100].map((pct) => {
+    const milestoneTarget = Math.round((targetAmount * pct) / 100);
+    const isReached = currentAmount >= milestoneTarget;
+    if (isReached) {
+      return {
+        percentage: pct,
+        targetAmount: milestoneTarget,
+        isReached: true,
+        projectedDate: "Reached",
+        monthsAway: 0,
+      };
+    }
+    const neededForMilestone = Math.max(0, milestoneTarget - currentAmount);
+    const monthsAway = currentVelocity > 0 ? Math.ceil(neededForMilestone / currentVelocity) : 999;
+    const projectedDate = currentVelocity > 0 ? format(addMonths(now, monthsAway), "MMM yyyy") : null;
+    return {
+      percentage: pct,
+      targetAmount: milestoneTarget,
+      isReached: false,
+      projectedDate,
+      monthsAway,
+    };
+  });
+
+  return {
+    currentProgressPct,
+    remainingAmount,
+    currentVelocityMonthly: currentVelocity,
+    isAlreadyCompleted,
+    milestones,
+    velocityPaces: {
+      conservative: getPaceResult(conservativeVelocity),
+      current: getPaceResult(currentVelocity),
+      accelerated: getPaceResult(acceleratedVelocity),
+    },
+  };
+}
+
+
 // ==========================================
 // PHASE III: CASHFLOW INTELLIGENCE & STRUCTURE IMPLEMENTATION
 // ==========================================
@@ -2527,3 +2625,347 @@ export function calculateLiquidityHorizon(
     explanation,
   };
 }
+
+/**
+ * System #5: Expense Volatility & Spending Stability Analysis
+ * Measures daily spending fluctuation (standard deviation & coefficient of variation)
+ * to distinguish consistent run-rates from erratic cashflow spikes.
+ */
+export interface ExpenseVolatilityResult {
+  status: "sufficient" | "insufficient";
+  stability: "STABLE" | "MODERATE" | "VOLATILE";
+  score: number; // 0 to 100 stability score (100 = perfectly predictable)
+  coefficientOfVariation: number;
+  meanDailyExpense: number;
+  standardDeviation: number;
+  peakDailyExpense: number;
+  peakDate: string | null;
+  activeDaysCount: number;
+  totalDaysInPeriod: number;
+  totalExpense: number;
+  reason: string;
+  explanation: string;
+}
+
+export function calculateExpenseVolatility(
+  transactions: Transaction[],
+  now: Date = new Date(),
+): ExpenseVolatilityResult {
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentDay = now.getDate();
+  const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
+
+  // Filter current month expenses (excluding balance corrections and transfers)
+  const currentMonthExpenses = transactions.filter((t) => {
+    if (t.type !== "expense") return false;
+    if (isCorrectionTx(t)) return false;
+    if (!t.occurred_on) return false;
+    return t.occurred_on.startsWith(monthKey);
+  });
+
+  const totalDays = Math.max(1, currentDay);
+
+  // Group by day of month (1 to currentDay)
+  const dailySpendMap = new Map<string, number>();
+  for (let d = 1; d <= totalDays; d++) {
+    const dateStr = `${monthKey}-${String(d).padStart(2, "0")}`;
+    dailySpendMap.set(dateStr, 0);
+  }
+
+  let totalExpense = 0;
+  let activeDaysCount = 0;
+
+  currentMonthExpenses.forEach((t) => {
+    const dateStr = t.occurred_on.slice(0, 10);
+    if (dailySpendMap.has(dateStr)) {
+      const amt = Number(t.amount || 0);
+      dailySpendMap.set(dateStr, (dailySpendMap.get(dateStr) || 0) + amt);
+    }
+  });
+
+  let peakDailyExpense = 0;
+  let peakDate: string | null = null;
+  const dailyAmounts: number[] = [];
+
+  for (const [dateStr, amount] of dailySpendMap.entries()) {
+    dailyAmounts.push(amount);
+    totalExpense += amount;
+    if (amount > 0) activeDaysCount++;
+    if (amount > peakDailyExpense) {
+      peakDailyExpense = amount;
+      peakDate = dateStr;
+    }
+  }
+
+  // Data sufficiency check: need at least 3 days elapsed and some spending
+  if (totalDays < 3 || totalExpense === 0) {
+    return {
+      status: "insufficient",
+      stability: "STABLE",
+      score: 100,
+      coefficientOfVariation: 0,
+      meanDailyExpense: totalDays > 0 ? Math.round(totalExpense / totalDays) : 0,
+      standardDeviation: 0,
+      peakDailyExpense,
+      peakDate,
+      activeDaysCount,
+      totalDaysInPeriod: totalDays,
+      totalExpense,
+      reason: "Not enough daily expense data to calculate volatility yet.",
+      explanation:
+        "Spending stability tracks how evenly your daily outflows occur compared to baseline spending.",
+    };
+  }
+
+  const meanDailyExpense = totalExpense / totalDays;
+  const variance =
+    dailyAmounts.reduce((sum, amt) => sum + Math.pow(amt - meanDailyExpense, 2), 0) /
+    totalDays;
+  const standardDeviation = Math.sqrt(variance);
+  const cv = meanDailyExpense > 0 ? standardDeviation / meanDailyExpense : 0;
+
+  // Normalized stability score (100 = perfectly flat run-rate, 0 = extreme single-day spike)
+  const score = Math.max(
+    10,
+    Math.min(100, Math.round(100 / (1 + cv * 0.75))),
+  );
+
+  let stability: "STABLE" | "MODERATE" | "VOLATILE" = "STABLE";
+  let reason = "";
+
+  const peakDateFormatted = peakDate
+    ? format(new Date(peakDate), "MMM d")
+    : "";
+
+  if (cv < 0.85) {
+    stability = "STABLE";
+    reason = `Consistent daily run-rate around ${formatRupiah(Math.round(meanDailyExpense))}/day with minimal unexpected swings.`;
+  } else if (cv <= 1.6) {
+    stability = "MODERATE";
+    if (peakDailyExpense > meanDailyExpense * 2.2) {
+      reason = `Daily spending shows moderate variation, with a peak of ${formatRupiah(peakDailyExpense)} on ${peakDateFormatted}.`;
+    } else {
+      reason = "Daily spending shows moderate fluctuation between busy days and quiet days.";
+    }
+  } else {
+    stability = "VOLATILE";
+    if (peakDailyExpense > meanDailyExpense * 3) {
+      reason = `Your daily spending fluctuated more than usual this month, driven by a ${formatRupiah(peakDailyExpense)} peak on ${peakDateFormatted}.`;
+    } else {
+      reason = "Your daily spending fluctuated significantly this month with irregular large outlays.";
+    }
+  }
+
+  return {
+    status: "sufficient",
+    stability,
+    score,
+    coefficientOfVariation: Number(cv.toFixed(2)),
+    meanDailyExpense: Math.round(meanDailyExpense),
+    standardDeviation: Math.round(standardDeviation),
+    peakDailyExpense,
+    peakDate,
+    activeDaysCount,
+    totalDaysInPeriod: totalDays,
+    totalExpense,
+    reason,
+    explanation:
+      "Spending stability distinguishes high baseline living costs from unpredictable cashflow spikes. Stable spending allows accurate cashflow forecasting.",
+  };
+}
+
+// ==========================================
+// Innovation No. 6: Debt Payoff Simulator
+// Snowball (Smallest Balance) vs Avalanche (Highest APR)
+// ==========================================
+
+export interface DebtItem {
+  id: string;
+  name: string;
+  balance: number; // remaining principal in IDR
+  minPayment: number; // monthly minimum required payment
+  interestRate: number; // Annual Percentage Rate (APR %, e.g. 18 for 18%)
+}
+
+export interface DebtPayoffMonthlyStep {
+  month: number;
+  totalRemainingBalance: number;
+  totalInterestPaidSoFar: number;
+  paidOffDebts: string[];
+}
+
+export interface DebtStrategyResult {
+  strategy: "snowball" | "avalanche";
+  totalMonths: number;
+  totalInterest: number;
+  totalPaid: number;
+  schedule: DebtPayoffMonthlyStep[];
+  debtPayoffOrder: { id: string; name: string; paidMonth: number }[];
+}
+
+export interface DebtPayoffComparison {
+  snowball: DebtStrategyResult;
+  avalanche: DebtStrategyResult;
+  interestSaved: number;
+  monthsSaved: number;
+  totalInitialDebt: number;
+  totalMinPayment: number;
+}
+
+function simulateSingleDebtStrategy(
+  debts: DebtItem[],
+  extraMonthlyPayment: number,
+  strategy: "snowball" | "avalanche"
+): DebtStrategyResult {
+  const simDebts = debts.map((d) => ({
+    id: d.id,
+    name: d.name,
+    balance: d.balance,
+    minPayment: d.minPayment,
+    interestRate: d.interestRate,
+    paidMonth: 0,
+  }));
+
+  const schedule: DebtPayoffMonthlyStep[] = [];
+  const debtPayoffOrder: { id: string; name: string; paidMonth: number }[] = [];
+  let cumulativeInterest = 0;
+  let currentMonth = 0;
+  const MAX_MONTHS = 360; // Cap at 30 years to avoid runaway infinite loops
+
+  while (currentMonth < MAX_MONTHS) {
+    const activeDebts = simDebts.filter((d) => d.balance > 0.01);
+    if (activeDebts.length === 0) break;
+
+    currentMonth += 1;
+    const debtsPaidThisMonth: string[] = [];
+
+    // 1. Accrue monthly interest on all active debts
+    for (const debt of activeDebts) {
+      const monthlyRate = debt.interestRate / 100 / 12;
+      const interest = debt.balance * monthlyRate;
+      debt.balance += interest;
+      cumulativeInterest += interest;
+    }
+
+    // 2. Pay minimum payments first
+    let availableRollover = Math.max(0, extraMonthlyPayment);
+
+    // Sum of minimum payments of fully paid debts gets rolled over
+    for (const debt of simDebts) {
+      if (debt.balance <= 0.01) {
+        availableRollover += debt.minPayment;
+      }
+    }
+
+    for (const debt of activeDebts) {
+      const payment = Math.min(debt.balance, debt.minPayment);
+      debt.balance -= payment;
+      // If balance was less than minPayment, remaining minPayment joins rollover pool
+      if (debt.minPayment > payment) {
+        availableRollover += debt.minPayment - payment;
+      }
+      if (debt.balance <= 0.01) {
+        debt.balance = 0;
+        if (!debt.paidMonth) {
+          debt.paidMonth = currentMonth;
+          debtPayoffOrder.push({ id: debt.id, name: debt.name, paidMonth: currentMonth });
+          debtsPaidThisMonth.push(debt.name);
+        }
+      }
+    }
+
+    // 3. Apply rollover extra budget to prioritized target debt
+    const stillActive = simDebts.filter((d) => d.balance > 0.01);
+    if (stillActive.length > 0 && availableRollover > 0.01) {
+      if (strategy === "snowball") {
+        // Smallest remaining balance first
+        stillActive.sort((a, b) => a.balance - b.balance);
+      } else {
+        // Highest APR interest rate first
+        stillActive.sort((a, b) => b.interestRate - a.interestRate);
+      }
+
+      for (const target of stillActive) {
+        if (availableRollover <= 0.01) break;
+        const extraPay = Math.min(target.balance, availableRollover);
+        target.balance -= extraPay;
+        availableRollover -= extraPay;
+
+        if (target.balance <= 0.01) {
+          target.balance = 0;
+          if (!target.paidMonth) {
+            target.paidMonth = currentMonth;
+            debtPayoffOrder.push({ id: target.id, name: target.name, paidMonth: currentMonth });
+            debtsPaidThisMonth.push(target.name);
+          }
+        }
+      }
+    }
+
+    const remainingSum = simDebts.reduce((sum, d) => sum + (d.balance > 0 ? d.balance : 0), 0);
+    schedule.push({
+      month: currentMonth,
+      totalRemainingBalance: Math.round(remainingSum),
+      totalInterestPaidSoFar: Math.round(cumulativeInterest),
+      paidOffDebts: debtsPaidThisMonth,
+    });
+
+    if (remainingSum <= 0.01) break;
+  }
+
+  const totalInitialPrincipal = debts.reduce((sum, d) => sum + d.balance, 0);
+
+  return {
+    strategy,
+    totalMonths: currentMonth,
+    totalInterest: Math.round(cumulativeInterest),
+    totalPaid: Math.round(totalInitialPrincipal + cumulativeInterest),
+    schedule,
+    debtPayoffOrder,
+  };
+}
+
+export function calculateDebtPayoffSchedule(
+  debts: DebtItem[],
+  extraMonthlyPayment: number = 0
+): DebtPayoffComparison {
+  const validDebts = debts.filter((d) => d.balance > 0 && d.minPayment > 0);
+  const totalInitialDebt = validDebts.reduce((sum, d) => sum + d.balance, 0);
+  const totalMinPayment = validDebts.reduce((sum, d) => sum + d.minPayment, 0);
+
+  if (validDebts.length === 0) {
+    const emptyResult: DebtStrategyResult = {
+      strategy: "snowball",
+      totalMonths: 0,
+      totalInterest: 0,
+      totalPaid: 0,
+      schedule: [],
+      debtPayoffOrder: [],
+    };
+    return {
+      snowball: emptyResult,
+      avalanche: { ...emptyResult, strategy: "avalanche" },
+      interestSaved: 0,
+      monthsSaved: 0,
+      totalInitialDebt: 0,
+      totalMinPayment: 0,
+    };
+  }
+
+  const snowball = simulateSingleDebtStrategy(validDebts, extraMonthlyPayment, "snowball");
+  const avalanche = simulateSingleDebtStrategy(validDebts, extraMonthlyPayment, "avalanche");
+
+  const interestSaved = Math.max(0, snowball.totalInterest - avalanche.totalInterest);
+  const monthsSaved = Math.max(0, snowball.totalMonths - avalanche.totalMonths);
+
+  return {
+    snowball,
+    avalanche,
+    interestSaved,
+    monthsSaved,
+    totalInitialDebt: Math.round(totalInitialDebt),
+    totalMinPayment: Math.round(totalMinPayment),
+  };
+}
+

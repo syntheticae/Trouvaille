@@ -28,8 +28,12 @@ export function PersonalBaselineSection({
       >
         <div className="flex items-center gap-2.5 mb-2">
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center text-white"
-            style={{ background: "rgba(255, 255, 255, 0.12)" }}
+            className="w-6 h-6 rounded-full flex items-center justify-center"
+            style={{
+              background: "var(--glass-fill-strong)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
           >
             <Compass size={13} />
           </div>
@@ -83,8 +87,12 @@ export function PersonalBaselineSection({
       >
         <div className="flex items-center gap-2.5">
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center text-white"
-            style={{ background: "rgba(255, 255, 255, 0.12)" }}
+            className="w-6 h-6 rounded-full flex items-center justify-center"
+            style={{
+              background: "var(--glass-fill-strong)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
           >
             <Compass size={13} />
           </div>
@@ -149,12 +157,14 @@ export function PersonalBaselineSection({
                 {isAbove ? (
                   <AlertCircle
                     size={15}
-                    className="mt-0.5 flex-shrink-0 text-white"
+                    className="mt-0.5 flex-shrink-0"
+                    style={{ color: "var(--text-primary)" }}
                   />
                 ) : (
                   <CheckCircle2
                     size={15}
-                    className="mt-0.5 flex-shrink-0 text-white"
+                    className="mt-0.5 flex-shrink-0"
+                    style={{ color: "var(--text-primary)" }}
                   />
                 )}
                 <div className="space-y-0.5">

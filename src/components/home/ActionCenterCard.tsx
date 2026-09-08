@@ -41,15 +41,15 @@ export function ActionCenterCard({ insight, onOpenCategoryDetail }: ActionCenter
     switch (insight.type) {
       case "projected_overrun":
       case "budget_risk":
-        return <ShieldAlert size={14} className="text-white" />
+        return <ShieldAlert size={14} style={{ color: "var(--text-primary)" }} />
       case "spending_pace":
-        return <TrendingUp size={14} className="text-white" />
+        return <TrendingUp size={14} style={{ color: "var(--text-primary)" }} />
       case "category_spike":
-        return <AlertCircle size={14} className="text-white" />
+        return <AlertCircle size={14} style={{ color: "var(--text-primary)" }} />
       case "safety_buffer":
-        return <AlertCircle size={14} className="text-white" />
+        return <AlertCircle size={14} style={{ color: "var(--text-primary)" }} />
       default:
-        return <CheckCircle2 size={14} className="text-white" />
+        return <CheckCircle2 size={14} style={{ color: "var(--text-primary)" }} />
     }
   }
 
@@ -67,7 +67,10 @@ export function ActionCenterCard({ insight, onOpenCategoryDetail }: ActionCenter
           <div className="flex items-center gap-2">
             <div
               className="w-5 h-5 rounded-full flex items-center justify-center"
-              style={{ background: "rgba(255, 255, 255, 0.12)" }}
+              style={{
+                background: "var(--glass-fill-strong)",
+                border: "1px solid var(--glass-border)"
+              }}
             >
               {getIcon()}
             </div>

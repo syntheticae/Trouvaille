@@ -71,11 +71,11 @@ export function MetricDrillDownSheet({
                   style={{ background: "var(--glass-fill)" }}
                 >
                   {data.budgetRisk === "AT RISK" ? (
-                    <ShieldAlert size={20} className="text-white" />
+                    <ShieldAlert size={20} style={{ color: "var(--text-primary)" }} />
                   ) : data.budgetRisk === "WATCH" ? (
-                    <AlertTriangle size={20} className="text-white" />
+                    <AlertTriangle size={20} style={{ color: "var(--text-primary)" }} />
                   ) : (
-                    <ShieldCheck size={20} className="text-white" />
+                    <ShieldCheck size={20} style={{ color: "var(--text-primary)" }} />
                   )}
                 </div>
                 <div>

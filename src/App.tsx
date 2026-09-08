@@ -14,6 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { syncAllFamfinaToSupabase } from "./lib/famfinaResolver";
 import { fetchAllTransactionsFromSupabase } from "./hooks/useTransactions";
 import { supabase } from "./lib/supabase";
+import { flushPendingMutations } from "./lib/syncEngine";
 
 const HomePage = lazy(() =>
   import("./pages/HomePage").then((module) => ({
@@ -76,7 +77,29 @@ function AppShell() {
 
   useEffect(() => {
     setHasInitialSynced(localStorage.getItem(syncStorageKey) === "true");
-  }, [syncStorageKey]);
+    if (user?.id) {
+      flushPendingMutations().catch((e) =>
+        console.warn("[App] Background flush warning:", e),
+      );
+    }
+  }, [syncStorageKey, user?.id]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      if (user?.id) {
+        flushPendingMutations()
+          .then((res) => {
+            if (res.flushedCount > 0) {
+              queryClient.invalidateQueries({ queryKey: ["transactions"] });
+              queryClient.invalidateQueries({ queryKey: ["wallets"] });
+            }
+          })
+          .catch((e) => console.warn("[App] Online reconnect flush warning:", e));
+      }
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [user?.id, queryClient]);
 
   useEffect(() => {
     async function init() {

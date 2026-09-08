@@ -24,11 +24,6 @@ import { useState, useMemo } from "react";
 import {
   Bell,
   ArrowUpRight,
-  TrendingUp,
-  TrendingDown,
-  Sparkles,
-  PiggyBank,
-  Flame,
   Eye,
   EyeOff,
   Check,
@@ -59,6 +54,7 @@ import {
   startOfMonth,
   endOfMonth,
   getDay,
+  subDays,
 } from "date-fns";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { BalanceCard } from "../components/ui/BalanceCard";
@@ -68,12 +64,15 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useCategories } from "../hooks/useCategories";
 import { ActionCenterCard } from "../components/home/ActionCenterCard";
 import { MetricDrillDownSheet } from "../components/home/MetricDrillDownSheet";
-import { LiquidityHorizonCard } from "../components/home/LiquidityHorizonCard";
-import { CashflowOutlookCard } from "../components/home/CashflowOutlookCard";
+import { CashflowPulseCard } from "../components/home/CashflowPulseCard";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence";
-import { calculateAssetTrend } from "../lib/financialMath";
+import {
+  calculateAssetTrend,
+  calculatePersonalBaselines,
+  calculateDynamicGoalMilestones,
+} from "../lib/financialMath";
 
 interface HomePageProps {
   onOpenAdd?: () => void;
@@ -123,11 +122,12 @@ function getTimeGreeting(): string {
 }
 
 export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const { session } = useAuth();
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [stockRange, setStockRange] = useState<StockRange>("1W");
   const [hideBalance, setHideBalance] = useState(
@@ -185,6 +185,26 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
   const assetData = useMemo(() => {
     return calculateAssetTrend(allTxs, totalAssets, stockRange);
   }, [allTxs, totalAssets, stockRange]);
+
+  // Personal Baselines & Dynamic Goal Milestones (Innovation 10)
+  const baselines = useMemo(() => calculatePersonalBaselines(allTxs), [allTxs]);
+
+  const goalMilestonesMap = useMemo(() => {
+    const map = new Map<string, { label: string; isComplete: boolean }>();
+    goals.forEach((g) => {
+      const res = calculateDynamicGoalMilestones(g, baselines, now);
+      if (res.isAlreadyCompleted) {
+        map.set(g.id, { label: "Completed", isComplete: true });
+      } else {
+        const est = res.velocityPaces.current.projectedCompletion;
+        map.set(g.id, {
+          label: est ? `Est. ${est}` : "In Progress",
+          isComplete: false,
+        });
+      }
+    });
+    return map;
+  }, [goals, baselines, now]);
 
 
   // 2. Current Month Financial Calculations
@@ -246,28 +266,32 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
     };
   }, [allTxs]);
 
-  const totalIncome = currentMonthStats.income;
   const totalExpense = currentMonthStats.expense;
-  const topExpense = currentMonthStats.topExpense;
-  const topIncome = currentMonthStats.topIncome;
 
-  const netCashflow = totalIncome - totalExpense;
-  const isPositiveCashflow = netCashflow >= 0;
   const daysInMonth = now.getDate();
   const dailyAverage = daysInMonth > 0 ? totalExpense / daysInMonth : 0;
 
   // 3. Calendar heatmap calculations
-  const calStart = startOfMonth(now);
-  const calEnd = endOfMonth(now);
-  const calDays = eachDayOfInterval({ start: calStart, end: calEnd });
-  const calPad = getDay(calStart);
+  const { calDays, calPad } = useMemo(() => {
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
+    return {
+      calDays: eachDayOfInterval({ start, end }),
+      calPad: getDay(start),
+    };
+  }, [now]);
+  const compactDays = useMemo(() => {
+    return eachDayOfInterval({
+      start: subDays(now, 6),
+      end: now,
+    });
+  }, [now]);
 
   const monthlyStats = useMemo(() => {
     const map = new Map<string, { income: number; expense: number }>();
-    const currentMonthKey = format(now, "yyyy-MM");
     allTxs.forEach((tx) => {
       const dStr = tx.occurred_on;
-      if (!dStr || !dStr.startsWith(currentMonthKey)) return;
+      if (!dStr) return;
       const existing = map.get(dStr) || { income: 0, expense: 0 };
       if (tx.type === "income") existing.income += Number(tx.amount || 0);
       else if (tx.type === "expense")
@@ -303,6 +327,108 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
     const g = Math.round(from[1] + (to[1] - from[1]) * t);
     const b = Math.round(from[2] + (to[2] - from[2]) * t);
     return `rgb(${r},${g},${b})`;
+  };
+
+  const renderCalendarDay = (d: Date) => {
+    const { income, expense, hasTx } = dayData(d);
+    const isT = isToday(d);
+    const isSel = selectedDate && isSameDay(d, selectedDate);
+    const net = income - expense;
+    const isSurplus = hasTx && net >= 0;
+    const isDeficit = hasTx && net < 0;
+
+    let bg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
+    let textColor = "var(--text-tertiary)";
+    let border = "1px solid transparent";
+
+    if (isSurplus && monthlyStats.maxSurplus > 0) {
+      const intensity = Math.min(1, net / monthlyStats.maxSurplus);
+      if (isDark) {
+        bg = lerpHex(
+          [160, 160, 175],
+          [255, 255, 255],
+          Math.max(0.2, intensity),
+        );
+        textColor = "#121212";
+      } else {
+        bg = lerpHex(
+          [85, 85, 95],
+          [24, 24, 27],
+          Math.max(0.2, intensity),
+        );
+        textColor = "#FFFFFF";
+      }
+    } else if (isDeficit && monthlyStats.maxDeficit > 0) {
+      const intensity = Math.min(
+        1,
+        Math.abs(net) / monthlyStats.maxDeficit,
+      );
+      if (isDark) {
+        bg = lerpHex(
+          [82, 82, 91],
+          [30, 30, 34],
+          Math.max(0.2, intensity),
+        );
+        textColor = "#FFFFFF";
+        border = "1px solid rgba(255,255,255,0.18)";
+      } else {
+        bg = lerpHex(
+          [225, 225, 230],
+          [180, 180, 190],
+          Math.max(0.2, intensity),
+        );
+        textColor = "#18181B";
+        border = "1px solid rgba(0,0,0,0.14)";
+      }
+    }
+
+    if (isT && !hasTx) {
+      border = "1px solid var(--glass-border)";
+      textColor = "var(--text-primary)";
+    }
+    if (isSel) {
+      border = "2px solid var(--text-primary)";
+    }
+
+    return (
+      <button
+        key={d.toISOString()}
+        onClick={() => {
+          triggerHaptic("light");
+          setSelectedDate(d);
+        }}
+        className="flex flex-col items-center justify-center rounded-lg active:scale-90 transition-transform py-0.5"
+      >
+        <div
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-extrabold transition-all"
+          style={{
+            background: bg,
+            color: textColor,
+            border,
+            boxShadow: isSel ? "0 0 0 2px var(--text-primary)" : "none",
+          }}
+        >
+          {format(d, "d")}
+        </div>
+        <div className="h-[10px] flex items-center justify-center mt-0.5">
+          {hasTx && net !== 0 ? (
+            <span
+              className="text-[8px] font-extrabold tracking-tighter leading-none truncate max-w-[34px]"
+              style={{
+                color: isSurplus
+                  ? "var(--text-primary)"
+                  : "var(--text-tertiary)",
+                opacity: isSurplus ? 0.95 : 0.65,
+              }}
+            >
+              {formatNetAmount(net)}
+            </span>
+          ) : (
+            <span className="text-[8px] opacity-0 select-none">-</span>
+          )}
+        </div>
+      </button>
+    );
   };
 
   const selectedDayTxs = useMemo(() => {
@@ -597,262 +723,24 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         <ActionCenterCard insight={intel.actionCenterInsight} />
       )}
 
-      {/* 2.6 PHASE III: LIQUIDITY */}
-      <LiquidityHorizonCard
-        liquidityHorizon={intel.liquidityHorizon}
+      {/* 3. CONSOLIDATED MONTHLY CASHFLOW PULSE WITH COMPACT BUDGET */}
+      <CashflowPulseCard
+        netCashflow={intel.netCashflow}
+        totalIncome={intel.totalIncome}
+        totalExpense={intel.totalExpense}
+        dailyAverage={dailyAverage}
+        daysElapsed={daysInMonth}
+        savingsRate={intel.savingsRate}
+        momentum={intel.momentum}
+        momentumReason={intel.momentumReason}
         hideBalance={hideBalance}
-      />
-
-      {/* 3. 2x2 FINANCIAL INSIGHTS GRID */}
-      <section className="grid grid-cols-2 gap-3">
-        {/* Net Cashflow */}
-        <div
-          onClick={() => {
-            setMetricDrillDown({
-              type: "snapshot",
-              data: {
-                totalCurrent: intel.netCashflow,
-                totalPrevious: 0,
-                delta: intel.netCashflow,
-                pctChange: 0,
-                title: "Net Cashflow",
-                subtitle: `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
-                badge: "Current Month",
-                ctaLabel: "View Full Analytics Breakdown",
-              },
-            });
-            triggerHaptic("light");
-          }}
-          className="p-4 rounded-[22px] cursor-pointer active:scale-98 transition-transform select-none"
-          style={{
-            background: isDark ? "#FFFFFF" : "#18181B",
-            border: isDark
-              ? "1px solid rgba(0,0,0,0.06)"
-              : "1px solid rgba(255,255,255,0.12)",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
-          }}
-        >
-          <div className="flex justify-between items-start mb-2">
-            <p
-              className="text-[11px] font-bold uppercase tracking-wide"
-              style={{ color: isDark ? "#71717A" : "rgba(255,255,255,0.6)" }}
-            >
-              Net Cashflow
-            </p>
-            <div
-              className="w-6 h-6 rounded-full flex items-center justify-center"
-              style={{
-                background: isDark
-                  ? "rgba(18,18,18,0.07)"
-                  : "rgba(255,255,255,0.12)",
-              }}
-            >
-              {isPositiveCashflow ? (
-                <TrendingUp size={12} color={isDark ? "#121212" : "#FFFFFF"} />
-              ) : (
-                <TrendingDown
-                  size={12}
-                  color={isDark ? "#121212" : "#FFFFFF"}
-                />
-              )}
-            </div>
-          </div>
-          <div
-            className="amount text-[18px] font-extrabold mb-0.5"
-            style={{ color: isDark ? "#121212" : "#FFFFFF" }}
-          >
-            {hideBalance ? "Rp ••••••••" : formatRupiah(Math.abs(netCashflow))}
-          </div>
-          <p
-            className="text-[11px] font-semibold"
-            style={{ color: isDark ? "#71717A" : "rgba(255,255,255,0.6)" }}
-          >
-            {isPositiveCashflow ? "Surplus this month" : "Deficit this month"}
-          </p>
-        </div>
-
-        {/* Monthly Outflow */}
-        <div
-          onClick={() => {
-            const exp = intel.explainExpenseChange();
-            setMetricDrillDown({
-              type: "snapshot",
-              data: {
-                totalCurrent: intel.totalExpense,
-                totalPrevious: exp.totalPrevious,
-                delta: exp.delta,
-                pctChange: exp.pctChange,
-                title: "Total Outflow",
-                subtitle: `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
-                badge: "Current Month",
-                ctaLabel: "View Analytics Breakdown",
-              },
-            });
-            triggerHaptic("light");
-          }}
-          className="p-4 rounded-[22px] glass-surface cursor-pointer active:scale-98 transition-transform select-none"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <p
-              className="text-[11px] font-bold uppercase tracking-wide"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Total Outflow
-            </p>
-            <Flame size={13} style={{ color: "var(--text-primary)" }} />
-          </div>
-          <div
-            className="amount text-[18px] font-extrabold leading-tight mb-0.5"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {hideBalance ? "Rp ••••••••" : formatRupiah(totalExpense)}
-          </div>
-          <p
-            className="text-[11px] font-medium"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Spending this month
-          </p>
-        </div>
-
-        {/* Daily Average */}
-        <div className="p-4 rounded-[22px] glass-surface">
-          <div className="flex justify-between items-start mb-2">
-            <p
-              className="text-[11px] font-bold uppercase tracking-wide"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Daily Spending
-            </p>
-            <Sparkles size={13} style={{ color: "var(--text-primary)" }} />
-          </div>
-          <div
-            className="amount text-[18px] font-extrabold mb-0.5"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {hideBalance ? "Rp ••••••••" : formatRupiah(dailyAverage)}
-          </div>
-          <p
-            className="text-[11px] font-medium"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Average so far ({daysInMonth} days)
-          </p>
-        </div>
-
-        {/* Inflow vs Outflow Ratio */}
-        <div
-          className="p-4 rounded-[22px]"
-          style={{
-            background: isDark ? "#FFFFFF" : "#18181B",
-            border: isDark
-              ? "1px solid rgba(0,0,0,0.06)"
-              : "1px solid rgba(255,255,255,0.12)",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
-          }}
-        >
-          <div className="flex justify-between items-start mb-2">
-            <p
-              className="text-[11px] font-bold uppercase tracking-wide"
-              style={{ color: isDark ? "#71717A" : "rgba(255,255,255,0.6)" }}
-            >
-              {totalIncome >= totalExpense ? "Savings Rate" : "Income Inflow"}
-            </p>
-            <div
-              className="w-6 h-6 rounded-full flex items-center justify-center"
-              style={{
-                background: isDark
-                  ? "rgba(18,18,18,0.07)"
-                  : "rgba(255,255,255,0.12)",
-              }}
-            >
-              <PiggyBank size={12} color={isDark ? "#121212" : "#FFFFFF"} />
-            </div>
-          </div>
-          <div
-            className="amount text-[18px] font-extrabold mb-0.5"
-            style={{ color: isDark ? "#121212" : "#FFFFFF" }}
-          >
-            {hideBalance
-              ? "••••"
-              : totalIncome >= totalExpense
-                ? `${(totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0).toFixed(0)}%`
-                : formatRupiah(totalIncome)}
-          </div>
-          <p
-            className="text-[11px] font-semibold"
-            style={{ color: isDark ? "#71717A" : "rgba(255,255,255,0.6)" }}
-          >
-            {totalIncome >= totalExpense
-              ? "Saved this month"
-              : "Income this month"}
-          </p>
-        </div>
-      </section>
-
-      {/* 4. FINANCIAL MOMENTUM (Priority 9 — Strict Monochrome) */}
-      <section
-        className="p-3.5 rounded-[22px] glass-surface flex items-center justify-between mb-3"
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{
-              background: "var(--glass-fill)",
-              color: "var(--text-primary)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            {intel.momentum === "positive" ? (
-              <TrendingUp size={16} />
-            ) : intel.momentum === "negative" ? (
-              <TrendingDown size={16} />
-            ) : (
-              <Sparkles size={16} />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p
-              className="text-[12px] font-extrabold capitalize"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {intel.momentum} Momentum
-            </p>
-            <p
-              className="text-[10px] font-medium truncate"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {intel.momentumReason}
-            </p>
-          </div>
-        </div>
-        <span
-          className="text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ml-2"
-          style={{
-            background: "var(--glass-fill-strong)",
-            color: "var(--text-primary)",
-            border: "1px solid var(--glass-border)",
-          }}
-        >
-          {hideBalance ? "••%" : `${intel.savingsRate.toFixed(0)}% saved`}
-        </span>
-      </section>
-
-      <CashflowOutlookCard
-        defaultForecast={intel.cashflowFloor}
-        getCashflowHorizon={intel.getCashflowHorizon}
-        hideBalance={hideBalance}
-      />
-
-      {/* 4.5 MONTHLY BUDGET PROGRESS WITH SPENDING PACE & RISK (Strict Monochrome) */}
-      {budgetTarget > 0 && (
-        <section
-          onClick={() => {
+        budgetTarget={budgetTarget}
+        budgetRisk={intel.budgetRisk}
+        consumedPct={intel.consumedPct}
+        isAheadOfPace={intel.isAheadOfPace}
+        paceDiff={intel.paceDiff}
+        onOpenDrillDown={(mode) => {
+          if (mode === "budget") {
             setMetricDrillDown({
               type: "budget_risk",
               data: {
@@ -867,383 +755,101 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                 budgetRiskReason: intel.budgetRiskReason,
               },
             });
-            triggerHaptic("light");
-          }}
-          className="glass-surface p-4 rounded-[24px] mb-3 cursor-pointer active:scale-[0.99] transition-transform select-none"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <p
-                  className="text-[11px] font-bold uppercase tracking-widest"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Budget Limit
-                </p>
-                <span
-                  className="text-[9px] font-extrabold px-2 py-0.5 rounded-full"
-                  style={{
-                    background:
-                      intel.budgetRisk === "AT RISK"
-                        ? "var(--text-primary)"
-                        : "var(--glass-fill-strong)",
-                    color:
-                      intel.budgetRisk === "AT RISK"
-                        ? "var(--bg-canvas)"
-                        : "var(--text-primary)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                >
-                  {intel.budgetRisk}
-                </span>
-              </div>
-              <p
-                className="text-[14px] font-bold mt-0.5"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {hideBalance ? "Rp ••••••••" : formatRupiah(totalExpense)}
-              </p>
-            </div>
-            <div className="text-right">
-              <p
-                className="text-[11px] font-semibold"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                of {hideBalance ? "Rp ••••••••" : formatRupiah(budgetTarget)}
-              </p>
-              <p
-                className="text-[10px] font-bold mt-0.5"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {hideBalance
-                  ? "••%"
-                  : `${((totalExpense / budgetTarget) * 100).toFixed(1)}% used`}
-              </p>
-            </div>
-          </div>
-          <div
-            className="h-2 w-full rounded-full overflow-hidden mt-1"
+          } else if (mode === "net") {
+            setMetricDrillDown({
+              type: "snapshot",
+              data: {
+                totalCurrent: intel.netCashflow,
+                totalPrevious: 0,
+                delta: intel.netCashflow,
+                pctChange: 0,
+                title: "Net Cashflow",
+                subtitle: `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
+                badge: "Current Month",
+                ctaLabel: "View Full Analytics Breakdown",
+              },
+            });
+          } else {
+            const exp = intel.explainExpenseChange();
+            setMetricDrillDown({
+              type: "snapshot",
+              data: {
+                totalCurrent: intel.totalExpense,
+                totalPrevious: exp.totalPrevious,
+                delta: exp.delta,
+                pctChange: exp.pctChange,
+                title: "Total Outflow",
+                subtitle: `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
+                badge: "Current Month",
+                ctaLabel: "View Analytics Breakdown",
+              },
+            });
+          }
+        }}
+      />
+
+      {/* 5. HEATMAP CALENDAR (Collapsible: Compact 7D vs Full Month) */}
+      <section>
+        <div className="flex justify-between items-center px-1 mb-2">
+          <span
+            className="text-[11px] font-bold uppercase tracking-widest block"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            {calendarExpanded ? "Monthly Activity" : "Past 7 Days Activity"}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              setCalendarExpanded((prev) => !prev);
+            }}
+            className="text-[10px] font-bold px-2.5 py-1 rounded-full transition-all active:scale-95 cursor-pointer select-none flex items-center gap-1"
             style={{
-              background: isDark
-                ? "rgba(255,255,255,0.08)"
-                : "rgba(0,0,0,0.06)",
+              background: "var(--glass-fill)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--glass-border)",
             }}
           >
-            <div
-              className="h-full rounded-full transition-all duration-1000"
-              style={{
-                width: `${Math.min(100, (totalExpense / budgetTarget) * 100)}%`,
-                background: "var(--text-primary)",
-              }}
-            />
-          </div>
-
-          {/* Spending Pace & Projected Month-End Footer */}
-          <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-[var(--glass-border)]">
-            <div>
-              <p
-                className="text-[9px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Spending Pace
-              </p>
-              <p
-                className="text-[11px] font-extrabold mt-0.5"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {hideBalance ? "Rp ••••••••" : formatRupiah(totalExpense)}{" "}
-                <span
-                  className="text-[10px] font-bold"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  (
-                  {intel.isAheadOfPace
-                    ? `+${hideBalance ? "••••" : formatRupiah(intel.paceDiff)} ahead`
-                    : "under pace"}
-                  )
-                </span>
-              </p>
-            </div>
-            <div className="text-right">
-              <p
-                className="text-[9px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Projected Month-End
-              </p>
-              <p
-                className="text-[11px] font-extrabold mt-0.5"
-                style={{ color: "var(--text-primary)" }}
-              >
-                ~
-                {hideBalance
-                  ? "Rp ••••••••"
-                  : formatRupiah(intel.projectedMonthEnd)}{" "}
-                <span
-                  className="text-[10px] font-bold"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {intel.projectedVariance > 0
-                    ? `(↑ ${hideBalance ? "••••" : formatRupiah(intel.projectedVariance)} over)`
-                    : "(on track)"}
-                </span>
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 4.6 HIGHEST OUTFLOW & HIGHEST INFLOW CARDS (Revision Item 1) */}
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        {/* Highest Outflow */}
-        <div
-          className="p-3.5 rounded-[22px] flex flex-col justify-between"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              style={{
-                background: "var(--glass-fill-strong)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {topExpense ? (
-                <IconRenderer icon={topExpense.emoji} size="w-5 h-5" />
-              ) : (
-                <Flame size={15} style={{ color: "var(--text-tertiary)" }} />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p
-                className="text-[10px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Highest Outflow
-              </p>
-              <p
-                className="text-[12px] font-extrabold truncate"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {topExpense ? topExpense.name : "None"}
-              </p>
-            </div>
-          </div>
-          <div>
-            <p
-              className="amount text-[14px] font-extrabold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {topExpense
-                ? hideBalance
-                  ? "Rp ••••••••"
-                  : formatRupiah(topExpense.total)
-                : "Rp 0"}
-            </p>
-            <p
-              className="text-[10px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {topExpense
-                ? `${topExpense.count} txs this month`
-                : "No outflow recorded"}
-            </p>
-          </div>
+            <CalendarDays size={12} />
+            <span>{calendarExpanded ? "Compact (7D)" : "Full Month"}</span>
+          </button>
         </div>
 
-        {/* Highest Inflow */}
-        <div
-          className="p-3.5 rounded-[22px] flex flex-col justify-between"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              style={{
-                background: "var(--glass-fill-strong)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {topIncome ? (
-                <IconRenderer icon={topIncome.emoji} size="w-5 h-5" />
-              ) : (
-                <TrendingUp
-                  size={15}
-                  style={{ color: "var(--text-tertiary)" }}
-                />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p
-                className="text-[10px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Highest Inflow
-              </p>
-              <p
-                className="text-[12px] font-extrabold truncate"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {topIncome ? topIncome.name : "None"}
-              </p>
-            </div>
-          </div>
-          <div>
-            <p
-              className="amount text-[14px] font-extrabold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {topIncome
-                ? hideBalance
-                  ? "Rp ••••••••"
-                  : formatRupiah(topIncome.total)
-                : "Rp 0"}
-            </p>
-            <p
-              className="text-[10px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {topIncome
-                ? `${topIncome.count} txs this month`
-                : "No inflow recorded"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. HEATMAP CALENDAR */}
-      <section>
-        <span
-          className="text-[11px] font-bold uppercase tracking-widest px-1 mb-2 block"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Monthly Activity
-        </span>
         <div className="glass-surface p-3.5 rounded-[22px]">
-          <div className="grid grid-cols-7 gap-y-1 gap-x-1 text-center">
-            {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
-              <div
-                key={i}
-                className="text-[9px] font-bold mb-0.5"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {w}
-              </div>
-            ))}
-            {Array.from({ length: calPad }).map((_, i) => (
-              <div key={`pad-${i}`} />
-            ))}
-            {calDays.map((d) => {
-              const { income, expense, hasTx } = dayData(d);
-              const isT = isToday(d);
-              const isSel = selectedDate && isSameDay(d, selectedDate);
-              const net = income - expense;
-              const isSurplus = hasTx && net >= 0;
-              const isDeficit = hasTx && net < 0;
-
-              let bg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
-              let textColor = "var(--text-tertiary)";
-              let border = "1px solid transparent";
-
-              if (isSurplus && monthlyStats.maxSurplus > 0) {
-                const intensity = Math.min(1, net / monthlyStats.maxSurplus);
-                if (isDark) {
-                  bg = lerpHex(
-                    [160, 160, 175],
-                    [255, 255, 255],
-                    Math.max(0.2, intensity),
-                  );
-                  textColor = "#121212";
-                } else {
-                  bg = lerpHex(
-                    [85, 85, 95],
-                    [24, 24, 27],
-                    Math.max(0.2, intensity),
-                  );
-                  textColor = "#FFFFFF";
-                }
-              } else if (isDeficit && monthlyStats.maxDeficit > 0) {
-                const intensity = Math.min(
-                  1,
-                  Math.abs(net) / monthlyStats.maxDeficit,
-                );
-                if (isDark) {
-                  bg = lerpHex(
-                    [82, 82, 91],
-                    [30, 30, 34],
-                    Math.max(0.2, intensity),
-                  );
-                  textColor = "#FFFFFF";
-                  border = "1px solid rgba(255,255,255,0.18)";
-                } else {
-                  bg = lerpHex(
-                    [225, 225, 230],
-                    [180, 180, 190],
-                    Math.max(0.2, intensity),
-                  );
-                  textColor = "#18181B";
-                  border = "1px solid rgba(0,0,0,0.14)";
-                }
-              }
-
-              if (isT && !hasTx) {
-                border = "1px solid var(--glass-border)";
-                textColor = "var(--text-primary)";
-              }
-              if (isSel) {
-                border = "2px solid var(--text-primary)";
-              }
-
-              return (
-                <button
-                  key={d.toISOString()}
-                  onClick={() => setSelectedDate(d)}
-                  className="flex flex-col items-center justify-center rounded-lg active:scale-90 transition-transform py-0.5"
+          {calendarExpanded ? (
+            <div className="grid grid-cols-7 gap-y-1 gap-x-1 text-center">
+              {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
+                <div
+                  key={i}
+                  className="text-[9px] font-bold mb-0.5"
+                  style={{ color: "var(--text-tertiary)" }}
                 >
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-extrabold transition-all"
-                    style={{
-                      background: bg,
-                      color: textColor,
-                      border,
-                      boxShadow: isSel
-                        ? "0 0 0 2px var(--text-primary)"
-                        : "none",
-                    }}
-                  >
-                    {format(d, "d")}
-                  </div>
-                  <div className="h-[10px] flex items-center justify-center mt-0.5">
-                    {hasTx && net !== 0 ? (
-                      <span
-                        className="text-[8px] font-extrabold tracking-tighter leading-none truncate max-w-[34px]"
-                        style={{
-                          color: isSurplus
-                            ? "var(--text-primary)"
-                            : "var(--text-tertiary)",
-                          opacity: isSurplus ? 0.95 : 0.65,
-                        }}
-                      >
-                        {formatNetAmount(net)}
-                      </span>
-                    ) : (
-                      <span className="text-[8px] opacity-0 select-none">
-                        -
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  {w}
+                </div>
+              ))}
+              {Array.from({ length: calPad }).map((_, i) => (
+                <div key={`pad-${i}`} />
+              ))}
+              {calDays.map((d) => renderCalendarDay(d))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-7 gap-y-1 gap-x-1 text-center">
+              {compactDays.map((d) => (
+                <div
+                  key={`h-${d.toISOString()}`}
+                  className="text-[9px] font-bold mb-0.5"
+                  style={{
+                    color: isToday(d)
+                      ? "var(--text-primary)"
+                      : "var(--text-tertiary)",
+                  }}
+                >
+                  {format(d, "EEE")}
+                </div>
+              ))}
+              {compactDays.map((d) => renderCalendarDay(d))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -1314,16 +920,32 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
                         </p>
                       </div>
                     </div>
-                    <span
-                      className="amount text-[12px] font-extrabold px-2 py-0.5 rounded-full"
-                      style={{
-                        background: "var(--glass-fill)",
-                        color: "var(--text-primary)",
-                        border: "1px solid var(--glass-border)",
-                      }}
-                    >
-                      {pct}%
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {goalMilestonesMap.get(g.id) && (
+                        <span
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full truncate"
+                          style={{
+                            background: "var(--glass-fill)",
+                            color: goalMilestonesMap.get(g.id)?.isComplete
+                              ? "var(--accent)"
+                              : "var(--text-secondary)",
+                            border: "1px solid var(--glass-border)",
+                          }}
+                        >
+                          {goalMilestonesMap.get(g.id)?.label}
+                        </span>
+                      )}
+                      <span
+                        className="amount text-[12px] font-extrabold px-2 py-0.5 rounded-full"
+                        style={{
+                          background: "var(--glass-fill)",
+                          color: "var(--text-primary)",
+                          border: "1px solid var(--glass-border)",
+                        }}
+                      >
+                        {pct}%
+                      </span>
+                    </div>
                   </div>
 
                   {/* Progress Bar */}

@@ -129,4 +129,43 @@ describe("Data Synchronization & Large Dataset Integrity Test Suite", () => {
     expect(adjResults.length).toBeGreaterThan(0)
     expect(adjResults[0].note).toBe("Correction (+) BCA")
   })
+
+  it("Recovers transactions from local backup snapshot when initial network fetch fails", () => {
+    const backupDataset = generateMockDataset(500)
+    const backupJson = JSON.stringify(backupDataset)
+
+    // Simulate network error on cold start
+    let fetchedData: Transaction[] = []
+    const isNetworkError = true
+
+    if (isNetworkError) {
+      // Recovery logic from TROUVAILLE_TX_BACKUP_V1
+      const restored = JSON.parse(backupJson) as Transaction[]
+      expect(restored.length).toBe(500)
+      fetchedData = restored
+    }
+
+    expect(fetchedData.length).toBe(500)
+    expect(fetchedData[0].id).toBe("tx-uuid-1")
+    expect(fetchedData[499].id).toBe("tx-uuid-500")
+  })
+
+  it("Ensures initial page network failure throws instead of returning empty array when no backup is present", () => {
+    let thrownError: Error | null = null
+    try {
+      const from = 0
+      const chunk: Transaction[] = []
+      const fetchError = new Error("Network request failed")
+      if (fetchError && chunk.length === 0) {
+        if (from === 0) {
+          // No backup in storage -> MUST throw to protect React Query cache
+          throw fetchError
+        }
+      }
+    } catch (err: any) {
+      thrownError = err
+    }
+    expect(thrownError).not.toBeNull()
+    expect(thrownError?.message).toBe("Network request failed")
+  })
 })

@@ -17,6 +17,7 @@ import {
   calculateExpenseStructure,
   calculateCashflowFloor,
   calculateLiquidityHorizon,
+  calculateExpenseVolatility,
   type BudgetRiskLevel,
   type CategoryMoMShift,
   type ActionCenterInsight,
@@ -29,6 +30,7 @@ import {
   type ExpenseStructureResult,
   type CashflowFloorResult,
   type LiquidityHorizonResult,
+  type ExpenseVolatilityResult,
   type CashflowCalendarDayPoint,
   type ExpenseClassification,
 } from "../lib/financialMath";
@@ -46,6 +48,7 @@ export type {
   ExpenseStructureResult,
   CashflowFloorResult,
   LiquidityHorizonResult,
+  ExpenseVolatilityResult,
   CashflowCalendarDayPoint,
   ExpenseClassification,
 };
@@ -316,6 +319,12 @@ export function useFinancialIntelligence({
       liquidAccounts,
     );
 
+    // 18. Expense Volatility (Spending Stability)
+    const expenseVolatility = calculateExpenseVolatility(
+      transactions,
+      referenceDate,
+    );
+
     return {
       daysElapsed,
       totalDays,
@@ -356,6 +365,8 @@ export function useFinancialIntelligence({
       cashflowFloor,
       getCashflowHorizon,
       liquidityHorizon,
+      // Expense Volatility
+      expenseVolatility,
       // Intelligence Layers
       actionCenterInsight,
       monthlyReview,

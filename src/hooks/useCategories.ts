@@ -379,6 +379,17 @@ export const DEFAULT_CATEGORIES: Omit<
 
 import { useAuth } from "../contexts/AuthContext";
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 6000): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Categories fetch timeout after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
+const CATEGORIES_BACKUP_STORAGE_KEY = "TROUVAILLE_CATEGORIES_BACKUP_V1";
+
 export function useCategories(type?: TransactionType) {
   const { user } = useAuth();
   const userId = user?.id;
@@ -386,27 +397,63 @@ export function useCategories(type?: TransactionType) {
   return useQuery({
     queryKey: categoryKeys.byType(userId, type),
     queryFn: async () => {
-      let query = supabase
-        .from("categories")
-        .select("*")
-        .order("is_default", { ascending: false })
-        .order("name");
-      if (userId) query = query.eq("user_id", userId);
-      if (type) query = query.eq("type", type);
-      const { data, error } = await query;
-      if (error) throw error;
+      try {
+        let query = supabase
+          .from("categories")
+          .select("*")
+          .order("is_default", { ascending: false })
+          .order("name");
+        if (userId) query = query.eq("user_id", userId);
+        if (type) query = query.eq("type", type);
+        const { data, error } = await withTimeout(query, 6000);
+        if (error) throw error;
 
-      // Deduplicate by name (case-insensitive) per type to prevent any duplicate categories
-      const seen = new Set<string>();
-      const uniqueList: Category[] = [];
-      ((data as Category[]) || []).forEach((cat) => {
-        const key = `${cat.type}_${cat.name.trim().toLowerCase()}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          uniqueList.push(cat);
+        // Deduplicate by name (case-insensitive) per type to prevent any duplicate categories
+        const seen = new Set<string>();
+        const uniqueList: Category[] = [];
+        ((data as Category[]) || []).forEach((cat) => {
+          const key = `${cat.type}_${cat.name.trim().toLowerCase()}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            uniqueList.push(cat);
+          }
+        });
+
+        if (uniqueList.length > 0 && !type) {
+          try {
+            localStorage.setItem(
+              CATEGORIES_BACKUP_STORAGE_KEY,
+              JSON.stringify(uniqueList),
+            );
+          } catch {}
         }
-      });
-      return uniqueList;
+        return uniqueList;
+      } catch (err) {
+        console.warn("[useCategories] Fetch failed, restoring from backup/defaults:", err);
+        try {
+          const cached = localStorage.getItem(CATEGORIES_BACKUP_STORAGE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached) as Category[];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              return type ? parsed.filter((c) => c.type === type) : parsed;
+            }
+          }
+        } catch {}
+
+        // Fallback to DEFAULT_CATEGORIES
+        const fallbackList: Category[] = DEFAULT_CATEGORIES.filter(
+          (c) => !type || c.type === type,
+        ).map((c, i) => ({
+          id: `fallback-cat-${i}-${c.name.toLowerCase()}`,
+          user_id: userId || "default",
+          name: c.name,
+          emoji: c.emoji,
+          type: c.type,
+          is_default: c.is_default,
+          created_at: new Date().toISOString(),
+        }));
+        return fallbackList;
+      }
     },
     enabled: !!userId,
     staleTime: 60 * 1000,

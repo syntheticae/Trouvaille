@@ -104,10 +104,11 @@ export function FinancialHealthDiagnosticModal({
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2.5">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0"
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
               style={{
-                background: "rgba(255, 255, 255, 0.12)",
+                background: "var(--glass-fill-strong)",
                 border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
               }}
             >
               <ShieldCheck size={20} />
@@ -133,7 +134,7 @@ export function FinancialHealthDiagnosticModal({
             <span
               className="text-[11px] font-extrabold px-2.5 py-1 rounded-xl"
               style={{
-                background: "rgba(255, 255, 255, 0.12)",
+                background: "var(--glass-fill-strong)",
                 color: "var(--text-primary)",
                 border: "1px solid var(--glass-border)",
               }}

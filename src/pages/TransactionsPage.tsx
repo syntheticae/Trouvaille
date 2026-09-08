@@ -74,7 +74,7 @@ const GlassTooltip = ({ active, payload, label }: any) => {
 
 type FilterType = "all" | "expense" | "income" | "transfer" | "adjustment";
 type TimeRangeType =
-  "this_month" | "last_month" | "last_30" | "custom_month" | "all";
+  | "this_month" | "last_month" | "last_30" | "custom_month" | "all";
 
 type ChartPoint = {
   dateStr: string;
@@ -1083,7 +1083,7 @@ export function TransactionsPage() {
                 color: "var(--text-primary)",
                 border:
                   selectedWalletName === null
-                    ? "1.5px solid rgba(255, 255, 255, 0.45)"
+                    ? "1.5px solid var(--accent)"
                     : "1px solid transparent",
               }}
             >
@@ -1092,7 +1092,7 @@ export function TransactionsPage() {
                 style={{
                   background:
                     selectedWalletName === null
-                      ? "rgba(255, 255, 255, 0.18)"
+                      ? "var(--dock-active-pill)"
                       : "var(--bg-elevated)",
                   border: "1px solid var(--glass-border)",
                 }}
@@ -1123,7 +1123,7 @@ export function TransactionsPage() {
                       : "transparent",
                     color: "var(--text-primary)",
                     border: isSelected
-                      ? "1.5px solid rgba(255, 255, 255, 0.45)"
+                      ? "1.5px solid var(--accent)"
                       : "1px solid transparent",
                   }}
                 >
@@ -1131,7 +1131,7 @@ export function TransactionsPage() {
                     className="w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{
                       background: isSelected
-                        ? "rgba(255, 255, 255, 0.18)"
+                        ? "var(--dock-active-pill)"
                         : "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                     }}

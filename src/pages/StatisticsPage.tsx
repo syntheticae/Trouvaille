@@ -17,6 +17,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Info,
+  Sparkles,
 } from "lucide-react";
 import {
   PieChart,
@@ -48,6 +49,12 @@ import { SpendingPatternsSection } from "../components/statistics/SpendingPatter
 import { ExpenseStructureCard } from "../components/statistics/ExpenseStructureCard";
 import { CategoryDrillDownSheet } from "../components/statistics/CategoryDrillDownSheet";
 import { FinancialHealthDiagnosticModal } from "../components/statistics/FinancialHealthDiagnosticModal";
+import { FinancialWrappedModal } from "../components/statistics/FinancialWrappedModal";
+import { DebtPayoffSimulatorCard } from "../components/statistics/DebtPayoffSimulatorCard";
+import { ZeroBasedEnvelopesCard } from "../components/statistics/ZeroBasedEnvelopesCard";
+import { CashflowOutlookCard } from "../components/home/CashflowOutlookCard";
+import { LiquidityHorizonCard } from "../components/home/LiquidityHorizonCard";
+import { ExpenseVolatilityCard } from "../components/home/ExpenseVolatilityCard";
 import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
 import { PersonalFinancialModelCard } from "../components/home/PersonalFinancialModelCard";
 import { PersonalFinancialModelSheet } from "../components/home/PersonalFinancialModelSheet";
@@ -72,6 +79,13 @@ import {
 type Range = "week" | "month" | "year" | "all";
 type BreakdownType = "expense" | "income";
 type GroupMode = "category" | "parent";
+type AnalyticsSubTab = "spending" | "cashflow" | "model";
+
+const analyticsTabs: { key: AnalyticsSubTab; label: string }[] = [
+  { key: "spending", label: "Spending" },
+  { key: "cashflow", label: "Cashflow" },
+  { key: "model", label: "Simulation" },
+];
 
 const GlassTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -226,7 +240,9 @@ export function StatisticsPage() {
   const [breakdownType, setBreakdownType] = useState<BreakdownType>("expense");
   const [groupMode, setGroupMode] = useState<GroupMode>("category");
   const [allDetailsOpen, setAllDetailsOpen] = useState(false);
-  const now = new Date();
+  const [analyticsSubTab, setAnalyticsSubTab] =
+    useState<AnalyticsSubTab>("spending");
+  const now = useMemo(() => new Date(), []);
   const { data: allTxs = [] } = useAllTransactions();
   const { data: wallets = [] } = useWallets();
   const { totalAssets, liquidAssets, liquidAccounts, netWorth, zeroAccounts } =
@@ -244,6 +260,7 @@ export function StatisticsPage() {
   >(null);
   const [healthDiagnosticOpen, setHealthDiagnosticOpen] = useState(false);
   const [personalModelOpen, setPersonalModelOpen] = useState(false);
+  const [wrappedOpen, setWrappedOpen] = useState(false);
   const [hideBalance] = useState(
     () => localStorage.getItem("trouvaille_hide_balance") === "true",
   );
@@ -759,6 +776,18 @@ export function StatisticsPage() {
     return Array.from(catMap.values()).sort((a, b) => b.total - a.total);
   }, [rangeTxs, breakdownType, categories]);
 
+  const categorySpendMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    rangeTxs
+      .filter((t) => t.type === "expense" && !isTxCorrection(t))
+      .forEach((t) => {
+        if (t.category_id) {
+          map[t.category_id] = (map[t.category_id] || 0) + Number(t.amount || 0);
+        }
+      });
+    return map;
+  }, [rangeTxs]);
+
   // 4b. Macro Parent (Induk) breakdown
   const parentCategoryStats = useMemo(() => {
     const parentMap = new Map<
@@ -1006,22 +1035,62 @@ export function StatisticsPage() {
 
   return (
     <div className="px-5 py-6 space-y-5 pb-36" style={{ minHeight: "100dvh" }}>
-      {/* Header */}
+      {/* Header with Integrated Month Picker */}
       <div className="flex justify-between items-center">
         <div>
           <h1
-            className="text-[24px] font-extrabold tracking-tight"
+            className="text-[24px] font-black tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
             Analytics
           </h1>
           <p
-            className="text-[11px] font-bold uppercase tracking-widest"
+            className="text-[11px] font-bold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
             Performance & Distribution
           </p>
         </div>
+
+        {range === "month" && (
+            <div
+              className="flex items-center gap-1 px-2 py-1 rounded-xl glass-surface"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <button
+                onClick={() => {
+                  setMonthOffset((o) => o + 1);
+                  triggerHaptic("light");
+                }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
+                style={{ color: "var(--text-secondary)" }}
+                title="Previous Month"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <span
+                className="font-extrabold text-[12px] px-1 whitespace-nowrap"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {format(subMonths(now, monthOffset), "MMM yyyy")}
+              </span>
+              <button
+                disabled={monthOffset === 0}
+                onClick={() => {
+                  setMonthOffset((o) => Math.max(0, o - 1));
+                  triggerHaptic("light");
+                }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-25"
+                style={{ color: "var(--text-secondary)" }}
+                title="Next Month"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
       </div>
 
       {/* Range Toggle */}
@@ -1033,7 +1102,7 @@ export function StatisticsPage() {
               setRange(r);
               triggerHaptic("light");
             }}
-            className="flex-1 py-1.5 rounded-full text-[13px] font-bold transition-all duration-200"
+            className="flex-1 py-1 rounded-full text-[12px] font-bold transition-all duration-200 capitalize"
             style={{
               background: range === r ? "var(--accent)" : "transparent",
               color:
@@ -1041,65 +1110,106 @@ export function StatisticsPage() {
             }}
             whileTap={{ scale: 0.97 }}
           >
-            {r === "week"
-              ? "Week"
-              : r === "month"
-                ? "Month"
-                : r === "year"
-                  ? "Year"
-                  : "All"}
+            {r}
           </motion.button>
         ))}
       </div>
 
-      {/* Month Navigator when Month is active */}
-      {range === "month" && (
-        <div
-          className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl glass-surface"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-          }}
-        >
-          <button
-            onClick={() => {
-              setMonthOffset((o) => o + 1);
-              triggerHaptic("light");
-            }}
-            className="w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-transform"
-            style={{
-              background: "var(--glass-fill)",
-              color: "var(--text-primary)",
-            }}
-            title="Previous Month"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span
-            className="font-extrabold text-[13px]"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {format(subMonths(now, monthOffset), "MMMM yyyy")}
-          </span>
-          <button
-            disabled={monthOffset === 0}
-            onClick={() => {
-              setMonthOffset((o) => Math.max(0, o - 1));
-              triggerHaptic("light");
-            }}
-            className="w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30 disabled:pointer-events-none"
-            style={{
-              background: "var(--glass-fill)",
-              color: "var(--text-primary)",
-            }}
-            title="Next Month"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      )}
+      {/* 3-Sub-Tab Segmented Control */}
+      <div
+        className="flex p-1 rounded-2xl glass-surface"
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--glass-border)",
+        }}
+      >
+        {analyticsTabs.map((t) => {
+          const isSelected = analyticsSubTab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => {
+                setAnalyticsSubTab(t.key);
+                triggerHaptic("light");
+              }}
+              className="flex-1 py-2 rounded-xl text-[12px] font-extrabold transition-all active:scale-98 cursor-pointer select-none"
+              style={{
+                background: isSelected ? "var(--accent)" : "transparent",
+                color: isSelected
+                  ? "var(--accent-ink)"
+                  : "var(--text-secondary)",
+                boxShadow: isSelected
+                  ? "0 2px 8px var(--shadow-strength)"
+                  : "none",
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
 
-      
+      {analyticsSubTab === "spending" && (
+        <>
+          {/* Financial Wrapped Trigger Banner (Only shown on 'month' and 'year' ranges) */}
+          {(range === "month" || range === "year") && (
+            <section
+              onClick={() => {
+                setWrappedOpen(true);
+                triggerHaptic("medium");
+              }}
+              className="p-3.5 rounded-[22px] flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform select-none relative overflow-hidden"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                boxShadow: "var(--shadow-card)",
+              }}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Sparkles size={16} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p
+                      className="text-[13px] font-extrabold tracking-tight truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Financial Wrapped
+                    </p>
+                    <span
+                      className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
+                      style={{
+                        background: "var(--glass-fill-strong)",
+                        color: "var(--text-secondary)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      {range === "year" ? "Year in Review" : "Monthly Recap"}
+                    </span>
+                  </div>
+                  <p
+                    className="text-[11px] font-medium truncate"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Interactive financial recap & archetype
+                  </p>
+                </div>
+              </div>
+              <ChevronRight
+                size={16}
+                className="shrink-0"
+                style={{ color: "var(--text-tertiary)" }}
+              />
+            </section>
+          )}
 
       {/* Financial Health Hero */}
       <section className="card-contrast-hero p-5 relative overflow-hidden">
@@ -1198,23 +1308,7 @@ export function StatisticsPage() {
       )}
 
       {range === "month" && (
-        <>
-          {/* Personal Baseline (Phase II) */}
-          <PersonalBaselineSection
-            baselines={intel.personalBaselines}
-            onCategoryClick={(catName) => {
-              const found = intel.categoryShifts.find(
-                (s) => s.name.toLowerCase() === catName.toLowerCase(),
-              );
-              if (found) {
-                setSelectedCategoryShift(found);
-                triggerHaptic("light");
-              }
-            }}
-          />
-
-          <ExpenseStructureCard expenseStructure={intel.expenseStructure} />
-        </>
+        <ExpenseStructureCard expenseStructure={intel.expenseStructure} />
       )}
 
       {/* 2-column mini stat cards (Savings Rate & Average Expense) */}
@@ -1283,6 +1377,12 @@ export function StatisticsPage() {
       {range === "month" && (
         <SpendingPatternsSection patterns={intel.behavioralPatterns} />
       )}
+
+      {/* Diagnostic: Expense Volatility */}
+      <ExpenseVolatilityCard
+        volatility={intel.expenseVolatility}
+        hideBalance={hideBalance}
+      />
 
       {/* Category Breakdown */}
       <div className="p-5 rounded-[24px] glass-surface">
@@ -1879,27 +1979,34 @@ export function StatisticsPage() {
           </div>
         </div>
       </div>
+        </>
+      )}
 
-      <WhatIfSimulatorCard
-        monthlyIncome={intel.totalIncome}
-        monthlyExpense={intel.totalExpense}
-        hideBalance={hideBalance}
-      />
-      <PersonalFinancialModelCard
-        hideBalance={hideBalance}
-        actual={personalFinancialModel.actual}
-        baseline={personalFinancialModel.baseline}
-        scenario={personalFinancialModel.scenario}
-        insights={personalFinancialModel.insights}
-        onOpenDetails={() => {
-          setPersonalModelOpen(true);
-          triggerHaptic("light");
-        }}
-      />
+      {analyticsSubTab === "cashflow" && (
+        <>
+          <CashflowOutlookCard
+            defaultForecast={intel.cashflowFloor}
+            getCashflowHorizon={intel.getCashflowHorizon}
+            hideBalance={hideBalance}
+          />
 
-      {/* 🍎 Apple macOS Style: Most Active Accounts & Volume Distribution */}
-      <div className="p-5 rounded-[24px] glass-surface">
-        <div className="flex justify-between items-center mb-4">
+          <LiquidityHorizonCard
+            liquidityHorizon={intel.liquidityHorizon}
+            hideBalance={hideBalance}
+          />
+
+          <ZeroBasedEnvelopesCard
+            monthlyIncome={intel.totalIncome}
+            categories={categories}
+            bills={bills}
+            goals={goals}
+            categorySpendMap={categorySpendMap}
+            hideBalance={hideBalance}
+          />
+
+          {/* 🍎 Apple macOS Style: Most Active Accounts & Volume Distribution */}
+          <div className="p-5 rounded-[24px] glass-surface">
+            <div className="flex justify-between items-center mb-4">
           <div>
             <div className="flex items-center gap-2">
               <CreditCard size={16} style={{ color: "var(--text-tertiary)" }} />
@@ -2436,6 +2543,47 @@ export function StatisticsPage() {
           </div>
         </div>
       )}
+        </>
+      )}
+
+      {analyticsSubTab === "model" && (
+        <>
+          {/* Debt Payoff Engine: Snowball vs Avalanche */}
+          <DebtPayoffSimulatorCard hideBalance={hideBalance} />
+
+          {/* Personal Baseline (Phase II) */}
+          <PersonalBaselineSection
+            baselines={intel.personalBaselines}
+            onCategoryClick={(catName) => {
+              const found = intel.categoryShifts.find(
+                (s) => s.name.toLowerCase() === catName.toLowerCase(),
+              );
+              if (found) {
+                setSelectedCategoryShift(found);
+                triggerHaptic("light");
+              }
+            }}
+          />
+
+          <WhatIfSimulatorCard
+            monthlyIncome={intel.totalIncome}
+            monthlyExpense={intel.totalExpense}
+            hideBalance={hideBalance}
+          />
+
+          <PersonalFinancialModelCard
+            hideBalance={hideBalance}
+            actual={personalFinancialModel.actual}
+            baseline={personalFinancialModel.baseline}
+            scenario={personalFinancialModel.scenario}
+            insights={personalFinancialModel.insights}
+            onOpenDetails={() => {
+              setPersonalModelOpen(true);
+              triggerHaptic("light");
+            }}
+          />
+        </>
+      )}
 
       {/* Comprehensive Category & Parent Breakdown BottomSheet (Phase II Relayout) */}
       <BottomSheet
@@ -2723,6 +2871,15 @@ export function StatisticsPage() {
         rangeTitle={rangeTitle}
         baselines={range === "month" ? intel.personalBaselines : undefined}
         categoryShifts={range === "month" ? intel.categoryShifts : []}
+      />
+
+      <FinancialWrappedModal
+        isOpen={wrappedOpen}
+        onClose={() => setWrappedOpen(false)}
+        transactions={allTxs}
+        categories={categories}
+        mode={range === "year" ? "year" : "month"}
+        targetDate={range === "month" ? activeMonthDate : now}
       />
     </div>
   );

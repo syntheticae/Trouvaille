@@ -34,8 +34,12 @@ export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionPro
       >
         <div className="flex items-center gap-2.5">
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center text-white"
-            style={{ background: "rgba(255, 255, 255, 0.12)" }}
+            className="w-6 h-6 rounded-full flex items-center justify-center"
+            style={{
+              background: "var(--glass-fill-strong)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
           >
             <Activity size={13} />
           </div>
@@ -110,7 +114,7 @@ export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionPro
                     {p.subtitle}
                   </p>
                   <div className="pt-1 border-t border-[var(--glass-border)] flex items-center gap-1.5 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                    <CheckCircle2 size={11} className="text-white flex-shrink-0" />
+                    <CheckCircle2 size={11} className="flex-shrink-0" style={{ color: "var(--text-primary)" }} />
                     <span>{p.evidence}</span>
                   </div>
                 </div>

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
 import type { Goal } from "../../hooks/useGoals";
 import { formatRupiah } from "../../lib/utils";
-import { Plus, Trash2, CheckCircle2, TrendingUp, Compass } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, TrendingUp, Compass, Flag } from "lucide-react";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useAllTransactions } from "../../hooks/useTransactions";
@@ -10,6 +10,7 @@ import {
   calculatePersonalBaselines,
   calculateGoalPlanning,
   calculateGoalScenario,
+  calculateDynamicGoalMilestones,
 } from "../../lib/financialMath";
 
 interface GoalDetailModalProps {
@@ -52,11 +53,21 @@ export function GoalDetailModal({
 
   const { data: allTxs = [] } = useAllTransactions();
 
+  const [velocitySpeed, setVelocitySpeed] = useState<
+    "conservative" | "current" | "accelerated"
+  >("current");
+
+  const baselines = useMemo(() => calculatePersonalBaselines(allTxs), [allTxs]);
+
   const planning = useMemo(() => {
     if (!goal) return null;
-    const baselines = calculatePersonalBaselines(allTxs);
     return calculateGoalPlanning(goal, baselines);
-  }, [goal, allTxs]);
+  }, [goal, baselines]);
+
+  const dynamicMilestones = useMemo(() => {
+    if (!goal) return null;
+    return calculateDynamicGoalMilestones(goal, baselines);
+  }, [goal, baselines]);
 
   const scenarioPresets = useMemo(() => {
     if (!goal) return [];
@@ -258,8 +269,8 @@ export function GoalDetailModal({
                       background:
                         planning.trajectoryStatus === "ON TRACK" ||
                         planning.trajectoryStatus === "AHEAD OF TARGET"
-                          ? "rgba(255, 255, 255, 0.12)"
-                          : "rgba(255, 255, 255, 0.05)",
+                          ? "var(--glass-fill-strong)"
+                          : "var(--glass-fill)",
                       color: "var(--text-primary)",
                       border: "1px solid var(--glass-border)",
                     }}
@@ -323,6 +334,171 @@ export function GoalDetailModal({
                 >
                   {planning.trajectoryExplanation}
                 </p>
+              </div>
+            )}
+
+            {/* Dynamic Milestone Roadmap & Velocity (Innovation 10) */}
+            {dynamicMilestones && (
+              <div
+                className="p-3.5 rounded-[22px] space-y-3 glass-surface"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1.5">
+                    <Flag size={13} style={{ color: "var(--text-tertiary)" }} />
+                    <span
+                      className="text-[10px] font-extrabold uppercase tracking-wider"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Milestone Roadmap
+                    </span>
+                  </div>
+                  <span
+                    className="text-[9px] font-extrabold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "var(--glass-fill)",
+                      color: "var(--text-primary)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    Velocity: {formatRupiah(dynamicMilestones.currentVelocityMonthly)}/mo
+                  </span>
+                </div>
+
+                {/* 4-node roadmap track */}
+                <div className="grid grid-cols-4 gap-1.5 pt-1">
+                  {dynamicMilestones.milestones.map((m) => (
+                    <div
+                      key={m.percentage}
+                      className="p-2 rounded-xl text-center space-y-1 transition-all"
+                      style={{
+                        background: m.isReached
+                          ? "var(--glass-fill-strong)"
+                          : "var(--glass-fill)",
+                        border: m.isReached
+                          ? "1px solid var(--accent)"
+                          : "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        {m.isReached ? (
+                          <CheckCircle2
+                            size={11}
+                            style={{ color: "var(--accent)" }}
+                          />
+                        ) : (
+                          <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ background: "var(--text-tertiary)" }}
+                          />
+                        )}
+                        <span
+                          className="text-[11px] font-extrabold"
+                          style={{
+                            color: m.isReached
+                              ? "var(--text-primary)"
+                              : "var(--text-secondary)",
+                          }}
+                        >
+                          {m.percentage}%
+                        </span>
+                      </div>
+                      <p
+                        className="text-[9px] font-bold amount truncate"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {formatRupiah(m.targetAmount)}
+                      </p>
+                      <p
+                        className="text-[9px] font-extrabold truncate"
+                        style={{
+                          color: m.isReached
+                            ? "var(--accent)"
+                            : "var(--text-secondary)",
+                        }}
+                      >
+                        {m.projectedDate || "In progress"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Velocity Pace Selector */}
+                <div className="pt-2 border-t border-[var(--glass-border)] space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span
+                      className="text-[10px] font-bold uppercase tracking-wider"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Savings Velocity Pace
+                    </span>
+                    <span
+                      className="text-[11px] font-extrabold amount"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {dynamicMilestones.velocityPaces[velocitySpeed]
+                        .projectedCompletion
+                        ? `Est. ${dynamicMilestones.velocityPaces[velocitySpeed].projectedCompletion}`
+                        : "Requires positive cashflow"}
+                    </span>
+                  </div>
+
+                  <div
+                    className="flex p-1 rounded-xl glass-surface"
+                    style={{ background: "var(--glass-fill)" }}
+                  >
+                    {(
+                      [
+                        {
+                          id: "conservative",
+                          label: "Conservative",
+                          pct: "60%",
+                        },
+                        { id: "current", label: "Current Pace", pct: "100%" },
+                        {
+                          id: "accelerated",
+                          label: "Accelerated",
+                          pct: "140%",
+                        },
+                      ] as const
+                    ).map((tier) => {
+                      const isSelected = velocitySpeed === tier.id;
+                      const pace = dynamicMilestones.velocityPaces[tier.id];
+                      return (
+                        <button
+                          key={tier.id}
+                          type="button"
+                          onClick={() => {
+                            setVelocitySpeed(tier.id);
+                            triggerHaptic("light");
+                          }}
+                          className="flex-1 py-1.5 px-1 rounded-lg text-center transition-all"
+                          style={{
+                            background: isSelected
+                              ? "var(--bg-elevated)"
+                              : "transparent",
+                            color: isSelected
+                              ? "var(--text-primary)"
+                              : "var(--text-secondary)",
+                            boxShadow: isSelected
+                              ? "var(--shadow-card)"
+                              : "none",
+                          }}
+                        >
+                          <p className="text-[10px] font-extrabold truncate">
+                            {tier.label}
+                          </p>
+                          <p className="text-[9px] font-semibold amount opacity-70 truncate">
+                            {formatRupiah(pace.monthly)}/mo
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
 
