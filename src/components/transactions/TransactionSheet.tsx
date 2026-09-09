@@ -869,6 +869,42 @@ export function TransactionSheet({
           </div>
         )}
 
+        {/* Natural Language & Voice Quick Add Bar (Steady Top Position) */}
+        {!transaction && (
+          <div className="mt-1 mb-2.5">
+            <SmartQuickAddBar
+              categories={categories}
+              wallets={wallets}
+              onApply={(parsed) => {
+                if (parsed.amount !== null && parsed.amount > 0) {
+                  setAmount(String(parsed.amount));
+                  setAmountInput(parsed.amount.toLocaleString("id-ID"));
+                }
+                if (parsed.type) {
+                  setActiveTab(parsed.type);
+                  setType(parsed.type);
+                  setIsSplitOpen(false);
+                }
+                if (parsed.categoryId) {
+                  setCategoryId(parsed.categoryId);
+                }
+                if (parsed.walletId) {
+                  setWalletId(parsed.walletId);
+                }
+                if (parsed.toWalletId) {
+                  setToWalletId(parsed.toWalletId);
+                }
+                if (parsed.date) {
+                  setDate(parsed.date);
+                }
+                if (parsed.note) {
+                  setNote(parsed.note);
+                }
+              }}
+            />
+          </div>
+        )}
+
         {/* Hero Amount Input with Native iOS Numberpad & Inline Math */}
         <div className="text-center py-2 mb-3">
           <div
@@ -886,7 +922,8 @@ export function TransactionSheet({
             </span>
             <input
               type="text"
-              inputMode="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={amountInput}
               onChange={(e) => {
                 const val = e.target.value;
@@ -1605,41 +1642,7 @@ export function TransactionSheet({
           </div>
         )}
 
-        {/* Natural Language & Voice Quick Add Bar (Positioned at bottom) */}
-        {!transaction && (
-          <div className="mt-2 mb-2">
-            <SmartQuickAddBar
-              categories={categories}
-              wallets={wallets}
-              onApply={(parsed) => {
-                if (parsed.amount !== null && parsed.amount > 0) {
-                  setAmount(String(parsed.amount));
-                  setAmountInput(parsed.amount.toLocaleString("id-ID"));
-                }
-                if (parsed.type) {
-                  setActiveTab(parsed.type);
-                  setType(parsed.type);
-                  setIsSplitOpen(false);
-                }
-                if (parsed.categoryId) {
-                  setCategoryId(parsed.categoryId);
-                }
-                if (parsed.walletId) {
-                  setWalletId(parsed.walletId);
-                }
-                if (parsed.toWalletId) {
-                  setToWalletId(parsed.toWalletId);
-                }
-                if (parsed.date) {
-                  setDate(parsed.date);
-                }
-                if (parsed.note) {
-                  setNote(parsed.note);
-                }
-              }}
-            />
-          </div>
-        )}
+
 
         {/* Action Button Bar */}
         <div className="flex gap-2 mt-3 mb-2">

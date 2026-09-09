@@ -56,7 +56,32 @@ export function VoiceQuickAddModal({
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const recognitionRef = useRef<any>(null);
+
+  // Track virtual keyboard visibility via visualViewport to keep quick add steady
+  useEffect(() => {
+    if (!isOpen || typeof window === "undefined" || !window.visualViewport) {
+      setKeyboardOffset(0);
+      return;
+    }
+
+    const handleViewportChange = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const offset = window.innerHeight - (vv.height + vv.offsetTop);
+      setKeyboardOffset(Math.max(0, Math.round(offset)));
+    };
+
+    window.visualViewport.addEventListener("resize", handleViewportChange);
+    window.visualViewport.addEventListener("scroll", handleViewportChange);
+    handleViewportChange();
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", handleViewportChange);
+      window.visualViewport?.removeEventListener("scroll", handleViewportChange);
+    };
+  }, [isOpen]);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -314,7 +339,11 @@ export function VoiceQuickAddModal({
         transition={{ type: "spring", stiffness: 440, damping: 32 }}
         className="fixed left-0 right-0 z-[61] px-4 pointer-events-none flex justify-center"
         style={{
-          bottom: "calc(82px + env(safe-area-inset-bottom, 0px))",
+          bottom:
+            keyboardOffset > 0
+              ? `${keyboardOffset + 14}px`
+              : "calc(82px + env(safe-area-inset-bottom, 0px))",
+          transition: "bottom 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
         onClick={(e) => e.stopPropagation()}
       >

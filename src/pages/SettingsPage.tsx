@@ -8,7 +8,6 @@ import {
   Sun,
   User as UserIcon,
   Bell,
-  Archive,
   Zap,
   Check,
   Loader2,
@@ -633,42 +632,30 @@ export function SettingsPage() {
           Data & Storage
         </h2>
         <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
-          {/* Offline Storage */}
+          {/* On-Device & Cloud Sync */}
           <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
+            <div className="space-y-0.5">
+              <span
+                className="text-[13px] font-semibold block"
+                style={{ color: "var(--text-primary)" }}
               >
-                <Archive size={16} />
-              </div>
-              <div>
-                <span
-                  className="font-bold text-[14px]"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  On-Device Storage
-                </span>
-                <p
-                  className="text-[10px]"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {syncStatus === "syncing"
-                    ? "Synchronizing..."
-                    : syncStatus === "error"
-                      ? "Sync error · Local data safe"
-                      : `${allTxs.length} records cached · Last synced ${lastSyncedTime}`}
-                </p>
-              </div>
+                On-Device Storage & Sync
+              </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {syncStatus === "syncing"
+                  ? "Synchronizing database records..."
+                  : syncStatus === "error"
+                    ? "Sync error · Local data safe"
+                    : `${allTxs.length} records cached · Last synced ${lastSyncedTime}`}
+              </p>
             </div>
             <button
               onClick={handleSafeSync}
               disabled={syncStatus === "syncing"}
-              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+              className="px-3 py-1.5 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-60 cursor-pointer shrink-0"
               style={{
                 background:
                   syncStatus === "success"
@@ -701,7 +688,7 @@ export function SettingsPage() {
             style={{ background: "var(--glass-border)" }}
           />
 
-          {/* Export Encrypted Vault */}
+          {/* Unified Encrypted Vault (Backup & Restore) */}
           <button
             type="button"
             onClick={() => {
@@ -716,44 +703,13 @@ export function SettingsPage() {
                 className="text-[13px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
-                Export Encrypted Vault
+                Encrypted Vault
               </span>
               <p
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Download an AES-256 encrypted .trouvaille backup of all financial data
-              </p>
-            </div>
-            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-          </button>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
-
-          {/* Restore Encrypted Vault */}
-          <button
-            type="button"
-            onClick={() => {
-              setVaultDefaultTab("restore");
-              setVaultModalOpen(true);
-              triggerHaptic("light");
-            }}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-          >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Restore from Encrypted Vault
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Decrypt and restore transactions, wallets, and categories from a .trouvaille file
+                Export offline AES-256 backup or restore from .trouvaille file
               </p>
             </div>
             <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
@@ -780,7 +736,7 @@ export function SettingsPage() {
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Download an unencrypted raw spreadsheet file of all transactions
+                Download unencrypted spreadsheet of all transactions
               </p>
             </div>
             <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />

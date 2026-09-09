@@ -302,15 +302,34 @@ export function useAddWallet() {
       const user = session?.user;
       if (!user) throw new Error("Not authenticated");
       const finalIcon = w.icon || getWalletIcon(w.name);
-      const { data, error } = await supabase
-        .from("wallets")
-        .insert({ name: w.name, icon: finalIcon, user_id: user.id })
-        .select()
-        .single();
-      if (error) throw error;
-      const created = data as Wallet;
       const resolvedClassification =
-        w.classification || resolveWalletClassification(created);
+        w.classification || resolveWalletClassification({ name: w.name });
+
+      let created: Wallet;
+      try {
+        const { data, error } = await supabase
+          .from("wallets")
+          .insert({
+            name: w.name,
+            icon: finalIcon,
+            user_id: user.id,
+            classification: resolvedClassification,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        created = data as Wallet;
+      } catch {
+        // Safe fallback if 'classification' column is not yet migrated in Supabase
+        const { data, error } = await supabase
+          .from("wallets")
+          .insert({ name: w.name, icon: finalIcon, user_id: user.id })
+          .select()
+          .single();
+        if (error) throw error;
+        created = data as Wallet;
+      }
+
       saveWalletClassification(created.id, resolvedClassification);
       saveWalletClassification(created.name, resolvedClassification);
       return { ...created, classification: resolvedClassification };
@@ -342,14 +361,31 @@ export function useUpdateWallet() {
       const payload: any = { name };
       if (icon) payload.icon = icon;
       else payload.icon = getWalletIcon(name);
-      const { data, error } = await supabase
-        .from("wallets")
-        .update(payload)
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      const updated = data as Wallet;
+      if (classification) payload.classification = classification;
+
+      let updated: Wallet;
+      try {
+        const { data, error } = await supabase
+          .from("wallets")
+          .update(payload)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        updated = data as Wallet;
+      } catch {
+        // Safe fallback if 'classification' column does not exist yet
+        delete payload.classification;
+        const { data, error } = await supabase
+          .from("wallets")
+          .update(payload)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        updated = data as Wallet;
+      }
+
       if (classification) {
         saveWalletClassification(id, classification);
         saveWalletClassification(name, classification);
