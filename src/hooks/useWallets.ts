@@ -75,7 +75,6 @@ export function resolveWalletClassification(wallet: {
   name: string;
   classification?: AccountClassification;
 }): AccountClassification {
-  if (wallet.classification) return wallet.classification;
   const savedMap = getSavedWalletClassifications();
   if (wallet.id && savedMap[wallet.id.toLowerCase()]) {
     return savedMap[wallet.id.toLowerCase()];
@@ -83,7 +82,14 @@ export function resolveWalletClassification(wallet: {
   if (wallet.name && savedMap[wallet.name.trim().toLowerCase()]) {
     return savedMap[wallet.name.trim().toLowerCase()];
   }
-  return getDefaultWalletClassification(wallet.name);
+  if (wallet.classification && wallet.classification !== "liquid") {
+    return wallet.classification;
+  }
+  const naturalClass = getDefaultWalletClassification(wallet.name);
+  if (naturalClass !== "liquid") {
+    return naturalClass;
+  }
+  return wallet.classification || "liquid";
 }
 
 export const walletKeys = {

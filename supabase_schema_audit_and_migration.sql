@@ -37,6 +37,24 @@ BEGIN
     END IF;
 END $$;
 
+-- Automatically backfill appropriate classifications for default/existing wallets
+UPDATE public.wallets 
+SET classification = 'investment' 
+WHERE classification = 'liquid' AND LOWER(name) IN ('saham', 'crypto', 'investasi', 'reksadana', 'deposito', 'stock', 'emas');
+
+UPDATE public.wallets 
+SET classification = 'receivable' 
+WHERE classification = 'liquid' AND LOWER(name) IN ('piutang', 'receivable', 'pinjaman teman');
+
+UPDATE public.wallets 
+SET classification = 'loan' 
+WHERE classification = 'liquid' AND LOWER(name) IN ('liabilities', 'loan', 'kpr', 'hutang', 'pinjaman');
+
+UPDATE public.wallets 
+SET classification = 'credit' 
+WHERE classification = 'liquid' AND LOWER(name) IN ('credit', 'paylater', 'cc', 'kartu kredit', 'spaylater', 'gopaylater');
+
+
 -- ------------------------------------------------------------------------------
 -- 2. CATEGORIES TABLE
 -- ------------------------------------------------------------------------------
