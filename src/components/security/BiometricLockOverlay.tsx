@@ -6,6 +6,7 @@ import {
   KeyRound,
   LogOut,
   Delete,
+  RotateCcw,
 } from "lucide-react";
 import { useSecurityLock } from "../../contexts/SecurityLockContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -28,19 +29,31 @@ export function BiometricLockOverlay() {
 
   // Auto-prompt Face ID / Biometrics upon lock mount
   useEffect(() => {
-    if (isLocked && !pinMode && (securitySettings.hasBiometric || isBiometricSupported)) {
-      const timer = setTimeout(() => {
-        handleBiometricUnlock();
-      }, 350);
-      return () => clearTimeout(timer);
+    if (isLocked && !pinMode) {
+      if (securitySettings.hasBiometric || isBiometricSupported) {
+        const timer = setTimeout(() => {
+          handleBiometricUnlock();
+        }, 350);
+        return () => clearTimeout(timer);
+      } else if (securitySettings.hasPin) {
+        setPinMode(true);
+      }
     }
-  }, [isLocked, pinMode, securitySettings.hasBiometric, isBiometricSupported]);
+  }, [isLocked, pinMode, securitySettings.hasBiometric, isBiometricSupported, securitySettings.hasPin]);
 
   const handleBiometricUnlock = async () => {
     setIsVerifying(true);
     triggerHaptic("medium");
     try {
-      await unlockWithBiometric();
+      const ok = await unlockWithBiometric();
+      if (!ok && securitySettings.hasPin) {
+        setPinMode(true);
+      }
+    } catch (err) {
+      console.warn("[BiometricLock] Unlock failed:", err);
+      if (securitySettings.hasPin) {
+        setPinMode(true);
+      }
     } finally {
       setIsVerifying(false);
     }
@@ -136,7 +149,7 @@ export function BiometricLockOverlay() {
                 <span>{isVerifying ? "Verifying..." : "Unlock with Face ID"}</span>
               </motion.button>
 
-              {securitySettings.hasPin && (
+              {securitySettings.hasPin ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -144,11 +157,24 @@ export function BiometricLockOverlay() {
                     setPinInput("");
                     triggerHaptic("light");
                   }}
-                  className="flex items-center gap-2 text-[12px] font-bold transition-opacity hover:opacity-80"
+                  className="flex items-center gap-2 text-[12px] font-bold transition-opacity hover:opacity-80 cursor-pointer"
                   style={{ color: "var(--text-secondary)" }}
                 >
                   <KeyRound size={14} strokeWidth={1.75} />
                   <span>Use Security PIN</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    triggerHaptic("medium");
+                    await signOut();
+                  }}
+                  className="flex items-center gap-2 text-[12px] font-bold transition-opacity hover:opacity-80 cursor-pointer"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <RotateCcw size={14} strokeWidth={1.75} />
+                  <span>Reset Lock via Account Sign In</span>
                 </button>
               )}
             </div>

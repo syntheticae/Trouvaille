@@ -58,7 +58,6 @@ import { DebtPayoffSimulatorCard } from "../components/statistics/DebtPayoffSimu
 import { ZeroBasedEnvelopesCard } from "../components/statistics/ZeroBasedEnvelopesCard";
 import { CashflowOutlookCard } from "../components/home/CashflowOutlookCard";
 import { LiquidityHorizonCard } from "../components/home/LiquidityHorizonCard";
-import { ExpenseVolatilityCard } from "../components/home/ExpenseVolatilityCard";
 import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
 import { PersonalFinancialModelCard } from "../components/home/PersonalFinancialModelCard";
 import { PersonalFinancialModelSheet } from "../components/home/PersonalFinancialModelSheet";
@@ -1415,12 +1414,6 @@ export function StatisticsPage() {
       {range === "month" && (
         <SpendingPatternsSection patterns={intel.behavioralPatterns} />
       )}
-
-      {/* Diagnostic: Expense Volatility */}
-      <ExpenseVolatilityCard
-        volatility={intel.expenseVolatility}
-        hideBalance={hideBalance}
-      />
 
       {/* Category Breakdown */}
       <div className="p-5 rounded-[24px] glass-surface">

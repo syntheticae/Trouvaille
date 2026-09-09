@@ -69,6 +69,7 @@ import { useCategories } from "../hooks/useCategories";
 import { ActionCenterCard } from "../components/home/ActionCenterCard";
 import { MetricDrillDownSheet } from "../components/home/MetricDrillDownSheet";
 import { CashflowPulseCard } from "../components/home/CashflowPulseCard";
+import { ExpenseVolatilityCard } from "../components/home/ExpenseVolatilityCard";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence";
@@ -84,6 +85,7 @@ interface HomePageProps {
 
 export interface HomeWidgetSettings {
   showCashflowPulse: boolean;
+  showSpendingStability: boolean;
   showActionCenter: boolean;
   showHeatmap: boolean;
   showGoals: boolean;
@@ -96,6 +98,7 @@ export interface HomeWidgetSettings {
 
 export const DEFAULT_HOME_WIDGETS: HomeWidgetSettings = {
   showCashflowPulse: true,
+  showSpendingStability: true,
   showActionCenter: true,
   showHeatmap: true,
   showGoals: true,
@@ -776,6 +779,15 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       {homeWidgets.showActionCenter && intel.actionCenterInsight && (
         <ActionCenterCard insight={intel.actionCenterInsight} />
       )}
+
+      {/* 2.7 SPENDING STABILITY (EXPENSE VOLATILITY) */}
+      {(homeWidgets.showSpendingStability ?? true) &&
+        intel.expenseVolatility && (
+          <ExpenseVolatilityCard
+            volatility={intel.expenseVolatility}
+            hideBalance={hideBalance}
+          />
+        )}
 
       {/* 3. CONSOLIDATED MONTHLY CASHFLOW PULSE WITH COMPACT BUDGET */}
       {homeWidgets.showCashflowPulse && (
@@ -1606,6 +1618,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
             {/* Grouped Feature Rows (No icons/symbols, Title + Description + Right Switch) */}
             <div className="space-y-2 max-h-[58vh] overflow-y-auto no-scrollbar pr-0.5">
               {[
+                {
+                  key: "showSpendingStability" as const,
+                  label: "Spending Stability",
+                  desc: "Expense volatility, daily variance & consistency telemetry",
+                },
                 {
                   key: "showCashflowPulse" as const,
                   label: "Cashflow Pulse & Budget",

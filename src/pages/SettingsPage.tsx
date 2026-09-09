@@ -849,23 +849,36 @@ export function SettingsPage() {
               aria-checked={securitySettings.enabled}
               onClick={async () => {
                 if (!securitySettings.enabled) {
-                  if (!securitySettings.hasBiometric && isBiometricSupported) {
+                  // Require backup PIN first to guarantee user is never locked out
+                  if (!securitySettings.hasPin) {
+                    showToast(
+                      "Please set up a backup PIN first to enable app lock",
+                      "info",
+                      null,
+                      3000,
+                    );
+                    setPinModalOpen(true);
+                    return;
+                  }
+
+                  if (isBiometricSupported && !securitySettings.hasBiometric) {
                     try {
                       await enrollBiometric(session?.user?.email || undefined);
                       updateSecuritySettings({ enabled: true });
                       showToast(
-                        "Face ID / Passkey enabled",
+                        "Face ID / Biometrics enabled",
                         "update",
                         () => {},
                       );
-                    } catch {
-                      updateSecuritySettings({ enabled: true });
+                    } catch (err: any) {
                       showToast(
-                        "App lock enabled. Please setup a backup PIN.",
-                        "update",
-                        () => {},
+                        err?.message ||
+                          "Biometric setup failed. App lock enabled with PIN.",
+                        "info",
+                        null,
+                        3000,
                       );
-                      setPinModalOpen(true);
+                      updateSecuritySettings({ enabled: true });
                     }
                   } else {
                     updateSecuritySettings({ enabled: true });

@@ -88,6 +88,14 @@ function AppShell() {
         setIsPrivacyShieldActive(true);
       } else {
         setTimeout(() => setIsPrivacyShieldActive(false), 120);
+        if (user?.id) {
+          flushPendingMutations()
+            .then(() => {
+              queryClient.invalidateQueries({ queryKey: ["transactions"] });
+              queryClient.invalidateQueries({ queryKey: ["wallets"] });
+            })
+            .catch(() => {});
+        }
       }
     };
     const handleBlur = () => {
@@ -95,6 +103,14 @@ function AppShell() {
     };
     const handleFocus = () => {
       setIsPrivacyShieldActive(false);
+      if (user?.id) {
+        flushPendingMutations()
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ["transactions"] });
+            queryClient.invalidateQueries({ queryKey: ["wallets"] });
+          })
+          .catch(() => {});
+      }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);

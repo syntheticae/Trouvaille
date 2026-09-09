@@ -79,12 +79,25 @@ export function isLockTimeoutExceeded(): boolean {
   return elapsedMinutes >= settings.timeoutMinutes;
 }
 
-// ======================================================================
-// WEBAUTHN PLATFORM BIOMETRIC ENGINE (FACE ID, TOUCH ID, WINDOWS HELLO)
-// ======================================================================
+import { NativeBiometric } from "@capgo/capacitor-native-biometric";
+import { Capacitor } from "@capacitor/core";
 
 export async function isBiometricAvailable(): Promise<boolean> {
-  if (typeof window === "undefined" || !window.PublicKeyCredential) {
+  if (typeof window === "undefined") return false;
+
+  // 1. Native iOS / Android Capacitor Platform
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const result = await NativeBiometric.isAvailable();
+      return !!result.isAvailable;
+    } catch (err) {
+      console.warn("[biometricAuth] Native biometric check failed:", err);
+      return false;
+    }
+  }
+
+  // 2. Web Browser WebAuthn Fallback (Windows Hello / Mac Touch ID)
+  if (!window.PublicKeyCredential) {
     return false;
   }
   try {
@@ -148,6 +161,28 @@ export async function registerBiometricPasskey(
   userId = "trouvaille-user",
   userEmail = "user@trouvaille.app",
 ): Promise<boolean> {
+  // 1. Native iOS / Android Capacitor Platform
+  if (Capacitor.isNativePlatform()) {
+    const avail = await NativeBiometric.isAvailable();
+    if (!avail.isAvailable) {
+      throw new Error(
+        "Biometric authentication (Face ID / Fingerprint) is not enrolled or available on this device.",
+      );
+    }
+    // Verify identity once to register permission with iOS / Android
+    await NativeBiometric.verifyIdentity({
+      reason: "Authenticate with Face ID to secure your Trouvaille portfolio",
+      title: "Trouvaille Face ID",
+      subtitle: "Biometric security setup",
+      description: "Scan your face or fingerprint to protect your financial records.",
+      useFallback: true,
+    });
+    localStorage.setItem(BIOMETRIC_CREDENTIAL_KEY, "native_biometric_enrolled");
+    saveSecuritySettings({ hasBiometric: true });
+    return true;
+  }
+
+  // 2. Web Browser WebAuthn Fallback
   if (!navigator.credentials || !navigator.credentials.create) {
     throw new Error("Biometric authentication is not supported on this browser.");
   }
@@ -169,7 +204,7 @@ export async function registerBiometricPasskey(
       displayName: userEmail.split("@")[0] || "Trouvaille User",
     },
     pubKeyCredParams: [
-      { alg: -7, type: "public-key" },  // ES256
+      { alg: -7, type: "public-key" }, // ES256
       { alg: -257, type: "public-key" }, // RS256
     ],
     authenticatorSelection: {
@@ -200,6 +235,27 @@ export async function registerBiometricPasskey(
 }
 
 export async function verifyBiometricPasskey(): Promise<boolean> {
+  // 1. Native iOS / Android Capacitor Platform
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await NativeBiometric.verifyIdentity({
+        reason: "Unlock Trouvaille using Face ID",
+        title: "Trouvaille Security Lock",
+        subtitle: "Biometric Authentication",
+        description: "Scan your face or fingerprint to access your portfolio.",
+        useFallback: true,
+      });
+      return true;
+    } catch (err: any) {
+      console.warn(
+        "[biometricAuth] Native biometric verification failed or cancelled:",
+        err,
+      );
+      return false;
+    }
+  }
+
+  // 2. Web Browser WebAuthn Fallback
   if (!navigator.credentials || !navigator.credentials.get) {
     throw new Error("Biometric authentication is not supported on this device.");
   }
@@ -208,15 +264,16 @@ export async function verifyBiometricPasskey(): Promise<boolean> {
   window.crypto.getRandomValues(challenge);
 
   const storedCredBase64 = localStorage.getItem(BIOMETRIC_CREDENTIAL_KEY);
-  const allowCredentials: PublicKeyCredentialDescriptor[] | undefined = storedCredBase64
-    ? [
-        {
-          id: base64ToBuffer(storedCredBase64),
-          type: "public-key",
-          transports: ["internal"],
-        },
-      ]
-    : undefined;
+  const allowCredentials: PublicKeyCredentialDescriptor[] | undefined =
+    storedCredBase64
+      ? [
+          {
+            id: base64ToBuffer(storedCredBase64),
+            type: "public-key",
+            transports: ["internal"],
+          },
+        ]
+      : undefined;
 
   const requestOptions: PublicKeyCredentialRequestOptions = {
     challenge,

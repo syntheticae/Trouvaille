@@ -115,12 +115,6 @@ export function VoiceQuickAddModal({
       };
 
       recognitionRef.current = rec;
-
-      try {
-        rec.start();
-      } catch (err) {
-        console.warn("[VoiceQuickAdd] Auto-start failed:", err);
-      }
     } catch (err) {
       console.warn("[VoiceQuickAdd] Speech init exception:", err);
       setSpeechSupported(false);
@@ -138,23 +132,67 @@ export function VoiceQuickAddModal({
   }, [isOpen]);
 
   const toggleListening = () => {
-    if (!recognitionRef.current) return;
     if (isListening) {
-      recognitionRef.current.stop();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
       setIsListening(false);
       triggerHaptic("light");
     } else {
+      const SpeechRec =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
+
+      if (!SpeechRec) {
+        setSpeechSupported(false);
+        showToast("Speech recognition not available. You can type directly in the bar.", "info", null, 2500);
+        return;
+      }
+
       try {
+        if (!recognitionRef.current) {
+          const rec = new SpeechRec();
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.lang = "id-ID";
+          rec.onstart = () => {
+            setIsListening(true);
+            triggerHaptic("medium");
+          };
+          rec.onresult = (event: any) => {
+            let current = "";
+            for (let i = 0; i < event.results.length; i++) {
+              current += event.results[i][0].transcript + " ";
+            }
+            setTranscript(current.trim());
+          };
+          rec.onerror = (e: any) => {
+            console.warn("[VoiceQuickAdd] error:", e);
+            if (e.error !== "no-speech") {
+              setIsListening(false);
+            }
+          };
+          rec.onend = () => {
+            setIsListening(false);
+          };
+          recognitionRef.current = rec;
+        }
         recognitionRef.current.start();
-      } catch {
-        recognitionRef.current.stop();
-        setTimeout(() => {
-          try {
-            recognitionRef.current?.start();
-          } catch {
-            // ignore
-          }
-        }, 150);
+        setIsListening(true);
+        triggerHaptic("medium");
+      } catch (err) {
+        console.warn("[VoiceQuickAdd] Start failed, retrying reset:", err);
+        try {
+          recognitionRef.current?.stop();
+          setTimeout(() => {
+            try {
+              recognitionRef.current?.start();
+              setIsListening(true);
+            } catch {}
+          }, 120);
+        } catch {}
       }
     }
   };
@@ -321,42 +359,22 @@ export function VoiceQuickAddModal({
               <Pen size={15} strokeWidth={1.8} />
             </button>
 
-            {/* Center: Live Speech Transcript Text (replaces 'Ask AI') */}
-            <div className="flex-1 min-w-0 px-1.5 flex flex-col justify-center overflow-hidden">
-              {transcript ? (
-                <motion.p
-                  initial={{ opacity: 0, y: 3 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-[14px] font-semibold tracking-tight truncate leading-tight"
-                  style={{ color: "var(--text-primary)" }}
-                  title={transcript}
-                >
-                  {transcript}
-                </motion.p>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <motion.div
-                    animate={
-                      isListening
-                        ? { scale: [1, 1.3, 1], opacity: [0.6, 1, 0.6] }
-                        : { opacity: 0.4 }
-                    }
-                    transition={{ repeat: Infinity, duration: 1.4 }}
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ background: "var(--text-primary)" }}
-                  />
-                  <p
-                    className="text-[13px] font-normal truncate"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isListening
-                      ? "Listening..."
-                      : speechSupported
-                      ? "Say a transaction..."
-                      : "Speech recognition not supported"}
-                  </p>
-                </div>
-              )}
+            {/* Center: Live Speech Transcript / Interactive Text Input */}
+            <div className="flex-1 min-w-0 px-1.5 flex items-center">
+              <input
+                type="text"
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder={
+                  isListening
+                    ? "Listening..."
+                    : speechSupported
+                      ? "Tap waveform to speak, or type here..."
+                      : "Type a transaction (e.g. BNI 50k Food)..."
+                }
+                className="w-full bg-transparent border-none outline-none text-[13.5px] font-semibold tracking-tight leading-tight placeholder:text-[var(--text-tertiary)] placeholder:font-normal placeholder:text-[12px]"
+                style={{ color: "var(--text-primary)" }}
+              />
             </div>
 
             {/* Dismiss X button (compact) */}
