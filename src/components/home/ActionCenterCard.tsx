@@ -1,108 +1,115 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { ArrowRight, ChevronRight, AlertCircle, TrendingUp, ShieldAlert, CheckCircle2 } from "lucide-react"
-import type { ActionCenterInsight } from "../../lib/financialMath"
-import { triggerHaptic } from "../../lib/haptics"
-import { BottomSheet } from "../ui/BottomSheet"
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  ChevronRight,
+  AlertCircle,
+  TrendingUp,
+  ShieldAlert,
+  CheckCircle2,
+} from "lucide-react";
+import type { ActionCenterInsight } from "../../lib/financialMath";
+import { triggerHaptic } from "../../lib/haptics";
+import { BottomSheet } from "../ui/BottomSheet";
 
 interface ActionCenterCardProps {
-  insight: ActionCenterInsight
-  onOpenCategoryDetail?: (categoryId: string) => void
+  insight: ActionCenterInsight;
+  onOpenCategoryDetail?: (categoryId: string) => void;
 }
 
-export function ActionCenterCard({ insight, onOpenCategoryDetail }: ActionCenterCardProps) {
-  const navigate = useNavigate()
-  const [detailOpen, setDetailOpen] = useState(false)
+export function ActionCenterCard({
+  insight,
+  onOpenCategoryDetail,
+}: ActionCenterCardProps) {
+  const navigate = useNavigate();
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const handleActionClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    triggerHaptic("light")
+    e.stopPropagation();
+    triggerHaptic("light");
 
     if (insight.actionType === "statistics") {
-      navigate("/statistics")
+      navigate("/statistics");
     } else if (insight.actionType === "budget") {
-      navigate("/settings")
+      navigate("/settings");
     } else if (insight.actionType === "bills") {
-      navigate("/settings")
+      navigate("/settings");
     } else if (insight.actionType === "transactions") {
-      navigate("/transactions")
-    } else if (insight.actionType === "category_detail" && insight.actionParam) {
+      navigate("/transactions");
+    } else if (
+      insight.actionType === "category_detail" &&
+      insight.actionParam
+    ) {
       if (onOpenCategoryDetail) {
-        onOpenCategoryDetail(insight.actionParam)
+        onOpenCategoryDetail(insight.actionParam);
       } else {
-        navigate("/statistics")
+        navigate("/statistics");
       }
     } else {
-      setDetailOpen(true)
+      setDetailOpen(true);
     }
-  }
+  };
 
   const getIcon = () => {
     switch (insight.type) {
       case "projected_overrun":
       case "budget_risk":
-        return <ShieldAlert size={14} style={{ color: "var(--text-primary)" }} />
+        return (
+          <ShieldAlert size={14} style={{ color: "var(--text-primary)" }} />
+        );
       case "spending_pace":
-        return <TrendingUp size={14} style={{ color: "var(--text-primary)" }} />
+        return (
+          <TrendingUp size={14} style={{ color: "var(--text-primary)" }} />
+        );
       case "category_spike":
-        return <AlertCircle size={14} style={{ color: "var(--text-primary)" }} />
+        return (
+          <AlertCircle size={14} style={{ color: "var(--text-primary)" }} />
+        );
       case "safety_buffer":
-        return <AlertCircle size={14} style={{ color: "var(--text-primary)" }} />
+        return (
+          <AlertCircle size={14} style={{ color: "var(--text-primary)" }} />
+        );
       default:
-        return <CheckCircle2 size={14} style={{ color: "var(--text-primary)" }} />
+        return (
+          <CheckCircle2 size={14} style={{ color: "var(--text-primary)" }} />
+        );
     }
-  }
+  };
 
   return (
     <>
       <section
-        onClick={() => { setDetailOpen(true); triggerHaptic("light"); }}
+        onClick={() => {
+          setDetailOpen(true);
+          triggerHaptic("light");
+        }}
         className="glass-surface p-4 rounded-[24px] relative overflow-hidden active:scale-[0.99] transition-all cursor-pointer select-none"
         style={{
           border: "1px solid var(--glass-border)",
-          background: "var(--bg-elevated)"
+          background: "var(--bg-elevated)",
         }}
       >
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2">
-            <div
-              className="w-5 h-5 rounded-full flex items-center justify-center"
-              style={{
-                background: "var(--glass-fill-strong)",
-                border: "1px solid var(--glass-border)"
-              }}
-            >
-              {getIcon()}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center">
+                {getIcon()}
+              </span>
+              <h3
+                className="text-[14px] font-bold leading-tight"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {insight.title}
+              </h3>
             </div>
-            <span
-              className="text-[10px] font-extrabold uppercase tracking-widest"
-              style={{ color: "var(--text-tertiary)" }}
+            <p
+              className="text-[11px] font-medium mt-1 leading-normal"
+              style={{ color: "var(--text-secondary)" }}
             >
-              {insight.badge}
-            </span>
+              {insight.subtitle}
+            </p>
           </div>
-
-          <button
-            type="button"
-            onClick={handleActionClick}
-            className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full active:scale-95 transition-transform"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)"
-            }}
-          >
-            <span>{insight.actionLabel}</span>
-            <ChevronRight size={12} style={{ color: "var(--text-secondary)" }} />
-          </button>
         </div>
-
-        <h3 className="text-[14px] font-bold leading-tight" style={{ color: "var(--text-primary)" }}>
-          {insight.title}
-        </h3>
-        <p className="text-[11px] font-medium mt-1 leading-normal" style={{ color: "var(--text-secondary)" }}>
-          {insight.subtitle}
-        </p>
       </section>
 
       {/* Drill-down BottomSheet */}
@@ -112,26 +119,36 @@ export function ActionCenterCard({ insight, onOpenCategoryDetail }: ActionCenter
         title={insight.drillDownDetails?.headline || "Financial Insight"}
       >
         <div className="px-5 space-y-4 pb-6">
-          <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+          <p
+            className="text-[13px] leading-relaxed"
+            style={{ color: "var(--text-secondary)" }}
+          >
             {insight.drillDownDetails?.explanation}
           </p>
 
-          {insight.drillDownDetails?.bulletPoints && insight.drillDownDetails.bulletPoints.length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-[var(--glass-border)]">
-              <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                Key Contributors & Run-Rate
-              </p>
-              {insight.drillDownDetails.bulletPoints.map((point, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 rounded-xl flex items-center justify-between text-[12px] font-bold"
-                  style={{ background: "var(--glass-fill)", color: "var(--text-primary)" }}
+          {insight.drillDownDetails?.bulletPoints &&
+            insight.drillDownDetails.bulletPoints.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-[var(--glass-border)]">
+                <p
+                  className="text-[11px] font-bold tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
                 >
-                  <span>{point}</span>
-                </div>
-              ))}
-            </div>
-          )}
+                  Key Contributors & Run-Rate
+                </p>
+                {insight.drillDownDetails.bulletPoints.map((point, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-xl flex items-center justify-between text-[12px] font-bold"
+                    style={{
+                      background: "var(--glass-fill)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <span>{point}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
           <div className="pt-2">
             <button
@@ -140,7 +157,7 @@ export function ActionCenterCard({ insight, onOpenCategoryDetail }: ActionCenter
               className="w-full py-3.5 rounded-2xl text-[13px] font-extrabold flex items-center justify-center gap-2 active:scale-98 transition-transform"
               style={{
                 background: "var(--accent)",
-                color: "var(--accent-ink)"
+                color: "var(--accent-ink)",
               }}
             >
               <span>{insight.actionLabel}</span>
@@ -150,5 +167,5 @@ export function ActionCenterCard({ insight, onOpenCategoryDetail }: ActionCenter
         </div>
       </BottomSheet>
     </>
-  )
+  );
 }

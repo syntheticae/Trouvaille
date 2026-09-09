@@ -59,7 +59,15 @@ export function FinancialReportSection({
       periodLabel,
       allTransactions,
     });
-  }, [wallets, transactions, allTransactions, categories, startDate, endDate, periodLabel]);
+  }, [
+    wallets,
+    transactions,
+    allTransactions,
+    categories,
+    startDate,
+    endDate,
+    periodLabel,
+  ]);
 
   const { balanceSheet, cashFlow, calk } = report;
 
@@ -132,7 +140,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 className="text-[10px] font-bold uppercase tracking-widest"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Accounting Statements • {periodLabel}
+                Statements • {periodLabel}
               </span>
             </div>
             <h2
@@ -175,18 +183,10 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
         {/* Verification Status Pill */}
         <div className="mt-4 pt-3 border-t border-[var(--glass-border)] flex flex-wrap items-center justify-between gap-2">
-          <div
-            className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-          >
-            <ShieldCheck size={13} strokeWidth={2} />
+          <div className="inline-flex items-center gap-2 py-1 rounded-full text-[11px] font-semibold tracking-wide">
             <span>
               {balanceSheet.isBalanced
-                ? "Assets = Liabilities + Equity (Reconciled)"
+                ? "Assets = Liabilities + Equity"
                 : "Accounting Discrepancy Detected"}
             </span>
           </div>
@@ -209,7 +209,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
           { key: "all", label: "All" },
           { key: "neraca", label: "Balance Sheet" },
           { key: "cashflow", label: "Cash Flows" },
-          { key: "calk", label: "Notes (CALK)" },
+          { key: "calk", label: "Disclosures" },
         ].map((tab) => {
           const isSelected = subView === tab.key;
           return (
@@ -244,9 +244,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1 pt-1">
             <div className="flex items-center gap-2">
-              <Scale size={14} strokeWidth={1.75} style={{ color: "var(--text-tertiary)" }} />
+              <Scale
+                size={14}
+                strokeWidth={1.75}
+                style={{ color: "var(--text-tertiary)" }}
+              />
               <span
-                className="text-[11px] font-bold uppercase tracking-wider"
+                className="text-[11px] font-semibold  tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Statement of Financial Position
@@ -268,45 +272,54 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
               border: "1px solid var(--glass-border)",
             }}
           >
-            <div className="p-2.5 rounded-xl" style={{ background: "var(--glass-fill)" }}>
+            <div
+              className="p-2.5 rounded-xl"
+              style={{ background: "var(--glass-fill)" }}
+            >
               <p
-                className="text-[10px] font-bold uppercase tracking-wider"
+                className="text-[10px] font-semibold tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Total Assets
               </p>
               <p
-                className="amount text-[14px] font-black mt-0.5 truncate"
+                className="amount text-[12px] font-semibold mt-0.5 truncate"
                 style={{ color: "var(--text-primary)" }}
               >
                 {formatRupiah(balanceSheet.totalAssets)}
               </p>
             </div>
 
-            <div className="p-2.5 rounded-xl" style={{ background: "var(--glass-fill)" }}>
+            <div
+              className="p-2.5 rounded-xl"
+              style={{ background: "var(--glass-fill)" }}
+            >
               <p
-                className="text-[10px] font-bold uppercase tracking-wider"
+                className="text-[10px] font-semibold tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Liabilities
               </p>
               <p
-                className="amount text-[14px] font-black mt-0.5 truncate"
+                className="amount text-[12px] font-semibold mt-0.5 truncate"
                 style={{ color: "var(--text-primary)" }}
               >
                 {formatRupiah(balanceSheet.totalLiabilities)}
               </p>
             </div>
 
-            <div className="p-2.5 rounded-xl" style={{ background: "var(--glass-fill)" }}>
+            <div
+              className="p-2.5 rounded-xl"
+              style={{ background: "var(--glass-fill)" }}
+            >
               <p
-                className="text-[10px] font-bold uppercase tracking-wider"
+                className="text-[10px] font-semibold tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Net Worth
               </p>
               <p
-                className="amount text-[14px] font-black mt-0.5 truncate"
+                className="amount text-[12px] font-semibold mt-0.5 truncate"
                 style={{ color: "var(--text-primary)" }}
               >
                 {formatRupiah(balanceSheet.netWorth)}
@@ -352,7 +365,9 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Liquid: {formatRupiah(balanceSheet.liquidAssets.total)} • Inv: {formatRupiah(balanceSheet.investmentAssets.total)} • Rec: {formatRupiah(balanceSheet.receivableAssets.total)}
+                    Liquid: {formatRupiah(balanceSheet.liquidAssets.total)} •
+                    Inv: {formatRupiah(balanceSheet.investmentAssets.total)} •
+                    Rec: {formatRupiah(balanceSheet.receivableAssets.total)}
                   </p>
                 </div>
               </div>
@@ -381,11 +396,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="border-t border-[var(--glass-border)] p-3 space-y-3"
+                  className="border-t border-(--glass-border) p-3 space-y-3"
                 >
                   {/* Liquid Assets Sub-group */}
                   <div>
-                    <div className="flex items-center justify-between mb-1 pb-1 border-b border-[var(--glass-border)]/60 px-1">
+                    <div className="flex items-center justify-between mb-1 pb-1 border-b border-(--glass-border)/60 px-1">
                       <span
                         className="text-[12.5px] font-bold tracking-tight"
                         style={{ color: "var(--text-primary)" }}
@@ -401,7 +416,10 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     </div>
                     <div>
                       {balanceSheet.liquidAssets.items.length === 0 ? (
-                        <p className="text-[11px] px-2 py-1.5 font-normal" style={{ color: "var(--text-tertiary)" }}>
+                        <p
+                          className="text-[11px] px-2 py-1.5 font-normal"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
                           No liquid accounts recorded.
                         </p>
                       ) : (
@@ -454,7 +472,10 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     </div>
                     <div>
                       {balanceSheet.investmentAssets.items.length === 0 ? (
-                        <p className="text-[11px] px-2 py-1.5 font-normal" style={{ color: "var(--text-tertiary)" }}>
+                        <p
+                          className="text-[11px] px-2 py-1.5 font-normal"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
                           No investment assets recorded.
                         </p>
                       ) : (
@@ -507,7 +528,10 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     </div>
                     <div>
                       {balanceSheet.receivableAssets.items.length === 0 ? (
-                        <p className="text-[11px] px-2 py-1.5 font-normal" style={{ color: "var(--text-tertiary)" }}>
+                        <p
+                          className="text-[11px] px-2 py-1.5 font-normal"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
                           No active receivables recorded.
                         </p>
                       ) : (
@@ -584,7 +608,10 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Short-term: {formatRupiah(balanceSheet.currentLiabilities.total)} • Long-term: {formatRupiah(balanceSheet.longTermLiabilities.total)}
+                    Short-term:{" "}
+                    {formatRupiah(balanceSheet.currentLiabilities.total)} •
+                    Long-term:{" "}
+                    {formatRupiah(balanceSheet.longTermLiabilities.total)}
                   </p>
                 </div>
               </div>
@@ -633,7 +660,10 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     </div>
                     <div>
                       {balanceSheet.currentLiabilities.items.length === 0 ? (
-                        <p className="text-[11px] px-2 py-1.5 font-normal" style={{ color: "var(--text-tertiary)" }}>
+                        <p
+                          className="text-[11px] px-2 py-1.5 font-normal"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
                           No short-term liabilities or credit debt recorded.
                         </p>
                       ) : (
@@ -686,7 +716,10 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     </div>
                     <div>
                       {balanceSheet.longTermLiabilities.items.length === 0 ? (
-                        <p className="text-[11px] px-2 py-1.5 font-normal" style={{ color: "var(--text-tertiary)" }}>
+                        <p
+                          className="text-[11px] px-2 py-1.5 font-normal"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
                           No long-term loans or mortgage liabilities recorded.
                         </p>
                       ) : (
@@ -734,9 +767,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1 pt-2">
             <div className="flex items-center gap-2">
-              <TrendingUp size={14} strokeWidth={1.75} style={{ color: "var(--text-tertiary)" }} />
+              <TrendingUp
+                size={14}
+                strokeWidth={1.75}
+                style={{ color: "var(--text-tertiary)" }}
+              />
               <span
-                className="text-[11px] font-bold uppercase tracking-wider"
+                className="text-[11px] font-bold  tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Statement of Cash Flows
@@ -783,13 +820,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   Gross Turnover
                 </p>
                 <p
-                  className="amount text-[12px] font-bold mt-0.5"
+                  className="amount text-[11px] font-semibold mt-0.5"
                   style={{ color: "var(--text-secondary)" }}
                 >
                   In: {formatRupiah(cashFlow.totalInflow)}
                 </p>
                 <p
-                  className="amount text-[12px] font-bold"
+                  className="amount text-[11px] font-semibold"
                   style={{ color: "var(--text-secondary)" }}
                 >
                   Out: {formatRupiah(cashFlow.totalOutflow)}
@@ -799,9 +836,15 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
             {/* 3 Activity Pillars Summary */}
             <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--glass-border)] text-center">
-              <div className="p-2 rounded-xl" style={{ background: "var(--glass-fill)" }}>
-                <p className="text-[9.5px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                  Operating (OCF)
+              <div
+                className="p-2 rounded-xl"
+                style={{ background: "var(--glass-fill)" }}
+              >
+                <p
+                  className="text-[9.5px] font-bold uppercase tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Operating
                 </p>
                 <p
                   className="amount text-[12px] font-black mt-0.5 truncate"
@@ -812,9 +855,15 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 </p>
               </div>
 
-              <div className="p-2 rounded-xl" style={{ background: "var(--glass-fill)" }}>
-                <p className="text-[9.5px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                  Investing (ICF)
+              <div
+                className="p-2 rounded-xl"
+                style={{ background: "var(--glass-fill)" }}
+              >
+                <p
+                  className="text-[9.5px] font-bold uppercase tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Investing
                 </p>
                 <p
                   className="amount text-[12px] font-black mt-0.5 truncate"
@@ -825,9 +874,15 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 </p>
               </div>
 
-              <div className="p-2 rounded-xl" style={{ background: "var(--glass-fill)" }}>
-                <p className="text-[9.5px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                  Financing (FCF)
+              <div
+                className="p-2 rounded-xl"
+                style={{ background: "var(--glass-fill)" }}
+              >
+                <p
+                  className="text-[9.5px] font-bold uppercase tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Financing
                 </p>
                 <p
                   className="amount text-[12px] font-black mt-0.5 truncate"
@@ -861,13 +916,14 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   className="text-[13px] font-bold"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  1. Operating Activities (Arus Kas Operasional)
+                  1. Operating Activities
                 </h4>
                 <p
                   className="text-[10.5px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Inflow: {formatRupiah(cashFlow.operatingInflow)} • Outflow: {formatRupiah(cashFlow.operatingOutflow)}
+                  Inflow: {formatRupiah(cashFlow.operatingInflow)} • Outflow:{" "}
+                  {formatRupiah(cashFlow.operatingOutflow)}
                 </p>
               </div>
 
@@ -899,7 +955,10 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   className="border-t border-[var(--glass-border)] p-3 space-y-1.5"
                 >
                   {cashFlow.operatingItems.length === 0 ? (
-                    <p className="text-[11px] px-1 py-1" style={{ color: "var(--text-tertiary)" }}>
+                    <p
+                      className="text-[11px] px-1 py-1"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
                       No operating transactions recorded in this period.
                     </p>
                   ) : (
@@ -966,7 +1025,8 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   className="text-[10.5px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  In: {formatRupiah(cashFlow.investingInflow)} • Out: {formatRupiah(cashFlow.investingOutflow)}
+                  In: {formatRupiah(cashFlow.investingInflow)} • Out:{" "}
+                  {formatRupiah(cashFlow.investingOutflow)}
                 </p>
               </div>
 
@@ -998,8 +1058,12 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   className="border-t border-[var(--glass-border)] p-3 space-y-1.5"
                 >
                   {cashFlow.investingItems.length === 0 ? (
-                    <p className="text-[11px] px-1 py-1" style={{ color: "var(--text-tertiary)" }}>
-                      No capital or investment movements recorded in this period.
+                    <p
+                      className="text-[11px] px-1 py-1"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      No capital or investment movements recorded in this
+                      period.
                     </p>
                   ) : (
                     cashFlow.investingItems.map((it) => (
@@ -1055,7 +1119,8 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   className="text-[10.5px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  In: {formatRupiah(cashFlow.financingInflow)} • Out: {formatRupiah(cashFlow.financingOutflow)}
+                  In: {formatRupiah(cashFlow.financingInflow)} • Out:{" "}
+                  {formatRupiah(cashFlow.financingOutflow)}
                 </p>
               </div>
 
@@ -1087,8 +1152,12 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   className="border-t border-[var(--glass-border)] p-3 space-y-1.5"
                 >
                   {cashFlow.financingItems.length === 0 ? (
-                    <p className="text-[11px] px-1 py-1" style={{ color: "var(--text-tertiary)" }}>
-                      No loan disbursements or debt repayment movements in this period.
+                    <p
+                      className="text-[11px] px-1 py-1"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      No loan disbursements or debt repayment movements in this
+                      period.
                     </p>
                   ) : (
                     cashFlow.financingItems.map((it) => (
@@ -1126,7 +1195,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1 pt-2">
             <div className="flex items-center gap-2">
-              <FileSpreadsheet size={14} strokeWidth={1.75} style={{ color: "var(--text-tertiary)" }} />
+              <FileSpreadsheet
+                size={14}
+                strokeWidth={1.75}
+                style={{ color: "var(--text-tertiary)" }}
+              />
               <span
                 className="text-[11px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
@@ -1162,10 +1235,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 className="amount text-[16px] font-black"
                 style={{ color: "var(--text-primary)" }}
               >
-                {calk.solvencyRunwayMonths} <span className="text-[11px] font-normal">mo</span>
+                {calk.solvencyRunwayMonths}{" "}
+                <span className="text-[11px] font-normal">mo</span>
               </p>
               <span
-                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide"
+                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold  tracking-wide"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -1197,7 +1271,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 {calk.debtToAssetRatioPct}%
               </p>
               <span
-                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide"
+                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold  tracking-wide"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -1229,7 +1303,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 {calk.freeCashflowRatePct}%
               </p>
               <span
-                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide"
+                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold  tracking-wide"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -1250,10 +1324,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
             }}
           >
             <div className="space-y-1">
-              <h4
-                className="text-[12px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
+              <h4 className="text-[12px] font-bold  tracking-wider">
                 Note 1: Solvency Assessment
               </h4>
               <p
@@ -1265,10 +1336,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
             </div>
 
             <div className="space-y-1 pt-2 border-t border-[var(--glass-border)]">
-              <h4
-                className="text-[12px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
+              <h4 className="text-[12px] font-bold  tracking-wider">
                 Note 2: Capital Structure & Leverage
               </h4>
               <p
@@ -1280,10 +1348,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
             </div>
 
             <div className="space-y-1 pt-2 border-t border-[var(--glass-border)]">
-              <h4
-                className="text-[12px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
+              <h4 className="text-[12px] font-bold tracking-wider">
                 Note 3: Operating Retention & Surplus
               </h4>
               <p
@@ -1314,7 +1379,8 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Accounting transparency for significant individual expenditures influencing period cash flow.
+                Accounting transparency for significant individual expenditures
+                influencing period cash flow.
               </p>
             </div>
 
@@ -1327,7 +1393,8 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     color: "var(--text-secondary)",
                   }}
                 >
-                  No single transaction exceeded 15% of total period expenses. Expenditure remained routinely distributed.
+                  No single transaction exceeded 15% of total period expenses.
+                  Expenditure remained routinely distributed.
                 </div>
               ) : (
                 calk.materialTransactions.map((tx) => (

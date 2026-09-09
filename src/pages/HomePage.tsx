@@ -251,7 +251,6 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
     return map;
   }, [goals, baselines, now]);
 
-
   // 2. Current Month Financial Calculations
   const currentMonthStats = useMemo(() => {
     const currentMonthKey = format(now, "yyyy-MM");
@@ -398,24 +397,13 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         );
         textColor = "#121212";
       } else {
-        bg = lerpHex(
-          [85, 85, 95],
-          [24, 24, 27],
-          Math.max(0.2, intensity),
-        );
+        bg = lerpHex([85, 85, 95], [24, 24, 27], Math.max(0.2, intensity));
         textColor = "#FFFFFF";
       }
     } else if (isDeficit && monthlyStats.maxDeficit > 0) {
-      const intensity = Math.min(
-        1,
-        Math.abs(net) / monthlyStats.maxDeficit,
-      );
+      const intensity = Math.min(1, Math.abs(net) / monthlyStats.maxDeficit);
       if (isDark) {
-        bg = lerpHex(
-          [82, 82, 91],
-          [30, 30, 34],
-          Math.max(0.2, intensity),
-        );
+        bg = lerpHex([82, 82, 91], [30, 30, 34], Math.max(0.2, intensity));
         textColor = "#FFFFFF";
         border = "1px solid rgba(255,255,255,0.18)";
       } else {
@@ -563,7 +551,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
             }}
             title="Atur Widget Dashboard"
           >
-            <SlidersHorizontal size={12} style={{ color: "var(--text-primary)" }} />
+            <SlidersHorizontal
+              size={12}
+              style={{ color: "var(--text-primary)" }}
+            />
             <span
               className="text-[11px] font-bold tracking-tight"
               style={{ color: "var(--text-primary)" }}
@@ -583,210 +574,202 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
 
       {/* 1. TOTAL ASSETS HERO CARD — Refined Compact Apple Stocks Layout */}
       <section className="card-contrast-hero p-4 pb-3 relative overflow-hidden">
-          {/* Title Header */}
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-[13px] font-extrabold tracking-wider text-white/90 leading-none">
-              Net Portfolio
-            </h2>
-            <button
-              onClick={toggleHideBalance}
-              className="text-white/60 hover:text-white active:scale-90 transition-all p-1 -mr-1"
-              title={hideBalance ? "Show Balance" : "Hide Balance"}
-            >
-              {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
-          </div>
+        {/* Title Header */}
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-[13px] font-extrabold tracking-wider text-white/90 leading-none">
+            Net Portfolio
+          </h2>
+          <button
+            onClick={toggleHideBalance}
+            className="text-white/60 hover:text-white active:scale-90 transition-all p-1 -mr-1"
+            title={hideBalance ? "Show Balance" : "Hide Balance"}
+          >
+            {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
 
-          {/* Amount */}
-          <div className="mb-1.5">
-            <span className="text-[28px] font-extrabold tracking-tight amount leading-tight text-white">
+        {/* Amount */}
+        <div className="mb-1.5">
+          <span className="text-[28px] font-extrabold tracking-tight amount leading-tight text-white">
+            {hideBalance
+              ? "Rp ••••••••"
+              : formatRupiah(assetData.currentBalance)}
+          </span>
+        </div>
+
+        {/* Change Line + Time Label Side by Side */}
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div
+            className="flex items-center gap-1 text-[12px] font-extrabold"
+            style={{ color: assetData.diff >= 0 ? "#FFFFFF" : "#A1A1AA" }}
+          >
+            <ArrowUpRight
+              size={13}
+              className={assetData.diff < 0 ? "rotate-90" : ""}
+            />
+            <span>
               {hideBalance
-                ? "Rp ••••••••"
-                : formatRupiah(assetData.currentBalance)}
+                ? "••••"
+                : `${assetData.diff >= 0 ? "+" : ""}${formatRupiah(assetData.diff)}`}
+            </span>
+            <span className="opacity-80">
+              (
+              {hideBalance
+                ? "••••"
+                : `${assetData.percent > 0 ? "+" : ""}${assetData.percent.toFixed(2)}%`}
+              )
             </span>
           </div>
+          <span className="text-[11px] font-semibold text-white/50 shrink-0">
+            {stockRangeLabels[stockRange]} · IDR
+          </span>
+        </div>
 
-          {/* Change Line + Time Label Side by Side */}
-          <div className="flex items-center justify-between gap-2 mb-2.5">
-            <div
-              className="flex items-center gap-1 text-[12px] font-extrabold"
-              style={{ color: assetData.diff >= 0 ? "#FFFFFF" : "#A1A1AA" }}
+        {/* Range Pill Selector (1D, 1W, 1M, 6M, YTD, 1Y, ALL) */}
+        <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 mb-1.5">
+          {(["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as StockRange[]).map(
+            (r) => {
+              const isActive = stockRange === r;
+              return (
+                <button
+                  key={r}
+                  onClick={() => {
+                    setStockRange(r);
+                    triggerHaptic("light");
+                  }}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 transition-all"
+                  style={{
+                    background: isActive
+                      ? "rgba(255,255,255,0.25)"
+                      : "transparent",
+                    color: isActive ? "#FFFFFF" : "rgba(255,255,255,0.55)",
+                    border: isActive
+                      ? "1px solid rgba(255,255,255,0.35)"
+                      : "1px solid transparent",
+                  }}
+                >
+                  {r}
+                </button>
+              );
+            },
+          )}
+        </div>
+
+        {/* Chart with Right Y-Axis & Dotted Grid */}
+        <div className="h-[120px] w-full mt-0.5">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={assetData.chartData}
+              margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
             >
-              <ArrowUpRight
-                size={13}
-                className={assetData.diff < 0 ? "rotate-90" : ""}
+              <defs>
+                <linearGradient id="heroGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="2 3"
+                stroke="rgba(255,255,255,0.09)"
+                vertical={true}
+                horizontal={true}
               />
-              <span>
-                {hideBalance
-                  ? "••••"
-                  : `${assetData.diff >= 0 ? "+" : ""}${formatRupiah(assetData.diff)}`}
-              </span>
-              <span className="opacity-80">
-                (
-                {hideBalance
-                  ? "••••"
-                  : `${assetData.percent > 0 ? "+" : ""}${assetData.percent.toFixed(2)}%`}
-                )
-              </span>
-            </div>
-            <span className="text-[11px] font-semibold text-white/50 shrink-0">
-              {stockRangeLabels[stockRange]} · IDR
-            </span>
-          </div>
+              <XAxis
+                dataKey="label"
+                tick={{
+                  fontSize: 9,
+                  fill: "rgba(255,255,255,0.5)",
+                  fontFamily: "Urbanist",
+                  fontWeight: 600,
+                }}
+                axisLine={false}
+                tickLine={false}
+                dy={3}
+              />
+              <YAxis
+                orientation="right"
+                width={34}
+                domain={["auto", "auto"]}
+                tick={{
+                  fontSize: 9,
+                  fill: "rgba(255,255,255,0.5)",
+                  fontFamily: "Urbanist",
+                  fontWeight: 700,
+                }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={formatAxisY}
+                dx={-2}
+              />
+              <Tooltip content={<GlassTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="balance"
+                stroke="#FFFFFF"
+                strokeWidth={2}
+                fill="url(#heroGradient)"
+                dot={false}
+                activeDot={{
+                  r: 4,
+                  fill: "#FFFFFF",
+                  stroke: "rgba(0,0,0,0.5)",
+                  strokeWidth: 1.5,
+                }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
 
-          {/* Range Pill Selector (1D, 1W, 1M, 6M, YTD, 1Y, ALL) */}
-          <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 mb-1.5">
-            {(["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as StockRange[]).map(
-              (r) => {
-                const isActive = stockRange === r;
-                return (
-                  <button
-                    key={r}
-                    onClick={() => {
-                      setStockRange(r);
-                      triggerHaptic("light");
-                    }}
-                    className="px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 transition-all"
-                    style={{
-                      background: isActive
-                        ? "rgba(255,255,255,0.25)"
-                        : "transparent",
-                      color: isActive ? "#FFFFFF" : "rgba(255,255,255,0.55)",
-                      border: isActive
-                        ? "1px solid rgba(255,255,255,0.35)"
-                        : "1px solid transparent",
-                    }}
-                  >
-                    {r}
-                  </button>
-                );
-              },
-            )}
+        {/* Stocks-Style Summary Footer (High, Low, Inflow, Outflow) */}
+        <div className="grid grid-cols-4 gap-1.5 pt-2.5 mt-1 border-t border-white/10 text-center">
+          <div>
+            <p className="text-[9px] font-bold uppercase text-white/45">High</p>
+            <p className="text-[11px] font-extrabold amount text-white mt-0.5">
+              {hideBalance
+                ? "••••"
+                : assetData.highBalance >= 1000
+                  ? "Rp " + formatAxisY(assetData.highBalance)
+                  : formatRupiah(assetData.highBalance)}
+            </p>
           </div>
-
-          {/* Chart with Right Y-Axis & Dotted Grid */}
-          <div className="h-[120px] w-full mt-0.5">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={assetData.chartData}
-                margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="heroGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor="#FFFFFF"
-                      stopOpacity={0.25}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor="#FFFFFF"
-                      stopOpacity={0.0}
-                    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="2 3"
-                  stroke="rgba(255,255,255,0.09)"
-                  vertical={true}
-                  horizontal={true}
-                />
-                <XAxis
-                  dataKey="label"
-                  tick={{
-                    fontSize: 9,
-                    fill: "rgba(255,255,255,0.5)",
-                    fontFamily: "Urbanist",
-                    fontWeight: 600,
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                  dy={3}
-                />
-                <YAxis
-                  orientation="right"
-                  width={34}
-                  domain={["auto", "auto"]}
-                  tick={{
-                    fontSize: 9,
-                    fill: "rgba(255,255,255,0.5)",
-                    fontFamily: "Urbanist",
-                    fontWeight: 700,
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={formatAxisY}
-                  dx={-2}
-                />
-                <Tooltip content={<GlassTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="balance"
-                  stroke="#FFFFFF"
-                  strokeWidth={2}
-                  fill="url(#heroGradient)"
-                  dot={false}
-                  activeDot={{
-                    r: 4,
-                    fill: "#FFFFFF",
-                    stroke: "rgba(0,0,0,0.5)",
-                    strokeWidth: 1.5,
-                  }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div>
+            <p className="text-[9px] font-bold uppercase text-white/45">Low</p>
+            <p className="text-[11px] font-extrabold amount text-white mt-0.5">
+              {hideBalance
+                ? "••••"
+                : assetData.lowBalance >= 1000
+                  ? "Rp " + formatAxisY(assetData.lowBalance)
+                  : formatRupiah(assetData.lowBalance)}
+            </p>
           </div>
-
-          {/* Stocks-Style Summary Footer (High, Low, Inflow, Outflow) */}
-          <div className="grid grid-cols-4 gap-1.5 pt-2.5 mt-1 border-t border-white/10 text-center">
-            <div>
-              <p className="text-[9px] font-bold uppercase text-white/45">High</p>
-              <p className="text-[11px] font-extrabold amount text-white mt-0.5">
-                {hideBalance
-                  ? "••••"
-                  : assetData.highBalance >= 1000
-                    ? "Rp " + formatAxisY(assetData.highBalance)
-                    : formatRupiah(assetData.highBalance)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[9px] font-bold uppercase text-white/45">Low</p>
-              <p className="text-[11px] font-extrabold amount text-white mt-0.5">
-                {hideBalance
-                  ? "••••"
-                  : assetData.lowBalance >= 1000
-                    ? "Rp " + formatAxisY(assetData.lowBalance)
-                    : formatRupiah(assetData.lowBalance)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[9px] font-bold uppercase text-white/45">
-                Inflow
-              </p>
-              <p className="text-[11px] font-extrabold amount text-white mt-0.5">
-                {hideBalance
-                  ? "••••"
-                  : assetData.periodInflow > 0
-                    ? "+Rp " + formatAxisY(assetData.periodInflow)
-                    : "Rp 0"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[9px] font-bold uppercase text-white/45">
-                Outflow
-              </p>
-              <p className="text-[11px] font-extrabold amount text-white mt-0.5">
-                {hideBalance
-                  ? "••••"
-                  : assetData.periodOutflow > 0
-                    ? "-Rp " + formatAxisY(assetData.periodOutflow)
-                    : "Rp 0"}
-              </p>
-            </div>
+          <div>
+            <p className="text-[9px] font-bold uppercase text-white/45">
+              Inflow
+            </p>
+            <p className="text-[11px] font-extrabold amount text-white mt-0.5">
+              {hideBalance
+                ? "••••"
+                : assetData.periodInflow > 0
+                  ? "+Rp " + formatAxisY(assetData.periodInflow)
+                  : "Rp 0"}
+            </p>
           </div>
-        </section>
+          <div>
+            <p className="text-[9px] font-bold uppercase text-white/45">
+              Outflow
+            </p>
+            <p className="text-[11px] font-extrabold amount text-white mt-0.5">
+              {hideBalance
+                ? "••••"
+                : assetData.periodOutflow > 0
+                  ? "-Rp " + formatAxisY(assetData.periodOutflow)
+                  : "Rp 0"}
+            </p>
+          </div>
+        </div>
+      </section>
 
-      {/* 2. PORTFOLIO & ACCOUNTS CARD */}
+      {/* 2. PORTFOLIO & ACCOUNTS  */}
       <BalanceCard hideBalance={hideBalance} />
 
       {/* 2.5 FINANCIAL ACTION CENTER */}
@@ -797,68 +780,68 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
       {/* 3. CONSOLIDATED MONTHLY CASHFLOW PULSE WITH COMPACT BUDGET */}
       {homeWidgets.showCashflowPulse && (
         <CashflowPulseCard
-        netCashflow={intel.netCashflow}
-        totalIncome={intel.totalIncome}
-        totalExpense={intel.totalExpense}
-        dailyAverage={dailyAverage}
-        daysElapsed={daysInMonth}
-        savingsRate={intel.savingsRate}
-        momentum={intel.momentum}
-        momentumReason={intel.momentumReason}
-        hideBalance={hideBalance}
-        budgetTarget={budgetTarget}
-        budgetRisk={intel.budgetRisk}
-        consumedPct={intel.consumedPct}
-        isAheadOfPace={intel.isAheadOfPace}
-        paceDiff={intel.paceDiff}
-        onOpenDrillDown={(mode) => {
-          if (mode === "budget") {
-            setMetricDrillDown({
-              type: "budget_risk",
-              data: {
-                totalCurrent: totalExpense,
-                totalPrevious: 0,
-                delta: 0,
-                pctChange: 0,
-                budget: budgetTarget,
-                consumedPct: intel.consumedPct,
-                timePct: intel.timePct,
-                budgetRisk: intel.budgetRisk,
-                budgetRiskReason: intel.budgetRiskReason,
-              },
-            });
-          } else if (mode === "net") {
-            setMetricDrillDown({
-              type: "snapshot",
-              data: {
-                totalCurrent: intel.netCashflow,
-                totalPrevious: 0,
-                delta: intel.netCashflow,
-                pctChange: 0,
-                title: "Net Cashflow",
-                subtitle: `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
-                badge: "Current Month",
-                ctaLabel: "View Full Analytics Breakdown",
-              },
-            });
-          } else {
-            const exp = intel.explainExpenseChange();
-            setMetricDrillDown({
-              type: "snapshot",
-              data: {
-                totalCurrent: intel.totalExpense,
-                totalPrevious: exp.totalPrevious,
-                delta: exp.delta,
-                pctChange: exp.pctChange,
-                title: "Total Outflow",
-                subtitle: `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
-                badge: "Current Month",
-                ctaLabel: "View Analytics Breakdown",
-              },
-            });
-          }
-        }}
-      />
+          netCashflow={intel.netCashflow}
+          totalIncome={intel.totalIncome}
+          totalExpense={intel.totalExpense}
+          dailyAverage={dailyAverage}
+          daysElapsed={daysInMonth}
+          savingsRate={intel.savingsRate}
+          momentum={intel.momentum}
+          momentumReason={intel.momentumReason}
+          hideBalance={hideBalance}
+          budgetTarget={budgetTarget}
+          budgetRisk={intel.budgetRisk}
+          consumedPct={intel.consumedPct}
+          isAheadOfPace={intel.isAheadOfPace}
+          paceDiff={intel.paceDiff}
+          onOpenDrillDown={(mode) => {
+            if (mode === "budget") {
+              setMetricDrillDown({
+                type: "budget_risk",
+                data: {
+                  totalCurrent: totalExpense,
+                  totalPrevious: 0,
+                  delta: 0,
+                  pctChange: 0,
+                  budget: budgetTarget,
+                  consumedPct: intel.consumedPct,
+                  timePct: intel.timePct,
+                  budgetRisk: intel.budgetRisk,
+                  budgetRiskReason: intel.budgetRiskReason,
+                },
+              });
+            } else if (mode === "net") {
+              setMetricDrillDown({
+                type: "snapshot",
+                data: {
+                  totalCurrent: intel.netCashflow,
+                  totalPrevious: 0,
+                  delta: intel.netCashflow,
+                  pctChange: 0,
+                  title: "Net Cashflow",
+                  subtitle: `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
+                  badge: "Current Month",
+                  ctaLabel: "View Full Analytics Breakdown",
+                },
+              });
+            } else {
+              const exp = intel.explainExpenseChange();
+              setMetricDrillDown({
+                type: "snapshot",
+                data: {
+                  totalCurrent: intel.totalExpense,
+                  totalPrevious: exp.totalPrevious,
+                  delta: exp.delta,
+                  pctChange: exp.pctChange,
+                  title: "Total Outflow",
+                  subtitle: `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
+                  badge: "Current Month",
+                  ctaLabel: "View Analytics Breakdown",
+                },
+              });
+            }
+          }}
+        />
       )}
 
       {/* 5. HEATMAP CALENDAR (Collapsible: Compact 7D vs Full Month) */}
@@ -866,7 +849,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
         <section>
           <div className="flex justify-between items-center px-1 mb-2">
             <span
-              className="text-[11px] font-bold uppercase tracking-widest block"
+              className="text-[11px] font-bold  tracking-widest block"
               style={{ color: "var(--text-tertiary)" }}
             >
               {calendarExpanded ? "Monthly Activity" : "Past 7 Days Activity"}

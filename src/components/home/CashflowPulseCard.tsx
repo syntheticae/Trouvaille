@@ -63,22 +63,9 @@ export function CashflowPulseCard({
       {/* Header: Title + Momentum Status + Savings Pill */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2 min-w-0">
-          <div
-            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-          >
-            <Activity size={14} />
-          </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span
-                className="text-[11px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
+              <span className="text-[12px] font-bold  tracking-wider">
                 Cashflow Pulse
               </span>
               <span
@@ -177,13 +164,22 @@ export function CashflowPulseCard({
             title="View Budget Details"
           >
             <div className="flex justify-between items-center text-[10px] font-semibold mb-1">
-              <span className="flex items-center gap-1.5" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="flex items-center gap-1.5"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 <span>Budget Progress</span>
                 <span
                   className="text-[8px] font-black px-1.5 py-0.2 rounded-full uppercase"
                   style={{
-                    background: budgetRisk === "AT RISK" ? "var(--text-primary)" : "var(--glass-fill)",
-                    color: budgetRisk === "AT RISK" ? "var(--bg-canvas)" : "var(--text-secondary)",
+                    background:
+                      budgetRisk === "AT RISK"
+                        ? "var(--text-primary)"
+                        : "var(--glass-fill)",
+                    color:
+                      budgetRisk === "AT RISK"
+                        ? "var(--bg-canvas)"
+                        : "var(--text-secondary)",
                     border: "1px solid var(--glass-border)",
                   }}
                 >
@@ -204,7 +200,10 @@ export function CashflowPulseCard({
                 className="h-full rounded-full transition-all duration-700"
                 style={{
                   width: `${Math.min(100, (totalExpense / budgetTarget) * 100)}%`,
-                  background: budgetRisk === "AT RISK" ? "var(--text-primary)" : "var(--accent)",
+                  background:
+                    budgetRisk === "AT RISK"
+                      ? "var(--text-primary)"
+                      : "var(--accent)",
                 }}
               />
             </div>
