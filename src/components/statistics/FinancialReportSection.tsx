@@ -418,16 +418,16 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             </span>
                             <div className="text-right flex items-baseline gap-2.5">
                               <span
-                                className="amount text-[12px] font-normal"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {formatRupiah(it.balance)}
-                              </span>
-                              <span
                                 className="text-[10.5px] font-mono"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
                                 {it.percentageOfTotal.toFixed(1)}%
+                              </span>
+                              <span
+                                className="amount text-[12px] font-normal"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {formatRupiah(it.balance)}
                               </span>
                             </div>
                           </div>
@@ -471,16 +471,16 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             </span>
                             <div className="text-right flex items-baseline gap-2.5">
                               <span
-                                className="amount text-[12px] font-normal"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {formatRupiah(it.balance)}
-                              </span>
-                              <span
                                 className="text-[10.5px] font-mono"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
                                 {it.percentageOfTotal.toFixed(1)}%
+                              </span>
+                              <span
+                                className="amount text-[12px] font-normal"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {formatRupiah(it.balance)}
                               </span>
                             </div>
                           </div>
@@ -524,16 +524,16 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             </span>
                             <div className="text-right flex items-baseline gap-2.5">
                               <span
-                                className="amount text-[12px] font-normal"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {formatRupiah(it.balance)}
-                              </span>
-                              <span
                                 className="text-[10.5px] font-mono"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
                                 {it.percentageOfTotal.toFixed(1)}%
+                              </span>
+                              <span
+                                className="amount text-[12px] font-normal"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {formatRupiah(it.balance)}
                               </span>
                             </div>
                           </div>
@@ -650,16 +650,16 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             </span>
                             <div className="text-right flex items-baseline gap-2.5">
                               <span
-                                className="amount text-[12px] font-normal"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {formatRupiah(it.balance)}
-                              </span>
-                              <span
                                 className="text-[10.5px] font-mono"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
                                 {it.percentageOfTotal.toFixed(1)}%
+                              </span>
+                              <span
+                                className="amount text-[12px] font-normal"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {formatRupiah(it.balance)}
                               </span>
                             </div>
                           </div>
@@ -703,16 +703,16 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             </span>
                             <div className="text-right flex items-baseline gap-2.5">
                               <span
-                                className="amount text-[12px] font-normal"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {formatRupiah(it.balance)}
-                              </span>
-                              <span
                                 className="text-[10.5px] font-mono"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
                                 {it.percentageOfTotal.toFixed(1)}%
+                              </span>
+                              <span
+                                className="amount text-[12px] font-normal"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {formatRupiah(it.balance)}
                               </span>
                             </div>
                           </div>

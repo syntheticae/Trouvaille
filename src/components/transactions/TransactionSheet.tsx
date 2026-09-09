@@ -154,14 +154,19 @@ export function evaluateMathSafe(expr: string): number {
   }
 }
 
+type TabType = TransactionType | "split";
+
 export function TransactionSheet({
   isOpen,
   onClose,
   transaction,
   initialValues,
 }: TransactionSheetProps) {
+  const [activeTab, setActiveTab] = useState<TabType>(
+    () => transaction?.type || initialValues?.type || "expense",
+  );
   const [type, setType] = useState<TransactionType>(
-    transaction?.type || "expense",
+    transaction?.type || initialValues?.type || "expense",
   );
   const [amount, setAmount] = useState(
     transaction ? String(transaction.amount) : "0",
@@ -283,7 +288,9 @@ export function TransactionSheet({
     if (isOpen && (isOpening || isTxChanged)) {
       setIsSaving(false);
       if (transaction) {
+        setActiveTab(transaction.type);
         setType(transaction.type);
+        setIsSplitOpen(false);
         setAmount(String(transaction.amount || "0"));
         setAmountInput(
           Number(transaction.amount) > 0
@@ -378,6 +385,7 @@ export function TransactionSheet({
         const initNote = initialValues?.note || "";
         const initDate = initialValues?.date || new Date();
 
+        setActiveTab(initType);
         setType(initType);
         setAmount(initAmt);
         setAmountInput(initAmtInput);
@@ -774,13 +782,47 @@ export function TransactionSheet({
             border: "1px solid var(--glass-border)",
           }}
         >
-          {(["expense", "income", "transfer"] as TransactionType[]).map((t) => {
-            const isSelected = type === t;
+          {(
+            [
+              {
+                key: "expense" as TabType,
+                label: "Expense",
+                icon: <ArrowDownCircle size={14} />,
+              },
+              {
+                key: "income" as TabType,
+                label: "Income",
+                icon: <ArrowUpCircle size={14} />,
+              },
+              {
+                key: "transfer" as TabType,
+                label: "Transfer",
+                icon: <RefreshCcw size={14} />,
+              },
+              ...(!transaction
+                ? [
+                    {
+                      key: "split" as TabType,
+                      label: "Split",
+                      icon: <Users size={14} />,
+                    },
+                  ]
+                : []),
+            ]
+          ).map((t) => {
+            const isSelected = activeTab === t.key;
             return (
               <button
-                key={t}
+                key={t.key}
                 onClick={() => {
-                  setType(t);
+                  setActiveTab(t.key);
+                  if (t.key === "split") {
+                    setType("expense");
+                    setIsSplitOpen(true);
+                  } else {
+                    setType(t.key as TransactionType);
+                    setIsSplitOpen(false);
+                  }
                   triggerHaptic("light");
                 }}
                 className="flex-1 py-2 rounded-full text-[12px] font-extrabold flex items-center justify-center gap-1.5 transition-all"
@@ -791,14 +833,8 @@ export function TransactionSheet({
                     : "var(--text-secondary)",
                 }}
               >
-                {t === "expense" && <ArrowDownCircle size={14} />}
-                {t === "income" && <ArrowUpCircle size={14} />}
-                {t === "transfer" && <RefreshCcw size={14} />}
-                {t === "expense"
-                  ? "Expense"
-                  : t === "income"
-                    ? "Income"
-                    : "Transfer"}
+                {t.icon}
+                {t.label}
               </button>
             );
           })}
@@ -811,7 +847,9 @@ export function TransactionSheet({
               <button
                 key={s.id}
                 onClick={() => {
+                  setActiveTab(s.type);
                   setType(s.type);
+                  setIsSplitOpen(false);
                   setAmount(String(s.amount));
                   setNote(s.note);
                   if (s.category_id) setCategoryId(s.category_id);
@@ -1073,24 +1111,22 @@ export function TransactionSheet({
           </div>
         </div>
 
-        {/* Split Transaction & Piutang (Innovation 2) */}
-        {type === "expense" && !transaction && (
+        {/* Split Transaction & Piutang Configuration */}
+        {activeTab === "split" && !transaction && (
           <div className="mb-3">
             <div className="flex justify-between items-center mb-1.5 px-1">
               <span
                 className="text-[11px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Split Bill
+                Split Configuration
               </span>
-              {isSplitOpen && (
-                <span
-                  className="text-[10px] font-semibold"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {splitMode === "friends" ? `${peopleCount} People` : "Multi-Category"}
-                </span>
-              )}
+              <span
+                className="text-[10px] font-semibold"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {splitMode === "friends" ? `${peopleCount} People` : "Multi-Category"}
+              </span>
             </div>
 
             <div
@@ -1100,53 +1136,7 @@ export function TransactionSheet({
                 border: "1px solid var(--glass-border)",
               }}
             >
-              {/* Minimal Apple Rule 3 Toggle Row */}
-              <div
-                onClick={() => {
-                  setIsSplitOpen(!isSplitOpen);
-                  triggerHaptic("light");
-                }}
-                className="flex items-center justify-between cursor-pointer"
-              >
-                <div>
-                  <span
-                    className="text-[13px] font-semibold block leading-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Split Expense
-                  </span>
-                  <span
-                    className="text-[11px] text-[var(--text-tertiary)] block mt-0.5"
-                  >
-                    Split with friends (piutang) or divide across categories
-                  </span>
-                </div>
-
-                {/* Minimal iOS Toggle Switch */}
-                <div
-                  className="w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 flex items-center shrink-0"
-                  style={{
-                    background: isSplitOpen
-                      ? "var(--accent)"
-                      : "var(--glass-fill-strong)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                >
-                  <div
-                    className={`w-4.5 h-4.5 rounded-full shadow-sm transition-transform duration-200 ${
-                      isSplitOpen ? "translate-x-4.5" : "translate-x-0"
-                    }`}
-                    style={{
-                      background: isSplitOpen
-                        ? "var(--accent-ink)"
-                        : "var(--text-tertiary)",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {isSplitOpen && (
-                <div className="mt-3 pt-3 border-t border-[var(--glass-border)]/50 space-y-3">
+              <div className="space-y-3">
                   {/* Sub-mode tabs */}
                   <div
                     className="flex p-1 rounded-xl glass-surface"
@@ -1611,10 +1601,9 @@ export function TransactionSheet({
                   </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
         {/* Natural Language & Voice Quick Add Bar (Positioned at bottom) */}
         {!transaction && (
@@ -1628,7 +1617,9 @@ export function TransactionSheet({
                   setAmountInput(parsed.amount.toLocaleString("id-ID"));
                 }
                 if (parsed.type) {
+                  setActiveTab(parsed.type);
                   setType(parsed.type);
+                  setIsSplitOpen(false);
                 }
                 if (parsed.categoryId) {
                   setCategoryId(parsed.categoryId);
@@ -1684,7 +1675,9 @@ export function TransactionSheet({
               ? "Saving..."
               : transaction
                 ? "Update Transaction"
-                : "Save Transaction"}
+                : activeTab === "split"
+                  ? "Split & Record Expense"
+                  : "Save Transaction"}
           </button>
         </div>
       </div>
