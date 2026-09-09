@@ -55,6 +55,16 @@ const VoiceQuickAddModal = lazy(() =>
     default: module.VoiceQuickAddModal,
   })),
 );
+const DesktopShell = lazy(() =>
+  import("./components/desktop/DesktopShell").then((module) => ({
+    default: module.DesktopShell,
+  })),
+);
+const DesktopBentoGrid = lazy(() =>
+  import("./components/desktop/DesktopBentoGrid").then((module) => ({
+    default: module.DesktopBentoGrid,
+  })),
+);
 
 import { useTheme } from "./contexts/ThemeContext";
 
@@ -299,32 +309,195 @@ function AppShell() {
     >
       <div
         id="app-scroll-container"
-        className="h-full overflow-y-auto overflow-x-hidden safe-area-top pb-[80px] overscroll-y-contain"
+        className="h-full overflow-y-auto overflow-x-hidden safe-area-top pb-[80px] lg:pb-0 overscroll-y-contain"
       >
         <Suspense fallback={<LoadingScreen />}>
           <Routes>
             <Route
               path="/"
-              element={<HomePage onOpenAdd={() => setAddSheetOpen(true)} />}
+              element={
+                <>
+                  <div className="hidden lg:block w-full">
+                    <DesktopShell
+                      onOpenAdd={() => {
+                        setPrefilledValues(null);
+                        setAddSheetOpen(true);
+                      }}
+                      title="Command Center"
+                      subtitle="Portfolio & Wealth Architecture"
+                    >
+                      <DesktopBentoGrid
+                        onOpenAdd={() => {
+                          setPrefilledValues(null);
+                          setAddSheetOpen(true);
+                        }}
+                      />
+                    </DesktopShell>
+                  </div>
+                  <div className="block lg:hidden">
+                    <HomePage onOpenAdd={() => setAddSheetOpen(true)} />
+                  </div>
+                </>
+              }
             />
-            <Route path="/transactions" element={<TransactionsPage />} />
-            <Route path="/history" element={<TransactionsPage />} />
-            <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/statistics" element={<StatisticsPage />} />
-            <Route path="/stats" element={<StatisticsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route
+              path="/transactions"
+              element={
+                <>
+                  <div className="hidden lg:block w-full">
+                    <DesktopShell
+                      onOpenAdd={() => {
+                        setPrefilledValues(null);
+                        setAddSheetOpen(true);
+                      }}
+                      title="Transaction Ledger"
+                      subtitle="Complete Financial Activity Log"
+                    >
+                      <div className="max-w-[1440px] mx-auto px-8 py-6">
+                        <TransactionsPage />
+                      </div>
+                    </DesktopShell>
+                  </div>
+                  <div className="block lg:hidden">
+                    <TransactionsPage />
+                  </div>
+                </>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <>
+                  <div className="hidden lg:block w-full">
+                    <DesktopShell
+                      onOpenAdd={() => {
+                        setPrefilledValues(null);
+                        setAddSheetOpen(true);
+                      }}
+                      title="Transaction Ledger"
+                      subtitle="Complete Financial Activity Log"
+                    >
+                      <div className="max-w-[1440px] mx-auto px-8 py-6">
+                        <TransactionsPage />
+                      </div>
+                    </DesktopShell>
+                  </div>
+                  <div className="block lg:hidden">
+                    <TransactionsPage />
+                  </div>
+                </>
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <>
+                  <div className="hidden lg:block w-full">
+                    <DesktopShell
+                      onOpenAdd={() => {
+                        setPrefilledValues(null);
+                        setAddSheetOpen(true);
+                      }}
+                      title="Cashflow Forecast"
+                      subtitle="Recurring Outlays & Daily Projection"
+                    >
+                      <div className="max-w-[1440px] mx-auto px-8 py-6">
+                        <CalendarPage />
+                      </div>
+                    </DesktopShell>
+                  </div>
+                  <div className="block lg:hidden">
+                    <CalendarPage />
+                  </div>
+                </>
+              }
+            />
+            <Route
+              path="/statistics"
+              element={
+                <>
+                  <div className="hidden lg:block w-full">
+                    <DesktopShell
+                      onOpenAdd={() => {
+                        setPrefilledValues(null);
+                        setAddSheetOpen(true);
+                      }}
+                      title="Financial Intelligence"
+                      subtitle="Sankey Flow & Diagnostic Review"
+                    >
+                      <div className="max-w-[1440px] mx-auto px-8 py-6">
+                        <StatisticsPage />
+                      </div>
+                    </DesktopShell>
+                  </div>
+                  <div className="block lg:hidden">
+                    <StatisticsPage />
+                  </div>
+                </>
+              }
+            />
+            <Route
+              path="/stats"
+              element={
+                <>
+                  <div className="hidden lg:block w-full">
+                    <DesktopShell
+                      onOpenAdd={() => {
+                        setPrefilledValues(null);
+                        setAddSheetOpen(true);
+                      }}
+                      title="Financial Intelligence"
+                      subtitle="Sankey Flow & Diagnostic Review"
+                    >
+                      <div className="max-w-[1440px] mx-auto px-8 py-6">
+                        <StatisticsPage />
+                      </div>
+                    </DesktopShell>
+                  </div>
+                  <div className="block lg:hidden">
+                    <StatisticsPage />
+                  </div>
+                </>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <>
+                  <div className="hidden lg:block w-full">
+                    <DesktopShell
+                      onOpenAdd={() => {
+                        setPrefilledValues(null);
+                        setAddSheetOpen(true);
+                      }}
+                      title="Vault & Preferences"
+                      subtitle="Security, Accounts & Storage Controls"
+                    >
+                      <div className="max-w-[1440px] mx-auto px-8 py-6">
+                        <SettingsPage />
+                      </div>
+                    </DesktopShell>
+                  </div>
+                  <div className="block lg:hidden">
+                    <SettingsPage />
+                  </div>
+                </>
+              }
+            />
           </Routes>
         </Suspense>
       </div>
 
       {!addSheetOpen && (
-        <BottomTabBar
-          onOpenAdd={() => {
-            setPrefilledValues(null);
-            setAddSheetOpen(true);
-          }}
-          onOpenVoiceAdd={() => setVoiceModalOpen(true)}
-        />
+        <div className="block lg:hidden">
+          <BottomTabBar
+            onOpenAdd={() => {
+              setPrefilledValues(null);
+              setAddSheetOpen(true);
+            }}
+            onOpenVoiceAdd={() => setVoiceModalOpen(true)}
+          />
+        </div>
       )}
 
       {voiceModalOpen && (
