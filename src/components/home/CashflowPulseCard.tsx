@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Activity, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, ChevronRight } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 
