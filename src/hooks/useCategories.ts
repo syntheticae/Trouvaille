@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
-import type { Category, TransactionType } from "../lib/types";
+import type { Category, TransactionType, CashflowNature } from "../lib/types";
 
 export const categoryKeys = {
   all: (userId?: string) => ["categories", userId ?? null, null] as const,
@@ -93,6 +93,36 @@ export function getCategoryParent(categoryName: string): string {
 
 export function getParentIcon(parentName: string): string {
   return PARENT_ICON_MAP[parentName] || "/icons/lainnya.png";
+}
+
+export const CATEGORY_CASHFLOW_MAP: Record<string, CashflowNature> = {
+  investasi: "investing",
+  trading: "investing",
+  saham: "investing",
+  crypto: "investing",
+  reksadana: "investing",
+  deposito: "investing",
+  emas: "investing",
+  gadget: "investing",
+  elektronik: "investing",
+  furnitur: "investing",
+  peralatan: "investing",
+  cicilan: "financing",
+  hutang: "financing",
+  pinjaman: "financing",
+  liabilitas: "financing",
+  "kartu kredit": "financing",
+  paylater: "financing",
+};
+
+export function getCategoryCashflowNature(
+  categoryName?: string | null,
+  customNature?: CashflowNature,
+): CashflowNature {
+  if (customNature) return customNature;
+  if (!categoryName) return "operating";
+  const k = categoryName.trim().toLowerCase();
+  return CATEGORY_CASHFLOW_MAP[k] || "operating";
 }
 
 // ======================================================================

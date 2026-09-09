@@ -4,7 +4,7 @@ import { ArrowLeftRight, Clock, Scale, Trash2, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { formatRupiah } from "../../lib/utils";
 import { IconRenderer } from "../ui/IconRenderer";
-import { getFamfinaMatch } from "../../lib/famfinaResolver";
+import { resolveTransactionCategory } from "../../lib/categoryResolver";
 import { triggerHaptic } from "../../lib/haptics";
 import type { Transaction, Category } from "../../lib/types";
 import { isCorrectionTx } from "../../lib/financialMath";
@@ -40,33 +40,11 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
     : "";
 
   const resolvedCategory = useMemo(() => {
-    if (tx.categories?.name) return tx.categories;
-    if (tx.category_id) {
-      const found = categories.find((c) => c.id === tx.category_id);
-      if (found) return found;
-    }
-    const match = getFamfinaMatch(tx);
-    if (match?.categoryName) {
-      const found = categories.find(
-        (c) => c.name.toLowerCase() === match.categoryName.toLowerCase(),
-      );
-      if (found) return found;
-    }
-    if (tx.note) {
-      const noteLower = tx.note.toLowerCase();
-      const found = categories.find((c) =>
-        noteLower.includes(c.name.toLowerCase()),
-      );
-      if (found) return found;
-    }
-    return null;
+    return resolveTransactionCategory(tx, categories);
   }, [tx, categories]);
 
-  const categoryDisplayName =
-    resolvedCategory?.name || (isIncome ? "Income" : "Expense");
-  const categoryDisplayEmoji =
-    resolvedCategory?.emoji ||
-    (isIncome ? "/icons/gaji.png" : "/icons/lainnya.png");
+  const categoryDisplayName = resolvedCategory.name;
+  const categoryDisplayEmoji = resolvedCategory.emoji;
 
   const isDraggingRef = React.useRef(false);
 
@@ -154,7 +132,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
               <IconRenderer icon={categoryDisplayEmoji} size="w-6 h-6" />
             )}
             <div
-              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shadow"
+              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center shadow"
               style={{
                 background: isCorrection
                   ? "var(--text-primary)"
@@ -173,7 +151,15 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
                 border: "1.5px solid var(--bg-elevated)",
               }}
             >
-              {isCorrection ? "⚖" : isTransfer ? "⇄" : isIncome ? "+" : "-"}
+              {isCorrection ? (
+                <Scale size={8} />
+              ) : isTransfer ? (
+                <ArrowLeftRight size={8} />
+              ) : (
+                <span className="text-[9px] font-extrabold leading-none">
+                  {isIncome ? "+" : "−"}
+                </span>
+              )}
             </div>
           </div>
           <div className="min-w-0">

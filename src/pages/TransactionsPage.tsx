@@ -1,8 +1,16 @@
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator";
 import { triggerHaptic } from "../lib/haptics";
-import { useState, useMemo, useEffect } from "react";
-import { Search, X, Calendar, ChevronDown, Wallet } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import {
+  Search,
+  X,
+  Calendar,
+  ChevronDown,
+  Wallet,
+  SlidersHorizontal,
+  Tag,
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -16,7 +24,7 @@ import {
   useAllTransactions,
   useDeleteTransaction,
 } from "../hooks/useTransactions";
-import { useWallets } from "../hooks/useWallets";
+import { useWallets, resolveTransactionWallets } from "../hooks/useWallets";
 import { useCategories } from "../hooks/useCategories";
 import { useToast } from "../contexts/ToastContext";
 import { TransactionSheet } from "../components/transactions/TransactionSheet";
@@ -31,14 +39,16 @@ import {
   endOfMonth,
   subMonths,
   parse,
+  parseISO,
   eachDayOfInterval,
 } from "date-fns";
 import { GroupedVirtuoso } from "react-virtuoso";
 import { useDeferredRender } from "../hooks/useDeferredRender";
 import { TransactionItem } from "../components/transactions/TransactionItem";
-import { resolveFamfinaWallet } from "../lib/famfinaResolver";
 import { useUnusualSpending } from "../hooks/useUnusualSpending";
 import { isCorrectionTx } from "../lib/financialMath";
+
+const isTxCorrection = isCorrectionTx;
 
 const GlassTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -74,7 +84,12 @@ const GlassTooltip = ({ active, payload, label }: any) => {
 
 type FilterType = "all" | "expense" | "income" | "transfer" | "adjustment";
 type TimeRangeType =
-  | "this_month" | "last_month" | "last_30" | "custom_month" | "all";
+  | "this_month"
+  | "last_month"
+  | "last_30"
+  | "custom_month"
+  | "custom_range"
+  | "all";
 
 type ChartPoint = {
   dateStr: string;
@@ -137,6 +152,12 @@ export function TransactionsPage() {
   const [selectedWalletName, setSelectedWalletName] = useState<string | null>(
     null,
   );
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRangeType>("this_month");
   const [selectedCustomMonth, setSelectedCustomMonth] = useState<string>(
     format(new Date(), "yyyy-MM"),
@@ -230,10 +251,10 @@ export function TransactionsPage() {
     }
   }, [scrollParent]);
 
-  const resolveWalletNames = (tx: Transaction) =>
-    resolveFamfinaWallet(tx, wallets);
-
-  const isTxCorrection = isCorrectionTx;
+  const resolveWalletNames = useCallback(
+    (tx: Transaction) => resolveTransactionWallets(tx, wallets),
+    [wallets],
+  );
 
   const scopedTxs = useMemo(() => {
     const now = new Date();
@@ -260,10 +281,17 @@ export function TransactionsPage() {
       );
     } else if (timeRange === "custom_month") {
       txs = txs.filter((t) => t.occurred_on.startsWith(selectedCustomMonth));
+    } else if (timeRange === "custom_range") {
+      if (customStartDate) {
+        txs = txs.filter((t) => t.occurred_on >= customStartDate);
+      }
+      if (customEndDate) {
+        txs = txs.filter((t) => t.occurred_on <= customEndDate);
+      }
     }
 
     return txs;
-  }, [visibleTxs, timeRange, selectedCustomMonth]);
+  }, [visibleTxs, timeRange, selectedCustomMonth, customStartDate, customEndDate]);
 
   // 2. Filter & Search transactions within the active timeframe
   const filteredTxs = useMemo(() => {
@@ -288,6 +316,21 @@ export function TransactionsPage() {
           (t.type === "transfer" && to.toLowerCase() === target)
         );
       });
+    }
+
+    if (selectedCategoryIds.length > 0) {
+      const catSet = new Set(selectedCategoryIds);
+      txs = txs.filter((t) => t.category_id && catSet.has(t.category_id));
+    }
+
+    const minAmt = parseFloat(minAmount);
+    if (!isNaN(minAmt) && minAmt > 0) {
+      txs = txs.filter((t) => Number(t.amount || 0) >= minAmt);
+    }
+
+    const maxAmt = parseFloat(maxAmount);
+    if (!isNaN(maxAmt) && maxAmt > 0) {
+      txs = txs.filter((t) => Number(t.amount || 0) <= maxAmt);
     }
 
     const q = debouncedSearch.toLowerCase().trim();
@@ -323,8 +366,11 @@ export function TransactionsPage() {
     scopedTxs,
     filter,
     selectedWalletName,
+    selectedCategoryIds,
+    minAmount,
+    maxAmount,
     debouncedSearch,
-    wallets,
+    resolveWalletNames,
     categories,
   ]);
 
@@ -351,6 +397,30 @@ export function TransactionsPage() {
   const dynamicChartData = useMemo(() => {
     const now = new Date();
     const points: ChartPoint[] = [];
+
+    if (timeRange === "custom_range") {
+      if (customStartDate && customEndDate && customStartDate <= customEndDate) {
+        try {
+          const start = parseISO(customStartDate);
+          const end = parseISO(customEndDate);
+          const intervalDays = eachDayOfInterval({ start, end });
+          if (intervalDays.length <= 62) {
+            intervalDays.forEach((d) => {
+              const dateStr = format(d, "yyyy-MM-dd");
+              const totals = summarizeTransactionsForChart(
+                filteredTxsByDay.dayMap.get(dateStr) || [],
+                filter,
+                isTxCorrection,
+              );
+              points.push({ dateStr, label: format(d, "d MMM"), ...totals });
+            });
+            return points;
+          }
+        } catch {
+          // fallback to auto aggregation
+        }
+      }
+    }
 
     if (
       timeRange === "this_month" ||
@@ -430,7 +500,7 @@ export function TransactionsPage() {
     }
 
     return points;
-  }, [filteredTxs, filteredTxsByDay, filter, timeRange, selectedCustomMonth]);
+  }, [filteredTxs, filteredTxsByDay, filter, timeRange, selectedCustomMonth, customStartDate, customEndDate]);
 
   const totalPeriodAmount = useMemo(() => {
     return dynamicChartData.reduce((s, d) => s + d.activeValue, 0);
@@ -472,13 +542,57 @@ export function TransactionsPage() {
     if (timeRange === "last_month") return "Last Month";
     if (timeRange === "last_30") return "Last 30 Days";
     if (timeRange === "all") return "All Time";
+    if (timeRange === "custom_range") {
+      if (customStartDate && customEndDate) {
+        try {
+          const s = parseISO(customStartDate);
+          const e = parseISO(customEndDate);
+          return `${format(s, "d MMM")} - ${format(e, "d MMM")}`;
+        } catch {
+          return "Custom Range";
+        }
+      }
+      return "Custom Range";
+    }
     try {
       const parsed = parse(selectedCustomMonth, "yyyy-MM", new Date());
       return format(parsed, "MMMM yyyy");
     } catch {
       return "Custom Month";
     }
-  }, [timeRange, selectedCustomMonth]);
+  }, [timeRange, selectedCustomMonth, customStartDate, customEndDate]);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (filter !== "all") count++;
+    if (selectedWalletName) count++;
+    if (selectedCategoryIds.length > 0) count += selectedCategoryIds.length;
+    if (minAmount.trim()) count++;
+    if (maxAmount.trim()) count++;
+    if (timeRange === "custom_range") count++;
+    else if (timeRange !== "this_month") count++;
+    return count;
+  }, [
+    filter,
+    selectedWalletName,
+    selectedCategoryIds,
+    minAmount,
+    maxAmount,
+    timeRange,
+  ]);
+
+  const handleResetAllFilters = () => {
+    setFilter("all");
+    setSelectedWalletName(null);
+    setSelectedCategoryIds([]);
+    setMinAmount("");
+    setMaxAmount("");
+    setTimeRange("this_month");
+    setCustomStartDate("");
+    setCustomEndDate("");
+    setSearch("");
+    triggerHaptic("medium");
+  };
 
   return (
     <div
@@ -676,9 +790,9 @@ export function TransactionsPage() {
           )}
         </div>
 
-        {/* Full-Width Search Bar with Inline Account Filter */}
+        {/* Full-Width Search Bar with Inline Filter Controls */}
         <div
-          className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-3 glass-surface no-pull"
+          className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-2.5 glass-surface no-pull"
           style={{
             background: "var(--bg-elevated)",
             border: "1px solid var(--glass-border)",
@@ -693,7 +807,7 @@ export function TransactionsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search note, category, wallet..."
+            placeholder="Search note, category, wallet, amount..."
             className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold touch-manipulation no-pull"
             style={{ color: "var(--text-primary)" }}
           />
@@ -708,33 +822,44 @@ export function TransactionsPage() {
             </button>
           )}
 
-          {/* Inline Account Filter Pill */}
+          {/* Filter Trigger Button */}
           <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
           <button
             type="button"
             onClick={() => {
-              setAccountPickerOpen(true);
+              setFilterSheetOpen(true);
               triggerHaptic("light");
             }}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
             style={{
-              background: selectedWalletName
-                ? "var(--accent)"
-                : "var(--glass-fill)",
-              color: selectedWalletName
-                ? "var(--accent-ink)"
-                : "var(--text-secondary)",
-              border: selectedWalletName
-                ? "1px solid var(--accent)"
-                : "1px solid var(--glass-border)",
+              background:
+                activeFiltersCount > 0
+                  ? "var(--accent)"
+                  : "var(--glass-fill)",
+              color:
+                activeFiltersCount > 0
+                  ? "var(--accent-ink)"
+                  : "var(--text-secondary)",
+              border:
+                activeFiltersCount > 0
+                  ? "1px solid var(--accent)"
+                  : "1px solid var(--glass-border)",
             }}
-            title="Filter by Account"
+            title="Advanced Filters"
           >
-            <Wallet size={13} />
-            <span className="text-[11px] font-extrabold max-w-[65px] truncate">
-              {selectedWalletName || "Account"}
-            </span>
-            <ChevronDown size={11} className="opacity-70" />
+            <SlidersHorizontal size={13} />
+            <span className="text-[11px] font-extrabold">Filters</span>
+            {activeFiltersCount > 0 && (
+              <span
+                className="w-4 h-4 rounded-full text-[9px] font-extrabold flex items-center justify-center"
+                style={{
+                  background: "var(--accent-ink)",
+                  color: "var(--accent)",
+                }}
+              >
+                {activeFiltersCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -769,6 +894,133 @@ export function TransactionsPage() {
             );
           })}
         </div>
+
+        {/* Active Filter Chips Strip */}
+        {activeFiltersCount > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1.5 mt-2">
+            {timeRange !== "this_month" && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
+                style={{
+                  background: "var(--glass-fill-strong)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <Calendar size={11} className="opacity-70" />
+                <span>{selectedMonthLabel}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimeRange("this_month");
+                    setCustomStartDate("");
+                    setCustomEndDate("");
+                    triggerHaptic("light");
+                  }}
+                  className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+
+            {selectedWalletName && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
+                style={{
+                  background: "var(--glass-fill-strong)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <Wallet size={11} className="opacity-70" />
+                <span>{selectedWalletName}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedWalletName(null);
+                    triggerHaptic("light");
+                  }}
+                  className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+
+            {selectedCategoryIds.map((cid) => {
+              const cat = categories.find((c) => c.id === cid);
+              return (
+                <span
+                  key={cid}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
+                  style={{
+                    background: "var(--glass-fill-strong)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  <Tag size={11} className="opacity-70" />
+                  <span>{cat?.name || "Category"}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategoryIds((prev) =>
+                        prev.filter((id) => id !== cid),
+                      );
+                      triggerHaptic("light");
+                    }}
+                    className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              );
+            })}
+
+            {(minAmount || maxAmount) && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
+                style={{
+                  background: "var(--glass-fill-strong)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <span>
+                  {minAmount && maxAmount
+                    ? `${formatRupiah(Number(minAmount))} - ${formatRupiah(Number(maxAmount))}`
+                    : minAmount
+                      ? `≥ ${formatRupiah(Number(minAmount))}`
+                      : `≤ ${formatRupiah(Number(maxAmount))}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMinAmount("");
+                    setMaxAmount("");
+                    triggerHaptic("light");
+                  }}
+                  className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+
+            <button
+              type="button"
+              onClick={handleResetAllFilters}
+              className="text-[11px] font-extrabold px-2 py-0.5 rounded-full shrink-0 touch-manipulation cursor-pointer select-none"
+              style={{
+                color: "var(--accent)",
+                background: "transparent",
+              }}
+            >
+              Clear all
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ====== TRANSACTION LIST ====== */}
@@ -1145,6 +1397,375 @@ export function TransactionsPage() {
               );
             })}
           </div>
+        </div>
+      </BottomSheet>
+
+      {/* ====== ADVANCED FILTERS BOTTOM SHEET ====== */}
+      <BottomSheet
+        isOpen={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+      >
+        <div className="p-5 pb-16 space-y-5 max-h-[82vh] overflow-y-auto no-scrollbar">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3
+                className="font-extrabold text-lg"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Filters
+              </h3>
+              <p
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Refine by timeframe, type, account, category & amount
+              </p>
+            </div>
+            {activeFiltersCount > 0 && (
+              <button
+                type="button"
+                onClick={handleResetAllFilters}
+                className="text-[12px] font-bold px-3 py-1 rounded-full touch-manipulation cursor-pointer select-none active:scale-95 transition-transform"
+                style={{
+                  background: "var(--glass-fill)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                Reset All
+              </button>
+            )}
+          </div>
+
+          {/* 1. Transaction Type */}
+          <div>
+            <label
+              className="text-[11px] font-bold uppercase tracking-wider mb-2 block px-0.5"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Transaction Type
+            </label>
+            <div
+              className="flex p-1 rounded-2xl glass-surface"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              {filterTabs.map((tab) => {
+                const isSelected = filter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => {
+                      setFilter(tab.key);
+                      triggerHaptic("light");
+                    }}
+                    className="flex-1 py-1.5 rounded-xl text-[11px] font-bold transition-all touch-manipulation cursor-pointer select-none"
+                    style={{
+                      background: isSelected ? "var(--accent)" : "transparent",
+                      color: isSelected
+                        ? "var(--accent-ink)"
+                        : "var(--text-secondary)",
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Timeframe & Date Range */}
+          <div>
+            <label
+              className="text-[11px] font-bold uppercase tracking-wider mb-2 block px-0.5"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Timeframe & Date Range
+            </label>
+            <div className="grid grid-cols-3 gap-1.5 mb-2.5">
+              {[
+                { key: "this_month", label: "This Month" },
+                { key: "last_month", label: "Last Month" },
+                { key: "last_30", label: "Last 30 Days" },
+                { key: "all", label: "All Time" },
+                { key: "custom_range", label: "Custom Range" },
+              ].map((preset) => {
+                const isSelected = timeRange === preset.key;
+                return (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => {
+                      setTimeRange(preset.key as TimeRangeType);
+                      triggerHaptic("light");
+                    }}
+                    className="py-2 px-2.5 rounded-xl text-[11px] font-bold text-center active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
+                    style={{
+                      background: isSelected
+                        ? "var(--accent)"
+                        : "var(--bg-elevated)",
+                      color: isSelected
+                        ? "var(--accent-ink)"
+                        : "var(--text-primary)",
+                      border: isSelected
+                        ? "1px solid transparent"
+                        : "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {timeRange === "custom_range" && (
+              <div
+                className="grid grid-cols-2 gap-2 p-3 rounded-2xl glass-surface"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div>
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider block mb-1"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Start Date
+                  </span>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-full bg-transparent text-[12px] font-bold outline-none cursor-pointer"
+                    style={{ color: "var(--text-primary)" }}
+                  />
+                </div>
+                <div>
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider block mb-1"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    End Date
+                  </span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="w-full bg-transparent text-[12px] font-bold outline-none cursor-pointer"
+                    style={{ color: "var(--text-primary)" }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 3. Account / Wallet Filter */}
+          <div>
+            <div className="flex items-center justify-between mb-2 px-0.5">
+              <label
+                className="text-[11px] font-bold uppercase tracking-wider"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Account
+              </label>
+              {selectedWalletName && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedWalletName(null)}
+                  className="text-[11px] font-bold text-[var(--accent)]"
+                >
+                  All Accounts
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedWalletName(null);
+                  triggerHaptic("light");
+                }}
+                className="px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0 active:scale-95 transition-all cursor-pointer select-none"
+                style={{
+                  background:
+                    selectedWalletName === null
+                      ? "var(--accent)"
+                      : "var(--bg-elevated)",
+                  color:
+                    selectedWalletName === null
+                      ? "var(--accent-ink)"
+                      : "var(--text-primary)",
+                  border:
+                    selectedWalletName === null
+                      ? "1px solid transparent"
+                      : "1px solid var(--glass-border)",
+                }}
+              >
+                All Accounts
+              </button>
+              {wallets.map((w) => {
+                const isSelected = selectedWalletName === w.name;
+                return (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedWalletName(isSelected ? null : w.name);
+                      triggerHaptic("light");
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0 active:scale-95 transition-all cursor-pointer select-none"
+                    style={{
+                      background: isSelected
+                        ? "var(--accent)"
+                        : "var(--bg-elevated)",
+                      color: isSelected
+                        ? "var(--accent-ink)"
+                        : "var(--text-primary)",
+                      border: isSelected
+                        ? "1px solid transparent"
+                        : "1px solid var(--glass-border)",
+                    }}
+                  >
+                    <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
+                    <span>{w.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. Category Multi-Select Filter */}
+          <div>
+            <div className="flex items-center justify-between mb-2 px-0.5">
+              <label
+                className="text-[11px] font-bold uppercase tracking-wider"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Categories
+              </label>
+              {selectedCategoryIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategoryIds([])}
+                  className="text-[11px] font-bold text-[var(--accent)]"
+                >
+                  Clear Categories
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto no-scrollbar py-0.5">
+              {categories.map((c) => {
+                const isSelected = selectedCategoryIds.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategoryIds((prev) =>
+                        isSelected
+                          ? prev.filter((id) => id !== c.id)
+                          : [...prev, c.id],
+                      );
+                      triggerHaptic("light");
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold active:scale-95 transition-all cursor-pointer select-none"
+                    style={{
+                      background: isSelected
+                        ? "var(--accent)"
+                        : "var(--bg-elevated)",
+                      color: isSelected
+                        ? "var(--accent-ink)"
+                        : "var(--text-primary)",
+                      border: isSelected
+                        ? "1px solid transparent"
+                        : "1px solid var(--glass-border)",
+                    }}
+                  >
+                    <IconRenderer icon={c.emoji || ""} size="w-3.5 h-3.5" />
+                    <span>{c.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 5. Amount Range (Min / Max) */}
+          <div>
+            <label
+              className="text-[11px] font-bold uppercase tracking-wider mb-2 block px-0.5"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Amount Range (IDR)
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <div
+                className="p-3 rounded-2xl glass-surface"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-1"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Min Amount
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={minAmount}
+                  onChange={(e) => setMinAmount(e.target.value)}
+                  className="w-full bg-transparent text-[13px] font-bold outline-none"
+                  style={{ color: "var(--text-primary)" }}
+                />
+              </div>
+              <div
+                className="p-3 rounded-2xl glass-surface"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-1"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Max Amount
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Unlimited"
+                  value={maxAmount}
+                  onChange={(e) => setMaxAmount(e.target.value)}
+                  className="w-full bg-transparent text-[13px] font-bold outline-none"
+                  style={{ color: "var(--text-primary)" }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setFilterSheetOpen(false);
+              triggerHaptic("medium");
+            }}
+            className="w-full py-3.5 rounded-2xl font-extrabold text-[14px] active:scale-95 transition-all shadow-xl mt-2 cursor-pointer"
+            style={{
+              background: "var(--accent)",
+              color: "var(--accent-ink)",
+            }}
+          >
+            Show {filteredTxs.length} Transactions
+          </button>
         </div>
       </BottomSheet>
     </div>

@@ -49,7 +49,6 @@ export default defineConfig({
             id.includes("node_modules/@tanstack")
           )
             return "query-supabase";
-          if (id.includes("node_modules/xlsx")) return "xlsx";
           if (
             id.includes("node_modules/react/") ||
             id.includes("node_modules/react-dom/") ||

@@ -1,6 +1,10 @@
 import { triggerHaptic } from "../lib/haptics";
-import { useWallets, getWalletIcon } from "../hooks/useWallets";
-import { resolveFamfinaWallet } from "../lib/famfinaResolver";
+import {
+  useWallets,
+  getWalletIcon,
+  resolveTransactionWallets,
+} from "../hooks/useWallets";
+import { resolveTransactionCategory } from "../lib/categoryResolver";
 import {
   useCategories,
   getCategoryParent,
@@ -58,6 +62,8 @@ import { ExpenseVolatilityCard } from "../components/home/ExpenseVolatilityCard"
 import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
 import { PersonalFinancialModelCard } from "../components/home/PersonalFinancialModelCard";
 import { PersonalFinancialModelSheet } from "../components/home/PersonalFinancialModelSheet";
+import { FinancialReportSection } from "../components/statistics/FinancialReportSection";
+import { CashflowSankeySection } from "../components/statistics/CashflowSankeySection";
 import {
   calculateAssetTrend,
   calculateWhatIfScenario,
@@ -79,13 +85,16 @@ import {
 type Range = "week" | "month" | "year" | "all";
 type BreakdownType = "expense" | "income";
 type GroupMode = "category" | "parent";
-type AnalyticsSubTab = "spending" | "cashflow" | "model";
+type AnalyticsSubTab = "spending" | "cashflow" | "report" | "model";
 
 const analyticsTabs: { key: AnalyticsSubTab; label: string }[] = [
   { key: "spending", label: "Spending" },
   { key: "cashflow", label: "Cashflow" },
+  { key: "report", label: "Financial Report" },
   { key: "model", label: "Simulation" },
 ];
+
+const isTxCorrection = isCorrectionTx;
 
 const GlassTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -281,8 +290,6 @@ export function StatisticsPage() {
     activeMonthDate,
   });
 
-  const isTxCorrection = isCorrectionTx;
-
   // Phase II: Longitudinal Timeline Trajectory
   const longitudinal = useMemo(() => {
     const rangeParam =
@@ -311,7 +318,36 @@ export function StatisticsPage() {
       if (!t.occurred_on) return false;
       return t.occurred_on >= startStr && t.occurred_on <= endStr;
     });
-  }, [allTxs, range, monthOffset]);
+  }, [allTxs, range, monthOffset, now]);
+
+  const currentPeriodLabel = useMemo(() => {
+    if (range === "week") return "Last 7 Days";
+    if (range === "month")
+      return format(subMonths(now, monthOffset), "MMMM yyyy");
+    if (range === "year") return format(now, "yyyy");
+    return "All Time";
+  }, [range, monthOffset, now]);
+
+  const currentPeriodBounds = useMemo(() => {
+    if (range === "week") {
+      return {
+        start: format(subDays(now, 6), "yyyy-MM-dd"),
+        end: format(now, "yyyy-MM-dd"),
+      };
+    } else if (range === "month") {
+      const targetMonth = subMonths(now, monthOffset);
+      return {
+        start: format(startOfMonth(targetMonth), "yyyy-MM-dd"),
+        end: format(endOfMonth(targetMonth), "yyyy-MM-dd"),
+      };
+    } else if (range === "year") {
+      return {
+        start: format(startOfYear(now), "yyyy-MM-dd"),
+        end: format(endOfYear(now), "yyyy-MM-dd"),
+      };
+    }
+    return { start: undefined, end: undefined };
+  }, [range, monthOffset, now]);
 
   const { totalIncome, totalExpense } = useMemo(
     () => ({
@@ -618,7 +654,7 @@ export function StatisticsPage() {
         };
       });
     }
-  }, [allTxs, range, monthOffset, monthlyAggregates]);
+  }, [allTxs, range, monthOffset, monthlyAggregates, now]);
 
   // 3. Cumulative Net Worth trend
   const netWorthData = useMemo(() => {
@@ -644,7 +680,7 @@ export function StatisticsPage() {
 
     rangeTxs.forEach((tx) => {
       if (tx.type === "transfer") return;
-      const resolved = resolveFamfinaWallet(tx, wallets);
+      const resolved = resolveTransactionWallets(tx, wallets);
       const walletName = resolved.from || "Cash";
       const amt = Number(tx.amount || 0);
 
@@ -749,10 +785,11 @@ export function StatisticsPage() {
     rangeTxs
       .filter((t) => t.type === breakdownType)
       .forEach((t) => {
-        const name = t.categories?.name || "Lainnya";
+        const resolved = resolveTransactionCategory(t, categories);
+        const name = resolved.name;
         const meta = userCatMap.get(name.trim().toLowerCase());
         const emoji =
-          t.categories?.emoji ||
+          resolved.emoji ||
           meta?.emoji ||
           (breakdownType === "income"
             ? "/icons/gaji.png"
@@ -820,11 +857,12 @@ export function StatisticsPage() {
     rangeTxs
       .filter((t) => t.type === breakdownType)
       .forEach((t) => {
-        const catName = t.categories?.name || "Lainnya";
+        const resolved = resolveTransactionCategory(t, categories);
+        const catName = resolved.name;
         const parentName = getCategoryParent(catName);
         const meta = userCatMap.get(catName.trim().toLowerCase());
         const emoji =
-          t.categories?.emoji ||
+          resolved.emoji ||
           meta?.emoji ||
           (breakdownType === "income"
             ? "/icons/gaji.png"
@@ -911,10 +949,11 @@ export function StatisticsPage() {
 
     const prevMap = new Map<string, number>();
     prevTxs.forEach((t) => {
+      const resolved = resolveTransactionCategory(t, categories);
       const key =
         groupMode === "parent"
-          ? getCategoryParent(t.categories?.name || "Lainnya")
-          : t.categories?.name || "Lainnya";
+          ? getCategoryParent(resolved.name)
+          : resolved.name;
       prevMap.set(key, (prevMap.get(key) || 0) + Number(t.amount || 0));
     });
 
@@ -945,7 +984,7 @@ export function StatisticsPage() {
       biggestIncrease: sortedByIncrease[0] || null,
       biggestDecrease: sortedByDecrease[0] || null,
     };
-  }, [allTxs, now, monthOffset, breakdownType, groupMode, activeBreakdownData]);
+  }, [allTxs, now, monthOffset, breakdownType, groupMode, activeBreakdownData, categories]);
 
   // Priority 5: Expense Frequency vs Volume Insights
   const frequencyStats = useMemo(() => {
@@ -1031,7 +1070,7 @@ export function StatisticsPage() {
     }
     if (range === "year") return "This Year";
     return "All Time";
-  }, [range, monthOffset]);
+  }, [range, monthOffset, now]);
 
   return (
     <div className="px-5 py-6 space-y-5 pb-36" style={{ minHeight: "100dvh" }}>
@@ -1117,10 +1156,9 @@ export function StatisticsPage() {
 
       {/* 3-Sub-Tab Segmented Control */}
       <div
-        className="flex p-1 rounded-2xl glass-surface"
+        className="flex p-0.5 rounded-xl border border-[var(--glass-border)]"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
+          background: "var(--glass-fill)",
         }}
       >
         {analyticsTabs.map((t) => {
@@ -1132,14 +1170,14 @@ export function StatisticsPage() {
                 setAnalyticsSubTab(t.key);
                 triggerHaptic("light");
               }}
-              className="flex-1 py-2 rounded-xl text-[12px] font-extrabold transition-all active:scale-98 cursor-pointer select-none"
+              className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 active:scale-98 cursor-pointer select-none"
               style={{
-                background: isSelected ? "var(--accent)" : "transparent",
+                background: isSelected ? "var(--bg-elevated)" : "transparent",
                 color: isSelected
-                  ? "var(--accent-ink)"
-                  : "var(--text-secondary)",
+                  ? "var(--text-primary)"
+                  : "var(--text-tertiary)",
                 boxShadow: isSelected
-                  ? "0 2px 8px var(--shadow-strength)"
+                  ? "0 1px 4px var(--shadow-strength)"
                   : "none",
               }}
             >
@@ -1821,18 +1859,18 @@ export function StatisticsPage() {
                             </div>
                           </div>
                           <div
-                            className="w-full h-1.5 rounded-full overflow-hidden"
+                            className="w-full h-1 rounded-full overflow-hidden"
                             style={{
                               background: isDark
-                                ? "rgba(255,255,255,0.08)"
-                                : "rgba(0,0,0,0.06)",
+                                ? "rgba(255,255,255,0.06)"
+                                : "rgba(0,0,0,0.05)",
                             }}
                           >
                             <div
                               className="h-full rounded-full transition-all duration-500"
                               style={{
                                 width: `${Math.min(100, pct)}%`,
-                                background: "var(--text-primary)",
+                                background: isDark ? "rgba(255,255,255,0.85)" : "rgba(18,18,18,0.85)",
                               }}
                             />
                           </div>
@@ -1979,11 +2017,379 @@ export function StatisticsPage() {
           </div>
         </div>
       </div>
+
+      {/* Inflow vs Outflow Bar Chart */}
+      <div className="p-4 rounded-[22px] glass-surface">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2
+              className="text-[12.5px] font-bold tracking-tight"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Inflow vs Outflow Trend
+            </h2>
+            <p className="text-[10.5px]" style={{ color: "var(--text-tertiary)" }}>
+              {rangeTitle} comparison
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center gap-1.5 text-[10px] font-medium"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              <div
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: colors.barHigh }}
+              />
+              Inflow
+            </div>
+            <div
+              className="flex items-center gap-1.5 text-[10px] font-medium"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              <div
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: colors.barMid }}
+              />
+              Outflow
+            </div>
+          </div>
+        </div>
+
+        <div className="h-[145px] -mx-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={trendData}
+              margin={{ top: 2, right: 0, left: 0, bottom: 0 }}
+              barSize={range === "year" || range === "all" ? 5 : 6}
+              barGap={2}
+            >
+              <defs>
+                <linearGradient id="inflowG" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={colors.barHigh}
+                    stopOpacity={0.95}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={colors.barMid}
+                    stopOpacity={0.7}
+                  />
+                </linearGradient>
+                <linearGradient id="outflowG" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={colors.barMid}
+                    stopOpacity={0.8}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={colors.barLow}
+                    stopOpacity={0.5}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="2 2"
+                stroke="var(--glass-border)"
+                vertical={false}
+                opacity={0.25}
+              />
+              <XAxis
+                dataKey="label"
+                tick={{
+                  fontSize: 9.5,
+                  fill: "var(--text-tertiary)",
+                  fontWeight: 500,
+                  fontFamily: "Urbanist",
+                }}
+                axisLine={false}
+                tickLine={false}
+                dy={4}
+              />
+              <YAxis hide />
+              <Tooltip
+                content={<GlassTooltip />}
+                cursor={{ fill: colors.cursorFill, radius: 4 }}
+              />
+              <Bar
+                dataKey="income"
+                name="income"
+                fill="url(#inflowG)"
+                radius={[3, 3, 0, 0]}
+              />
+              <Bar
+                dataKey="expense"
+                name="expense"
+                fill="url(#outflowG)"
+                radius={[3, 3, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Phase II: Longitudinal Trajectory Factual Interpretation */}
+        {(range === "year" || range === "all") && (
+          <div className="mt-3.5 pt-3 border-t border-[var(--glass-border)] text-center">
+            <p
+              className="text-[11px] leading-relaxed"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {longitudinal.trajectoryInterpretation}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Cumulative Net Worth Line Chart */}
+      <div className="p-5 rounded-[24px] glass-surface">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp size={16} style={{ color: "var(--text-tertiary)" }} />
+          <div>
+            <h2
+              className="text-[13px] font-bold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Net Capital Trajectory
+            </h2>
+            <p
+              className="text-[11px]"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Cumulative net worth change ({rangeTitle})
+            </p>
+          </div>
+        </div>
+        <div className="h-[160px] -mx-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={netWorthData}
+              margin={{ top: 5, right: 0, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="netG" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="5%"
+                    stopColor={colors.lineStroke}
+                    stopOpacity={0.2}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor={colors.lineStroke}
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="var(--glass-border)"
+                vertical={false}
+                opacity={0.35}
+              />
+              <XAxis
+                dataKey="label"
+                tick={{
+                  fontSize: 10,
+                  fill: "var(--text-tertiary)",
+                  fontWeight: 600,
+                  fontFamily: "Urbanist",
+                }}
+                axisLine={false}
+                tickLine={false}
+                dy={6}
+              />
+              <YAxis hide />
+              <Tooltip
+                content={<GlassTooltip />}
+                cursor={{
+                  stroke: colors.lineStroke,
+                  strokeWidth: 1,
+                  strokeDasharray: "4 4",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="net"
+                name="net"
+                stroke={colors.lineStroke}
+                strokeWidth={2.5}
+                fill="url(#netG)"
+                fillOpacity={1}
+                dot={false}
+                activeDot={{ r: 4, fill: colors.lineStroke }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Net Income Summary Row with MoM Delta */}
+      <div
+        className="p-5 rounded-[24px]"
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        <div className="flex justify-between items-center mb-3">
+          <p
+            className="text-[11px] font-bold uppercase tracking-widest"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            Period Summary · {rangeTitle}
+          </p>
+          {range === "month" && (
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{
+                background: "var(--glass-fill)",
+                color: "var(--text-tertiary)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              vs prev month
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            {
+              label: "Total In",
+              value: totalIncome,
+              delta: range === "month" ? incomeDelta : null,
+              isExpense: false,
+            },
+            {
+              label: "Total Out",
+              value: totalExpense,
+              delta: range === "month" ? expenseDelta : null,
+              isExpense: true,
+            },
+            {
+              label: "Net",
+              value: totalIncome - totalExpense,
+              delta: range === "month" ? netDelta : null,
+              isNet: true,
+            },
+          ].map(({ label, value, delta, isNet }) => {
+            const abs = Math.abs(value);
+            let formatted = "0";
+            if (abs >= 1000000) {
+              formatted = (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+            } else if (abs >= 1000) {
+              formatted = (abs / 1000).toFixed(0) + "K";
+            } else {
+              formatted = abs.toLocaleString("id-ID");
+            }
+            const sign = isNet ? (value < 0 ? "-" : value > 0 ? "+" : "") : "";
+            return (
+              <div
+                key={label}
+                className="text-center p-2 rounded-2xl flex flex-col justify-between"
+                style={{ background: "var(--glass-fill)" }}
+              >
+                <div>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-wide mb-1"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {label}
+                  </p>
+                  <p
+                    className="amount text-[14px] font-extrabold leading-tight"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {sign}
+                    {formatted}
+                  </p>
+                </div>
+                {delta && (
+                  <div className="mt-1.5 pt-1 border-t border-[var(--glass-border)] flex items-center justify-center gap-0.5">
+                    <span
+                      className="text-[10px] font-bold flex items-center"
+                      style={{
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {delta.isUp ? "↑" : "↓"} {delta.pct}%
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Hashtag Summary */}
+      {hashtagStats.length > 0 && (
+        <div
+          className="p-5 rounded-[24px]"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <div className="flex justify-between items-center mb-3">
+            <h2
+              className="text-[13px] font-bold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Event & Hashtag Tracking
+            </h2>
+            <span
+              className="text-[10px] font-bold uppercase"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {rangeTitle}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {hashtagStats.slice(0, 5).map((h) => (
+              <div
+                key={h.tag}
+                className="flex justify-between items-center p-2 rounded-xl"
+                style={{ background: "var(--glass-fill)" }}
+              >
+                <div>
+                  <p
+                    className="text-[12px] font-bold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {h.tag}
+                  </p>
+                  <p
+                    className="text-[10px]"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {h.count} txs
+                  </p>
+                </div>
+                <p
+                  className="text-[13px] font-bold amount"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {formatRupiah(h.total)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
         </>
       )}
 
       {analyticsSubTab === "cashflow" && (
         <>
+          <CashflowSankeySection
+            transactions={rangeTxs}
+            categories={categories}
+            wallets={wallets}
+            periodLabel={rangeTitle}
+          />
           <CashflowOutlookCard
             defaultForecast={intel.cashflowFloor}
             getCashflowHorizon={intel.getCashflowHorizon}
@@ -2178,372 +2584,19 @@ export function StatisticsPage() {
           </div>
         )}
       </div>
-
-      {/* Inflow vs Outflow Bar Chart */}
-      <div className="p-5 rounded-[24px] glass-surface">
-        <div className="mb-4">
-          <h2
-            className="text-[13px] font-bold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Inflow vs Outflow Trend
-          </h2>
-          <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-            {rangeTitle} comparison
-          </p>
-        </div>
-        <div className="h-[180px] -mx-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={trendData}
-              margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
-              barSize={range === "year" || range === "all" ? 7 : 10}
-              barGap={2}
-            >
-              <defs>
-                <linearGradient id="inflowG" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="0%"
-                    stopColor={colors.barHigh}
-                    stopOpacity={1}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={colors.barMid}
-                    stopOpacity={0.8}
-                  />
-                </linearGradient>
-                <linearGradient id="outflowG" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="0%"
-                    stopColor={colors.barMid}
-                    stopOpacity={0.85}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={colors.barLow}
-                    stopOpacity={0.6}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="var(--glass-border)"
-                vertical={false}
-                opacity={0.4}
-              />
-              <XAxis
-                dataKey="label"
-                tick={{
-                  fontSize: 10,
-                  fill: "var(--text-tertiary)",
-                  fontWeight: 600,
-                  fontFamily: "Urbanist",
-                }}
-                axisLine={false}
-                tickLine={false}
-                dy={6}
-              />
-              <YAxis hide />
-              <Tooltip
-                content={<GlassTooltip />}
-                cursor={{ fill: colors.cursorFill, radius: 6 }}
-              />
-              <Bar
-                dataKey="income"
-                name="income"
-                fill="url(#inflowG)"
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar
-                dataKey="expense"
-                name="expense"
-                fill="url(#outflowG)"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex gap-5 mt-4 justify-center">
-          <div
-            className="flex items-center gap-1.5 text-[11px] font-bold"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ background: colors.barHigh }}
-            />{" "}
-            Inflow
-          </div>
-          <div
-            className="flex items-center gap-1.5 text-[11px] font-bold"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ background: colors.barMid }}
-            />{" "}
-            Outflow
-          </div>
-        </div>
-
-        {/* Phase II: Longitudinal Trajectory Factual Interpretation */}
-        {(range === "year" || range === "all") && (
-          <div className="mt-3.5 pt-3 border-t border-[var(--glass-border)] text-center">
-            <p
-              className="text-[11px] leading-relaxed"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {longitudinal.trajectoryInterpretation}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Cumulative Net Worth Line Chart */}
-      <div className="p-5 rounded-[24px] glass-surface">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp size={16} style={{ color: "var(--text-tertiary)" }} />
-          <div>
-            <h2
-              className="text-[13px] font-bold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Net Capital Trajectory
-            </h2>
-            <p
-              className="text-[11px]"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Cumulative net worth change ({rangeTitle})
-            </p>
-          </div>
-        </div>
-        <div className="h-[160px] -mx-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={netWorthData}
-              margin={{ top: 5, right: 0, left: 0, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="netG" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor={colors.lineStroke}
-                    stopOpacity={0.2}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor={colors.lineStroke}
-                    stopOpacity={0}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="var(--glass-border)"
-                vertical={false}
-                opacity={0.35}
-              />
-              <XAxis
-                dataKey="label"
-                tick={{
-                  fontSize: 10,
-                  fill: "var(--text-tertiary)",
-                  fontWeight: 600,
-                  fontFamily: "Urbanist",
-                }}
-                axisLine={false}
-                tickLine={false}
-                dy={6}
-              />
-              <YAxis hide />
-              <Tooltip
-                content={<GlassTooltip />}
-                cursor={{
-                  stroke: colors.lineStroke,
-                  strokeWidth: 1,
-                  strokeDasharray: "4 4",
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="net"
-                name="net"
-                stroke={colors.lineStroke}
-                strokeWidth={2.5}
-                fill="url(#netG)"
-                fillOpacity={1}
-                dot={false}
-                activeDot={{ r: 4, fill: colors.lineStroke }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Net Income Summary Row with MoM Delta */}
-      <div
-        className="p-5 rounded-[24px]"
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <div className="flex justify-between items-center mb-3">
-          <p
-            className="text-[11px] font-bold uppercase tracking-widest"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Period Summary · {rangeTitle}
-          </p>
-          {range === "month" && (
-            <span
-              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{
-                background: "var(--glass-fill)",
-                color: "var(--text-tertiary)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              vs prev month
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            {
-              label: "Total In",
-              value: totalIncome,
-              delta: range === "month" ? incomeDelta : null,
-              isExpense: false,
-            },
-            {
-              label: "Total Out",
-              value: totalExpense,
-              delta: range === "month" ? expenseDelta : null,
-              isExpense: true,
-            },
-            {
-              label: "Net",
-              value: totalIncome - totalExpense,
-              delta: range === "month" ? netDelta : null,
-              isNet: true,
-            },
-          ].map(({ label, value, delta, isExpense, isNet }) => {
-            const abs = Math.abs(value);
-            let formatted = "0";
-            if (abs >= 1000000) {
-              formatted = (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
-            } else if (abs >= 1000) {
-              formatted = (abs / 1000).toFixed(0) + "K";
-            } else {
-              formatted = abs.toLocaleString("id-ID");
-            }
-            const sign = isNet ? (value < 0 ? "-" : value > 0 ? "+" : "") : "";
-            return (
-              <div
-                key={label}
-                className="text-center p-2 rounded-2xl flex flex-col justify-between"
-                style={{ background: "var(--glass-fill)" }}
-              >
-                <div>
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-wide mb-1"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {label}
-                  </p>
-                  <p
-                    className="amount text-[14px] font-extrabold leading-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {sign}
-                    {formatted}
-                  </p>
-                </div>
-                {delta && (
-                  <div className="mt-1.5 pt-1 border-t border-[var(--glass-border)] flex items-center justify-center gap-0.5">
-                    <span
-                      className="text-[10px] font-bold flex items-center"
-                      style={{
-                        color: isExpense
-                          ? delta.isUp
-                            ? "#ef4444"
-                            : "var(--accent)"
-                          : delta.isUp
-                            ? "var(--accent)"
-                            : "var(--text-tertiary)",
-                      }}
-                    >
-                      {delta.isUp ? "↑" : "↓"} {delta.pct}%
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Hashtag Summary */}
-      {hashtagStats.length > 0 && (
-        <div
-          className="p-5 rounded-[24px]"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <div className="flex justify-between items-center mb-3">
-            <h2
-              className="text-[13px] font-bold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Event & Hashtag Tracking
-            </h2>
-            <span
-              className="text-[10px] font-bold uppercase"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {rangeTitle}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {hashtagStats.slice(0, 5).map((h) => (
-              <div
-                key={h.tag}
-                className="flex justify-between items-center p-2 rounded-xl"
-                style={{ background: "var(--glass-fill)" }}
-              >
-                <div>
-                  <p
-                    className="text-[12px] font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {h.tag}
-                  </p>
-                  <p
-                    className="text-[10px]"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {h.count} txs
-                  </p>
-                </div>
-                <p
-                  className="text-[13px] font-bold amount"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {formatRupiah(h.total)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
         </>
+      )}
+
+      {analyticsSubTab === "report" && (
+        <FinancialReportSection
+          wallets={wallets}
+          transactions={rangeTxs}
+          allTransactions={allTxs}
+          categories={categories}
+          startDate={currentPeriodBounds.start}
+          endDate={currentPeriodBounds.end}
+          periodLabel={currentPeriodLabel}
+        />
       )}
 
       {analyticsSubTab === "model" && (

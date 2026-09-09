@@ -1,6 +1,5 @@
 import { useMemo } from "react"
 import type { Wallet, Transaction, TransactionType } from "../lib/types"
-import { resolveFamfinaWallet } from "../lib/famfinaResolver"
 
 interface WalletSuggestionsOptions {
   wallets: Wallet[]
@@ -48,11 +47,10 @@ export function useWalletSuggestions({
         matchedWalletId = t.wallet_id
       }
 
-      if (!matchedWalletId) {
-        const { from, to } = resolveFamfinaWallet(t, wallets)
-        const resolvedName = target === "to" ? to : from
-        const found = nameToWallet.get(resolvedName.toLowerCase())
-        if (found) matchedWalletId = found.id
+      if (!matchedWalletId && t.note) {
+        const noteLower = t.note.toLowerCase()
+        const match = wallets.find(w => noteLower.includes(w.name.toLowerCase()))
+        if (match) matchedWalletId = match.id
       }
 
       if (!matchedWalletId || !scores.has(matchedWalletId)) return

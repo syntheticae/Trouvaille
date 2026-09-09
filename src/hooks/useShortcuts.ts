@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 
 export interface Shortcut {
   id: string
@@ -11,9 +11,9 @@ export interface Shortcut {
 }
 
 const DEFAULT_SHORTCUTS: Shortcut[] = [
-  { id: "s1", title: "☕ Coffee", amount: 25000, wallet_id: "", category_id: "", type: "expense", note: "Kopi" },
-  { id: "s2", title: "⛽ Gas", amount: 30000, wallet_id: "", category_id: "", type: "expense", note: "Bensin" },
-  { id: "s3", title: "🅿️ Parking", amount: 5000, wallet_id: "", category_id: "", type: "expense", note: "Parkir" },
+  { id: "s1", title: "Coffee", amount: 25000, wallet_id: "", category_id: "", type: "expense", note: "Coffee" },
+  { id: "s2", title: "Fuel & Gas", amount: 30000, wallet_id: "", category_id: "", type: "expense", note: "Fuel" },
+  { id: "s3", title: "Parking", amount: 5000, wallet_id: "", category_id: "", type: "expense", note: "Parking" },
 ]
 
 export function useShortcuts() {

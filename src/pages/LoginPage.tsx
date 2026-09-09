@@ -1,7 +1,14 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Mail, Lock, ArrowRight } from "lucide-react"
+import { Mail, Lock, ArrowRight, ScanFace } from "lucide-react"
 import { supabase } from "../lib/supabase"
+import {
+  verifyBiometricPasskey,
+  getSecuritySettings,
+  getBiometricLoginCredentials,
+  saveBiometricLoginCredentials,
+} from "../lib/biometricAuth"
+import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics"
 
 export function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -10,6 +17,47 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [hasBiometric, setHasBiometric] = useState(false)
+
+  useEffect(() => {
+    const s = getSecuritySettings()
+    setHasBiometric(s.hasBiometric)
+    const hint = getBiometricLoginCredentials()
+    if (hint?.email && !email) {
+      setEmail(hint.email)
+    }
+  }, [])
+
+  const handleBiometricLogin = async () => {
+    setLoading(true)
+    setError(null)
+    setMessage(null)
+    triggerHaptic("medium")
+    try {
+      const ok = await verifyBiometricPasskey()
+      if (ok) {
+        triggerSuccessHaptic()
+        const { data } = await supabase.auth.getSession()
+        if (data?.session) {
+          return
+        }
+        const hint = getBiometricLoginCredentials()
+        if (hint?.email) {
+          setEmail(hint.email)
+          setMessage("Biometrics verified! Enter your password to resume session.")
+        } else {
+          setMessage("Biometrics verified! Sign in to sync your account.")
+        }
+      } else {
+        triggerHaptic("heavy")
+        setError("Biometric verification cancelled or unavailable.")
+      }
+    } catch (err: any) {
+      setError(err?.message || "Biometric authentication failed.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,17 +71,20 @@ export function LoginPage() {
       })
       if (error) setError(error.message)
       else if (data?.session) {
-        // Logged in immediately (if confirm email is off)
+        saveBiometricLoginCredentials(email.trim(), data.session)
       } else {
-        setMessage("Pendaftaran berhasil! Silakan cek email untuk konfirmasi (jika diperlukan), atau langsung coba masuk.")
+        setMessage("Registration successful! Please check your email for confirmation (if required), or sign in directly.")
         setIsSignUp(false)
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       })
       if (error) setError(error.message)
+      else if (data?.session) {
+        saveBiometricLoginCredentials(email.trim(), data.session)
+      }
     }
     setLoading(false)
   }
@@ -62,6 +113,42 @@ export function LoginPage() {
           <p className="text-sm mb-6" style={{ color: "var(--text-tertiary)" }}>
             {isSignUp ? "Create your personal tracker account" : "Enter your email and password"}
           </p>
+
+          {hasBiometric && !isSignUp && (
+            <div className="mb-4">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleBiometricLogin}
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl font-bold text-sm transition-all active:scale-95 cursor-pointer shadow-sm"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <ScanFace size={18} strokeWidth={1.75} />
+                <span>Sign In with Face ID / Passkey</span>
+              </button>
+
+              <div className="flex items-center gap-3 my-4">
+                <div
+                  className="h-[1px] flex-1"
+                  style={{ background: "var(--glass-border)" }}
+                />
+                <span
+                  className="text-[10px] uppercase font-bold tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  or with password
+                </span>
+                <div
+                  className="h-[1px] flex-1"
+                  style={{ background: "var(--glass-border)" }}
+                />
+              </div>
+            </div>
+          )}
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="relative">

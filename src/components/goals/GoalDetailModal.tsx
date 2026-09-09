@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
 import type { Goal } from "../../hooks/useGoals";
 import { formatRupiah } from "../../lib/utils";
-import { Plus, Trash2, CheckCircle2, TrendingUp, Compass, Flag } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, TrendingUp, Compass, Flag, Target } from "lucide-react";
+import { IconRenderer } from "../ui/IconRenderer";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useAllTransactions } from "../../hooks/useTransactions";
@@ -143,13 +144,17 @@ export function GoalDetailModal({
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
             <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl"
               style={{
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
               }}
             >
-              {goal.icon || "🎯"}
+              {goal.icon ? (
+                <IconRenderer icon={goal.icon} size="w-6 h-6" />
+              ) : (
+                <Target size={22} style={{ color: "var(--text-primary)" }} />
+              )}
             </div>
             <div>
               <h3
@@ -163,7 +168,7 @@ export function GoalDetailModal({
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {progress >= 100
-                  ? "🎉 Goal Reached!"
+                  ? "Goal Reached!"
                   : `${formatRupiah(remaining)} remaining`}
               </p>
             </div>

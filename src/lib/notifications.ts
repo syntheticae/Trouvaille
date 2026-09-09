@@ -41,7 +41,7 @@ export async function syncBillNotifications(bills: Bill[]): Promise<void> {
       if (dayBefore > now) {
         notificationsToSchedule.push({
           id: (i * 2) + 1,
-          title: `⚠️ Upcoming Bill Tomorrow: ${bill.title}`,
+          title: `Upcoming Bill Tomorrow: ${bill.title}`,
           body: `Bill ${bill.title} (${bill.amount ? 'Rp ' + Number(bill.amount).toLocaleString('id-ID') : ''}) is due tomorrow!`,
           schedule: { at: dayBefore },
           sound: 'default',
@@ -54,7 +54,7 @@ export async function syncBillNotifications(bills: Bill[]): Promise<void> {
       if (onDueDate > now) {
         notificationsToSchedule.push({
           id: (i * 2) + 2,
-          title: `🚨 Bill Due Today: ${bill.title}`,
+          title: `Bill Due Today: ${bill.title}`,
           body: `Remember to pay ${bill.title} (${bill.amount ? 'Rp ' + Number(bill.amount).toLocaleString('id-ID') : ''}) today.`,
           schedule: { at: onDueDate },
           sound: 'default',

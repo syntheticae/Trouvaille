@@ -8,7 +8,6 @@ import {
 } from "date-fns";
 import type { Transaction, Category, Wallet, Bill } from "./types";
 import { formatRupiah } from "./utils";
-import famfinaRaw from "../data/famfina_transactions.json";
 
 export type BudgetRiskLevel = "SAFE" | "WATCH" | "AT RISK";
 
@@ -351,14 +350,6 @@ export interface MonthlyFinancialReviewData {
   };
 }
 
-// Pre-index Famfina records for deterministic lookup
-const famfinaKeyMap = new Map<string, any[]>();
-(famfinaRaw as any[]).forEach((t: any) => {
-  const k = `${t.occurred_on}_${t.amount}_${t.type}`;
-  if (!famfinaKeyMap.has(k)) famfinaKeyMap.set(k, []);
-  famfinaKeyMap.get(k)!.push(t);
-});
-
 const OPENING_BALANCE_PATTERNS = [
   "saldo awal",
   "opening balance",
@@ -446,12 +437,6 @@ export function calculateWalletBalances(
     });
   }
 
-  // Deep copy of Famfina lookup map
-  const keyMapCopy = new Map<string, any[]>();
-  famfinaKeyMap.forEach((v, k) => {
-    keyMapCopy.set(k, [...v]);
-  });
-
   const getWallet = (
     nameOrId: string | null | undefined,
   ): AccountBalanceItem => {
@@ -487,14 +472,6 @@ export function calculateWalletBalances(
     let toName = tx.to_wallet_id
       ? wallets.find((w) => w.id === tx.to_wallet_id)?.name
       : null;
-
-    if (!fromName || (!toName && tx.type === "transfer")) {
-      const k = `${tx.occurred_on}_${tx.amount}_${tx.type}`;
-      const matches = keyMapCopy.get(k);
-      const hint = matches && matches.length > 0 ? matches.shift() : null;
-      if (!fromName && hint?.fromWallet) fromName = hint.fromWallet;
-      if (!toName && hint?.toWallet) toName = hint.toWallet;
-    }
 
     if (!fromName && tx.note) {
       for (const w of wallets) {
@@ -537,8 +514,8 @@ export function calculateWalletBalances(
   );
   const positiveAccounts = allAccounts.filter((a) => a.balance > 0);
   const zeroAccounts = allAccounts.filter((a) => a.balance <= 0);
-  const totalAssets = positiveAccounts.reduce((s, a) => s + a.balance, 0);
   const netWorth = allAccounts.reduce((s, a) => s + a.balance, 0);
+  const totalAssets = netWorth;
 
   const balancesById: Record<string, number> = {};
   const balancesByName: Record<string, number> = {};

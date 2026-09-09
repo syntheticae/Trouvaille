@@ -1,14 +1,25 @@
 export type TransactionType = "income" | "expense" | "transfer" | "adjustment"
 export type RepeatRule = "none" | "weekly" | "monthly" | "yearly"
 
+export type AccountClassification =
+  | "liquid"
+  | "investment"
+  | "receivable"
+  | "credit"
+  | "loan";
+
+export type CashflowNature = "operating" | "investing" | "financing";
+
 export interface Category {
   id: string; user_id: string; name: string; emoji: string
   type: TransactionType; is_default: boolean; created_at: string
   budget_amount?: number | null
+  cashflow_nature?: CashflowNature
 }
 
 export interface Wallet {
   id: string; user_id: string; name: string; icon: string; created_at: string
+  classification?: AccountClassification
 }
 
 export interface Transaction {

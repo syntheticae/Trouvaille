@@ -57,6 +57,7 @@
   --chart-label: #121212;
 
   --bg-canvas: var(--bg-base);
+  --bg-primary: var(--bg-base);
   --ink-primary: var(--text-primary);
   --ink-secondary: var(--text-secondary);
   --ink-tertiary: var(--text-tertiary);
@@ -116,6 +117,7 @@
   --chart-label: #FFFFFF;
 
   --bg-canvas: var(--bg-base);
+  --bg-primary: var(--bg-base);
   --ink-primary: var(--text-primary);
   --ink-secondary: var(--text-secondary);
   --ink-tertiary: var(--text-tertiary);

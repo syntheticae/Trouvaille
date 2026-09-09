@@ -1,6 +1,90 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
-import type { Wallet } from "../lib/types";
+import type { Wallet, AccountClassification } from "../lib/types";
+
+export const WALLET_CLASSIFICATION_STORAGE_KEY =
+  "trouvaille_wallet_classifications_v1";
+
+export function getDefaultWalletClassification(name: string): AccountClassification {
+  if (!name) return "liquid";
+  const n = name.trim().toLowerCase();
+  if (
+    n.includes("saham") ||
+    n.includes("crypto") ||
+    n.includes("investasi") ||
+    n.includes("reksadana") ||
+    n.includes("deposito") ||
+    n.includes("stock") ||
+    n.includes("emas")
+  ) {
+    return "investment";
+  }
+  if (
+    n.includes("piutang") ||
+    n.includes("receivable") ||
+    n.includes("pinjaman teman")
+  ) {
+    return "receivable";
+  }
+  if (
+    n.includes("credit") ||
+    n.includes("paylater") ||
+    n.includes("cc") ||
+    n.includes("kartu kredit") ||
+    n.includes("spaylater") ||
+    n.includes("gopaylater")
+  ) {
+    return "credit";
+  }
+  if (
+    n.includes("liabilities") ||
+    n.includes("loan") ||
+    n.includes("kpr") ||
+    n.includes("hutang") ||
+    n.includes("pinjaman")
+  ) {
+    return "loan";
+  }
+  return "liquid";
+}
+
+export function getSavedWalletClassifications(): Record<string, AccountClassification> {
+  try {
+    const raw = localStorage.getItem(WALLET_CLASSIFICATION_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveWalletClassification(
+  walletIdOrName: string,
+  classification: AccountClassification,
+): void {
+  try {
+    const map = getSavedWalletClassifications();
+    map[walletIdOrName.toLowerCase()] = classification;
+    localStorage.setItem(WALLET_CLASSIFICATION_STORAGE_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.warn("Failed to save wallet classification:", e);
+  }
+}
+
+export function resolveWalletClassification(wallet: {
+  id?: string;
+  name: string;
+  classification?: AccountClassification;
+}): AccountClassification {
+  if (wallet.classification) return wallet.classification;
+  const savedMap = getSavedWalletClassifications();
+  if (wallet.id && savedMap[wallet.id.toLowerCase()]) {
+    return savedMap[wallet.id.toLowerCase()];
+  }
+  if (wallet.name && savedMap[wallet.name.trim().toLowerCase()]) {
+    return savedMap[wallet.name.trim().toLowerCase()];
+  }
+  return getDefaultWalletClassification(wallet.name);
+}
 
 export const walletKeys = {
   all: (userId?: string) => ["wallets", userId ?? null] as const,
@@ -61,6 +145,7 @@ export const FALLBACK_WALLETS: Wallet[] = DEFAULT_WALLETS.map((name, i) => ({
   user_id: "default",
   name,
   icon: getWalletIcon(name),
+  classification: resolveWalletClassification({ name }),
   created_at: new Date().toISOString(),
 }));
 
@@ -166,7 +251,12 @@ export function useWallets() {
               !w.icon || w.icon === "/icons/wallet.png"
                 ? getWalletIcon(w.name)
                 : w.icon;
-            unique.push({ ...w, icon: resolvedIcon });
+            const resolvedClassification = resolveWalletClassification(w);
+            unique.push({
+              ...w,
+              icon: resolvedIcon,
+              classification: resolvedClassification,
+            });
           }
         });
 
@@ -182,7 +272,12 @@ export function useWallets() {
           const cached = localStorage.getItem(WALLETS_BACKUP_STORAGE_KEY);
           if (cached) {
             const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed as Wallet[];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              return parsed.map((w: Wallet) => ({
+                ...w,
+                classification: resolveWalletClassification(w),
+              }));
+            }
           }
         } catch {}
         return FALLBACK_WALLETS;
@@ -196,7 +291,11 @@ export function useWallets() {
 export function useAddWallet() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (w: { name: string; icon?: string }) => {
+    mutationFn: async (w: {
+      name: string;
+      icon?: string;
+      classification?: AccountClassification;
+    }) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -209,7 +308,12 @@ export function useAddWallet() {
         .select()
         .single();
       if (error) throw error;
-      return data as Wallet;
+      const created = data as Wallet;
+      const resolvedClassification =
+        w.classification || resolveWalletClassification(created);
+      saveWalletClassification(created.id, resolvedClassification);
+      saveWalletClassification(created.name, resolvedClassification);
+      return { ...created, classification: resolvedClassification };
     },
     onSuccess: (newWallet) => {
       qc.setQueriesData<Wallet[]>({ queryKey: ["wallets"] }, (old) => {
@@ -228,10 +332,12 @@ export function useUpdateWallet() {
       id,
       name,
       icon,
+      classification,
     }: {
       id: string;
       name: string;
       icon?: string;
+      classification?: AccountClassification;
     }) => {
       const payload: any = { name };
       if (icon) payload.icon = icon;
@@ -243,7 +349,14 @@ export function useUpdateWallet() {
         .select()
         .single();
       if (error) throw error;
-      return data as Wallet;
+      const updated = data as Wallet;
+      if (classification) {
+        saveWalletClassification(id, classification);
+        saveWalletClassification(name, classification);
+      }
+      const finalClassification =
+        classification || resolveWalletClassification(updated);
+      return { ...updated, classification: finalClassification };
     },
     onSuccess: (updated) => {
       qc.setQueriesData<Wallet[]>({ queryKey: ["wallets"] }, (old) => {
@@ -283,4 +396,23 @@ export function useDeleteWallet() {
       qc.invalidateQueries({ queryKey: ["wallets"] });
     },
   });
+}
+
+export function resolveTransactionWallets(
+  tx: { wallet_id?: string | null; to_wallet_id?: string | null },
+  wallets: Wallet[],
+): { from: string; to: string } {
+  let fromName: string | undefined;
+  let toName: string | undefined;
+
+  if (tx.wallet_id) {
+    const found = wallets.find((w) => w.id === tx.wallet_id);
+    if (found) fromName = found.name;
+  }
+  if (tx.to_wallet_id) {
+    const found = wallets.find((w) => w.id === tx.to_wallet_id);
+    if (found) toName = found.name;
+  }
+
+  return { from: fromName || "Cash", to: toName || "Cash" };
 }

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { formatRupiah } from "../../lib/utils";
-import { Layers } from "lucide-react";
+import { Layers, Folder } from "lucide-react";
+import { IconRenderer } from "../ui/IconRenderer";
 import type { Category, Bill, Goal } from "../../lib/types";
 
 interface ZeroBasedEnvelopesCardProps {
@@ -269,7 +270,11 @@ export function ZeroBasedEnvelopesCard({
               >
                 <div className="flex items-center justify-between text-[11px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[13px]">{env.emoji || "📁"}</span>
+                    {env.emoji ? (
+                      <IconRenderer icon={env.emoji} size="text-[13px]" />
+                    ) : (
+                      <Folder size={13} style={{ color: "var(--text-tertiary)" }} />
+                    )}
                     <span
                       className="font-bold"
                       style={{ color: "var(--text-primary)" }}

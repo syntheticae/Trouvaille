@@ -1,5 +1,4 @@
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
-import { getFamfinaMatch } from "../../lib/famfinaResolver";
 
 function getTop3Slots<T extends { id: string }>(
   items: T[],
@@ -48,23 +47,129 @@ import { IconRenderer } from "../ui/IconRenderer";
 import { GlassDatePicker } from "../ui/GlassDatePicker";
 import type { Transaction, TransactionType } from "../../lib/types";
 import { useShortcuts } from "../../hooks/useShortcuts";
+import { SmartQuickAddBar } from "./SmartQuickAddBar";
 
 interface TransactionSheetProps {
   isOpen: boolean;
   onClose: () => void;
   transaction?: Transaction | null;
+  initialValues?: {
+    type?: TransactionType;
+    amount?: number;
+    categoryId?: string | null;
+    walletId?: string | null;
+    toWalletId?: string | null;
+    date?: Date;
+    note?: string;
+  } | null;
+}
+
+export function evaluateMathSafe(expr: string): number {
+  if (!expr) return 0;
+  let normalized = expr.replace(/(\d)\.(\d{3})/g, "$1$2");
+  normalized = normalized.replace(/,/g, "");
+  normalized = normalized.replace(/×/g, "*").replace(/÷/g, "/");
+  const sanitized = normalized.replace(/[^0-9+\-*/().]/g, "");
+  if (!sanitized) return 0;
+
+  try {
+    const tokens: string[] = [];
+    let numBuffer = "";
+    for (let i = 0; i < sanitized.length; i++) {
+      const ch = sanitized[i];
+      if ((ch >= "0" && ch <= "9") || ch === ".") {
+        numBuffer += ch;
+      } else if ("+-*/()".includes(ch)) {
+        if (numBuffer) {
+          tokens.push(numBuffer);
+          numBuffer = "";
+        }
+        tokens.push(ch);
+      }
+    }
+    if (numBuffer) tokens.push(numBuffer);
+
+    let index = 0;
+
+    function parseFactor(): number {
+      if (index >= tokens.length) return 0;
+      const token = tokens[index];
+      if (token === "(") {
+        index++; // consume '('
+        const result = parseExpression();
+        if (index < tokens.length && tokens[index] === ")") index++; // consume ')'
+        return result;
+      }
+      if (token === "-") {
+        index++;
+        return -parseFactor();
+      }
+      if (token === "+") {
+        index++;
+        return parseFactor();
+      }
+      index++;
+      const val = parseFloat(token);
+      return isNaN(val) ? 0 : val;
+    }
+
+    function parseTerm(): number {
+      let result = parseFactor();
+      while (index < tokens.length) {
+        const op = tokens[index];
+        if (op === "*" || op === "/") {
+          index++;
+          const nextFactor = parseFactor();
+          result = op === "*" ? result * nextFactor : nextFactor !== 0 ? result / nextFactor : 0;
+        } else {
+          break;
+        }
+      }
+      return result;
+    }
+
+    function parseExpression(): number {
+      let result = parseTerm();
+      while (index < tokens.length) {
+        const op = tokens[index];
+        if (op === "+" || op === "-") {
+          index++;
+          const nextTerm = parseTerm();
+          result = op === "+" ? result + nextTerm : result - nextTerm;
+        } else {
+          break;
+        }
+      }
+      return result;
+    }
+
+    const res = parseExpression();
+    if (typeof res === "number" && !isNaN(res) && isFinite(res) && res >= 0) {
+      return Math.round(res);
+    }
+    return 0;
+  } catch {
+    const digits = normalized.replace(/\D/g, "");
+    return Number(digits) || 0;
+  }
 }
 
 export function TransactionSheet({
   isOpen,
   onClose,
   transaction,
+  initialValues,
 }: TransactionSheetProps) {
   const [type, setType] = useState<TransactionType>(
     transaction?.type || "expense",
   );
   const [amount, setAmount] = useState(
     transaction ? String(transaction.amount) : "0",
+  );
+  const [amountInput, setAmountInput] = useState(
+    transaction && Number(transaction.amount) > 0
+      ? Number(transaction.amount).toLocaleString("id-ID")
+      : "",
   );
   const [note, setNote] = useState(transaction?.note || "");
   const [date, setDate] = useState<Date>(
@@ -99,8 +204,10 @@ export function TransactionSheet({
   // Split Transaction & Piutang State (Innovation 2)
   const [isSplitOpen, setIsSplitOpen] = useState(false);
   const [splitMode, setSplitMode] = useState<"friends" | "categories">("friends");
+  const [splitFriendType, setSplitFriendType] = useState<"equal" | "custom">("equal");
   const [peopleCount, setPeopleCount] = useState(2);
   const [friendNames, setFriendNames] = useState("");
+  const [customMyShare, setCustomMyShare] = useState<number>(0);
   const [itemCatId2, setItemCatId2] = useState<string | null>(null);
   const [itemAmount1, setItemAmount1] = useState<number>(0);
 
@@ -178,6 +285,11 @@ export function TransactionSheet({
       if (transaction) {
         setType(transaction.type);
         setAmount(String(transaction.amount || "0"));
+        setAmountInput(
+          Number(transaction.amount) > 0
+            ? Number(transaction.amount).toLocaleString("id-ID")
+            : "",
+        );
         setNote(transaction.note || "");
         setDate(
           transaction.occurred_on
@@ -201,34 +313,20 @@ export function TransactionSheet({
           );
           if (foundCat) setCategoryId(foundCat.id);
         } else {
-          const match = getFamfinaMatch(transaction);
-          if (match?.categoryName) {
-            const foundCat = allCategories.find(
-              (c) => c.name.toLowerCase() === match.categoryName.toLowerCase(),
-            );
-            setCategoryId(
-              foundCat
-                ? foundCat.id
-                : categories.length > 0
-                  ? categories[0].id
-                  : null,
-            );
-          } else {
-            let foundByNote = null;
-            if (transaction.note) {
-              const noteLower = transaction.note.toLowerCase();
-              foundByNote = allCategories.find((c) =>
-                noteLower.includes(c.name.toLowerCase()),
-              );
-            }
-            setCategoryId(
-              foundByNote
-                ? foundByNote.id
-                : categories.length > 0
-                  ? categories[0].id
-                  : null,
+          let foundByNote = null;
+          if (transaction.note) {
+            const noteLower = transaction.note.toLowerCase();
+            foundByNote = allCategories.find((c) =>
+              noteLower.includes(c.name.toLowerCase()),
             );
           }
+          setCategoryId(
+            foundByNote
+              ? foundByNote.id
+              : categories.length > 0
+                ? categories[0].id
+                : null,
+          );
         }
 
         // 2. Resolve Wallet (From Account)
@@ -239,14 +337,7 @@ export function TransactionSheet({
         ) {
           resolvedFromWalletId = transaction.wallet_id;
         } else {
-          const match = getFamfinaMatch(transaction);
-          if (match?.fromWallet) {
-            const foundWallet = wallets.find(
-              (w) => w.name.toLowerCase() === match.fromWallet.toLowerCase(),
-            );
-            if (foundWallet) resolvedFromWalletId = foundWallet.id;
-          }
-          if (!resolvedFromWalletId && transaction.note) {
+          if (transaction.note) {
             const noteLower = transaction.note.toLowerCase();
             const foundByNote = wallets.find((w) =>
               noteLower.includes(w.name.toLowerCase()),
@@ -268,40 +359,55 @@ export function TransactionSheet({
         ) {
           resolvedToWalletId = transaction.to_wallet_id;
         } else {
-          const match = getFamfinaMatch(transaction);
-          if (match && match.toWallet) {
-            const tw = match.toWallet.toLowerCase();
-            const foundTo = wallets.find((w) => w.name.toLowerCase() === tw);
-            if (foundTo) resolvedToWalletId = foundTo.id;
-          }
-          if (!resolvedToWalletId && wallets.length > 1) {
+          if (wallets.length > 1) {
             const other = wallets.find((w) => w.id !== resolvedFromWalletId);
             resolvedToWalletId = other ? other.id : wallets[1].id;
           }
         }
         setToWalletId(resolvedToWalletId);
       } else {
-        setType("expense");
-        setAmount("0");
-        setNote("");
-        setDate(new Date());
+        const initType = initialValues?.type || "expense";
+        const initAmt =
+          initialValues?.amount !== undefined && initialValues?.amount !== null
+            ? String(initialValues.amount)
+            : "0";
+        const initAmtInput =
+          initialValues?.amount !== undefined && initialValues?.amount !== null && initialValues.amount > 0
+            ? initialValues.amount.toLocaleString("id-ID")
+            : "";
+        const initNote = initialValues?.note || "";
+        const initDate = initialValues?.date || new Date();
+
+        setType(initType);
+        setAmount(initAmt);
+        setAmountInput(initAmtInput);
+        setNote(initNote);
+        setDate(initDate);
         setTime(format(new Date(), "HH:mm"));
         const defaultCatId =
-          suggestedCategories[0]?.id ||
-          (categories.length > 0 ? categories[0].id : null);
+          initialValues?.categoryId !== undefined
+            ? initialValues.categoryId
+            : (suggestedCategories[0]?.id ||
+               (categories.length > 0 ? categories[0].id : null));
         const defaultFromId =
-          suggestedFromWallets[0]?.id ||
-          (wallets.length > 0 ? wallets[0].id : null);
+          initialValues?.walletId !== undefined
+            ? initialValues.walletId
+            : (suggestedFromWallets[0]?.id ||
+               (wallets.length > 0 ? wallets[0].id : null));
         const defaultToId =
-          suggestedToWallets.find((w) => w.id !== defaultFromId)?.id ||
-          (wallets.length > 1 ? wallets[1].id : null);
+          initialValues?.toWalletId !== undefined
+            ? initialValues.toWalletId
+            : (suggestedToWallets.find((w) => w.id !== defaultFromId)?.id ||
+               (wallets.length > 1 ? wallets[1].id : null));
         setCategoryId(defaultCatId);
         setWalletId(defaultFromId);
         setToWalletId(defaultToId);
         setIsSplitOpen(false);
         setSplitMode("friends");
+        setSplitFriendType("equal");
         setPeopleCount(2);
         setFriendNames("");
+        setCustomMyShare(0);
         setItemCatId2(null);
         setItemAmount1(0);
       }
@@ -312,6 +418,7 @@ export function TransactionSheet({
   }, [
     isOpen,
     transaction,
+    initialValues,
     allCategories,
     categories,
     wallets,
@@ -336,7 +443,9 @@ export function TransactionSheet({
   // Split Calculated Shares (Innovation 2)
   const totalAmountNum = Number(amount) || 0;
   const myShareFriends =
-    peopleCount > 0 ? Math.round(totalAmountNum / peopleCount) : totalAmountNum;
+    splitFriendType === "equal"
+      ? (peopleCount > 0 ? Math.round(totalAmountNum / peopleCount) : totalAmountNum)
+      : Math.min(totalAmountNum, Math.max(0, customMyShare));
   const friendsShare = Math.max(0, totalAmountNum - myShareFriends);
   const cat1Share = Math.min(
     totalAmountNum,
@@ -708,7 +817,7 @@ export function TransactionSheet({
                   if (s.category_id) setCategoryId(s.category_id);
                   if (s.wallet_id) setWalletId(s.wallet_id);
                 }}
-                className="whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0 transition-transform active:scale-95 flex items-center gap-1.5"
+                className="whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0 transition-transform active:scale-95 flex items-center gap-1.5 cursor-pointer"
                 style={{
                   background: "var(--bg-elevated)",
                   border: "1px solid var(--glass-border)",
@@ -722,7 +831,7 @@ export function TransactionSheet({
           </div>
         )}
 
-        {/* Hero Amount Input with Native iOS Numberpad */}
+        {/* Hero Amount Input with Native iOS Numberpad & Inline Math */}
         <div className="text-center py-2 mb-3">
           <div
             className="inline-flex items-baseline justify-center gap-1.5 px-4 py-2.5 rounded-2xl transition-all"
@@ -739,20 +848,106 @@ export function TransactionSheet({
             </span>
             <input
               type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={
-                amount === "0" ? "" : Number(amount).toLocaleString("id-ID")
-              }
+              inputMode="text"
+              value={amountInput}
               onChange={(e) => {
-                const raw = e.target.value.replace(/\D/g, "");
-                setAmount(raw === "" ? "0" : raw.slice(0, 11));
+                const val = e.target.value;
+                if (/^[0-9+\-*/×÷.,\s]*$/.test(val)) {
+                  setAmountInput(val);
+                  if (!/[+\-*/×÷]/.test(val)) {
+                    const raw = val.replace(/\D/g, "");
+                    setAmount(raw === "" ? "0" : raw.slice(0, 11));
+                  }
+                }
+              }}
+              onBlur={() => {
+                const evaluated = evaluateMathSafe(amountInput);
+                setAmount(String(evaluated));
+                setAmountInput(
+                  evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
+                );
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const evaluated = evaluateMathSafe(amountInput);
+                  setAmount(String(evaluated));
+                  setAmountInput(
+                    evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
+                  );
+                  (e.target as HTMLInputElement).blur();
+                }
               }}
               placeholder="0"
-              autoFocus={!transaction}
               className="text-[34px] font-black amount tracking-tight leading-none bg-transparent outline-none text-center min-w-[100px] max-w-[260px]"
               style={{ color: "var(--text-primary)" }}
             />
+          </div>
+
+          {/* Inline Math Preview Badge (High contrast Apple pill) */}
+          {/[+\-*/×÷]/.test(amountInput) && (
+            <div className="mt-2 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  const evaluated = evaluateMathSafe(amountInput);
+                  setAmount(String(evaluated));
+                  setAmountInput(
+                    evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
+                  );
+                }}
+                className="px-3.5 py-1.5 rounded-full text-[12px] font-black inline-flex items-center gap-1.5 active:scale-95 transition-all shadow-md cursor-pointer select-none"
+                style={{
+                  background: "var(--accent)",
+                  color: "var(--accent-ink)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+                }}
+              >
+                <span>= {formatRupiah(evaluateMathSafe(amountInput))}</span>
+                <span className="text-[10px] opacity-75 font-semibold">(Tap to apply)</span>
+              </button>
+            </div>
+          )}
+
+          {/* Quick Increment & Math Operator Strip */}
+          <div className="flex items-center justify-center gap-1.5 mt-2.5 px-2">
+            {[
+              { label: "+10K", add: 10000 },
+              { label: "+50K", add: 50000 },
+              { label: "+100K", add: 100000 },
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  const current = evaluateMathSafe(amountInput);
+                  const next = current + preset.add;
+                  setAmount(String(next));
+                  setAmountInput(next.toLocaleString("id-ID"));
+                }}
+                className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold glass-surface active:scale-90 transition-transform"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {preset.label}
+              </button>
+            ))}
+            <div className="w-[1px] h-3 bg-zinc-700/40 mx-0.5" />
+            {["+", "-", "×"].map((op) => (
+              <button
+                key={op}
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  const base = amountInput ? amountInput.trim() : "0";
+                  setAmountInput(`${base} ${op} `);
+                }}
+                className="w-7 h-6 rounded-lg text-[12px] font-black glass-surface flex items-center justify-center active:scale-90 transition-transform"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {op}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -881,64 +1076,82 @@ export function TransactionSheet({
         {/* Split Transaction & Piutang (Innovation 2) */}
         {type === "expense" && !transaction && (
           <div className="mb-3">
-            <button
-              type="button"
-              onClick={() => {
-                setIsSplitOpen(!isSplitOpen);
-                triggerHaptic("light");
-              }}
-              className="w-full py-2 px-3.5 rounded-2xl flex items-center justify-between transition-all active:scale-[0.99]"
+            <div className="flex justify-between items-center mb-1.5 px-1">
+              <span
+                className="text-[11px] font-bold uppercase tracking-wider"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Split Bill
+              </span>
+              {isSplitOpen && (
+                <span
+                  className="text-[10px] font-semibold"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {splitMode === "friends" ? `${peopleCount} People` : "Multi-Category"}
+                </span>
+              )}
+            </div>
+
+            <div
+              className="rounded-2xl p-3.5 transition-all select-none"
               style={{
-                background: isSplitOpen
-                  ? "var(--glass-fill-strong)"
-                  : "var(--bg-elevated)",
-                border: isSplitOpen
-                  ? "1px solid var(--accent)"
-                  : "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
               }}
             >
-              <div className="flex items-center gap-2">
-                <Users
-                  size={14}
-                  style={{
-                    color: isSplitOpen
-                      ? "var(--accent)"
-                      : "var(--text-secondary)",
-                  }}
-                />
-                <span className="text-[12px] font-bold">
-                  Split Transaction & Piutang
-                </span>
-              </div>
-              <span
-                className="text-[10px] font-extrabold px-2 py-0.5 rounded-full"
-                style={{
-                  background: isSplitOpen
-                    ? "var(--accent)"
-                    : "var(--glass-fill)",
-                  color: isSplitOpen
-                    ? "var(--accent-ink)"
-                    : "var(--text-tertiary)",
-                }}
-              >
-                {isSplitOpen ? "Active" : "Off"}
-              </span>
-            </button>
-
-            {isSplitOpen && (
+              {/* Minimal Apple Rule 3 Toggle Row */}
               <div
-                className="mt-2 p-3.5 rounded-2xl space-y-3 glass-surface"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
+                onClick={() => {
+                  setIsSplitOpen(!isSplitOpen);
+                  triggerHaptic("light");
                 }}
+                className="flex items-center justify-between cursor-pointer"
               >
-                {/* Sub-mode tabs */}
+                <div>
+                  <span
+                    className="text-[13px] font-semibold block leading-tight"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Split Expense
+                  </span>
+                  <span
+                    className="text-[11px] text-[var(--text-tertiary)] block mt-0.5"
+                  >
+                    Split with friends (piutang) or divide across categories
+                  </span>
+                </div>
+
+                {/* Minimal iOS Toggle Switch */}
                 <div
-                  className="flex p-1 rounded-xl glass-surface"
-                  style={{ background: "var(--glass-fill)" }}
+                  className="w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 flex items-center shrink-0"
+                  style={{
+                    background: isSplitOpen
+                      ? "var(--accent)"
+                      : "var(--glass-fill-strong)",
+                    border: "1px solid var(--glass-border)",
+                  }}
                 >
+                  <div
+                    className={`w-4.5 h-4.5 rounded-full shadow-sm transition-transform duration-200 ${
+                      isSplitOpen ? "translate-x-4.5" : "translate-x-0"
+                    }`}
+                    style={{
+                      background: isSplitOpen
+                        ? "var(--accent-ink)"
+                        : "var(--text-tertiary)",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {isSplitOpen && (
+                <div className="mt-3 pt-3 border-t border-[var(--glass-border)]/50 space-y-3">
+                  {/* Sub-mode tabs */}
+                  <div
+                    className="flex p-1 rounded-xl glass-surface"
+                    style={{ background: "var(--glass-fill)" }}
+                  >
                   <button
                     type="button"
                     onClick={() => {
@@ -992,13 +1205,64 @@ export function TransactionSheet({
                 </div>
 
                 {splitMode === "friends" ? (
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
+                    {/* Equal vs Custom Split Toggle */}
+                    <div
+                      className="flex p-0.5 rounded-xl border border-[var(--glass-border)]"
+                      style={{ background: "var(--glass-fill)" }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSplitFriendType("equal");
+                          triggerHaptic("light");
+                        }}
+                        className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+                        style={{
+                          background:
+                            splitFriendType === "equal"
+                              ? "var(--bg-elevated)"
+                              : "transparent",
+                          color:
+                            splitFriendType === "equal"
+                              ? "var(--text-primary)"
+                              : "var(--text-tertiary)",
+                        }}
+                      >
+                        Split Equally
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSplitFriendType("custom");
+                          if (customMyShare === 0 && totalAmountNum > 0) {
+                            setCustomMyShare(Math.round(totalAmountNum / 2));
+                          }
+                          triggerHaptic("light");
+                        }}
+                        className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+                        style={{
+                          background:
+                            splitFriendType === "custom"
+                              ? "var(--bg-elevated)"
+                              : "transparent",
+                          color:
+                            splitFriendType === "custom"
+                              ? "var(--text-primary)"
+                              : "var(--text-tertiary)",
+                        }}
+                      >
+                        Custom Share
+                      </button>
+                    </div>
+
+                    {/* People & Name Selection */}
                     <div className="flex items-center justify-between">
                       <span
-                        className="text-[11px] font-bold"
+                        className="text-[11px] font-semibold"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        Total Split
+                        Total People
                       </span>
                       <div className="flex items-center gap-2">
                         <button
@@ -1010,7 +1274,7 @@ export function TransactionSheet({
                             }
                           }}
                           disabled={peopleCount <= 2}
-                          className="w-7 h-7 rounded-xl flex items-center justify-center active:scale-95 disabled:opacity-30"
+                          className="w-7 h-7 rounded-xl flex items-center justify-center active:scale-95 disabled:opacity-30 cursor-pointer"
                           style={{
                             background: "var(--glass-fill)",
                             border: "1px solid var(--glass-border)",
@@ -1020,7 +1284,7 @@ export function TransactionSheet({
                           <Minus size={12} />
                         </button>
                         <span
-                          className="text-[12px] font-extrabold px-1"
+                          className="text-[12px] font-bold px-1"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {peopleCount} People
@@ -1028,13 +1292,13 @@ export function TransactionSheet({
                         <button
                           type="button"
                           onClick={() => {
-                            if (peopleCount < 10) {
+                            if (peopleCount < 15) {
                               setPeopleCount((p) => p + 1);
                               triggerHaptic("light");
                             }
                           }}
-                          disabled={peopleCount >= 10}
-                          className="w-7 h-7 rounded-xl flex items-center justify-center active:scale-95 disabled:opacity-30"
+                          disabled={peopleCount >= 15}
+                          className="w-7 h-7 rounded-xl flex items-center justify-center active:scale-95 disabled:opacity-30 cursor-pointer"
                           style={{
                             background: "var(--glass-fill)",
                             border: "1px solid var(--glass-border)",
@@ -1046,6 +1310,7 @@ export function TransactionSheet({
                       </div>
                     </div>
 
+                    {/* Friend Names Input */}
                     <div
                       className="rounded-xl px-3 py-2"
                       style={{
@@ -1057,8 +1322,8 @@ export function TransactionSheet({
                         type="text"
                         value={friendNames}
                         onChange={(e) => setFriendNames(e.target.value)}
-                        placeholder="Friend names (e.g. Budi, Andi)"
-                        className="bg-transparent text-[12px] font-semibold w-full outline-none"
+                        placeholder="Friend names (e.g. Alex, Sam)"
+                        className="bg-transparent text-[12px] font-medium w-full outline-none"
                         style={{
                           color: "var(--text-primary)",
                           fontFamily: "Urbanist, sans-serif",
@@ -1066,52 +1331,192 @@ export function TransactionSheet({
                       />
                     </div>
 
+                    {/* Custom Share Numeric Input & Percentage Quick Chips */}
+                    {splitFriendType === "custom" && (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span
+                            className="font-medium"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            Your Personal Share
+                          </span>
+                          <span
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[var(--glass-border)]"
+                            style={{
+                              background: "var(--glass-fill)",
+                              color: "var(--text-primary)",
+                            }}
+                          >
+                            {totalAmountNum > 0
+                              ? `${Math.round((myShareFriends / totalAmountNum) * 100)}%`
+                              : "0%"}
+                          </span>
+                        </div>
+
+                        <div
+                          className="flex items-center gap-2 rounded-xl px-3 py-2"
+                          style={{
+                            background: "var(--glass-fill)",
+                            border: "1px solid var(--glass-border)",
+                          }}
+                        >
+                          <span
+                            className="text-[12px] font-bold"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            Rp
+                          </span>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            value={customMyShare === 0 ? "" : customMyShare}
+                            onChange={(e) => {
+                              const val = Math.max(
+                                0,
+                                Math.min(
+                                  totalAmountNum,
+                                  Number(e.target.value) || 0,
+                                ),
+                              );
+                              setCustomMyShare(val);
+                            }}
+                            placeholder="Enter your share..."
+                            className="bg-transparent text-[13px] font-bold w-full outline-none amount"
+                            style={{ color: "var(--text-primary)" }}
+                          />
+                        </div>
+
+                        {/* Quick Percentage Chips */}
+                        <div className="flex gap-1.5">
+                          {[
+                            { label: "25%", ratio: 0.25 },
+                            { label: "33%", ratio: 1 / 3 },
+                            { label: "50%", ratio: 0.5 },
+                            { label: "66%", ratio: 2 / 3 },
+                            { label: "75%", ratio: 0.75 },
+                          ].map((chip) => (
+                            <button
+                              key={chip.label}
+                              type="button"
+                              onClick={() => {
+                                setCustomMyShare(
+                                  Math.round(totalAmountNum * chip.ratio),
+                                );
+                                triggerHaptic("light");
+                              }}
+                              className="flex-1 py-1 rounded-lg text-[10px] font-semibold transition-all active:scale-95 cursor-pointer"
+                              style={{
+                                background: "var(--glass-fill)",
+                                border: "1px solid var(--glass-border)",
+                                color: "var(--text-secondary)",
+                              }}
+                            >
+                              {chip.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Proportional Monochrome Distribution Bar */}
+                    {totalAmountNum > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <div
+                          className="h-1 rounded-full overflow-hidden flex"
+                          style={{ background: "var(--glass-fill)" }}
+                        >
+                          <div
+                            className="h-full transition-all duration-300"
+                            style={{
+                              width: `${Math.max(
+                                0,
+                                Math.min(
+                                  100,
+                                  (myShareFriends / totalAmountNum) * 100,
+                                ),
+                              )}%`,
+                              background: "var(--text-primary)",
+                            }}
+                          />
+                          <div
+                            className="h-full transition-all duration-300"
+                            style={{
+                              width: `${Math.max(
+                                0,
+                                Math.min(
+                                  100,
+                                  (friendsShare / totalAmountNum) * 100,
+                                ),
+                              )}%`,
+                              background: "var(--text-tertiary)",
+                              opacity: 0.35,
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[9px] font-medium text-[var(--text-tertiary)]">
+                          <span>
+                            Your Share:{" "}
+                            {Math.round((myShareFriends / totalAmountNum) * 100)}
+                            %
+                          </span>
+                          <span>
+                            Friends' Share:{" "}
+                            {Math.round((friendsShare / totalAmountNum) * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Dual Result Summary Cards - Monochrome Minimalist */}
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <div
-                        className="p-2.5 rounded-xl space-y-0.5"
+                        className="p-3 rounded-2xl space-y-0.5 border border-[var(--glass-border)]"
                         style={{ background: "var(--glass-fill)" }}
                       >
                         <p
-                          className="text-[9px] font-bold uppercase tracking-wider"
-                          style={{ color: "var(--text-tertiary)" }}
+                          className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]"
                         >
                           Your Share
                         </p>
                         <p
-                          className="text-[13px] font-extrabold amount"
+                          className="text-[13px] font-bold amount"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {formatRupiah(myShareFriends)}
                         </p>
                         <p
-                          className="text-[9px]"
+                          className="text-[9.5px]"
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           Personal Expense
                         </p>
                       </div>
                       <div
-                        className="p-2.5 rounded-xl space-y-0.5"
+                        className="p-3 rounded-2xl space-y-0.5 border border-[var(--glass-border)]"
                         style={{ background: "var(--glass-fill)" }}
                       >
                         <p
-                          className="text-[9px] font-bold uppercase tracking-wider"
-                          style={{ color: "var(--text-tertiary)" }}
+                          className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]"
                         >
                           Friends' Share
                         </p>
                         <p
-                          className="text-[13px] font-extrabold amount"
+                          className="text-[13px] font-bold amount"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {formatRupiah(friendsShare)}
                         </p>
                         <p
-                          className="text-[9px]"
+                          className="text-[9.5px]"
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           Piutang ({peopleCount - 1} friend
-                          {peopleCount - 1 > 1 ? "s" : ""})
+                          {peopleCount - 1 > 1 ? "s" : ""}
+                          {peopleCount > 2
+                            ? ` · ~${formatRupiah(Math.round(friendsShare / (peopleCount - 1)))}/ea`
+                            : ""}
+                          )
                         </p>
                       </div>
                     </div>
@@ -1207,6 +1612,41 @@ export function TransactionSheet({
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+        {/* Natural Language & Voice Quick Add Bar (Positioned at bottom) */}
+        {!transaction && (
+          <div className="mt-2 mb-2">
+            <SmartQuickAddBar
+              categories={categories}
+              wallets={wallets}
+              onApply={(parsed) => {
+                if (parsed.amount !== null && parsed.amount > 0) {
+                  setAmount(String(parsed.amount));
+                  setAmountInput(parsed.amount.toLocaleString("id-ID"));
+                }
+                if (parsed.type) {
+                  setType(parsed.type);
+                }
+                if (parsed.categoryId) {
+                  setCategoryId(parsed.categoryId);
+                }
+                if (parsed.walletId) {
+                  setWalletId(parsed.walletId);
+                }
+                if (parsed.toWalletId) {
+                  setToWalletId(parsed.toWalletId);
+                }
+                if (parsed.date) {
+                  setDate(parsed.date);
+                }
+                if (parsed.note) {
+                  setNote(parsed.note);
+                }
+              }}
+            />
           </div>
         )}
 

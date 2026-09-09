@@ -48,23 +48,23 @@ export function ResetTransactionsSheet({ isOpen, onClose }: ResetTransactionsShe
   }, [allTxs])
 
   const periodOptions: { key: ResetPeriod; title: string; subtitle: string; count: number }[] = [
-    { key: "today", title: "Hari Ini", subtitle: format(now, "dd MMMM yyyy"), count: periodCounts.today },
-    { key: "week", title: "Minggu Ini", subtitle: "7 hari terakhir", count: periodCounts.week },
-    { key: "month", title: "Bulan Ini", subtitle: format(now, "MMMM yyyy"), count: periodCounts.month },
-    { key: "year", title: "Tahun Ini", subtitle: `Tahun ${now.getFullYear()}`, count: periodCounts.year },
-    { key: "all", title: "Semua Transaksi", subtitle: "Seluruh riwayat transaksi", count: periodCounts.all },
+    { key: "today", title: "Today", subtitle: format(now, "dd MMMM yyyy"), count: periodCounts.today },
+    { key: "week", title: "This Week", subtitle: "Past 7 days", count: periodCounts.week },
+    { key: "month", title: "This Month", subtitle: format(now, "MMMM yyyy"), count: periodCounts.month },
+    { key: "year", title: "This Year", subtitle: `Year ${now.getFullYear()}`, count: periodCounts.year },
+    { key: "all", title: "All Transactions", subtitle: "Full transaction history", count: periodCounts.all },
   ]
 
   const handleExecuteReset = () => {
     resetTxs(selectedPeriod, {
       onSuccess: () => {
         const opt = periodOptions.find(o => o.key === selectedPeriod)
-        showToast(`Data transaksi (${opt?.title}) berhasil di-reset`, "delete", () => {})
+        showToast(`Transactions (${opt?.title}) reset successfully`, "delete", () => {})
         setConfirmStep(false)
         onClose()
       },
       onError: (err: any) => {
-        showToast(err.message || "Gagal mereset data", "delete", () => {})
+        showToast(err.message || "Failed to reset transactions", "delete", () => {})
       }
     })
   }
@@ -86,10 +86,10 @@ export function ResetTransactionsSheet({ isOpen, onClose }: ResetTransactionsShe
             <RotateCcw size={26} style={{ color: "#ef4444" }} />
           </div>
           <h3 className="font-extrabold text-[20px] tracking-tight" style={{ color: "var(--text-primary)" }}>
-            Reset Data Transaksi
+            Reset Transaction Data
           </h3>
           <p className="text-[12px] font-medium mt-1" style={{ color: "var(--text-tertiary)" }}>
-            Pilih rentang waktu transaksi yang ingin kamu hapus
+            Select the timeframe of transactions you wish to purge
           </p>
         </div>
 
@@ -103,7 +103,7 @@ export function ResetTransactionsSheet({ isOpen, onClose }: ResetTransactionsShe
                   <button
                     key={opt.key}
                     onClick={() => setSelectedPeriod(opt.key)}
-                    className="w-full p-4 rounded-2xl flex items-center justify-between text-left transition-all active:scale-98"
+                    className="w-full p-4 rounded-2xl flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer"
                     style={{
                       background: isSelected ? "var(--bg-elevated-2)" : "var(--bg-elevated)",
                       border: `1px solid ${isSelected ? "var(--accent)" : "var(--glass-border)"}`,
@@ -131,11 +131,11 @@ export function ResetTransactionsSheet({ isOpen, onClose }: ResetTransactionsShe
             <button
               onClick={() => setConfirmStep(true)}
               disabled={activeOption?.count === 0}
-              className="w-full py-4 rounded-[20px] font-extrabold text-[15px] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl disabled:opacity-40"
+              className="w-full py-4 rounded-[20px] font-extrabold text-[15px] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl disabled:opacity-40 cursor-pointer"
               style={{ background: "#ef4444", color: "#FFFFFF" }}
             >
               <Trash2 size={16} />
-              <span>Lanjut Hapus ({activeOption?.count ?? 0} Transaksi)</span>
+              <span>Proceed to Delete ({activeOption?.count ?? 0} Transactions)</span>
             </button>
           </>
         ) : (
@@ -146,10 +146,10 @@ export function ResetTransactionsSheet({ isOpen, onClose }: ResetTransactionsShe
               <AlertTriangle size={22} className="shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
               <div>
                 <p className="font-bold text-[14px]" style={{ color: "var(--text-primary)" }}>
-                  Konfirmasi Penghapusan
+                  Confirm Deletion
                 </p>
                 <p className="text-[12px] mt-1" style={{ color: "var(--text-secondary)" }}>
-                  Sebanyak <strong>{activeOption?.count} transaksi</strong> pada rentang <strong>{activeOption?.title}</strong> ({activeOption?.subtitle}) akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+                  A total of <strong>{activeOption?.count} transactions</strong> in <strong>{activeOption?.title}</strong> ({activeOption?.subtitle}) will be permanently deleted. This action cannot be undone.
                 </p>
               </div>
             </div>
@@ -158,19 +158,19 @@ export function ResetTransactionsSheet({ isOpen, onClose }: ResetTransactionsShe
               <button
                 onClick={() => setConfirmStep(false)}
                 disabled={isPending}
-                className="flex-1 py-3.5 rounded-[18px] font-bold text-[14px] active:scale-95 transition-all"
+                className="flex-1 py-3.5 rounded-[18px] font-bold text-[14px] active:scale-95 transition-all cursor-pointer"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
               >
-                Batal
+                Cancel
               </button>
               <button
                 onClick={handleExecuteReset}
                 disabled={isPending}
-                className="flex-1 py-3.5 rounded-[18px] font-extrabold text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-all"
+                className="flex-1 py-3.5 rounded-[18px] font-extrabold text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
                 style={{ background: "#ef4444", color: "#FFFFFF" }}
               >
                 <Trash2 size={16} />
-                <span>{isPending ? "Menghapus..." : "Ya, Hapus"}</span>
+                <span>{isPending ? "Deleting..." : "Yes, Delete"}</span>
               </button>
             </div>
           </div>
