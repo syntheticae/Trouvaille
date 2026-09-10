@@ -140,19 +140,26 @@ export async function flushPendingMutations(): Promise<{
   const errors: unknown[] = [];
   const remainingMutations: PendingMutation[] = [];
 
+  const sanitizePayload = (p: any) => {
+    if (!p || typeof p !== "object") return p;
+    const { categories, wallet, to_wallet, ...clean } = p;
+    return clean;
+  };
+
   for (const mutation of mutations) {
     try {
       if (mutation.type === "insert") {
-        const item = { ...mutation.payload, user_id: user.id };
+        const item = sanitizePayload({ ...mutation.payload, user_id: user.id });
         const { error } = await supabase.from("transactions").upsert(item);
         if (error) throw error;
         flushedCount++;
       } else if (mutation.type === "update") {
         const { id, ...updates } = mutation.payload;
         if (!id) continue;
+        const cleanUpdates = sanitizePayload(updates);
         const { error } = await supabase
           .from("transactions")
-          .update(updates)
+          .update(cleanUpdates)
           .eq("id", id)
           .eq("user_id", user.id);
         if (error) throw error;

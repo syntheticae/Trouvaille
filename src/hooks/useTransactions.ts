@@ -569,9 +569,10 @@ export function useAddTransaction() {
 
       // Attempt immediate sync to Supabase with quick timeout/retry
       try {
+        const { categories, wallet, to_wallet, ...dbPayload } = fullTx as any;
         const { data, error } = await supabase
           .from("transactions")
-          .upsert({ ...fullTx, user_id: currentUser.id })
+          .upsert({ ...dbPayload, user_id: currentUser.id })
           .select("*")
           .maybeSingle();
 
