@@ -134,4 +134,119 @@ describe("Indonesian Slip & Receipt Parser Test Suite", () => {
     expect(result.amount).not.toBe(30000); // Must not pick kembalian
     expect(result.categoryId).toBe("c-belanja");
   });
+
+  it("parses Superbank slip with voucher and rejects acquirer BRI (Receipt 2)", () => {
+    const superbankText = `
+      superbank
+      Transaksi berhasil
+      07 Jul 2026 - 14:27 WIB
+      Pengirim
+      Aji Fras Aditya
+      Superbank - Tabungan Utama
+      Penerima
+      Kopi Kenangan 1320
+      Nominal Bayar
+      Rp44.075,00
+      Voucher
+      -Rp5.000,00
+      Total Bayar
+      Rp39.075,00
+      Nama Acquirer
+      BRI
+    `;
+
+    const wallets: Wallet[] = [
+      { id: "w-bri", name: "BRI", balance: 0, user_id: "u-1", created_at: "", updated_at: "" },
+      { id: "w-superbank", name: "Superbank", balance: 0, user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+    const categories: Category[] = [
+      { id: "c-kopi", name: "Kopi", icon: "Coffee", color: "#111", user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+
+    const result = parseSlipText(superbankText, wallets, categories);
+
+    expect(result.amount).toBe(39075); // Net total after voucher
+    expect(result.sourceWalletId).toBe("w-superbank"); // Must NOT be BRI acquirer
+    expect(result.categoryId).toBe("c-kopi");
+    expect(result.merchantOrRecipient.toLowerCase()).toContain("kopi kenangan");
+  });
+
+  it("parses Wondr by BNI QRIS slip and does NOT mistake 'sumber dana' for Dana e-wallet (Receipt 7)", () => {
+    const wondrText = `
+      wondr by BNI
+      Pembayaran QRIS berhasil
+      26 Jul 2026 - 18:04:37 WIB
+      Penerima
+      DOMINANCE COFFEE BNI BANYUWANGI
+      Sumber dana
+      AJI FRAS ADITYA
+      Nominal Rp28.000
+      Total Rp28.000
+      Nama issuer BNI
+    `;
+
+    const wallets: Wallet[] = [
+      { id: "w-dana", name: "Dana", balance: 0, user_id: "u-1", created_at: "", updated_at: "" },
+      { id: "w-bni", name: "BNI", balance: 0, user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+    const categories: Category[] = [
+      { id: "c-cafe", name: "Cafe", icon: "Coffee", color: "#111", user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+
+    const result = parseSlipText(wondrText, wallets, categories);
+
+    expect(result.amount).toBe(28000);
+    expect(result.sourceWalletId).toBe("w-bni"); // Must NOT be Dana
+    expect(result.categoryId).toBe("c-cafe");
+  });
+
+  it("parses Brize Cafe receipt and does NOT mistake 'Brize' for BRI bank (Receipt 3)", () => {
+    const brizeText = `
+      Brize Cafe
+      17 Jun 2026 18:52
+      STRAWBERRY ICE TEA 23.000
+      ICE CAFE LATTE 27.000
+      TAHU WALIK BANYUWANGI 25.000
+      Subtotal Rp 67.500
+      Total Rp 67.500
+      BCA QR Rp 67.500
+    `;
+
+    const wallets: Wallet[] = [
+      { id: "w-bri", name: "BRI", balance: 0, user_id: "u-1", created_at: "", updated_at: "" },
+      { id: "w-bca", name: "BCA", balance: 0, user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+    const categories: Category[] = [
+      { id: "c-cafe", name: "Cafe", icon: "Coffee", color: "#111", user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+
+    const result = parseSlipText(brizeText, wallets, categories);
+
+    expect(result.amount).toBe(67500);
+    expect(result.sourceWalletId).toBe("w-bca"); // Must NOT be BRI
+    expect(result.categoryId).toBe("c-cafe");
+  });
+
+  it("matches Indomaret receipt with Groceries category (Receipt 1 & 6)", () => {
+    const indomaretText = `
+      INDOMARET
+      TOTAL BELANJA : 49,000
+      NON TUNAI : 49,000
+      QR BNI / WONDR-TRXID:F52F2608021126000101
+      PURCHASE : 49,000
+    `;
+
+    const wallets: Wallet[] = [
+      { id: "w-bni", name: "BNI", balance: 0, user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+    const categories: Category[] = [
+      { id: "c-groceries", name: "Groceries", icon: "ShoppingBag", color: "#111", user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+
+    const result = parseSlipText(indomaretText, wallets, categories);
+
+    expect(result.amount).toBe(49000);
+    expect(result.sourceWalletId).toBe("w-bni");
+    expect(result.categoryId).toBe("c-groceries");
+  });
 });

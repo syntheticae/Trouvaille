@@ -27,47 +27,83 @@ export interface ParsedSlipResult {
   extractedLines: string[];
 }
 
-const CATEGORY_MERCHANT_ALIASES: Record<string, string[]> = {
-  kopi: [
-    "kopi", "coffee", "cafe", "starbucks", "kenangan", "janji jiwa",
-    "fore", "tomoro", "kulo", "point coffee", "kopsus", "latte", "espresso"
-  ],
-  makanan: [
-    "resto", "restoran", "makan", "bakso", "mie", "ayam", "bebek", "padang",
-    "sederhana", "mcdonald", "mcd", "kfc", "hokben", "pizza", "burger", "d cost",
-    "warung", "gofood", "grabfood", "shopeefood", "dapur", "baker", "roti",
-    "sushi", "ramen", "solaria", "marugame", "steak", "soto", "sate"
-  ],
-  belanja: [
-    "indomaret", "alfamart", "alfamidi", "superindo", "hypermart", "transmart",
-    "grand lucky", "hero", "farmers", "lotte", "tokopedia", "shopee", "tiktok shop",
-    "blibli", "lazada", "uniqlo", "zara", "h&m", "miniso", "mr diy", "ace hardware",
-    "watson", "guardian", "gramedia"
-  ],
-  transportasi: [
-    "pertamina", "spbu", "shell", "bp akr", "bensin", "pertamax", "pertalite",
-    "solar", "parkir", "parking", "tol", "jasamarga", "gojek", "grab", "maxim",
-    "bluebird", "kereta", "krl", "mrt", "lrt", "kai", "tiket.com", "traveloka"
-  ],
-  hunian: [
-    "pln", "listrik", "pdam", "air", "ipl", "indihome", "biznet", "myrepublic",
-    "first media", "wifi", "kost", "kos", "kontrakan", "sewa"
-  ],
-  hiburan: [
-    "cinema", "xxi", "cgv", "cinepolis", "bioskop", "nonton", "netflix", "spotify",
-    "youtube", "disney", "steam", "playstation", "nintendo", "game", "karaoke"
-  ],
-  kesehatan: [
-    "apotek", "apotik", "kimia farma", "k-24", "century", "halodoc", "alodokter",
-    "klinik", "rumah sakit", "rs ", "lab", "pramita", "prodia", "optik", "dokter"
-  ],
+export interface CategorySynonymGroup {
+  targetKeys: string[];
+  keywords: string[];
+}
+
+export const CATEGORY_SYNONYMS: Record<string, CategorySynonymGroup> = {
+  groceries: {
+    targetKeys: ["groceries", "belanja", "minimarket", "supermarket", "sembako", "papan"],
+    keywords: [
+      "indomaret", "alfamart", "alfamidi", "superindo", "hypermart", "transmart",
+      "grand lucky", "hero", "farmers", "lotte", "tokopedia", "shopee", "tiktok shop",
+      "blibli", "lazada", "indomarco", "klikindomaret", "poinku", "gula", "mie", "minyak", "beras"
+    ],
+  },
+  kopi: {
+    targetKeys: ["kopi", "coffee", "cafe", "kafe", "minuman", "makanan", "pangan"],
+    keywords: [
+      "kopi", "coffee", "cafe", "kafe", "starbucks", "kenangan", "janji jiwa",
+      "fore", "tomoro", "kulo", "point coffee", "kopsus", "latte", "espresso",
+      "americano", "cappuccino", "brize", "dominance", "nogi", "kopikenangan"
+    ],
+  },
+  makanan: {
+    targetKeys: ["makanan", "food", "kuliner", "resto", "restoran", "cafe", "kafe", "pangan"],
+    keywords: [
+      "resto", "restoran", "makan", "bakso", "mie", "ayam", "bebek", "padang",
+      "sederhana", "mcdonald", "mcd", "kfc", "hokben", "pizza", "burger", "d cost",
+      "warung", "gofood", "grabfood", "shopeefood", "dapur", "baker", "roti",
+      "sushi", "ramen", "solaria", "marugame", "steak", "soto", "sate",
+      "chick", "wings", "tahu walik", "french fries", "odeng", "chikuwa"
+    ],
+  },
+  minuman: {
+    targetKeys: ["minuman", "beverage", "drink", "cafe", "kafe", "pangan"],
+    keywords: [
+      "tea", "teh", "juice", "jus", "boba", "chatime", "haus", "pure life", "aqua", "lemon tea", "ice tea"
+    ],
+  },
+  transportasi: {
+    targetKeys: ["transportasi", "bensin", "kendaraan", "transport"],
+    keywords: [
+      "pertamina", "spbu", "shell", "bp akr", "bensin", "pertamax", "pertalite",
+      "solar", "parkir", "parking", "tol", "jasamarga", "gojek", "grab", "maxim",
+      "bluebird", "kereta", "krl", "mrt", "lrt", "kai", "tiket.com", "traveloka"
+    ],
+  },
+  hunian: {
+    targetKeys: ["hunian", "papan", "tagihan", "utilitas", "internet"],
+    keywords: [
+      "pln", "listrik", "pdam", "air", "ipl", "indihome", "biznet", "myrepublic",
+      "first media", "wifi", "kost", "kos", "kontrakan", "sewa"
+    ],
+  },
+  hiburan: {
+    targetKeys: ["hiburan", "entertainment", "rekreasi"],
+    keywords: [
+      "cinema", "xxi", "cgv", "cinepolis", "bioskop", "nonton", "netflix", "spotify",
+      "youtube", "disney", "steam", "playstation", "nintendo", "game", "karaoke"
+    ],
+  },
+  kesehatan: {
+    targetKeys: ["kesehatan", "obat", "medical"],
+    keywords: [
+      "apotek", "apotik", "kimia farma", "k-24", "century", "halodoc", "alodokter",
+      "klinik", "rumah sakit", "rs ", "lab", "pramita", "prodia", "optik", "dokter"
+    ],
+  },
 };
 
-const BANK_ALIASES: Record<string, string[]> = {
+export const BANK_ALIASES: Record<string, string[]> = {
   bca: ["bca", "klikbca", "m-bca", "mybca", "m-transfer", "bank central asia"],
+  superbank: ["superbank", "super bank"],
+  bni: ["bni", "wondr", "bank negara indonesia"],
+  tapcash: ["tapcash", "bni tapcash"],
   mandiri: ["mandiri", "livin", "bank mandiri"],
   bri: ["bri", "brimo", "bank rakyat indonesia"],
-  bni: ["bni", "wondr", "bank negara indonesia"],
+  btn: ["btn", "bank tabungan negara"],
   cimb: ["cimb", "octo", "niaga"],
   jago: ["jago", "bank jago"],
   seabank: ["seabank", "sea bank"],
@@ -75,6 +111,7 @@ const BANK_ALIASES: Record<string, string[]> = {
   jenius: ["jenius", "btpn"],
   permata: ["permata", "permatanet"],
   bsi: ["bsi", "bank syariah indonesia"],
+  krom: ["krom", "bank krom"],
   gopay: ["gopay", "gojek"],
   ovo: ["ovo"],
   dana: ["dana"],
@@ -83,8 +120,16 @@ const BANK_ALIASES: Record<string, string[]> = {
   cash: ["cash", "tunai"],
 };
 
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchesWord(text: string, word: string): boolean {
+  return new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(word)}(?:[^a-z0-9]|$)`, "i").test(text);
+}
+
 /**
- * Normalizes Indonesian currency string (e.g. "Rp 150.000", "150.000,00", "150000") to integer number.
+ * Normalizes Indonesian currency string (e.g. "Rp 150.000", "150.000,00", "150000", "49,000") to integer number.
  */
 export function cleanCurrency(val: string): number {
   if (!val) return 0;
@@ -92,12 +137,15 @@ export function cleanCurrency(val: string): number {
   // Remove currency symbol (Rp, IDR) and whitespace
   let clean = val.replace(/(?:rp\.?|idr)/gi, "").trim();
 
-  // If format is 150.000,00 -> remove ,00 decimal
+  // If format has ,00 decimal at the end (e.g. Rp39.075,00 or 44.075,00) -> remove ,00
   if (clean.includes(",") && clean.indexOf(",") === clean.length - 3) {
+    clean = clean.slice(0, -3);
+  } else if (clean.includes(".") && clean.indexOf(".") === clean.length - 3 && clean.length > 6) {
+    // Rare .00 decimal e.g. 39075.00
     clean = clean.slice(0, -3);
   }
 
-  // Remove dots and commas
+  // Remove dots, commas and whitespace
   clean = clean.replace(/[.,\s]/g, "");
 
   const num = parseInt(clean, 10);
@@ -140,29 +188,30 @@ export function parseSlipText(
 
   const fullTextLower = rawText.toLowerCase();
 
-  // 1. Detect Slip Classification
+  // 1. Detect Slip Classification & Institution
   let detectedSlipType: ParsedSlipResult["detectedSlipType"] = "general";
   let detectedInstitution: string | undefined;
 
   if (fullTextLower.includes("qris") || fullTextLower.includes("nmid")) {
     detectedSlipType = "qris";
-    detectedInstitution = "QRIS";
   } else if (
     fullTextLower.includes("gopay") ||
     fullTextLower.includes("gojek") ||
     fullTextLower.includes("shopeepay") ||
-    fullTextLower.includes("dana") ||
-    fullTextLower.includes("ovo")
+    fullTextLower.includes("ovo") ||
+    (fullTextLower.includes("dana") && !fullTextLower.includes("sumber dana"))
   ) {
     detectedSlipType = "ewallet";
   } else if (
     fullTextLower.includes("transfer") ||
     fullTextLower.includes("m-transfer") ||
+    fullTextLower.includes("superbank") ||
     fullTextLower.includes("livin") ||
     fullTextLower.includes("brimo") ||
     fullTextLower.includes("bca") ||
     fullTextLower.includes("mandiri") ||
-    fullTextLower.includes("bni")
+    fullTextLower.includes("bni") ||
+    fullTextLower.includes("wondr")
   ) {
     detectedSlipType = "m_banking";
   } else if (
@@ -174,30 +223,47 @@ export function parseSlipText(
     detectedSlipType = "receipt";
   }
 
-  // Detect institution name
+  // Detect institution: prioritize sender / funding lines over acquirer lines
+  // Filter out lines that specify merchant's acquirer
+  const nonAcquirerLines = lines.filter((l) => !/nama\s+acquirer|acquirer/i.test(l));
+  const nonAcquirerText = nonAcquirerLines.join("\n").toLowerCase();
+
   for (const [instKey, aliases] of Object.entries(BANK_ALIASES)) {
-    if (aliases.some((a) => fullTextLower.includes(a))) {
+    const matched = aliases.some((a) => {
+      if (a === "dana") {
+        return matchesWord(nonAcquirerText.replace(/sumber\s+dana/gi, ""), "dana");
+      }
+      return matchesWord(nonAcquirerText, a);
+    });
+
+    if (matched) {
       detectedInstitution = instKey.toUpperCase();
       break;
     }
   }
 
+  // If slip explicitly says QRIS and no institution matched yet
+  if (!detectedInstitution && (fullTextLower.includes("qris") || fullTextLower.includes("nmid"))) {
+    detectedInstitution = "QRIS";
+  }
+
   // 2. Extract Amount
-  // Priority 1: High-confidence lines with Total / Jumlah / Nominal
   let detectedAmount: number | null = null;
   const candidateAmounts: { amount: number; score: number; line: string }[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineLower = line.toLowerCase();
+    const prevLineLower = i > 0 ? lines[i - 1].toLowerCase() : "";
+    const contextLower = `${prevLineLower} ${lineLower}`.trim();
 
-    // Skip lines with admin fees (e.g. 2.500 or 6.500)
+    // Skip lines with admin fees
     const isAdminFeeLine =
-      lineLower.includes("admin") ||
-      lineLower.includes("biaya transaksi") ||
-      lineLower.includes("fee");
+      contextLower.includes("admin") ||
+      contextLower.includes("biaya transaksi") ||
+      contextLower.includes("fee");
 
-    // Skip card / account numbers (e.g. 10+ digits without separator)
+    // Skip card / account numbers / ref numbers (10+ digits without separator)
     if (/\b\d{10,19}\b/.test(line)) {
       continue;
     }
@@ -207,8 +273,10 @@ export function parseSlipText(
       continue;
     }
 
-    // Search for currency numbers: e.g. Rp 150.000 or 150.000
-    const currencyMatches = line.match(/(?:rp\.?|idr)?\s*([0-9]{1,3}(?:[.,][0-9]{3})*(?:,[0-9]{2})?|[0-9]{4,9})/gi);
+    // Search for currency numbers: e.g. Rp 150.000, 150.000,00, 49,000, 39.075,00
+    const currencyMatches = line.match(
+      /(?:rp\.?|idr)?\s*([0-9]{1,3}(?:[.,][0-9]{3})*(?:,[0-9]{2})?|[0-9]{4,9})/gi
+    );
 
     if (currencyMatches) {
       for (const match of currencyMatches) {
@@ -219,30 +287,43 @@ export function parseSlipText(
 
         let score = 1;
 
-        if (lineLower.includes("total belanja") || lineLower.includes("grand total")) {
-          score += 100;
-        } else if (lineLower.includes("total bayar") || lineLower.includes("total pembayaran") || lineLower.includes("total transaksi")) {
+        if (contextLower.includes("total belanja")) {
+          score += 130;
+        } else if (contextLower.includes("total bayar") || contextLower.includes("total pembayaran")) {
+          score += 125;
+        } else if (contextLower.includes("grand total") || contextLower.includes("total transaksi")) {
+          score += 120;
+        } else if (contextLower.includes("purchase")) {
+          score += 115;
+        } else if (contextLower.includes("non tunai") || contextLower.includes("nontunai")) {
+          score += 110;
+        } else if (contextLower.includes("transfer") && !contextLower.includes("biaya")) {
+          score += 95;
+        } else if (contextLower.includes("total") && !contextLower.includes("subtotal") && !contextLower.includes("sub total")) {
           score += 90;
-        } else if (lineLower.includes("total") && !lineLower.includes("subtotal")) {
-          score += 80;
-        } else if (lineLower.includes("nominal transfer") || lineLower.includes("jumlah transfer") || lineLower.includes("jumlah")) {
-          score += 70;
-        } else if (lineLower.includes("nominal") || lineLower.includes("amount")) {
+        } else if (contextLower.includes("nominal transfer") || contextLower.includes("jumlah transfer") || contextLower.includes("jumlah")) {
+          score += 75;
+        } else if (contextLower.includes("nominal bayar")) {
+          // Defer to Total Bayar when discounts exist
+          score += 60;
+        } else if (contextLower.includes("nominal") || contextLower.includes("amount")) {
           score += 50;
         } else if (lineLower.startsWith("rp") || lineLower.includes("rp.")) {
-          score += 30;
+          score += 35;
         }
 
+        // Penalty for subtotal, voucher, discount, admin fee
+        if (contextLower.includes("subtotal") || contextLower.includes("sub total")) {
+          score -= 30;
+        }
         if (isAdminFeeLine) {
-          score -= 60; // De-prioritize admin fee
+          score -= 70;
         }
-
-        if (lineLower.includes("subtotal") || lineLower.includes("sub total")) {
-          score -= 20; // De-prioritize subtotal if Grand Total exists
+        if (contextLower.includes("voucher") || contextLower.includes("diskon") || contextLower.includes("hemat") || contextLower.includes("potongan")) {
+          score -= 90;
         }
-
-        if (lineLower.includes("kembalian") || lineLower.includes("kembali") || lineLower.includes("change")) {
-          score -= 50;
+        if (contextLower.includes("kembalian") || contextLower.includes("kembali") || contextLower.includes("change")) {
+          score -= 60;
         }
 
         candidateAmounts.push({ amount: amt, score, line });
@@ -259,7 +340,6 @@ export function parseSlipText(
 
   // 3. Extract Date
   let detectedDate = new Date();
-  // Indonesian month dictionary
   const MONTHS: Record<string, number> = {
     jan: 0, januari: 0, january: 0,
     feb: 1, februari: 1, february: 1,
@@ -275,7 +355,6 @@ export function parseSlipText(
     des: 11, desember: 11, dec: 11, december: 11,
   };
 
-  // Check date patterns e.g. "16 Sep 2026", "16/09/2026", "16-09-2026"
   const textDateMatch = rawText.match(
     /\b(\d{1,2})[\s/-]+(jan|feb|mar|apr|mei|may|jun|jul|agu|aug|sep|okt|oct|nov|des|dec|[a-z]+)[\s/-]+(\d{2,4})\b/i
   );
@@ -297,7 +376,6 @@ export function parseSlipText(
     let year = parseInt(numDateMatch[3], 10);
     if (year < 100) year += 2000;
 
-    // Indonesian convention is DD/MM/YYYY
     if (p1 >= 1 && p1 <= 31 && p2 >= 1 && p2 <= 12 && year >= 2020 && year <= 2040) {
       detectedDate = new Date(year, p2 - 1, p1);
     }
@@ -306,35 +384,65 @@ export function parseSlipText(
   // 4. Extract Merchant / Note
   let merchantOrRecipient = "";
 
-  // Check receipt headers or merchant indicators
-  const merchantLinePatterns = [
-    /(?:\bke\b|\bpenerima\b|\btujuan\b|\bkepada\b)\s*[:\-]?\s*([a-z0-9\s.]+)/i,
-    /(?:\bmerchant\b|\bnama merchant\b|\btoko\b|\bmerchant name\b)\s*[:\-]?\s*([a-z0-9\s.]+)/i,
-    /(?:\btransaksi\b|\bketerangan\b|\bberita\b)\s*[:\-]?\s*([a-z0-9\s.]+)/i,
-  ];
-
-  for (const pat of merchantLinePatterns) {
-    const match = rawText.match(pat);
-    if (match && match[1] && match[1].trim().length > 2) {
-      merchantOrRecipient = match[1].trim().slice(0, 45);
-      break;
-    }
-  }
-
-  // If still empty and it's a receipt, check top 3 lines
-  if (!merchantOrRecipient && lines.length > 0) {
-    for (let i = 0; i < Math.min(4, lines.length); i++) {
-      const l = lines[i];
-      // Ignore words like "STRUK", "BUKTI", "RESI", date, or pure numbers
-      if (
-        !/struk|bukti|resi|selamat|selesai|receipt|invoice|\d{5,}/i.test(l) &&
-        l.length >= 3 &&
-        l.length <= 40
-      ) {
-        merchantOrRecipient = l;
+  // Check multi-line label: e.g. "Penerima" on line i, then merchant on line i+1
+  for (let i = 0; i < lines.length - 1; i++) {
+    const l = lines[i].trim();
+    if (/^(?:penerima|tujuan|kepada|merchant|nama merchant|ke)$/i.test(l)) {
+      const nextLine = lines[i + 1].trim();
+      if (nextLine.length > 2 && !/^(?:total|nominal|rp|idr|\d+)/i.test(nextLine)) {
+        merchantOrRecipient = nextLine.slice(0, 45);
         break;
       }
     }
+  }
+
+  // Check specific high-confidence merchant signatures first
+  if (fullTextLower.includes("indomaret") || fullTextLower.includes("indomarco") || fullTextLower.includes("klikindomaret")) {
+    // If QRIS Indomaret Tangerang ID, capture Tangerang
+    const qrisIndoMatch = rawText.match(/indomaret\s+([a-z0-9\s]+?)(?:\s+id|\n|$)/i);
+    if (qrisIndoMatch && qrisIndoMatch[1]) {
+      merchantOrRecipient = `Indomaret ${qrisIndoMatch[1].trim()}`;
+    } else {
+      merchantOrRecipient = "Indomaret";
+    }
+  } else if (fullTextLower.includes("alfamart") || fullTextLower.includes("alfamidi")) {
+    merchantOrRecipient = fullTextLower.includes("alfamidi") ? "Alfamidi" : "Alfamart";
+  } else {
+    // Check receipt headers or merchant indicators
+    const merchantLinePatterns = [
+      /(?:\bpenerima\b|\btujuan\b|\bkepada\b)\s*[:\-]?\s*([a-z0-9\s.]+)/i,
+      /(?:\bmerchant\b|\bnama merchant\b|\btoko\b|\bmerchant name\b)\s*[:\-]?\s*([a-z0-9\s.]+)/i,
+      /(?:\btransaksi\b|\bketerangan\b|\bberita\b)\s*[:\-]?\s*([a-z0-9\s.]+)/i,
+      /\bke\s*[:\-]?\s*([a-z0-9\s.]+)/i,
+    ];
+
+    for (const pat of merchantLinePatterns) {
+      const match = rawText.match(pat);
+      if (match && match[1] && match[1].trim().length > 2) {
+        merchantOrRecipient = match[1].trim().slice(0, 45);
+        break;
+      }
+    }
+
+    // Check top 3 lines of paper receipts
+    if (!merchantOrRecipient && lines.length > 0) {
+      for (let i = 0; i < Math.min(4, lines.length); i++) {
+        const l = lines[i];
+        if (
+          !/struk|bukti|resi|selamat|selesai|receipt|invoice|\d{5,}|http|www/i.test(l) &&
+          l.length >= 3 &&
+          l.length <= 40
+        ) {
+          merchantOrRecipient = l;
+          break;
+        }
+      }
+    }
+  }
+
+  // Clean up merchant name (strip trailing symbols)
+  if (merchantOrRecipient) {
+    merchantOrRecipient = merchantOrRecipient.replace(/[\*\_\#\-\:]+$/g, "").trim();
   }
 
   if (!merchantOrRecipient && detectedInstitution) {
@@ -345,71 +453,100 @@ export function parseSlipText(
   let matchedWallet: Wallet | null = null;
 
   if (userWallets.length > 0) {
-    // Check if detectedInstitution matches any user wallet
-    if (detectedInstitution) {
+    // Priority 1: Match detectedInstitution if it's a known bank/wallet (not just generic QRIS)
+    if (detectedInstitution && detectedInstitution !== "QRIS") {
       const instLower = detectedInstitution.toLowerCase();
       matchedWallet =
         userWallets.find((w) => {
-          const wName = w.name.toLowerCase();
+          const wLower = w.name.toLowerCase();
           const aliases = BANK_ALIASES[instLower] || [instLower];
-          return aliases.some((a) => wName.includes(a) || a.includes(wName));
+          return aliases.some((a) => wLower === a || matchesWord(wLower, a));
         }) || null;
     }
 
-    // Direct string search across all user wallets
+    // Priority 2: Look for user wallet name explicitly in non-acquirer lines
     if (!matchedWallet) {
-      for (const w of userWallets) {
-        const wLower = w.name.toLowerCase();
-        if (fullTextLower.includes(wLower)) {
-          matchedWallet = w;
-          break;
+      for (const line of nonAcquirerLines) {
+        const lineLower = line.toLowerCase();
+        if (lineLower.includes("penerima") || lineLower.includes("tujuan")) {
+          continue;
+        }
+
+        for (const w of userWallets) {
+          const wLower = w.name.toLowerCase();
+          // Avoid matching "dana" when line is "sumber dana"
+          if (wLower === "dana" && lineLower.includes("sumber dana")) {
+            const afterSumberDana = lineLower.replace(/sumber\s+dana/gi, "");
+            if (!matchesWord(afterSumberDana, "dana")) continue;
+          }
+          if (matchesWord(lineLower, wLower)) {
+            matchedWallet = w;
+            break;
+          }
+        }
+        if (matchedWallet) break;
+      }
+    }
+
+    // Priority 3: Check entire nonAcquirerText against BANK_ALIASES
+    if (!matchedWallet) {
+      for (const [instKey, aliases] of Object.entries(BANK_ALIASES)) {
+        const matchedAlias = aliases.find((a) => {
+          if (a === "dana") {
+            const cleaned = nonAcquirerText.replace(/sumber\s+dana/gi, "");
+            return matchesWord(cleaned, "dana");
+          }
+          return matchesWord(nonAcquirerText, a);
+        });
+
+        if (matchedAlias) {
+          matchedWallet =
+            userWallets.find((w) => {
+              const wLower = w.name.toLowerCase();
+              return wLower === instKey || aliases.some((a) => matchesWord(wLower, a));
+            }) || null;
+          if (matchedWallet) break;
         }
       }
     }
 
-    // Default to first user wallet
+    // Fallback: Default to first user wallet
     if (!matchedWallet) {
       matchedWallet = userWallets[0];
     }
   }
 
-  // 6. Match Category against User's Categories
+  // 6. Match Category against User's Categories (Using CATEGORY_SYNONYMS)
   let matchedCategory: Category | null = null;
 
   if (userCategories.length > 0) {
     const merchantLower = merchantOrRecipient.toLowerCase();
 
-    // Priority 1: Match merchant directly (e.g. Indomaret -> Belanja, Starbucks -> Kopi)
-    if (merchantLower) {
-      for (const [catKey, keywords] of Object.entries(CATEGORY_MERCHANT_ALIASES)) {
-        const matchedKw = keywords.find((kw) => merchantLower.includes(kw));
-        if (matchedKw) {
-          matchedCategory =
-            userCategories.find((c) => {
-              const cLower = c.name.toLowerCase();
-              return (
-                cLower.includes(catKey) ||
-                catKey.includes(cLower) ||
-                cLower.includes(matchedKw)
-              );
-            }) || null;
-          if (matchedCategory) break;
-        }
+    // Priority 1: Match merchant name against CATEGORY_SYNONYMS keywords
+    for (const group of Object.values(CATEGORY_SYNONYMS)) {
+      const kwMatch = group.keywords.some((kw) => merchantLower.includes(kw));
+      if (kwMatch) {
+        matchedCategory =
+          userCategories.find((c) => {
+            const cLower = c.name.toLowerCase();
+            return group.targetKeys.some(
+              (target) => cLower.includes(target) || target.includes(cLower)
+            );
+          }) || null;
+        if (matchedCategory) break;
       }
     }
 
-    // Priority 2: Match against full text if merchant didn't directly match
+    // Priority 2: Match full text against CATEGORY_SYNONYMS keywords
     if (!matchedCategory) {
-      for (const [catKey, keywords] of Object.entries(CATEGORY_MERCHANT_ALIASES)) {
-        const matchedKeyword = keywords.find((kw) => fullTextLower.includes(kw));
-        if (matchedKeyword) {
+      for (const group of Object.values(CATEGORY_SYNONYMS)) {
+        const kwMatch = group.keywords.some((kw) => matchesWord(fullTextLower, kw) || fullTextLower.includes(kw));
+        if (kwMatch) {
           matchedCategory =
             userCategories.find((c) => {
               const cLower = c.name.toLowerCase();
-              return (
-                cLower.includes(catKey) ||
-                catKey.includes(cLower) ||
-                cLower.includes(matchedKeyword)
+              return group.targetKeys.some(
+                (target) => cLower.includes(target) || target.includes(cLower)
               );
             }) || null;
           if (matchedCategory) break;
@@ -417,18 +554,18 @@ export function parseSlipText(
       }
     }
 
-    // Direct name matching with user categories
+    // Priority 3: Direct name matching with user categories
     if (!matchedCategory) {
       for (const c of userCategories) {
         const cLower = c.name.toLowerCase();
-        if (fullTextLower.includes(cLower)) {
+        if (matchesWord(fullTextLower, cLower)) {
           matchedCategory = c;
           break;
         }
       }
     }
 
-    // Default to first user category
+    // Fallback: Default to first user category
     if (!matchedCategory) {
       matchedCategory = userCategories[0];
     }
@@ -436,17 +573,20 @@ export function parseSlipText(
 
   // 7. Determine Transaction Type
   let type: TransactionType = "expense";
-  if (fullTextLower.includes("dana masuk") || fullTextLower.includes("transfer masuk") || fullTextLower.includes("topup berhasil")) {
+  if (
+    fullTextLower.includes("dana masuk") ||
+    fullTextLower.includes("transfer masuk") ||
+    fullTextLower.includes("topup berhasil")
+  ) {
     type = "income";
   }
 
   // 8. Confidence Calculation
-  let confidence = 0.3;
+  let confidence = 0.35;
   if (detectedAmount && detectedAmount > 0) confidence += 0.35;
   if (detectedInstitution) confidence += 0.15;
   if (merchantOrRecipient) confidence += 0.1;
   if (matchedWallet) confidence += 0.05;
-  if (matchedCategory) confidence += 0.05;
 
   return {
     amount: detectedAmount,
