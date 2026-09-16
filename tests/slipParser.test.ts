@@ -322,4 +322,17 @@ MASTER 146,000
     expect(res.sourceWalletId).toBe("w-seabank");
     expect(res.categoryId).toBe("c-makanan");
   });
+
+  it("extracts timestamp from receipt or transfer slip accurately", () => {
+    const slipWithTime = `
+      m-Transfer: BERHASIL
+      16/09/2026 14:22:05
+      Jumlah: Rp 88.000
+      Nama: KOPI KENANGAN
+    `;
+    const res = parseSlipText(slipWithTime, mockWallets, mockCategories);
+    expect(res.time).toBe("14:22");
+    expect(res.date.getHours()).toBe(14);
+    expect(res.date.getMinutes()).toBe(22);
+  });
 });

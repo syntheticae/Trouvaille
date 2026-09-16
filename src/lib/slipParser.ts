@@ -13,6 +13,7 @@ export interface ParsedSlipResult {
   type: TransactionType;
   date: Date;
   dateFormatted: string;
+  time?: string;
   merchantOrRecipient: string;
   sourceWalletId: string | null;
   sourceWalletName: string | null;
@@ -480,6 +481,20 @@ export function parseSlipText(
     }
   }
 
+  // 3b. Extract Time (e.g. 14:22, 10:15 WIB, 18:30:11)
+  let detectedTime: string | undefined = undefined;
+  const timeMatch = rawText.match(
+    /\b([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.][0-5]\d)?(?:\s*(?:wib|wita|wit|am|pm))?\b/i
+  );
+  if (timeMatch) {
+    const hh = parseInt(timeMatch[1], 10);
+    const mm = parseInt(timeMatch[2], 10);
+    if (!isNaN(hh) && !isNaN(mm) && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) {
+      detectedTime = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+      detectedDate.setHours(hh, mm, 0, 0);
+    }
+  }
+
   // 4. Extract Merchant / Note
   let merchantOrRecipient = "";
   let detectedCategoryFromMerchant: string | undefined = undefined;
@@ -808,6 +823,7 @@ export function parseSlipText(
     type,
     date: detectedDate,
     dateFormatted: format(detectedDate, "yyyy-MM-dd"),
+    time: detectedTime,
     merchantOrRecipient,
     sourceWalletId: matchedWallet?.id || null,
     sourceWalletName: matchedWallet?.name || null,

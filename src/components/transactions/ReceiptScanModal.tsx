@@ -15,6 +15,7 @@ import {
   CreditCard,
   Tag,
   Calendar,
+  Clock,
   Pen,
   Check,
   RotateCcw,
@@ -83,6 +84,7 @@ export function ReceiptScanModal({
   const [walletId, setWalletId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
+  const [time, setTime] = useState<string>(format(new Date(), "HH:mm"));
   const [merchant, setMerchant] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [type, setType] = useState<TransactionType>("expense");
@@ -95,6 +97,7 @@ export function ReceiptScanModal({
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [walletSheetOpen, setWalletSheetOpen] = useState(false);
   const [dateSheetOpen, setDateSheetOpen] = useState(false);
+  const [timeSheetOpen, setTimeSheetOpen] = useState(false);
   const [searchCatQuery, setSearchCatQuery] = useState("");
   const [searchWalletQuery, setSearchWalletQuery] = useState("");
 
@@ -109,11 +112,13 @@ export function ReceiptScanModal({
       setErrorText(null);
       setMerchant("");
       setNote("");
+      setTime(format(new Date(), "HH:mm"));
       setUnregisteredWalletName(null);
       setUnregisteredCategoryName(null);
       setCategorySheetOpen(false);
       setWalletSheetOpen(false);
       setDateSheetOpen(false);
+      setTimeSheetOpen(false);
       setSearchCatQuery("");
       setSearchWalletQuery("");
     }
@@ -228,6 +233,11 @@ export function ReceiptScanModal({
       }
 
       setDate(result.slip.date || new Date());
+      if (result.slip.time) {
+        setTime(result.slip.time);
+      } else {
+        setTime(format(result.slip.date || new Date(), "HH:mm"));
+      }
       setMerchant(result.slip.merchantOrRecipient || "");
       setNote("");
       setType(result.slip.type || "expense");
@@ -317,6 +327,13 @@ export function ReceiptScanModal({
       ? (merchant.trim() ? `${merchant.trim()} • ${note.trim()}` : note.trim())
       : (merchant.trim() || "Scanned Receipt");
 
+    // Build timestamp with selected time
+    const [h, m] = time.split(":").map(Number);
+    const txDate = new Date(date);
+    if (!isNaN(h) && !isNaN(m)) {
+      txDate.setHours(h, m, 0, 0);
+    }
+
     triggerSuccessHaptic();
     addTx.mutate(
       {
@@ -326,7 +343,7 @@ export function ReceiptScanModal({
         category_id: type === "transfer" ? null : effectiveCatId,
         note: finalDescription || null,
         occurred_on: format(date, "yyyy-MM-dd"),
-        created_at: new Date().toISOString(),
+        created_at: txDate.toISOString(),
       },
       {
         onSuccess: () => {
@@ -346,13 +363,20 @@ export function ReceiptScanModal({
       ? (merchant.trim() ? `${merchant.trim()} • ${note.trim()}` : note.trim())
       : (merchant.trim() || "Scanned Receipt");
 
+    // Build timestamp with selected time
+    const [h, m] = time.split(":").map(Number);
+    const combinedDate = new Date(date);
+    if (!isNaN(h) && !isNaN(m)) {
+      combinedDate.setHours(h, m, 0, 0);
+    }
+
     onOpenForm({
       type,
       amount,
       walletId,
       categoryId,
       toWalletId: null,
-      date,
+      date: combinedDate,
       note: finalDescription,
     });
     onClose();
@@ -932,6 +956,30 @@ export function ReceiptScanModal({
                     </div>
                   </button>
 
+                  {/* Time Row */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setTimeSheetOpen(true);
+                    }}
+                    className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
+                    style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Clock size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+                      <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                        Time
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[12.5px] font-medium" style={{ color: "var(--text-primary)" }}>
+                        {time}
+                      </span>
+                      <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+                    </div>
+                  </button>
+
                   {/* Note Row */}
                   <div
                     className="w-full p-3 flex items-center justify-between"
@@ -948,7 +996,7 @@ export function ReceiptScanModal({
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       placeholder="Add a note (optional)"
-                      className="text-[12.5px] font-normal bg-transparent outline-none text-right flex-1 pl-4"
+                      className="text-[11.5px] placeholder:text-[11px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-60 font-normal bg-transparent outline-none text-right flex-1 pl-4"
                       style={{
                         color: "var(--text-primary)",
                         fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -957,25 +1005,28 @@ export function ReceiptScanModal({
                   </div>
                 </div>
 
-                {/* Primary Action Button */}
+                {/* Primary Action Button (Elegant Apple White Gradient & Deep Contrast) */}
                 <div className="pt-2 space-y-2">
                   <button
                     type="button"
                     disabled={addTx.isPending}
                     onClick={handleSaveTransaction}
-                    className="w-full h-12 rounded-2xl font-medium text-[13.5px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer border border-white/20"
+                    className="w-full h-12 rounded-2xl font-semibold text-[13.5px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer border border-white/80 disabled:opacity-50"
                     style={{
-                      background: "var(--accent)",
-                      color: "var(--accent-ink)",
-                      boxShadow: "0 10px 24px -6px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4)",
+                      background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
+                      color: "#000000",
+                      boxShadow: "inset 0 1px 0 0 #ffffff, inset 0 -1px 0 0 rgba(0, 0, 0, 0.08), 0 10px 26px -6px rgba(0, 0, 0, 0.55)",
+                      letterSpacing: "-0.01em",
                     }}
                   >
                     {addTx.isPending ? (
-                      <Loader2 size={16} className="animate-spin" />
+                      <Loader2 size={16} className="animate-spin text-black" />
                     ) : (
                       <>
-                        <Check size={16} strokeWidth={2} />
-                        <span>Save Transaction {amount > 0 ? `(${formatRupiah(amount)})` : ""}</span>
+                        <Check size={16} strokeWidth={2.25} className="text-black" />
+                        <span className="font-semibold text-black">
+                          Save Transaction {amount > 0 ? `(${formatRupiah(amount)})` : ""}
+                        </span>
                       </>
                     )}
                   </button>
@@ -1247,6 +1298,81 @@ export function ReceiptScanModal({
               setDateSheetOpen(false);
             }}
           />
+        </div>
+      </BottomSheet>
+
+      {/* Time Picker BottomSheet */}
+      <BottomSheet
+        isOpen={timeSheetOpen}
+        onClose={() => setTimeSheetOpen(false)}
+        title="Select Time"
+      >
+        <div className="p-4 pb-10 flex flex-col items-center" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
+          <p className="text-[11.5px] font-normal mb-3" style={{ color: "var(--text-tertiary)" }}>
+            Transaction timestamp
+          </p>
+
+          <div
+            className="p-3 px-6 rounded-2xl w-full max-w-[220px] flex items-center justify-center gap-2"
+            style={{
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid rgba(255, 255, 255, 0.12)",
+            }}
+          >
+            <Clock size={18} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="bg-transparent text-[24px] font-semibold text-center outline-none cursor-pointer"
+              style={{ color: "var(--text-primary)", colorScheme: "dark" }}
+            />
+          </div>
+
+          {/* Quick preset buttons */}
+          <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-[280px]">
+            {[
+              { label: "Now", val: format(new Date(), "HH:mm") },
+              { label: "Morning (08:00)", val: "08:00" },
+              { label: "Noon (12:30)", val: "12:30" },
+              { label: "Evening (17:00)", val: "17:00" },
+              { label: "Night (20:00)", val: "20:00" },
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setTime(preset.val);
+                  setTimeSheetOpen(false);
+                }}
+                className="px-3 py-1.5 rounded-full text-[11px] font-normal active:scale-95 transition-all cursor-pointer"
+                style={{
+                  background: time === preset.val ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.04)",
+                  border: time === preset.val ? "1px solid rgba(255, 255, 255, 0.25)" : "1px solid rgba(255, 255, 255, 0.08)",
+                  color: time === preset.val ? "var(--text-primary)" : "var(--text-secondary)",
+                }}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              setTimeSheetOpen(false);
+            }}
+            className="w-full max-w-[220px] h-10 mt-5 rounded-xl font-semibold text-[13px] active:scale-95 transition-all cursor-pointer"
+            style={{
+              background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
+              color: "#000000",
+              boxShadow: "inset 0 1px 0 #ffffff, 0 6px 16px -4px rgba(0, 0, 0, 0.4)",
+            }}
+          >
+            Done
+          </button>
         </div>
       </BottomSheet>
     </>
