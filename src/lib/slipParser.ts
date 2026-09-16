@@ -35,12 +35,12 @@ export interface CategorySynonymGroup {
 
 export const CATEGORY_SYNONYMS: Record<string, CategorySynonymGroup> = {
   groceries: {
-    targetKeys: ["groceries", "belanja", "minimarket", "supermarket", "sembako", "papan", "fashion"],
+    targetKeys: ["groceries", "belanja", "minimarket", "supermarket", "sembako", "papan"],
     keywords: [
       "indomaret", "alfamart", "alfamidi", "superindo", "hypermart", "transmart",
       "grand lucky", "hero", "farmers", "lotte", "tokopedia", "shopee", "tiktok shop",
       "blibli", "lazada", "indomarco", "klikindomaret", "poinku", "gula", "mie", "minyak", "beras",
-      "familymart", "family mart", "lawson", "circle k", "bukalapak", "sandal", "sepatu", "baju", "celana", "kaos"
+      "familymart", "family mart", "lawson", "circle k", "bukalapak"
     ],
   },
   kopi: {

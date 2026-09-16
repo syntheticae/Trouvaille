@@ -26,16 +26,16 @@ let workerPromise: Promise<Worker> | null = null;
 async function getOCRWorker(onProgress?: OCRProgressCallback): Promise<Worker> {
   if (!workerPromise) {
     workerPromise = (async () => {
-      onProgress?.(10, "Menginisialisasi engine OCR lokal...");
+      onProgress?.(10, "Initializing on-device OCR...");
       const worker = await createWorker("eng", 1, {
         logger: (m) => {
           if (m.status === "recognizing text" && typeof m.progress === "number") {
             const pct = Math.round(30 + m.progress * 65);
-            onProgress?.(pct, `Membaca teks struk (${Math.round(m.progress * 100)}%)...`);
+            onProgress?.(pct, `Reading receipt text (${Math.round(m.progress * 100)}%)...`);
           } else if (m.status === "loading tesseract core") {
-            onProgress?.(15, "Memuat engine WebAssembly...");
+            onProgress?.(15, "Loading OCR engine...");
           } else if (m.status === "loading language traineddata") {
-            onProgress?.(25, "Menyiapkan kamus alfabet...");
+            onProgress?.(25, "Loading character dictionary...");
           }
         },
       });
@@ -58,12 +58,12 @@ export async function scanReceiptOrSlip(
   userCategories: Category[] = [],
   onProgress?: OCRProgressCallback,
 ): Promise<OCRScanResult> {
-  onProgress?.(5, "Mengoptimalkan kontras & resolusi gambar...");
+  onProgress?.(5, "Enhancing image clarity & contrast...");
 
   // 1. Preprocess on Canvas
   const preprocessed = await preprocessReceiptImage(fileOrBlob);
 
-  onProgress?.(30, "Menjalankan pemindaian teks di HP...");
+  onProgress?.(30, "Scanning text on-device...");
 
   // 2. Get OCR Worker
   const worker = await getOCRWorker(onProgress);
@@ -72,12 +72,12 @@ export async function scanReceiptOrSlip(
   const { data } = await worker.recognize(preprocessed.dataUrl);
   const rawText = data.text || "";
 
-  onProgress?.(95, "Menganalisis nominal & merchant...");
+  onProgress?.(95, "Extracting amount & merchant...");
 
   // 4. Parse Indonesian financial structure
   const slip = parseSlipText(rawText, userWallets, userCategories);
 
-  onProgress?.(100, "Selesai!");
+  onProgress?.(100, "Done!");
 
   return {
     slip,
