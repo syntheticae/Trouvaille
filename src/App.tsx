@@ -56,6 +56,11 @@ const VoiceQuickAddModal = lazy(() =>
     default: module.VoiceQuickAddModal,
   })),
 );
+const ReceiptScanModal = lazy(() =>
+  import("./components/transactions/ReceiptScanModal").then((module) => ({
+    default: module.ReceiptScanModal,
+  })),
+);
 
 import { useTheme } from "./contexts/ThemeContext";
 
@@ -67,6 +72,7 @@ function AppShell() {
   const isDark = theme !== "light";
   const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [receiptScanOpen, setReceiptScanOpen] = useState(false);
   const [prefilledValues, setPrefilledValues] = useState<any>(null);
   const syncStorageKey = user
     ? `trouvaille_initial_synced:${user.id}`
@@ -290,10 +296,29 @@ function AppShell() {
           <Routes>
             <Route
               path="/"
-              element={<HomePage onOpenAdd={() => setAddSheetOpen(true)} />}
+              element={
+                <HomePage
+                  onOpenAdd={() => setAddSheetOpen(true)}
+                  onOpenScan={() => setReceiptScanOpen(true)}
+                />
+              }
             />
-            <Route path="/transactions" element={<TransactionsPage />} />
-            <Route path="/history" element={<TransactionsPage />} />
+            <Route
+              path="/transactions"
+              element={
+                <TransactionsPage
+                  onOpenScan={() => setReceiptScanOpen(true)}
+                />
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <TransactionsPage
+                  onOpenScan={() => setReceiptScanOpen(true)}
+                />
+              }
+            />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/statistics" element={<StatisticsPage />} />
             <Route path="/stats" element={<StatisticsPage />} />
@@ -326,6 +351,20 @@ function AppShell() {
         </Suspense>
       )}
 
+      {receiptScanOpen && (
+        <Suspense fallback={null}>
+          <ReceiptScanModal
+            isOpen={receiptScanOpen}
+            onClose={() => setReceiptScanOpen(false)}
+            onOpenForm={(values) => {
+              setPrefilledValues(values);
+              setReceiptScanOpen(false);
+              setAddSheetOpen(true);
+            }}
+          />
+        </Suspense>
+      )}
+
       {addSheetOpen && (
         <Suspense fallback={<LoadingScreen />}>
           <TransactionSheet
@@ -335,6 +374,10 @@ function AppShell() {
               setPrefilledValues(null);
             }}
             initialValues={prefilledValues}
+            onOpenScan={() => {
+              setAddSheetOpen(false);
+              setReceiptScanOpen(true);
+            }}
           />
         </Suspense>
       )}

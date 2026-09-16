@@ -28,6 +28,7 @@ import {
   Minus,
   Search,
   X,
+  ScanLine,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useCategories } from "../../hooks/useCategories";
@@ -63,6 +64,7 @@ interface TransactionSheetProps {
     date?: Date;
     note?: string;
   } | null;
+  onOpenScan?: () => void;
 }
 
 type TabType = TransactionType | "split";
@@ -72,6 +74,7 @@ export function TransactionSheet({
   onClose,
   transaction,
   initialValues,
+  onOpenScan,
 }: TransactionSheetProps) {
   const [activeTab, setActiveTab] = useState<TabType>(
     () => transaction?.type || initialValues?.type || "expense",
@@ -782,7 +785,34 @@ export function TransactionSheet({
 
         {/* Natural Language & Voice Quick Add Bar (Steady Top Position) */}
         {!transaction && (
-          <div className="mt-1 mb-2.5">
+          <div className="mt-1 mb-2.5 space-y-1.5">
+            {onOpenScan && (
+              <div className="flex items-center justify-between px-1">
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Quick Input
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    onOpenScan();
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold active:scale-95 transition-all cursor-pointer select-none"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                  title="Scan Nota atau Bukti Transfer"
+                >
+                  <ScanLine size={12} strokeWidth={1.75} />
+                  <span>Scan Nota / Slip</span>
+                </button>
+              </div>
+            )}
             <SmartQuickAddBar
               categories={categories}
               wallets={wallets}

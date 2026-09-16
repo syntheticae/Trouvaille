@@ -10,6 +10,7 @@ import {
   Wallet,
   SlidersHorizontal,
   Tag,
+  ScanLine,
 } from "lucide-react";
 import {
   BarChart,
@@ -143,7 +144,11 @@ const MONTHS_LIST = [
   { code: "12", short: "Dec", full: "December" },
 ];
 
-export function TransactionsPage() {
+interface TransactionsPageProps {
+  onOpenScan?: () => void;
+}
+
+export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [search, setSearch] = useState("");
@@ -861,6 +866,27 @@ export function TransactionsPage() {
               </span>
             )}
           </button>
+
+          {/* Scan Slip / Receipt Trigger Button */}
+          {onOpenScan && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                onOpenScan();
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull ml-1"
+              style={{
+                background: "var(--glass-fill)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--glass-border)",
+              }}
+              title="Scan Nota / Bukti Transfer"
+            >
+              <ScanLine size={13} strokeWidth={1.75} />
+              <span className="text-[11px] font-extrabold">Scan</span>
+            </button>
+          )}
         </div>
 
         {/* Unified Clean Filter Tabs */}

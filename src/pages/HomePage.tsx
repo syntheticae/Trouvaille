@@ -31,6 +31,7 @@ import {
   SlidersHorizontal,
   X,
   Users,
+  ScanLine,
 } from "lucide-react";
 import {
   AreaChart,
@@ -81,6 +82,7 @@ import {
 
 interface HomePageProps {
   onOpenAdd?: () => void;
+  onOpenScan?: () => void;
 }
 
 export interface HomeWidgetSettings {
@@ -152,7 +154,7 @@ function getTimeGreeting(): string {
   return "Good Night";
 }
 
-export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
+export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan }: HomePageProps) {
   const now = useMemo(() => new Date(), []);
   const { session } = useAuth();
   const { theme } = useTheme();
@@ -543,6 +545,31 @@ export function HomePage({ onOpenAdd: _onOpenAdd }: HomePageProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {onOpenScan && (
+            <button
+              onClick={() => {
+                triggerHaptic("light");
+                onOpenScan();
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--glass-border)] active:scale-95 transition-all cursor-pointer select-none"
+              style={{
+                background: "var(--glass-fill)",
+              }}
+              title="Scan Nota / Bukti Transfer"
+            >
+              <ScanLine
+                size={12}
+                strokeWidth={1.75}
+                style={{ color: "var(--text-primary)" }}
+              />
+              <span
+                className="text-[11px] font-bold tracking-tight"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Scan
+              </span>
+            </button>
+          )}
           <button
             onClick={() => {
               triggerHaptic("light");
