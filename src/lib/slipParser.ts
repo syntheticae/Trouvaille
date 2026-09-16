@@ -23,6 +23,7 @@ export interface ParsedSlipResult {
   confidence: number;
   detectedSlipType: "m_banking" | "ewallet" | "qris" | "receipt" | "general";
   detectedInstitution?: string;
+  detectedCategory?: string;
   rawText: string;
   extractedLines: string[];
 }
@@ -518,14 +519,16 @@ export function parseSlipText(
 
   // 6. Match Category against User's Categories (Using CATEGORY_SYNONYMS)
   let matchedCategory: Category | null = null;
+  let detectedCategory: string | undefined = undefined;
 
-  if (userCategories.length > 0) {
-    const merchantLower = merchantOrRecipient.toLowerCase();
+  const merchantLower = merchantOrRecipient.toLowerCase();
 
-    // Priority 1: Match merchant name against CATEGORY_SYNONYMS keywords
-    for (const group of Object.values(CATEGORY_SYNONYMS)) {
-      const kwMatch = group.keywords.some((kw) => merchantLower.includes(kw));
-      if (kwMatch) {
+  // Priority 1: Match merchant name against CATEGORY_SYNONYMS keywords
+  for (const group of Object.values(CATEGORY_SYNONYMS)) {
+    const kwMatch = group.keywords.some((kw) => merchantLower.includes(kw));
+    if (kwMatch) {
+      detectedCategory = group.targetKeys[0].charAt(0).toUpperCase() + group.targetKeys[0].slice(1);
+      if (userCategories.length > 0) {
         matchedCategory =
           userCategories.find((c) => {
             const cLower = c.name.toLowerCase();
@@ -533,15 +536,20 @@ export function parseSlipText(
               (target) => cLower.includes(target) || target.includes(cLower)
             );
           }) || null;
-        if (matchedCategory) break;
       }
+      if (matchedCategory) break;
     }
+  }
 
-    // Priority 2: Match full text against CATEGORY_SYNONYMS keywords
-    if (!matchedCategory) {
-      for (const group of Object.values(CATEGORY_SYNONYMS)) {
-        const kwMatch = group.keywords.some((kw) => matchesWord(fullTextLower, kw) || fullTextLower.includes(kw));
-        if (kwMatch) {
+  // Priority 2: Match full text against CATEGORY_SYNONYMS keywords
+  if (!matchedCategory) {
+    for (const group of Object.values(CATEGORY_SYNONYMS)) {
+      const kwMatch = group.keywords.some((kw) => matchesWord(fullTextLower, kw) || fullTextLower.includes(kw));
+      if (kwMatch) {
+        if (!detectedCategory) {
+          detectedCategory = group.targetKeys[0].charAt(0).toUpperCase() + group.targetKeys[0].slice(1);
+        }
+        if (userCategories.length > 0) {
           matchedCategory =
             userCategories.find((c) => {
               const cLower = c.name.toLowerCase();
@@ -549,25 +557,20 @@ export function parseSlipText(
                 (target) => cLower.includes(target) || target.includes(cLower)
               );
             }) || null;
-          if (matchedCategory) break;
         }
+        if (matchedCategory) break;
       }
     }
+  }
 
-    // Priority 3: Direct name matching with user categories
-    if (!matchedCategory) {
-      for (const c of userCategories) {
-        const cLower = c.name.toLowerCase();
-        if (matchesWord(fullTextLower, cLower)) {
-          matchedCategory = c;
-          break;
-        }
+  // Priority 3: Direct name matching with user categories
+  if (!matchedCategory && userCategories.length > 0) {
+    for (const c of userCategories) {
+      const cLower = c.name.toLowerCase();
+      if (matchesWord(fullTextLower, cLower)) {
+        matchedCategory = c;
+        break;
       }
-    }
-
-    // Fallback: Default to first user category
-    if (!matchedCategory) {
-      matchedCategory = userCategories[0];
     }
   }
 
@@ -604,6 +607,7 @@ export function parseSlipText(
     confidence: Math.min(1, Math.round(confidence * 100) / 100),
     detectedSlipType,
     detectedInstitution,
+    detectedCategory,
     rawText,
     extractedLines: lines,
   };
