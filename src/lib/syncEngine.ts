@@ -154,9 +154,11 @@ export async function flushPendingMutations(): Promise<{
         if (error) throw error;
         flushedCount++;
       } else if (mutation.type === "update") {
-        const { id, ...updates } = mutation.payload;
+        const { id, user_id: _uid, ...updates } = mutation.payload;
         if (!id) continue;
         const cleanUpdates = sanitizePayload(updates);
+        delete cleanUpdates.id;
+        delete cleanUpdates.user_id;
         const { error } = await supabase
           .from("transactions")
           .update(cleanUpdates)
@@ -182,7 +184,14 @@ export async function flushPendingMutations(): Promise<{
       );
       errors.push(err);
       mutation.retryCount += 1;
-      remainingMutations.push(mutation);
+      if (mutation.retryCount <= 10) {
+        remainingMutations.push(mutation);
+      } else {
+        console.error(
+          `[syncEngine] Dropping corrupt mutation ${mutation.id} after 10 failed retries.`,
+          mutation,
+        );
+      }
     }
   }
 

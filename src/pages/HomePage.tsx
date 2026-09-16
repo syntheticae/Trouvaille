@@ -96,7 +96,7 @@ export interface HomeWidgetSettings {
   showSplitBillTracker: boolean;
 }
 
-export const DEFAULT_HOME_WIDGETS: HomeWidgetSettings = {
+const DEFAULT_HOME_WIDGETS: HomeWidgetSettings = {
   showCashflowPulse: true,
   showSpendingStability: true,
   showActionCenter: true,

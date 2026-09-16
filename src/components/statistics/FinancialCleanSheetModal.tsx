@@ -155,21 +155,25 @@ export function FinancialCleanSheetModal({
     const computedClosing = totalAssets - postNet;
     const computedOpening = computedClosing - net;
 
-    // Build ledger rows with exact running balance
-    let curBal = computedOpening;
-    const rows = periodTxs.map((t, idx) => {
+    // Build ledger rows with exact running balance (pure functional reduce)
+    const rows = periodTxs.reduce<
+      Array<{ rowNo: number; tx: (typeof periodTxs)[0]; runningBalance: number }>
+    >((acc, t, idx) => {
+      const prevBal = idx === 0 ? computedOpening : acc[idx - 1].runningBalance;
       const amt = Number(t.amount || 0);
-      if (t.type === "income") {
-        curBal += amt;
-      } else if (t.type === "expense") {
-        curBal -= amt;
-      }
-      return {
+      const nextBal =
+        t.type === "income"
+          ? prevBal + amt
+          : t.type === "expense"
+            ? prevBal - amt
+            : prevBal;
+      acc.push({
         rowNo: idx + 1,
         tx: t,
-        runningBalance: curBal,
-      };
-    });
+        runningBalance: nextBal,
+      });
+      return acc;
+    }, []);
 
     const breakdown = Array.from(catMap.values())
       .map((c) => ({
@@ -192,6 +196,17 @@ export function FinancialCleanSheetModal({
     };
   }, [periodTxs, categories, transactions, statementType, selectedMonth, selectedYear, totalAssets]);
 
+  const auditId = useMemo(() => {
+    const code =
+      statementType === "month"
+        ? selectedMonth.replace("-", "")
+        : String(selectedYear);
+    const seq =
+      ((periodTxs.length * 73 + (statementType === "month" ? 419 : 827)) % 9000) +
+      1000;
+    return `TRV-${code}-${seq}`;
+  }, [statementType, selectedMonth, selectedYear, periodTxs.length]);
+
   if (!isOpen) return null;
 
   const periodTitle =
@@ -205,7 +220,6 @@ export function FinancialCleanSheetModal({
       : `01 Jan ${selectedYear} - 31 Des ${selectedYear}`;
 
   const generationTimestamp = format(new Date(), "dd MMM yyyy HH:mm") + " WIB";
-  const auditId = `TRV-${statementType === "month" ? selectedMonth.replace("-", "") : selectedYear}-${Math.floor(1000 + Math.random() * 9000)}`;
   const userName =
     (session?.user?.user_metadata?.display_name as string) ||
     session?.user?.email?.split("@")[0] ||

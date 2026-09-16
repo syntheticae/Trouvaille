@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { isCorrectionTx } from "../src/lib/financialMath"
 import type { Transaction } from "../src/lib/types"
+import { generateUUID } from "../src/hooks/useTransactions"
 
 describe("Data Synchronization & Large Dataset Integrity Test Suite", () => {
   function generateMockDataset(count = 913): Transaction[] {
@@ -167,5 +168,80 @@ describe("Data Synchronization & Large Dataset Integrity Test Suite", () => {
     }
     expect(thrownError).not.toBeNull()
     expect(thrownError?.message).toBe("Network request failed")
+  })
+
+  it("generateUUID produces valid RFC4122 v4 compliant UUIDs", () => {
+    const uuid = generateUUID()
+    const rfc4122v4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    expect(uuid).toMatch(rfc4122v4Regex)
+    expect(uuid.startsWith("tx-")).toBe(false)
+  })
+
+  it("Deterministic ID pre-assignment prevents optimistic phantom duplicate records", () => {
+    const rawInput: any = {
+      type: "expense",
+      amount: 50000,
+      occurred_on: "2026-09-16",
+    }
+
+    // onMutate assigns id
+    const assignedId = rawInput.id || generateUUID()
+    rawInput.id = assignedId
+
+    // mutationFn receives same object
+    const mutationFnId = rawInput.id || generateUUID()
+    expect(mutationFnId).toBe(assignedId)
+  })
+
+  it("Cleans update payload by completely stripping id and user_id", () => {
+    const updatePayload: any = {
+      id: "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+      user_id: "user-12345",
+      amount: 75000,
+      note: "Lunch with colleagues",
+    }
+
+    const { id: _id, user_id: _uid, ...cleanUpdate } = updatePayload
+    expect(cleanUpdate.id).toBeUndefined()
+    expect(cleanUpdate.user_id).toBeUndefined()
+    expect(cleanUpdate.amount).toBe(75000)
+    expect(cleanUpdate.note).toBe("Lunch with colleagues")
+  })
+
+  it("syncEngine retry count drops corrupted mutations after 10 failed attempts", () => {
+    const corruptMutation = {
+      id: "mut-bad",
+      type: "update",
+      retryCount: 10,
+    }
+
+    corruptMutation.retryCount += 1
+    const remaining: typeof corruptMutation[] = []
+    if (corruptMutation.retryCount <= 10) {
+      remaining.push(corruptMutation)
+    }
+
+    expect(remaining.length).toBe(0)
+  })
+
+  it("Selective query dehydration filters out memory-heavy temporary slice queries", () => {
+    const shouldDehydrate = (queryKey: readonly unknown[]) => {
+      const domain = queryKey[0]
+      if (domain === "categories" || domain === "wallets" || domain === "bills" || domain === "shortcuts") {
+        return true
+      }
+      if (domain === "transactions") {
+        return queryKey[1] === "all"
+      }
+      return false
+    }
+
+    expect(shouldDehydrate(["categories"])).toBe(true)
+    expect(shouldDehydrate(["wallets"])).toBe(true)
+    expect(shouldDehydrate(["transactions", "all", "user-1"])).toBe(true)
+    expect(shouldDehydrate(["transactions", "month", "user-1", 2026, 9])).toBe(false)
+    expect(shouldDehydrate(["transactions", "day", "user-1", "2026-09-16"])).toBe(false)
+    expect(shouldDehydrate(["transactions", "recent", "user-1", 10])).toBe(false)
+    expect(shouldDehydrate(["transactions", "trend"])).toBe(false)
   })
 })

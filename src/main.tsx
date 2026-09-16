@@ -166,7 +166,18 @@ createRoot(document.getElementById('root')!).render(
           maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
           dehydrateOptions: {
             shouldDehydrateQuery: (query) => {
-              return query.state.status === 'success'
+              if (query.state.status !== 'success') return false;
+              const key = query.queryKey;
+              const domain = key[0];
+              // Only persist master root datasets to prevent exceeding 5MB localStorage limit
+              if (domain === 'categories' || domain === 'wallets' || domain === 'bills' || domain === 'shortcuts') {
+                return true;
+              }
+              if (domain === 'transactions') {
+                // Only persist master all-transactions query, not repetitive slice queries (month, day, recent, trend)
+                return key[1] === 'all';
+              }
+              return false;
             },
           },
         }}

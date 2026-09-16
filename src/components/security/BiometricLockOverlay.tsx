@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Lock,
@@ -27,21 +27,7 @@ export function BiometricLockOverlay() {
   const [pinError, setPinError] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // Auto-prompt Face ID / Biometrics upon lock mount
-  useEffect(() => {
-    if (isLocked && !pinMode) {
-      if (securitySettings.hasBiometric || isBiometricSupported) {
-        const timer = setTimeout(() => {
-          handleBiometricUnlock();
-        }, 350);
-        return () => clearTimeout(timer);
-      } else if (securitySettings.hasPin) {
-        setPinMode(true);
-      }
-    }
-  }, [isLocked, pinMode, securitySettings.hasBiometric, isBiometricSupported, securitySettings.hasPin]);
-
-  const handleBiometricUnlock = async () => {
+  const handleBiometricUnlock = useCallback(async () => {
     setIsVerifying(true);
     triggerHaptic("medium");
     try {
@@ -57,7 +43,21 @@ export function BiometricLockOverlay() {
     } finally {
       setIsVerifying(false);
     }
-  };
+  }, [unlockWithBiometric, securitySettings.hasPin]);
+
+  // Auto-prompt Face ID / Biometrics upon lock mount
+  useEffect(() => {
+    if (isLocked && !pinMode) {
+      if (securitySettings.hasBiometric || isBiometricSupported) {
+        const timer = setTimeout(() => {
+          handleBiometricUnlock();
+        }, 350);
+        return () => clearTimeout(timer);
+      } else if (securitySettings.hasPin) {
+        setPinMode(true);
+      }
+    }
+  }, [isLocked, pinMode, securitySettings.hasBiometric, isBiometricSupported, securitySettings.hasPin, handleBiometricUnlock]);
 
   const handlePinDigit = async (digit: string) => {
     if (pinInput.length >= 6) return;

@@ -138,7 +138,9 @@ export function calculateMonthCalendarRunway(
     const dStr = format(dayObj, "yyyy-MM-dd");
     const dayMidnight = new Date(dStr + "T00:00:00Z");
     const isPast = isBefore(dayMidnight, refMidnight);
-    const isTod = isToday(dayObj) || dStr === refDateStr;
+    const isTod = options.referenceDate
+      ? dStr === refDateStr
+      : isToday(dayObj);
     const isFut = !isPast && !isTod;
 
     // Actual transactions

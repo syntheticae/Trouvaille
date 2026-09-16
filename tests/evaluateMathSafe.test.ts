@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluateMathSafe } from "../src/components/transactions/TransactionSheet";
+import { evaluateMathSafe } from "../src/lib/evaluateMathSafe";
 
 describe("evaluateMathSafe (Zero-Eval Arithmetic Evaluator)", () => {
   it("evaluates simple addition and subtraction correctly", () => {

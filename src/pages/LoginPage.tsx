@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { Mail, Lock, ArrowRight, ScanFace } from "lucide-react"
 import { supabase } from "../lib/supabase"
+import { useAuth } from "../contexts/AuthContext"
 import {
-  verifyBiometricPasskey,
+  authenticateWithBiometrics,
   getSecuritySettings,
   getBiometricLoginCredentials,
   saveBiometricLoginCredentials,
@@ -11,6 +12,7 @@ import {
 import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics"
 
 export function LoginPage() {
+  const { setSession } = useAuth()
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -19,6 +21,35 @@ export function LoginPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [hasBiometric, setHasBiometric] = useState(false)
 
+  const handleBiometricLogin = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    setMessage(null)
+    triggerHaptic("medium")
+    try {
+      const res = await authenticateWithBiometrics()
+      if (res.success && res.session) {
+        triggerSuccessHaptic()
+        setSession(res.session)
+        return
+      }
+
+      if (res.email && !email) {
+        setEmail(res.email)
+      }
+
+      if (res.error) {
+        triggerHaptic("heavy")
+        setError(res.error)
+      }
+    } catch (err: any) {
+      triggerHaptic("heavy")
+      setError(err?.message || "Biometric authentication failed.")
+    } finally {
+      setLoading(false)
+    }
+  }, [email, setSession])
+
   useEffect(() => {
     const s = getSecuritySettings()
     setHasBiometric(s.hasBiometric)
@@ -26,38 +57,14 @@ export function LoginPage() {
     if (hint?.email && !email) {
       setEmail(hint.email)
     }
-  }, [])
 
-  const handleBiometricLogin = async () => {
-    setLoading(true)
-    setError(null)
-    setMessage(null)
-    triggerHaptic("medium")
-    try {
-      const ok = await verifyBiometricPasskey()
-      if (ok) {
-        triggerSuccessHaptic()
-        const { data } = await supabase.auth.getSession()
-        if (data?.session) {
-          return
-        }
-        const hint = getBiometricLoginCredentials()
-        if (hint?.email) {
-          setEmail(hint.email)
-          setMessage("Biometrics verified! Enter your password to resume session.")
-        } else {
-          setMessage("Biometrics verified! Sign in to sync your account.")
-        }
-      } else {
-        triggerHaptic("heavy")
-        setError("Biometric verification cancelled or unavailable.")
-      }
-    } catch (err: any) {
-      setError(err?.message || "Biometric authentication failed.")
-    } finally {
-      setLoading(false)
+    if (s.hasBiometric && !isSignUp) {
+      const timer = setTimeout(() => {
+        handleBiometricLogin()
+      }, 400)
+      return () => clearTimeout(timer)
     }
-  }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,7 +78,8 @@ export function LoginPage() {
       })
       if (error) setError(error.message)
       else if (data?.session) {
-        saveBiometricLoginCredentials(email.trim(), data.session)
+        saveBiometricLoginCredentials(email.trim(), data.session, password)
+        setSession(data.session)
       } else {
         setMessage("Registration successful! Please check your email for confirmation (if required), or sign in directly.")
         setIsSignUp(false)
@@ -83,7 +91,8 @@ export function LoginPage() {
       })
       if (error) setError(error.message)
       else if (data?.session) {
-        saveBiometricLoginCredentials(email.trim(), data.session)
+        saveBiometricLoginCredentials(email.trim(), data.session, password)
+        setSession(data.session)
       }
     }
     setLoading(false)

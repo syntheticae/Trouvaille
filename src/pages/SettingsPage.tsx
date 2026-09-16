@@ -36,6 +36,7 @@ import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet"
 import { requestNotificationPermission } from "../lib/notifications";
 import { flushPendingMutations } from "../lib/syncEngine";
 import { EncryptedVaultModal } from "../components/security/EncryptedVaultModal";
+import { saveBiometricLoginCredentials } from "../lib/biometricAuth";
 
 import { ProfileSheet } from "../components/settings/ProfileSheet";
 import { BillManagementSheets } from "../components/settings/BillManagementSheets";
@@ -52,7 +53,7 @@ export function SettingsPage() {
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
   const { goals } = useGoals();
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
   const { budgetTarget, setBudgetTarget } = useBudgetTarget();
@@ -226,8 +227,7 @@ export function SettingsPage() {
 
   const handleLogout = async () => {
     if (confirm("Are you sure you want to sign out?")) {
-      await supabase.auth.signOut();
-      window.location.reload();
+      await signOut();
     }
   };
 
@@ -820,6 +820,9 @@ export function SettingsPage() {
                   if (isBiometricSupported && !securitySettings.hasBiometric) {
                     try {
                       await enrollBiometric(session?.user?.email || undefined);
+                      if (session) {
+                        saveBiometricLoginCredentials(session.user?.email || "", session);
+                      }
                       updateSecuritySettings({ enabled: true });
                       showToast(
                         "Face ID / Biometrics enabled",

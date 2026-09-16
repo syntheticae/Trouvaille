@@ -81,6 +81,7 @@ export function isLockTimeoutExceeded(): boolean {
 
 import { NativeBiometric } from "@capgo/capacitor-native-biometric";
 import { Capacitor } from "@capacitor/core";
+import { supabase } from "./supabase";
 
 export async function isBiometricAvailable(): Promise<boolean> {
   if (typeof window === "undefined") return false;
@@ -188,7 +189,7 @@ export async function registerBiometricPasskey(
   }
 
   const challenge = new Uint8Array(32);
-  window.crypto.getRandomValues(challenge);
+  globalThis.crypto.getRandomValues(challenge);
 
   const userIdBytes = new TextEncoder().encode(userId);
 
@@ -196,7 +197,7 @@ export async function registerBiometricPasskey(
     challenge,
     rp: {
       name: "Trouvaille Financial Security",
-      id: window.location.hostname || "localhost",
+      id: (typeof window !== "undefined" ? window.location?.hostname : "localhost") || "localhost",
     },
     user: {
       id: userIdBytes,
@@ -261,7 +262,7 @@ export async function verifyBiometricPasskey(): Promise<boolean> {
   }
 
   const challenge = new Uint8Array(32);
-  window.crypto.getRandomValues(challenge);
+  globalThis.crypto.getRandomValues(challenge);
 
   const storedCredBase64 = localStorage.getItem(BIOMETRIC_CREDENTIAL_KEY);
   const allowCredentials: PublicKeyCredentialDescriptor[] | undefined =
@@ -278,7 +279,7 @@ export async function verifyBiometricPasskey(): Promise<boolean> {
   const requestOptions: PublicKeyCredentialRequestOptions = {
     challenge,
     timeout: 60000,
-    rpId: window.location.hostname || "localhost",
+    rpId: (typeof window !== "undefined" ? window.location?.hostname : "localhost") || "localhost",
     userVerification: "required",
     allowCredentials,
   };
@@ -446,10 +447,50 @@ export function clearSecurityPin(): void {
 }
 
 // ======================================================================
-// BIOMETRIC QUICK LOGIN SESSION HELPERS
+// BIOMETRIC QUICK LOGIN SESSION & VAULT PERSISTENCE
 // ======================================================================
 
-export function saveBiometricLoginCredentials(email: string, sessionData?: any): void {
+const SESSION_VAULT_KEY = "trouvaille_session_vault_v1";
+
+export function savePersistentSession(session: any): void {
+  try {
+    if (!session) return;
+    localStorage.setItem(SESSION_VAULT_KEY, JSON.stringify(session));
+    if (Capacitor.isNativePlatform()) {
+      NativeBiometric.setData({
+        key: "trouvaille_vault_session",
+        value: JSON.stringify(session),
+      }).catch(() => {});
+    }
+  } catch (err) {
+    console.warn("[biometricAuth] Failed to persist session vault:", err);
+  }
+}
+
+export function getPersistentSession(): any | null {
+  try {
+    const raw = localStorage.getItem(SESSION_VAULT_KEY);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch {}
+  return null;
+}
+
+export function clearPersistentSession(): void {
+  try {
+    localStorage.removeItem(SESSION_VAULT_KEY);
+    if (Capacitor.isNativePlatform()) {
+      NativeBiometric.deleteData({ key: "trouvaille_vault_session" }).catch(() => {});
+    }
+  } catch {}
+}
+
+export function saveBiometricLoginCredentials(
+  email: string,
+  sessionData?: any,
+  password?: string,
+): void {
   try {
     const payload = {
       email,
@@ -457,14 +498,144 @@ export function saveBiometricLoginCredentials(email: string, sessionData?: any):
       session: sessionData,
     };
     localStorage.setItem(BIOMETRIC_LOGIN_TOKEN_KEY, JSON.stringify(payload));
-  } catch {}
+
+    if (sessionData) {
+      savePersistentSession(sessionData);
+    }
+
+    if (Capacitor.isNativePlatform() && password) {
+      NativeBiometric.setCredentials({
+        username: email,
+        password: password,
+        server: "trouvaille.app",
+      }).catch((err) => {
+        console.warn("[biometricAuth] Failed to set native keychain credentials:", err);
+      });
+    }
+  } catch (e) {
+    console.warn("[biometricAuth] Failed to save biometric login credentials:", e);
+  }
 }
 
 export function getBiometricLoginCredentials(): { email: string; session?: any } | null {
   try {
     const raw = localStorage.getItem(BIOMETRIC_LOGIN_TOKEN_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch {}
+  return null;
+}
+
+export function clearBiometricLoginCredentials(): void {
+  try {
+    localStorage.removeItem(BIOMETRIC_LOGIN_TOKEN_KEY);
+    clearPersistentSession();
+    if (Capacitor.isNativePlatform()) {
+      NativeBiometric.deleteCredentials({ server: "trouvaille.app" }).catch(() => {});
+    }
+  } catch {}
+}
+
+export interface BiometricAuthResult {
+  success: boolean;
+  session?: any;
+  email?: string;
+  error?: string;
+}
+
+export async function authenticateWithBiometrics(): Promise<BiometricAuthResult> {
+  const verified = await verifyBiometricPasskey();
+  if (!verified) {
+    return {
+      success: false,
+      error: "Biometric verification cancelled or unavailable.",
+    };
   }
+
+  // 1. Native iOS / Android: Try hardware-backed Keychain credentials
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const creds = await NativeBiometric.getCredentials({ server: "trouvaille.app" });
+      if (creds?.username && creds?.password) {
+        const { data } = await supabase.auth.signInWithPassword({
+          email: creds.username,
+          password: creds.password,
+        });
+        if (data?.session) {
+          saveBiometricLoginCredentials(creds.username, data.session, creds.password);
+          return {
+            success: true,
+            session: data.session,
+            email: creds.username,
+          };
+        }
+      }
+    } catch (e) {
+      console.info("[biometricAuth] Native Keychain lookup skipped, proceeding to session vault:", e);
+    }
+  }
+
+  // 2. Try session vault or biometric credentials with refresh token
+  const hint = getBiometricLoginCredentials();
+  const vaultSession = hint?.session || getPersistentSession();
+
+  if (vaultSession?.refresh_token) {
+    try {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: vaultSession.access_token || "",
+        refresh_token: vaultSession.refresh_token,
+      });
+
+      if (data?.session) {
+        saveBiometricLoginCredentials(hint?.email || data.session.user?.email || "", data.session);
+        return {
+          success: true,
+          session: data.session,
+          email: hint?.email || data.session.user?.email,
+        };
+      }
+
+      // If offline or network error occurred during refresh, return offline session
+      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      if (isOffline || error?.message?.toLowerCase().includes("fetch")) {
+        console.warn("[biometricAuth] Restoring session in offline mode");
+        return {
+          success: true,
+          session: vaultSession,
+          email: hint?.email || vaultSession.user?.email,
+        };
+      }
+    } catch (refreshErr: any) {
+      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      if (isOffline) {
+        return {
+          success: true,
+          session: vaultSession,
+          email: hint?.email || vaultSession.user?.email,
+        };
+      }
+      console.warn("[biometricAuth] Failed to restore session with refresh token:", refreshErr);
+    }
+  }
+
+  // 3. Fallback: check if active session already exists in memory
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session) {
+      saveBiometricLoginCredentials(data.session.user?.email || "", data.session);
+      return {
+        success: true,
+        session: data.session,
+        email: data.session.user?.email,
+      };
+    }
+  } catch {}
+
+  // 4. If all token and credential renewals failed
+  return {
+    success: false,
+    email: hint?.email || vaultSession?.user?.email,
+    error: "Session expired on server. Please enter your password once to renew Face ID login.",
+  };
 }

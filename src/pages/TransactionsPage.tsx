@@ -669,7 +669,7 @@ export function TransactionsPage() {
                 <div
                   key={i}
                   className="w-8 rounded-md bg-white/5 animate-pulse"
-                  style={{ height: `${Math.max(20, Math.random() * 80)}%` }}
+                  style={{ height: `${[45, 70, 35, 80, 50, 65, 40][(i - 1) % 7]}%` }}
                 />
               ))}
             </div>

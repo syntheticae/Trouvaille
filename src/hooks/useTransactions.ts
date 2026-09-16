@@ -1,13 +1,27 @@
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
-import type { Transaction, TransactionType } from "../lib/types";
+import type { Transaction, TransactionType, Category } from "../lib/types";
 import { format } from "date-fns";
 import {
   enqueuePendingMutation,
   removePendingMutation,
   getPendingMutations,
+  flushPendingMutations,
 } from "../lib/syncEngine";
+import { categoryKeys } from "./useCategories";
+
+export function generateUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // RFC4122 v4 compliant fallback
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 interface TransactionInput {
   type: TransactionType;
@@ -95,7 +109,7 @@ function restoreTransactionQueries(
   });
 }
 
-function upsertTransactionAcrossCaches(
+export function upsertTransactionAcrossCaches(
   qc: ReturnType<typeof useQueryClient>,
   tx: Transaction,
 ) {
@@ -148,7 +162,7 @@ function upsertTransactionAcrossCaches(
   });
 }
 
-function removeTransactionFromCaches(
+export function removeTransactionFromCaches(
   qc: ReturnType<typeof useQueryClient>,
   id: string,
 ) {
@@ -167,7 +181,7 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function withTimeout<T>(promise: PromiseLike<T>, ms = 8000): Promise<T> {
+function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
   return Promise.race([
     Promise.resolve(promise),
     new Promise<T>((_, reject) =>
@@ -195,14 +209,12 @@ export async function fetchAllTransactionsFromSupabase(
   const user = session?.user;
   const effectiveUserId = filters?.userId || user?.id;
 
-  const pageSize = 250;
+  const pageSize = 500;
   let from = 0;
   const allRecords: Transaction[] = [];
   let hasMore = true;
-  let serverTotalCount: number | null = null;
 
   while (hasMore) {
-    const shouldRequestCount = from === 0;
     let chunk: Transaction[] = [];
     let fetchError: unknown = null;
 
@@ -211,10 +223,7 @@ export async function fetchAllTransactionsFromSupabase(
       try {
         let query = supabase
           .from("transactions")
-          .select(
-            "*, categories(*)",
-            shouldRequestCount ? { count: "exact" } : undefined,
-          )
+          .select("*, categories(*)")
           .order("occurred_on", { ascending: false })
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
@@ -227,12 +236,12 @@ export async function fetchAllTransactionsFromSupabase(
           query = query.gte("occurred_on", filters.startDate);
         if (filters?.endDate) query = query.lte("occurred_on", filters.endDate);
 
-        let { data, error, count } = await withTimeout(query, 8000);
+        let { data, error } = await withTimeout(query, 15000);
         if (error) {
           // Fallback to flat query without join for speed and resilience
           let fallbackQuery = supabase
             .from("transactions")
-            .select("*", shouldRequestCount ? { count: "exact" } : undefined)
+            .select("*")
             .order("occurred_on", { ascending: false })
             .order("created_at", { ascending: false })
             .order("id", { ascending: false })
@@ -247,14 +256,9 @@ export async function fetchAllTransactionsFromSupabase(
           if (filters?.endDate)
             fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate);
 
-          const fallbackRes = await withTimeout(fallbackQuery, 8000);
+          const fallbackRes = await withTimeout(fallbackQuery, 15000);
           if (fallbackRes.error) throw fallbackRes.error;
           data = fallbackRes.data;
-          count = fallbackRes.count;
-        }
-
-        if (count !== null && count !== undefined) {
-          serverTotalCount = count;
         }
 
         chunk = (data as Transaction[]) || [];
@@ -341,12 +345,10 @@ export async function fetchAllTransactionsFromSupabase(
     allRecords.push(...chunk);
 
     if (onPageFetched) {
-      onPageFetched(allRecords.length, serverTotalCount);
+      onPageFetched(allRecords.length, null);
     }
 
-    if (serverTotalCount !== null && allRecords.length >= serverTotalCount) {
-      hasMore = false;
-    } else if (chunk.length < pageSize) {
+    if (chunk.length < pageSize) {
       hasMore = false;
     } else {
       from += pageSize;
@@ -401,7 +403,7 @@ export async function fetchAllTransactionsFromSupabase(
     try {
       localStorage.setItem(
         TX_BACKUP_STORAGE_KEY,
-        JSON.stringify(uniqueRecords.slice(0, 3000)),
+        JSON.stringify(uniqueRecords.slice(0, 500)),
       );
     } catch (e) {
       console.warn("[fetchAllTransactionsFromSupabase] Failed to write backup snapshot:", e);
@@ -540,11 +542,14 @@ export function useAddTransaction() {
       } = await supabase.auth.getSession();
       const currentUser = session?.user || (userId ? { id: userId } : null);
 
-      const effectiveId =
-        input.id ||
-        (typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `tx-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+      const effectiveId = input.id || generateUUID();
+      input.id = effectiveId;
+
+      const allCategories = qc.getQueryData<Category[]>(
+        categoryKeys.all(currentUser?.id || userId),
+      );
+      const categoryObj =
+        allCategories?.find((c) => c.id === input.category_id) || null;
 
       const fullTx: Transaction = {
         id: effectiveId,
@@ -557,7 +562,7 @@ export function useAddTransaction() {
         note: input.note || null,
         occurred_on: input.occurred_on,
         created_at: input.created_at || new Date().toISOString(),
-        categories: null,
+        categories: categoryObj,
       };
 
       // Always save to persistent pending mutations queue first
@@ -570,15 +575,29 @@ export function useAddTransaction() {
       // Attempt immediate sync to Supabase with quick timeout/retry
       try {
         const { categories, wallet, to_wallet, ...dbPayload } = fullTx as any;
-        const { data, error } = await supabase
+        let query = supabase
           .from("transactions")
           .upsert({ ...dbPayload, user_id: currentUser.id })
-          .select("*")
-          .maybeSingle();
+          .select("*, categories(*)");
 
-        if (!error && data) {
+        let res = await withTimeout(query, 7000);
+        if (res.error) {
+          res = await withTimeout(
+            supabase
+              .from("transactions")
+              .upsert({ ...dbPayload, user_id: currentUser.id })
+              .select("*"),
+            7000,
+          );
+        }
+
+        if (!res.error && res.data && res.data[0]) {
           removePendingMutation(mutation.id);
-          return data as Transaction;
+          const serverTx = res.data[0] as Transaction;
+          return {
+            ...serverTx,
+            categories: serverTx.categories || categoryObj,
+          };
         }
       } catch (networkErr) {
         console.warn(
@@ -593,11 +612,14 @@ export function useAddTransaction() {
     onMutate: async (newTx: any) => {
       await qc.cancelQueries({ queryKey: ["transactions"] });
       const snapshots = snapshotTransactionQueries(qc);
-      const effectiveId =
-        newTx.id ||
-        (typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+
+      // Pre-assign ID if not set so mutationFn uses the exact same ID
+      const effectiveId = newTx.id || generateUUID();
+      newTx.id = effectiveId;
+
+      const allCategories = qc.getQueryData<Category[]>(categoryKeys.all(userId));
+      const categoryObj =
+        allCategories?.find((c) => c.id === newTx.category_id) || null;
 
       const optimisticItem: Transaction = {
         id: effectiveId,
@@ -610,14 +632,22 @@ export function useAddTransaction() {
         note: newTx.note || null,
         occurred_on: newTx.occurred_on,
         created_at: newTx.created_at || new Date().toISOString(),
-        categories: null,
+        categories: categoryObj,
       };
 
       upsertTransactionAcrossCaches(qc, optimisticItem);
       return { snapshots, optimisticItem };
     },
-    onSuccess: (savedTx) => {
-      upsertTransactionAcrossCaches(qc, savedTx);
+    onSuccess: (savedTx, _vars, context) => {
+      // Orphan cleanup: if optimistic item ID differed from savedTx ID, remove the old one
+      if (context?.optimisticItem && context.optimisticItem.id !== savedTx.id) {
+        removeTransactionFromCaches(qc, context.optimisticItem.id);
+      }
+      const enriched: Transaction = {
+        ...savedTx,
+        categories: savedTx.categories || context?.optimisticItem?.categories || null,
+      };
+      upsertTransactionAcrossCaches(qc, enriched);
     },
     onError: (_err, _newTx, context) => {
       // Do NOT rollback if transaction was enqueued
@@ -627,6 +657,7 @@ export function useAddTransaction() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["wallets"] });
+      flushPendingMutations().catch(() => {});
     },
   });
 }
@@ -638,36 +669,47 @@ export function useUpdateTransaction() {
 
   return useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
-      const sanitized: any = { id };
-      if (input.type) sanitized.type = input.type;
-      if (input.amount !== undefined) sanitized.amount = Number(input.amount);
-      if (input.occurred_on) sanitized.occurred_on = input.occurred_on;
-      if (input.created_at) sanitized.created_at = input.created_at;
-      sanitized.note = input.note ?? null;
-      sanitized.category_id = input.category_id ?? null;
-      sanitized.wallet_id = input.wallet_id ?? null;
-      sanitized.to_wallet_id = input.to_wallet_id ?? null;
-      if (userId) sanitized.user_id = userId;
+      const cleanUpdate: any = {};
+      if (input.type) cleanUpdate.type = input.type;
+      if (input.amount !== undefined) cleanUpdate.amount = Number(input.amount);
+      if (input.occurred_on) cleanUpdate.occurred_on = input.occurred_on;
+      if (input.created_at) cleanUpdate.created_at = input.created_at;
+      if (input.note !== undefined) cleanUpdate.note = input.note ?? null;
+      if (input.category_id !== undefined) cleanUpdate.category_id = input.category_id ?? null;
+      if (input.wallet_id !== undefined) cleanUpdate.wallet_id = input.wallet_id ?? null;
+      if (input.to_wallet_id !== undefined) cleanUpdate.to_wallet_id = input.to_wallet_id ?? null;
 
-      const mutation = enqueuePendingMutation("update", sanitized);
+      // DO NOT include id or user_id in cleanUpdate payload sent to supabase.update()!
+      const mutation = enqueuePendingMutation("update", { id, ...cleanUpdate });
 
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("transactions")
-          .update(sanitized)
+          .update(cleanUpdate)
           .eq("id", id)
-          .select("*")
-          .maybeSingle();
+          .select("*, categories(*)");
 
-        if (!error && data) {
+        let res = await withTimeout(query, 7000);
+        if (res.error) {
+          res = await withTimeout(
+            supabase
+              .from("transactions")
+              .update(cleanUpdate)
+              .eq("id", id)
+              .select("*"),
+            7000,
+          );
+        }
+
+        if (!res.error && res.data && res.data[0]) {
           removePendingMutation(mutation.id);
-          return data as Transaction;
+          return res.data[0] as Transaction;
         }
       } catch (err) {
         console.warn("[useUpdateTransaction] Update queued locally:", err);
       }
 
-      return sanitized as Transaction;
+      return { id, ...cleanUpdate } as Transaction;
     },
     onMutate: async ({ id, ...updated }) => {
       await qc.cancelQueries({ queryKey: ["transactions"] });
@@ -676,18 +718,29 @@ export function useUpdateTransaction() {
         .flatMap(([, data]) => data ?? [])
         .find((item) => item.id === id);
 
+      const allCategories = qc.getQueryData<Category[]>(categoryKeys.all(userId));
+      const nextCatId =
+        updated.category_id !== undefined ? updated.category_id : existing?.category_id;
+      const categoryObj =
+        allCategories?.find((c) => c.id === nextCatId) || existing?.categories || null;
+
       if (existing) {
         upsertTransactionAcrossCaches(qc, {
           ...existing,
           ...updated,
           id,
+          categories: categoryObj,
         } as Transaction);
       }
 
-      return { snapshots };
+      return { snapshots, existingCategory: categoryObj };
     },
-    onSuccess: (updatedTx) => {
-      upsertTransactionAcrossCaches(qc, updatedTx);
+    onSuccess: (updatedTx, _vars, context) => {
+      const enriched: Transaction = {
+        ...updatedTx,
+        categories: updatedTx.categories || context?.existingCategory || null,
+      };
+      upsertTransactionAcrossCaches(qc, enriched);
     },
     onError: (_err, _vars, context) => {
       if (context?.snapshots) {
@@ -696,6 +749,7 @@ export function useUpdateTransaction() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["wallets"] });
+      flushPendingMutations().catch(() => {});
     },
   });
 }
@@ -736,6 +790,7 @@ export function useDeleteTransaction() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["wallets"] });
+      flushPendingMutations().catch(() => {});
     },
   });
 }

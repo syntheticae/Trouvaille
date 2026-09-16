@@ -14,6 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { fetchAllTransactionsFromSupabase } from "./hooks/useTransactions";
 import { supabase } from "./lib/supabase";
 import { flushPendingMutations } from "./lib/syncEngine";
+import { useRealtimeSync } from "./hooks/useRealtimeSync";
 
 const HomePage = lazy(() =>
   import("./pages/HomePage").then((module) => ({
@@ -60,6 +61,8 @@ import { useTheme } from "./contexts/ThemeContext";
 
 function AppShell() {
   const { user } = useAuth();
+  useRealtimeSync(user?.id);
+
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const [addSheetOpen, setAddSheetOpen] = useState(false);
@@ -89,12 +92,7 @@ function AppShell() {
       } else {
         setTimeout(() => setIsPrivacyShieldActive(false), 120);
         if (user?.id) {
-          flushPendingMutations()
-            .then(() => {
-              queryClient.invalidateQueries({ queryKey: ["transactions"] });
-              queryClient.invalidateQueries({ queryKey: ["wallets"] });
-            })
-            .catch(() => {});
+          flushPendingMutations().catch(() => {});
         }
       }
     };
@@ -104,12 +102,7 @@ function AppShell() {
     const handleFocus = () => {
       setIsPrivacyShieldActive(false);
       if (user?.id) {
-        flushPendingMutations()
-          .then(() => {
-            queryClient.invalidateQueries({ queryKey: ["transactions"] });
-            queryClient.invalidateQueries({ queryKey: ["wallets"] });
-          })
-          .catch(() => {});
+        flushPendingMutations().catch(() => {});
       }
     };
 
@@ -170,44 +163,28 @@ function AppShell() {
         if (user) {
           let transactionsReady = false;
 
-          setSyncStatusText("Setting up accounts & categories...");
-          setSyncProgress(12);
+          setSyncStatusText("Fetching authoritative transactions & accounts...");
+          setSyncProgress(25);
+
           try {
-            await ensureCategories.mutateAsync();
-            setSyncProgress(18);
-            await ensureWallets.mutateAsync();
-            setSyncProgress(24);
-          } catch (e) {
-            console.warn("Ensure categories/wallets non-fatal error:", e);
-          }
-
-          setSyncStatusText("Fetching authoritative transaction ledger...");
-          setSyncProgress(40);
-          try {
-            const freshTxs = await fetchAllTransactionsFromSupabase(
-              { userId: user.id },
-              (current, total) => {
-                setSyncedTxCount(current);
-                if (total && total > 0) {
-                  const pct = Math.round(60 + (current / total) * 28);
-                  setSyncProgress(Math.min(88, pct));
-                  setSyncStatusText(
-                    `Loading ${current} of ${total} transactions...`,
-                  );
-                } else {
-                  const pct = Math.min(88, 60 + Math.round(current / 100));
-                  setSyncProgress(pct);
-                  setSyncStatusText(`Loading ${current} transactions...`);
-                }
-              },
-            );
-
-            setSyncedTxCount(freshTxs.length);
-            queryClient.setQueryData(transactionKeys.all(user.id), freshTxs);
-
-            setSyncStatusText("Hydrating wallets, categories, and bills...");
-            setSyncProgress(90);
-            const [walletsRes, categoriesRes, billsRes] = await Promise.all([
+            const [freshTxs, walletsRes, categoriesRes, billsRes] = await Promise.all([
+              fetchAllTransactionsFromSupabase(
+                { userId: user.id },
+                (current, total) => {
+                  setSyncedTxCount(current);
+                  if (total && total > 0) {
+                    const pct = Math.round(25 + (current / total) * 60);
+                    setSyncProgress(Math.min(88, pct));
+                    setSyncStatusText(
+                      `Loading ${current} of ${total} transactions...`,
+                    );
+                  } else {
+                    const pct = Math.min(88, 25 + Math.round(current / 10));
+                    setSyncProgress(pct);
+                    setSyncStatusText(`Loading ${current} transactions...`);
+                  }
+                },
+              ),
               supabase
                 .from("wallets")
                 .select("*")
@@ -225,18 +202,26 @@ function AppShell() {
                 .order("due_date", { ascending: true }),
             ]);
 
-            if (!walletsRes.error)
-              queryClient.setQueryData(
-                walletKeys.all(user.id),
-                walletsRes.data ?? [],
-              );
-            if (!categoriesRes.error)
-              queryClient.setQueryData(
-                categoryKeys.all(user.id),
-                categoriesRes.data ?? [],
-              );
-            if (!billsRes.error)
+            setSyncedTxCount(freshTxs.length);
+            queryClient.setQueryData(transactionKeys.all(user.id), freshTxs);
+
+            if (!walletsRes.error) {
+              const walletsData = walletsRes.data ?? [];
+              queryClient.setQueryData(walletKeys.all(user.id), walletsData);
+              if (walletsData.length === 0) {
+                ensureWallets.mutate();
+              }
+            }
+            if (!categoriesRes.error) {
+              const categoriesData = categoriesRes.data ?? [];
+              queryClient.setQueryData(categoryKeys.all(user.id), categoriesData);
+              if (categoriesData.length === 0) {
+                ensureCategories.mutate();
+              }
+            }
+            if (!billsRes.error) {
               queryClient.setQueryData(["bills", user.id], billsRes.data ?? []);
+            }
 
             transactionsReady = true;
             setSyncProgress(98);
