@@ -83,6 +83,7 @@ export function ReceiptScanModal({
   const [walletId, setWalletId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
+  const [merchant, setMerchant] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [type, setType] = useState<TransactionType>("expense");
 
@@ -106,6 +107,8 @@ export function ReceiptScanModal({
       setProgressPct(0);
       setParsedSlip(null);
       setErrorText(null);
+      setMerchant("");
+      setNote("");
       setUnregisteredWalletName(null);
       setUnregisteredCategoryName(null);
       setCategorySheetOpen(false);
@@ -169,7 +172,23 @@ export function ReceiptScanModal({
       setParsedSlip(result.slip);
       setAmount(result.slip.amount || 0);
 
-      // Check wallet match
+      // Check wallet match (never fallback to liabilities/debt)
+      const spendableWallets = wallets.filter(
+        (w) =>
+          !w.name.toLowerCase().includes("liabilit") &&
+          !w.name.toLowerCase().includes("hutang") &&
+          !w.name.toLowerCase().includes("pinjam") &&
+          !w.name.toLowerCase().includes("piutang") &&
+          !w.name.toLowerCase().includes("crypto") &&
+          !w.name.toLowerCase().includes("saham") &&
+          !w.name.toLowerCase().includes("investasi")
+      );
+      const fallbackWallet =
+        spendableWallets.find((w) => /cash|tunai/i.test(w.name)) ||
+        spendableWallets.find((w) => /bca|mandiri|bri|bni/i.test(w.name)) ||
+        spendableWallets[0] ||
+        wallets[0];
+
       const matchedWallet = wallets.find((w) => w.id === result.slip.sourceWalletId);
       if (matchedWallet) {
         setWalletId(matchedWallet.id);
@@ -178,10 +197,25 @@ export function ReceiptScanModal({
         if (result.slip.detectedInstitution) {
           setUnregisteredWalletName(result.slip.detectedInstitution);
         }
-        setWalletId(wallets[0]?.id || null);
+        setWalletId(fallbackWallet?.id || null);
       }
 
-      // Check category match
+      // Check category match (never blind fallback to Admin & Fee)
+      const cleanCats = categories.filter(
+        (c) =>
+          !c.name.toLowerCase().includes("admin") &&
+          !c.name.toLowerCase().includes("fee") &&
+          !c.name.toLowerCase().includes("pajak") &&
+          !c.name.toLowerCase().includes("legal") &&
+          !c.name.toLowerCase().includes("kerugian")
+      );
+      const fallbackCat =
+        cleanCats.find((c) => /makanan|kuliner|food|resto/i.test(c.name)) ||
+        cleanCats.find((c) => /belanja|groceries/i.test(c.name)) ||
+        cleanCats.find((c) => /lainnya|other/i.test(c.name)) ||
+        cleanCats[0] ||
+        categories[0];
+
       const matchedCat = categories.find((c) => c.id === result.slip.categoryId);
       if (matchedCat) {
         setCategoryId(matchedCat.id);
@@ -190,11 +224,12 @@ export function ReceiptScanModal({
         if (result.slip.detectedCategory) {
           setUnregisteredCategoryName(result.slip.detectedCategory);
         }
-        setCategoryId(categories[0]?.id || null);
+        setCategoryId(fallbackCat?.id || null);
       }
 
       setDate(result.slip.date || new Date());
-      setNote(result.slip.merchantOrRecipient || "");
+      setMerchant(result.slip.merchantOrRecipient || "");
+      setNote("");
       setType(result.slip.type || "expense");
       setStep("result");
     } catch (err: any) {
@@ -278,6 +313,10 @@ export function ReceiptScanModal({
     const effectiveWalletId = effectiveWallet?.id && isUUID(effectiveWallet.id) ? effectiveWallet.id : null;
     const effectiveCatId = effectiveCategory?.id && isUUID(effectiveCategory.id) ? effectiveCategory.id : null;
 
+    const finalDescription = note.trim()
+      ? (merchant.trim() ? `${merchant.trim()} • ${note.trim()}` : note.trim())
+      : (merchant.trim() || "Transaksi Pindai Nota");
+
     triggerSuccessHaptic();
     addTx.mutate(
       {
@@ -285,7 +324,7 @@ export function ReceiptScanModal({
         amount,
         wallet_id: effectiveWalletId,
         category_id: type === "transfer" ? null : effectiveCatId,
-        note: note || null,
+        note: finalDescription || null,
         occurred_on: format(date, "yyyy-MM-dd"),
         created_at: new Date().toISOString(),
       },
@@ -303,6 +342,10 @@ export function ReceiptScanModal({
 
   const handleOpenInFullForm = () => {
     triggerHaptic("light");
+    const finalDescription = note.trim()
+      ? (merchant.trim() ? `${merchant.trim()} • ${note.trim()}` : note.trim())
+      : (merchant.trim() || "Transaksi Pindai Nota");
+
     onOpenForm({
       type,
       amount,
@@ -310,7 +353,7 @@ export function ReceiptScanModal({
       categoryId,
       toWalletId: null,
       date,
-      note,
+      note: finalDescription,
     });
     onClose();
   };
@@ -657,64 +700,96 @@ export function ReceiptScanModal({
                   </div>
                 )}
 
-                {/* Hero Liquid Card: Merchant & Amount */}
+                {/* Hero Liquid Card: Merchant, Receipt Thumbnail & Apple Amount */}
                 <div
-                  className="p-4 rounded-[24px] flex items-center justify-between"
+                  className="p-4 rounded-[26px] space-y-3"
                   style={{
-                    background: "linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%)",
-                    backdropFilter: "blur(20px)",
-                    border: "1px solid rgba(255, 255, 255, 0.12)",
-                    boxShadow: "inset 0 1px 1px 0 rgba(255, 255, 255, 0.18)",
+                    background: "linear-gradient(165deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%)",
+                    backdropFilter: "blur(24px)",
+                    border: "1px solid rgba(255, 255, 255, 0.14)",
+                    boxShadow: "inset 0 1px 1px 0 rgba(255, 255, 255, 0.2), 0 12px 32px -8px rgba(0, 0, 0, 0.5)",
                   }}
                 >
-                  <div className="flex items-center gap-3 min-w-0 pr-2">
-                    {/* Liquid Squircle Avatar */}
-                    <div
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-                      style={{
-                        background: "rgba(255, 255, 255, 0.06)",
-                        border: "1px solid rgba(255, 255, 255, 0.15)",
-                        boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.2)",
-                      }}
-                    >
-                      {selectedCategory ? (
-                        <IconRenderer icon={selectedCategory.emoji} size="w-5 h-5" />
-                      ) : (
-                        <Tag size={16} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <h4
-                        className="text-[15px] font-medium truncate leading-tight"
-                        style={{ color: "var(--text-primary)" }}
+                  {/* Top: Merchant Info & Receipt Thumbnail Preview */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div
+                        className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: "rgba(255, 255, 255, 0.06)",
+                          border: "1px solid rgba(255, 255, 255, 0.15)",
+                          boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.2)",
+                        }}
                       >
-                        {note || parsedSlip.merchantOrRecipient || "Transaksi Baru"}
-                      </h4>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p
-                          className="text-[11.5px] font-normal truncate"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {selectedCategory ? selectedCategory.name : "Kategori"}
-                        </p>
-                        {imagePreview && (
-                          <button
-                            type="button"
-                            onClick={() => setInspectPhotoOpen(true)}
-                            className="inline-flex items-center gap-1 text-[10.5px] font-medium text-white/50 hover:text-white/80 transition-colors cursor-pointer"
-                          >
-                            <Eye size={11} strokeWidth={1.5} />
-                            <span>Lihat Foto</span>
-                          </button>
+                        {selectedCategory ? (
+                          <IconRenderer icon={selectedCategory.emoji} size="w-5 h-5" />
+                        ) : (
+                          <Tag size={16} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
                         )}
                       </div>
+                      <div className="min-w-0 flex-1">
+                        <input
+                          type="text"
+                          value={merchant}
+                          onChange={(e) => setMerchant(e.target.value)}
+                          placeholder="Nama Toko / Penerima"
+                          className="w-full text-[15px] font-semibold bg-transparent outline-none truncate leading-tight p-0"
+                          style={{
+                            color: "var(--text-primary)",
+                            fontFamily: "Urbanist, -apple-system, sans-serif",
+                          }}
+                        />
+                        <p
+                          className="text-[11px] font-normal mt-0.5 truncate"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {selectedCategory ? selectedCategory.name : "Kategori Transaksi"}
+                        </p>
+                      </div>
                     </div>
+
+                    {/* Interactive Receipt Thumbnail with Tap-to-Inspect badge */}
+                    {imagePreview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setInspectPhotoOpen(true);
+                        }}
+                        className="relative w-11 h-14 rounded-xl overflow-hidden shrink-0 border border-white/20 shadow-md group cursor-pointer active:scale-95 transition-all"
+                        title="Ketuk untuk melihat foto nota asli"
+                      >
+                        <img
+                          src={imagePreview}
+                          alt="Nota Asli"
+                          className="w-full h-full object-cover filter brightness-90 group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/25 flex items-center justify-center backdrop-blur-[0.5px]">
+                          <Eye size={13} className="text-white/90 drop-shadow-sm" strokeWidth={2} />
+                        </div>
+                      </button>
+                    )}
                   </div>
 
-                  {/* Clean Amount */}
-                  <div className="text-right shrink-0">
-                    <div className="flex items-baseline justify-end gap-1">
-                      <span className="text-[13px] font-light select-none" style={{ color: "var(--text-tertiary)" }}>
+                  {/* Clean Prominent Amount Box */}
+                  <div
+                    className="p-3 rounded-2xl flex items-center justify-between"
+                    style={{
+                      background: "rgba(0, 0, 0, 0.25)",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                    }}
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-medium tracking-wider uppercase" style={{ color: "var(--text-tertiary)" }}>
+                        Total Tagihan
+                      </span>
+                      <span className="text-[11px] font-light" style={{ color: "var(--text-secondary)" }}>
+                        {type === "expense" ? "Pengeluaran" : "Pemasukan"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-[15px] font-light select-none" style={{ color: "var(--text-tertiary)" }}>
                         Rp
                       </span>
                       <input
@@ -726,17 +801,52 @@ export function ReceiptScanModal({
                           setAmount(raw ? Number(raw) : 0);
                         }}
                         placeholder="0"
-                        className="text-[22px] font-semibold text-right bg-transparent outline-none max-w-[140px] tracking-tight p-0"
+                        className="text-[26px] font-semibold text-right bg-transparent outline-none max-w-[170px] tracking-tight p-0"
                         style={{
                           color: "var(--text-primary)",
                           fontFamily: "Urbanist, -apple-system, sans-serif",
                         }}
                       />
                     </div>
-                    <span className="text-[10.5px] font-normal block" style={{ color: "var(--text-tertiary)" }}>
-                      Total Nominal
-                    </span>
                   </div>
+                </div>
+
+                {/* iOS Segmented Type Switcher */}
+                <div
+                  className="p-1 rounded-2xl flex items-center gap-1"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setType("expense");
+                    }}
+                    className={`flex-1 py-1.5 rounded-xl text-[12px] font-medium transition-all text-center cursor-pointer ${
+                      type === "expense"
+                        ? "bg-white/12 text-white shadow-sm border border-white/15"
+                        : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    Pengeluaran
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setType("income");
+                    }}
+                    className={`flex-1 py-1.5 rounded-xl text-[12px] font-medium transition-all text-center cursor-pointer ${
+                      type === "income"
+                        ? "bg-white/12 text-white shadow-sm border border-white/15"
+                        : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    Pemasukan
+                  </button>
                 </div>
 
                 {/* Segmented Liquid Glass Vessel */}
@@ -766,11 +876,11 @@ export function ReceiptScanModal({
                         Kategori
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[12.5px] font-medium" style={{ color: "var(--text-primary)" }}>
+                    <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
+                      <span className="text-[12.5px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
                         {selectedCategory ? selectedCategory.name : "Pilih Kategori"}
                       </span>
-                      <ChevronRight size={14} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+                      <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
                     </div>
                   </button>
 
@@ -790,11 +900,11 @@ export function ReceiptScanModal({
                         Sumber Dana
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[12.5px] font-medium" style={{ color: "var(--text-primary)" }}>
+                    <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
+                      <span className="text-[12.5px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
                         {selectedWallet ? selectedWallet.name : "Pilih Akun"}
                       </span>
-                      <ChevronRight size={14} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+                      <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
                     </div>
                   </button>
 
@@ -818,7 +928,7 @@ export function ReceiptScanModal({
                       <span className="text-[12.5px] font-medium" style={{ color: "var(--text-primary)" }}>
                         {format(date, "d MMMM yyyy")}
                       </span>
-                      <ChevronRight size={14} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+                      <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
                     </div>
                   </button>
 
@@ -837,7 +947,7 @@ export function ReceiptScanModal({
                       type="text"
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
-                      placeholder="Nama toko / keterangan"
+                      placeholder="Keterangan tambahan (opsional)"
                       className="text-[12.5px] font-normal bg-transparent outline-none text-right flex-1 pl-4"
                       style={{
                         color: "var(--text-primary)",

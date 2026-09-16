@@ -249,4 +249,77 @@ describe("Indonesian Slip & Receipt Parser Test Suite", () => {
     expect(result.sourceWalletId).toBe("w-bni");
     expect(result.categoryId).toBe("c-groceries");
   });
+
+  it("parses FamilyMart receipt with grand total and groceries category (never Admin & Fee)", () => {
+    const raw = `
+== FamilyMart
+88-90 Binh Quoi
+HOA DON BAN HANG
+1 Kem BINGGRAE Mel 1 30,000 30,000
+2 Kem Celano 1 21,000 21,000
+> Téng s6/Tong cong: 146,000
+MASTER 146,000
+    `;
+    const testWallets: Wallet[] = [
+      { id: "w-cash", name: "Cash", balance: 0, user_id: "u-1", created_at: "", updated_at: "" },
+      { id: "w-liab", name: "Liabilities", balance: 0, user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+    const testCats: Category[] = [
+      { id: "c-admin", name: "Admin & Fee", icon: "Tag", color: "#111", user_id: "u-1", created_at: "", updated_at: "" },
+      { id: "c-belanja", name: "Belanja", icon: "Tag", color: "#111", user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+    const result = parseSlipText(raw, testWallets, testCats);
+    expect(result.merchantOrRecipient).toBe("FamilyMart");
+    expect(result.amount).toBe(146000);
+    expect(result.categoryId).toBe("c-belanja");
+    expect(result.sourceWalletId).not.toBe("w-liab");
+  });
+
+  it("parses Mie Gacoan and Ichiban Sushi correctly as Makanan", () => {
+    const gacoan = `
+      CIKAMPEK
+      IG : @mie.gacoan
+      MIE GACOAN LV 2 10.000
+      Total 77.560
+    `;
+    const testCats: Category[] = [
+      { id: "c-makanan", name: "Makanan", icon: "Utensils", color: "#111", user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+    const resGacoan = parseSlipText(gacoan, [], testCats);
+    expect(resGacoan.merchantOrRecipient).toBe("Mie Gacoan");
+    expect(resGacoan.amount).toBe(77560);
+    expect(resGacoan.categoryId).toBe("c-makanan");
+
+    const ichiban = `
+      ICHIBAN SUSHI
+      AEON SENTUL CITY
+      Total 257.565
+    `;
+    const resIchiban = parseSlipText(ichiban, [], testCats);
+    expect(resIchiban.merchantOrRecipient).toBe("Ichiban Sushi");
+    expect(resIchiban.amount).toBe(257565);
+    expect(resIchiban.categoryId).toBe("c-makanan");
+  });
+
+  it("parses SeaBank transfers to Warung Suputra and ESB Restaurant", () => {
+    const suputra = `
+      SeaBank
+      Bukti Transaksi
+      rp 72.000
+      Dari Pratiwi
+      Ke warung suputra
+      Nominal Transaksi Rp 72.000
+    `;
+    const testWallets: Wallet[] = [
+      { id: "w-seabank", name: "SeaBank", balance: 0, user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+    const testCats: Category[] = [
+      { id: "c-makanan", name: "Makanan", icon: "Utensils", color: "#111", user_id: "u-1", created_at: "", updated_at: "" },
+    ];
+    const res = parseSlipText(suputra, testWallets, testCats);
+    expect(res.merchantOrRecipient).toBe("Warung Suputra");
+    expect(res.amount).toBe(72000);
+    expect(res.sourceWalletId).toBe("w-seabank");
+    expect(res.categoryId).toBe("c-makanan");
+  });
 });
