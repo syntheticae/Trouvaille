@@ -112,6 +112,7 @@ export function TransactionSheet({
   const [timeOpen, setTimeOpen] = useState(false);
   const [walletTarget, setWalletTarget] = useState<"from" | "to">("from");
   const [showSmartBar, setShowSmartBar] = useState(false);
+  const [isNoteFocused, setIsNoteFocused] = useState(false);
 
   // Split Transaction & Piutang State (Innovation 2)
   const [isSplitOpen, setIsSplitOpen] = useState(false);
@@ -708,41 +709,6 @@ export function TransactionSheet({
           })}
         </div>
 
-        {/* Collapsible Smart Quick Add Drawer */}
-        <AnimatePresence>
-          {showSmartBar && !transaction && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-              animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
-              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <SmartQuickAddBar
-                categories={categories}
-                wallets={wallets}
-                onApply={(parsed) => {
-                  if (parsed.amount !== null && parsed.amount > 0) {
-                    setAmount(String(parsed.amount));
-                    setAmountInput(parsed.amount.toLocaleString("id-ID"));
-                  }
-                  if (parsed.type) {
-                    setActiveTab(parsed.type);
-                    setType(parsed.type);
-                    setIsSplitOpen(false);
-                  }
-                  if (parsed.categoryId) setCategoryId(parsed.categoryId);
-                  if (parsed.walletId) setWalletId(parsed.walletId);
-                  if (parsed.toWalletId) setToWalletId(parsed.toWalletId);
-                  if (parsed.date) setDate(parsed.date);
-                  if (parsed.note) setNote(parsed.note);
-                  setShowSmartBar(false);
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Quick Add Shortcuts */}
         {shortcuts.length > 0 && !transaction && (
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
@@ -775,131 +741,77 @@ export function TransactionSheet({
           </div>
         )}
 
-        {/* Hero Amount Input with Flanking Quick Capture Tools */}
-        <div className="py-1 mb-5">
-          <div className="flex items-center justify-center gap-2.5">
-            {!transaction && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setShowSmartBar((prev) => !prev);
-                }}
-                className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
-                style={{
-                  background: showSmartBar
-                    ? "var(--accent)"
-                    : "linear-gradient(155deg, #222227 0%, #141417 100%)",
-                  border: "1px solid var(--glass-border)",
-                  color: showSmartBar
-                    ? "var(--accent-ink)"
-                    : "var(--text-secondary)",
-                  boxShadow:
-                    "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
-                }}
-                title="Natural Language & Voice Quick Add"
-              >
-                <Sparkles size={16} strokeWidth={1.75} />
-              </button>
-            )}
-
-            {/* Main Nominal Capsule (Elongated, No Truncation) */}
-            <div
-              className={`flex items-baseline justify-center gap-2 px-5 py-3 rounded-2xl sm:rounded-3xl transition-all ${
-                transaction
-                  ? "w-full max-w-[340px] mx-auto"
-                  : "flex-1 max-w-[280px] sm:max-w-[320px]"
-              }`}
+        {/* Hero Amount Input: Centered, Elongated Luxury Card Capsule */}
+        <div className="text-center py-1 mb-5">
+          <div
+            className="w-full max-w-[320px] sm:max-w-[350px] mx-auto flex items-baseline justify-center gap-2.5 px-6 py-3.5 rounded-2xl sm:rounded-3xl transition-all"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1.5px solid var(--glass-border)",
+              boxShadow:
+                "0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+            }}
+          >
+            <span
+              className="text-[20px] sm:text-[22px] font-bold select-none shrink-0"
               style={{
-                background: "var(--bg-elevated)",
-                border: "1.5px solid var(--glass-border)",
-                boxShadow:
-                  "0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+                color: "var(--text-tertiary)",
+                fontFamily: "Urbanist, -apple-system, sans-serif",
               }}
             >
-              <span
-                className="text-[20px] sm:text-[22px] font-bold select-none shrink-0"
-                style={{
-                  color: "var(--text-tertiary)",
-                  fontFamily: "Urbanist, -apple-system, sans-serif",
-                }}
-              >
-                Rp
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={amountInput}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (/^[0-9+\-*/×÷.,\s]*$/.test(val)) {
-                    if (/[+\-*/×÷]/.test(val)) {
-                      // Math mode: preserve expression like 50.000 + 20.000
-                      setAmountInput(val);
+              Rp
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={amountInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (/^[0-9+\-*/×÷.,\s]*$/.test(val)) {
+                  if (/[+\-*/×÷]/.test(val)) {
+                    // Math mode: preserve expression like 50.000 + 20.000
+                    setAmountInput(val);
+                  } else {
+                    // Pure numbers: instant live Indonesian thousand separator formatting
+                    const rawDigits = val.replace(/\D/g, "");
+                    if (!rawDigits) {
+                      setAmount("0");
+                      setAmountInput("");
                     } else {
-                      // Pure numbers: instant live Indonesian thousand separator formatting
-                      const rawDigits = val.replace(/\D/g, "");
-                      if (!rawDigits) {
-                        setAmount("0");
-                        setAmountInput("");
-                      } else {
-                        const limited = rawDigits.slice(0, 11);
-                        const num = parseInt(limited, 10);
-                        setAmount(String(num));
-                        setAmountInput(num.toLocaleString("id-ID"));
-                      }
+                      const limited = rawDigits.slice(0, 11);
+                      const num = parseInt(limited, 10);
+                      setAmount(String(num));
+                      setAmountInput(num.toLocaleString("id-ID"));
                     }
                   }
-                }}
-                onBlur={() => {
+                }
+              }}
+              onBlur={() => {
+                const evaluated = evaluateMathSafe(amountInput);
+                setAmount(String(evaluated));
+                setAmountInput(
+                  evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
+                );
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
                   const evaluated = evaluateMathSafe(amountInput);
                   setAmount(String(evaluated));
                   setAmountInput(
                     evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
                   );
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const evaluated = evaluateMathSafe(amountInput);
-                    setAmount(String(evaluated));
-                    setAmountInput(
-                      evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
-                    );
-                    (e.target as HTMLInputElement).blur();
-                  }
-                }}
-                placeholder="0"
-                className="text-[40px] sm:text-[44px] font-black amount tracking-tight leading-none bg-transparent outline-none text-left min-w-[50px] max-w-[210px]"
-                style={{
-                  color: "var(--text-primary)",
-                  fontFamily: "Urbanist, -apple-system, sans-serif",
-                  width: `${Math.max(1.8, (amountInput || "0").length + 1)}ch`,
-                }}
-              />
-            </div>
-
-            {!transaction && onOpenScan && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  onOpenScan();
-                }}
-                className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
-                style={{
-                  background:
-                    "linear-gradient(155deg, #222227 0%, #141417 100%)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-secondary)",
-                  boxShadow:
-                    "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
-                }}
-                title="Scan Receipt / Slip"
-              >
-                <ScanLine size={16} strokeWidth={1.75} />
-              </button>
-            )}
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              placeholder="0"
+              className="text-[42px] sm:text-[46px] font-black amount tracking-tight leading-none bg-transparent outline-none text-left min-w-[60px] max-w-[240px]"
+              style={{
+                color: "var(--text-primary)",
+                fontFamily: "Urbanist, -apple-system, sans-serif",
+                width: `${Math.max(1.8, (amountInput || "0").length + 1)}ch`,
+              }}
+            />
           </div>
 
           {/* Inline Math Preview Badge */}
@@ -1297,22 +1209,33 @@ export function TransactionSheet({
           </div>
         )}
 
-        {/* 3. Note & Date/Time Compact Island */}
+        {/* 3. Note & Date/Time Compact Island with Dynamic Focus Animation */}
         <div
-          className="rounded-2xl p-3 px-4 mb-5 flex items-center gap-3"
+          className="rounded-2xl p-3 px-4 mb-3.5 flex items-center gap-3 transition-all"
           style={{
             background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
+            border: isNoteFocused
+              ? "1px solid rgba(255, 255, 255, 0.22)"
+              : "1px solid var(--glass-border)",
+            boxShadow: isNoteFocused
+              ? "0 4px 16px rgba(0, 0, 0, 0.25)"
+              : "none",
           }}
         >
           <PenLine
             size={14}
             strokeWidth={1.5}
-            style={{ color: "var(--text-tertiary)" }}
+            style={{
+              color: isNoteFocused
+                ? "var(--text-primary)"
+                : "var(--text-tertiary)",
+            }}
           />
           <input
             type="text"
             value={note}
+            onFocus={() => setIsNoteFocused(true)}
+            onBlur={() => setIsNoteFocused(false)}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Add a note (optional)..."
             className="bg-transparent text-[13px] placeholder:text-[12px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-60 font-normal flex-1 outline-none min-w-0"
@@ -1321,49 +1244,96 @@ export function TransactionSheet({
               fontFamily: "Urbanist, -apple-system, sans-serif",
             }}
           />
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setDateOpen(true);
-              }}
-              className="px-2.5 py-1 rounded-xl text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-              }}
-            >
-              <CalendarIcon
-                size={12}
-                strokeWidth={1.5}
-                style={{ color: "var(--text-tertiary)" }}
-              />
-              <span>{isToday(date) ? "Today" : format(date, "dd/MM")}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setTimeOpen(true);
-              }}
-              className="px-2.5 py-1 rounded-xl text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-              }}
-            >
-              <Clock
-                size={12}
-                strokeWidth={1.5}
-                style={{ color: "var(--text-tertiary)" }}
-              />
-              <span className="amount">{time}</span>
-            </button>
-          </div>
+
+          {/* Smooth hiding of Date and Time pills when typing note so text expands full width */}
+          <AnimatePresence>
+            {!isNoteFocused && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, width: 0 }}
+                animate={{ opacity: 1, scale: 1, width: "auto" }}
+                exit={{ opacity: 0, scale: 0.9, width: 0 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className="flex items-center gap-1.5 shrink-0 overflow-hidden"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setDateOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-xl text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <CalendarIcon
+                    size={12}
+                    strokeWidth={1.5}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                  <span>{isToday(date) ? "Today" : format(date, "dd/MM")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setTimeOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-xl text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Clock
+                    size={12}
+                    strokeWidth={1.5}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                  <span className="amount">{time}</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
+
+        {/* Collapsible Smart Quick Add Drawer (Positioned Directly Below Note Island) */}
+        <AnimatePresence>
+          {showSmartBar && !transaction && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden"
+            >
+              <SmartQuickAddBar
+                categories={categories}
+                wallets={wallets}
+                onApply={(parsed) => {
+                  if (parsed.amount !== null && parsed.amount > 0) {
+                    setAmount(String(parsed.amount));
+                    setAmountInput(parsed.amount.toLocaleString("id-ID"));
+                  }
+                  if (parsed.type) {
+                    setActiveTab(parsed.type);
+                    setType(parsed.type);
+                    setIsSplitOpen(false);
+                  }
+                  if (parsed.categoryId) setCategoryId(parsed.categoryId);
+                  if (parsed.walletId) setWalletId(parsed.walletId);
+                  if (parsed.toWalletId) setToWalletId(parsed.toWalletId);
+                  if (parsed.date) setDate(parsed.date);
+                  if (parsed.note) setNote(parsed.note);
+                  setShowSmartBar(false);
+                }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Split Transaction & Piutang Configuration */}
         {activeTab === "split" && !transaction && (
@@ -1861,9 +1831,9 @@ export function TransactionSheet({
 
 
 
-        {/* Action Button Bar */}
-        <div className="flex items-center gap-2 mt-4 mb-2">
-          {transaction && (
+        {/* Action Button Bar: Quick Input & Scan Flanking the Save Button */}
+        <div className="flex items-center gap-2.5 mt-4 mb-2">
+          {transaction ? (
             <button
               type="button"
               onClick={handleDelete}
@@ -1877,7 +1847,31 @@ export function TransactionSheet({
             >
               <Trash2 size={18} strokeWidth={1.75} />
             </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setShowSmartBar((prev) => !prev);
+              }}
+              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
+              style={{
+                background: showSmartBar
+                  ? "var(--accent)"
+                  : "linear-gradient(155deg, #222227 0%, #141417 100%)",
+                border: "1px solid var(--glass-border)",
+                color: showSmartBar
+                  ? "var(--accent-ink)"
+                  : "var(--text-secondary)",
+                boxShadow:
+                  "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+              }}
+              title="Voice / Natural Language Quick Add"
+            >
+              <Sparkles size={18} strokeWidth={1.75} />
+            </button>
           )}
+
           <button
             type="button"
             onClick={handleSave}
@@ -1911,6 +1905,28 @@ export function TransactionSheet({
               </>
             )}
           </button>
+
+          {!transaction && onOpenScan && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                onOpenScan();
+              }}
+              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
+              style={{
+                background:
+                  "linear-gradient(155deg, #222227 0%, #141417 100%)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
+                boxShadow:
+                  "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+              }}
+              title="Scan Receipt / Slip"
+            >
+              <ScanLine size={18} strokeWidth={1.75} />
+            </button>
+          )}
         </div>
       </div>
 
