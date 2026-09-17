@@ -823,11 +823,14 @@ export function TransactionSheet({
         )}
 
         {/* Hero Amount Input with Native iOS Numberpad & Inline Math */}
-        <div className="text-center py-2 mb-4">
+        <div className="text-center py-5 mb-5">
           <div className="inline-flex items-baseline justify-center gap-1.5">
             <span
-              className="text-lg font-medium tracking-tight"
-              style={{ color: "var(--text-tertiary)" }}
+              className="text-[24px] sm:text-[26px] font-semibold tracking-tight self-center mr-1 select-none"
+              style={{
+                color: "var(--text-tertiary)",
+                fontFamily: "Urbanist, -apple-system, sans-serif",
+              }}
             >
               Rp
             </span>
@@ -839,10 +842,21 @@ export function TransactionSheet({
               onChange={(e) => {
                 const val = e.target.value;
                 if (/^[0-9+\-*/×÷.,\s]*$/.test(val)) {
-                  setAmountInput(val);
-                  if (!/[+\-*/×÷]/.test(val)) {
-                    const raw = val.replace(/\D/g, "");
-                    setAmount(raw === "" ? "0" : raw.slice(0, 11));
+                  if (/[+\-*/×÷]/.test(val)) {
+                    // Math mode: preserve expression like 50.000 + 20.000
+                    setAmountInput(val);
+                  } else {
+                    // Pure numbers: instant live Indonesian thousand separator formatting
+                    const rawDigits = val.replace(/\D/g, "");
+                    if (!rawDigits) {
+                      setAmount("0");
+                      setAmountInput("");
+                    } else {
+                      const limited = rawDigits.slice(0, 11);
+                      const num = parseInt(limited, 10);
+                      setAmount(String(num));
+                      setAmountInput(num.toLocaleString("id-ID"));
+                    }
                   }
                 }
               }}
@@ -864,14 +878,17 @@ export function TransactionSheet({
                 }
               }}
               placeholder="0"
-              className="text-[40px] font-semibold amount tracking-tight leading-none bg-transparent outline-none text-center min-w-[100px] max-w-[280px]"
-              style={{ color: "var(--text-primary)" }}
+              className="text-[52px] sm:text-[58px] font-bold amount tracking-tight leading-none bg-transparent outline-none text-center min-w-[130px] max-w-[340px]"
+              style={{
+                color: "var(--text-primary)",
+                fontFamily: "Urbanist, -apple-system, sans-serif",
+              }}
             />
           </div>
 
           {/* Inline Math Preview Badge */}
           {/[+\-*/×÷]/.test(amountInput) && (
-            <div className="mt-2 flex justify-center">
+            <div className="mt-2.5 flex justify-center">
               <button
                 type="button"
                 onClick={() => {
@@ -899,7 +916,7 @@ export function TransactionSheet({
           )}
 
           {/* Quick Increment & Math Operator Strip */}
-          <div className="flex items-center justify-center gap-1.5 mt-2 px-2">
+          <div className="flex items-center justify-center gap-2 mt-3.5 px-2">
             {[
               { label: "+10K", add: 10000 },
               { label: "+50K", add: 50000 },
@@ -915,7 +932,7 @@ export function TransactionSheet({
                   setAmount(String(next));
                   setAmountInput(next.toLocaleString("id-ID"));
                 }}
-                className="px-2.5 py-1 rounded-full text-[11px] font-medium active:scale-95 transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-full text-[11.5px] font-semibold active:scale-95 transition-all cursor-pointer"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -925,7 +942,7 @@ export function TransactionSheet({
                 {preset.label}
               </button>
             ))}
-            <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
+            <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
             {["+", "-", "×"].map((op) => (
               <button
                 key={op}
@@ -935,7 +952,7 @@ export function TransactionSheet({
                   const base = amountInput ? amountInput.trim() : "0";
                   setAmountInput(`${base} ${op} `);
                 }}
-                className="w-7 h-6 rounded-full text-[11px] font-medium flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                className="w-8 h-7.5 rounded-full text-[12px] font-bold flex items-center justify-center active:scale-95 transition-all cursor-pointer"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -952,8 +969,8 @@ export function TransactionSheet({
 
         {/* 1. Category Ribbon (Zero Truncation, 1-Tap Instant Selection) */}
         {type !== "transfer" && (
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-1.5 px-1">
+          <div className="mb-4.5">
+            <div className="flex items-center justify-between mb-2 px-1">
               <span
                 className="text-[10.5px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
@@ -974,7 +991,7 @@ export function TransactionSheet({
               </button>
             </div>
 
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
               {displayCategories.map((cat) => {
                 const isSelected = categoryId === cat.id;
                 return (
@@ -985,7 +1002,7 @@ export function TransactionSheet({
                       triggerHaptic("light");
                       setCategoryId(cat.id);
                     }}
-                    className="whitespace-nowrap px-3 py-1.5 rounded-2xl text-[12px] font-medium flex items-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer"
+                    className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12.5px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
                     style={{
                       background: isSelected
                         ? "rgba(255, 255, 255, 0.14)"
@@ -1013,7 +1030,7 @@ export function TransactionSheet({
                   triggerHaptic("light");
                   setMoreCatOpen(true);
                 }}
-                className="whitespace-nowrap px-2.5 py-1.5 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11.5px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px dashed var(--glass-border)",
@@ -1028,10 +1045,10 @@ export function TransactionSheet({
 
         {/* 2. Account / Wallet Ribbon */}
         {type === "transfer" ? (
-          <div className="space-y-3 mb-3">
+          <div className="space-y-3.5 mb-4.5">
             {/* From Account */}
             <div>
-              <div className="flex items-center justify-between mb-1.5 px-1">
+              <div className="flex items-center justify-between mb-2 px-1">
                 <span
                   className="text-[10.5px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
@@ -1053,7 +1070,7 @@ export function TransactionSheet({
                 </button>
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
                 {displayFromWallets.map((w) => {
                   const isSelected = walletId === w.id;
                   return (
@@ -1064,7 +1081,7 @@ export function TransactionSheet({
                         triggerHaptic("light");
                         setWalletId(w.id);
                       }}
-                      className="whitespace-nowrap px-3 py-1.5 rounded-2xl text-[12px] font-medium flex items-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer"
+                      className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12.5px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
                       style={{
                         background: isSelected
                           ? "rgba(255, 255, 255, 0.14)"
@@ -1093,7 +1110,7 @@ export function TransactionSheet({
                     setWalletTarget("from");
                     setMoreWalletOpen(true);
                   }}
-                  className="whitespace-nowrap px-2.5 py-1.5 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                  className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11.5px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
                   style={{
                     background: "var(--glass-fill)",
                     border: "1px dashed var(--glass-border)",
@@ -1107,7 +1124,7 @@ export function TransactionSheet({
 
             {/* To Account */}
             <div>
-              <div className="flex items-center justify-between mb-1.5 px-1">
+              <div className="flex items-center justify-between mb-2 px-1">
                 <span
                   className="text-[10.5px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
@@ -1129,7 +1146,7 @@ export function TransactionSheet({
                 </button>
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
                 {displayToWallets.map((w) => {
                   const isSelected = toWalletId === w.id;
                   return (
@@ -1140,7 +1157,7 @@ export function TransactionSheet({
                         triggerHaptic("light");
                         setToWalletId(w.id);
                       }}
-                      className="whitespace-nowrap px-3 py-1.5 rounded-2xl text-[12px] font-medium flex items-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer"
+                      className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12.5px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
                       style={{
                         background: isSelected
                           ? "rgba(255, 255, 255, 0.14)"
@@ -1169,7 +1186,7 @@ export function TransactionSheet({
                     setWalletTarget("to");
                     setMoreWalletOpen(true);
                   }}
-                  className="whitespace-nowrap px-2.5 py-1.5 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                  className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11.5px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
                   style={{
                     background: "var(--glass-fill)",
                     border: "1px dashed var(--glass-border)",
@@ -1182,8 +1199,8 @@ export function TransactionSheet({
             </div>
           </div>
         ) : (
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-1.5 px-1">
+          <div className="mb-4.5">
+            <div className="flex items-center justify-between mb-2 px-1">
               <span
                 className="text-[10.5px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
@@ -1205,7 +1222,7 @@ export function TransactionSheet({
               </button>
             </div>
 
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
               {displayFromWallets.map((w) => {
                 const isSelected = walletId === w.id;
                 return (
@@ -1216,7 +1233,7 @@ export function TransactionSheet({
                       triggerHaptic("light");
                       setWalletId(w.id);
                     }}
-                    className="whitespace-nowrap px-3 py-1.5 rounded-2xl text-[12px] font-medium flex items-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer"
+                    className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12.5px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
                     style={{
                       background: isSelected
                         ? "rgba(255, 255, 255, 0.14)"
@@ -1245,7 +1262,7 @@ export function TransactionSheet({
                   setWalletTarget("from");
                   setMoreWalletOpen(true);
                 }}
-                className="whitespace-nowrap px-2.5 py-1.5 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11.5px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px dashed var(--glass-border)",
@@ -1260,14 +1277,14 @@ export function TransactionSheet({
 
         {/* 3. Note & Date/Time Compact Island */}
         <div
-          className="rounded-2xl p-2.5 px-3.5 mb-3 flex items-center gap-2.5"
+          className="rounded-2xl p-3 px-4 mb-5 flex items-center gap-3"
           style={{
             background: "var(--bg-elevated)",
             border: "1px solid var(--glass-border)",
           }}
         >
           <PenLine
-            size={13}
+            size={14}
             strokeWidth={1.5}
             style={{ color: "var(--text-tertiary)" }}
           />
@@ -1276,7 +1293,7 @@ export function TransactionSheet({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Add a note (optional)..."
-            className="bg-transparent text-[12.5px] placeholder:text-[11.5px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-60 font-normal flex-1 outline-none min-w-0"
+            className="bg-transparent text-[13px] placeholder:text-[12px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-60 font-normal flex-1 outline-none min-w-0"
             style={{
               color: "var(--text-primary)",
               fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -1289,7 +1306,7 @@ export function TransactionSheet({
                 triggerHaptic("light");
                 setDateOpen(true);
               }}
-              className="px-2.5 py-1 rounded-xl text-[11px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+              className="px-2.5 py-1 rounded-xl text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
               style={{
                 background: "var(--glass-fill)",
                 border: "1px solid var(--glass-border)",
@@ -1297,7 +1314,7 @@ export function TransactionSheet({
               }}
             >
               <CalendarIcon
-                size={11}
+                size={12}
                 strokeWidth={1.5}
                 style={{ color: "var(--text-tertiary)" }}
               />
@@ -1309,7 +1326,7 @@ export function TransactionSheet({
                 triggerHaptic("light");
                 setTimeOpen(true);
               }}
-              className="px-2.5 py-1 rounded-xl text-[11px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+              className="px-2.5 py-1 rounded-xl text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
               style={{
                 background: "var(--glass-fill)",
                 border: "1px solid var(--glass-border)",
@@ -1317,7 +1334,7 @@ export function TransactionSheet({
               }}
             >
               <Clock
-                size={11}
+                size={12}
                 strokeWidth={1.5}
                 style={{ color: "var(--text-tertiary)" }}
               />
