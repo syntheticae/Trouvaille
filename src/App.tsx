@@ -61,6 +61,11 @@ const ReceiptScanModal = lazy(() =>
     default: module.ReceiptScanModal,
   })),
 );
+const StatementImportModal = lazy(() =>
+  import("./components/transactions/StatementImportModal").then((module) => ({
+    default: module.StatementImportModal,
+  })),
+);
 
 import { useTheme } from "./contexts/ThemeContext";
 
@@ -73,6 +78,7 @@ function AppShell() {
   const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [receiptScanOpen, setReceiptScanOpen] = useState(false);
+  const [statementImportOpen, setStatementImportOpen] = useState(false);
   const [prefilledValues, setPrefilledValues] = useState<any>(null);
   const syncStorageKey = user
     ? `trouvaille_initial_synced:${user.id}`
@@ -308,6 +314,7 @@ function AppShell() {
               element={
                 <TransactionsPage
                   onOpenScan={() => setReceiptScanOpen(true)}
+                  onOpenImport={() => setStatementImportOpen(true)}
                 />
               }
             />
@@ -316,6 +323,7 @@ function AppShell() {
               element={
                 <TransactionsPage
                   onOpenScan={() => setReceiptScanOpen(true)}
+                  onOpenImport={() => setStatementImportOpen(true)}
                 />
               }
             />
@@ -360,11 +368,24 @@ function AppShell() {
           <ReceiptScanModal
             isOpen={receiptScanOpen}
             onClose={() => setReceiptScanOpen(false)}
+            onOpenImport={() => {
+              setReceiptScanOpen(false);
+              setStatementImportOpen(true);
+            }}
             onOpenForm={(values) => {
               setPrefilledValues(values);
               setReceiptScanOpen(false);
               setAddSheetOpen(true);
             }}
+          />
+        </Suspense>
+      )}
+
+      {statementImportOpen && (
+        <Suspense fallback={null}>
+          <StatementImportModal
+            isOpen={statementImportOpen}
+            onClose={() => setStatementImportOpen(false)}
           />
         </Suspense>
       )}

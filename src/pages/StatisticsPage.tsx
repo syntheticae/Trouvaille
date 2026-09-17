@@ -42,6 +42,7 @@ import { formatRupiah } from "../lib/utils";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import { useTheme } from "../contexts/ThemeContext";
+import { usePrivacy } from "../contexts/PrivacyContext";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useBills } from "../hooks/useBills";
 import { useGoals } from "../hooks/useGoals";
@@ -269,9 +270,7 @@ export function StatisticsPage() {
   const [healthDiagnosticOpen, setHealthDiagnosticOpen] = useState(false);
   const [personalModelOpen, setPersonalModelOpen] = useState(false);
   const [wrappedOpen, setWrappedOpen] = useState(false);
-  const [hideBalance] = useState(
-    () => localStorage.getItem("trouvaille_hide_balance") === "true",
-  );
+  const { isStealthMode: hideBalance } = usePrivacy();
   const colors = useChartColors();
 
   const activeMonthDate = useMemo(

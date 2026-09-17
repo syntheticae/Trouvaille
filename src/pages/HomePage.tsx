@@ -48,6 +48,7 @@ import {
   getBillDueStatusLabel,
 } from "../hooks/useBills";
 import { useToast } from "../contexts/ToastContext";
+import { usePrivacy } from "../contexts/PrivacyContext";
 import { formatRupiah } from "../lib/utils";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import {
@@ -162,18 +163,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   const [calendarExpanded, setCalendarExpanded] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [stockRange, setStockRange] = useState<StockRange>("1W");
-  const [hideBalance, setHideBalance] = useState(
-    () => localStorage.getItem("trouvaille_hide_balance") === "true",
-  );
-
-  const toggleHideBalance = () => {
-    setHideBalance((prev) => {
-      const next = !prev;
-      localStorage.setItem("trouvaille_hide_balance", String(next));
-      triggerHaptic("medium");
-      return next;
-    });
-  };
+  const { isStealthMode: hideBalance, toggleStealthMode: toggleHideBalance } = usePrivacy();
 
   const { showToast } = useToast();
   const markBillPaid = useMarkBillPaid();

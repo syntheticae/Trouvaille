@@ -18,6 +18,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { SecurityLockProvider } from './contexts/SecurityLockContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
+import { PrivacyProvider } from './contexts/PrivacyContext'
 import App from './App.tsx'
 import './index.css'
 
@@ -187,7 +188,9 @@ createRoot(document.getElementById('root')!).render(
             <SecurityLockProvider>
               <ThemeProvider>
                 <ToastProvider>
-                  <App />
+                  <PrivacyProvider>
+                    <App />
+                  </PrivacyProvider>
                 </ToastProvider>
               </ThemeProvider>
             </SecurityLockProvider>

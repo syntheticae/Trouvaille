@@ -13,6 +13,8 @@ import {
   Coins,
   CheckCircle2,
   RotateCcw,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   format,
@@ -40,6 +42,7 @@ import { BottomSheet } from "../components/ui/BottomSheet";
 import { formatRupiah } from "../lib/utils";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import { useTheme } from "../contexts/ThemeContext";
+import { usePrivacy } from "../contexts/PrivacyContext";
 import { triggerHaptic } from "../lib/haptics";
 
 function formatCompactRupiah(val: number): string {
@@ -60,6 +63,9 @@ function formatCompactRupiah(val: number): string {
 export function CalendarPage() {
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const { isStealthMode, toggleStealthMode } = usePrivacy();
+  const displayRupiah = (val: number) => (isStealthMode ? "Rp ••••••••" : formatRupiah(val));
+  const displayCompact = (val: number) => (isStealthMode ? "••••" : formatCompactRupiah(val));
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -176,43 +182,59 @@ export function CalendarPage() {
           </p>
         </div>
 
-        {/* Apple Luxury Segmented Pill */}
-        <div
-          className="flex p-1 rounded-2xl glass-surface"
-          style={{ border: "1px solid var(--glass-border)" }}
-        >
+        {/* Apple Luxury Segmented Pill & Stealth Mode Toggle */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
-            onClick={() => {
-              setViewMode("activity");
-              triggerHaptic("light");
+            type="button"
+            onClick={toggleStealthMode}
+            className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              color: isStealthMode ? "var(--accent)" : "var(--text-secondary)",
             }}
-            className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all flex items-center gap-1.5 ${
-              viewMode === "activity"
-                ? isDark
-                  ? "bg-white/10 text-white shadow-sm"
-                  : "bg-zinc-900 text-white shadow-sm"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-            }`}
+            title={isStealthMode ? "Disable Stealth Mode" : "Enable Stealth Mode (or 3-finger tap)"}
           >
-            <CalendarDays size={13} strokeWidth={1.75} />
-            Activity
+            {isStealthMode ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
-          <button
-            onClick={() => {
-              setViewMode("runway");
-              triggerHaptic("light");
-            }}
-            className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all flex items-center gap-1.5 ${
-              viewMode === "runway"
-                ? isDark
-                  ? "bg-white/10 text-white shadow-sm"
-                  : "bg-zinc-900 text-white shadow-sm"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-            }`}
+
+          <div
+            className="flex p-1 rounded-2xl glass-surface"
+            style={{ border: "1px solid var(--glass-border)" }}
           >
-            <TrendingUp size={13} strokeWidth={1.75} />
-            Runway
-          </button>
+            <button
+              onClick={() => {
+                setViewMode("activity");
+                triggerHaptic("light");
+              }}
+              className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all flex items-center gap-1.5 ${
+                viewMode === "activity"
+                  ? isDark
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "bg-zinc-900 text-white shadow-sm"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              <CalendarDays size={13} strokeWidth={1.75} />
+              Activity
+            </button>
+            <button
+              onClick={() => {
+                setViewMode("runway");
+                triggerHaptic("light");
+              }}
+              className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all flex items-center gap-1.5 ${
+                viewMode === "runway"
+                  ? isDark
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "bg-zinc-900 text-white shadow-sm"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              <TrendingUp size={13} strokeWidth={1.75} />
+              Runway
+            </button>
+          </div>
         </div>
       </div>
 
@@ -253,7 +275,7 @@ export function CalendarPage() {
                           : "var(--text-primary)",
                     }}
                   >
-                    {formatRupiah(runwayTelemetry.lowestDipAmount)}
+                    {displayRupiah(runwayTelemetry.lowestDipAmount)}
                   </p>
                   <p
                     className="text-[10px] mt-0.5 truncate"
@@ -294,7 +316,7 @@ export function CalendarPage() {
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {runwayTelemetry.nextPaydayAmount > 0
-                      ? `+${formatRupiah(runwayTelemetry.nextPaydayAmount)}`
+                      ? `+${displayRupiah(runwayTelemetry.nextPaydayAmount)}`
                       : "Check recurring"}
                   </p>
                 </div>
@@ -551,7 +573,7 @@ export function CalendarPage() {
                               : "text-[var(--text-tertiary)]"
                           }`}
                         >
-                          {formatCompactRupiah(forecast?.projectedBalance ?? 0)}
+                          {displayCompact(forecast?.projectedBalance ?? 0)}
                         </span>
                       ) : forecast?.isNoSpendDay ? (
                         <span className="text-[8px] font-bold opacity-60">0</span>
@@ -766,7 +788,7 @@ export function CalendarPage() {
                         className="amount text-[16px] font-bold"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {formatRupiah(
+                        {displayRupiah(
                           selectedDayForecast.billsTotal + selectedDayForecast.estimatedBurn,
                         )}
                       </p>
@@ -819,7 +841,7 @@ export function CalendarPage() {
                               className="text-[13px] font-bold"
                               style={{ color: "var(--text-primary)" }}
                             >
-                              {formatRupiah(b.amount)}
+                              {displayRupiah(b.amount)}
                             </span>
                             {!b.isPaid && (
                               <button
@@ -891,7 +913,7 @@ export function CalendarPage() {
                           <span
                             className="text-[13px] font-bold text-emerald-400"
                           >
-                            +{formatRupiah(inf.amount)}
+                            +{displayRupiah(inf.amount)}
                           </span>
                         </div>
                       ))}
@@ -922,7 +944,7 @@ export function CalendarPage() {
                         className="amount text-[17px] font-bold"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {formatRupiah(selectedDayForecast.actualInflow)}
+                        {displayRupiah(selectedDayForecast.actualInflow)}
                       </p>
                     </div>
 
@@ -946,7 +968,7 @@ export function CalendarPage() {
                         className="amount text-[17px] font-bold"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {formatRupiah(selectedDayForecast.actualOutflow)}
+                        {displayRupiah(selectedDayForecast.actualOutflow)}
                       </p>
                     </div>
                   </div>
@@ -1009,7 +1031,7 @@ export function CalendarPage() {
                             }}
                           >
                             {tx.type === "income" ? "+" : "-"}
-                            {formatRupiah(Number(tx.amount))}
+                            {displayRupiah(Number(tx.amount))}
                           </span>
                         </div>
                       ))

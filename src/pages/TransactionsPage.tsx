@@ -13,6 +13,9 @@ import {
   Tag,
   CheckSquare,
   Trash2,
+  Eye,
+  EyeOff,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   BarChart,
@@ -31,6 +34,7 @@ import {
 import { useWallets, resolveTransactionWallets } from "../hooks/useWallets";
 import { useCategories } from "../hooks/useCategories";
 import { useToast } from "../contexts/ToastContext";
+import { usePrivacy } from "../contexts/PrivacyContext";
 import { TransactionSheet } from "../components/transactions/TransactionSheet";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
@@ -149,11 +153,14 @@ const MONTHS_LIST = [
 
 interface TransactionsPageProps {
   onOpenScan?: () => void;
+  onOpenImport?: () => void;
 }
 
 export function TransactionsPage({
   onOpenScan: _onOpenScan,
+  onOpenImport,
 }: TransactionsPageProps = {}) {
+  const { isStealthMode, toggleStealthMode } = usePrivacy();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [search, setSearch] = useState("");
@@ -718,7 +725,7 @@ export function TransactionsPage({
               className="text-[28px] sm:text-[32px] font-extrabold tracking-tight leading-tight amount truncate"
               style={{ color: "var(--text-primary)" }}
             >
-              {formatRupiah(totalPeriodAmount)}
+              {isStealthMode ? "Rp ••••••••" : formatRupiah(totalPeriodAmount)}
             </p>
             <p
               className="text-[11px] font-medium mt-0.5"
@@ -728,29 +735,64 @@ export function TransactionsPage({
             </p>
           </div>
 
-          {/* Month Selector Trigger: Compact Apple Luxury Pill */}
-          <button
-            type="button"
-            onClick={() => {
-              setMonthPickerOpen(true);
-              triggerHaptic("light");
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full active:scale-95 transition-all touch-manipulation cursor-pointer select-none no-pull shrink-0 whitespace-nowrap mt-1"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "0 2px 8px var(--shadow-strength)",
-            }}
-          >
-            <Calendar size={12} style={{ color: "var(--text-secondary)" }} />
-            <span
-              className="text-[11.5px] font-bold"
-              style={{ color: "var(--text-primary)" }}
+          {/* Header Action Pills & Month Selector */}
+          <div className="flex items-center gap-1.5 shrink-0 mt-1">
+            <button
+              type="button"
+              onClick={toggleStealthMode}
+              className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                color: isStealthMode ? "var(--accent)" : "var(--text-secondary)",
+              }}
+              title={isStealthMode ? "Disable Stealth Mode" : "Enable Stealth Mode (or 3-finger tap)"}
             >
-              {selectedMonthLabel}
-            </span>
-            <ChevronDown size={11} style={{ color: "var(--text-tertiary)" }} />
-          </button>
+              {isStealthMode ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+
+            {onOpenImport && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  onOpenImport();
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+                title="Import Bank Statement / CSV"
+              >
+                <FileSpreadsheet size={14} />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setMonthPickerOpen(true);
+                triggerHaptic("light");
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full active:scale-95 transition-all touch-manipulation cursor-pointer select-none no-pull shrink-0 whitespace-nowrap"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                boxShadow: "0 2px 8px var(--shadow-strength)",
+              }}
+            >
+              <Calendar size={12} style={{ color: "var(--text-secondary)" }} />
+              <span
+                className="text-[11.5px] font-bold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {selectedMonthLabel}
+              </span>
+              <ChevronDown size={11} style={{ color: "var(--text-tertiary)" }} />
+            </button>
+          </div>
         </div>
 
         {/* DYNAMIC TIMEFRAME GRADIENT BAR CHART */}

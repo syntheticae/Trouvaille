@@ -8,6 +8,7 @@ import { resolveTransactionCategory } from "../../lib/categoryResolver";
 import { triggerHaptic } from "../../lib/haptics";
 import type { Transaction, Category } from "../../lib/types";
 import { isCorrectionTx } from "../../lib/financialMath";
+import { usePrivacy } from "../../contexts/PrivacyContext";
 
 interface TransactionItemProps {
   tx: Transaction;
@@ -40,6 +41,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
   onToggleSelect,
   onLongPress,
 }) => {
+  const { isStealthMode } = usePrivacy();
   const isIncome = tx.type === "income";
   const isTransfer = tx.type === "transfer";
   const isCorrection = isCorrectionTx(tx);
@@ -292,16 +294,22 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
                     : "var(--text-primary)",
             }}
           >
-            {isTransfer
-              ? ""
-              : isCorrection
-                ? isPositiveCorrection
-                  ? "+"
-                  : "-"
-                : isIncome
-                  ? "+"
-                  : "-"}
-            {formatRupiah(Number(tx.amount))}
+            {isStealthMode ? (
+              "Rp ••••••••"
+            ) : (
+              <>
+                {isTransfer
+                  ? ""
+                  : isCorrection
+                    ? isPositiveCorrection
+                      ? "+"
+                      : "-"
+                    : isIncome
+                      ? "+"
+                      : "-"}
+                {formatRupiah(Number(tx.amount))}
+              </>
+            )}
           </div>
           <div
             className="text-[10px] font-semibold uppercase tracking-wider"

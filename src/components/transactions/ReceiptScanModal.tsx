@@ -27,6 +27,7 @@ import {
   Plus,
   AlertCircle,
   Eye,
+  FileSpreadsheet,
 } from "lucide-react";
 import { scanReceiptOrSlip, type OCRScanResult } from "../../lib/ocrEngine";
 import type { ParsedSlipResult } from "../../lib/slipParser";
@@ -45,6 +46,7 @@ import { GlassDatePicker } from "../ui/GlassDatePicker";
 interface ReceiptScanModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenImport?: () => void;
   onOpenForm: (initialValues: {
     type: TransactionType;
     amount: number;
@@ -59,6 +61,7 @@ interface ReceiptScanModalProps {
 export function ReceiptScanModal({
   isOpen,
   onClose,
+  onOpenImport,
   onOpenForm,
 }: ReceiptScanModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -526,7 +529,7 @@ export function ReceiptScanModal({
                 </div>
 
                 {/* Floating Controls (Deep Elevation, No Overblown Halos) */}
-                <div className="flex items-center justify-center gap-8 pt-2">
+                <div className="flex items-center justify-center gap-7 pt-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -574,6 +577,33 @@ export function ReceiptScanModal({
                       Take Photo
                     </span>
                   </button>
+
+                  {onOpenImport && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        onOpenImport();
+                      }}
+                      className="flex flex-col items-center gap-1.5 cursor-pointer group"
+                    >
+                      <div
+                        className="w-13 h-13 rounded-full flex items-center justify-center transition-all group-active:scale-90"
+                        style={{
+                          background: "rgba(255, 255, 255, 0.06)",
+                          backdropFilter: "blur(20px)",
+                          border: "1px solid rgba(255, 255, 255, 0.15)",
+                          boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 8px 20px rgba(0, 0, 0, 0.35)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        <FileSpreadsheet size={19} strokeWidth={1.5} />
+                      </div>
+                      <span className="text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>
+                        CSV / Mutasi
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}

@@ -401,9 +401,10 @@ export async function fetchAllTransactionsFromSupabase(
     uniqueRecords.length > 0
   ) {
     try {
+      // LocalStorage Quota Guard: Cap at 250 transactions (~150KB) to prevent QuotaExceededError
       localStorage.setItem(
         TX_BACKUP_STORAGE_KEY,
-        JSON.stringify(uniqueRecords.slice(0, 500)),
+        JSON.stringify(uniqueRecords.slice(0, 250)),
       );
     } catch (e) {
       console.warn("[fetchAllTransactionsFromSupabase] Failed to write backup snapshot:", e);
