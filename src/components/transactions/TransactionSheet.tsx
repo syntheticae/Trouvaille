@@ -638,62 +638,6 @@ export function TransactionSheet({
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="px-5 pt-3.5 pb-8">
-        {/* Header Utility Bar: Sheet Label & Quick Tools */}
-        <div className="flex items-center justify-between mb-3 px-1">
-          <span
-            className="text-[11px] font-bold uppercase tracking-wider"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            {transaction ? "Edit Transaction" : "New Transaction"}
-          </span>
-
-          {!transaction && (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setShowSmartBar((prev) => !prev);
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
-                style={{
-                  background: showSmartBar
-                    ? "var(--accent)"
-                    : "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: showSmartBar
-                    ? "var(--accent-ink)"
-                    : "var(--text-secondary)",
-                }}
-                title="AI / Natural Language Quick Add"
-              >
-                <Sparkles size={12} strokeWidth={1.75} />
-                <span>AI</span>
-              </button>
-
-              {onOpenScan && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    onOpenScan();
-                  }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-secondary)",
-                  }}
-                  title="Scan Receipt / Slip"
-                >
-                  <ScanLine size={12} strokeWidth={1.75} />
-                  <span>Scan</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Header: Full-Width Segmented Tabs */}
         <div
           className="flex p-1 rounded-full mb-5 glass-surface"
@@ -831,78 +775,131 @@ export function TransactionSheet({
           </div>
         )}
 
-        {/* Hero Amount Input: Pre-Resolution Card Capsule with Enlarged Typography */}
-        <div className="text-center py-1 mb-5">
-          <div
-            className="inline-flex items-baseline justify-center gap-2 px-6 py-3 rounded-2xl sm:rounded-3xl transition-all"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1.5px solid var(--glass-border)",
-              boxShadow:
-                "0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
-            }}
-          >
-            <span
-              className="text-[20px] sm:text-[22px] font-bold select-none shrink-0"
+        {/* Hero Amount Input with Flanking Quick Capture Tools */}
+        <div className="py-1 mb-5">
+          <div className="flex items-center justify-center gap-2.5">
+            {!transaction && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setShowSmartBar((prev) => !prev);
+                }}
+                className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
+                style={{
+                  background: showSmartBar
+                    ? "var(--accent)"
+                    : "linear-gradient(155deg, #222227 0%, #141417 100%)",
+                  border: "1px solid var(--glass-border)",
+                  color: showSmartBar
+                    ? "var(--accent-ink)"
+                    : "var(--text-secondary)",
+                  boxShadow:
+                    "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+                }}
+                title="Natural Language & Voice Quick Add"
+              >
+                <Sparkles size={16} strokeWidth={1.75} />
+              </button>
+            )}
+
+            {/* Main Nominal Capsule (Elongated, No Truncation) */}
+            <div
+              className={`flex items-baseline justify-center gap-2 px-5 py-3 rounded-2xl sm:rounded-3xl transition-all ${
+                transaction
+                  ? "w-full max-w-[340px] mx-auto"
+                  : "flex-1 max-w-[280px] sm:max-w-[320px]"
+              }`}
               style={{
-                color: "var(--text-tertiary)",
-                fontFamily: "Urbanist, -apple-system, sans-serif",
+                background: "var(--bg-elevated)",
+                border: "1.5px solid var(--glass-border)",
+                boxShadow:
+                  "0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
               }}
             >
-              Rp
-            </span>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={amountInput}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (/^[0-9+\-*/×÷.,\s]*$/.test(val)) {
-                  if (/[+\-*/×÷]/.test(val)) {
-                    // Math mode: preserve expression like 50.000 + 20.000
-                    setAmountInput(val);
-                  } else {
-                    // Pure numbers: instant live Indonesian thousand separator formatting
-                    const rawDigits = val.replace(/\D/g, "");
-                    if (!rawDigits) {
-                      setAmount("0");
-                      setAmountInput("");
+              <span
+                className="text-[20px] sm:text-[22px] font-bold select-none shrink-0"
+                style={{
+                  color: "var(--text-tertiary)",
+                  fontFamily: "Urbanist, -apple-system, sans-serif",
+                }}
+              >
+                Rp
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={amountInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^[0-9+\-*/×÷.,\s]*$/.test(val)) {
+                    if (/[+\-*/×÷]/.test(val)) {
+                      // Math mode: preserve expression like 50.000 + 20.000
+                      setAmountInput(val);
                     } else {
-                      const limited = rawDigits.slice(0, 11);
-                      const num = parseInt(limited, 10);
-                      setAmount(String(num));
-                      setAmountInput(num.toLocaleString("id-ID"));
+                      // Pure numbers: instant live Indonesian thousand separator formatting
+                      const rawDigits = val.replace(/\D/g, "");
+                      if (!rawDigits) {
+                        setAmount("0");
+                        setAmountInput("");
+                      } else {
+                        const limited = rawDigits.slice(0, 11);
+                        const num = parseInt(limited, 10);
+                        setAmount(String(num));
+                        setAmountInput(num.toLocaleString("id-ID"));
+                      }
                     }
                   }
-                }
-              }}
-              onBlur={() => {
-                const evaluated = evaluateMathSafe(amountInput);
-                setAmount(String(evaluated));
-                setAmountInput(
-                  evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
-                );
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                }}
+                onBlur={() => {
                   const evaluated = evaluateMathSafe(amountInput);
                   setAmount(String(evaluated));
                   setAmountInput(
                     evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
                   );
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              placeholder="0"
-              className="text-[44px] sm:text-[48px] font-black amount tracking-tight leading-none bg-transparent outline-none text-left"
-              style={{
-                color: "var(--text-primary)",
-                fontFamily: "Urbanist, -apple-system, sans-serif",
-                width: `${Math.max(1.2, (amountInput || "0").length * 0.72 + 0.2)}ch`,
-                maxWidth: "260px",
-              }}
-            />
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const evaluated = evaluateMathSafe(amountInput);
+                    setAmount(String(evaluated));
+                    setAmountInput(
+                      evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
+                    );
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                placeholder="0"
+                className="text-[40px] sm:text-[44px] font-black amount tracking-tight leading-none bg-transparent outline-none text-left min-w-[50px] max-w-[210px]"
+                style={{
+                  color: "var(--text-primary)",
+                  fontFamily: "Urbanist, -apple-system, sans-serif",
+                  width: `${Math.max(1.8, (amountInput || "0").length + 1)}ch`,
+                }}
+              />
+            </div>
+
+            {!transaction && onOpenScan && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  onOpenScan();
+                }}
+                className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
+                style={{
+                  background:
+                    "linear-gradient(155deg, #222227 0%, #141417 100%)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                  boxShadow:
+                    "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+                }}
+                title="Scan Receipt / Slip"
+              >
+                <ScanLine size={16} strokeWidth={1.75} />
+              </button>
+            )}
           </div>
 
           {/* Inline Math Preview Badge */}
