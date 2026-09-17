@@ -637,92 +637,29 @@ export function TransactionSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="px-5 pt-2 pb-8">
-        {/* Header: Segmented Tabs & Utility Action Icons */}
-        <div className="flex items-center gap-2 mb-3">
-          <div
-            className="flex-1 flex p-1 rounded-full glass-surface"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
+      <div className="px-5 pt-3.5 pb-8">
+        {/* Header Utility Bar: Sheet Label & Quick Tools */}
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span
+            className="text-[11px] font-bold uppercase tracking-wider"
+            style={{ color: "var(--text-tertiary)" }}
           >
-            {(
-              [
-                {
-                  key: "expense" as TabType,
-                  label: "Expense",
-                  icon: <ArrowDownCircle size={13} strokeWidth={1.75} />,
-                },
-                {
-                  key: "income" as TabType,
-                  label: "Income",
-                  icon: <ArrowUpCircle size={13} strokeWidth={1.75} />,
-                },
-                {
-                  key: "transfer" as TabType,
-                  label: "Transfer",
-                  icon: <RefreshCcw size={13} strokeWidth={1.75} />,
-                },
-                ...(!transaction
-                  ? [
-                      {
-                        key: "split" as TabType,
-                        label: "Split",
-                        icon: <Users size={13} strokeWidth={1.75} />,
-                      },
-                    ]
-                  : []),
-              ]
-            ).map((t) => {
-              const isSelected = activeTab === t.key;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(t.key);
-                    if (t.key === "split") {
-                      setType("expense");
-                      setIsSplitOpen(true);
-                    } else {
-                      setType(t.key as TransactionType);
-                      setIsSplitOpen(false);
-                    }
-                    triggerHaptic("light");
-                  }}
-                  className="flex-1 py-1.5 rounded-full text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                  style={{
-                    background: isSelected ? "var(--accent)" : "transparent",
-                    color: isSelected
-                      ? "var(--accent-ink)"
-                      : "var(--text-secondary)",
-                    boxShadow: isSelected
-                      ? "0 2px 8px rgba(0, 0, 0, 0.15)"
-                      : "none",
-                  }}
-                >
-                  {t.icon}
-                  <span>{t.label}</span>
-                </button>
-              );
-            })}
-          </div>
+            {transaction ? "Edit Transaction" : "New Transaction"}
+          </span>
 
-          {/* Subtle Top Utility Actions: AI Voice/Text & Receipt Scanner */}
           {!transaction && (
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
                   setShowSmartBar((prev) => !prev);
                 }}
-                className="w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
                 style={{
                   background: showSmartBar
                     ? "var(--accent)"
-                    : "var(--bg-elevated)",
+                    : "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
                   color: showSmartBar
                     ? "var(--accent-ink)"
@@ -730,7 +667,8 @@ export function TransactionSheet({
                 }}
                 title="AI / Natural Language Quick Add"
               >
-                <Sparkles size={14} strokeWidth={1.75} />
+                <Sparkles size={12} strokeWidth={1.75} />
+                <span>AI</span>
               </button>
 
               {onOpenScan && (
@@ -740,19 +678,90 @@ export function TransactionSheet({
                     triggerHaptic("light");
                     onOpenScan();
                   }}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
                   style={{
-                    background: "var(--bg-elevated)",
+                    background: "var(--glass-fill)",
                     border: "1px solid var(--glass-border)",
                     color: "var(--text-secondary)",
                   }}
-                  title="Scan Nota / Slip"
+                  title="Scan Receipt / Slip"
                 >
-                  <ScanLine size={14} strokeWidth={1.75} />
+                  <ScanLine size={12} strokeWidth={1.75} />
+                  <span>Scan</span>
                 </button>
               )}
             </div>
           )}
+        </div>
+
+        {/* Header: Full-Width Segmented Tabs */}
+        <div
+          className="flex p-1 rounded-full mb-5 glass-surface"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          {(
+            [
+              {
+                key: "expense" as TabType,
+                label: "Expense",
+                icon: <ArrowDownCircle size={13.5} strokeWidth={1.75} />,
+              },
+              {
+                key: "income" as TabType,
+                label: "Income",
+                icon: <ArrowUpCircle size={13.5} strokeWidth={1.75} />,
+              },
+              {
+                key: "transfer" as TabType,
+                label: "Transfer",
+                icon: <RefreshCcw size={13.5} strokeWidth={1.75} />,
+              },
+              ...(!transaction
+                ? [
+                    {
+                      key: "split" as TabType,
+                      label: "Split",
+                      icon: <Users size={13.5} strokeWidth={1.75} />,
+                    },
+                  ]
+                : []),
+            ]
+          ).map((t) => {
+            const isSelected = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => {
+                  setActiveTab(t.key);
+                  if (t.key === "split") {
+                    setType("expense");
+                    setIsSplitOpen(true);
+                  } else {
+                    setType(t.key as TransactionType);
+                    setIsSplitOpen(false);
+                  }
+                  triggerHaptic("light");
+                }}
+                className="flex-1 py-1.5 rounded-full text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                style={{
+                  background: isSelected ? "var(--accent)" : "transparent",
+                  color: isSelected
+                    ? "var(--accent-ink)"
+                    : "var(--text-secondary)",
+                  boxShadow: isSelected
+                    ? "0 2px 8px rgba(0, 0, 0, 0.15)"
+                    : "none",
+                }}
+              >
+                {t.icon}
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Collapsible Smart Quick Add Drawer */}
@@ -760,7 +769,7 @@ export function TransactionSheet({
           {showSmartBar && !transaction && (
             <motion.div
               initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-              animate={{ opacity: 1, height: "auto", marginBottom: 12 }}
+              animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
               exit={{ opacity: 0, height: 0, marginBottom: 0 }}
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
@@ -792,7 +801,7 @@ export function TransactionSheet({
 
         {/* Quick Add Shortcuts */}
         {shortcuts.length > 0 && !transaction && (
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-3 -mx-1 px-1">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
             {shortcuts.map((s) => (
               <button
                 key={s.id}
@@ -822,11 +831,19 @@ export function TransactionSheet({
           </div>
         )}
 
-        {/* Hero Amount Input with Native iOS Numberpad & Inline Math */}
-        <div className="text-center py-5 mb-5">
-          <div className="inline-flex items-baseline justify-center gap-1.5">
+        {/* Hero Amount Input: Pre-Resolution Card Capsule with Enlarged Typography */}
+        <div className="text-center py-1 mb-5">
+          <div
+            className="inline-flex items-baseline justify-center gap-2 px-6 py-3 rounded-2xl sm:rounded-3xl transition-all"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1.5px solid var(--glass-border)",
+              boxShadow:
+                "0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+            }}
+          >
             <span
-              className="text-[24px] sm:text-[26px] font-semibold tracking-tight self-center mr-1 select-none"
+              className="text-[20px] sm:text-[22px] font-bold select-none shrink-0"
               style={{
                 color: "var(--text-tertiary)",
                 fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -878,10 +895,12 @@ export function TransactionSheet({
                 }
               }}
               placeholder="0"
-              className="text-[52px] sm:text-[58px] font-bold amount tracking-tight leading-none bg-transparent outline-none text-center min-w-[130px] max-w-[340px]"
+              className="text-[44px] sm:text-[48px] font-black amount tracking-tight leading-none bg-transparent outline-none text-left"
               style={{
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, -apple-system, sans-serif",
+                width: `${Math.max(1.2, (amountInput || "0").length * 0.72 + 0.2)}ch`,
+                maxWidth: "260px",
               }}
             />
           </div>
@@ -915,8 +934,8 @@ export function TransactionSheet({
             </div>
           )}
 
-          {/* Quick Increment & Math Operator Strip */}
-          <div className="flex items-center justify-center gap-2 mt-3.5 px-2">
+          {/* Quick Increment & Math Operator Strip: Pre-Resolution Style with Elegant Dark Gradient */}
+          <div className="flex items-center justify-center gap-1.5 mt-3.5 px-2">
             {[
               { label: "+10K", add: 10000 },
               { label: "+50K", add: 50000 },
@@ -932,11 +951,14 @@ export function TransactionSheet({
                   setAmount(String(next));
                   setAmountInput(next.toLocaleString("id-ID"));
                 }}
-                className="px-3 py-1.5 rounded-full text-[11.5px] font-semibold active:scale-95 transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-[11.5px] font-bold active:scale-90 transition-transform cursor-pointer select-none"
                 style={{
-                  background: "var(--glass-fill)",
+                  background:
+                    "linear-gradient(155deg, #222227 0%, #141417 100%)",
                   border: "1px solid var(--glass-border)",
                   color: "var(--text-secondary)",
+                  boxShadow:
+                    "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
                 }}
               >
                 {preset.label}
@@ -952,11 +974,14 @@ export function TransactionSheet({
                   const base = amountInput ? amountInput.trim() : "0";
                   setAmountInput(`${base} ${op} `);
                 }}
-                className="w-8 h-7.5 rounded-full text-[12px] font-bold flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                className="w-8 h-7.5 rounded-xl text-[12.5px] font-black flex items-center justify-center active:scale-90 transition-transform cursor-pointer select-none"
                 style={{
-                  background: "var(--glass-fill)",
+                  background:
+                    "linear-gradient(155deg, #222227 0%, #141417 100%)",
                   border: "1px solid var(--glass-border)",
                   color: "var(--text-primary)",
+                  boxShadow:
+                    "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
                 }}
               >
                 {op}
