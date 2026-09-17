@@ -180,17 +180,36 @@ export function TransactionSheet({
     searchWalletQuery,
   ]);
 
-  const currentCategory = useMemo(() => {
-    return categories.find((c) => c.id === categoryId) || allCategories.find((c) => c.id === categoryId) || null;
-  }, [categories, allCategories, categoryId]);
+  // Resolution 5 Ribbons: Ensure selected items are always present in the horizontal list
+  const displayCategories = useMemo(() => {
+    if (!categoryId) return suggestedCategories.slice(0, 10);
+    const inTop = suggestedCategories.slice(0, 10).some((c) => c.id === categoryId);
+    if (inTop) return suggestedCategories.slice(0, 10);
+    const selectedCat = categories.find((c) => c.id === categoryId);
+    return selectedCat
+      ? [selectedCat, ...suggestedCategories.filter((c) => c.id !== categoryId).slice(0, 9)]
+      : suggestedCategories.slice(0, 10);
+  }, [suggestedCategories, categories, categoryId]);
 
-  const currentWallet = useMemo(() => {
-    return wallets.find((w) => w.id === walletId) || null;
-  }, [wallets, walletId]);
+  const displayFromWallets = useMemo(() => {
+    if (!walletId) return suggestedFromWallets.slice(0, 8);
+    const inTop = suggestedFromWallets.slice(0, 8).some((w) => w.id === walletId);
+    if (inTop) return suggestedFromWallets.slice(0, 8);
+    const selectedW = wallets.find((w) => w.id === walletId);
+    return selectedW
+      ? [selectedW, ...suggestedFromWallets.filter((w) => w.id !== walletId).slice(0, 7)]
+      : suggestedFromWallets.slice(0, 8);
+  }, [suggestedFromWallets, wallets, walletId]);
 
-  const currentToWallet = useMemo(() => {
-    return wallets.find((w) => w.id === toWalletId) || null;
-  }, [wallets, toWalletId]);
+  const displayToWallets = useMemo(() => {
+    if (!toWalletId) return suggestedToWallets.slice(0, 8);
+    const inTop = suggestedToWallets.slice(0, 8).some((w) => w.id === toWalletId);
+    if (inTop) return suggestedToWallets.slice(0, 8);
+    const selectedW = wallets.find((w) => w.id === toWalletId);
+    return selectedW
+      ? [selectedW, ...suggestedToWallets.filter((w) => w.id !== toWalletId).slice(0, 7)]
+      : suggestedToWallets.slice(0, 8);
+  }, [suggestedToWallets, wallets, toWalletId]);
 
   // Keep track of when modal opens or incoming transaction changes
   const prevOpenRef = useRef(false);
@@ -929,64 +948,96 @@ export function TransactionSheet({
           </div>
         </div>
 
-        {/* Resolution 1: The Apple Card Inset Group */}
-        <div
-          className="rounded-2xl overflow-hidden mb-4"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-          }}
-        >
-          <div className="divide-y divide-white/[0.06]">
-            {/* Category Row (if not transfer) */}
-            {type !== "transfer" && (
+        {/* Resolution 5: Horizontal Floating Ribbon & Dynamic Island Pill */}
+
+        {/* 1. Category Ribbon (Zero Truncation, 1-Tap Instant Selection) */}
+        {type !== "transfer" && (
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1.5 px-1">
+              <span
+                className="text-[10.5px] font-semibold uppercase tracking-wider"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Category
+              </span>
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
                   setMoreCatOpen(true);
                 }}
-                className="w-full px-4 py-3 flex items-center justify-between text-left active:bg-white/[0.03] transition-colors cursor-pointer group"
+                className="text-[11px] font-medium flex items-center gap-0.5 active:opacity-70 transition-opacity cursor-pointer"
+                style={{ color: "var(--text-secondary)" }}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                <span>All</span>
+                <ChevronRight size={13} strokeWidth={1.75} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+              {displayCategories.map((cat) => {
+                const isSelected = categoryId === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setCategoryId(cat.id);
+                    }}
+                    className="whitespace-nowrap px-3 py-1.5 rounded-2xl text-[12px] font-medium flex items-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer"
                     style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
+                      background: isSelected
+                        ? "rgba(255, 255, 255, 0.14)"
+                        : "var(--bg-elevated)",
+                      border: isSelected
+                        ? "1px solid rgba(255, 255, 255, 0.4)"
+                        : "1px solid var(--glass-border)",
+                      color: isSelected
+                        ? "var(--text-primary)"
+                        : "var(--text-secondary)",
+                      boxShadow: isSelected
+                        ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25)"
+                        : "none",
                     }}
                   >
-                    <IconRenderer
-                      icon={currentCategory?.emoji || "Tag"}
-                      size="w-3.5 h-3.5"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <span
-                      className="text-[10px] font-medium block uppercase tracking-wider"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Category
-                    </span>
-                    <span
-                      className="text-[13px] font-semibold block truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {currentCategory?.name || "Select Category"}
-                    </span>
-                  </div>
-                </div>
-                <ChevronRight
-                  size={14}
-                  className="shrink-0 group-hover:translate-x-0.5 transition-transform"
-                  style={{ color: "var(--text-tertiary)" }}
-                />
-              </button>
-            )}
+                    <IconRenderer icon={cat.emoji} size="w-3.5 h-3.5" />
+                    <span>{cat.name}</span>
+                  </button>
+                );
+              })}
 
-            {/* Account Row (Single for Expense/Income, Dual for Transfer) */}
-            {type === "transfer" ? (
-              <>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setMoreCatOpen(true);
+                }}
+                className="whitespace-nowrap px-2.5 py-1.5 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px dashed var(--glass-border)",
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                <span>+ More</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Account / Wallet Ribbon */}
+        {type === "transfer" ? (
+          <div className="space-y-3 mb-3">
+            {/* From Account */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5 px-1">
+                <span
+                  className="text-[10.5px] font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  From Account
+                </span>
                 <button
                   type="button"
                   onClick={() => {
@@ -994,42 +1045,122 @@ export function TransactionSheet({
                     setWalletTarget("from");
                     setMoreWalletOpen(true);
                   }}
-                  className="w-full px-4 py-3 flex items-center justify-between text-left active:bg-white/[0.03] transition-colors cursor-pointer group"
+                  className="text-[11px] font-medium flex items-center gap-0.5 active:opacity-70 transition-opacity cursor-pointer"
+                  style={{ color: "var(--text-secondary)" }}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                  <span>All</span>
+                  <ChevronRight size={13} strokeWidth={1.75} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+                {displayFromWallets.map((w) => {
+                  const isSelected = walletId === w.id;
+                  return (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setWalletId(w.id);
+                      }}
+                      className="whitespace-nowrap px-3 py-1.5 rounded-2xl text-[12px] font-medium flex items-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer"
                       style={{
-                        background: "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
+                        background: isSelected
+                          ? "rgba(255, 255, 255, 0.14)"
+                          : "var(--bg-elevated)",
+                        border: isSelected
+                          ? "1px solid rgba(255, 255, 255, 0.4)"
+                          : "1px solid var(--glass-border)",
+                        color: isSelected
+                          ? "var(--text-primary)"
+                          : "var(--text-secondary)",
+                        boxShadow: isSelected
+                          ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25)"
+                          : "none",
                       }}
                     >
-                      <IconRenderer
-                        icon={currentWallet?.icon || "Wallet"}
-                        size="w-3.5 h-3.5"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <span
-                        className="text-[10px] font-medium block uppercase tracking-wider"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        From Account
-                      </span>
-                      <span
-                        className="text-[13px] font-semibold block truncate"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {currentWallet?.name || "Select Source Account"}
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight
-                    size={14}
-                    className="shrink-0 group-hover:translate-x-0.5 transition-transform"
-                    style={{ color: "var(--text-tertiary)" }}
-                  />
+                      <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
+                      <span>{w.name}</span>
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setWalletTarget("from");
+                    setMoreWalletOpen(true);
+                  }}
+                  className="whitespace-nowrap px-2.5 py-1.5 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px dashed var(--glass-border)",
+                    color: "var(--text-tertiary)",
+                  }}
+                >
+                  <span>+ More</span>
                 </button>
+              </div>
+            </div>
+
+            {/* To Account */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5 px-1">
+                <span
+                  className="text-[10.5px] font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  To Account
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setWalletTarget("to");
+                    setMoreWalletOpen(true);
+                  }}
+                  className="text-[11px] font-medium flex items-center gap-0.5 active:opacity-70 transition-opacity cursor-pointer"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <span>All</span>
+                  <ChevronRight size={13} strokeWidth={1.75} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+                {displayToWallets.map((w) => {
+                  const isSelected = toWalletId === w.id;
+                  return (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setToWalletId(w.id);
+                      }}
+                      className="whitespace-nowrap px-3 py-1.5 rounded-2xl text-[12px] font-medium flex items-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer"
+                      style={{
+                        background: isSelected
+                          ? "rgba(255, 255, 255, 0.14)"
+                          : "var(--bg-elevated)",
+                        border: isSelected
+                          ? "1px solid rgba(255, 255, 255, 0.4)"
+                          : "1px solid var(--glass-border)",
+                        color: isSelected
+                          ? "var(--text-primary)"
+                          : "var(--text-secondary)",
+                        boxShadow: isSelected
+                          ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25)"
+                          : "none",
+                      }}
+                    >
+                      <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
+                      <span>{w.name}</span>
+                    </button>
+                  );
+                })}
 
                 <button
                   type="button"
@@ -1038,44 +1169,27 @@ export function TransactionSheet({
                     setWalletTarget("to");
                     setMoreWalletOpen(true);
                   }}
-                  className="w-full px-4 py-3 flex items-center justify-between text-left active:bg-white/[0.03] transition-colors cursor-pointer group"
+                  className="whitespace-nowrap px-2.5 py-1.5 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px dashed var(--glass-border)",
+                    color: "var(--text-tertiary)",
+                  }}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                      style={{
-                        background: "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
-                      }}
-                    >
-                      <IconRenderer
-                        icon={currentToWallet?.icon || "Wallet"}
-                        size="w-3.5 h-3.5"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <span
-                        className="text-[10px] font-medium block uppercase tracking-wider"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        To Account
-                      </span>
-                      <span
-                        className="text-[13px] font-semibold block truncate"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {currentToWallet?.name || "Select Destination Account"}
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight
-                    size={14}
-                    className="shrink-0 group-hover:translate-x-0.5 transition-transform"
-                    style={{ color: "var(--text-tertiary)" }}
-                  />
+                  <span>+ More</span>
                 </button>
-              </>
-            ) : (
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1.5 px-1">
+              <span
+                className="text-[10.5px] font-semibold uppercase tracking-wider"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Account
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -1083,151 +1197,132 @@ export function TransactionSheet({
                   setWalletTarget("from");
                   setMoreWalletOpen(true);
                 }}
-                className="w-full px-4 py-3 flex items-center justify-between text-left active:bg-white/[0.03] transition-colors cursor-pointer group"
+                className="text-[11px] font-medium flex items-center gap-0.5 active:opacity-70 transition-opacity cursor-pointer"
+                style={{ color: "var(--text-secondary)" }}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                <span>All</span>
+                <ChevronRight size={13} strokeWidth={1.75} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+              {displayFromWallets.map((w) => {
+                const isSelected = walletId === w.id;
+                return (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setWalletId(w.id);
+                    }}
+                    className="whitespace-nowrap px-3 py-1.5 rounded-2xl text-[12px] font-medium flex items-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer"
                     style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
+                      background: isSelected
+                        ? "rgba(255, 255, 255, 0.14)"
+                        : "var(--bg-elevated)",
+                      border: isSelected
+                        ? "1px solid rgba(255, 255, 255, 0.4)"
+                        : "1px solid var(--glass-border)",
+                      color: isSelected
+                        ? "var(--text-primary)"
+                        : "var(--text-secondary)",
+                      boxShadow: isSelected
+                        ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25)"
+                        : "none",
                     }}
                   >
-                    <IconRenderer
-                      icon={currentWallet?.icon || "Wallet"}
-                      size="w-3.5 h-3.5"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <span
-                      className="text-[10px] font-medium block uppercase tracking-wider"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Account
-                    </span>
-                    <span
-                      className="text-[13px] font-semibold block truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {currentWallet?.name || "Select Account"}
-                    </span>
-                  </div>
-                </div>
-                <ChevronRight
-                  size={14}
-                  className="shrink-0 group-hover:translate-x-0.5 transition-transform"
-                  style={{ color: "var(--text-tertiary)" }}
-                />
-              </button>
-            )}
+                    <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
+                    <span>{w.name}</span>
+                  </button>
+                );
+              })}
 
-            {/* Date & Time Row */}
-            <div className="px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                >
-                  <CalendarIcon
-                    size={14}
-                    strokeWidth={1.5}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-                <div>
-                  <span
-                    className="text-[10px] font-medium block uppercase tracking-wider"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    Date & Time
-                  </span>
-                  <span
-                    className="text-[13px] font-semibold block"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isToday(date) ? "Today" : format(date, "dd MMM yyyy")} ·{" "}
-                    {time}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setDateOpen(true);
-                  }}
-                  className="px-2.5 py-1 rounded-lg text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  {isToday(date) ? "Today" : format(date, "dd/MM")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setTimeOpen(true);
-                  }}
-                  className="px-2.5 py-1 rounded-lg text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Clock
-                    size={11}
-                    strokeWidth={1.5}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                  <span className="amount">{time}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Note Row */}
-            <div className="px-4 py-3 flex items-center gap-3">
-              <div
-                className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setWalletTarget("from");
+                  setMoreWalletOpen(true);
+                }}
+                className="whitespace-nowrap px-2.5 py-1.5 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
                 style={{
                   background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  border: "1px dashed var(--glass-border)",
+                  color: "var(--text-tertiary)",
                 }}
               >
-                <PenLine
-                  size={13}
-                  strokeWidth={1.5}
-                  style={{ color: "var(--text-secondary)" }}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <span
-                  className="text-[10px] font-medium block uppercase tracking-wider mb-0.5"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Note
-                </span>
-                <input
-                  type="text"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Add a note (optional)"
-                  className="w-full text-[12.5px] placeholder:text-[11.5px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-60 font-normal bg-transparent outline-none"
-                  style={{
-                    color: "var(--text-primary)",
-                    fontFamily: "Urbanist, -apple-system, sans-serif",
-                  }}
-                />
-              </div>
+                <span>+ More</span>
+              </button>
             </div>
+          </div>
+        )}
+
+        {/* 3. Note & Date/Time Compact Island */}
+        <div
+          className="rounded-2xl p-2.5 px-3.5 mb-3 flex items-center gap-2.5"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <PenLine
+            size={13}
+            strokeWidth={1.5}
+            style={{ color: "var(--text-tertiary)" }}
+          />
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Add a note (optional)..."
+            className="bg-transparent text-[12.5px] placeholder:text-[11.5px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-60 font-normal flex-1 outline-none min-w-0"
+            style={{
+              color: "var(--text-primary)",
+              fontFamily: "Urbanist, -apple-system, sans-serif",
+            }}
+          />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setDateOpen(true);
+              }}
+              className="px-2.5 py-1 rounded-xl text-[11px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <CalendarIcon
+                size={11}
+                strokeWidth={1.5}
+                style={{ color: "var(--text-tertiary)" }}
+              />
+              <span>{isToday(date) ? "Today" : format(date, "dd/MM")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setTimeOpen(true);
+              }}
+              className="px-2.5 py-1 rounded-xl text-[11px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <Clock
+                size={11}
+                strokeWidth={1.5}
+                style={{ color: "var(--text-tertiary)" }}
+              />
+              <span className="amount">{time}</span>
+            </button>
           </div>
         </div>
 
