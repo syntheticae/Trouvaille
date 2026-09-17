@@ -130,9 +130,42 @@ describe("Multi-Transaction NLP Parser & Indonesian Slang Suite", () => {
       const clauses = splitIntoClauses(input);
       expect(clauses).toHaveLength(3);
     });
+    it("splits sentence-period separated expenses from STT speech", () => {
+      const input = "Beli kopi 25rb. Bensin 50rb. Parkir 5rb.";
+      const clauses = splitIntoClauses(input, mockWallets);
+      expect(clauses).toHaveLength(3);
+      expect(clauses[0]).toContain("kopi 25rb");
+      expect(clauses[1]).toContain("Bensin 50rb");
+      expect(clauses[2]).toContain("Parkir 5rb");
+    });
+
+    it("splits spoken stream with NO conjunctions or punctuation using amount anchors", () => {
+      const input = "kopi 25rb bca bensin 50rb cash parkir 5rb";
+      const clauses = splitIntoClauses(input, mockWallets);
+      expect(clauses).toHaveLength(3);
+      expect(clauses[0]).toBe("kopi 25rb bca");
+      expect(clauses[1]).toBe("bensin 50rb cash");
+      expect(clauses[2]).toBe("parkir 5rb");
+    });
   });
 
   describe("Multi-Transaction Parsing & Context Inheritance", () => {
+    it("extracts 3 separate transactions from a stream with no conjunctions", () => {
+      const input = "kopi 25rb bca bensin 50rb cash parkir 5rb";
+      const results = parseMultiNaturalTransactions(
+        input,
+        mockCategories,
+        mockWallets,
+        referenceDate,
+      );
+      expect(results).toHaveLength(3);
+      expect(results[0].amount).toBe(25000);
+      expect(results[0].walletId).toBe("w-bca");
+      expect(results[1].amount).toBe(50000);
+      expect(results[1].walletId).toBe("w-cash");
+      expect(results[2].amount).toBe(5000);
+    });
+
     it("extracts 3 separate transactions from a compound voice sentence", () => {
       const input = "Beli kopi 25rb pakai BCA terus bensin 50rb Cash dan parkir 5rb";
       const results = parseMultiNaturalTransactions(
@@ -157,6 +190,24 @@ describe("Multi-Transaction NLP Parser & Indonesian Slang Suite", () => {
       // 3. Parkir 5k
       expect(results[2].amount).toBe(5000);
       expect(results[2].categoryId).toBe("c-transport");
+    });
+
+    it("parses 'Beli makan. 50.000. Gas' with STT periods and phonetic cash alias", () => {
+      const result = parseNaturalTransaction(
+        "Beli makan. 50.000. Gas",
+        mockCategories,
+        mockWallets,
+        referenceDate,
+      );
+      console.log("DEBUG RESULT:", {
+        amount: result.amount,
+        categoryId: result.categoryId,
+        categoryName: result.categoryName,
+        walletId: result.walletId,
+        walletName: result.walletName,
+        note: result.note,
+      });
+      expect(result.amount).toBe(50000);
     });
 
     it("propagates wallet when only one wallet is specified in companion clause", () => {

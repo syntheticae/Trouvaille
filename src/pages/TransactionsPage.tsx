@@ -2,6 +2,7 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator";
 import { triggerHaptic } from "../lib/haptics";
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   X,
@@ -10,7 +11,8 @@ import {
   Wallet,
   SlidersHorizontal,
   Tag,
-  ScanLine,
+  CheckSquare,
+  Trash2,
 } from "lucide-react";
 import {
   BarChart,
@@ -24,13 +26,14 @@ import {
 import {
   useAllTransactions,
   useDeleteTransaction,
+  useBatchDeleteTransactions,
 } from "../hooks/useTransactions";
 import { useWallets, resolveTransactionWallets } from "../hooks/useWallets";
 import { useCategories } from "../hooks/useCategories";
 import { useToast } from "../contexts/ToastContext";
 import { TransactionSheet } from "../components/transactions/TransactionSheet";
 import { BottomSheet } from "../components/ui/BottomSheet";
-import type { Transaction } from "../lib/types";
+import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
 import { formatRupiah, getDateLabel } from "../lib/utils";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import {
@@ -148,10 +151,13 @@ interface TransactionsPageProps {
   onOpenScan?: () => void;
 }
 
-export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
+export function TransactionsPage({
+  onOpenScan: _onOpenScan,
+}: TransactionsPageProps = {}) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [search, setSearch] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [selectedWalletName, setSelectedWalletName] = useState<string | null>(
@@ -184,14 +190,33 @@ export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
   const { data: wallets = [], refetch: refetchWallets } = useWallets();
   const { data: categories = [], refetch: refetchCategories } = useCategories();
   const deleteTx = useDeleteTransaction();
+  const batchDeleteTx = useBatchDeleteTransactions();
   const { showToast } = useToast();
   const { checkUnusual } = useUnusualSpending(allTxs);
+
+  // Selection Mode State for Bulk Actions
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
+
+  // O(1) Dictionary Lookup Maps for Categories and Wallets
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, Category>();
+    categories.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [categories]);
+
+  const walletMap = useMemo(() => {
+    const map = new Map<string, WalletType>();
+    wallets.forEach((w) => map.set(w.id, w));
+    return map;
+  }, [wallets]);
 
   const visibleTxs = useMemo(
     () => allTxs.filter((t) => !pendingDeletedIds.has(t.id)),
     [allTxs, pendingDeletedIds],
   );
 
+  // 5-second Undo Grace Period for single deletion
   const handleDeleteTransaction = (tx: Transaction) => {
     setPendingDeletedIds((prev) => new Set(prev).add(tx.id));
     showToast(
@@ -208,11 +233,73 @@ export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
           },
         });
       },
-      4000,
+      5000,
       () => {
         setPendingDeletedIds((prev) => {
           const next = new Set(prev);
           next.delete(tx.id);
+          return next;
+        });
+      },
+    );
+  };
+
+  const handleToggleSelect = useCallback((tx: Transaction) => {
+    setSelectedTxIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(tx.id)) {
+        next.delete(tx.id);
+      } else {
+        next.add(tx.id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleEnterSelectMode = useCallback((tx?: Transaction) => {
+    setIsSelectMode(true);
+    if (tx) {
+      setSelectedTxIds(new Set([tx.id]));
+    }
+  }, []);
+
+  const handleExitSelectMode = useCallback(() => {
+    setIsSelectMode(false);
+    setSelectedTxIds(new Set());
+  }, []);
+
+  // Bulk Deletion with 5-second Undo Grace Period
+  const handleBulkDelete = () => {
+    if (selectedTxIds.size === 0) return;
+    triggerHaptic("heavy");
+    const idsToDelete = Array.from(selectedTxIds);
+    setPendingDeletedIds((prev) => {
+      const next = new Set(prev);
+      idsToDelete.forEach((id) => next.add(id));
+      return next;
+    });
+    const count = idsToDelete.length;
+    handleExitSelectMode();
+
+    showToast(
+      `${count} transactions deleted`,
+      "delete",
+      () => {
+        batchDeleteTx.mutate(idsToDelete, {
+          onSuccess: () => {
+            setPendingDeletedIds((prev) => {
+              const next = new Set(prev);
+              idsToDelete.forEach((id) => next.delete(id));
+              return next;
+            });
+          },
+        });
+      },
+      5000,
+      () => {
+        setPendingDeletedIds((prev) => {
+          const next = new Set(prev);
+          idsToDelete.forEach((id) => next.delete(id));
           return next;
         });
       },
@@ -257,8 +344,8 @@ export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
   }, [scrollParent]);
 
   const resolveWalletNames = useCallback(
-    (tx: Transaction) => resolveTransactionWallets(tx, wallets),
-    [wallets],
+    (tx: Transaction) => resolveTransactionWallets(tx, walletMap),
+    [walletMap],
   );
 
   const scopedTxs = useMemo(() => {
@@ -611,8 +698,8 @@ export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
       />
       {/* ====== HEADER ====== */}
       <div className="px-5 pt-5 pb-3">
-        <div className="flex items-center justify-between mb-3">
-          <div>
+        <div className="flex items-start justify-between mb-3 gap-3">
+          <div className="min-w-0 flex-1">
             <p
               className="text-[12px] font-semibold"
               style={{ color: "var(--text-tertiary)" }}
@@ -628,7 +715,7 @@ export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
                       : `${selectedMonthLabel} Activity`}
             </p>
             <p
-              className="text-[32px] font-extrabold tracking-tight leading-tight amount"
+              className="text-[28px] sm:text-[32px] font-extrabold tracking-tight leading-tight amount truncate"
               style={{ color: "var(--text-primary)" }}
             >
               {formatRupiah(totalPeriodAmount)}
@@ -641,28 +728,28 @@ export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
             </p>
           </div>
 
-          {/* Month Selector Trigger */}
+          {/* Month Selector Trigger: Compact Apple Luxury Pill */}
           <button
             type="button"
             onClick={() => {
               setMonthPickerOpen(true);
               triggerHaptic("light");
             }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl active:scale-95 transition-all touch-manipulation cursor-pointer select-none no-pull"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full active:scale-95 transition-all touch-manipulation cursor-pointer select-none no-pull shrink-0 whitespace-nowrap mt-1"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
               boxShadow: "0 2px 8px var(--shadow-strength)",
             }}
           >
-            <Calendar size={14} style={{ color: "var(--text-secondary)" }} />
+            <Calendar size={12} style={{ color: "var(--text-secondary)" }} />
             <span
-              className="text-[12px] font-extrabold"
+              className="text-[11.5px] font-bold"
               style={{ color: "var(--text-primary)" }}
             >
               {selectedMonthLabel}
             </span>
-            <ChevronDown size={13} style={{ color: "var(--text-tertiary)" }} />
+            <ChevronDown size={11} style={{ color: "var(--text-tertiary)" }} />
           </button>
         </div>
 
@@ -795,31 +882,45 @@ export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
           )}
         </div>
 
-        {/* Full-Width Search Bar with Inline Filter Controls */}
+        {/* Full-Width Search Bar with Dynamic Focus Animation */}
         <div
-          className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-2.5 glass-surface no-pull"
+          className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-2.5 glass-surface no-pull transition-all duration-200"
           style={{
             background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
+            border: isSearchFocused
+              ? "1px solid rgba(255, 255, 255, 0.22)"
+              : "1px solid var(--glass-border)",
+            boxShadow: isSearchFocused
+              ? "0 4px 16px rgba(0, 0, 0, 0.25)"
+              : "none",
           }}
         >
           <Search
             size={16}
             className="shrink-0"
-            style={{ color: "var(--text-tertiary)" }}
+            style={{
+              color: isSearchFocused
+                ? "var(--text-primary)"
+                : "var(--text-tertiary)",
+            }}
           />
           <input
             type="text"
             value={search}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search note, category, wallet, amount..."
-            className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold touch-manipulation no-pull"
+            className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold touch-manipulation no-pull min-w-0"
             style={{ color: "var(--text-primary)" }}
           />
           {search && (
             <button
               type="button"
-              onClick={() => setSearch("")}
+              onClick={() => {
+                setSearch("");
+                triggerHaptic("light");
+              }}
               className="p-1 rounded-full shrink-0 mr-1 touch-manipulation cursor-pointer"
               style={{ color: "var(--text-tertiary)" }}
             >
@@ -827,66 +928,92 @@ export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
             </button>
           )}
 
-          {/* Filter Trigger Button */}
-          <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
-          <button
-            type="button"
-            onClick={() => {
-              setFilterSheetOpen(true);
-              triggerHaptic("light");
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
-            style={{
-              background:
-                activeFiltersCount > 0
-                  ? "var(--accent)"
-                  : "var(--glass-fill)",
-              color:
-                activeFiltersCount > 0
-                  ? "var(--accent-ink)"
-                  : "var(--text-secondary)",
-              border:
-                activeFiltersCount > 0
-                  ? "1px solid var(--accent)"
-                  : "1px solid var(--glass-border)",
-            }}
-            title="Advanced Filters"
-          >
-            <SlidersHorizontal size={13} />
-            <span className="text-[11px] font-extrabold">Filters</span>
-            {activeFiltersCount > 0 && (
-              <span
-                className="w-4 h-4 rounded-full text-[9px] font-extrabold flex items-center justify-center"
-                style={{
-                  background: "var(--accent-ink)",
-                  color: "var(--accent)",
-                }}
+          {/* Smooth hiding of side buttons (Filters & Select) when search is focused or active */}
+          <AnimatePresence>
+            {!isSearchFocused && !search && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, width: 0 }}
+                animate={{ opacity: 1, scale: 1, width: "auto" }}
+                exit={{ opacity: 0, scale: 0.9, width: 0 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className="flex items-center shrink-0 overflow-hidden"
               >
-                {activeFiltersCount}
-              </span>
-            )}
-          </button>
+                {/* Filter Trigger Button */}
+                <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterSheetOpen(true);
+                    triggerHaptic("light");
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
+                  style={{
+                    background:
+                      activeFiltersCount > 0
+                        ? "var(--accent)"
+                        : "var(--glass-fill)",
+                    color:
+                      activeFiltersCount > 0
+                        ? "var(--accent-ink)"
+                        : "var(--text-secondary)",
+                    border:
+                      activeFiltersCount > 0
+                        ? "1px solid var(--accent)"
+                        : "1px solid var(--glass-border)",
+                  }}
+                  title="Advanced Filters"
+                >
+                  <SlidersHorizontal size={13} />
+                  <span className="text-[11px] font-extrabold">Filters</span>
+                  {activeFiltersCount > 0 && (
+                    <span
+                      className="w-4 h-4 rounded-full text-[9px] font-extrabold flex items-center justify-center"
+                      style={{
+                        background: "var(--accent-ink)",
+                        color: "var(--accent)",
+                      }}
+                    >
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
 
-          {/* Scan Slip / Receipt Trigger Button */}
-          {onOpenScan && (
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                onOpenScan();
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull ml-1"
-              style={{
-                background: "var(--glass-fill)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
-              }}
-              title="Scan Nota / Bukti Transfer"
-            >
-              <ScanLine size={13} strokeWidth={1.75} />
-              <span className="text-[11px] font-extrabold">Scan</span>
-            </button>
-          )}
+                {/* Select Mode Trigger Button */}
+                <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("medium");
+                    if (isSelectMode) {
+                      handleExitSelectMode();
+                    } else {
+                      setIsSelectMode(true);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
+                  style={{
+                    background: isSelectMode
+                      ? "var(--accent)"
+                      : "var(--glass-fill)",
+                    color: isSelectMode
+                      ? "var(--accent-ink)"
+                      : "var(--text-secondary)",
+                    border: isSelectMode
+                      ? "1px solid var(--accent)"
+                      : "1px solid var(--glass-border)",
+                  }}
+                  title={
+                    isSelectMode ? "Exit Select Mode" : "Select Transactions"
+                  }
+                >
+                  <CheckSquare size={13} />
+                  <span className="text-[11px] font-extrabold">
+                    {isSelectMode ? "Done" : "Select"}
+                  </span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Unified Clean Filter Tabs */}
@@ -1125,15 +1252,24 @@ export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
                   <TransactionItem
                     tx={tx}
                     categories={categories}
+                    categoryMap={categoryMap}
                     fromWalletName={from}
                     toWalletName={to}
                     isUnusual={isUnusual}
+                    isSelectMode={isSelectMode}
+                    isSelected={selectedTxIds.has(tx.id)}
                     onClick={(t) => {
-                      setEditingTx(t);
-                      setSheetOpen(true);
+                      if (isSelectMode) {
+                        handleToggleSelect(t);
+                      } else {
+                        setEditingTx(t);
+                        setSheetOpen(true);
+                      }
                     }}
                     onDelete={handleDeleteTransaction}
                     onDuplicate={handleDuplicateTransaction}
+                    onToggleSelect={handleToggleSelect}
+                    onLongPress={handleEnterSelectMode}
                   />
                 </div>
               );
@@ -1141,6 +1277,89 @@ export function TransactionsPage({ onOpenScan }: TransactionsPageProps = {}) {
           />
         )}
       </div>
+
+      {/* Floating Bulk Action Bar (Strict Apple Luxury Aesthetics) */}
+      <AnimatePresence>
+        {isSelectMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 35, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 35, scale: 0.96 }}
+            transition={{ type: "spring", damping: 25, stiffness: 350 }}
+            className="fixed bottom-[calc(90px+env(safe-area-inset-bottom))] left-4 right-4 z-[9999] p-3 rounded-[24px] flex items-center justify-between shadow-2xl pointer-events-auto"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "0 16px 48px rgba(0,0,0,0.55)",
+              backdropFilter: "blur(24px) saturate(180%)",
+              WebkitBackdropFilter: "blur(24px) saturate(180%)",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[13px] font-bold px-1.5"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {selectedTxIds.size} Selected
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  if (
+                    selectedTxIds.size === visibleTxs.length &&
+                    visibleTxs.length > 0
+                  ) {
+                    setSelectedTxIds(new Set());
+                  } else {
+                    setSelectedTxIds(new Set(visibleTxs.map((t) => t.id)));
+                  }
+                }}
+                className="text-[11.5px] font-semibold px-2.5 py-1 rounded-xl active:scale-95 transition-all cursor-pointer select-none"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                {selectedTxIds.size === visibleTxs.length &&
+                visibleTxs.length > 0
+                  ? "Deselect All"
+                  : "Select All"}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {selectedTxIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-bold active:scale-95 transition-all cursor-pointer"
+                  style={{
+                    background: "rgba(239, 68, 68, 0.14)",
+                    color: "#fca5a5",
+                    border: "1px solid rgba(239, 68, 68, 0.25)",
+                  }}
+                >
+                  <Trash2 size={13} strokeWidth={2} />
+                  <span>Delete ({selectedTxIds.size})</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleExitSelectMode}
+                className="px-3.5 py-1.5 rounded-xl text-[12px] font-bold active:scale-95 transition-all cursor-pointer"
+                style={{
+                  background: "var(--accent)",
+                  color: "var(--accent-ink)",
+                }}
+              >
+                Done
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ====== 12-MONTH & YEAR SELECTOR BOTTOM SHEET ====== */}
       <BottomSheet

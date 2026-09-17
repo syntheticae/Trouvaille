@@ -20,6 +20,7 @@ import {
   Sparkles,
   Check,
   PenLine,
+  AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomSheet } from "../ui/BottomSheet";
@@ -34,6 +35,8 @@ import {
 } from "../../hooks/useTransactions";
 import { useCategorySuggestions } from "../../hooks/useCategorySuggestions";
 import { useWalletSuggestions } from "../../hooks/useWalletSuggestions";
+import { useMerchantMemory } from "../../hooks/useMerchantMemory";
+import { useBudgetTarget } from "../../hooks/useBudgetTarget";
 import { useToast } from "../../contexts/ToastContext";
 import { formatRupiah } from "../../lib/utils";
 import { format, isToday, parseISO } from "date-fns";
@@ -163,19 +166,141 @@ export function TransactionSheet({
     target: "to",
   });
 
+  const { budgetTarget } = useBudgetTarget();
+  const { getMemoryForNote } = useMerchantMemory(allTxs);
+
+  // Smart Merchant & Context Memory
+  const merchantPrediction = useMemo(() => {
+    if (!note || note.trim().length < 2) return null;
+    return getMemoryForNote(note);
+  }, [note, getMemoryForNote]);
+
+  const predictedCategory = useMemo(() => {
+    if (!merchantPrediction?.categoryId) return null;
+    return (
+      allCategories.find((c) => c.id === merchantPrediction.categoryId) || null
+    );
+  }, [merchantPrediction, allCategories]);
+
+  const predictedWallet = useMemo(() => {
+    if (!merchantPrediction?.walletId) return null;
+    return wallets.find((w) => w.id === merchantPrediction.walletId) || null;
+  }, [merchantPrediction, wallets]);
+
+  // Duplicate Transaction Warning Detection (15 min window)
+  const isDuplicateDetected = useMemo(() => {
+    const currentVal = evaluateMathSafe(amountInput);
+    if (!currentVal || currentVal <= 0 || allTxs.length === 0) return false;
+    const now = Date.now();
+    return allTxs.some((tx) => {
+      if (transaction && tx.id === transaction.id) return false;
+      if (tx.amount !== currentVal) return false;
+      if (type !== "transfer" && categoryId && tx.category_id !== categoryId)
+        return false;
+      if (walletId && tx.wallet_id !== walletId) return false;
+      const txTime = new Date(tx.created_at || tx.occurred_on).getTime();
+      const diffMinutes = Math.abs(now - txTime) / (1000 * 60);
+      return diffMinutes <= 15;
+    });
+  }, [amountInput, allTxs, transaction, type, categoryId, walletId]);
+
+  // Budget Impact Preview (Expense MTD projection)
+  const budgetImpact = useMemo(() => {
+    if (type !== "expense" || !categoryId) return null;
+    const currentVal = evaluateMathSafe(amountInput);
+    if (currentVal <= 0) return null;
+
+    const now = date || new Date();
+    const currentMonthStr = format(now, "yyyy-MM");
+
+    const existingSpent = allTxs
+      .filter((tx) => {
+        if (tx.type !== "expense" || tx.category_id !== categoryId) return false;
+        if (transaction && tx.id === transaction.id) return false;
+        const txDateStr = tx.occurred_on || tx.created_at;
+        return txDateStr && txDateStr.startsWith(currentMonthStr);
+      })
+      .reduce((sum, tx) => sum + (tx.amount || 0), 0);
+
+    const projectedSpent = existingSpent + currentVal;
+    const selectedCat = allCategories.find((c) => c.id === categoryId);
+    const catBudget = selectedCat?.budget_amount || null;
+
+    if (catBudget && catBudget > 0) {
+      const pct = Math.round((projectedSpent / catBudget) * 100);
+      const isOver = projectedSpent > catBudget;
+      return {
+        hasBudget: true,
+        categoryName: selectedCat?.name || "Category",
+        projectedSpent,
+        budget: catBudget,
+        pct,
+        isOver,
+        diff: projectedSpent - catBudget,
+      };
+    }
+
+    if (budgetTarget && budgetTarget > 0) {
+      const monthExpenses = allTxs
+        .filter((tx) => {
+          if (tx.type !== "expense") return false;
+          if (transaction && tx.id === transaction.id) return false;
+          const txDateStr = tx.occurred_on || tx.created_at;
+          return txDateStr && txDateStr.startsWith(currentMonthStr);
+        })
+        .reduce((sum, tx) => sum + (tx.amount || 0), 0);
+
+      const totalProjected = monthExpenses + currentVal;
+      const pct = Math.round((totalProjected / budgetTarget) * 100);
+      const isOver = totalProjected > budgetTarget;
+
+      return {
+        hasBudget: true,
+        categoryName: "Overall Budget",
+        projectedSpent: totalProjected,
+        budget: budgetTarget,
+        pct,
+        isOver,
+        diff: totalProjected - budgetTarget,
+      };
+    }
+
+    return {
+      hasBudget: false,
+      categoryName: selectedCat?.name || "Category",
+      projectedSpent,
+      budget: null,
+      pct: null,
+      isOver: false,
+      diff: 0,
+    };
+  }, [
+    type,
+    categoryId,
+    amountInput,
+    date,
+    allTxs,
+    transaction,
+    allCategories,
+    budgetTarget,
+  ]);
+
   const filteredMoreCategories = useMemo(() => {
+    if (!moreCatOpen) return [];
     if (!searchCatQuery.trim()) return suggestedCategories;
     const q = searchCatQuery.toLowerCase();
     return categories.filter((c) => c.name.toLowerCase().includes(q));
-  }, [categories, suggestedCategories, searchCatQuery]);
+  }, [moreCatOpen, categories, suggestedCategories, searchCatQuery]);
 
   const filteredMoreWallets = useMemo(() => {
+    if (!moreWalletOpen) return [];
     const list =
       walletTarget === "to" ? suggestedToWallets : suggestedFromWallets;
     if (!searchWalletQuery.trim()) return list;
     const q = searchWalletQuery.toLowerCase();
     return wallets.filter((w) => w.name.toLowerCase().includes(q));
   }, [
+    moreWalletOpen,
     wallets,
     suggestedToWallets,
     suggestedFromWallets,
@@ -899,6 +1024,71 @@ export function TransactionSheet({
               </button>
             ))}
           </div>
+
+          {/* Duplicate Transaction Warning (Monochrome Apple Luxury Alert) */}
+          {isDuplicateDetected && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 mx-2 px-3 py-2 rounded-xl flex items-center gap-2 text-[12px] font-medium"
+              style={{
+                background: "rgba(239, 68, 68, 0.1)",
+                color: "#fca5a5",
+                border: "1px solid rgba(239, 68, 68, 0.2)",
+              }}
+            >
+              <AlertCircle size={14} className="shrink-0" strokeWidth={2} />
+              <span>Possible duplicate: similar transaction recorded within 15 mins</span>
+            </motion.div>
+          )}
+
+          {/* Budget Impact Preview (Live Financial Feedback) */}
+          {budgetImpact && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-2.5 mx-2 px-3 py-2 rounded-xl flex items-center justify-between text-[11.5px] font-medium"
+              style={{
+                background: budgetImpact.isOver
+                  ? "rgba(239, 68, 68, 0.08)"
+                  : "var(--glass-fill)",
+                border: budgetImpact.isOver
+                  ? "1px solid rgba(239, 68, 68, 0.2)"
+                  : "1px solid var(--glass-border)",
+                color: budgetImpact.isOver ? "#fca5a5" : "var(--text-secondary)",
+              }}
+            >
+              <div className="flex items-center gap-1.5 truncate pr-2">
+                <span
+                  className="font-semibold truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {budgetImpact.categoryName}
+                </span>
+                <span>·</span>
+                <span className="truncate">
+                  {budgetImpact.hasBudget
+                    ? `Budget: ${formatRupiah(budgetImpact.projectedSpent)} / ${formatRupiah(budgetImpact.budget!)}`
+                    : `Month Total: ${formatRupiah(budgetImpact.projectedSpent)}`}
+                </span>
+              </div>
+              {budgetImpact.hasBudget && (
+                <span
+                  className="shrink-0 text-[10.5px] font-bold px-2 py-0.5 rounded-full"
+                  style={{
+                    background: budgetImpact.isOver
+                      ? "rgba(239, 68, 68, 0.2)"
+                      : "rgba(255, 255, 255, 0.08)",
+                    color: budgetImpact.isOver ? "#fca5a5" : "var(--text-primary)",
+                  }}
+                >
+                  {budgetImpact.isOver
+                    ? `+${formatRupiah(budgetImpact.diff)} Over`
+                    : `${budgetImpact.pct}%`}
+                </span>
+              )}
+            </motion.div>
+          )}
         </div>
 
         {/* Resolution 5: Horizontal Floating Ribbon & Dynamic Island Pill */}
@@ -1301,6 +1491,61 @@ export function TransactionSheet({
             )}
           </AnimatePresence>
         </div>
+
+        {/* Smart Merchant & Context Memory Suggestion Chip */}
+        {merchantPrediction && (predictedCategory || predictedWallet) && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3 px-1 flex items-center gap-2"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                if (merchantPrediction.categoryId)
+                  setCategoryId(merchantPrediction.categoryId);
+                if (merchantPrediction.walletId)
+                  setWalletId(merchantPrediction.walletId);
+              }}
+              className="px-3 py-1.5 rounded-xl text-[11.5px] font-medium flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer select-none"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+              }}
+            >
+              <Sparkles
+                size={12}
+                className="text-[var(--accent)] shrink-0"
+              />
+              <span>Smart match:</span>
+              {predictedCategory && (
+                <span
+                  className="font-bold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {predictedCategory.name}
+                </span>
+              )}
+              {predictedWallet && (
+                <span style={{ color: "var(--text-tertiary)" }}>
+                  ({predictedWallet.name})
+                </span>
+              )}
+              <span
+                className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                style={{
+                  background: "var(--accent)",
+                  color: "var(--accent-ink)",
+                }}
+              >
+                Apply
+              </span>
+            </button>
+          </motion.div>
+        )}
 
         {/* Collapsible Smart Quick Add Drawer (Positioned Directly Below Note Island) */}
         <AnimatePresence>

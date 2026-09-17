@@ -442,17 +442,21 @@ export function useDeleteWallet() {
 
 export function resolveTransactionWallets(
   tx: { wallet_id?: string | null; to_wallet_id?: string | null },
-  wallets: Wallet[],
+  walletsOrMap: Wallet[] | Map<string, Wallet>,
 ): { from: string; to: string } {
+  const isMap = walletsOrMap instanceof Map;
+  const getWallet = (id: string): Wallet | undefined =>
+    isMap ? walletsOrMap.get(id) : walletsOrMap.find((w) => w.id === id);
+
   let fromName: string | undefined;
   let toName: string | undefined;
 
   if (tx.wallet_id) {
-    const found = wallets.find((w) => w.id === tx.wallet_id);
+    const found = getWallet(tx.wallet_id);
     if (found) fromName = found.name;
   }
   if (tx.to_wallet_id) {
-    const found = wallets.find((w) => w.id === tx.to_wallet_id);
+    const found = getWallet(tx.to_wallet_id);
     if (found) toName = found.name;
   }
 

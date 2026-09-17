@@ -1,0 +1,175 @@
+Area Chart
+const chartData = Array.from({ length: 30 }, (_, i) => ({
+  date: new Date(2024, 0, i + 1),
+  revenue: Math.floor(8000 + Math.sin(i / 5) * 4000 + ((i * 11) % 2000)),
+  costs: Math.floor(5000 + Math.cos(i / 4) * 2000 + ((i * 7) % 1500)),
+}));
+
+import { curveMonotoneX } from "@visx/curve";
+
+<AreaChart aspectRatio="4 / 1" data={chartData}>
+  <Grid horizontal />
+  <Area curve={curveMonotoneX} dataKey="revenue" fill="var(--chart-line-primary)" fillOpacity={0.3} strokeWidth={2} />
+  <Area curve={curveMonotoneX} dataKey="costs" fill="var(--chart-line-secondary)" fillOpacity={0.2} strokeWidth={1.5} />
+  <SegmentBackground />
+  <SegmentLineFrom />
+  <SegmentLineTo />
+  <XAxis />
+  <ChartTooltip />
+</AreaChart>
+
+Bar Chart - Multiple Series
+<BarChart margin={{ top: 8, right: 8, bottom: 40, left: 8 }} data={chartData} xDataKey="month">
+  <Grid horizontal />
+  <Bar dataKey="desktop" fill="var(--chart-1)" lineCap="round" />
+  <Bar dataKey="mobile" fill="var(--chart-3)" lineCap="round" />
+  <BarXAxis />
+  <ChartTooltip />
+</BarChart>
+
+Gauge
+// Omit width and height for a responsive layout (min-width 300px by default).
+
+<Gauge
+  centerValue={428_000}
+  defaultLabel="ARR run rate"
+  formatOptions={{ style: "currency", currency: "USD", maximumFractionDigits: 0 }}
+  inactiveFillOpacity={0.4}
+  spacing={25}
+  value={66}
+/>
+
+Heatmap Chart
+<HeatmapChart data={data} gap={3} layout="fluid">
+  <HeatmapCells inactiveOpacity={1} inactiveScale={1} />
+  <HeatmapXAxis />
+  <HeatmapYAxis />
+  <HeatmapTooltip instant />
+</HeatmapChart>
+<HeatmapLegend align="center" gap={3} inactiveOpacity={1} inactiveScale={1} />
+
+Line Chart - Projection
+import {
+  buildProjectionPath,
+  LineSeriesTerminalMarker,
+  ProjectionLine,
+} from "@bklitui/ui/charts";
+
+const targetProjectionPath = buildProjectionPath({
+  sourceData: chartData,
+  seriesKey: "value",
+  mode: "target",
+  pathDensity: "endpoints",
+  horizonPoints: 6,
+  endValue: 301,
+});
+
+const autoProjectionPath = buildProjectionPath({
+  sourceData: chartData,
+  seriesKey: "value",
+  mode: "auto",
+  autoMethod: "lastSegment",
+  pathDensity: "endpoints",
+  horizonPoints: 6,
+});
+
+<LineChart data={chartData}>
+  <Grid horizontal />
+  <Line dataKey="value" strokeWidth={2} />
+  <LineSeriesTerminalMarker dataKey="value" />
+  <ProjectionLine
+    data={targetProjectionPath}
+    strokeDasharray="1,4"
+    curveKind="bezier"
+    strokeStyle="gradient"
+    showEndMarker
+  />
+  <ProjectionLine
+    data={autoProjectionPath}
+    strokeDasharray="1,4"
+    curveKind="bezier"
+    strokeStyle="gradient"
+    showEndMarker
+  />
+  <XAxis />
+  <ChartTooltip />
+</LineChart>
+
+Pie Chart - Legend
+const [hoveredIndex, setHoveredIndex] = useState(null);
+
+<PieChart
+  data={pieData}
+  hoveredIndex={hoveredIndex}
+  innerRadius={55}
+  onHoverChange={setHoveredIndex}
+  size={180}
+>
+  {pieData.map((_, i) => <PieSlice index={i} key={i} />)}
+  <PieCenter defaultLabel="Browsers" />
+</PieChart>
+<Legend
+  hoveredIndex={hoveredIndex}
+  items={legendItems}
+  onHoverChange={setHoveredIndex}
+>
+  <LegendItemComponent>
+    <LegendMarker />
+    <LegendLabel />
+  </LegendItemComponent>
+</Legend>
+
+Ring Chart - Legend
+const [hoveredIndex, setHoveredIndex] = useState(null);
+
+<RingChart
+  data={ringData}
+  hoveredIndex={hoveredIndex}
+  onHoverChange={setHoveredIndex}
+  size={180}
+>
+  {ringData.map((_, i) => <Ring index={i} key={i} />)}
+  <RingCenter defaultLabel="Sessions" />
+</RingChart>
+<Legend
+  hoveredIndex={hoveredIndex}
+  items={ringData}
+  onHoverChange={setHoveredIndex}
+>
+  <LegendItemComponent>
+    <LegendMarker />
+    <LegendLabel />
+    <LegendValue showPercentage />
+    <LegendProgress />
+  </LegendItemComponent>
+</Legend>
+
+Sankey Chart - Interactive
+<SankeyChart data={analyticsData} margin={{ top: 20, right: 56, bottom: 40, left: 56 }} nodePadding={24} nodeWidth={16}>
+  <SankeyLink />
+  <SankeyNode lineCap={4} labelOrientation="vertical" />
+  <SankeyTooltip />
+</SankeyChart>
+
+Sunburst Chart - Interactive
+const { items, arcIndices } = legendForFocus(data, focusId);
+
+<SunburstChart
+  data={data}
+  focusId={focusId}
+  hoveredIndex={hoveredIndex}
+  onFocusChange={setFocusId}
+  onHoverChange={setHoveredIndex}
+>
+  {arcs.map((arc) => (
+    <SunburstSegment index={arc.arcIndex} key={arc.id} />
+  ))}
+  <SunburstCenter />
+</SunburstChart>
+<Legend hoveredIndex={legendIndex} items={items} onHoverChange={setLegendIndex}>
+  <LegendItemComponent>
+    <LegendMarker />
+    <LegendLabel />
+    <LegendValue showPercentage />
+  </LegendItemComponent>
+</Legend>

@@ -24,7 +24,7 @@ const FALLBACK_CATEGORY_NAMES = new Set([
  */
 export function resolveTransactionCategory(
   tx: Partial<Transaction> | null | undefined,
-  categories: Category[] = [],
+  categoriesOrMap: Category[] | Map<string, Category> = [],
 ): ResolvedCategoryInfo {
   const isIncome = tx?.type === "income";
   const isTransfer = tx?.type === "transfer";
@@ -40,10 +40,25 @@ export function resolveTransactionCategory(
 
   if (!tx) return defaultFallback;
 
+  const isMap = categoriesOrMap instanceof Map;
+  const categories = isMap
+    ? Array.from(categoriesOrMap.values())
+    : categoriesOrMap;
+  const categoryMap = isMap ? categoriesOrMap : null;
+
   // 1. Direct joined categories relation
   if (tx.categories?.name) {
     const rawName = tx.categories.name.trim();
     if (!FALLBACK_CATEGORY_NAMES.has(rawName.toLowerCase())) {
+      if (tx.categories?.id && categoryMap?.has(tx.categories.id)) {
+        const match = categoryMap.get(tx.categories.id)!;
+        return {
+          id: match.id,
+          name: match.name,
+          emoji: match.emoji || defaultFallback.emoji,
+          type: match.type,
+        };
+      }
       const matchInList = categories.find(
         (c) =>
           (tx.categories?.id && c.id === tx.categories.id) ||
@@ -65,9 +80,11 @@ export function resolveTransactionCategory(
     }
   }
 
-  // 2. Lookup by category_id
+  // 2. Lookup by category_id (O(1) if Map provided)
   if (tx.category_id) {
-    const found = categories.find((c) => c.id === tx.category_id);
+    const found = categoryMap
+      ? categoryMap.get(tx.category_id)
+      : categories.find((c) => c.id === tx.category_id);
     if (found && !FALLBACK_CATEGORY_NAMES.has(found.name.toLowerCase())) {
       return {
         id: found.id,

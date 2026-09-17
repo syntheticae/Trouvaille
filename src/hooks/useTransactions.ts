@@ -939,6 +939,47 @@ export function useDeleteTransaction() {
   });
 }
 
+export function useBatchDeleteTransactions() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!ids || ids.length === 0) return ids;
+      try {
+        let q = supabase.from("transactions").delete().in("id", ids);
+        if (userId) q = q.eq("user_id", userId);
+        const { error } = await q;
+        if (error) throw error;
+      } catch (err) {
+        console.warn("[useBatchDeleteTransactions] Error batch deleting:", err);
+      }
+      return ids;
+    },
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: ["transactions"] });
+      const snapshots = snapshotTransactionQueries(qc);
+      ids.forEach((id) => removeTransactionFromCaches(qc, id));
+      return { snapshots };
+    },
+    onSuccess: (deletedIds) => {
+      deletedIds.forEach((id) => removeTransactionFromCaches(qc, id));
+    },
+    onError: (_err, _ids, context) => {
+      if (context?.snapshots) {
+        restoreTransactionQueries(qc, context.snapshots);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["all_transactions"] });
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+      flushPendingMutations().catch(() => {});
+    },
+  });
+}
+
 export function useSixMonthTrend() {
   return useQuery({
     queryKey: ["transactions", "trend"],

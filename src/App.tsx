@@ -342,6 +342,10 @@ function AppShell() {
           <VoiceQuickAddModal
             isOpen={voiceModalOpen}
             onClose={() => setVoiceModalOpen(false)}
+            onOpenScan={() => {
+              setVoiceModalOpen(false);
+              setReceiptScanOpen(true);
+            }}
             onOpenForm={(values) => {
               setPrefilledValues(values);
               setVoiceModalOpen(false);

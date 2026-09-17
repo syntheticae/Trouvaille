@@ -378,6 +378,22 @@ export function parseNaturalTransaction(
   const matchedTokens: ParsedTransactionResult["matchedTokens"] = {};
   let confidence = 0;
 
+  // 0. Pre-clean STT artifacts: trailing periods on numbers, phonetic cash, and STT mishearings
+  text = text.replace(/(\d{1,3}(?:\.\d{3})+)\./g, "$1");
+  text = text.replace(/\bbahkan\b/gi, "makan");
+
+  const hasCashWallet = wallets.some((w) => {
+    const n = w.name.toLowerCase();
+    return n.includes("cash") || n.includes("tunai");
+  });
+
+  if (hasCashWallet) {
+    text = text
+      .replace(/\b(?:pake|pakai|lewat|dari|di|bayar)\s+(?:gas|kes|ces|kas|kesh)\b/gi, " cash ")
+      .replace(/(?<=\d[\d.,]*\s*(?:[.,]\s*)?)(gas|kes|ces|kas|kesh)\b/gi, " cash ")
+      .replace(/[.\s]+(gas|kes|ces|kas|kesh)$/gi, " cash");
+  }
+
   // 1. Transaction Type & Transfer Route Detection
   let detectedType: TransactionType = "expense";
   let fromWalletId: string | null = null;
@@ -578,8 +594,8 @@ export function parseNaturalTransaction(
       }
     }
 
-    // Check alias "tunai" -> matches "cash" or "tunai"
-    if (!fromWalletId && /\btunai\b/i.test(text)) {
+    // Check alias "tunai" or phonetic cash "gas"/"kes" -> matches "cash" or "tunai"
+    if (!fromWalletId && /\b(tunai|cash|gas|kes|ces|kas|kesh|kontan)\b/i.test(text)) {
       const cashWallet = wallets.find((w) => {
         const n = w.name.toLowerCase();
         return n.includes("cash") || n.includes("tunai");
@@ -589,7 +605,7 @@ export function parseNaturalTransaction(
         fromWalletName = cashWallet.name;
         matchedTokens.walletToken = cashWallet.name;
         confidence += 0.2;
-        text = text.replace(/\btunai\b/i, " ");
+        text = text.replace(/\b(tunai|cash|gas|kes|ces|kas|kesh|kontan)\b/i, " ");
       }
     }
   }
@@ -655,14 +671,15 @@ export function parseNaturalTransaction(
   }
 
   // 6. Clean Note / Residual Text
-  // Remove filler words like "dari", "ke", "di", "beli", "bayar", "untuk"
+  // Remove filler words and strip stray periods/commas left over by speech recognition
   let cleanNote = text
     .replace(/\b(dari|ke|di|beli|bayar|untuk|buat|at|in|for|pada)\b/gi, " ")
+    .replace(/[.,;:-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-  // If cleanNote is empty, default to category name or raw title
-  if (!cleanNote && detectedCategoryName) {
+  // If cleanNote is empty or just punctuation, default to category name or raw title
+  if ((!cleanNote || /^[.\s,;:-]+$/.test(cleanNote)) && detectedCategoryName) {
     cleanNote = detectedCategoryName;
   } else if (cleanNote) {
     // Capitalize first letter
@@ -692,7 +709,141 @@ export function parseNaturalTransaction(
 const AMOUNT_DETECTION_REGEX =
   /(?:\d+(?:[.,]\d+)?\s*(?:jt|juta|mio|m|rb|ribu|k)\b|\d{1,3}(?:\.\d{3})+|\b\d{3,}\b|\b(?:gocap|nocap|ceban|goceng|seceng|cepek|seceban|pego|gopek|setengah\s+juta|sejutaan|sejuta)\b)/i;
 
-export function splitIntoClauses(input: string): string[] {
+export function splitSegmentByAmounts(
+  segment: string,
+  wallets: Wallet[] = [],
+): string[] {
+  const amountRegex = new RegExp(AMOUNT_DETECTION_REGEX.source, "gi");
+  const matches: Array<{ match: string; index: number; length: number }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = amountRegex.exec(segment)) !== null) {
+    matches.push({ match: m[0], index: m.index, length: m[0].length });
+  }
+
+  if (matches.length <= 1) {
+    return [segment];
+  }
+
+  const walletKeywords = new Set([
+    "cash",
+    "tunai",
+    "gas",
+    "kes",
+    "ces",
+    "kas",
+    "kesh",
+    "kontan",
+    "bca",
+    "mandiri",
+    "bri",
+    "bni",
+    "jago",
+    "gopay",
+    "ovo",
+    "dana",
+    "shopeepay",
+    "seabank",
+    "jenius",
+    "kartu",
+    "kredit",
+    "debit",
+    "pake",
+    "pakai",
+    "lewat",
+    "dari",
+    "ke",
+  ]);
+
+  for (const w of wallets) {
+    w.name
+      .toLowerCase()
+      .split(/\s+/)
+      .forEach((part) => {
+        if (part.length > 1) walletKeywords.add(part);
+      });
+  }
+
+  const dateKeywords = new Set([
+    "kemarin",
+    "semalam",
+    "tadi",
+    "siang",
+    "pagi",
+    "sore",
+    "malam",
+    "hari",
+    "ini",
+  ]);
+
+  const clauses: string[] = [];
+  let currentStart = 0;
+
+  for (let i = 0; i < matches.length - 1; i++) {
+    const currMatch = matches[i];
+    const nextMatch = matches[i + 1];
+
+    const afterCurrAmount = currMatch.index + currMatch.length;
+    const beforeNextAmount = nextMatch.index;
+    const interText = segment.slice(afterCurrAmount, beforeNextAmount);
+
+    const wordRegex = /\S+/g;
+    const words: Array<{ word: string; start: number; end: number }> = [];
+    let wm: RegExpExecArray | null;
+    while ((wm = wordRegex.exec(interText)) !== null) {
+      words.push({
+        word: wm[0],
+        start: wm.index,
+        end: wm.index + wm[0].length,
+      });
+    }
+
+    let splitOffset = 0;
+    let foundBoundary = false;
+
+    for (let wIdx = 0; wIdx < words.length; wIdx++) {
+      const w = words[wIdx];
+      const cleanWord = w.word.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (walletKeywords.has(cleanWord) || dateKeywords.has(cleanWord)) {
+        splitOffset = w.end;
+      } else {
+        splitOffset = w.start;
+        foundBoundary = true;
+        break;
+      }
+    }
+
+    if (!foundBoundary && words.length > 0) {
+      splitOffset = words[words.length - 1].end;
+    }
+
+    const cutIndex = afterCurrAmount + splitOffset;
+    let rawClause = segment.slice(currentStart, cutIndex).trim();
+    rawClause = rawClause
+      .replace(/^(?:dan|sama|juga|serta|plus|lalu|terus)\s+/i, "")
+      .replace(/[\s,.;]+$/, "")
+      .trim();
+    if (rawClause) {
+      clauses.push(rawClause);
+    }
+    currentStart = cutIndex;
+  }
+
+  let finalClause = segment.slice(currentStart).trim();
+  finalClause = finalClause
+    .replace(/^(?:dan|sama|juga|serta|plus|lalu|terus)\s+/i, "")
+    .replace(/[\s,.;]+$/, "")
+    .trim();
+  if (finalClause) {
+    clauses.push(finalClause);
+  }
+
+  return clauses.length > 0 ? clauses : [segment];
+}
+
+export function splitIntoClauses(
+  input: string,
+  wallets: Wallet[] = [],
+): string[] {
   const trimmed = input.trim();
   if (!trimmed) return [];
 
@@ -708,34 +859,9 @@ export function splitIntoClauses(input: string): string[] {
     .filter(Boolean);
 
   const finalClauses: string[] = [];
-
   for (const seg of rawSegments) {
-    // 2. Additive conjunctions: "dan", "sama", "juga", "serta", "plus", or ","
-    // Split on delimiters only if both sides (or the next part) contain monetary amount markers!
-    const parts = seg.split(/\b(?:dan|sama|juga|serta|plus)\b|,/i);
-    if (parts.length <= 1) {
-      finalClauses.push(seg);
-      continue;
-    }
-
-    let currentAccumulator = parts[0].trim();
-    for (let i = 1; i < parts.length; i++) {
-      const nextPart = parts[i].trim();
-      if (!nextPart) continue;
-
-      if (
-        AMOUNT_DETECTION_REGEX.test(nextPart) &&
-        AMOUNT_DETECTION_REGEX.test(currentAccumulator)
-      ) {
-        finalClauses.push(currentAccumulator);
-        currentAccumulator = nextPart;
-      } else {
-        currentAccumulator += " dan " + nextPart;
-      }
-    }
-    if (currentAccumulator) {
-      finalClauses.push(currentAccumulator);
-    }
+    const subClauses = splitSegmentByAmounts(seg, wallets);
+    finalClauses.push(...subClauses);
   }
 
   return finalClauses.filter((c) => c.trim().length > 0);
@@ -752,7 +878,7 @@ export function parseMultiNaturalTransactions(
     return [parseNaturalTransaction("", categories, wallets, referenceDate)];
   }
 
-  const clauses = splitIntoClauses(trimmed);
+  const clauses = splitIntoClauses(trimmed, wallets);
   if (clauses.length <= 1) {
     return [parseNaturalTransaction(trimmed, categories, wallets, referenceDate)];
   }

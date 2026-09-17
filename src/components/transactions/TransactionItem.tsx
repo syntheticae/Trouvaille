@@ -1,6 +1,6 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useMemo, useRef } from "react";
 import { motion, type PanInfo } from "framer-motion";
-import { ArrowLeftRight, Clock, Scale, Trash2, Copy } from "lucide-react";
+import { ArrowLeftRight, Clock, Scale, Trash2, Copy, Check } from "lucide-react";
 import { format } from "date-fns";
 import { formatRupiah } from "../../lib/utils";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -12,23 +12,33 @@ import { isCorrectionTx } from "../../lib/financialMath";
 interface TransactionItemProps {
   tx: Transaction;
   categories: Category[];
+  categoryMap?: Map<string, Category>;
   fromWalletName: string;
   toWalletName: string;
   isUnusual?: boolean;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
   onClick: (tx: Transaction) => void;
   onDelete?: (tx: Transaction) => void;
   onDuplicate?: (tx: Transaction) => void;
+  onToggleSelect?: (tx: Transaction) => void;
+  onLongPress?: (tx: Transaction) => void;
 }
 
 const TransactionItemComponent: React.FC<TransactionItemProps> = ({
   tx,
   categories,
+  categoryMap,
   fromWalletName,
   toWalletName,
   isUnusual,
+  isSelectMode,
+  isSelected,
   onClick,
   onDelete,
   onDuplicate,
+  onToggleSelect,
+  onLongPress,
 }) => {
   const isIncome = tx.type === "income";
   const isTransfer = tx.type === "transfer";
@@ -40,15 +50,36 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
     : "";
 
   const resolvedCategory = useMemo(() => {
-    return resolveTransactionCategory(tx, categories);
-  }, [tx, categories]);
+    return resolveTransactionCategory(tx, categoryMap || categories);
+  }, [tx, categoryMap, categories]);
 
   const categoryDisplayName = resolvedCategory.name;
   const categoryDisplayEmoji = resolvedCategory.emoji;
 
-  const isDraggingRef = React.useRef(false);
+  const isDraggingRef = useRef(false);
+  const longPressTimerRef = useRef<any>(null);
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handlePointerDown = () => {
+    clearLongPress();
+    if (!isSelectMode && onLongPress) {
+      longPressTimerRef.current = setTimeout(() => {
+        if (!isDraggingRef.current) {
+          triggerHaptic("heavy");
+          onLongPress(tx);
+        }
+      }, 550);
+    }
+  };
 
   const handleDragEnd = (_: any, info: PanInfo) => {
+    clearLongPress();
     // Swipe Left: Delete (Threshold -75px or velocity < -350)
     if (info.offset.x < -75 || info.velocity.x < -350) {
       triggerHaptic("heavy");
@@ -65,7 +96,12 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
   };
 
   const handleTapOrClick = () => {
-    if (!isDraggingRef.current) {
+    clearLongPress();
+    if (isDraggingRef.current) return;
+    if (isSelectMode) {
+      triggerHaptic("light");
+      onToggleSelect?.(tx);
+    } else {
       onClick(tx);
     }
   };
@@ -73,47 +109,82 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
   return (
     <div className="relative rounded-[22px] overflow-hidden select-none touch-pan-y">
       {/* Background Actions Reveal Layer */}
-      <div
-        className="absolute inset-0 flex items-center justify-between px-5 rounded-[22px]"
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-        }}
-      >
-        {/* Left Side: Duplicate (revealed on swipe right) */}
-        <div className="flex items-center gap-1.5 text-blue-400 font-extrabold text-[12px]">
-          <Copy size={16} />
-          <span>Duplicate</span>
-        </div>
+      {!isSelectMode && (
+        <div
+          className="absolute inset-0 flex items-center justify-between px-5 rounded-[22px]"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          {/* Left Side: Duplicate (revealed on swipe right) */}
+          <div className="flex items-center gap-1.5 text-blue-400 font-extrabold text-[12px]">
+            <Copy size={16} />
+            <span>Duplicate</span>
+          </div>
 
-        {/* Right Side: Delete (revealed on swipe left) */}
-        <div className="flex items-center gap-1.5 text-red-500 font-extrabold text-[12px]">
-          <span>Delete</span>
-          <Trash2 size={16} />
+          {/* Right Side: Delete (revealed on swipe left) */}
+          <div className="flex items-center gap-1.5 text-red-500 font-extrabold text-[12px]">
+            <span>Delete</span>
+            <Trash2 size={16} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Foreground Swipeable Card */}
       <motion.div
-        drag="x"
+        drag={isSelectMode ? false : "x"}
         dragDirectionLock
         dragMomentum={false}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.35}
         dragSnapToOrigin
+        onPointerDown={handlePointerDown}
+        onPointerUp={clearLongPress}
+        onPointerCancel={clearLongPress}
         onDragStart={() => {
+          clearLongPress();
           isDraggingRef.current = true;
         }}
         onDragEnd={handleDragEnd}
         onTap={handleTapOrClick}
         className="p-3.5 rounded-[22px] flex items-center justify-between cursor-pointer active:scale-98 transition-transform relative z-10"
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
+          background: isSelected
+            ? "rgba(255, 255, 255, 0.07)"
+            : "var(--bg-elevated)",
+          border: isSelected
+            ? "1px solid var(--accent)"
+            : "1px solid var(--glass-border)",
           boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="flex items-center gap-3 min-w-0">
+          {/* Selection Checkbox */}
+          {isSelectMode && (
+            <motion.div
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.6, opacity: 0 }}
+              className="shrink-0 mr-0.5"
+            >
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center transition-colors"
+                style={{
+                  background: isSelected
+                    ? "var(--accent)"
+                    : "rgba(255, 255, 255, 0.06)",
+                  border: isSelected
+                    ? "none"
+                    : "1.5px solid var(--glass-border)",
+                  color: "var(--accent-ink)",
+                }}
+              >
+                {isSelected && <Check size={12} strokeWidth={3} />}
+              </div>
+            </motion.div>
+          )}
+
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center relative shrink-0"
             style={{
@@ -259,8 +330,11 @@ export const TransactionItem = memo(TransactionItemComponent, (prev, next) => {
     prev.tx.categories?.name === next.tx.categories?.name &&
     prev.tx.categories?.emoji === next.tx.categories?.emoji &&
     prev.categories === next.categories &&
+    prev.categoryMap === next.categoryMap &&
     prev.fromWalletName === next.fromWalletName &&
     prev.toWalletName === next.toWalletName &&
-    prev.isUnusual === next.isUnusual
+    prev.isUnusual === next.isUnusual &&
+    prev.isSelectMode === next.isSelectMode &&
+    prev.isSelected === next.isSelected
   );
 });
