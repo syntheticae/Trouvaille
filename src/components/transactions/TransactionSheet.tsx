@@ -1,17 +1,5 @@
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 
-function getTop3Slots<T extends { id: string }>(
-  items: T[],
-  selectedId: string | null,
-): T[] {
-  if (items.length <= 3) return items;
-  const idx = items.findIndex((item) => item.id === selectedId);
-  if (idx === -1 || idx < 3) {
-    return items.slice(0, 3);
-  }
-  return [items[0], items[1], items[idx]];
-}
-
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Calendar as CalendarIcon,
@@ -19,7 +7,6 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   RefreshCcw,
-  MoreHorizontal,
   Trash2,
   Zap,
   Users,
@@ -29,7 +16,12 @@ import {
   Search,
   X,
   ScanLine,
+  ChevronRight,
+  Sparkles,
+  Check,
+  PenLine,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
@@ -119,6 +111,7 @@ export function TransactionSheet({
   const [dateOpen, setDateOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [walletTarget, setWalletTarget] = useState<"from" | "to">("from");
+  const [showSmartBar, setShowSmartBar] = useState(false);
 
   // Split Transaction & Piutang State (Innovation 2)
   const [isSplitOpen, setIsSplitOpen] = useState(false);
@@ -167,10 +160,6 @@ export function TransactionSheet({
     target: "to",
   });
 
-  const topCategories = useMemo(() => {
-    return getTop3Slots(suggestedCategories, categoryId);
-  }, [suggestedCategories, categoryId]);
-
   const filteredMoreCategories = useMemo(() => {
     if (!searchCatQuery.trim()) return suggestedCategories;
     const q = searchCatQuery.toLowerCase();
@@ -190,6 +179,18 @@ export function TransactionSheet({
     walletTarget,
     searchWalletQuery,
   ]);
+
+  const currentCategory = useMemo(() => {
+    return categories.find((c) => c.id === categoryId) || allCategories.find((c) => c.id === categoryId) || null;
+  }, [categories, allCategories, categoryId]);
+
+  const currentWallet = useMemo(() => {
+    return wallets.find((w) => w.id === walletId) || null;
+  }, [wallets, walletId]);
+
+  const currentToWallet = useMemo(() => {
+    return wallets.find((w) => w.id === toWalletId) || null;
+  }, [wallets, toWalletId]);
 
   // Keep track of when modal opens or incoming transaction changes
   const prevOpenRef = useRef(false);
@@ -615,248 +616,198 @@ export function TransactionSheet({
     });
   };
 
-  const renderWalletRow = (
-    selectedId: string | null,
-    onSelect: (id: string) => void,
-    label: string,
-    isTo = false,
-  ) => {
-    const list = isTo ? suggestedToWallets : suggestedFromWallets;
-    const top3 = getTop3Slots(list, selectedId);
-    return (
-      <div className="mb-3">
-        <div className="flex justify-between items-end mb-1.5 px-1">
-          <span
-            className="text-[11px] font-bold uppercase tracking-wider"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            {label}
-          </span>
-          <button
-            onClick={() => {
-              setWalletTarget(isTo ? "to" : "from");
-              setMoreWalletOpen(true);
-            }}
-            className="text-[11px] font-extrabold flex items-center gap-0.5 active:scale-95"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            More <MoreHorizontal size={12} />
-          </button>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {top3.map((w) => {
-            const isSelected = selectedId === w.id;
-            return (
-              <button
-                key={w.id}
-                onClick={() => onSelect(w.id)}
-                className="flex items-center gap-2 p-2.5 rounded-2xl transition-all active:scale-95"
-                style={{
-                  background: isSelected
-                    ? "var(--glass-fill-strong)"
-                    : "var(--bg-elevated)",
-                  color: "var(--text-primary)",
-                  border: isSelected
-                    ? "1.5px solid var(--accent)"
-                    : "1px solid var(--glass-border)",
-                  boxShadow: isSelected
-                    ? "0 0 0 1px var(--accent-glow)"
-                    : "none",
-                }}
-              >
-                <div
-                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: isSelected
-                      ? "var(--glass-fill-strong)"
-                      : "var(--glass-fill)",
-                  }}
-                >
-                  <IconRenderer icon={w.icon} size="w-4 h-4" />
-                </div>
-                <span className="text-[12px] font-bold truncate leading-tight">
-                  {w.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="px-5 pt-2 pb-8">
-        {/* Header Segmented Tabs */}
-        <div
-          className="flex p-1 rounded-full mb-5 glass-surface"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-          }}
-        >
-          {(
-            [
-              {
-                key: "expense" as TabType,
-                label: "Expense",
-                icon: <ArrowDownCircle size={14} />,
-              },
-              {
-                key: "income" as TabType,
-                label: "Income",
-                icon: <ArrowUpCircle size={14} />,
-              },
-              {
-                key: "transfer" as TabType,
-                label: "Transfer",
-                icon: <RefreshCcw size={14} />,
-              },
-              ...(!transaction
-                ? [
-                    {
-                      key: "split" as TabType,
-                      label: "Split",
-                      icon: <Users size={14} />,
-                    },
-                  ]
-                : []),
-            ]
-          ).map((t) => {
-            const isSelected = activeTab === t.key;
-            return (
+        {/* Header: Segmented Tabs & Utility Action Icons */}
+        <div className="flex items-center gap-2 mb-3">
+          <div
+            className="flex-1 flex p-1 rounded-full glass-surface"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {(
+              [
+                {
+                  key: "expense" as TabType,
+                  label: "Expense",
+                  icon: <ArrowDownCircle size={13} strokeWidth={1.75} />,
+                },
+                {
+                  key: "income" as TabType,
+                  label: "Income",
+                  icon: <ArrowUpCircle size={13} strokeWidth={1.75} />,
+                },
+                {
+                  key: "transfer" as TabType,
+                  label: "Transfer",
+                  icon: <RefreshCcw size={13} strokeWidth={1.75} />,
+                },
+                ...(!transaction
+                  ? [
+                      {
+                        key: "split" as TabType,
+                        label: "Split",
+                        icon: <Users size={13} strokeWidth={1.75} />,
+                      },
+                    ]
+                  : []),
+              ]
+            ).map((t) => {
+              const isSelected = activeTab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(t.key);
+                    if (t.key === "split") {
+                      setType("expense");
+                      setIsSplitOpen(true);
+                    } else {
+                      setType(t.key as TransactionType);
+                      setIsSplitOpen(false);
+                    }
+                    triggerHaptic("light");
+                  }}
+                  className="flex-1 py-1.5 rounded-full text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  style={{
+                    background: isSelected ? "var(--accent)" : "transparent",
+                    color: isSelected
+                      ? "var(--accent-ink)"
+                      : "var(--text-secondary)",
+                    boxShadow: isSelected
+                      ? "0 2px 8px rgba(0, 0, 0, 0.15)"
+                      : "none",
+                  }}
+                >
+                  {t.icon}
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Subtle Top Utility Actions: AI Voice/Text & Receipt Scanner */}
+          {!transaction && (
+            <div className="flex items-center gap-1 shrink-0">
               <button
-                key={t.key}
+                type="button"
                 onClick={() => {
-                  setActiveTab(t.key);
-                  if (t.key === "split") {
-                    setType("expense");
-                    setIsSplitOpen(true);
-                  } else {
-                    setType(t.key as TransactionType);
-                    setIsSplitOpen(false);
-                  }
                   triggerHaptic("light");
+                  setShowSmartBar((prev) => !prev);
                 }}
-                className="flex-1 py-2 rounded-full text-[12px] font-extrabold flex items-center justify-center gap-1.5 transition-all"
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95"
                 style={{
-                  background: isSelected ? "var(--accent)" : "transparent",
-                  color: isSelected
+                  background: showSmartBar
+                    ? "var(--accent)"
+                    : "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  color: showSmartBar
                     ? "var(--accent-ink)"
                     : "var(--text-secondary)",
                 }}
+                title="AI / Natural Language Quick Add"
               >
-                {t.icon}
-                {t.label}
+                <Sparkles size={14} strokeWidth={1.75} />
               </button>
-            );
-          })}
-        </div>
 
-        {/* Quick Add Shortcuts (Moved below tabs) */}
-        {shortcuts.length > 0 && !transaction && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1 mt-3">
-            {shortcuts.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setActiveTab(s.type);
-                  setType(s.type);
-                  setIsSplitOpen(false);
-                  setAmount(String(s.amount));
-                  setNote(s.note);
-                  if (s.category_id) setCategoryId(s.category_id);
-                  if (s.wallet_id) setWalletId(s.wallet_id);
-                }}
-                className="whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0 transition-transform active:scale-95 flex items-center gap-1.5 cursor-pointer"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Zap size={12} fill="currentColor" />
-                {s.title}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Natural Language & Voice Quick Add Bar (Steady Top Position) */}
-        {!transaction && (
-          <div className="mt-1 mb-2.5 space-y-1.5">
-            {onOpenScan && (
-              <div className="flex items-center justify-between px-1">
-                <span
-                  className="text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Quick Input
-                </span>
+              {onOpenScan && (
                 <button
                   type="button"
                   onClick={() => {
                     triggerHaptic("light");
                     onOpenScan();
                   }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold active:scale-95 transition-all cursor-pointer select-none"
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95"
                   style={{
-                    background: "var(--glass-fill)",
+                    background: "var(--bg-elevated)",
                     border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
+                    color: "var(--text-secondary)",
                   }}
-                  title="Scan Nota atau Bukti Transfer"
+                  title="Scan Nota / Slip"
                 >
-                  <ScanLine size={12} strokeWidth={1.75} />
-                  <span>Scan Nota / Slip</span>
+                  <ScanLine size={14} strokeWidth={1.75} />
                 </button>
-              </div>
-            )}
-            <SmartQuickAddBar
-              categories={categories}
-              wallets={wallets}
-              onApply={(parsed) => {
-                if (parsed.amount !== null && parsed.amount > 0) {
-                  setAmount(String(parsed.amount));
-                  setAmountInput(parsed.amount.toLocaleString("id-ID"));
-                }
-                if (parsed.type) {
-                  setActiveTab(parsed.type);
-                  setType(parsed.type);
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Collapsible Smart Quick Add Drawer */}
+        <AnimatePresence>
+          {showSmartBar && !transaction && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, height: "auto", marginBottom: 12 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <SmartQuickAddBar
+                categories={categories}
+                wallets={wallets}
+                onApply={(parsed) => {
+                  if (parsed.amount !== null && parsed.amount > 0) {
+                    setAmount(String(parsed.amount));
+                    setAmountInput(parsed.amount.toLocaleString("id-ID"));
+                  }
+                  if (parsed.type) {
+                    setActiveTab(parsed.type);
+                    setType(parsed.type);
+                    setIsSplitOpen(false);
+                  }
+                  if (parsed.categoryId) setCategoryId(parsed.categoryId);
+                  if (parsed.walletId) setWalletId(parsed.walletId);
+                  if (parsed.toWalletId) setToWalletId(parsed.toWalletId);
+                  if (parsed.date) setDate(parsed.date);
+                  if (parsed.note) setNote(parsed.note);
+                  setShowSmartBar(false);
+                }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Quick Add Shortcuts */}
+        {shortcuts.length > 0 && !transaction && (
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-3 -mx-1 px-1">
+            {shortcuts.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(s.type);
+                  setType(s.type);
                   setIsSplitOpen(false);
-                }
-                if (parsed.categoryId) {
-                  setCategoryId(parsed.categoryId);
-                }
-                if (parsed.walletId) {
-                  setWalletId(parsed.walletId);
-                }
-                if (parsed.toWalletId) {
-                  setToWalletId(parsed.toWalletId);
-                }
-                if (parsed.date) {
-                  setDate(parsed.date);
-                }
-                if (parsed.note) {
-                  setNote(parsed.note);
-                }
-              }}
-            />
+                  setAmount(String(s.amount));
+                  setAmountInput(Number(s.amount).toLocaleString("id-ID"));
+                  setNote(s.note);
+                  if (s.category_id) setCategoryId(s.category_id);
+                  if (s.wallet_id) setWalletId(s.wallet_id);
+                  triggerHaptic("light");
+                }}
+                className="whitespace-nowrap px-2.5 py-1 rounded-full text-[10.5px] font-medium shrink-0 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                <Zap size={11} fill="currentColor" />
+                <span>{s.title}</span>
+              </button>
+            ))}
           </div>
         )}
 
         {/* Hero Amount Input with Native iOS Numberpad & Inline Math */}
-        <div className="text-center py-2 mb-3">
-          <div
-            className="inline-flex items-baseline justify-center gap-1.5 px-4 py-2.5 rounded-2xl transition-all"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1.5px solid var(--glass-border)",
-            }}
-          >
+        <div className="text-center py-2 mb-4">
+          <div className="inline-flex items-baseline justify-center gap-1.5">
             <span
-              className="text-lg font-extrabold"
+              className="text-lg font-medium tracking-tight"
               style={{ color: "var(--text-tertiary)" }}
             >
               Rp
@@ -894,12 +845,12 @@ export function TransactionSheet({
                 }
               }}
               placeholder="0"
-              className="text-[34px] font-black amount tracking-tight leading-none bg-transparent outline-none text-center min-w-[100px] max-w-[260px]"
+              className="text-[40px] font-semibold amount tracking-tight leading-none bg-transparent outline-none text-center min-w-[100px] max-w-[280px]"
               style={{ color: "var(--text-primary)" }}
             />
           </div>
 
-          {/* Inline Math Preview Badge (High contrast Apple pill) */}
+          {/* Inline Math Preview Badge */}
           {/[+\-*/×÷]/.test(amountInput) && (
             <div className="mt-2 flex justify-center">
               <button
@@ -912,21 +863,24 @@ export function TransactionSheet({
                     evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
                   );
                 }}
-                className="px-3.5 py-1.5 rounded-full text-[12px] font-black inline-flex items-center gap-1.5 active:scale-95 transition-all shadow-md cursor-pointer select-none"
+                className="px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold inline-flex items-center gap-1.5 active:scale-95 transition-all shadow-md cursor-pointer select-none"
                 style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+                  background:
+                    "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
+                  color: "#000000",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
                 }}
               >
                 <span>= {formatRupiah(evaluateMathSafe(amountInput))}</span>
-                <span className="text-[10px] opacity-75 font-semibold">(Tap to apply)</span>
+                <span className="text-[10px] opacity-75 font-normal">
+                  (Tap to apply)
+                </span>
               </button>
             </div>
           )}
 
           {/* Quick Increment & Math Operator Strip */}
-          <div className="flex items-center justify-center gap-1.5 mt-2.5 px-2">
+          <div className="flex items-center justify-center gap-1.5 mt-2 px-2">
             {[
               { label: "+10K", add: 10000 },
               { label: "+50K", add: 50000 },
@@ -942,13 +896,17 @@ export function TransactionSheet({
                   setAmount(String(next));
                   setAmountInput(next.toLocaleString("id-ID"));
                 }}
-                className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold glass-surface active:scale-90 transition-transform"
-                style={{ color: "var(--text-secondary)" }}
+                className="px-2.5 py-1 rounded-full text-[11px] font-medium active:scale-95 transition-all cursor-pointer"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
               >
                 {preset.label}
               </button>
             ))}
-            <div className="w-[1px] h-3 bg-zinc-700/40 mx-0.5" />
+            <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
             {["+", "-", "×"].map((op) => (
               <button
                 key={op}
@@ -958,8 +916,12 @@ export function TransactionSheet({
                   const base = amountInput ? amountInput.trim() : "0";
                   setAmountInput(`${base} ${op} `);
                 }}
-                className="w-7 h-6 rounded-lg text-[12px] font-black glass-surface flex items-center justify-center active:scale-90 transition-transform"
-                style={{ color: "var(--text-primary)" }}
+                className="w-7 h-6 rounded-full text-[11px] font-medium flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
               >
                 {op}
               </button>
@@ -967,125 +929,305 @@ export function TransactionSheet({
           </div>
         </div>
 
-        {/* Selectors */}
-        <div className="space-y-2 mb-3">
-          {type !== "transfer" && (
-            <div className="mb-3">
-              <div className="flex justify-between items-end mb-1.5 px-1">
-                <span
-                  className="text-[11px] font-bold uppercase tracking-wider"
+        {/* Resolution 1: The Apple Card Inset Group */}
+        <div
+          className="rounded-2xl overflow-hidden mb-4"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <div className="divide-y divide-white/[0.06]">
+            {/* Category Row (if not transfer) */}
+            {type !== "transfer" && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setMoreCatOpen(true);
+                }}
+                className="w-full px-4 py-3 flex items-center justify-between text-left active:bg-white/[0.03] transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    <IconRenderer
+                      icon={currentCategory?.emoji || "Tag"}
+                      size="w-3.5 h-3.5"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <span
+                      className="text-[10px] font-medium block uppercase tracking-wider"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Category
+                    </span>
+                    <span
+                      className="text-[13px] font-semibold block truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {currentCategory?.name || "Select Category"}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight
+                  size={14}
+                  className="shrink-0 group-hover:translate-x-0.5 transition-transform"
                   style={{ color: "var(--text-tertiary)" }}
-                >
-                  Category
-                </span>
+                />
+              </button>
+            )}
+
+            {/* Account Row (Single for Expense/Income, Dual for Transfer) */}
+            {type === "transfer" ? (
+              <>
                 <button
-                  onClick={() => setMoreCatOpen(true)}
-                  className="text-[11px] font-extrabold flex items-center gap-0.5 active:scale-95"
-                  style={{ color: "var(--text-secondary)" }}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setWalletTarget("from");
+                    setMoreWalletOpen(true);
+                  }}
+                  className="w-full px-4 py-3 flex items-center justify-between text-left active:bg-white/[0.03] transition-colors cursor-pointer group"
                 >
-                  More <MoreHorizontal size={12} />
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {topCategories.map((cat) => {
-                  const isSelected = categoryId === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setCategoryId(cat.id)}
-                      className="flex items-center gap-2 p-2.5 rounded-2xl transition-all active:scale-95"
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                       style={{
-                        background: isSelected
-                          ? "var(--glass-fill-strong)"
-                          : "var(--bg-elevated)",
-                        color: "var(--text-primary)",
-                        border: isSelected
-                          ? "1.5px solid var(--accent)"
-                          : "1px solid var(--glass-border)",
-                        boxShadow: isSelected
-                          ? "0 0 0 1px var(--accent-glow)"
-                          : "none",
+                        background: "var(--glass-fill)",
+                        border: "1px solid var(--glass-border)",
                       }}
                     >
-                      <div
-                        className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                        style={{
-                          background: isSelected
-                            ? "var(--glass-fill-strong)"
-                            : "var(--glass-fill)",
-                        }}
+                      <IconRenderer
+                        icon={currentWallet?.icon || "Wallet"}
+                        size="w-3.5 h-3.5"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <span
+                        className="text-[10px] font-medium block uppercase tracking-wider"
+                        style={{ color: "var(--text-tertiary)" }}
                       >
-                        <IconRenderer icon={cat.emoji} size="w-4 h-4" />
-                      </div>
-                      <span className="text-[12px] font-bold truncate leading-tight">
-                        {cat.name}
+                        From Account
                       </span>
-                    </button>
-                  );
-                })}
+                      <span
+                        className="text-[13px] font-semibold block truncate"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {currentWallet?.name || "Select Source Account"}
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronRight
+                    size={14}
+                    className="shrink-0 group-hover:translate-x-0.5 transition-transform"
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setWalletTarget("to");
+                    setMoreWalletOpen(true);
+                  }}
+                  className="w-full px-4 py-3 flex items-center justify-between text-left active:bg-white/[0.03] transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: "var(--glass-fill)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <IconRenderer
+                        icon={currentToWallet?.icon || "Wallet"}
+                        size="w-3.5 h-3.5"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <span
+                        className="text-[10px] font-medium block uppercase tracking-wider"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        To Account
+                      </span>
+                      <span
+                        className="text-[13px] font-semibold block truncate"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {currentToWallet?.name || "Select Destination Account"}
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronRight
+                    size={14}
+                    className="shrink-0 group-hover:translate-x-0.5 transition-transform"
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setWalletTarget("from");
+                  setMoreWalletOpen(true);
+                }}
+                className="w-full px-4 py-3 flex items-center justify-between text-left active:bg-white/[0.03] transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    <IconRenderer
+                      icon={currentWallet?.icon || "Wallet"}
+                      size="w-3.5 h-3.5"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <span
+                      className="text-[10px] font-medium block uppercase tracking-wider"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Account
+                    </span>
+                    <span
+                      className="text-[13px] font-semibold block truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {currentWallet?.name || "Select Account"}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight
+                  size={14}
+                  className="shrink-0 group-hover:translate-x-0.5 transition-transform"
+                  style={{ color: "var(--text-tertiary)" }}
+                />
+              </button>
+            )}
+
+            {/* Date & Time Row */}
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  <CalendarIcon
+                    size={14}
+                    strokeWidth={1.5}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
+                <div>
+                  <span
+                    className="text-[10px] font-medium block uppercase tracking-wider"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Date & Time
+                  </span>
+                  <span
+                    className="text-[13px] font-semibold block"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {isToday(date) ? "Today" : format(date, "dd MMM yyyy")} ·{" "}
+                    {time}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setDateOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {isToday(date) ? "Today" : format(date, "dd/MM")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setTimeOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Clock
+                    size={11}
+                    strokeWidth={1.5}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                  <span className="amount">{time}</span>
+                </button>
               </div>
             </div>
-          )}
 
-          {type === "transfer" ? (
-            <>
-              {renderWalletRow(walletId, setWalletId, "From Account")}
-              {renderWalletRow(toWalletId, setToWalletId, "To Account", true)}
-            </>
-          ) : (
-            renderWalletRow(walletId, setWalletId, "Account")
-          )}
-
-          {/* Note Input, Date Pill & Time Pill */}
-          <div className="flex gap-2">
-            <div
-              className="flex-1 rounded-2xl px-3.5 py-2.5 flex items-center gap-2"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <input
-                type="text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Note (optional)"
-                className="bg-transparent text-[14px] font-semibold w-full outline-none"
+            {/* Note Row */}
+            <div className="px-4 py-3 flex items-center gap-3">
+              <div
+                className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                 style={{
-                  color: "var(--text-primary)",
-                  fontFamily: "Urbanist, sans-serif",
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
                 }}
-              />
+              >
+                <PenLine
+                  size={13}
+                  strokeWidth={1.5}
+                  style={{ color: "var(--text-secondary)" }}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span
+                  className="text-[10px] font-medium block uppercase tracking-wider mb-0.5"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Note
+                </span>
+                <input
+                  type="text"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Add a note (optional)"
+                  className="w-full text-[12.5px] placeholder:text-[11.5px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-60 font-normal bg-transparent outline-none"
+                  style={{
+                    color: "var(--text-primary)",
+                    fontFamily: "Urbanist, -apple-system, sans-serif",
+                  }}
+                />
+              </div>
             </div>
-            <button
-              onClick={() => setDateOpen(true)}
-              className="rounded-2xl px-3 py-2.5 flex items-center gap-1.5 active:scale-95 transition-all shrink-0"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-              }}
-            >
-              <CalendarIcon
-                size={14}
-                style={{ color: "var(--text-secondary)" }}
-              />
-              <span className="text-[12px] font-bold">
-                {isToday(date) ? "Today" : format(date, "dd/MM")}
-              </span>
-            </button>
-            <button
-              onClick={() => setTimeOpen(true)}
-              className="rounded-2xl px-3 py-2.5 flex items-center gap-1.5 active:scale-95 transition-all shrink-0"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-              }}
-            >
-              <Clock size={14} style={{ color: "var(--text-secondary)" }} />
-              <span className="text-[12px] font-bold amount">{time}</span>
-            </button>
           </div>
         </div>
 
@@ -1586,21 +1728,24 @@ export function TransactionSheet({
 
 
         {/* Action Button Bar */}
-        <div className="flex gap-2 mt-3 mb-2">
+        <div className="flex items-center gap-2 mt-4 mb-2">
           {transaction && (
             <button
+              type="button"
               onClick={handleDelete}
-              className="w-[52px] rounded-[20px] flex items-center justify-center active:scale-95 shrink-0"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center active:scale-95 shrink-0 transition-all cursor-pointer"
               style={{
-                background: "rgba(239, 68, 68, 0.15)",
+                background: "rgba(239, 68, 68, 0.12)",
                 color: "#ef4444",
-                border: "1px solid rgba(239, 68, 68, 0.3)",
+                border: "1px solid rgba(239, 68, 68, 0.25)",
               }}
+              title="Delete Transaction"
             >
-              <Trash2 size={18} />
+              <Trash2 size={18} strokeWidth={1.75} />
             </button>
           )}
           <button
+            type="button"
             onClick={handleSave}
             disabled={
               isSaving ||
@@ -1608,20 +1753,29 @@ export function TransactionSheet({
               addTx.isPending ||
               updateTx.isPending
             }
-            className="flex-1 font-extrabold text-[15px] rounded-[20px] py-3.5 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            className="flex-1 h-12 rounded-2xl font-semibold text-[13.5px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border border-white/80"
             style={{
-              background: "var(--accent)",
-              color: "var(--accent-ink)",
-              border: "1px solid var(--dock-border)",
+              background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
+              color: "#000000",
+              boxShadow:
+                "inset 0 1px 0 0 #ffffff, inset 0 -1px 0 0 rgba(0, 0, 0, 0.08), 0 10px 26px -6px rgba(0, 0, 0, 0.55)",
+              letterSpacing: "-0.01em",
             }}
           >
-            {isSaving
-              ? "Saving..."
-              : transaction
-                ? "Update Transaction"
-                : activeTab === "split"
-                  ? "Split & Record Expense"
-                  : "Save Transaction"}
+            {isSaving || addTx.isPending || updateTx.isPending ? (
+              <span className="font-semibold text-black">Saving...</span>
+            ) : (
+              <>
+                <Check size={16} strokeWidth={2.25} className="text-black" />
+                <span className="font-semibold text-black">
+                  {transaction
+                    ? "Update Transaction"
+                    : activeTab === "split"
+                      ? "Split & Record Expense"
+                      : "Save Transaction"}
+                </span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -1964,9 +2118,14 @@ export function TransactionSheet({
           </div>
 
           <button
+            type="button"
             onClick={() => setTimeOpen(false)}
-            className="w-full max-w-[280px] py-3 mt-6 rounded-2xl font-bold text-[14px] active:scale-95 transition-all"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            className="w-full max-w-[280px] h-11 mt-6 rounded-2xl font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer border border-white/80"
+            style={{
+              background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
+              color: "#000000",
+              boxShadow: "inset 0 1px 0 0 #ffffff, 0 8px 20px -4px rgba(0, 0, 0, 0.45)",
+            }}
           >
             Done
           </button>
