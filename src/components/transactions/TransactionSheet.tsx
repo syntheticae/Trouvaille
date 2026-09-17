@@ -27,6 +27,7 @@ import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
 import {
   useAddTransaction,
+  useBatchAddTransactions,
   useUpdateTransaction,
   useDeleteTransaction,
   useAllTransactions,
@@ -133,6 +134,7 @@ export function TransactionSheet({
   const { data: allTxs = [] } = useAllTransactions();
 
   const addTx = useAddTransaction();
+  const batchAddTx = useBatchAddTransactions();
   const updateTx = useUpdateTransaction();
   const deleteTx = useDeleteTransaction();
   const { showToast } = useToast();
@@ -1329,6 +1331,57 @@ export function TransactionSheet({
                   if (parsed.date) setDate(parsed.date);
                   if (parsed.note) setNote(parsed.note);
                   setShowSmartBar(false);
+                }}
+                onBatchApply={(parsedList) => {
+                  triggerSuccessHaptic();
+                  const payloads = parsedList.map((item) => {
+                    const itemType = item.type || "expense";
+                    const itemCat =
+                      categories.find((c) => c.id === item.categoryId) ||
+                      (categories.length > 0 ? categories[0] : null);
+                    const itemWallet =
+                      wallets.find((w) => w.id === item.walletId) ||
+                      (wallets.length > 0 ? wallets[0] : null);
+                    const itemToWallet =
+                      itemType === "transfer"
+                        ? wallets.find((w) => w.id === item.toWalletId) ||
+                          wallets.find((w) => w.id !== itemWallet?.id) ||
+                          null
+                        : null;
+                    const txDate = item.date || new Date();
+
+                    return {
+                      type: itemType,
+                      amount: item.amount || 0,
+                      note: item.note || null,
+                      occurred_on: format(txDate, "yyyy-MM-dd"),
+                      created_at: txDate.toISOString(),
+                      category_id:
+                        itemType === "transfer" ? null : itemCat?.id || null,
+                      wallet_id: itemWallet?.id || null,
+                      to_wallet_id:
+                        itemType === "transfer" ? itemToWallet?.id || null : null,
+                    };
+                  });
+
+                  batchAddTx.mutate(payloads, {
+                    onSuccess: () => {
+                      showToast(
+                        `${parsedList.length} transactions saved`,
+                        "add",
+                        () => {},
+                      );
+                      setShowSmartBar(false);
+                      onClose();
+                    },
+                    onError: (err: any) => {
+                      showToast(
+                        err?.message || "Failed to save transactions",
+                        "delete",
+                        () => {},
+                      );
+                    },
+                  });
                 }}
               />
             </motion.div>

@@ -10,16 +10,18 @@ import {
   CreditCard,
   Calendar,
   Coins,
+  Layers,
 } from "lucide-react";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
-import { useAddTransaction } from "../../hooks/useTransactions";
+import { useAddTransaction, useBatchAddTransactions } from "../../hooks/useTransactions";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import {
   parseNaturalTransaction,
+  parseMultiNaturalTransactions,
   type ParsedTransactionResult,
 } from "../../lib/nlpParser";
 import { format } from "date-fns";
@@ -50,6 +52,7 @@ export function VoiceQuickAddModal({
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
   const addTx = useAddTransaction();
+  const batchAddTx = useBatchAddTransactions();
   const { showToast } = useToast();
 
   const [transcript, setTranscript] = useState("");
@@ -234,14 +237,28 @@ export function VoiceQuickAddModal({
     }
   };
 
-  // Real-time NLP parsing
-  const parsed: ParsedTransactionResult = useMemo(() => {
-    return parseNaturalTransaction(transcript, categories, wallets, new Date());
+  // Real-time NLP parsing (multi-transaction intelligent detection)
+  const parsedList: ParsedTransactionResult[] = useMemo(() => {
+    return parseMultiNaturalTransactions(transcript, categories, wallets, new Date());
   }, [transcript, categories, wallets]);
+
+  const isMulti = parsedList.length > 1;
+  const parsed: ParsedTransactionResult =
+    parsedList[0] ||
+    parseNaturalTransaction("", categories, wallets, new Date());
+
+  const totalBatchAmount = useMemo(() => {
+    return parsedList.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  }, [parsedList]);
 
   const hasAmount = parsed.amount !== null && parsed.amount > 0;
   const hasMatches =
-    hasAmount || parsed.categoryId !== null || parsed.walletId !== null;
+    parsedList.some(
+      (p) =>
+        (p.amount !== null && p.amount > 0) ||
+        p.categoryId !== null ||
+        p.walletId !== null,
+    );
 
   const resolvedType = parsed.type || "expense";
   const resolvedCategory =
@@ -289,6 +306,61 @@ export function VoiceQuickAddModal({
           err?.message || "Failed to save transaction",
           "delete",
           () => {}
+        );
+      },
+    });
+  };
+
+  const handleBatchSave = () => {
+    if (parsedList.length === 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
+    triggerSuccessHaptic();
+
+    const payloads = parsedList.map((item) => {
+      const itemType = item.type || "expense";
+      const itemCat =
+        categories.find((c) => c.id === item.categoryId) ||
+        (categories.length > 0 ? categories[0] : null);
+      const itemWallet =
+        wallets.find((w) => w.id === item.walletId) ||
+        (wallets.length > 0 ? wallets[0] : null);
+      const itemToWallet =
+        itemType === "transfer"
+          ? wallets.find((w) => w.id === item.toWalletId) ||
+            wallets.find((w) => w.id !== itemWallet?.id) ||
+            null
+          : null;
+      const txDate = item.date || new Date();
+
+      return {
+        type: itemType,
+        amount: item.amount || 0,
+        note: item.note || (transcript.trim() ? transcript.trim() : null),
+        occurred_on: format(txDate, "yyyy-MM-dd"),
+        created_at: txDate.toISOString(),
+        category_id: itemType === "transfer" ? null : itemCat?.id || null,
+        wallet_id: itemWallet?.id || null,
+        to_wallet_id: itemType === "transfer" ? itemToWallet?.id || null : null,
+      };
+    });
+
+    batchAddTx.mutate(payloads, {
+      onSuccess: () => {
+        setIsSubmitting(false);
+        showToast(
+          `${parsedList.length} transactions recorded via voice`,
+          "add",
+          () => {},
+        );
+        onClose();
+      },
+      onError: (err: any) => {
+        setIsSubmitting(false);
+        showToast(
+          err?.message || "Failed to save transactions",
+          "delete",
+          () => {},
         );
       },
     });
@@ -468,7 +540,7 @@ export function VoiceQuickAddModal({
           </div>
 
           {/* ══════════════════════════════════════════════════════════════════════
-              BELOW THE BAR: KEYWORD CHIPS (e.g. "BNI" "Food" "50.000")
+              BELOW THE BAR: MULTI-TRANSACTION DECK OR SINGLE KEYWORD CHIPS
               ══════════════════════════════════════════════════════════════════════ */}
           <AnimatePresence>
             {hasMatches && (
@@ -480,149 +552,302 @@ export function VoiceQuickAddModal({
                 transition={{ type: "spring", stiffness: 420, damping: 30 }}
                 className="w-full flex flex-col items-center gap-2 overflow-hidden px-1"
               >
-                {/* Horizontal row of detected keyword chips */}
-                <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                  {/* Amount keyword chip */}
-                  {parsed.amount !== null && parsed.amount > 0 && (
-                    <motion.span
-                      initial={{ scale: 0.88, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="px-3 py-1 rounded-full text-[11.5px] font-extrabold flex items-center gap-1.5 shadow-sm"
-                      style={{
-                        background: "var(--accent)",
-                        color: "var(--accent-ink)",
-                      }}
-                    >
-                      <Coins size={11} strokeWidth={2} />
-                      {formatRupiah(parsed.amount)}
-                    </motion.span>
-                  )}
+                {isMulti ? (
+                  /* ── MULTI-TRANSACTION LUXURY CARD DECK ── */
+                  <div className="w-full flex flex-col gap-2">
+                    {/* Header info badge */}
+                    <div className="flex items-center justify-between px-1">
+                      <div className="flex items-center gap-1.5">
+                        <Layers
+                          size={12}
+                          strokeWidth={1.75}
+                          style={{ color: "var(--text-secondary)" }}
+                        />
+                        <span
+                          className="text-[11px] font-bold tracking-tight"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {parsedList.length} Transactions Detected
+                        </span>
+                      </div>
+                      <span
+                        className="text-[11.5px] font-extrabold amount"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        Total {formatRupiah(totalBatchAmount)}
+                      </span>
+                    </div>
 
-                  {/* Category keyword chip */}
-                  {parsed.categoryName && (
-                    <motion.span
-                      initial={{ scale: 0.88, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 0.04 }}
-                      className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5"
-                      style={{
-                        background: isDark
-                          ? "rgba(255, 255, 255, 0.08)"
-                          : "rgba(0, 0, 0, 0.05)",
-                        color: "var(--text-primary)",
-                        border: isDark
-                          ? "1px solid rgba(255, 255, 255, 0.12)"
-                          : "1px solid rgba(0, 0, 0, 0.08)",
-                      }}
-                    >
-                      <Tag size={11} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
-                      {parsed.categoryName}
-                    </motion.span>
-                  )}
+                    {/* Scrollable list of detected transactions */}
+                    <div className="w-full max-h-[190px] overflow-y-auto no-scrollbar space-y-1.5 pr-0.5">
+                      {parsedList.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between px-3 py-2 rounded-2xl transition-all"
+                          style={{
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.05)"
+                              : "rgba(0, 0, 0, 0.03)",
+                            border: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.10)"
+                              : "1px solid rgba(0, 0, 0, 0.06)",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                          }}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span
+                              className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255, 255, 255, 0.1)"
+                                  : "rgba(0, 0, 0, 0.06)",
+                                color: "var(--text-primary)",
+                              }}
+                            >
+                              {idx + 1}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className="text-[12px] font-semibold truncate leading-tight"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {item.note || item.categoryName || `Item ${idx + 1}`}
+                              </p>
+                              <div className="flex items-center gap-2 text-[10px] mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
+                                {item.categoryName && (
+                                  <span className="flex items-center gap-0.5 truncate">
+                                    <Tag size={9.5} strokeWidth={1.5} />
+                                    {item.categoryName}
+                                  </span>
+                                )}
+                                {item.walletName && (
+                                  <span className="flex items-center gap-0.5 truncate">
+                                    <CreditCard size={9.5} strokeWidth={1.5} />
+                                    {item.type === "transfer" && item.toWalletName
+                                      ? `${item.walletName} → ${item.toWalletName}`
+                                      : item.walletName}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="shrink-0 pl-2 text-right">
+                            <span
+                              className="text-[12px] font-extrabold amount"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {item.amount !== null ? formatRupiah(item.amount) : "Rp 0"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
 
-                  {/* Wallet keyword chip */}
-                  {parsed.walletName && (
-                    <motion.span
-                      initial={{ scale: 0.88, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 0.08 }}
-                      className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5"
-                      style={{
-                        background: isDark
-                          ? "rgba(255, 255, 255, 0.08)"
-                          : "rgba(0, 0, 0, 0.05)",
-                        color: "var(--text-primary)",
-                        border: isDark
-                          ? "1px solid rgba(255, 255, 255, 0.12)"
-                          : "1px solid rgba(0, 0, 0, 0.08)",
-                      }}
-                    >
-                      <CreditCard size={11} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
-                      {parsed.type === "transfer" && parsed.toWalletName
-                        ? `${parsed.walletName} → ${parsed.toWalletName}`
-                        : parsed.walletName}
-                    </motion.span>
-                  )}
+                    {/* Batch Action Bar */}
+                    <div className="w-full flex items-center gap-2 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={handleBatchSave}
+                        disabled={isSubmitting}
+                        className="flex-1 h-9 rounded-full flex items-center justify-center gap-1.5 text-[12px] font-bold active:scale-95 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+                        style={{
+                          background: "var(--accent)",
+                          color: "var(--accent-ink)",
+                        }}
+                      >
+                        <Check size={13} strokeWidth={2.5} />
+                        {isSubmitting
+                          ? "Saving All..."
+                          : `Save All ${parsedList.length} Transactions`}
+                      </button>
 
-                  {/* Date keyword chip */}
-                  {parsed.dateLabel && parsed.dateLabel !== "Today" && parsed.dateLabel !== "Hari ini" && (
-                    <motion.span
-                      initial={{ scale: 0.88, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 0.12 }}
-                      className="px-2.5 py-1 rounded-full text-[11px] font-medium flex items-center gap-1"
-                      style={{
-                        background: isDark
-                          ? "rgba(255, 255, 255, 0.05)"
-                          : "rgba(0, 0, 0, 0.04)",
-                        color: "var(--text-tertiary)",
-                        border: isDark
-                          ? "1px solid rgba(255, 255, 255, 0.08)"
-                          : "1px solid rgba(0, 0, 0, 0.06)",
-                      }}
-                    >
-                      <Calendar size={11} strokeWidth={1.75} />
-                      {parsed.dateLabel === "Hari ini" ? "Today" : parsed.dateLabel === "Kemarin" ? "Yesterday" : parsed.dateLabel}
-                    </motion.span>
-                  )}
-                </div>
+                      <button
+                        type="button"
+                        onClick={handleOpenForm}
+                        className="flex-1 h-9 rounded-full flex items-center justify-center gap-1.5 text-[12px] font-semibold active:scale-95 transition-all cursor-pointer"
+                        style={{
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.08)"
+                            : "rgba(0, 0, 0, 0.06)",
+                          color: "var(--text-primary)",
+                          border: isDark
+                            ? "1px solid rgba(255, 255, 255, 0.12)"
+                            : "1px solid rgba(0, 0, 0, 0.08)",
+                        }}
+                      >
+                        <SlidersHorizontal size={12} strokeWidth={1.75} />
+                        Edit in Form
+                      </button>
 
-                {/* Direct Action Bar below keywords */}
-                <div className="w-full flex items-center gap-2 pt-0.5">
-                  {hasAmount && (
-                    <button
-                      type="button"
-                      onClick={handleDirectSave}
-                      disabled={isSubmitting}
-                      className="flex-1 h-9 rounded-full flex items-center justify-center gap-1.5 text-[12px] font-bold active:scale-95 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
-                      style={{
-                        background: "var(--accent)",
-                        color: "var(--accent-ink)",
-                      }}
-                    >
-                      <Check size={13} strokeWidth={2.5} />
-                      {isSubmitting ? "Saving..." : "Save Transaction"}
-                    </button>
-                  )}
+                      {transcript.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={resetVoice}
+                          className="w-9 h-9 flex items-center justify-center rounded-full active:scale-95 transition-all cursor-pointer shrink-0"
+                          style={{
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.06)"
+                              : "rgba(0, 0, 0, 0.04)",
+                            color: "var(--text-tertiary)",
+                            border: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.08)"
+                              : "1px solid rgba(0, 0, 0, 0.06)",
+                          }}
+                          title="Retry Voice"
+                        >
+                          <RotateCcw size={12} strokeWidth={1.8} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* ── SINGLE TRANSACTION KEYWORD CHIPS ── */
+                  <>
+                    {/* Horizontal row of detected keyword chips */}
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      {/* Amount keyword chip */}
+                      {parsed.amount !== null && parsed.amount > 0 && (
+                        <motion.span
+                          initial={{ scale: 0.88, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="px-3 py-1 rounded-full text-[11.5px] font-extrabold flex items-center gap-1.5 shadow-sm"
+                          style={{
+                            background: "var(--accent)",
+                            color: "var(--accent-ink)",
+                          }}
+                        >
+                          <Coins size={11} strokeWidth={2} />
+                          {formatRupiah(parsed.amount)}
+                        </motion.span>
+                      )}
 
-                  <button
-                    type="button"
-                    onClick={handleOpenForm}
-                    className="flex-1 h-9 rounded-full flex items-center justify-center gap-1.5 text-[12px] font-semibold active:scale-95 transition-all cursor-pointer"
-                    style={{
-                      background: isDark
-                        ? "rgba(255, 255, 255, 0.08)"
-                        : "rgba(0, 0, 0, 0.06)",
-                      color: "var(--text-primary)",
-                      border: isDark
-                        ? "1px solid rgba(255, 255, 255, 0.12)"
-                        : "1px solid rgba(0, 0, 0, 0.08)",
-                    }}
-                  >
-                    <SlidersHorizontal size={12} strokeWidth={1.75} />
-                    Edit in Form
-                  </button>
+                      {/* Category keyword chip */}
+                      {parsed.categoryName && (
+                        <motion.span
+                          initial={{ scale: 0.88, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.04 }}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5"
+                          style={{
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.08)"
+                              : "rgba(0, 0, 0, 0.05)",
+                            color: "var(--text-primary)",
+                            border: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.12)"
+                              : "1px solid rgba(0, 0, 0, 0.08)",
+                          }}
+                        >
+                          <Tag size={11} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                          {parsed.categoryName}
+                        </motion.span>
+                      )}
 
-                  {transcript.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={resetVoice}
-                      className="w-9 h-9 flex items-center justify-center rounded-full active:scale-95 transition-all cursor-pointer shrink-0"
-                      style={{
-                        background: isDark
-                          ? "rgba(255, 255, 255, 0.06)"
-                          : "rgba(0, 0, 0, 0.04)",
-                        color: "var(--text-tertiary)",
-                        border: isDark
-                          ? "1px solid rgba(255, 255, 255, 0.08)"
-                          : "1px solid rgba(0, 0, 0, 0.06)",
-                      }}
-                      title="Retry Voice"
-                    >
-                      <RotateCcw size={12} strokeWidth={1.8} />
-                    </button>
-                  )}
-                </div>
+                      {/* Wallet keyword chip */}
+                      {parsed.walletName && (
+                        <motion.span
+                          initial={{ scale: 0.88, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.08 }}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5"
+                          style={{
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.08)"
+                              : "rgba(0, 0, 0, 0.05)",
+                            color: "var(--text-primary)",
+                            border: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.12)"
+                              : "1px solid rgba(0, 0, 0, 0.08)",
+                          }}
+                        >
+                          <CreditCard size={11} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                          {parsed.type === "transfer" && parsed.toWalletName
+                            ? `${parsed.walletName} → ${parsed.toWalletName}`
+                            : parsed.walletName}
+                        </motion.span>
+                      )}
+
+                      {/* Date keyword chip */}
+                      {parsed.dateLabel && parsed.dateLabel !== "Today" && parsed.dateLabel !== "Hari ini" && (
+                        <motion.span
+                          initial={{ scale: 0.88, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.12 }}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-medium flex items-center gap-1"
+                          style={{
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.05)"
+                              : "rgba(0, 0, 0, 0.04)",
+                            color: "var(--text-tertiary)",
+                            border: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.08)"
+                              : "1px solid rgba(0, 0, 0, 0.06)",
+                          }}
+                        >
+                          <Calendar size={11} strokeWidth={1.75} />
+                          {parsed.dateLabel === "Hari ini" ? "Today" : parsed.dateLabel === "Kemarin" ? "Yesterday" : parsed.dateLabel}
+                        </motion.span>
+                      )}
+                    </div>
+
+                    {/* Direct Action Bar below keywords */}
+                    <div className="w-full flex items-center gap-2 pt-0.5">
+                      {hasAmount && (
+                        <button
+                          type="button"
+                          onClick={handleDirectSave}
+                          disabled={isSubmitting}
+                          className="flex-1 h-9 rounded-full flex items-center justify-center gap-1.5 text-[12px] font-bold active:scale-95 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+                          style={{
+                            background: "var(--accent)",
+                            color: "var(--accent-ink)",
+                          }}
+                        >
+                          <Check size={13} strokeWidth={2.5} />
+                          {isSubmitting ? "Saving..." : "Save Transaction"}
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleOpenForm}
+                        className="flex-1 h-9 rounded-full flex items-center justify-center gap-1.5 text-[12px] font-semibold active:scale-95 transition-all cursor-pointer"
+                        style={{
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.08)"
+                            : "rgba(0, 0, 0, 0.06)",
+                          color: "var(--text-primary)",
+                          border: isDark
+                            ? "1px solid rgba(255, 255, 255, 0.12)"
+                            : "1px solid rgba(0, 0, 0, 0.08)",
+                        }}
+                      >
+                        <SlidersHorizontal size={12} strokeWidth={1.75} />
+                        Edit in Form
+                      </button>
+
+                      {transcript.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={resetVoice}
+                          className="w-9 h-9 flex items-center justify-center rounded-full active:scale-95 transition-all cursor-pointer shrink-0"
+                          style={{
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.06)"
+                              : "rgba(0, 0, 0, 0.04)",
+                            color: "var(--text-tertiary)",
+                            border: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.08)"
+                              : "1px solid rgba(0, 0, 0, 0.06)",
+                          }}
+                          title="Retry Voice"
+                        >
+                          <RotateCcw size={12} strokeWidth={1.8} />
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

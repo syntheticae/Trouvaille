@@ -662,6 +662,150 @@ export function useAddTransaction() {
   });
 }
 
+export function useBatchAddTransactions() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
+
+  return useMutation({
+    mutationFn: async (inputs: Array<TransactionInput & { id?: string }>) => {
+      if (!inputs || inputs.length === 0) return [];
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const currentUser = session?.user || (userId ? { id: userId } : null);
+
+      const allCategories = qc.getQueryData<Category[]>(
+        categoryKeys.all(currentUser?.id || userId),
+      );
+
+      const createdList: Transaction[] = [];
+
+      for (const input of inputs) {
+        const effectiveId = input.id || generateUUID();
+        input.id = effectiveId;
+
+        const categoryObj =
+          allCategories?.find((c) => c.id === input.category_id) || null;
+
+        const fullTx: Transaction = {
+          id: effectiveId,
+          user_id: currentUser?.id || userId || "",
+          amount: Number(input.amount),
+          type: input.type,
+          category_id: input.category_id,
+          wallet_id: input.wallet_id || null,
+          to_wallet_id: input.to_wallet_id || null,
+          note: input.note || null,
+          occurred_on: input.occurred_on,
+          created_at: input.created_at || new Date().toISOString(),
+          categories: categoryObj,
+        };
+
+        const mutation = enqueuePendingMutation("insert", fullTx);
+
+        if (currentUser?.id) {
+          try {
+            const { categories, wallet, to_wallet, ...dbPayload } = fullTx as any;
+            let query = supabase
+              .from("transactions")
+              .upsert({ ...dbPayload, user_id: currentUser.id })
+              .select("*, categories(*)");
+
+            let res = await withTimeout(query, 7000);
+            if (res.error) {
+              res = await withTimeout(
+                supabase
+                  .from("transactions")
+                  .upsert({ ...dbPayload, user_id: currentUser.id })
+                  .select("*"),
+                7000,
+              );
+            }
+
+            if (!res.error && res.data && res.data[0]) {
+              removePendingMutation(mutation.id);
+              const serverTx = res.data[0] as Transaction;
+              createdList.push({
+                ...serverTx,
+                categories: serverTx.categories || categoryObj,
+              });
+              continue;
+            }
+          } catch (networkErr) {
+            console.warn(
+              "[useBatchAddTransactions] Network slow/unreachable. Preserved in pending queue:",
+              networkErr,
+            );
+          }
+        }
+
+        createdList.push(fullTx);
+      }
+
+      return createdList;
+    },
+    onMutate: async (newTxs: Array<any>) => {
+      await qc.cancelQueries({ queryKey: ["transactions"] });
+      const snapshots = snapshotTransactionQueries(qc);
+
+      const allCategories = qc.getQueryData<Category[]>(categoryKeys.all(userId));
+      const optimisticItems: Transaction[] = [];
+
+      for (const newTx of newTxs) {
+        const effectiveId = newTx.id || generateUUID();
+        newTx.id = effectiveId;
+
+        const categoryObj =
+          allCategories?.find((c) => c.id === newTx.category_id) || null;
+
+        const optimisticItem: Transaction = {
+          id: effectiveId,
+          user_id: userId || "",
+          amount: Number(newTx.amount),
+          type: newTx.type,
+          category_id: newTx.category_id,
+          wallet_id: newTx.wallet_id || null,
+          to_wallet_id: newTx.to_wallet_id || null,
+          note: newTx.note || null,
+          occurred_on: newTx.occurred_on,
+          created_at: newTx.created_at || new Date().toISOString(),
+          categories: categoryObj,
+        };
+
+        upsertTransactionAcrossCaches(qc, optimisticItem);
+        optimisticItems.push(optimisticItem);
+      }
+
+      return { snapshots, optimisticItems };
+    },
+    onSuccess: (savedList, _vars, context) => {
+      for (const savedTx of savedList) {
+        const matchedOptimistic = context?.optimisticItems.find(
+          (o) => o.id === savedTx.id,
+        );
+        const enriched: Transaction = {
+          ...savedTx,
+          categories: savedTx.categories || matchedOptimistic?.categories || null,
+        };
+        upsertTransactionAcrossCaches(qc, enriched);
+      }
+    },
+    onError: (_err, _newTxs, context) => {
+      if (context?.optimisticItems) {
+        for (const item of context.optimisticItems) {
+          upsertTransactionAcrossCaches(qc, item);
+        }
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+      flushPendingMutations().catch(() => {});
+    },
+  });
+}
+
 export function useUpdateTransaction() {
   const qc = useQueryClient();
   const { user } = useAuth();

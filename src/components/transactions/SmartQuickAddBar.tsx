@@ -10,10 +10,12 @@ import {
   Tag,
   Calendar,
   Coins,
+  Layers,
 } from "lucide-react";
 import type { Category, Wallet } from "../../lib/types";
 import {
   parseNaturalTransaction,
+  parseMultiNaturalTransactions,
   type ParsedTransactionResult,
 } from "../../lib/nlpParser";
 import { formatRupiah } from "../../lib/utils";
@@ -24,12 +26,14 @@ interface SmartQuickAddBarProps {
   categories: Category[];
   wallets: Wallet[];
   onApply: (parsed: ParsedTransactionResult) => void;
+  onBatchApply?: (parsedList: ParsedTransactionResult[]) => void;
 }
 
 export function SmartQuickAddBar({
   categories,
   wallets,
   onApply,
+  onBatchApply,
 }: SmartQuickAddBarProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
@@ -99,19 +103,35 @@ export function SmartQuickAddBar({
     }
   };
 
-  const parsed = useMemo(() => {
-    return parseNaturalTransaction(input, categories, wallets, new Date());
+  const parsedList = useMemo(() => {
+    return parseMultiNaturalTransactions(input, categories, wallets, new Date());
   }, [input, categories, wallets]);
 
+  const isMulti = parsedList.length > 1;
+  const parsed =
+    parsedList[0] ||
+    parseNaturalTransaction("", categories, wallets, new Date());
+
+  const totalBatchAmount = useMemo(() => {
+    return parsedList.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  }, [parsedList]);
+
   const hasMatches =
-    parsed.amount !== null ||
-    parsed.categoryId !== null ||
-    parsed.walletId !== null;
+    parsedList.some(
+      (p) =>
+        (p.amount !== null && p.amount > 0) ||
+        p.categoryId !== null ||
+        p.walletId !== null,
+    );
 
   const handleApply = () => {
     if (!hasMatches) return;
     triggerSuccessHaptic();
-    onApply(parsed);
+    if (isMulti && onBatchApply) {
+      onBatchApply(parsedList);
+    } else {
+      onApply(parsed);
+    }
     setInput("");
   };
 
@@ -242,7 +262,7 @@ export function SmartQuickAddBar({
             }}
           >
             <Check size={12} strokeWidth={2} />
-            Fill
+            {isMulti && onBatchApply ? `Save All (${parsedList.length})` : "Fill"}
           </button>
         )}
       </div>
@@ -257,69 +277,100 @@ export function SmartQuickAddBar({
             transition={{ duration: 0.18 }}
             className="flex items-center gap-1.5 flex-wrap mt-2 px-1 overflow-hidden"
           >
-            {parsed.amount !== null && (
-              <span
-                className="px-2 py-0.5 rounded-lg text-[10.5px] font-bold flex items-center gap-1"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Coins size={10.5} strokeWidth={1.5} style={{ color: "var(--text-secondary)" }} />
-                {formatRupiah(parsed.amount)}
-              </span>
-            )}
+            {isMulti ? (
+              <>
+                <span
+                  className="px-2 py-0.5 rounded-lg text-[10.5px] font-bold flex items-center gap-1"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Layers size={10.5} strokeWidth={1.5} style={{ color: "var(--text-secondary)" }} />
+                  {parsedList.length} Items • Total {formatRupiah(totalBatchAmount)}
+                </span>
+                {parsedList.map((item, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1"
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    #{idx + 1} {item.note || item.categoryName}: {item.amount ? formatRupiah(item.amount) : "0"}
+                  </span>
+                ))}
+              </>
+            ) : (
+              <>
+                {parsed.amount !== null && (
+                  <span
+                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-bold flex items-center gap-1"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Coins size={10.5} strokeWidth={1.5} style={{ color: "var(--text-secondary)" }} />
+                    {formatRupiah(parsed.amount)}
+                  </span>
+                )}
 
-            {parsed.categoryName && (
-              <span
-                className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium flex items-center gap-1"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Tag size={10.5} strokeWidth={1.5} style={{ color: "var(--text-secondary)" }} />
-                {parsed.categoryName}
-              </span>
-            )}
+                {parsed.categoryName && (
+                  <span
+                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium flex items-center gap-1"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Tag size={10.5} strokeWidth={1.5} style={{ color: "var(--text-secondary)" }} />
+                    {parsed.categoryName}
+                  </span>
+                )}
 
-            {parsed.walletName && (
-              <span
-                className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium flex items-center gap-1"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <CreditCard size={10.5} strokeWidth={1.5} style={{ color: "var(--text-secondary)" }} />
-                {parsed.type === "transfer" && parsed.toWalletName
-                  ? `${parsed.walletName} → ${parsed.toWalletName}`
-                  : parsed.walletName}
-              </span>
-            )}
+                {parsed.walletName && (
+                  <span
+                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium flex items-center gap-1"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <CreditCard size={10.5} strokeWidth={1.5} style={{ color: "var(--text-secondary)" }} />
+                    {parsed.type === "transfer" && parsed.toWalletName
+                      ? `${parsed.walletName} → ${parsed.toWalletName}`
+                      : parsed.walletName}
+                  </span>
+                )}
 
-            {parsed.dateLabel && parsed.dateLabel !== "Today" && (
-              <span
-                className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium flex items-center gap-1"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-tertiary)",
-                }}
-              >
-                <Calendar size={10.5} strokeWidth={1.5} />
-                {parsed.dateLabel}
-              </span>
+                {parsed.dateLabel && parsed.dateLabel !== "Today" && (
+                  <span
+                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium flex items-center gap-1"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-tertiary)",
+                    }}
+                  >
+                    <Calendar size={10.5} strokeWidth={1.5} />
+                    {parsed.dateLabel}
+                  </span>
+                )}
+              </>
             )}
 
             <span
               className="text-[9.5px] font-medium ml-auto"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Press Enter or tap Fill
+              Press Enter or tap {isMulti && onBatchApply ? "Save All" : "Fill"}
             </span>
           </motion.div>
         )}
