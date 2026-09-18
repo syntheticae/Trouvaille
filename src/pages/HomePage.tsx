@@ -175,7 +175,12 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   const { data: allBills = [], refetch: refetchBills } = useBills();
   const { goals, depositToGoal, updateGoal, deleteGoal } = useGoals();
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null);
-  const { netWorth, liquidAssets, liquidAccounts } = useWalletBalances();
+  const {
+    netWorth,
+    liquidAssets,
+    liquidAccounts,
+  } = useWalletBalances();
+
   const [metricDrillDown, setMetricDrillDown] = useState<{
     type: "expense" | "income" | "budget_risk" | "snapshot";
     data: any;
@@ -575,7 +580,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           </h2>
           <button
             onClick={toggleHideBalance}
-            className="text-white/60 hover:text-white active:scale-90 transition-all p-1 -mr-1"
+            className="text-white/60 hover:text-white active:scale-90 transition-all p-1 -mr-1 cursor-pointer"
             title={hideBalance ? "Show Balance" : "Hide Balance"}
           >
             {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -768,7 +773,15 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
       {/* 2.5 FINANCIAL ACTION CENTER */}
       {homeWidgets.showActionCenter && intel.actionCenterInsight && (
-        <ActionCenterCard insight={intel.actionCenterInsight} />
+        <ActionCenterCard
+          insight={intel.actionCenterInsight}
+          transactions={allTxs}
+          budgetTarget={budgetTarget}
+          dailyAverage={intel.dailyAvg}
+          projectedMonthEnd={intel.projectedMonthEnd}
+          totalExpense={intel.totalExpense}
+          totalIncome={intel.totalIncome}
+        />
       )}
 
       {/* 2.7 SPENDING STABILITY (EXPENSE VOLATILITY) */}

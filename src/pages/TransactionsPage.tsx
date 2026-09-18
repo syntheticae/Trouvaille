@@ -15,7 +15,6 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  FileSpreadsheet,
 } from "lucide-react";
 import {
   BarChart,
@@ -158,7 +157,7 @@ interface TransactionsPageProps {
 
 export function TransactionsPage({
   onOpenScan: _onOpenScan,
-  onOpenImport,
+  onOpenImport: _onOpenImport,
 }: TransactionsPageProps = {}) {
   const { isStealthMode, toggleStealthMode } = usePrivacy();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -722,7 +721,7 @@ export function TransactionsPage({
                       : `${selectedMonthLabel} Activity`}
             </p>
             <p
-              className="text-[28px] sm:text-[32px] font-extrabold tracking-tight leading-tight amount truncate"
+              className="text-[26px] sm:text-[32px] font-extrabold tracking-tight leading-tight amount whitespace-nowrap"
               style={{ color: "var(--text-primary)" }}
             >
               {isStealthMode ? "Rp ••••••••" : formatRupiah(totalPeriodAmount)}
@@ -750,25 +749,6 @@ export function TransactionsPage({
             >
               {isStealthMode ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
-
-            {onOpenImport && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  onOpenImport();
-                }}
-                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-secondary)",
-                }}
-                title="Import Bank Statement / CSV"
-              >
-                <FileSpreadsheet size={14} />
-              </button>
-            )}
 
             <button
               type="button"

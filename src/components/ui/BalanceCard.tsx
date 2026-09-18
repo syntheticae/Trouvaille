@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
-import { ChevronRight, Wallet as WalletIcon } from "lucide-react";
+import { ChevronRight, Wallet as WalletIcon, TrendingUp } from "lucide-react";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useBills } from "../../hooks/useBills";
 import { formatRupiah } from "../../lib/utils";
 import { BottomSheet } from "./BottomSheet";
 import { IconRenderer } from "./IconRenderer";
 import { useTheme } from "../../contexts/ThemeContext";
+import { AssetValuationSheet } from "../settings/AssetValuationSheet";
 
 const SEGMENT_COLORS_DARK = [
   "#FFFFFF",
@@ -38,6 +39,7 @@ interface BalanceCardProps {
 
 export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   const [detailOpen, setDetailOpen] = useState(false);
+  const [valuationSheetOpen, setValuationSheetOpen] = useState(false);
   const {
     allAccounts,
     positiveAccounts: posAccs,
@@ -305,6 +307,36 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
             </div>
           </div>
 
+          {/* Quick Valuation & Floating Profit Action Banner */}
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.04] border border-[var(--glass-border)]">
+            <div className="text-left">
+              <span
+                className="text-[12px] font-bold block"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Valuation & Floating P&L
+              </span>
+              <span
+                className="text-[10px] block"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                USDT, live rates & unrealized gains
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setValuationSheetOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold active:scale-95 transition-all cursor-pointer shrink-0"
+              style={{
+                background: "var(--text-primary)",
+                color: "var(--bg-base)",
+              }}
+            >
+              <TrendingUp size={12} strokeWidth={2.5} />
+              <span>Valuation</span>
+            </button>
+          </div>
+
           {/* Active Accounts 2-Column Compact Grid */}
           <div className="space-y-1.5 pb-12">
             <div className="grid grid-cols-2 gap-2">
@@ -396,6 +428,10 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           </div>
         </div>
       </BottomSheet>
+      <AssetValuationSheet
+        isOpen={valuationSheetOpen}
+        onClose={() => setValuationSheetOpen(false)}
+      />
     </>
   );
 }

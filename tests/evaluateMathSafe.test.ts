@@ -22,6 +22,10 @@ describe("evaluateMathSafe (Zero-Eval Arithmetic Evaluator)", () => {
     expect(evaluateMathSafe("15.000 + 5.000")).toBe(20000);
     expect(evaluateMathSafe("50.000 × 2")).toBe(100000);
     expect(evaluateMathSafe("60.000 ÷ 3")).toBe(20000);
+    expect(evaluateMathSafe("1.000.000")).toBe(1000000);
+    expect(evaluateMathSafe("1.500.000")).toBe(1500000);
+    expect(evaluateMathSafe("10.000.000")).toBe(10000000);
+    expect(evaluateMathSafe("50.000 + 1.200.000")).toBe(1250000);
   });
 
   it("handles raw digits and empty/invalid input safely without crashing", () => {

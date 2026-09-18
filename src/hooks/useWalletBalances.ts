@@ -3,7 +3,6 @@ import { useWallets } from "./useWallets";
 import { useAllTransactions } from "./useTransactions";
 import {
   calculateWalletBalances,
-  isLiquidAccountName,
   type AccountBalanceItem,
   type WalletBalancesResult,
 } from "../lib/financialMath";
@@ -16,17 +15,10 @@ export function useWalletBalances() {
 
   return useMemo(() => {
     const result = calculateWalletBalances(allTxs, wallets);
-    const liquidAccounts = result.positiveAccounts.filter((account) =>
-      isLiquidAccountName(account.name),
-    );
-    const liquidAssets = liquidAccounts.reduce(
-      (sum, account) => sum + account.balance,
-      0,
-    );
+    const liquidAssets = result.liquidCapital;
 
     return {
       ...result,
-      liquidAccounts,
       liquidAssets,
       wallets,
       allTxs,

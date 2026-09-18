@@ -76,7 +76,7 @@ export function PersonalFinancialModelCard({
         : "Scenario";
 
   return (
-    <section className="glass-surface rounded-3xl overflow-hidden transition-all">
+    <section className="glass-surface rounded-3xl overflow-hidden transition-all mb-3 select-none">
       <button
         type="button"
         onClick={() => {

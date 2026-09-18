@@ -16,7 +16,7 @@ export function LiquidityHorizonCard({ liquidityHorizon, hideBalance = false }: 
     <>
       <section
         onClick={() => setDetailOpen(true)}
-        className="p-4 rounded-[24px] glass-surface cursor-pointer active:scale-[0.99] transition-transform"
+        className="p-4 rounded-[24px] glass-surface cursor-pointer active:scale-[0.99] transition-transform mb-3 select-none"
         style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}
       >
         <div className="flex items-start justify-between gap-3">

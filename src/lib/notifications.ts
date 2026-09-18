@@ -14,16 +14,30 @@ export async function requestNotificationPermission(): Promise<boolean> {
   }
 }
 
-export async function syncBillNotifications(bills: Bill[]): Promise<void> {
+export async function cancelAllBillNotifications(): Promise<void> {
   try {
-    const granted = await requestNotificationPermission()
-    if (!granted) return
-
-    // Cancel previously scheduled bill notifications
     const pending = await LocalNotifications.getPending()
     if (pending.notifications.length > 0) {
       await LocalNotifications.cancel({ notifications: pending.notifications })
     }
+  } catch (e) {
+    console.warn('Failed to cancel bill notifications:', e)
+  }
+}
+
+export async function syncBillNotifications(bills: Bill[]): Promise<void> {
+  try {
+    // Check if user disabled bill reminders in settings
+    if (localStorage.getItem('trouvaille_bill_reminders_enabled') === 'false') {
+      await cancelAllBillNotifications()
+      return
+    }
+
+    const granted = await requestNotificationPermission()
+    if (!granted) return
+
+    // Cancel previously scheduled bill notifications
+    await cancelAllBillNotifications()
 
     const notificationsToSchedule = []
     const now = new Date()

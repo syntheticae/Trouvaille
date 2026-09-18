@@ -20,6 +20,20 @@ export function getDefaultWalletClassification(name: string): AccountClassificat
     return "investment";
   }
   if (
+    n.includes("rumah") ||
+    n.includes("tanah") ||
+    n.includes("apartemen") ||
+    n.includes("properti") ||
+    n.includes("property") ||
+    n.includes("real estate") ||
+    n.includes("mobil") ||
+    n.includes("motor") ||
+    n.includes("kendaraan") ||
+    n.includes("vehicle")
+  ) {
+    return "fixed_asset";
+  }
+  if (
     n.includes("piutang") ||
     n.includes("receivable") ||
     n.includes("pinjaman teman")
@@ -82,14 +96,10 @@ export function resolveWalletClassification(wallet: {
   if (wallet.name && savedMap[wallet.name.trim().toLowerCase()]) {
     return savedMap[wallet.name.trim().toLowerCase()];
   }
-  if (wallet.classification && wallet.classification !== "liquid") {
+  if (wallet.classification) {
     return wallet.classification;
   }
-  const naturalClass = getDefaultWalletClassification(wallet.name);
-  if (naturalClass !== "liquid") {
-    return naturalClass;
-  }
-  return wallet.classification || "liquid";
+  return getDefaultWalletClassification(wallet.name);
 }
 
 export const walletKeys = {
@@ -97,30 +107,41 @@ export const walletKeys = {
 };
 
 export function getWalletIcon(name: string): string {
-  if (!name) return "/icons/Budgets/custom.png";
+  if (!name) return "Wallet";
   const n = name.trim().toLowerCase();
-  if (n === "bca") return "/icons/Budgets/BCA.png";
-  if (n === "bri") return "/icons/Budgets/BRI.png";
-  if (n === "mandiri") return "/icons/Budgets/Mandiri.png";
-  if (n === "link" || n === "linkaja") return "/icons/Budgets/Link.png";
-  if (n === "ovo") return "/icons/Budgets/Ovo.png";
-  if (n === "blu") return "/icons/Budgets/BLU.png";
-  if (n === "bni") return "/icons/Budgets/BNI.png";
-  if (n === "cash") return "/icons/Budgets/Cash.png";
-  if (n === "crypto") return "/icons/Budgets/Crypto.png";
-  if (n === "dana") return "/icons/Budgets/Dana.png";
-  if (n === "gopay") return "/icons/Budgets/Gopay.png";
-  if (n === "jago") return "/icons/Budgets/Jago.png";
-  if (n === "krom") return "/icons/Budgets/Krom.png";
-  if (n === "liabilities") return "/icons/Budgets/Liabilities.png";
-  if (n === "piutang") return "/icons/Budgets/Piutang.png";
-  if (n === "saham") return "/icons/Budgets/Saham.png";
-  if (n === "seabank") return "/icons/Budgets/Seabank.png";
-  if (n === "shopeepay" || n === "shopee")
-    return "/icons/Budgets/Shopeepay.png";
-  if (n === "superbank") return "/icons/Budgets/Superbank.png";
-  if (n === "tapcash") return "/icons/Budgets/Tapcash.png";
-  return "/icons/Budgets/custom.png";
+  if (
+    n === "bca" ||
+    n === "bri" ||
+    n === "mandiri" ||
+    n === "bni" ||
+    n === "blu" ||
+    n === "jago" ||
+    n === "krom" ||
+    n === "seabank" ||
+    n === "superbank" ||
+    n === "bank"
+  ) {
+    return "Landmark";
+  }
+  if (n === "cash" || n === "tunai") return "Banknote";
+  if (n === "crypto" || n === "usdt" || n === "btc") return "Coins";
+  if (
+    n === "dana" ||
+    n === "gopay" ||
+    n === "ovo" ||
+    n === "link" ||
+    n === "linkaja" ||
+    n === "shopeepay" ||
+    n === "shopee"
+  ) {
+    return "Smartphone";
+  }
+  if (n === "tapcash" || n === "credit" || n === "kartu kredit") return "CreditCard";
+  if (n === "saham" || n === "investasi" || n === "bibit" || n === "ajaib") return "TrendingUp";
+  if (n === "piutang") return "HandCoins";
+  if (n === "liabilities" || n === "hutang") return "Scale";
+  if (n === "tabungan" || n === "saving") return "PiggyBank";
+  return "Wallet";
 }
 
 export const DEFAULT_WALLETS = [
@@ -156,30 +177,19 @@ export const FALLBACK_WALLETS: Wallet[] = DEFAULT_WALLETS.map((name, i) => ({
 }));
 
 export const AVAILABLE_WALLET_ICONS = [
-  "/icons/Budgets/Cash.png",
-  "/icons/Budgets/BCA.png",
-  "/icons/Budgets/BNI.png",
-  "/icons/Budgets/BRI.png",
-  "/icons/Budgets/Mandiri.png",
-  "/icons/Budgets/Dana.png",
-  "/icons/Budgets/Gopay.png",
-  "/icons/Budgets/Ovo.png",
-  "/icons/Budgets/Link.png",
-  "/icons/Budgets/Shopeepay.png",
-  "/icons/Budgets/Jago.png",
-  "/icons/Budgets/BLU.png",
-  "/icons/Budgets/Krom.png",
-  "/icons/Budgets/Seabank.png",
-  "/icons/Budgets/Superbank.png",
-  "/icons/Budgets/Tapcash.png",
-  "/icons/Budgets/Crypto.png",
-  "/icons/Budgets/Saham.png",
-  "/icons/Budgets/Piutang.png",
-  "/icons/Budgets/Liabilities.png",
-  "/icons/tabungan.png",
-  "/icons/investasi.png",
-  "/icons/trading.png",
-  "/icons/wallet.png",
+  "Banknote",
+  "Landmark",
+  "Smartphone",
+  "CreditCard",
+  "Coins",
+  "PiggyBank",
+  "TrendingUp",
+  "HandCoins",
+  "Scale",
+  "Vault",
+  "Wallet",
+  "Building2",
+  "Receipt",
 ];
 
 export function useEnsureDefaultWallets() {

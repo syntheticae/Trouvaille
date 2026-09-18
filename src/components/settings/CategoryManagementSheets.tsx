@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Plus, Trash2, Search, X } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
+import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
+import { autoSuggestIcon } from "../../lib/iconRegistry";
+import { triggerHaptic } from "../../lib/haptics";
 import {
   useCategories,
   useAddCategory,
@@ -31,10 +34,14 @@ export function CategoryManagementSheets({
   const [addCatOpen, setAddCatOpen] = useState(false);
   const [catName, setCatName] = useState("");
   const [catType, setCatType] = useState<"expense" | "income">("expense");
+  const [catIcon, setCatIcon] = useState("Tag");
+  const [hasCustomPickedAddIcon, setHasCustomPickedAddIcon] = useState(false);
+  const [iconPickerTarget, setIconPickerTarget] = useState<"add" | "edit" | null>(null);
 
   const [editCategory, setEditCategory] = useState<{
     id: string;
     name: string;
+    emoji: string;
     budget_amount?: number | null;
     type?: string;
   } | null>(null);
@@ -42,12 +49,15 @@ export function CategoryManagementSheets({
 
   const handleSaveCategory = () => {
     if (!catName.trim()) return;
+    const finalIcon = catIcon || autoSuggestIcon(catName) || "Tag";
     addCategory.mutate(
-      { name: catName.trim(), emoji: "/icons/lainnya.png", type: catType },
+      { name: catName.trim(), emoji: finalIcon, type: catType },
       {
         onSuccess: () => {
           setAddCatOpen(false);
           setCatName("");
+          setCatIcon("Tag");
+          setHasCustomPickedAddIcon(false);
           showToast("Category added", "add", () => {});
         },
       },
@@ -64,9 +74,7 @@ export function CategoryManagementSheets({
         id: editCategory.id,
         name: editCategory.name.trim(),
         budget_amount: numBudget,
-        emoji:
-          categories.find((c) => c.id === editCategory.id)?.emoji ||
-          "/icons/lainnya.png",
+        emoji: editCategory.emoji || "Tag",
       },
       {
         onSuccess: () => {
@@ -189,6 +197,7 @@ export function CategoryManagementSheets({
                     setEditCategory({
                       id: cat.id,
                       name: cat.name,
+                      emoji: cat.emoji || "Tag",
                       budget_amount: cat.budget_amount,
                       type: cat.type,
                     });
@@ -244,6 +253,7 @@ export function CategoryManagementSheets({
                         setEditCategory({
                           id: cat.id,
                           name: cat.name,
+                          emoji: cat.emoji || "Tag",
                           budget_amount: cat.budget_amount,
                           type: cat.type,
                         });
@@ -306,24 +316,44 @@ export function CategoryManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Category Name
+              Category Icon & Name
             </label>
-            <input
-              type="text"
-              value={editCategory?.name || ""}
-              onChange={(e) =>
-                setEditCategory((prev) =>
-                  prev ? { ...prev, name: e.target.value } : null,
-                )
-              }
-              placeholder="Category Name"
-              className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-              }}
-            />
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setIconPickerTarget("edit");
+                }}
+                className="w-13 h-13 rounded-2xl flex flex-col items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+                title="Tap to change icon"
+              >
+                <IconRenderer icon={editCategory?.emoji || "Tag"} size="w-6 h-6" />
+                <span className="text-[8.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  Change
+                </span>
+              </button>
+              <input
+                type="text"
+                value={editCategory?.name || ""}
+                onChange={(e) =>
+                  setEditCategory((prev) =>
+                    prev ? { ...prev, name: e.target.value } : null,
+                  )
+                }
+                placeholder="Category Name"
+                className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
           </div>
 
           {editCategory?.type === "expense" && (
@@ -406,18 +436,55 @@ export function CategoryManagementSheets({
               </button>
             ))}
           </div>
-          <input
-            type="text"
-            value={catName}
-            onChange={(e) => setCatName(e.target.value)}
-            placeholder="Category Name"
-            className="w-full p-3.5 rounded-2xl outline-none font-semibold"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-          />
+
+          <div>
+            <label
+              className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Category Icon & Name
+            </label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setIconPickerTarget("add");
+                }}
+                className="w-13 h-13 rounded-2xl flex flex-col items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+                title="Tap to change icon"
+              >
+                <IconRenderer icon={catIcon} size="w-6 h-6" />
+                <span className="text-[8.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  Change
+                </span>
+              </button>
+              <input
+                type="text"
+                value={catName}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCatName(val);
+                  if (!hasCustomPickedAddIcon) {
+                    const suggested = autoSuggestIcon(val);
+                    if (suggested) setCatIcon(suggested);
+                  }
+                }}
+                placeholder="Category Name (e.g. Kopi, Liburan)"
+                className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
+          </div>
+
           <button
             onClick={handleSaveCategory}
             className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 cursor-pointer"
@@ -427,6 +494,30 @@ export function CategoryManagementSheets({
           </button>
         </div>
       </BottomSheet>
+
+      {/* Universal Monochrome Icon Picker Modal */}
+      <MonochromeIconPickerModal
+        isOpen={iconPickerTarget !== null}
+        onClose={() => setIconPickerTarget(null)}
+        selectedIcon={
+          iconPickerTarget === "add" ? catIcon : editCategory?.emoji || "Tag"
+        }
+        onSelectIcon={(iconName) => {
+          if (iconPickerTarget === "add") {
+            setCatIcon(iconName);
+            setHasCustomPickedAddIcon(true);
+          } else if (iconPickerTarget === "edit") {
+            setEditCategory((prev) =>
+              prev ? { ...prev, emoji: iconName } : null,
+            );
+          }
+        }}
+        title={
+          iconPickerTarget === "add"
+            ? "Choose Category Icon"
+            : "Edit Category Icon"
+        }
+      />
     </>
   );
 }

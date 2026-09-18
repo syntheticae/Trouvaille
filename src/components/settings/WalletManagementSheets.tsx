@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Plus, Trash2, Scale, Check } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
+import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
 import {
   useWallets,
   useAddWallet,
@@ -40,6 +41,9 @@ export function WalletManagementSheets({
 
   const [addBudgetOpen, setAddBudgetOpen] = useState(false);
   const [budgetName, setBudgetName] = useState("");
+  const [walletIcon, setWalletIcon] = useState("Wallet");
+  const [hasCustomPickedWalletIcon, setHasCustomPickedWalletIcon] = useState(false);
+  const [iconPickerTarget, setIconPickerTarget] = useState<"add" | "edit" | null>(null);
 
   const [editWallet, setEditWallet] = useState<{
     id: string;
@@ -74,17 +78,15 @@ export function WalletManagementSheets({
   const handleSaveBudget = () => {
     if (!budgetName.trim()) return;
     const name = budgetName.trim();
-    const autoIcon = getWalletIcon(name);
-    const chosenIcon =
-      autoIcon !== "/icons/Budgets/custom.png"
-        ? autoIcon
-        : "/icons/Budgets/custom.png";
+    const chosenIcon = walletIcon || getWalletIcon(name) || "Wallet";
     addWallet.mutate(
       { name, icon: chosenIcon },
       {
         onSuccess: () => {
           setAddBudgetOpen(false);
           setBudgetName("");
+          setWalletIcon("Wallet");
+          setHasCustomPickedWalletIcon(false);
           showToast("Account added", "add", () => {});
         },
       },
@@ -522,18 +524,27 @@ export function WalletManagementSheets({
             >
               Edit Account
             </h3>
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setIconPickerTarget("edit");
+              }}
+              className="w-11 h-11 rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer"
               style={{
                 background: "var(--glass-fill)",
                 border: "1px solid var(--glass-border)",
               }}
+              title="Tap to change icon"
             >
               <IconRenderer
                 icon={editWallet?.icon || getWalletIcon(editWallet?.name || "")}
-                size="w-6 h-6"
+                size="w-5 h-5"
               />
-            </div>
+              <span className="text-[7.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                Change
+              </span>
+            </button>
           </div>
           <div>
             <label
@@ -693,22 +704,27 @@ export function WalletManagementSheets({
             >
               Add Account
             </h3>
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setIconPickerTarget("add");
+              }}
+              className="w-11 h-11 rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer"
               style={{
                 background: "var(--glass-fill)",
                 border: "1px solid var(--glass-border)",
               }}
+              title="Tap to change icon"
             >
               <IconRenderer
-                icon={
-                  budgetName.trim()
-                    ? getWalletIcon(budgetName)
-                    : "/icons/Budgets/custom.png"
-                }
-                size="w-6 h-6"
+                icon={walletIcon}
+                size="w-5 h-5"
               />
-            </div>
+              <span className="text-[7.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                Change
+              </span>
+            </button>
           </div>
 
           {/* Section 1: Quick Add Available Default Accounts */}
@@ -785,16 +801,34 @@ export function WalletManagementSheets({
                 border: "1px solid var(--glass-border)",
               }}
             >
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "var(--glass-fill)" }}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setIconPickerTarget("add");
+                }}
+                className="w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
+                title="Tap to change icon"
               >
-                <IconRenderer icon="/icons/Budgets/custom.png" size="w-6 h-6" />
-              </div>
+                <IconRenderer icon={walletIcon} size="w-5 h-5" />
+                <span className="text-[7.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  Change
+                </span>
+              </button>
               <input
                 type="text"
                 value={budgetName}
-                onChange={(e) => setBudgetName(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setBudgetName(val);
+                  if (!hasCustomPickedWalletIcon) {
+                    setWalletIcon(getWalletIcon(val));
+                  }
+                }}
                 placeholder="Account Name (e.g. Tabungan, Dompet Saku)"
                 className="w-full bg-transparent outline-none font-semibold text-[14px]"
                 style={{ color: "var(--text-primary)" }}
@@ -814,6 +848,30 @@ export function WalletManagementSheets({
           </div>
         </div>
       </BottomSheet>
+
+      {/* Universal Monochrome Icon Picker Modal */}
+      <MonochromeIconPickerModal
+        isOpen={iconPickerTarget !== null}
+        onClose={() => setIconPickerTarget(null)}
+        selectedIcon={
+          iconPickerTarget === "add" ? walletIcon : editWallet?.icon || "Wallet"
+        }
+        onSelectIcon={(iconName) => {
+          if (iconPickerTarget === "add") {
+            setWalletIcon(iconName);
+            setHasCustomPickedWalletIcon(true);
+          } else if (iconPickerTarget === "edit") {
+            setEditWallet((prev) =>
+              prev ? { ...prev, icon: iconName } : null,
+            );
+          }
+        }}
+        title={
+          iconPickerTarget === "add"
+            ? "Choose Account Icon"
+            : "Edit Account Icon"
+        }
+      />
     </>
   );
 }

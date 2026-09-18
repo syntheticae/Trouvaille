@@ -2,17 +2,30 @@ import { useState } from "react";
 import { triggerHaptic } from "../lib/haptics";
 import {
   ChevronRight,
-  CreditCard,
-  LayoutGrid,
-  Target,
-  Sun,
   User as UserIcon,
-  Bell,
-  Zap,
   Check,
   Loader2,
   LogOut,
+  FolderTree,
+  CreditCard,
+  TrendingUp,
+  Receipt,
+  Target,
+  SlidersHorizontal,
+  Sun,
+  BellRing,
+  Zap,
+  Smartphone,
+  Cloud,
+  FileLock2,
+  FileSpreadsheet,
+  RotateCcw,
+  ShieldCheck,
+  Clock,
+  KeyRound,
+  Camera,
 } from "lucide-react";
+import { BackTapGuideModal } from "../components/settings/BackTapGuideModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBills } from "../hooks/useBills";
 import { useToast } from "../contexts/ToastContext";
@@ -33,7 +46,11 @@ import {
 } from "../hooks/useTransactions";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet";
-import { requestNotificationPermission } from "../lib/notifications";
+import {
+  requestNotificationPermission,
+  syncBillNotifications,
+  cancelAllBillNotifications,
+} from "../lib/notifications";
 import { flushPendingMutations } from "../lib/syncEngine";
 import { EncryptedVaultModal } from "../components/security/EncryptedVaultModal";
 import { saveBiometricLoginCredentials } from "../lib/biometricAuth";
@@ -46,6 +63,8 @@ import { GoalManagementSheets } from "../components/settings/GoalManagementSheet
 import { ShortcutManagementSheets } from "../components/settings/ShortcutManagementSheets";
 import { PinSetupModal } from "../components/settings/PinSetupModal";
 import { BudgetTargetSheet } from "../components/settings/BudgetTargetSheet";
+import { MediaPermissionsSheet } from "../components/settings/MediaPermissionsSheet";
+import { AssetValuationSheet } from "../components/settings/AssetValuationSheet";
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
@@ -92,9 +111,37 @@ export function SettingsPage() {
   const [resetOpen, setResetOpen] = useState(false);
   const [budgetTargetOpen, setBudgetTargetOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [backTapGuideOpen, setBackTapGuideOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
   const [vaultDefaultTab, setVaultDefaultTab] = useState<"export" | "restore">("export");
+  const [mediaPermissionsOpen, setMediaPermissionsOpen] = useState(false);
+  const [valuationOpen, setValuationOpen] = useState(false);
+
+  // Bill Reminders toggle state & handler
+  const [billRemindersEnabled, setBillRemindersEnabled] = useState(() => {
+    return localStorage.getItem("trouvaille_bill_reminders_enabled") !== "false";
+  });
+
+  const handleToggleBillReminders = async () => {
+    triggerHaptic("light");
+    if (billRemindersEnabled) {
+      setBillRemindersEnabled(false);
+      localStorage.setItem("trouvaille_bill_reminders_enabled", "false");
+      await cancelAllBillNotifications();
+      showToast("Bill reminders turned off", "delete", () => {});
+    } else {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setBillRemindersEnabled(true);
+        localStorage.setItem("trouvaille_bill_reminders_enabled", "true");
+        await syncBillNotifications(bills);
+        showToast("Bill reminders enabled", "add", () => {});
+      } else {
+        showToast("Notification permission denied", "delete", () => {});
+      }
+    }
+  };
 
   // Safe Sync state
   const [syncStatus, setSyncStatus] = useState<
@@ -305,29 +352,25 @@ export function SettingsPage() {
           {/* Categories */}
           <button
             onClick={() => setCategoriesOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer"
+            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
           >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <LayoutGrid size={16} />
-              </div>
+            <div className="space-y-0.5">
               <span
-                className="font-bold text-[14px]"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
-                Manage Categories
+                Categories
               </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Expense and income classifications
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <span
-                className="text-[12px] font-bold"
+                className="text-[12px] font-bold font-mono"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {categories.length}
@@ -343,29 +386,25 @@ export function SettingsPage() {
           {/* Accounts & Wallets */}
           <button
             onClick={() => setBudgetsOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer"
+            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
           >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <CreditCard size={16} />
-              </div>
+            <div className="space-y-0.5">
               <span
-                className="font-bold text-[14px]"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
                 Accounts & Wallets
               </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Bank accounts, e-wallets, and cash
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <span
-                className="text-[12px] font-bold"
+                className="text-[12px] font-bold font-mono"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {wallets.length}
@@ -378,32 +417,54 @@ export function SettingsPage() {
             style={{ background: "var(--glass-border)" }}
           />
 
+          {/* Asset Valuation */}
+          <button
+            onClick={() => setValuationOpen(true)}
+            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+          >
+            <div className="space-y-0.5">
+              <span
+                className="text-[13.5px] font-semibold block"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Asset Valuation
+              </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                USDT, crypto, and investment holdings
+              </p>
+            </div>
+            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+          </button>
+          <div
+            className="h-[1px] w-full"
+            style={{ background: "var(--glass-border)" }}
+          />
+
           {/* Recurring Bills */}
           <button
             onClick={() => setBillListOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer"
+            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
           >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Bell size={16} />
-              </div>
+            <div className="space-y-0.5">
               <span
-                className="font-bold text-[14px]"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
                 Recurring Bills
               </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Subscriptions and scheduled commitments
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <span
-                className="text-[12px] font-bold"
+                className="text-[12px] font-bold font-mono"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {bills.length}
@@ -419,29 +480,25 @@ export function SettingsPage() {
           {/* Financial Goals */}
           <button
             onClick={() => setGoalsOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer"
+            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
           >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Target size={16} />
-              </div>
+            <div className="space-y-0.5">
               <span
-                className="font-bold text-[14px]"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
                 Financial Goals
               </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Savings targets and milestone progress
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <span
-                className="text-[12px] font-bold"
+                className="text-[12px] font-bold font-mono"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {goals.length}
@@ -457,29 +514,25 @@ export function SettingsPage() {
           {/* Monthly Budget Target */}
           <button
             onClick={() => setBudgetTargetOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer"
+            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
           >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Target size={16} />
-              </div>
+            <div className="space-y-0.5">
               <span
-                className="font-bold text-[14px]"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
-                Monthly Budget Target
+                Monthly Budget
               </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Target monthly spending limit
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <span
-                className="text-[12px] font-bold"
+                className="text-[12px] font-bold font-mono amount"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {formatRupiah(budgetTarget)}
@@ -506,25 +559,21 @@ export function SettingsPage() {
         <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
           {/* Appearance Toggle */}
           <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Sun size={16} />
-              </div>
+            <div className="space-y-0.5">
               <span
-                className="font-bold text-[14px]"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
                 Light Appearance
               </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Toggle light or obsidian luxury theme
+              </p>
             </div>
-            <label className="ios-toggle cursor-pointer">
+            <label className="ios-toggle cursor-pointer shrink-0">
               <input
                 type="checkbox"
                 checked={theme === "light"}
@@ -539,45 +588,40 @@ export function SettingsPage() {
             style={{ background: "var(--glass-border)" }}
           />
 
-          {/* Notifications */}
+          {/* Bill Reminders Toggle */}
           <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Bell size={16} />
-              </div>
+            <div className="space-y-0.5 pr-3">
               <span
-                className="font-bold text-[14px]"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
                 Bill Reminders
               </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Alert 1 day before and on due date
+              </p>
             </div>
             <button
-              onClick={async () => {
-                const granted = await requestNotificationPermission();
-                if (granted)
-                  showToast("Bill reminders enabled!", "add", () => {});
-                else
-                  showToast(
-                    "Notification permission denied",
-                    "delete",
-                    () => {},
-                  );
-              }}
-              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all cursor-pointer"
-              style={{
-                background: "var(--accent)",
-                color: "var(--accent-ink)",
-              }}
+              type="button"
+              role="switch"
+              aria-checked={billRemindersEnabled}
+              onClick={handleToggleBillReminders}
+              className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
+                billRemindersEnabled
+                  ? "bg-white dark:bg-white"
+                  : "bg-zinc-300 dark:bg-zinc-700"
+              }`}
             >
-              Active
+              <div
+                className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
+                  billRemindersEnabled
+                    ? "translate-x-4.5 bg-black dark:bg-black"
+                    : "translate-x-0 bg-white"
+                }`}
+              />
             </button>
           </div>
           <div
@@ -588,32 +632,66 @@ export function SettingsPage() {
           {/* Quick Shortcuts */}
           <button
             onClick={() => setShortcutsOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer"
+            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
           >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Zap size={16} />
-              </div>
+            <div className="space-y-0.5">
               <span
-                className="font-bold text-[14px]"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
                 Quick-Add Shortcuts
               </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Custom amounts for 1-tap logging
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <span
-                className="text-[12px] font-bold"
+                className="text-[12px] font-bold font-mono"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {shortcuts.length}
+              </span>
+              <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+            </div>
+          </button>
+          <div
+            className="h-[1px] w-full"
+            style={{ background: "var(--glass-border)" }}
+          />
+
+          {/* iPhone Back Tap */}
+          <button
+            onClick={() => setBackTapGuideOpen(true)}
+            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+          >
+            <div className="space-y-0.5">
+              <span
+                className="text-[13.5px] font-semibold block"
+                style={{ color: "var(--text-primary)" }}
+              >
+                iPhone Back Tap
+              </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Double-tap back of device to quick-record
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-full border"
+                style={{
+                  borderColor: "var(--glass-border)",
+                  color: "var(--text-secondary)",
+                  background: "var(--bg-elevated)",
+                }}
+              >
+                Setup
               </span>
               <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
             </div>
@@ -632,14 +710,14 @@ export function SettingsPage() {
           Data & Storage
         </h2>
         <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
-          {/* On-Device & Cloud Sync */}
+          {/* Cloud Sync */}
           <div className="flex items-center justify-between p-4">
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 pr-2">
               <span
-                className="text-[13px] font-semibold block"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
-                On-Device Storage & Sync
+                Cloud Sync
               </span>
               <p
                 className="text-[11px]"
@@ -655,7 +733,7 @@ export function SettingsPage() {
             <button
               onClick={handleSafeSync}
               disabled={syncStatus === "syncing"}
-              className="px-3 py-1.5 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-60 cursor-pointer shrink-0"
+              className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-60 cursor-pointer shrink-0"
               style={{
                 background:
                   syncStatus === "success"
@@ -688,7 +766,7 @@ export function SettingsPage() {
             style={{ background: "var(--glass-border)" }}
           />
 
-          {/* Unified Encrypted Vault (Backup & Restore) */}
+          {/* Encrypted Vault */}
           <button
             type="button"
             onClick={() => {
@@ -700,7 +778,7 @@ export function SettingsPage() {
           >
             <div className="space-y-0.5">
               <span
-                className="text-[13px] font-semibold block"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
                 Encrypted Vault
@@ -709,7 +787,7 @@ export function SettingsPage() {
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Export offline AES-256 backup or restore from .trouvaille file
+                Offline AES-256 backup and file restore
               </p>
             </div>
             <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
@@ -727,16 +805,16 @@ export function SettingsPage() {
           >
             <div className="space-y-0.5">
               <span
-                className="text-[13px] font-semibold block"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
-                Export to CSV
+                Export CSV
               </span>
               <p
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Download unencrypted spreadsheet of all transactions
+                Download transaction history spreadsheet
               </p>
             </div>
             <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
@@ -754,16 +832,16 @@ export function SettingsPage() {
           >
             <div className="space-y-0.5">
               <span
-                className="text-[13px] font-semibold block"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
-                Reset Transaction Data
+                Reset Data
               </span>
               <p
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Purge selected timeframes or clear all transaction records
+                Purge selected timeframes or transaction history
               </p>
             </div>
             <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
@@ -782,23 +860,23 @@ export function SettingsPage() {
           Security & Privacy
         </h2>
         <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
-          {/* Toggle: Require Face ID / Passkey */}
+          {/* Toggle: Require Face ID / PIN */}
           <div className="flex items-center justify-between p-4">
             <div className="space-y-0.5 pr-3">
               <span
-                className="text-[13px] font-semibold block"
+                className="text-[13.5px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
-                Require Face ID / Passkey
+                Require Face ID / PIN
               </span>
               <p
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Require biometric verification when resuming or opening the app
+                Biometric app lock when opening or resuming
               </p>
             </div>
-            {/* Apple iOS Switch - Zero Icons */}
+            {/* Apple iOS Switch */}
             <button
               type="button"
               role="switch"
@@ -877,7 +955,7 @@ export function SettingsPage() {
               <div className="p-4 space-y-2">
                 <div>
                   <span
-                    className="text-[13px] font-semibold block"
+                    className="text-[13.5px] font-semibold block"
                     style={{ color: "var(--text-primary)" }}
                   >
                     Lock Timeout
@@ -886,7 +964,7 @@ export function SettingsPage() {
                     className="text-[11px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Automatically lock when inactive or backgrounded
+                    Auto-lock after period of inactivity
                   </p>
                 </div>
                 <div className="flex gap-2 pt-1">
@@ -941,19 +1019,19 @@ export function SettingsPage() {
               >
                 <div className="space-y-0.5">
                   <span
-                    className="text-[13px] font-semibold block"
+                    className="text-[13.5px] font-semibold block"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {securitySettings.hasPin
                       ? "Change Backup PIN"
-                      : "Setup Backup Security PIN"}
+                      : "Setup Backup PIN"}
                   </span>
                   <p
                     className="text-[11px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {securitySettings.hasPin
-                      ? "Backup PIN is active for device unlock"
+                      ? "Backup passcode active for unlock"
                       : "Unlock using 4-6 digit numeric PIN"}
                   </p>
                 </div>
@@ -964,6 +1042,34 @@ export function SettingsPage() {
               </button>
             </>
           )}
+
+          <div
+            className="h-[1px] w-full"
+            style={{ background: "var(--glass-border)" }}
+          />
+
+          {/* Camera & Gallery Access (Moved to Security & Privacy!) */}
+          <button
+            type="button"
+            onClick={() => setMediaPermissionsOpen(true)}
+            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left w-full"
+          >
+            <div className="space-y-0.5">
+              <span
+                className="text-[13.5px] font-semibold block"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Camera & Photos Access
+              </span>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Receipt scanner permissions & privacy
+              </p>
+            </div>
+            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+          </button>
         </div>
       </section>
 
@@ -1027,6 +1133,11 @@ export function SettingsPage() {
         onClose={() => setShortcutsOpen(false)}
       />
 
+      <BackTapGuideModal
+        isOpen={backTapGuideOpen}
+        onClose={() => setBackTapGuideOpen(false)}
+      />
+
       <PinSetupModal
         isOpen={pinModalOpen}
         onClose={() => setPinModalOpen(false)}
@@ -1041,6 +1152,16 @@ export function SettingsPage() {
         isOpen={vaultModalOpen}
         onClose={() => setVaultModalOpen(false)}
         defaultTab={vaultDefaultTab}
+      />
+
+      <MediaPermissionsSheet
+        isOpen={mediaPermissionsOpen}
+        onClose={() => setMediaPermissionsOpen(false)}
+      />
+
+      <AssetValuationSheet
+        isOpen={valuationOpen}
+        onClose={() => setValuationOpen(false)}
       />
     </div>
   );

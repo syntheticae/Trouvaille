@@ -6,7 +6,7 @@ import {
   subMonths,
   subDays,
 } from "date-fns";
-import type { Transaction, Category, Wallet, Bill } from "./types";
+import type { Transaction, Category, Wallet, Bill, AccountClassification } from "./types";
 import { formatRupiah } from "./utils";
 
 export type BudgetRiskLevel = "SAFE" | "WATCH" | "AT RISK";
@@ -18,6 +18,7 @@ export interface AccountBalanceItem {
   balance: number;
   inflow: number;
   outflow: number;
+  classification?: AccountClassification;
 }
 
 export interface WalletBalancesResult {
@@ -29,6 +30,17 @@ export interface WalletBalancesResult {
   zeroAccounts: AccountBalanceItem[];
   totalAssets: number;
   netWorth: number;
+  // Bifocal Liquidity segmentation
+  liquidAccounts: AccountBalanceItem[];
+  liquidCapital: number;
+  liquidNetPosition: number;
+  marketAccounts: AccountBalanceItem[];
+  marketAssets: number;
+  fixedAssetAccounts: AccountBalanceItem[];
+  fixedAssets: number;
+  creditAccounts: AccountBalanceItem[];
+  loanAccounts: AccountBalanceItem[];
+  totalLiabilities: number;
 }
 
 export interface AssetTrendResult {
@@ -371,7 +383,62 @@ export function isOpeningBalanceTx(tx: Pick<Transaction, "note">): boolean {
 export function isLiquidAccountName(name: string): boolean {
   const key = name.trim().toLowerCase();
   if (!key) return false;
-  return !NON_LIQUID_WALLET_NAMES.has(key);
+  return !NON_LIQUID_WALLET_NAMES.has(key) && !isFixedAssetName(key) && !isMarketInvestmentName(key);
+}
+
+export function isMarketInvestmentName(name: string): boolean {
+  const n = name.trim().toLowerCase();
+  return (
+    n.includes("saham") ||
+    n.includes("crypto") ||
+    n.includes("investasi") ||
+    n.includes("reksadana") ||
+    n.includes("deposito") ||
+    n.includes("stock") ||
+    n.includes("emas") ||
+    n.includes("gold") ||
+    n.includes("bibit") ||
+    n.includes("ajaib") ||
+    n.includes("binance") ||
+    n.includes("indodax")
+  );
+}
+
+export function isFixedAssetName(name: string): boolean {
+  const n = name.trim().toLowerCase();
+  return (
+    n.includes("rumah") ||
+    n.includes("tanah") ||
+    n.includes("apartemen") ||
+    n.includes("properti") ||
+    n.includes("property") ||
+    n.includes("real estate") ||
+    n.includes("mobil") ||
+    n.includes("motor") ||
+    n.includes("kendaraan") ||
+    n.includes("vehicle")
+  );
+}
+
+export function isCreditOrDebtName(name: string): boolean {
+  const n = name.trim().toLowerCase();
+  return (
+    n.includes("credit") ||
+    n.includes("kredit") ||
+    n.includes("kartu kredit") ||
+    n.includes("paylater") ||
+    n.includes("cicilan") ||
+    n.includes("cc") ||
+    n.includes("spaylater") ||
+    n.includes("gopaylater") ||
+    n.includes("hutang") ||
+    n.includes("utang") ||
+    n.includes("pinjaman") ||
+    n.includes("pinjol") ||
+    n.includes("loan") ||
+    n.includes("kpr") ||
+    n.includes("liabilities")
+  );
 }
 
 export function getFallbackWalletIcon(name: string): string {
@@ -420,7 +487,8 @@ export function calculateWalletBalances(
       id: w.id,
       name: w.name,
       icon: resolvedIcon,
-      balance: 0,
+      balance: Number((w as any).balance || (w as any).initial_balance || 0),
+      classification: w.classification,
       inflow: 0,
       outflow: 0,
     });
@@ -515,8 +583,63 @@ export function calculateWalletBalances(
   const positiveAccounts = allAccounts.filter((a) => a.balance > 0);
   const zeroAccounts = allAccounts.filter((a) => a.balance <= 0);
   const netWorth = allAccounts.reduce((s, a) => s + a.balance, 0);
-  const totalAssets = netWorth;
+  const liquidAccounts: AccountBalanceItem[] = [];
+  const marketAccounts: AccountBalanceItem[] = [];
+  const fixedAssetAccounts: AccountBalanceItem[] = [];
+  const creditAccounts: AccountBalanceItem[] = [];
+  const loanAccounts: AccountBalanceItem[] = [];
 
+  allAccounts.forEach((a) => {
+    // 1. Explicit user/wallet classification takes absolute priority
+    const cls = a.classification;
+    if (cls === "liquid") {
+      liquidAccounts.push(a);
+      return;
+    }
+    if (cls === "fixed_asset") {
+      fixedAssetAccounts.push(a);
+      return;
+    }
+    if (cls === "investment") {
+      marketAccounts.push(a);
+      return;
+    }
+    if (cls === "credit") {
+      creditAccounts.push(a);
+      return;
+    }
+    if (cls === "loan") {
+      loanAccounts.push(a);
+      return;
+    }
+    if (cls === "receivable") {
+      return;
+    }
+
+    // 2. Fallback name heuristics if classification not set
+    const n = a.name.toLowerCase();
+    if (isFixedAssetName(n)) {
+      fixedAssetAccounts.push(a);
+    } else if (isMarketInvestmentName(n)) {
+      marketAccounts.push(a);
+    } else if (n.includes("kpr") || n.includes("loan") || n.includes("pinjaman")) {
+      loanAccounts.push(a);
+    } else if (isCreditOrDebtName(n) || a.balance < 0) {
+      creditAccounts.push(a);
+    } else {
+      liquidAccounts.push(a);
+    }
+  });
+
+  const liquidCapital = liquidAccounts.reduce((s, a) => s + Math.max(0, a.balance), 0);
+  const creditDebt = creditAccounts.reduce((s, a) => s + Math.abs(Math.min(0, a.balance)), 0);
+  const liquidNetPosition = liquidCapital - creditDebt;
+  const marketAssets = marketAccounts.reduce((s, a) => s + Math.max(0, a.balance), 0);
+  const fixedAssets = fixedAssetAccounts.reduce((s, a) => s + Math.max(0, a.balance), 0);
+  const totalLiabilities =
+    creditDebt +
+    loanAccounts.reduce((s, a) => s + Math.abs(Math.min(0, a.balance)), 0);
+  const totalAssets = netWorth;
   const balancesById: Record<string, number> = {};
   const balancesByName: Record<string, number> = {};
   allAccounts.forEach((a) => {
@@ -533,6 +656,16 @@ export function calculateWalletBalances(
     zeroAccounts,
     totalAssets,
     netWorth,
+    liquidAccounts,
+    liquidCapital,
+    liquidNetPosition,
+    marketAccounts,
+    marketAssets,
+    fixedAssetAccounts,
+    fixedAssets,
+    creditAccounts,
+    loanAccounts,
+    totalLiabilities,
   };
 }
 

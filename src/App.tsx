@@ -4,12 +4,20 @@ import { BottomTabBar } from "./components/layout/BottomTabBar";
 import { useAuth } from "./contexts/AuthContext";
 import {
   useEnsureDefaultCategories,
+  useCategories,
   categoryKeys,
 } from "./hooks/useCategories";
-import { useEnsureDefaultWallets, walletKeys } from "./hooks/useWallets";
+import {
+  useEnsureDefaultWallets,
+  useWallets,
+  walletKeys,
+} from "./hooks/useWallets";
 import { useAllTransactions, transactionKeys } from "./hooks/useTransactions";
 import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen";
+import { ClipboardTransactionBanner } from "./components/common/ClipboardTransactionBanner";
+import { App as CapApp } from "@capacitor/app";
+import { parseDeepLink } from "./lib/deepLinkHandler";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchAllTransactionsFromSupabase } from "./hooks/useTransactions";
 import { supabase } from "./lib/supabase";
@@ -96,6 +104,57 @@ function AppShell() {
   );
   const [syncedTxCount, setSyncedTxCount] = useState(0);
   const [isPrivacyShieldActive, setIsPrivacyShieldActive] = useState(false);
+  const { data: categories = [] } = useCategories();
+  const { data: wallets = [] } = useWallets();
+
+  // Handle iOS Custom URL Scheme (trouvaille://...), Back Tap Shortcuts, and Web Share Target
+  useEffect(() => {
+    const handleUrlDispatch = (rawUrl: string) => {
+      if (!rawUrl) return;
+      const res = parseDeepLink(rawUrl, categories, wallets);
+      if (res.action === "transaction") {
+        if (res.prefilledValues) {
+          setPrefilledValues(res.prefilledValues);
+        }
+        setAddSheetOpen(true);
+      } else if (res.action === "voice") {
+        setVoiceModalOpen(true);
+      } else if (res.action === "scan") {
+        setReceiptScanOpen(true);
+      } else if (res.action === "import") {
+        setStatementImportOpen(true);
+      }
+    };
+
+    // 1. Web / PWA URL params on load (e.g. ?text=...)
+    if (window.location.search) {
+      handleUrlDispatch(window.location.href);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // 2. Native iOS URL scheme (trouvaille://...) via Capacitor App plugin
+    let isSubscribed = true;
+    let urlListenerHandle: { remove: () => void } | null = null;
+
+    CapApp.addListener("appUrlOpen", (event) => {
+      if (isSubscribed && event?.url) {
+        handleUrlDispatch(event.url);
+      }
+    })
+      .then((handle) => {
+        urlListenerHandle = handle;
+      })
+      .catch(() => {
+        // Safe fallback in standard browser environment
+      });
+
+    return () => {
+      isSubscribed = false;
+      if (urlListenerHandle) {
+        urlListenerHandle.remove();
+      }
+    };
+  }, [categories, wallets]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -294,6 +353,24 @@ function AppShell() {
       className="h-[100dvh] w-full relative overflow-hidden"
       style={{ background: "var(--bg-base)" }}
     >
+      {/* Floating Smart Clipboard Notification Sniffer */}
+      <div className="fixed top-3 left-4 right-4 z-[75] max-w-md mx-auto pointer-events-auto">
+        <ClipboardTransactionBanner
+          categories={categories}
+          wallets={wallets}
+          onAddTransaction={(detected) => {
+            setPrefilledValues({
+              amount: detected.amount,
+              type: detected.type,
+              note: detected.merchantOrNote,
+              category_id: detected.suggestedCategoryId || "",
+              wallet_id: detected.suggestedWalletId || "",
+            });
+            setAddSheetOpen(true);
+          }}
+        />
+      </div>
+
       <div
         id="app-scroll-container"
         className="h-full overflow-y-auto overflow-x-hidden safe-area-top pb-[80px] overscroll-y-contain"

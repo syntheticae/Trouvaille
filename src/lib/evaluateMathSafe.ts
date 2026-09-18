@@ -4,7 +4,13 @@
  */
 export function evaluateMathSafe(expr: string): number {
   if (!expr) return 0;
-  let normalized = expr.replace(/(\d)\.(\d{3})/g, "$1$2");
+  // Indonesian thousand separator normalization: e.g. "1.000", "50.000", "1.000.000", "10.500.000"
+  let normalized = expr.replace(/\b\d{1,3}(?:\.\d{3})+(?:,\d+)?\b/g, (match) => {
+    return match.replace(/\./g, "").replace(",", ".");
+  });
+  while (/(\d)\.(\d{3})(?!\d)/.test(normalized)) {
+    normalized = normalized.replace(/(\d)\.(\d{3})(?!\d)/g, "$1$2");
+  }
   normalized = normalized.replace(/,/g, "");
   normalized = normalized.replace(/×/g, "*").replace(/÷/g, "/");
   const sanitized = normalized.replace(/[^0-9+\-*/().]/g, "");

@@ -348,20 +348,22 @@ export function VoiceQuickAddModal({
     };
   }, [isOpen]);
 
-  // Speech Recognition lifecycle
-  useEffect(() => {
-    if (!isOpen) {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {
-          // ignore
-        }
-      }
-      setIsListening(false);
-      setTranscript("");
-      return;
+  const stopRecognition = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.abort();
+      } catch {}
+      recognitionRef.current = null;
     }
+    setIsListening(false);
+  };
+
+  const startRecognition = () => {
+    stopRecognition();
 
     const SpeechRec =
       (window as any).SpeechRecognition ||
@@ -369,6 +371,12 @@ export function VoiceQuickAddModal({
 
     if (!SpeechRec) {
       setSpeechSupported(false);
+      showToast(
+        "Speech recognition is not supported on this browser. You can type directly.",
+        "info",
+        null,
+        2500,
+      );
       return;
     }
 
@@ -394,133 +402,70 @@ export function VoiceQuickAddModal({
       };
 
       rec.onerror = (e: any) => {
-        console.warn("[VoiceQuickAdd] speech error:", e);
-        if (e.error !== "no-speech") {
+        console.warn("[VoiceQuickAdd] speech error:", e?.error || e);
+        if (e?.error === "not-allowed" || e?.error === "service-not-allowed") {
+          showToast(
+            "Microphone permission is required. Please allow access in browser or app settings.",
+            "delete",
+            null,
+            3000,
+          );
+        }
+        if (e?.error !== "no-speech") {
           setIsListening(false);
         }
       };
 
       rec.onend = () => {
         setIsListening(false);
+        recognitionRef.current = null;
       };
 
       recognitionRef.current = rec;
-
-      // Automatically initiate listening when opened
-      try {
-        rec.start();
-        setIsListening(true);
-      } catch {}
+      rec.start();
+      setIsListening(true);
     } catch (err) {
-      console.warn("[VoiceQuickAdd] Speech init exception:", err);
-      setSpeechSupported(false);
+      console.warn("[VoiceQuickAdd] Failed to start speech recognition:", err);
+      stopRecognition();
+    }
+  };
+
+  // Speech Recognition lifecycle
+  useEffect(() => {
+    if (!isOpen) {
+      stopRecognition();
+      setTranscript("");
+      return;
     }
 
+    // Automatically initiate listening with fresh instance when opened
+    startRecognition();
+
     return () => {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {
-          // ignore
-        }
-      }
+      stopRecognition();
     };
   }, [isOpen]);
 
   const toggleListening = () => {
     if (isListening) {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {}
-      }
-      setIsListening(false);
+      stopRecognition();
       triggerHaptic("light");
     } else {
-      const SpeechRec =
-        (window as any).SpeechRecognition ||
-        (window as any).webkitSpeechRecognition;
-
-      if (!SpeechRec) {
-        setSpeechSupported(false);
-        showToast(
-          "Speech recognition is not supported on this browser. You can type directly.",
-          "info",
-          null,
-          2500,
-        );
-        return;
-      }
-
-      try {
-        if (!recognitionRef.current) {
-          const rec = new SpeechRec();
-          rec.continuous = true;
-          rec.interimResults = true;
-          rec.lang = "id-ID";
-          rec.onstart = () => {
-            setIsListening(true);
-            triggerHaptic("medium");
-          };
-          rec.onresult = (event: any) => {
-            let current = "";
-            for (let i = 0; i < event.results.length; i++) {
-              current += event.results[i][0].transcript + " ";
-            }
-            setTranscript(current.trim());
-          };
-          rec.onerror = (e: any) => {
-            console.warn("[VoiceQuickAdd] error:", e);
-            if (e.error !== "no-speech") {
-              setIsListening(false);
-            }
-          };
-          rec.onend = () => {
-            setIsListening(false);
-          };
-          recognitionRef.current = rec;
-        }
-        recognitionRef.current.start();
-        setIsListening(true);
-        triggerHaptic("medium");
-      } catch (err) {
-        console.warn("[VoiceQuickAdd] Start failed, retrying reset:", err);
-        try {
-          recognitionRef.current?.stop();
-          setTimeout(() => {
-            try {
-              recognitionRef.current?.start();
-              setIsListening(true);
-            } catch {}
-          }, 120);
-        } catch {}
-      }
+      startRecognition();
     }
   };
 
   // User requested: Cancel button that cancels/stops speech WITHOUT closing the modal/page
   const handleCancelVoice = () => {
     triggerHaptic("light");
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {}
-    }
-    setIsListening(false);
+    stopRecognition();
     setTranscript("");
   };
 
   const handleScanClick = () => {
     triggerHaptic("medium");
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {}
-    }
-    setIsListening(false);
-    if (onOpenScan) {
-      onOpenScan();
-    }
+    stopRecognition();
+    if (onOpenScan) onOpenScan();
   };
 
   // Real-time NLP parsing (multi-transaction intelligent detection)

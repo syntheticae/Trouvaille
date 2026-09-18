@@ -28,7 +28,15 @@ import {
   AlertCircle,
   Eye,
   FileSpreadsheet,
+  Shield,
 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import {
+  capturePhotoFromCamera,
+  pickPhotoFromGallery,
+  requestPhotosPermission,
+  requestCameraPermission,
+} from "../../lib/mediaPermissions";
 import { scanReceiptOrSlip, type OCRScanResult } from "../../lib/ocrEngine";
 import type { ParsedSlipResult } from "../../lib/slipParser";
 import { useWallets, useAddWallet, getWalletIcon } from "../../hooks/useWallets";
@@ -64,8 +72,9 @@ export function ReceiptScanModal({
   onOpenImport,
   onOpenForm,
 }: ReceiptScanModalProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [isLiveCameraActive, setIsLiveCameraActive] = useState(false);
 
   const { data: wallets = [] } = useWallets();
   const { data: categories = [] } = useCategories();
@@ -96,6 +105,19 @@ export function ReceiptScanModal({
   const [unregisteredWalletName, setUnregisteredWalletName] = useState<string | null>(null);
   const [unregisteredCategoryName, setUnregisteredCategoryName] = useState<string | null>(null);
 
+  // Media permission dialog
+  const [permissionPrompt, setPermissionPrompt] = useState<{
+    isOpen: boolean;
+    type: "photos" | "camera";
+    title: string;
+    description: string;
+  }>({
+    isOpen: false,
+    type: "photos",
+    title: "",
+    description: "",
+  });
+
   // BottomSheet Drawers
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [walletSheetOpen, setWalletSheetOpen] = useState(false);
@@ -104,9 +126,55 @@ export function ReceiptScanModal({
   const [searchCatQuery, setSearchCatQuery] = useState("");
   const [searchWalletQuery, setSearchWalletQuery] = useState("");
 
+  const stopLiveCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setIsLiveCameraActive(false);
+  };
+
+  const startLiveCamera = async () => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return;
+    if (Capacitor.isNativePlatform()) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+      setIsLiveCameraActive(true);
+    } catch (err) {
+      console.warn("[ReceiptScanModal] Live camera stream unavailable:", err);
+      stopLiveCamera();
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && step === "idle") {
+      startLiveCamera();
+    } else {
+      stopLiveCamera();
+    }
+    return () => {
+      stopLiveCamera();
+    };
+  }, [isOpen, step]);
+
   // Reset state when modal closed
   useEffect(() => {
     if (!isOpen) {
+      stopLiveCamera();
       setStep("idle");
       setImagePreview(null);
       setInspectPhotoOpen(false);
@@ -124,6 +192,12 @@ export function ReceiptScanModal({
       setTimeSheetOpen(false);
       setSearchCatQuery("");
       setSearchWalletQuery("");
+      setPermissionPrompt({
+        isOpen: false,
+        type: "photos",
+        title: "",
+        description: "",
+      });
     }
   }, [isOpen]);
 
@@ -151,10 +225,7 @@ export function ReceiptScanModal({
     return wallets.filter((w) => w.name.toLowerCase().includes(q));
   }, [wallets, searchWalletQuery]);
 
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleProcessMedia = async (fileOrBlob: Blob | File, customPreviewUrl?: string) => {
     triggerHaptic("medium");
     setErrorText(null);
     setUnregisteredWalletName(null);
@@ -162,12 +233,12 @@ export function ReceiptScanModal({
     setStep("processing");
     setProgressPct(5);
 
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl = customPreviewUrl || URL.createObjectURL(fileOrBlob);
     setImagePreview(previewUrl);
 
     try {
       const result: OCRScanResult = await scanReceiptOrSlip(
-        file,
+        fileOrBlob,
         wallets,
         categories,
         (pct, status) => {
@@ -250,6 +321,86 @@ export function ReceiptScanModal({
       triggerHaptic("heavy");
       setErrorText(err?.message || "Failed to scan receipt. Please ensure the image is clear and well lit.");
       setStep("idle");
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleProcessMedia(file);
+    }
+    e.target.value = "";
+  };
+
+  const captureLiveSnapshot = (): boolean => {
+    const video = videoRef.current;
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0) return false;
+
+    triggerHaptic("heavy");
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return false;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    stopLiveCamera();
+
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          handleProcessMedia(blob);
+        }
+      },
+      "image/jpeg",
+      0.95
+    );
+    return true;
+  };
+
+  const handleTakePhotoNative = async () => {
+    triggerHaptic("medium");
+    setErrorText(null);
+    try {
+      const result = await capturePhotoFromCamera();
+      if (result) {
+        await handleProcessMedia(result.blob, result.previewUrl);
+      }
+    } catch (err: any) {
+      if (err?.name === "CameraPermissionError") {
+        setPermissionPrompt({
+          isOpen: true,
+          type: "camera",
+          title: "Camera Access Required",
+          description: "Trouvaille requires camera access to scan physical receipts, invoices, and payment slips directly.",
+        });
+      } else {
+        console.error("[ReceiptScanModal] Camera capture error:", err);
+        setErrorText(err?.message || "Failed to launch camera.");
+      }
+    }
+  };
+
+  const handlePickGalleryNative = async () => {
+    triggerHaptic("light");
+    setErrorText(null);
+    try {
+      const result = await pickPhotoFromGallery();
+      if (result) {
+        await handleProcessMedia(result.blob, result.previewUrl);
+      }
+    } catch (err: any) {
+      if (err?.name === "PhotosPermissionError") {
+        setPermissionPrompt({
+          isOpen: true,
+          type: "photos",
+          title: "Photo Library Access Required",
+          description: "Trouvaille requires photo library access to import saved receipts, invoices, and payment screenshots.",
+        });
+      } else {
+        console.error("[ReceiptScanModal] Gallery pick error:", err);
+        setErrorText(err?.message || "Failed to open photo library.");
+      }
     }
   };
 
@@ -456,23 +607,6 @@ export function ReceiptScanModal({
               </button>
             </div>
 
-            {/* Hidden Inputs */}
-            <input
-              type="file"
-              accept="image/*"
-              ref={fileInputRef}
-              onChange={handleFileSelected}
-              className="hidden"
-            />
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              ref={cameraInputRef}
-              onChange={handleFileSelected}
-              className="hidden"
-            />
-
             {/* Error Message */}
             {errorText && (
               <div
@@ -493,53 +627,69 @@ export function ReceiptScanModal({
               <div className="flex-1 flex flex-col items-center justify-center py-2 space-y-4">
                 {/* Optical Glass Lens Viewfinder */}
                 <div
-                  className="relative w-full aspect-[4/3] rounded-[28px] flex flex-col items-center justify-center overflow-hidden transition-all"
+                  className="relative w-full aspect-[4/3] rounded-[28px] flex flex-col items-center justify-center overflow-hidden transition-all bg-black"
                   style={{
-                    background: "linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%)",
-                    backdropFilter: "blur(20px)",
-                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    border: "1px solid rgba(255, 255, 255, 0.14)",
                     boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.14)",
                   }}
                 >
-                  {/* Delicate Specular Corner Brackets */}
-                  <div className="absolute top-4 left-4 w-5 h-5 border-t border-l rounded-tl-lg pointer-events-none opacity-40 border-white/60" />
-                  <div className="absolute top-4 right-4 w-5 h-5 border-t border-r rounded-tr-lg pointer-events-none opacity-40 border-white/60" />
-                  <div className="absolute bottom-4 left-4 w-5 h-5 border-b border-l rounded-bl-lg pointer-events-none opacity-40 border-white/60" />
-                  <div className="absolute bottom-4 right-4 w-5 h-5 border-b border-r rounded-br-lg pointer-events-none opacity-40 border-white/60" />
+                  {/* Live Video Camera Stream */}
+                  <video
+                    ref={videoRef}
+                    playsInline
+                    autoPlay
+                    muted
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                      isLiveCameraActive ? "opacity-100" : "opacity-0 pointer-events-none"
+                    }`}
+                  />
 
-                  <div className="flex flex-col items-center justify-center text-center px-6 pointer-events-none">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center mb-2.5"
-                      style={{
-                        background: "rgba(255, 255, 255, 0.06)",
-                        border: "1px solid rgba(255, 255, 255, 0.14)",
-                        boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.18)",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      <ScanLine size={20} strokeWidth={1.5} />
+                  {/* Live Indicator Pill */}
+                  {isLiveCameraActive && (
+                    <div className="absolute top-3.5 left-4 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[10px] font-semibold text-white/90 tracking-wide uppercase">
+                        Live Camera
+                      </span>
                     </div>
-                    <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
-                      Align receipt within frame
-                    </p>
-                    <p className="text-[11px] font-normal mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                      Physical receipts, QRIS & bank slips
-                    </p>
-                  </div>
+                  )}
+
+                  {/* Delicate Specular Corner Brackets */}
+                  <div className="absolute top-4 left-4 w-5 h-5 border-t border-l rounded-tl-lg pointer-events-none opacity-50 border-white z-10" />
+                  <div className="absolute top-4 right-4 w-5 h-5 border-t border-r rounded-tr-lg pointer-events-none opacity-50 border-white z-10" />
+                  <div className="absolute bottom-4 left-4 w-5 h-5 border-b border-l rounded-bl-lg pointer-events-none opacity-50 border-white z-10" />
+                  <div className="absolute bottom-4 right-4 w-5 h-5 border-b border-r rounded-br-lg pointer-events-none opacity-50 border-white z-10" />
+
+                  {/* Static Placeholder when live stream is inactive */}
+                  {!isLiveCameraActive && (
+                    <div className="flex flex-col items-center justify-center text-center px-6 pointer-events-none z-10">
+                      <div
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center mb-2.5"
+                        style={{
+                          background: "rgba(255, 255, 255, 0.06)",
+                          border: "1px solid rgba(255, 255, 255, 0.14)",
+                          boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.18)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        <ScanLine size={20} strokeWidth={1.5} />
+                      </div>
+                      <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+                        Align receipt within frame
+                      </p>
+                      <p className="text-[11px] font-normal mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                        Physical receipts, QRIS & bank slips
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Floating Controls (Deep Elevation, No Overblown Halos) */}
+                {/* Floating Controls (Direct Touch Gestures on Native Inputs) */}
                 <div className="flex items-center justify-center gap-7 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      fileInputRef.current?.click();
-                    }}
-                    className="flex flex-col items-center gap-1.5 cursor-pointer group"
-                  >
+                  {/* Gallery Button: Direct Touch File Input Without Capture */}
+                  <div className="flex flex-col items-center gap-1.5 cursor-pointer group relative">
                     <div
-                      className="w-13 h-13 rounded-full flex items-center justify-center transition-all group-active:scale-90"
+                      className="w-13 h-13 rounded-full flex items-center justify-center transition-all group-active:scale-90 relative overflow-hidden"
                       style={{
                         background: "rgba(255, 255, 255, 0.06)",
                         backdropFilter: "blur(20px)",
@@ -549,22 +699,31 @@ export function ReceiptScanModal({
                       }}
                     >
                       <ImageIcon size={19} strokeWidth={1.5} />
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileInputChange}
+                        onClick={(e) => {
+                          triggerHaptic("light");
+                          if (Capacitor.isNativePlatform()) {
+                            e.preventDefault();
+                            handlePickGalleryNative();
+                          }
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                        title="Choose from Gallery"
+                      />
                     </div>
                     <span className="text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>
                       Gallery
                     </span>
-                  </button>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("medium");
-                      cameraInputRef.current?.click();
-                    }}
-                    className="flex flex-col items-center gap-1.5 cursor-pointer group"
-                  >
+                  {/* Take Photo Button: Live Snapshot or Direct Native Touch Capture */}
+                  <div className="flex flex-col items-center gap-1.5 cursor-pointer group relative">
                     <div
-                      className="w-16 h-16 rounded-full flex items-center justify-center transition-all group-active:scale-95"
+                      className="w-16 h-16 rounded-full flex items-center justify-center transition-all group-active:scale-95 relative overflow-hidden"
                       style={{
                         background: "#ffffff",
                         color: "#000000",
@@ -572,11 +731,36 @@ export function ReceiptScanModal({
                       }}
                     >
                       <Camera size={23} strokeWidth={1.75} />
+
+                      {/* Direct native touch input with capture="environment" */}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileInputChange}
+                        onClick={(e) => {
+                          triggerHaptic("medium");
+                          if (isLiveCameraActive) {
+                            const snapped = captureLiveSnapshot();
+                            if (snapped) {
+                              e.preventDefault();
+                              return;
+                            }
+                          }
+                          if (Capacitor.isNativePlatform()) {
+                            e.preventDefault();
+                            handleTakePhotoNative();
+                            return;
+                          }
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                        title="Take Photo"
+                      />
                     </div>
                     <span className="text-[11px] font-medium" style={{ color: "var(--text-primary)" }}>
                       Take Photo
                     </span>
-                  </button>
+                  </div>
 
                   {onOpenImport && (
                     <button
@@ -605,6 +789,25 @@ export function ReceiptScanModal({
                     </button>
                   )}
                 </div>
+
+                {/* Permissions & Access Info Link */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setPermissionPrompt({
+                      isOpen: true,
+                      type: "photos",
+                      title: "Media & Camera Permissions",
+                      description: "Trouvaille requires permission to import receipts from your photo gallery or take photos with your camera.",
+                    });
+                  }}
+                  className="text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 pt-1 hover:opacity-80 active:scale-95"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  <Shield size={12} strokeWidth={1.5} />
+                  Permissions & Access
+                </button>
               </div>
             )}
 
@@ -1080,7 +1283,9 @@ export function ReceiptScanModal({
                       type="button"
                       onClick={() => {
                         triggerHaptic("light");
-                        fileInputRef.current?.click();
+                        setStep("idle");
+                        setImagePreview(null);
+                        setParsedSlip(null);
                       }}
                       className="flex-1 h-9 rounded-xl font-normal text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
                       style={{
@@ -1317,9 +1522,14 @@ export function ReceiptScanModal({
       <BottomSheet
         isOpen={dateSheetOpen}
         onClose={() => setDateSheetOpen(false)}
-        title="Select Date"
       >
-        <div className="p-4 pb-8 flex flex-col items-center" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
+        <div className="p-5 pb-10 flex flex-col items-center">
+          <h3
+            className="font-extrabold text-lg mb-4"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Select Date
+          </h3>
           <GlassDatePicker
             date={date}
             onChange={(d) => {
@@ -1331,61 +1541,67 @@ export function ReceiptScanModal({
         </div>
       </BottomSheet>
 
-      {/* Time Picker BottomSheet */}
-      <BottomSheet
-        isOpen={timeSheetOpen}
-        onClose={() => setTimeSheetOpen(false)}
-        title="Select Time"
-      >
-        <div className="p-4 pb-10 flex flex-col items-center" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
-          <p className="text-[11.5px] font-normal mb-3" style={{ color: "var(--text-tertiary)" }}>
+      {/* Glass Time Picker Sheet (Identical to TransactionSheet) */}
+      <BottomSheet isOpen={timeSheetOpen} onClose={() => setTimeSheetOpen(false)}>
+        <div className="p-5 pb-12 flex flex-col items-center">
+          <h3
+            className="font-extrabold text-lg mb-1"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Select Time
+          </h3>
+          <p
+            className="text-[12px] font-medium mb-5"
+            style={{ color: "var(--text-tertiary)" }}
+          >
             Transaction timestamp
           </p>
 
           <div
-            className="p-3 px-6 rounded-2xl w-full max-w-[220px] flex items-center justify-center gap-2"
+            className="p-4 rounded-3xl w-full max-w-[280px] flex items-center justify-center gap-3 glass-surface"
             style={{
-              background: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.12)",
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
             }}
           >
-            <Clock size={18} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
             <input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="bg-transparent text-[24px] font-semibold text-center outline-none cursor-pointer"
+              className="bg-transparent text-3xl font-extrabold amount text-center outline-none cursor-pointer"
               style={{ color: "var(--text-primary)", colorScheme: "dark" }}
             />
           </div>
 
           {/* Quick preset buttons */}
-          <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-[280px]">
+          <div className="flex gap-2 mt-5">
             {[
-              { label: "Now", val: format(new Date(), "HH:mm") },
-              { label: "Morning (08:00)", val: "08:00" },
-              { label: "Noon (12:30)", val: "12:30" },
-              { label: "Evening (17:00)", val: "17:00" },
-              { label: "Night (20:00)", val: "20:00" },
-            ].map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setTime(preset.val);
-                  setTimeSheetOpen(false);
-                }}
-                className="px-3 py-1.5 rounded-full text-[11px] font-normal active:scale-95 transition-all cursor-pointer"
-                style={{
-                  background: time === preset.val ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.04)",
-                  border: time === preset.val ? "1px solid rgba(255, 255, 255, 0.25)" : "1px solid rgba(255, 255, 255, 0.08)",
-                  color: time === preset.val ? "var(--text-primary)" : "var(--text-secondary)",
-                }}
-              >
-                {preset.label}
-              </button>
-            ))}
+              "Morning (08:00)",
+              "Noon (12:30)",
+              "Evening (17:00)",
+              "Night (20:00)",
+            ].map((preset) => {
+              const t = preset.match(/\((.*?)\)/)?.[1] || "12:00";
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setTime(t);
+                    setTimeSheetOpen(false);
+                  }}
+                  className="px-2.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all cursor-pointer"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  {preset.split(" ")[0]}
+                </button>
+              );
+            })}
           </div>
 
           <button
@@ -1394,15 +1610,115 @@ export function ReceiptScanModal({
               triggerHaptic("light");
               setTimeSheetOpen(false);
             }}
-            className="w-full max-w-[220px] h-10 mt-5 rounded-xl font-semibold text-[13px] active:scale-95 transition-all cursor-pointer"
+            className="w-full max-w-[280px] h-11 mt-6 rounded-2xl font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer border border-white/80"
             style={{
               background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
               color: "#000000",
-              boxShadow: "inset 0 1px 0 #ffffff, 0 6px 16px -4px rgba(0, 0, 0, 0.4)",
+              boxShadow: "inset 0 1px 0 0 #ffffff, 0 8px 20px -4px rgba(0, 0, 0, 0.45)",
             }}
           >
             Done
           </button>
+        </div>
+      </BottomSheet>
+
+      {/* Media Permission BottomSheet */}
+      <BottomSheet
+        isOpen={permissionPrompt.isOpen}
+        onClose={() => setPermissionPrompt((prev) => ({ ...prev, isOpen: false }))}
+        title={permissionPrompt.title}
+      >
+        <div className="p-4 pb-8 space-y-4" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
+          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/[0.04] border border-white/10">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              {permissionPrompt.type === "camera" ? (
+                <Camera size={20} strokeWidth={1.5} />
+              ) : (
+                <ImageIcon size={20} strokeWidth={1.5} />
+              )}
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-[var(--text-primary)]">
+                {permissionPrompt.type === "camera" ? "Camera Hardware" : "Photo Library"}
+              </p>
+              <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">
+                {permissionPrompt.description}
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="p-3 rounded-2xl border"
+            style={{
+              background: "rgba(255, 255, 255, 0.02)",
+              borderColor: "var(--glass-border)",
+            }}
+          >
+            <p className="text-[11.5px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              Trouvaille processes all financial receipts and bank slips 100% on-device using local optical character recognition. Your private captures never leave your phone.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                triggerHaptic("medium");
+                if (permissionPrompt.type === "photos") {
+                  const granted = await requestPhotosPermission();
+                  setPermissionPrompt((prev) => ({ ...prev, isOpen: false }));
+                  if (granted) {
+                    showToast("Photo library access granted", "add", () => {});
+                    if (Capacitor.isNativePlatform()) {
+                      setTimeout(() => handlePickGalleryNative(), 250);
+                    }
+                  } else {
+                    showToast("Please allow Photos access in device Settings", "delete", () => {});
+                  }
+                } else {
+                  const granted = await requestCameraPermission();
+                  setPermissionPrompt((prev) => ({ ...prev, isOpen: false }));
+                  if (granted) {
+                    showToast("Camera access granted", "add", () => {});
+                    if (Capacitor.isNativePlatform()) {
+                      setTimeout(() => handleTakePhotoNative(), 250);
+                    } else {
+                      startLiveCamera();
+                    }
+                  } else {
+                    showToast("Please allow Camera access in device Settings", "delete", () => {});
+                  }
+                }
+              }}
+              className="w-full py-3 rounded-2xl font-bold text-[13px] transition-transform active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+              style={{
+                background: "#ffffff",
+                color: "#000000",
+                boxShadow: "0 4px 16px rgba(255, 255, 255, 0.15)",
+              }}
+            >
+              <Check size={16} strokeWidth={2} />
+              Grant Permission
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setPermissionPrompt((prev) => ({ ...prev, isOpen: false }));
+              }}
+              className="w-full py-2.5 rounded-2xl font-semibold text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </BottomSheet>
     </>

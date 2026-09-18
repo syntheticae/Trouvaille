@@ -63,6 +63,8 @@ import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
 import { PersonalFinancialModelCard } from "../components/home/PersonalFinancialModelCard";
 import { PersonalFinancialModelSheet } from "../components/home/PersonalFinancialModelSheet";
 import { FinancialReportSection } from "../components/statistics/FinancialReportSection";
+import { AssetAnalyticsSection } from "../components/statistics/AssetAnalyticsSection";
+import { AssetValuationSheet } from "../components/settings/AssetValuationSheet";
 import { CashflowSankeySection } from "../components/statistics/CashflowSankeySection";
 import {
   calculateAssetTrend,
@@ -85,11 +87,12 @@ import {
 type Range = "week" | "month" | "year" | "all";
 type BreakdownType = "expense" | "income";
 type GroupMode = "category" | "parent";
-type AnalyticsSubTab = "spending" | "cashflow" | "report" | "model";
+type AnalyticsSubTab = "spending" | "cashflow" | "assets" | "report" | "model";
 
 const analyticsTabs: { key: AnalyticsSubTab; label: string }[] = [
   { key: "spending", label: "Spending" },
   { key: "cashflow", label: "Cashflow" },
+  { key: "assets", label: "Assets" },
   { key: "report", label: "Financial Report" },
   { key: "model", label: "Simulation" },
 ];
@@ -270,6 +273,7 @@ export function StatisticsPage() {
   const [healthDiagnosticOpen, setHealthDiagnosticOpen] = useState(false);
   const [personalModelOpen, setPersonalModelOpen] = useState(false);
   const [wrappedOpen, setWrappedOpen] = useState(false);
+  const [assetValuationOpen, setAssetValuationOpen] = useState(false);
   const { isStealthMode: hideBalance } = usePrivacy();
   const colors = useChartColors();
 
@@ -1153,8 +1157,9 @@ export function StatisticsPage() {
       </div>
 
       {/* 3-Sub-Tab Segmented Control */}
+      {/* Horizontally Scrollable Luxury Apple Glass Tab Bar */}
       <div
-        className="flex p-0.5 rounded-xl border border-[var(--glass-border)]"
+        className="flex items-center gap-1.5 p-1 rounded-2xl border border-[var(--glass-border)] overflow-x-auto no-scrollbar scroll-smooth"
         style={{
           background: "var(--glass-fill)",
         }}
@@ -1168,7 +1173,7 @@ export function StatisticsPage() {
                 setAnalyticsSubTab(t.key);
                 triggerHaptic("light");
               }}
-              className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 active:scale-98 cursor-pointer select-none"
+              className="px-3.5 py-1.5 rounded-xl text-[11.5px] font-bold tracking-wide transition-all duration-200 active:scale-95 cursor-pointer select-none whitespace-nowrap shrink-0"
               style={{
                 background: isSelected ? "var(--bg-elevated)" : "transparent",
                 color: isSelected
@@ -1177,6 +1182,9 @@ export function StatisticsPage() {
                 boxShadow: isSelected
                   ? "0 1px 4px var(--shadow-strength)"
                   : "none",
+                border: isSelected
+                  ? "1px solid var(--glass-border)"
+                  : "1px solid transparent",
               }}
             >
               {t.label}
@@ -2579,6 +2587,15 @@ export function StatisticsPage() {
         </>
       )}
 
+      {analyticsSubTab === "assets" && (
+        <AssetAnalyticsSection
+          wallets={wallets}
+          monthlyBurnRate={intel.totalExpense || 3500000}
+          hideBalance={hideBalance}
+          onOpenValuation={() => setAssetValuationOpen(true)}
+        />
+      )}
+
       {analyticsSubTab === "report" && (
         <FinancialReportSection
           wallets={wallets}
@@ -2925,6 +2942,11 @@ export function StatisticsPage() {
         categories={categories}
         mode={range === "year" ? "year" : "month"}
         targetDate={range === "month" ? activeMonthDate : now}
+      />
+
+      <AssetValuationSheet
+        isOpen={assetValuationOpen}
+        onClose={() => setAssetValuationOpen(false)}
       />
     </div>
   );

@@ -1,0 +1,100 @@
+import { describe, it, expect } from "vitest";
+import { parseDeepLink } from "../src/lib/deepLinkHandler";
+import type { Category, Wallet } from "../src/lib/types";
+
+const mockCategories: Category[] = [
+  {
+    id: "c-coffee",
+    user_id: "u1",
+    name: "Coffee",
+    emoji: "☕",
+    type: "expense",
+    is_default: false,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "c-food",
+    user_id: "u1",
+    name: "Makanan",
+    emoji: "🍜",
+    type: "expense",
+    is_default: false,
+    created_at: new Date().toISOString(),
+  },
+];
+
+const mockWallets: Wallet[] = [
+  {
+    id: "w-bca",
+    user_id: "u1",
+    name: "BCA",
+    icon: "bca",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "w-gopay",
+    user_id: "u1",
+    name: "GoPay",
+    icon: "gopay",
+    created_at: new Date().toISOString(),
+  },
+];
+
+describe("DeepLink & iOS Shortcuts URL Scheme Handler", () => {
+  it("parses iOS Shortcut Bank Notification OCR string via trouvaille://add?text=...", () => {
+    const rawOcr =
+      "Pembayaran QRIS Rp 45.000 ke Kopi Kenangan Senopati berhasil via BCA";
+    const url = `trouvaille://add?text=${encodeURIComponent(rawOcr)}`;
+
+    const result = parseDeepLink(url, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.prefilledValues).toBeDefined();
+    expect(result.prefilledValues?.amount).toBe(45000);
+    expect(result.prefilledValues?.type).toBe("expense");
+    expect(result.prefilledValues?.wallet_id).toBe("w-bca");
+    expect(result.prefilledValues?.note).toContain("Kopi Kenangan");
+  });
+
+  it("parses direct structured query parameters via trouvaille://add?amount=75000&note=Lunch", () => {
+    const url = "trouvaille://add?amount=75000&note=Lunch%20Padang&category=Makanan&wallet=BCA";
+    const result = parseDeepLink(url, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.prefilledValues?.amount).toBe(75000);
+    expect(result.prefilledValues?.note).toBe("Lunch Padang");
+    expect(result.prefilledValues?.category_id).toBe("c-food");
+    expect(result.prefilledValues?.wallet_id).toBe("w-bca");
+    expect(result.prefilledValues?.type).toBe("expense");
+  });
+
+  it("parses natural language text (e.g. voice or typed text) when not formal bank format", () => {
+    const url = `trouvaille://add?text=${encodeURIComponent("Kopi susu tuku 25rb")}`;
+    const result = parseDeepLink(url, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.prefilledValues?.amount).toBe(25000);
+    expect(result.prefilledValues?.category_id).toBe("c-coffee");
+  });
+
+  it("routes modal actions like trouvaille://voice and trouvaille://scan", () => {
+    expect(parseDeepLink("trouvaille://voice").action).toBe("voice");
+    expect(parseDeepLink("trouvaille://scan").action).toBe("scan");
+    expect(parseDeepLink("trouvaille://import").action).toBe("import");
+    expect(parseDeepLink("trouvaille://add").action).toBe("transaction");
+  });
+
+  it("handles web search parameters seamlessly (e.g. ?text=...)", () => {
+    const search = "?text=Transfer%20Rp%20150.000%20ke%20Budi%20BCA%20berhasil";
+    const result = parseDeepLink(search, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.prefilledValues?.amount).toBe(150000);
+    expect(result.prefilledValues?.wallet_id).toBe("w-bca");
+  });
+
+  it("returns none action on empty or invalid inputs", () => {
+    expect(parseDeepLink("").action).toBe("none");
+    expect(parseDeepLink("random-string-without-scheme").action).toBe("none");
+  });
+});

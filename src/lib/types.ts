@@ -4,9 +4,33 @@ export type RepeatRule = "none" | "weekly" | "monthly" | "yearly"
 export type AccountClassification =
   | "liquid"
   | "investment"
+  | "fixed_asset"
   | "receivable"
   | "credit"
   | "loan";
+
+export type AssetType =
+  | "stock"
+  | "crypto"
+  | "mutual_fund"
+  | "gold"
+  | "bond"
+  | "fixed_asset";
+
+export interface InvestmentHolding {
+  id: string;
+  wallet_id?: string;
+  symbol: string;
+  name: string;
+  asset_type: AssetType;
+  units: number;
+  avg_buy_price: number;
+  current_price: number;
+  currency?: string;
+  last_price_updated_at?: string;
+  notes?: string;
+  icon?: string;
+}
 
 export type CashflowNature = "operating" | "investing" | "financing";
 

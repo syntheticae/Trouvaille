@@ -26,7 +26,7 @@ export function CashflowOutlookCard({ defaultForecast, getCashflowHorizon, hideB
 
   return (
     <>
-      <section className="p-4 rounded-[24px] glass-surface" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
+      <section className="p-4 rounded-[24px] glass-surface mb-3 select-none" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Cashflow Outlook</p>

@@ -21,6 +21,7 @@ import {
   Check,
   PenLine,
   AlertCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomSheet } from "../ui/BottomSheet";
@@ -86,6 +87,17 @@ export function TransactionSheet({
       ? Number(transaction.amount).toLocaleString("id-ID")
       : "",
   );
+  const amountInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   const [note, setNote] = useState(transaction?.note || "");
   const [date, setDate] = useState<Date>(
     transaction?.occurred_on ? parseISO(transaction.occurred_on) : new Date(),
@@ -207,7 +219,12 @@ export function TransactionSheet({
   // Budget Impact Preview (Expense MTD projection)
   const budgetImpact = useMemo(() => {
     if (type !== "expense" || !categoryId) return null;
-    const currentVal = evaluateMathSafe(amountInput);
+    const numFromState = Number(amount);
+    const currentVal = /[+\-*/×÷]/.test(amountInput)
+      ? evaluateMathSafe(amountInput)
+      : !isNaN(numFromState) && numFromState > 0
+        ? numFromState
+        : evaluateMathSafe(amountInput);
     if (currentVal <= 0) return null;
 
     const now = date || new Date();
@@ -227,15 +244,21 @@ export function TransactionSheet({
     const catBudget = selectedCat?.budget_amount || null;
 
     if (catBudget && catBudget > 0) {
-      const pct = Math.round((projectedSpent / catBudget) * 100);
       const isOver = projectedSpent > catBudget;
+      const remaining = Math.max(0, catBudget - projectedSpent);
+      // Remaining budget percentage: 100% when full, 0% when empty or over
+      const remainingPct = Math.max(
+        0,
+        Math.round(((catBudget - projectedSpent) / catBudget) * 100),
+      );
       return {
         hasBudget: true,
         categoryName: selectedCat?.name || "Category",
         projectedSpent,
         budget: catBudget,
-        pct,
+        pct: remainingPct,
         isOver,
+        remaining,
         diff: projectedSpent - catBudget,
       };
     }
@@ -251,16 +274,21 @@ export function TransactionSheet({
         .reduce((sum, tx) => sum + (tx.amount || 0), 0);
 
       const totalProjected = monthExpenses + currentVal;
-      const pct = Math.round((totalProjected / budgetTarget) * 100);
       const isOver = totalProjected > budgetTarget;
+      const remaining = Math.max(0, budgetTarget - totalProjected);
+      const remainingPct = Math.max(
+        0,
+        Math.round(((budgetTarget - totalProjected) / budgetTarget) * 100),
+      );
 
       return {
         hasBudget: true,
         categoryName: "Overall Budget",
         projectedSpent: totalProjected,
         budget: budgetTarget,
-        pct,
+        pct: remainingPct,
         isOver,
+        remaining,
         diff: totalProjected - budgetTarget,
       };
     }
@@ -272,11 +300,13 @@ export function TransactionSheet({
       budget: null,
       pct: null,
       isOver: false,
+      remaining: 0,
       diff: 0,
     };
   }, [
     type,
     categoryId,
+    amount,
     amountInput,
     date,
     allTxs,
@@ -871,7 +901,10 @@ export function TransactionSheet({
         {/* Hero Amount Input: Centered, Elongated Luxury Card Capsule */}
         <div className="text-center py-1 mb-5">
           <div
-            className="w-full max-w-[320px] sm:max-w-[350px] mx-auto flex items-baseline justify-center gap-2.5 px-6 py-3.5 rounded-2xl sm:rounded-3xl transition-all"
+            onClick={() => {
+              amountInputRef.current?.focus();
+            }}
+            className="w-full max-w-[320px] sm:max-w-[350px] mx-auto flex items-baseline justify-center gap-2.5 px-6 py-3.5 rounded-2xl sm:rounded-3xl transition-all cursor-text select-none active:border-white/20"
             style={{
               background: "var(--bg-elevated)",
               border: "1.5px solid var(--glass-border)",
@@ -880,7 +913,10 @@ export function TransactionSheet({
             }}
           >
             <span
-              className="text-[20px] sm:text-[22px] font-bold select-none shrink-0"
+              onClick={() => {
+                amountInputRef.current?.focus();
+              }}
+              className="text-[20px] sm:text-[22px] font-bold select-none shrink-0 cursor-text"
               style={{
                 color: "var(--text-tertiary)",
                 fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -889,6 +925,7 @@ export function TransactionSheet({
               Rp
             </span>
             <input
+              ref={amountInputRef}
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
@@ -1050,42 +1087,55 @@ export function TransactionSheet({
               className="mt-2.5 mx-2 px-3 py-2 rounded-xl flex items-center justify-between text-[11.5px] font-medium"
               style={{
                 background: budgetImpact.isOver
-                  ? "rgba(239, 68, 68, 0.08)"
+                  ? "rgba(239, 68, 68, 0.12)"
                   : "var(--glass-fill)",
                 border: budgetImpact.isOver
-                  ? "1px solid rgba(239, 68, 68, 0.2)"
+                  ? "1px solid rgba(239, 68, 68, 0.35)"
                   : "1px solid var(--glass-border)",
                 color: budgetImpact.isOver ? "#fca5a5" : "var(--text-secondary)",
               }}
             >
               <div className="flex items-center gap-1.5 truncate pr-2">
-                <span
-                  className="font-semibold truncate"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {budgetImpact.categoryName}
-                </span>
+                {budgetImpact.isOver ? (
+                  <AlertTriangle
+                    size={13}
+                    strokeWidth={1.75}
+                    className="shrink-0 text-red-400"
+                  />
+                ) : (
+                  <span
+                    className="font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {budgetImpact.categoryName}
+                  </span>
+                )}
                 <span>·</span>
                 <span className="truncate">
                   {budgetImpact.hasBudget
-                    ? `Budget: ${formatRupiah(budgetImpact.projectedSpent)} / ${formatRupiah(budgetImpact.budget!)}`
+                    ? budgetImpact.isOver
+                      ? `Budget Exceeded: +${formatRupiah(budgetImpact.diff)}`
+                      : `Remaining: ${formatRupiah(budgetImpact.remaining)}`
                     : `Month Total: ${formatRupiah(budgetImpact.projectedSpent)}`}
                 </span>
               </div>
               {budgetImpact.hasBudget && (
-                <span
-                  className="shrink-0 text-[10.5px] font-bold px-2 py-0.5 rounded-full"
-                  style={{
-                    background: budgetImpact.isOver
-                      ? "rgba(239, 68, 68, 0.2)"
-                      : "rgba(255, 255, 255, 0.08)",
-                    color: budgetImpact.isOver ? "#fca5a5" : "var(--text-primary)",
-                  }}
-                >
-                  {budgetImpact.isOver
-                    ? `+${formatRupiah(budgetImpact.diff)} Over`
-                    : `${budgetImpact.pct}%`}
-                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: budgetImpact.isOver
+                        ? "rgba(239, 68, 68, 0.25)"
+                        : "var(--bg-elevated)",
+                      color: budgetImpact.isOver ? "#fca5a5" : "var(--text-primary)",
+                      border: budgetImpact.isOver
+                        ? "1px solid rgba(239, 68, 68, 0.4)"
+                        : "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {budgetImpact.pct}% left
+                  </span>
+                </div>
               )}
             </motion.div>
           )}

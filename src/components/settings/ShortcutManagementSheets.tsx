@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Plus, Trash2, MoreHorizontal } from "lucide-react";
+import { Plus, Trash2, MoreHorizontal, Smartphone, ChevronRight } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
+import { BackTapGuideModal } from "./BackTapGuideModal";
 import { useShortcuts } from "../../hooks/useShortcuts";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
@@ -30,6 +31,7 @@ export function ShortcutManagementSheets({
   const [shortcutType, setShortcutType] = useState<"expense" | "income">("expense");
   const [shortcutMoreCatOpen, setShortcutMoreCatOpen] = useState(false);
   const [shortcutMoreWalletOpen, setShortcutMoreWalletOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const handleSave = () => {
     if (
@@ -94,6 +96,44 @@ export function ShortcutManagementSheets({
               </p>
             </div>
           </div>
+          {/* iOS Back Tap Automation Banner */}
+          <div
+            onClick={() => setGuideOpen(true)}
+            className="p-3.5 rounded-2xl flex items-center justify-between border cursor-pointer active:scale-[0.99] transition-all"
+            style={{
+              background: "var(--glass-fill)",
+              borderColor: "var(--glass-border)",
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border"
+                style={{
+                  background: "var(--bg-elevated)",
+                  borderColor: "var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <Smartphone size={15} strokeWidth={1.5} />
+              </div>
+              <div className="text-left">
+                <p
+                  className="text-[13px] font-semibold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  iPhone Back Tap Automation
+                </p>
+                <p
+                  className="text-[11px]"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Double-tap back of iPhone to log m-Banking
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={16} style={{ color: "var(--text-tertiary)" }} />
+          </div>
+
           <div className="space-y-2">
             {shortcuts.map((s) => (
               <div
@@ -448,6 +488,11 @@ export function ShortcutManagementSheets({
           </div>
         </div>
       </BottomSheet>
+
+      <BackTapGuideModal
+        isOpen={guideOpen}
+        onClose={() => setGuideOpen(false)}
+      />
     </>
   );
 }
