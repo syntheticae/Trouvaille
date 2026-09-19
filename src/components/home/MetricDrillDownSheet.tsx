@@ -28,6 +28,9 @@ interface MetricDrillDownSheetProps {
     subtitle?: string;
     badge?: string;
     ctaLabel?: string;
+    displayValue?: string;
+    hideGrid?: boolean;
+    onCta?: () => void;
   } | null;
 }
 
@@ -179,8 +182,9 @@ export function MetricDrillDownSheet({
                     className="amount font-semibold text-[18px] mt-1"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {data.delta >= 0 ? "+" : ""}
-                    {formatRupiah(data.totalCurrent)}
+                    {data.displayValue
+                      ? data.displayValue
+                      : `${data.delta >= 0 ? "+" : ""}${formatRupiah(data.totalCurrent)}`}
                   </h4>
                 </div>
                 <span
@@ -193,7 +197,7 @@ export function MetricDrillDownSheet({
                         : "var(--text-secondary)",
                   }}
                 >
-                  {data.delta >= 0 ? "SURPLUS" : "DEFICIT"}
+                  {data.badge || (data.delta >= 0 ? "SURPLUS" : "DEFICIT")}
                 </span>
               </div>
               {data.subtitle && (
@@ -206,55 +210,61 @@ export function MetricDrillDownSheet({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div
-                className="p-3 rounded-xl"
-                style={{ background: "var(--glass-fill)" }}
-              >
-                <p
-                  className="text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: "var(--text-tertiary)" }}
+            {!data.hideGrid && (
+              <div className="grid grid-cols-2 gap-2">
+                <div
+                  className="p-3 rounded-xl"
+                  style={{ background: "var(--glass-fill)" }}
                 >
-                  Current Total
-                </p>
-                <p
-                  className="amount text-[14px] font-semibold mt-0.5"
-                  style={{ color: "var(--text-primary)" }}
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Current Total
+                  </p>
+                  <p
+                    className="amount text-[14px] font-semibold mt-0.5"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {formatRupiah(data.totalCurrent)}
+                  </p>
+                </div>
+                <div
+                  className="p-3 rounded-xl"
+                  style={{ background: "var(--glass-fill)" }}
                 >
-                  {formatRupiah(data.totalCurrent)}
-                </p>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Reference Change
+                  </p>
+                  <p
+                    className="amount text-[14px] font-semibold mt-0.5"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {data.delta >= 0 ? "+" : ""}
+                    {formatRupiah(data.delta)}
+                  </p>
+                </div>
               </div>
-              <div
-                className="p-3 rounded-xl"
-                style={{ background: "var(--glass-fill)" }}
-              >
-                <p
-                  className="text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Reference Change
-                </p>
-                <p
-                  className="amount text-[14px] font-semibold mt-0.5"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {data.delta >= 0 ? "+" : ""}
-                  {formatRupiah(data.delta)}
-                </p>
-              </div>
-            </div>
+            )}
 
             <div className="pt-2">
               <button
                 type="button"
                 onClick={() => {
                   onClose();
-                  navigate("/statistics");
+                  if (data.onCta) {
+                    data.onCta();
+                  } else {
+                    navigate("/statistics");
+                  }
                 }}
-                className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform"
+                className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer"
                 style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
                 }}
               >
                 <span>{data.ctaLabel || "View Full Analytics Breakdown"}</span>

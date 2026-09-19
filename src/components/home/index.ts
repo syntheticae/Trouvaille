@@ -8,3 +8,4 @@ export * from "./MonthForecastSheet";
 export * from "./PersonalFinancialModelCard";
 export * from "./PersonalFinancialModelSheet";
 export * from "./WhatIfSimulatorCard";
+export * from "./CompactHomeCards";

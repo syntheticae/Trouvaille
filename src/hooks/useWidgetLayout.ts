@@ -5,7 +5,7 @@
 // ======================================================================
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import type { CardWidgetConfig, WidgetSize } from "../lib/widgetLayoutTypes";
+import type { CardWidgetConfig, WidgetSize, HomePresetKey } from "../lib/widgetLayoutTypes";
 import { DEFAULT_HOME_WIDGETS } from "../lib/widgetLayoutTypes";
 import {
   STORAGE_KEY,
@@ -15,6 +15,7 @@ import {
   setWidgetSize,
   toggleWidgetVisibility,
   filterVisibleWidgets,
+  applyPresetToWidgets,
 } from "../lib/widgetLayoutEngine";
 import { triggerHaptic } from "../lib/haptics";
 
@@ -73,6 +74,11 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
     setWidgets(defaultWidgets);
   }, [defaultWidgets]);
 
+  const applyPreset = useCallback((presetKey: HomePresetKey) => {
+    triggerHaptic("medium");
+    setWidgets((prev) => applyPresetToWidgets(prev, presetKey));
+  }, []);
+
   const visibleCards = useMemo(() => {
     return filterVisibleWidgets(widgets);
   }, [widgets]);
@@ -92,5 +98,6 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
     setCardSize: setCardSizeHandler,
     toggleCardVisibility: toggleCardVisibilityHandler,
     resetLayout,
+    applyPreset,
   };
 }

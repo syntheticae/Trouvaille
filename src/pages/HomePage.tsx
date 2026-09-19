@@ -7,10 +7,27 @@ import { useBills } from "../hooks/useBills";
 import { CalendarDays, Target, Sparkles } from "lucide-react";
 import { triggerHaptic } from "../lib/haptics";
 import { resolveTransactionCategory } from "../lib/categoryResolver";
+import { useNavigate } from "react-router-dom";
 import { Reorder } from "framer-motion";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
 import { WidgetCardWrapper, WidgetCustomizationBar } from "../components/common";
 import type { WidgetSize } from "../lib/widgetLayoutTypes";
+import { HOME_PRESETS } from "../lib/widgetLayoutTypes";
+import {
+  CompactSpendingStabilityHalf,
+  CompactCashflowPulseHalf,
+  CompactAIInsightsHalf,
+  CompactGoalsHalf,
+  CompactBillsHalf,
+  CompactTopCategoriesHalf,
+  CompactSplitBillHalf,
+  SavingsRingCard,
+  SpendingVelocityBarCard,
+  CategoryDonutCard,
+  MiniHeatmapCard,
+  HealthMeterCard,
+  LiquidRunwayCard,
+} from "../components/home/CompactHomeCards";
 
 function formatNetAmount(net: number): string {
   const abs = Math.abs(net);
@@ -82,6 +99,7 @@ import {
   calculateAssetTrend,
   calculatePersonalBaselines,
   calculateDynamicGoalMilestones,
+  isCorrectionTx,
 } from "../lib/financialMath";
 
 interface HomePageProps {
@@ -126,6 +144,7 @@ function formatAxisY(val: number): string {
 
 
 export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: HomePageProps) {
+  const navigate = useNavigate();
   const now = useMemo(() => new Date(), []);
   const { session } = useAuth();
   const { theme } = useTheme();
@@ -167,6 +186,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     cycleCardSize,
     toggleCardVisibility,
     resetLayout,
+    applyPreset,
   } = useWidgetLayout();
 
   const [customizeHomeOpen, setCustomizeHomeOpen] = useState(false);
@@ -319,6 +339,78 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     });
     return { map, maxSurplus, maxDeficit };
   }, [allTxs]);
+
+  // Telemetry computations for compact visual widgets
+  const last7DaysOutlays = useMemo(() => {
+    const days = eachDayOfInterval({ start: subDays(now, 6), end: now });
+    return days.map((d) => {
+      const dStr = format(d, "yyyy-MM-dd");
+      const dayTxs = allTxs.filter(
+        (t) => t.occurred_on === dStr && t.type === "expense" && !isCorrectionTx(t),
+      );
+      const amount = dayTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      return { dayLabel: format(d, "EEE"), amount };
+    });
+  }, [allTxs, now]);
+
+  const categoryDonutData = useMemo(() => {
+    return (currentMonthStats.topExpenseCategories || []).slice(0, 4).map((c) => ({
+      name: c.name,
+      amount: c.total,
+      pct: totalExpense > 0 ? (c.total / totalExpense) * 100 : 0,
+    }));
+  }, [currentMonthStats.topExpenseCategories, totalExpense]);
+
+  const { heatmapDaysData, activeSpendDaysCount } = useMemo(() => {
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
+    const days = eachDayOfInterval({ start, end });
+    let active = 0;
+    const maxDaySpend = Math.max(
+      1,
+      ...days.map((d) => {
+        const dStr = format(d, "yyyy-MM-dd");
+        const stat = monthlyStats.map.get(dStr);
+        return stat ? stat.expense : 0;
+      }),
+    );
+    const list = days.map((d) => {
+      const dStr = format(d, "yyyy-MM-dd");
+      const stat = monthlyStats.map.get(dStr);
+      const exp = stat ? stat.expense : 0;
+      if (exp > 0) active++;
+      return {
+        day: d.getDate(),
+        hasSpend: exp > 0,
+        intensity: exp / maxDaySpend,
+      };
+    });
+    return { heatmapDaysData: list, activeSpendDaysCount: active };
+  }, [now, monthlyStats.map]);
+
+  const healthScore = useMemo(() => {
+    const inc = currentMonthStats.income;
+    const exp = currentMonthStats.expense;
+    if (inc === 0 && exp === 0) return 75;
+    if (inc > 0 && exp === 0) return 100;
+    if (inc === 0 && exp > 0) {
+      if (exp < 1000000) return 65;
+      if (exp < 5000000) return 50;
+      return 35;
+    }
+    const ratio = exp / inc;
+    if (ratio >= 2.0) return 20;
+    if (ratio >= 1.5) return Math.max(20, Math.round(35 - (ratio - 1.5) * 30));
+    if (ratio > 1.0) return Math.round(55 - (ratio - 1.0) * 40);
+    if (ratio >= 0.8) return Math.round(65 + (1.0 - ratio) * 50);
+    if (ratio >= 0.4) return Math.round(75 + (0.8 - ratio) * 35);
+    return Math.min(100, Math.round(90 + (0.4 - ratio) * 25));
+  }, [currentMonthStats.income, currentMonthStats.expense]);
+
+  const runwayMonths = useMemo(() => {
+    if (totalExpense <= 0) return 99;
+    return liquidAssets / totalExpense;
+  }, [liquidAssets, totalExpense]);
 
   const dayData = (d: Date) => {
     const dStr = format(d, "yyyy-MM-dd");
@@ -658,14 +750,63 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         return <BalanceCard hideBalance={hideBalance} />;
 
       case "spending_stability":
-        return intel.expenseVolatility ? (
+        if (!intel.expenseVolatility) return null;
+        if (size === "half") {
+          return (
+            <CompactSpendingStabilityHalf
+              level={intel.expenseVolatility.stability === "VOLATILE" ? "High" : intel.expenseVolatility.stability === "MODERATE" ? "Moderate" : "Low"}
+              dailyAvg={dailyAverage}
+              volatilityScore={(intel.expenseVolatility.score ?? 80) / 100}
+              onOpenDetail={() => {
+                setMetricDrillDown({
+                  type: "snapshot",
+                  data: {
+                    totalCurrent: dailyAverage,
+                    totalPrevious: 0,
+                    delta: 0,
+                    pctChange: 0,
+                    title: "Spending Stability",
+                    subtitle: `Your spending consistency is evaluated as ${intel.expenseVolatility.stability} with a daily average outlay of ${formatRupiah(dailyAverage)}/day.`,
+                    badge: intel.expenseVolatility.stability,
+                    ctaLabel: "View Analytics Breakdown",
+                  },
+                });
+              }}
+            />
+          );
+        }
+        return (
           <ExpenseVolatilityCard
             volatility={intel.expenseVolatility}
             hideBalance={hideBalance}
           />
-        ) : null;
+        );
 
       case "cashflow_pulse":
+        if (size === "half") {
+          return (
+            <CompactCashflowPulseHalf
+              netCashflow={intel.netCashflow}
+              consumedPct={intel.consumedPct}
+              isAheadOfPace={intel.isAheadOfPace}
+              onOpenDetail={() => {
+                setMetricDrillDown({
+                  type: "snapshot",
+                  data: {
+                    totalCurrent: intel.netCashflow,
+                    totalPrevious: 0,
+                    delta: intel.netCashflow,
+                    pctChange: 0,
+                    title: "Net Cashflow",
+                    subtitle: `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
+                    badge: "Current Month",
+                    ctaLabel: "View Full Analytics Breakdown",
+                  },
+                });
+              }}
+            />
+          );
+        }
         return (
           <CashflowPulseCard
             netCashflow={intel.netCashflow}
@@ -733,7 +874,31 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         );
 
       case "ai_insights":
-        return intel.actionCenterInsight ? (
+        if (!intel.actionCenterInsight) return null;
+        if (size === "half") {
+          return (
+            <CompactAIInsightsHalf
+              insightTitle={intel.actionCenterInsight.title}
+              insightCategory={intel.actionCenterInsight.badge}
+              onOpenDetail={() => {
+                setMetricDrillDown({
+                  type: "snapshot",
+                  data: {
+                    totalCurrent: 0,
+                    totalPrevious: 0,
+                    delta: 0,
+                    pctChange: 0,
+                    title: intel.actionCenterInsight?.title || "Financial Alert",
+                    subtitle: intel.actionCenterInsight?.subtitle || "Anomalous spending detected",
+                    badge: intel.actionCenterInsight?.badge || "Insight",
+                    ctaLabel: intel.actionCenterInsight?.actionLabel || "Open Action Center",
+                  },
+                });
+              }}
+            />
+          );
+        }
+        return (
           <ActionCenterCard
             insight={intel.actionCenterInsight}
             transactions={allTxs}
@@ -743,7 +908,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             totalExpense={intel.totalExpense}
             totalIncome={intel.totalIncome}
           />
-        ) : null;
+        );
 
       case "activity_heatmap":
         return (
@@ -805,6 +970,21 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
       case "financial_goals":
         if (goals.length === 0) return null;
+        if (size === "half") {
+          const g: any = goals[0];
+          const curr = Number(g.currentAmount || g.current_amount || 0);
+          const tgt = Number(g.targetAmount || g.target_amount || 1);
+          const pct = Math.min(100, Math.round((curr / tgt) * 100));
+          return (
+            <CompactGoalsHalf
+              goalTitle={g.title || g.name || "Savings Goal"}
+              progressPct={pct}
+              currentAmount={curr}
+              targetAmount={tgt}
+              onOpenDetail={() => setSelectedGoal(g)}
+            />
+          );
+        }
         return (
           <section className="space-y-2">
             <div className="flex justify-between items-center px-1">
@@ -817,7 +997,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             </div>
 
             <div className="space-y-2.5">
-              {goals.slice(0, size === "half" ? 1 : 3).map((g: any) => {
+              {goals.slice(0, 3).map((g: any) => {
                 const pct = Math.min(100, Math.round((g.currentAmount / (g.targetAmount || 1)) * 100));
                 return (
                   <div
@@ -853,7 +1033,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {goalMilestonesMap.get(g.id) && size !== "half" && (
+                        {goalMilestonesMap.get(g.id) && (
                           <span
                             className="text-[10px] font-bold px-2 py-0.5 rounded-full truncate"
                             style={{
@@ -904,13 +1084,26 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
       case "upcoming_bills":
         if (upcomingBills.length === 0) return null;
+        if (size === "half") {
+          const bill: any = upcomingBills[0];
+          const dueDay = parseInt(bill.due_date);
+          const daysLeft = isNaN(dueDay) ? 0 : Math.max(0, dueDay - now.getDate());
+          return (
+            <CompactBillsHalf
+              nextBillName={bill.title}
+              nextBillAmount={Number(bill.amount)}
+              daysLeft={daysLeft}
+              onOpenDetail={() => navigate("/bills")}
+            />
+          );
+        }
         return (
           <section className="space-y-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider px-1 block" style={{ color: "var(--text-tertiary)" }}>
               Upcoming Bills
             </span>
             <div className="space-y-2">
-              {upcomingBills.slice(0, size === "half" ? 1 : 3).map((bill: any) => {
+              {upcomingBills.slice(0, 3).map((bill: any) => {
                 const dueStatusLabel = getBillDueStatusLabel(bill.due_date);
                 const isMarkingPaid = markBillPaid.isPending && markBillPaid.variables?.bill.id === bill.id;
                 return (
@@ -940,51 +1133,48 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                       <p className="amount text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
                         {formatRupiah(Number(bill.amount))}
                       </p>
-                      {size !== "half" && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            markBillPaid.mutate(
-                              { bill, paid: true },
-                              {
-                                onSuccess: () => {
-                                  showToast(`${bill.title} marked as paid`, "add", () => {});
-                                },
-                                onError: (error: any) => {
-                                  showToast(error?.message || `Failed to mark ${bill.title} as paid`, "delete", () => {});
-                                },
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markBillPaid.mutate(
+                            { bill, paid: true },
+                            {
+                              onSuccess: () => {
+                                showToast(`${bill.title} marked as paid`, "add", () => {});
                               },
-                            );
-                            triggerHaptic("medium");
-                          }}
-                          disabled={isMarkingPaid}
-                          className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                          style={{
-                            background: "var(--glass-fill-strong)",
-                            border: "1px solid var(--glass-border)",
-                            color: "var(--text-primary)",
-                          }}
-                          title="Tandai Sudah Bayar"
-                        >
-                          <Check size={11} />
-                          <span>{isMarkingPaid ? "Saving..." : "Paid"}</span>
-                        </button>
-                      )}
+                              onError: (error: any) => {
+                                showToast(error?.message || `Failed to mark ${bill.title} as paid`, "delete", () => {});
+                              },
+                            },
+                          );
+                          triggerHaptic("medium");
+                        }}
+                        disabled={isMarkingPaid}
+                        className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                        style={{
+                          background: "var(--glass-fill-strong)",
+                          border: "1px solid var(--glass-border)",
+                          color: "var(--text-primary)",
+                        }}
+                        title="Tandai Sudah Bayar"
+                      >
+                        <Check size={11} />
+                        <span>{isMarkingPaid ? "Saving..." : "Paid"}</span>
+                      </button>
                     </div>
                   </div>
                 );
               })}
 
               {/* Total Kebutuhan Tagihan */}
-              {size !== "half" && (
-                <div
-                  className="p-3.5 rounded-2xl glass-surface flex items-center justify-between mt-2.5"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                >
+              <div
+                className="p-3.5 rounded-2xl glass-surface flex items-center justify-between mt-2.5"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
                   <div className="flex items-center gap-2">
                     <div
                       className="w-6 h-6 rounded-lg flex items-center justify-center"
@@ -1005,7 +1195,6 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     )}
                   </span>
                 </div>
-              )}
             </div>
           </section>
         );
@@ -1067,6 +1256,33 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
       case "top_categories":
         if (!currentMonthStats.topExpenseCategories || currentMonthStats.topExpenseCategories.length === 0) return null;
+        if (size === "half") {
+          const topCat = currentMonthStats.topExpenseCategories[0];
+          const pct = currentMonthStats.expense > 0 ? Math.round((topCat.total / currentMonthStats.expense) * 100) : 0;
+          return (
+            <CompactTopCategoriesHalf
+              topCategoryName={topCat.name}
+              topCategoryAmount={topCat.total}
+              topCategoryPct={pct}
+              onOpenDetail={() => {
+                setMetricDrillDown({
+                  type: "snapshot",
+                  data: {
+                    totalCurrent: topCat.total,
+                    totalPrevious: 0,
+                    delta: 0,
+                    pctChange: 0,
+                    title: `Top Category: ${topCat.name}`,
+                    subtitle: `${topCat.name} is your highest expense driver this month (${formatRupiah(topCat.total)}), making up ${pct}% of total monthly spending.`,
+                    badge: `${pct}% of Total`,
+                    ctaLabel: "View All Categories",
+                    onCta: () => navigate("/statistics"),
+                  },
+                });
+              }}
+            />
+          );
+        }
         return (
           <section className="space-y-2.5">
             <div className="flex items-center justify-between">
@@ -1081,7 +1297,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3"
               style={{ background: "var(--bg-elevated)" }}
             >
-              {currentMonthStats.topExpenseCategories.slice(0, size === "half" ? 2 : 3).map((cat) => {
+              {currentMonthStats.topExpenseCategories.slice(0, 3).map((cat) => {
                 const pct = currentMonthStats.expense > 0 ? Math.round((cat.total / currentMonthStats.expense) * 100) : 0;
                 return (
                   <div key={cat.name} className="space-y-1.5">
@@ -1163,6 +1379,15 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         );
 
       case "split_bill":
+        if (size === "half") {
+          return (
+            <CompactSplitBillHalf
+              onOpenDetail={() => {
+                _onOpenAdd?.();
+              }}
+            />
+          );
+        }
         return (
           <section className="space-y-2.5">
             <div className="flex items-center justify-between">
@@ -1213,6 +1438,164 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               </button>
             </div>
           </section>
+        );
+
+      case "savings_ring":
+        return (
+          <SavingsRingCard
+            size={size}
+            rate={intel.savingsRate}
+            inflow={currentMonthStats.income}
+            outflow={currentMonthStats.expense}
+            onOpenDetail={() => {
+              setMetricDrillDown({
+                type: "snapshot",
+                data: {
+                  totalCurrent: Math.max(0, currentMonthStats.income - currentMonthStats.expense),
+                  totalPrevious: 0,
+                  delta: 0,
+                  pctChange: 0,
+                  displayValue: `${intel.savingsRate.toFixed(1)}%`,
+                  title: "Savings Telemetry",
+                  subtitle: `Net retention rate is ${intel.savingsRate.toFixed(1)}% of total monthly inflow (${formatRupiah(currentMonthStats.income)}). Retained capital: ${formatRupiah(Math.max(0, currentMonthStats.income - currentMonthStats.expense))}.`,
+                  badge: `${intel.savingsRate.toFixed(0)}% Saved`,
+                  ctaLabel: "View Financial Statistics",
+                  onCta: () => navigate("/statistics"),
+                },
+              });
+            }}
+          />
+        );
+
+      case "spending_velocity_bar":
+        return (
+          <SpendingVelocityBarCard
+            size={size}
+            dailyOutlays={last7DaysOutlays}
+            dailyAverage={dailyAverage}
+            onOpenDetail={() => {
+              const total7d = last7DaysOutlays.reduce((sum, d) => sum + d.amount, 0);
+              setMetricDrillDown({
+                type: "snapshot",
+                data: {
+                  totalCurrent: total7d,
+                  totalPrevious: 0,
+                  delta: 0,
+                  pctChange: 0,
+                  title: "7-Day Outlay Velocity",
+                  subtitle: `Total outflow over the past 7 days reached ${formatRupiah(total7d)} with a daily average of ${formatRupiah(Math.round(total7d / 7))}.`,
+                  badge: "Past 7 Days",
+                  ctaLabel: "View All Transactions",
+                  onCta: () => navigate("/transactions"),
+                },
+              });
+            }}
+          />
+        );
+
+      case "category_donut":
+        return (
+          <CategoryDonutCard
+            size={size}
+            categories={categoryDonutData}
+            totalExpense={currentMonthStats.expense}
+            onOpenDetail={() => {
+              setMetricDrillDown({
+                type: "snapshot",
+                data: {
+                  totalCurrent: currentMonthStats.expense,
+                  totalPrevious: 0,
+                  delta: 0,
+                  pctChange: 0,
+                  title: "Outflow Allocation",
+                  subtitle: `Visual distribution across ${categoryDonutData.length} key expense sectors for this month.`,
+                  badge: "Allocation",
+                  ctaLabel: "Explore Statistics",
+                  onCta: () => navigate("/statistics"),
+                },
+              });
+            }}
+          />
+        );
+
+      case "mini_heatmap":
+        return (
+          <MiniHeatmapCard
+            size={size}
+            daysWithSpend={heatmapDaysData}
+            activeDaysCount={activeSpendDaysCount}
+            onOpenDetail={() => {
+              setMetricDrillDown({
+                type: "snapshot",
+                data: {
+                  totalCurrent: currentMonthStats.expense,
+                  totalPrevious: 0,
+                  delta: 0,
+                  pctChange: 0,
+                  displayValue: `${activeSpendDaysCount} Days`,
+                  title: "Monthly Activity Matrix",
+                  subtitle: `You recorded spending on ${activeSpendDaysCount} days this month out of ${heatmapDaysData.length} days total. Total outflow is ${formatRupiah(currentMonthStats.expense)}.`,
+                  badge: `${activeSpendDaysCount} Active Days`,
+                  ctaLabel: "View Spending Patterns",
+                  onCta: () => navigate("/statistics"),
+                },
+              });
+            }}
+          />
+        );
+
+      case "financial_health_gauge":
+        return (
+          <HealthMeterCard
+            size={size}
+            healthScore={healthScore}
+            onOpenDetail={() => {
+              const score = healthScore;
+              setMetricDrillDown({
+                type: "snapshot",
+                data: {
+                  totalCurrent: score,
+                  totalPrevious: 0,
+                  delta: 0,
+                  pctChange: 0,
+                  displayValue: `${score}/100`,
+                  title: "Executive Health Telemetry",
+                  subtitle: `Your financial health score is rated at ${score}/100 based on savings pace, debt servicing, and liquidity buffer ratios.`,
+                  badge: `${score}/100 Score`,
+                  ctaLabel: "Health Diagnostics",
+                  onCta: () => navigate("/statistics"),
+                },
+              });
+            }}
+          />
+        );
+
+      case "liquid_runway":
+        return (
+          <LiquidRunwayCard
+            size={size}
+            runwayMonths={runwayMonths}
+            liquidAssets={liquidAssets}
+            monthlyBurn={totalExpense || 1}
+            onOpenDetail={() => {
+              const runwayMo = runwayMonths >= 99 ? "∞" : runwayMonths.toFixed(1);
+              setMetricDrillDown({
+                type: "snapshot",
+                data: {
+                  totalCurrent: liquidAssets,
+                  totalPrevious: 0,
+                  delta: 0,
+                  pctChange: 0,
+                  displayValue: `${runwayMo} mo`,
+                  title: "Liquid Buffer Runway",
+                  subtitle: `With current liquid assets of ${formatRupiah(liquidAssets)} and a monthly burn of ${formatRupiah(totalExpense)}, your buffer provides ${runwayMo} months of financial runway.`,
+                  badge: `${runwayMo} Months`,
+                  ctaLabel: "View Asset Allocations",
+                  onCta: () => navigate("/statistics"),
+                },
+              });
+            }}
+          />
         );
 
       default:
@@ -1268,22 +1651,14 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               triggerHaptic("light");
               setCustomizeHomeOpen(true);
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--glass-border)] active:scale-95 transition-all cursor-pointer select-none"
-            style={{
-              background: "var(--glass-fill)",
-            }}
+            className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer select-none"
             title="Atur Widget Dashboard"
           >
             <SlidersHorizontal
-              size={12}
+              size={14}
+              strokeWidth={1.75}
               style={{ color: "var(--text-primary)" }}
             />
-            <span
-              className="text-[11px] font-bold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Widgets
-            </span>
           </button>
           <button
             onClick={() => setNotifOpen(true)}
@@ -1493,6 +1868,51 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               >
                 <X size={14} style={{ color: "var(--text-primary)" }} />
               </button>
+            </div>
+
+            {/* Quick Layout Preset Segment Control (Simple to Advanced) */}
+            <div className="space-y-1.5 pt-0.5">
+              <span
+                className="text-[10px] font-bold uppercase tracking-wider block"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Dashboard Presets
+              </span>
+              <div
+                className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                {HOME_PRESETS.map((preset) => (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("medium");
+                      applyPreset(preset.key);
+                    }}
+                    className="py-2 px-1 rounded-xl text-center transition-all duration-200 active:scale-95 cursor-pointer select-none"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      boxShadow: "0 2px 8px var(--shadow-strength)",
+                    }}
+                  >
+                    <p className="text-[12px] font-semibold leading-tight text-[var(--text-primary)]">
+                      {preset.label}
+                    </p>
+                    <p className="text-[9px] mt-0.5 truncate text-[var(--text-tertiary)] px-1">
+                      {preset.key === "simple"
+                        ? "Essentials"
+                        : preset.key === "balanced"
+                          ? "Optimal"
+                          : "Power"}
+                    </p>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Launcher for on-screen Jiggle / Drag & Drop Mode */}
