@@ -99,7 +99,7 @@ export function WidgetCardWrapper({
           : { rotate: 0 }
       }
       className={`relative select-none transition-all ${
-        isHalf ? "col-span-1" : "col-span-2"
+        isHalf ? "col-span-1 h-[154px]" : "col-span-2"
       }`}
       style={{
         WebkitTouchCallout: "none",
@@ -170,6 +170,8 @@ export function WidgetCardWrapper({
       {/* Edit Mode Specular Border Ring */}
       <div
         className={`rounded-[26px] transition-all ${
+          isHalf ? "h-full" : ""
+        } ${
           isEditMode
             ? "ring-2 ring-white/20 ring-offset-2 ring-offset-black/50"
             : ""

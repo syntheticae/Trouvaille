@@ -37,9 +37,9 @@ export function CompactShell({
   children,
 }: CompactShellProps) {
   return (
-    <section className="glass-surface p-3.5 rounded-[22px] flex flex-col justify-between h-full min-h-[142px] relative overflow-hidden select-none">
+    <section className="glass-surface p-3.5 rounded-[22px] flex flex-col justify-between h-[154px] min-h-[154px] max-h-[154px] w-full relative overflow-hidden select-none box-border">
       {/* Top Header with Title and Info Button */}
-      <div className="flex items-center justify-between gap-1.5 mb-2">
+      <div className="flex items-center justify-between gap-1.5 shrink-0 mb-1">
         <span className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)] truncate flex-1 leading-snug">
           {title}
         </span>
@@ -65,7 +65,9 @@ export function CompactShell({
       </div>
 
       {/* Center & Bottom Content */}
-      <div className="flex-1 flex flex-col justify-between">{children}</div>
+      <div className="flex-1 flex flex-col justify-between min-h-0 overflow-hidden">
+        {children}
+      </div>
     </section>
   );
 }
@@ -87,7 +89,7 @@ export function CompactSpendingStabilityHalf({
 }) {
   return (
     <CompactShell title="Stability" onOpenDetail={onOpenDetail}>
-      <div>
+      <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
             Daily Outlay
@@ -108,7 +110,7 @@ export function CompactSpendingStabilityHalf({
         </p>
       </div>
 
-      <div className="mt-2">
+      <div className="shrink-0">
         <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
           <span>Variance</span>
           <span className="font-semibold text-[var(--text-secondary)]">
@@ -140,7 +142,7 @@ export function CompactCashflowPulseHalf({
   const isSurplus = netCashflow >= 0;
   return (
     <CompactShell title="Cashflow" onOpenDetail={onOpenDetail}>
-      <div>
+      <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
             Net Retention
@@ -162,7 +164,7 @@ export function CompactCashflowPulseHalf({
         </p>
       </div>
 
-      <div className="mt-2">
+      <div className="shrink-0">
         <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
           <span>Budget Used</span>
           <span className="font-semibold text-[var(--text-secondary)]">
@@ -191,13 +193,13 @@ export function CompactAIInsightsHalf({
 }) {
   return (
     <CompactShell title="AI Insight" onOpenDetail={onOpenDetail}>
-      <div className="my-auto py-1">
+      <div className="flex-1 flex items-center py-1">
         <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-snug line-clamp-3">
           {insightTitle}
         </p>
       </div>
 
-      <div className="flex items-center justify-between pt-1.5 border-t border-white/5 text-[10px] font-medium text-[var(--text-tertiary)]">
+      <div className="flex items-center justify-between pt-1.5 border-t border-white/5 text-[10px] font-medium text-[var(--text-tertiary)] shrink-0">
         <div className="flex items-center gap-1">
           <Zap size={11} />
           <span>Diagnostic</span>
@@ -234,7 +236,7 @@ export function CompactGoalsHalf({
 }) {
   return (
     <CompactShell title="Top Goal" onOpenDetail={onOpenDetail}>
-      <div>
+      <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
             {goalTitle}
@@ -250,16 +252,18 @@ export function CompactGoalsHalf({
             {progressPct.toFixed(0)}%
           </span>
         </div>
-        <p className="text-[11px] amount text-[var(--text-tertiary)] mt-1">
+        <p className="text-[11px] amount text-[var(--text-tertiary)] mt-1 truncate">
           {formatRupiah(currentAmount)} / {formatRupiah(targetAmount)}
         </p>
       </div>
 
-      <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10 mt-2">
-        <div
-          className="h-full rounded-full bg-[var(--text-primary)] transition-all"
-          style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
-        />
+      <div className="shrink-0">
+        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+          <div
+            className="h-full rounded-full bg-[var(--text-primary)] transition-all"
+            style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+          />
+        </div>
       </div>
     </CompactShell>
   );
@@ -279,7 +283,7 @@ export function CompactBillsHalf({
   const badgeLabel = daysLeft <= 0 ? "Due Today" : `In ${daysLeft}d`;
   return (
     <CompactShell title="Next Bill" onOpenDetail={onOpenDetail}>
-      <div>
+      <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
             {nextBillName}
@@ -300,7 +304,7 @@ export function CompactBillsHalf({
         </p>
       </div>
 
-      <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] mt-2">
+      <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
         <Clock size={11} />
         <span>Upcoming cycle</span>
       </div>
@@ -321,7 +325,7 @@ export function CompactTopCategoriesHalf({
 }) {
   return (
     <CompactShell title="Top Category" onOpenDetail={onOpenDetail}>
-      <div>
+      <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
             {topCategoryName}
@@ -342,11 +346,13 @@ export function CompactTopCategoriesHalf({
         </p>
       </div>
 
-      <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10 mt-2">
-        <div
-          className="h-full rounded-full bg-[var(--text-primary)] transition-all"
-          style={{ width: `${Math.min(100, Math.max(0, topCategoryPct))}%` }}
-        />
+      <div className="shrink-0">
+        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+          <div
+            className="h-full rounded-full bg-[var(--text-primary)] transition-all"
+            style={{ width: `${Math.min(100, Math.max(0, topCategoryPct))}%` }}
+          />
+        </div>
       </div>
     </CompactShell>
   );
@@ -363,7 +369,7 @@ export function CompactSplitBillHalf({
 }) {
   return (
     <CompactShell title="Split Bills" onOpenDetail={onOpenDetail}>
-      <div>
+      <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
             Receivables
@@ -384,7 +390,7 @@ export function CompactSplitBillHalf({
         </p>
       </div>
 
-      <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] mt-2">
+      <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
         <ArrowUpRight size={11} />
         <span>Tap to settle shares</span>
       </div>
@@ -409,8 +415,8 @@ export function SavingsRingCard({
   onOpenDetail?: () => void;
 }) {
   const boundedRate = Math.min(100, Math.max(0, rate));
-  const radius = size === "half" ? 28 : 36;
-  const strokeWidth = 6;
+  const radius = size === "half" ? 26 : 36;
+  const strokeWidth = size === "half" ? 5 : 6;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (boundedRate / 100) * circ;
 
@@ -444,7 +450,7 @@ export function SavingsRingCard({
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-[14px] font-bold amount text-[var(--text-primary)] leading-none">
+        <span className="text-[13px] font-bold amount text-[var(--text-primary)] leading-none">
           {boundedRate.toFixed(0)}%
         </span>
         <span className="text-[8px] font-semibold text-[var(--text-tertiary)] mt-0.5">
@@ -457,8 +463,8 @@ export function SavingsRingCard({
   if (size === "half") {
     return (
       <CompactShell title="Savings Ring" onOpenDetail={onOpenDetail}>
-        <div className="flex items-center justify-center py-1">{ringSvg}</div>
-        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5">
+        <div className="flex-1 flex items-center justify-center py-0.5">{ringSvg}</div>
+        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
           <span>Retained</span>
           <span className="font-semibold text-[var(--text-primary)] amount">
             {formatRupiah(Math.max(0, inflow - outflow))}
@@ -532,7 +538,7 @@ export function SpendingVelocityBarCard({
   const maxAmount = Math.max(1, ...dailyOutlays.map((d) => d.amount));
 
   const bars = (
-    <div className="flex items-end justify-between gap-1.5 h-12 w-full pt-1">
+    <div className="flex items-end justify-between gap-1.5 h-11 w-full pt-1">
       {dailyOutlays.map((d, i) => {
         const heightPct = Math.min(100, Math.max(8, (d.amount / maxAmount) * 100));
         return (
@@ -560,8 +566,8 @@ export function SpendingVelocityBarCard({
   if (size === "half") {
     return (
       <CompactShell title="7D Velocity" onOpenDetail={onOpenDetail}>
-        <div className="py-0.5">{bars}</div>
-        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5">
+        <div className="flex-1 flex items-center py-0.5">{bars}</div>
+        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
           <span>Avg Pace</span>
           <span className="font-semibold text-[var(--text-primary)] amount">
             {formatRupiah(dailyAverage)}/d
@@ -639,8 +645,8 @@ export function CategoryDonutCard({
   if (size === "half") {
     return (
       <CompactShell title="Categories" onOpenDetail={onOpenDetail}>
-        <div className="flex items-center justify-center py-1">{donutSvg}</div>
-        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5">
+        <div className="flex-1 flex items-center justify-center py-0.5">{donutSvg}</div>
+        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
           <span className="truncate max-w-[70px]">{topCat.name}</span>
           <span className="font-semibold text-[var(--text-primary)] amount">
             {formatRupiah(topCat.amount)}
@@ -701,11 +707,11 @@ export function MiniHeatmapCard({
   const dots = daysWithSpend.slice(0, 28);
 
   const grid = (
-    <div className="grid grid-cols-7 gap-1.5 py-1">
+    <div className="grid grid-cols-7 gap-1.5 py-0.5 w-full max-w-[130px] mx-auto">
       {dots.map((d, i) => (
         <div
           key={i}
-          className="w-full aspect-square rounded-full transition-all"
+          className="w-2.5 h-2.5 rounded-full mx-auto transition-all"
           style={{
             background:
               d.intensity > 0.6
@@ -714,7 +720,7 @@ export function MiniHeatmapCard({
                   ? "rgba(255,255,255,0.45)"
                   : d.hasSpend
                     ? "rgba(255,255,255,0.2)"
-                    : "rgba(255,255,255,0.05)",
+                    : "rgba(255,255,255,0.06)",
           }}
           title={`Day ${d.day}: ${d.hasSpend ? "Active" : "Quiet"}`}
         />
@@ -728,8 +734,8 @@ export function MiniHeatmapCard({
         title="Activity Matrix"
         onOpenDetail={onOpenDetail}
       >
-        <div className="py-1">{grid}</div>
-        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5">
+        <div className="flex-1 flex items-center justify-center py-0.5">{grid}</div>
+        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
           <span>Active Days</span>
           <span className="font-semibold text-[var(--text-primary)]">
             {activeDaysCount} of 28d
@@ -776,7 +782,7 @@ export function HealthMeterCard({
       healthScore >= 80 ? "Optimal" : healthScore >= 60 ? "Good" : healthScore >= 40 ? "Fair" : "Attention";
     return (
       <CompactShell title="Health Score" onOpenDetail={onOpenDetail}>
-        <div className="flex items-center justify-center py-2">
+        <div className="flex-1 flex flex-col justify-center items-center py-1">
           <div className="text-center">
             <span className="text-[26px] font-bold amount text-[var(--text-primary)] leading-none">
               {healthScore}
@@ -787,7 +793,7 @@ export function HealthMeterCard({
           </div>
         </div>
 
-        <div className="mt-1">
+        <div className="shrink-0">
           <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
             <span>Status</span>
             <span className="font-semibold text-[var(--text-secondary)]">
@@ -869,7 +875,7 @@ export function LiquidRunwayCard({
   if (size === "half") {
     return (
       <CompactShell title="Runway" onOpenDetail={onOpenDetail}>
-        <div>
+        <div className="flex-1 flex flex-col justify-center py-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
               Survival Horizon
@@ -893,7 +899,7 @@ export function LiquidRunwayCard({
           </p>
         </div>
 
-        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5">
+        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
           <span>Burn Rate</span>
           <span className="font-semibold text-[var(--text-primary)] amount">
             {formatRupiah(monthlyBurn)}/m

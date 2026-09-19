@@ -1693,7 +1693,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               key={card.id}
               value={card.id}
               dragListener={isEditMode}
-              className={card.size === "half" ? "col-span-1" : "col-span-2"}
+              className={card.size === "half" ? "col-span-1 h-[154px]" : "col-span-2"}
             >
               <WidgetCardWrapper
                 card={card}
