@@ -23,6 +23,7 @@ import {
   Check,
   Info,
   Sparkles,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   PieChart,
@@ -73,6 +74,12 @@ import {
   FirePlannerCard,
   FirePlannerSheet,
 } from "../components/statistics";
+import { Reorder } from "framer-motion";
+import { WidgetCardWrapper, WidgetCustomizationBar } from "../components/common";
+import { useWidgetLayout } from "../hooks/useWidgetLayout";
+import { STATS_STORAGE_KEY } from "../lib/widgetLayoutEngine";
+import { DEFAULT_STATISTICS_WIDGETS } from "../lib/widgetLayoutTypes";
+import type { WidgetSize } from "../lib/widgetLayoutTypes";
 import {
   calculateAssetTrend,
   calculateWhatIfScenario,
@@ -280,6 +287,22 @@ export function StatisticsPage() {
   const [firePlannerOpen, setFirePlannerOpen] = useState(false);
   const { isStealthMode: hideBalance } = usePrivacy();
   const colors = useChartColors();
+
+  // iOS-Style Springboard Widget Layout for Intelligence cards
+  const {
+    widgets: _statsWidgets,
+    visibleCards: visibleStatsCards,
+    hiddenCards: hiddenStatsCards,
+    isEditMode: isStatsEditMode,
+    setIsEditMode: setIsStatsEditMode,
+    reorderCards: reorderStatsCards,
+    cycleCardSize: cycleStatsCardSize,
+    toggleCardVisibility: toggleStatsCardVisibility,
+    resetLayout: resetStatsLayout,
+  } = useWidgetLayout({
+    storageKey: STATS_STORAGE_KEY,
+    defaultWidgets: DEFAULT_STATISTICS_WIDGETS,
+  });
 
   const activeMonthDate = useMemo(
     () => subMonths(now, monthOffset),
@@ -1078,6 +1101,298 @@ export function StatisticsPage() {
     return "All Time";
   }, [range, monthOffset, now]);
 
+  const renderIntelligenceCard = (cardId: string, _size: WidgetSize) => {
+    switch (cardId) {
+      case "health_score":
+        return (
+          <section className="card-contrast-hero p-5 relative overflow-hidden">
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center"
+                  style={{ background: "rgba(255,255,255,0.12)", color: "#FFFFFF" }}
+                >
+                  <ShieldCheck size={18} />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-white">
+                    Financial Health
+                  </p>
+                  <p
+                    className="text-[11px]"
+                    style={{ color: "rgba(255,255,255,0.55)" }}
+                  >
+                    {rangeTitle} performance
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setHealthDiagnosticOpen(true);
+                    triggerHaptic("light");
+                  }}
+                  className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.15)",
+                    color: "#FFFFFF",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                  }}
+                  title="Executive Health Diagnostic"
+                >
+                  <Info size={13} />
+                </button>
+                <span
+                  className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                  style={{
+                    background: "rgba(255,255,255,0.12)",
+                    color: "#FFFFFF",
+                    border: "1px solid rgba(255,255,255,0.18)",
+                  }}
+                >
+                  {healthScore >= 85
+                    ? "Excellent"
+                    : healthScore >= 70
+                      ? "Good"
+                      : healthScore >= 50
+                        ? "Moderate"
+                        : healthScore >= 16
+                          ? "Deficit"
+                          : "Critical"}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-end gap-3 mb-3">
+              <span className="amount text-[36px] font-bold leading-none text-white">
+                {healthScore}
+              </span>
+              <span
+                className="text-[12px] font-medium pb-1.5"
+                style={{ color: "rgba(255,255,255,0.55)" }}
+              >
+                / 100 pts
+              </span>
+            </div>
+            <div
+              className="w-full h-1.5 rounded-full overflow-hidden"
+              style={{ background: "rgba(255,255,255,0.15)" }}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${healthScore}%`, background: "#FFFFFF" }}
+              />
+            </div>
+          </section>
+        );
+
+      case "monte_carlo":
+        return (
+          <MonteCarloCard
+            netWorth={netWorth}
+            monthlySavings={Math.max(1000000, totalIncome - totalExpense)}
+            hideBalance={hideBalance}
+            onOpenSimulator={() => {
+              setMonteCarloOpen(true);
+              triggerHaptic("light");
+            }}
+          />
+        );
+
+      case "fire_planner":
+        return (
+          <FirePlannerCard
+            netWorth={netWorth}
+            monthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
+            monthlySavings={Math.max(1000000, totalIncome - totalExpense)}
+            hideBalance={hideBalance}
+            onOpenPlanner={() => {
+              setFirePlannerOpen(true);
+              triggerHaptic("light");
+            }}
+          />
+        );
+
+      case "cashflow_outlook":
+        return (
+          <CashflowOutlookCard
+            defaultForecast={intel.cashflowFloor}
+            getCashflowHorizon={intel.getCashflowHorizon}
+            hideBalance={hideBalance}
+          />
+        );
+
+      case "liquidity_horizon":
+        return (
+          <LiquidityHorizonCard
+            liquidityHorizon={intel.liquidityHorizon}
+            hideBalance={hideBalance}
+          />
+        );
+
+      case "zero_based_envelopes":
+        return (
+          <ZeroBasedEnvelopesCard
+            monthlyIncome={intel.totalIncome}
+            categories={categories}
+            bills={bills}
+            goals={goals}
+            categorySpendMap={categorySpendMap}
+            hideBalance={hideBalance}
+          />
+        );
+
+      case "spending_patterns":
+        if (range !== "month") return null;
+        return <SpendingPatternsSection patterns={intel.behavioralPatterns} />;
+
+      case "spending_density_heatmap":
+        return (
+          <div className="p-5 rounded-[24px] glass-surface">
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} style={{ color: "var(--text-tertiary)" }} />
+                  <h2
+                    className="text-[13px] font-bold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Spending Density & Heatmap
+                  </h2>
+                </div>
+                <p
+                  className="text-[11px]"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Daily expense cluster · {rangeTitle}
+                </p>
+              </div>
+            </div>
+
+            <div
+              className="p-3 rounded-2xl"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
+                {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
+                  <div
+                    key={i}
+                    className="text-[9px] font-bold"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {w}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: calendarSpendingHeatmap.pad }).map((_, i) => (
+                  <div key={`pad-${i}`} />
+                ))}
+                {calendarSpendingHeatmap.days.map((d) => {
+                  const dStr = format(d, "yyyy-MM-dd");
+                  const spent =
+                    calendarSpendingHeatmap.dailySpendMap.get(dStr) || 0;
+                  const intensity =
+                    calendarSpendingHeatmap.maxSpend > 0
+                      ? spent / calendarSpendingHeatmap.maxSpend
+                      : 0;
+                  const isT = isToday(d);
+
+                  let bg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
+                  let textColor = "var(--text-tertiary)";
+                  if (spent > 0) {
+                    if (isDark) {
+                      if (intensity > 0.6) {
+                        bg = "#FFFFFF";
+                        textColor = "#0A0A0B";
+                      } else if (intensity > 0.3) {
+                        bg = "rgba(255,255,255,0.45)";
+                        textColor = "#FFFFFF";
+                      } else {
+                        bg = "rgba(255,255,255,0.18)";
+                        textColor = "rgba(255,255,255,0.9)";
+                      }
+                    } else {
+                      if (intensity > 0.6) {
+                        bg = "#18181B";
+                        textColor = "#FFFFFF";
+                      } else if (intensity > 0.3) {
+                        bg = "rgba(24,24,27,0.5)";
+                        textColor = "#FFFFFF";
+                      } else {
+                        bg = "rgba(24,24,27,0.18)";
+                        textColor = "#18181B";
+                      }
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={dStr}
+                      className="aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all"
+                      style={{
+                        background: bg,
+                        color: textColor,
+                        border: isT
+                          ? "1px solid var(--accent)"
+                          : "1px solid transparent",
+                      }}
+                      title={`${format(d, "dd MMM")}: ${spent > 0 ? formatRupiah(spent) : "No spend"}`}
+                    >
+                      <span className="text-[10px] font-semibold">
+                        {d.getDate()}
+                      </span>
+                      {spent > 0 && (
+                        <span className="text-[7px] font-bold opacity-80 scale-90 leading-none mt-0.5">
+                          {spent >= 1000000
+                            ? (spent / 1000000).toFixed(0) + "M"
+                            : spent >= 1000
+                              ? (spent / 1000).toFixed(0) + "K"
+                              : spent}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+
+      case "debt_payoff":
+        return <DebtPayoffSimulatorCard hideBalance={hideBalance} />;
+
+      case "what_if_simulator":
+        return (
+          <WhatIfSimulatorCard
+            monthlyIncome={intel.totalIncome}
+            monthlyExpense={intel.totalExpense}
+            hideBalance={hideBalance}
+          />
+        );
+
+      case "personal_financial_model":
+        return (
+          <PersonalFinancialModelCard
+            hideBalance={hideBalance}
+            actual={personalFinancialModel.actual}
+            baseline={personalFinancialModel.baseline}
+            scenario={personalFinancialModel.scenario}
+            insights={personalFinancialModel.insights}
+            onOpenDetails={() => {
+              setPersonalModelOpen(true);
+              triggerHaptic("light");
+            }}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="px-5 py-6 space-y-5 pb-36" style={{ minHeight: "100dvh" }}>
       {/* Header with Compact Timeframe Selector */}
@@ -1411,268 +1726,52 @@ export function StatisticsPage() {
       {/* TAB 2: INTELLIGENCE */}
       {analyticsSubTab === "intelligence" && (
         <>
-          {/* Financial Health Hero */}
-      <section className="card-contrast-hero p-5 relative overflow-hidden">
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ background: "rgba(255,255,255,0.12)", color: "#FFFFFF" }}
-            >
-              <ShieldCheck size={18} />
-            </div>
-            <div>
-              <p className="text-[13px] font-semibold text-white">
-                Financial Health
-              </p>
-              <p
-                className="text-[11px]"
-                style={{ color: "rgba(255,255,255,0.55)" }}
-              >
-                {rangeTitle} performance
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setHealthDiagnosticOpen(true);
-                triggerHaptic("light");
-              }}
-              className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-              style={{
-                background: "rgba(255, 255, 255, 0.15)",
-                color: "#FFFFFF",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-              }}
-              title="Executive Health Diagnostic"
-            >
-              <Info size={13} />
-            </button>
-            <span
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
-              style={{
-                background: "rgba(255,255,255,0.12)",
-                color: "#FFFFFF",
-                border: "1px solid rgba(255,255,255,0.18)",
-              }}
-            >
-              {healthScore >= 85
-                ? "Excellent"
-                : healthScore >= 70
-                  ? "Good"
-                  : healthScore >= 50
-                    ? "Moderate"
-                    : healthScore >= 16
-                      ? "Deficit"
-                      : "Critical"}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-end gap-3 mb-3">
-          <span className="amount text-[36px] font-bold leading-none text-white">
-            {healthScore}
-          </span>
-          <span
-            className="text-[12px] font-medium pb-1.5"
-            style={{ color: "rgba(255,255,255,0.55)" }}
+          <Reorder.Group
+            axis="y"
+            values={visibleStatsCards.map((c) => c.id)}
+            onReorder={reorderStatsCards}
+            className="grid grid-cols-2 gap-4 pb-4"
           >
-            / 100 pts
-          </span>
-        </div>
-        <div
-          className="w-full h-1.5 rounded-full overflow-hidden"
-          style={{ background: "rgba(255,255,255,0.15)" }}
-        >
-          <div
-            className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${healthScore}%`, background: "#FFFFFF" }}
-          />
-        </div>
-      </section>
-
-          {/* Dedicated Monte Carlo Stochastic Wealth Dispersion */}
-          <MonteCarloCard
-            netWorth={netWorth}
-            monthlySavings={Math.max(1000000, totalIncome - totalExpense)}
-            hideBalance={hideBalance}
-            onOpenSimulator={() => {
-              setMonteCarloOpen(true);
-              triggerHaptic("light");
-            }}
-          />
-
-          {/* Dedicated FIRE Planner & Financial Independence Engine */}
-          <FirePlannerCard
-            netWorth={netWorth}
-            monthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
-            monthlySavings={Math.max(1000000, totalIncome - totalExpense)}
-            hideBalance={hideBalance}
-            onOpenPlanner={() => {
-              setFirePlannerOpen(true);
-              triggerHaptic("light");
-            }}
-          />
-
-          <CashflowOutlookCard
-            defaultForecast={intel.cashflowFloor}
-            getCashflowHorizon={intel.getCashflowHorizon}
-            hideBalance={hideBalance}
-          />
-
-          <LiquidityHorizonCard
-            liquidityHorizon={intel.liquidityHorizon}
-            hideBalance={hideBalance}
-          />
-
-          <ZeroBasedEnvelopesCard
-            monthlyIncome={intel.totalIncome}
-            categories={categories}
-            bills={bills}
-            goals={goals}
-            categorySpendMap={categorySpendMap}
-            hideBalance={hideBalance}
-          />
-
-          {/* Spending Patterns (Phase II) */}
-      {range === "month" && (
-        <SpendingPatternsSection patterns={intel.behavioralPatterns} />
-      )}
-
-          {/* 📅 Financial Calendar Spending Heatmap (Priority 10) */}
-      <div className="p-5 rounded-[24px] glass-surface">
-        <div className="flex justify-between items-center mb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Calendar size={16} style={{ color: "var(--text-tertiary)" }} />
-              <h2
-                className="text-[13px] font-bold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Spending Density & Heatmap
-              </h2>
-            </div>
-            <p
-              className="text-[11px]"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Daily expense cluster · {rangeTitle}
-            </p>
-          </div>
-        </div>
-
-        <div
-          className="p-3 rounded-2xl"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-          }}
-        >
-          <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
-            {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
-              <div
-                key={i}
-                className="text-[9px] font-bold"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {w}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: calendarSpendingHeatmap.pad }).map((_, i) => (
-              <div key={`pad-${i}`} />
-            ))}
-            {calendarSpendingHeatmap.days.map((d) => {
-              const dStr = format(d, "yyyy-MM-dd");
-              const spent =
-                calendarSpendingHeatmap.dailySpendMap.get(dStr) || 0;
-              const intensity =
-                calendarSpendingHeatmap.maxSpend > 0
-                  ? spent / calendarSpendingHeatmap.maxSpend
-                  : 0;
-              const isT = isToday(d);
-
-              let bg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
-              let textColor = "var(--text-tertiary)";
-              if (spent > 0) {
-                if (isDark) {
-                  if (intensity > 0.6) {
-                    bg = "#FFFFFF";
-                    textColor = "#0A0A0B";
-                  } else if (intensity > 0.3) {
-                    bg = "rgba(255,255,255,0.45)";
-                    textColor = "#FFFFFF";
-                  } else {
-                    bg = "rgba(255,255,255,0.18)";
-                    textColor = "rgba(255,255,255,0.9)";
-                  }
-                } else {
-                  if (intensity > 0.6) {
-                    bg = "#18181B";
-                    textColor = "#FFFFFF";
-                  } else if (intensity > 0.3) {
-                    bg = "rgba(24,24,27,0.5)";
-                    textColor = "#FFFFFF";
-                  } else {
-                    bg = "rgba(24,24,27,0.18)";
-                    textColor = "#18181B";
-                  }
-                }
-              }
-
+            {visibleStatsCards.map((card) => {
+              const content = renderIntelligenceCard(card.id, card.size);
+              if (!content) return null;
               return (
-                <div
-                  key={dStr}
-                  className="aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all"
-                  style={{
-                    background: bg,
-                    color: textColor,
-                    border: isT
-                      ? "1px solid var(--accent)"
-                      : "1px solid transparent",
-                  }}
-                  title={`${format(d, "dd MMM")}: ${spent > 0 ? formatRupiah(spent) : "No spend"}`}
+                <Reorder.Item
+                  key={card.id}
+                  value={card.id}
+                  dragListener={isStatsEditMode}
+                  className={card.size === "half" ? "col-span-1" : "col-span-2"}
                 >
-                  <span className="text-[10px] font-semibold">
-                    {d.getDate()}
-                  </span>
-                  {spent > 0 && (
-                    <span className="text-[7px] font-bold opacity-80 scale-90 leading-none mt-0.5">
-                      {spent >= 1000000
-                        ? (spent / 1000000).toFixed(0) + "M"
-                        : spent >= 1000
-                          ? (spent / 1000).toFixed(0) + "K"
-                          : spent}
-                    </span>
-                  )}
-                </div>
+                  <WidgetCardWrapper
+                    card={card}
+                    isEditMode={isStatsEditMode}
+                    onEnterEditMode={() => setIsStatsEditMode(true)}
+                    onCycleSize={cycleStatsCardSize}
+                    onHide={toggleStatsCardVisibility}
+                  >
+                    {content}
+                  </WidgetCardWrapper>
+                </Reorder.Item>
               );
             })}
+          </Reorder.Group>
+
+          {/* Customize Intelligence Cards Button */}
+          <div className="flex justify-center pt-2 pb-2">
+            <button
+              type="button"
+              onClick={() => setIsStatsEditMode(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-tight cursor-pointer active:scale-95 transition-all"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-tertiary)",
+              }}
+            >
+              <SlidersHorizontal size={12} />
+              <span>Customize Intelligence Cards</span>
+            </button>
           </div>
-        </div>
-      </div>
-
-          {/* Debt Payoff Engine: Snowball vs Avalanche */}
-          <DebtPayoffSimulatorCard hideBalance={hideBalance} />
-
-          <WhatIfSimulatorCard
-            monthlyIncome={intel.totalIncome}
-            monthlyExpense={intel.totalExpense}
-            hideBalance={hideBalance}
-          />
-
-          <PersonalFinancialModelCard
-            hideBalance={hideBalance}
-            actual={personalFinancialModel.actual}
-            baseline={personalFinancialModel.baseline}
-            scenario={personalFinancialModel.scenario}
-            insights={personalFinancialModel.insights}
-            onOpenDetails={() => {
-              setPersonalModelOpen(true);
-              triggerHaptic("light");
-            }}
-          />
         </>
       )}
 
@@ -3098,6 +3197,17 @@ export function StatisticsPage() {
         defaultMonthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
         hideBalance={hideBalance}
       />
+
+      {/* Floating iOS Springboard Customization Pill for Intelligence Tab */}
+      {analyticsSubTab === "intelligence" && (
+        <WidgetCustomizationBar
+          isEditMode={isStatsEditMode}
+          onDone={() => setIsStatsEditMode(false)}
+          onReset={resetStatsLayout}
+          hiddenCards={hiddenStatsCards}
+          onUnhideCard={toggleStatsCardVisibility}
+        />
+      )}
     </div>
   );
 }

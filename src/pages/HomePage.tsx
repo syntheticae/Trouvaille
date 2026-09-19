@@ -4,9 +4,13 @@ import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator"
 import { useGoals } from "../hooks/useGoals";
 import { useWallets } from "../hooks/useWallets";
 import { useBills } from "../hooks/useBills";
-import { CalendarDays, Target } from "lucide-react";
+import { CalendarDays, Target, Sparkles } from "lucide-react";
 import { triggerHaptic } from "../lib/haptics";
 import { resolveTransactionCategory } from "../lib/categoryResolver";
+import { Reorder } from "framer-motion";
+import { useWidgetLayout } from "../hooks/useWidgetLayout";
+import { WidgetCardWrapper, WidgetCustomizationBar } from "../components/common";
+import type { WidgetSize } from "../lib/widgetLayoutTypes";
 
 function formatNetAmount(net: number): string {
   const abs = Math.abs(net);
@@ -85,58 +89,6 @@ interface HomePageProps {
   onOpenScan?: () => void;
 }
 
-export interface HomeWidgetSettings {
-  showCashflowPulse: boolean;
-  showSpendingStability: boolean;
-  showActionCenter: boolean;
-  showHeatmap: boolean;
-  showGoals: boolean;
-  showBills: boolean;
-  showRecentTransactions: boolean;
-  showTopCategories: boolean;
-  showSavingsRate: boolean;
-  showSplitBillTracker: boolean;
-}
-
-const DEFAULT_HOME_WIDGETS: HomeWidgetSettings = {
-  showCashflowPulse: true,
-  showSpendingStability: true,
-  showActionCenter: true,
-  showHeatmap: true,
-  showGoals: true,
-  showBills: true,
-  showRecentTransactions: false,
-  showTopCategories: false,
-  showSavingsRate: false,
-  showSplitBillTracker: false,
-};
-
-const MINIMAL_HOME_WIDGETS: HomeWidgetSettings = {
-  showCashflowPulse: true,
-  showSpendingStability: false,
-  showActionCenter: true,
-  showHeatmap: false,
-  showGoals: false,
-  showBills: false,
-  showRecentTransactions: false,
-  showTopCategories: false,
-  showSavingsRate: false,
-  showSplitBillTracker: false,
-};
-
-const COMPREHENSIVE_HOME_WIDGETS: HomeWidgetSettings = {
-  showCashflowPulse: true,
-  showSpendingStability: true,
-  showActionCenter: true,
-  showHeatmap: true,
-  showGoals: true,
-  showBills: true,
-  showRecentTransactions: true,
-  showTopCategories: true,
-  showSavingsRate: true,
-  showSplitBillTracker: true,
-};
-
 type StockRange = "1D" | "1W" | "1M" | "6M" | "YTD" | "1Y" | "ALL";
 
 const GlassTooltip = ({ active, payload, label }: any) => {
@@ -205,29 +157,19 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     data: any;
   } | null>(null);
 
-  const [homeWidgets, setHomeWidgets] = useState<HomeWidgetSettings>(() => {
-    try {
-      const saved = localStorage.getItem("trouvaille_home_widgets_v1");
-      if (saved) return { ...DEFAULT_HOME_WIDGETS, ...JSON.parse(saved) };
-    } catch {}
-    return DEFAULT_HOME_WIDGETS;
-  });
+  const {
+    widgets,
+    visibleCards,
+    hiddenCards,
+    isEditMode,
+    setIsEditMode,
+    reorderCards,
+    cycleCardSize,
+    toggleCardVisibility,
+    resetLayout,
+  } = useWidgetLayout();
+
   const [customizeHomeOpen, setCustomizeHomeOpen] = useState(false);
-
-  const toggleWidget = (key: keyof HomeWidgetSettings) => {
-    triggerHaptic("light");
-    setHomeWidgets((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      localStorage.setItem("trouvaille_home_widgets_v1", JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const applyPreset = (preset: HomeWidgetSettings) => {
-    triggerHaptic("medium");
-    setHomeWidgets(preset);
-    localStorage.setItem("trouvaille_home_widgets_v1", JSON.stringify(preset));
-  };
 
   const intel = useFinancialIntelligence({
     transactions: allTxs,
@@ -515,6 +457,769 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     ALL: "All Time",
   };
 
+  const renderCardContent = (cardId: string, size: WidgetSize) => {
+    switch (cardId) {
+      case "net_portfolio":
+        return (
+          <section className="card-contrast-hero p-4 pb-3 relative overflow-hidden">
+            {/* Title Header */}
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-[12px] font-semibold uppercase tracking-wider text-white/80 leading-none">
+                Net Portfolio
+              </h2>
+              <button
+                onClick={toggleHideBalance}
+                className="text-white/60 hover:text-white active:scale-90 transition-all p-1 -mr-1 cursor-pointer"
+                title={hideBalance ? "Show Balance" : "Hide Balance"}
+              >
+                {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+
+            {/* Amount */}
+            <div className="mb-1.5">
+              <span className="text-[28px] font-bold tracking-tight amount leading-tight text-white">
+                {hideBalance
+                  ? "Rp ••••••••"
+                  : formatRupiah(assetData.currentBalance)}
+              </span>
+            </div>
+
+            {/* Change Line + Time Label Side by Side */}
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <div
+                className="flex items-center gap-1 text-[12px] font-semibold"
+                style={{ color: assetData.diff >= 0 ? "#FFFFFF" : "#A1A1AA" }}
+              >
+                <ArrowUpRight
+                  size={13}
+                  className={assetData.diff < 0 ? "rotate-90" : ""}
+                />
+                <span>
+                  {hideBalance
+                    ? "••••"
+                    : `${assetData.diff >= 0 ? "+" : ""}${formatRupiah(assetData.diff)}`}
+                </span>
+                <span className="opacity-80">
+                  (
+                  {hideBalance
+                    ? "••••"
+                    : `${assetData.percent > 0 ? "+" : ""}${assetData.percent.toFixed(2)}%`}
+                  )
+                </span>
+              </div>
+              <span className="text-[11px] font-semibold text-white/50 shrink-0">
+                {stockRangeLabels[stockRange]} · IDR
+              </span>
+            </div>
+
+            {/* Range Pill Selector (1D, 1W, 1M, 6M, YTD, 1Y, ALL) */}
+            <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 mb-1.5">
+              {(["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as StockRange[]).map(
+                (r) => {
+                  const isActive = stockRange === r;
+                  return (
+                    <button
+                      key={r}
+                      onClick={() => {
+                        setStockRange(r);
+                        triggerHaptic("light");
+                      }}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer"
+                      style={{
+                        background: isActive
+                          ? "rgba(255,255,255,0.25)"
+                          : "transparent",
+                        color: isActive ? "#FFFFFF" : "rgba(255,255,255,0.55)",
+                        border: isActive
+                          ? "1px solid rgba(255,255,255,0.35)"
+                          : "1px solid transparent",
+                      }}
+                    >
+                      {r}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+
+            {/* Chart with Right Y-Axis & Dotted Grid */}
+            <div className="h-[120px] w-full mt-0.5">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={assetData.chartData}
+                  margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="heroGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="2 3"
+                    stroke="rgba(255,255,255,0.09)"
+                    vertical={true}
+                    horizontal={true}
+                  />
+                  <XAxis
+                    dataKey="label"
+                    tick={{
+                      fontSize: 9,
+                      fill: "rgba(255,255,255,0.5)",
+                      fontFamily: "Urbanist",
+                      fontWeight: 600,
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    dy={3}
+                  />
+                  <YAxis
+                    orientation="right"
+                    width={34}
+                    domain={["auto", "auto"]}
+                    tick={{
+                      fontSize: 9,
+                      fill: "rgba(255,255,255,0.5)",
+                      fontFamily: "Urbanist",
+                      fontWeight: 700,
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={formatAxisY}
+                    dx={-2}
+                  />
+                  <Tooltip content={<GlassTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="balance"
+                    stroke="#FFFFFF"
+                    strokeWidth={2}
+                    fill="url(#heroGradient)"
+                    dot={false}
+                    activeDot={{
+                      r: 4,
+                      fill: "#FFFFFF",
+                      stroke: "rgba(0,0,0,0.5)",
+                      strokeWidth: 1.5,
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Stocks-Style Summary Footer (High, Low, Inflow, Outflow) */}
+            <div className="grid grid-cols-4 gap-1.5 pt-2.5 mt-1 border-t border-white/10 text-center">
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">High</p>
+                <p className="text-[11px] font-semibold amount text-white mt-0.5">
+                  {hideBalance
+                    ? "••••"
+                    : assetData.highBalance >= 1000
+                      ? "Rp " + formatAxisY(assetData.highBalance)
+                      : formatRupiah(assetData.highBalance)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">Low</p>
+                <p className="text-[11px] font-semibold amount text-white mt-0.5">
+                  {hideBalance
+                    ? "••••"
+                    : assetData.lowBalance >= 1000
+                      ? "Rp " + formatAxisY(assetData.lowBalance)
+                      : formatRupiah(assetData.lowBalance)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">Inflow</p>
+                <p className="text-[11px] font-semibold amount text-white mt-0.5">
+                  {hideBalance
+                    ? "••••"
+                    : assetData.periodInflow > 0
+                      ? "+Rp " + formatAxisY(assetData.periodInflow)
+                      : "Rp 0"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">Outflow</p>
+                <p className="text-[11px] font-semibold amount text-white mt-0.5">
+                  {hideBalance
+                    ? "••••"
+                    : assetData.periodOutflow > 0
+                      ? "-Rp " + formatAxisY(assetData.periodOutflow)
+                      : "Rp 0"}
+                </p>
+              </div>
+            </div>
+          </section>
+        );
+
+      case "portfolio_account":
+        return <BalanceCard hideBalance={hideBalance} />;
+
+      case "spending_stability":
+        return intel.expenseVolatility ? (
+          <ExpenseVolatilityCard
+            volatility={intel.expenseVolatility}
+            hideBalance={hideBalance}
+          />
+        ) : null;
+
+      case "cashflow_pulse":
+        return (
+          <CashflowPulseCard
+            netCashflow={intel.netCashflow}
+            totalIncome={intel.totalIncome}
+            totalExpense={intel.totalExpense}
+            dailyAverage={dailyAverage}
+            daysElapsed={daysInMonth}
+            savingsRate={intel.savingsRate}
+            momentum={intel.momentum}
+            momentumReason={intel.momentumReason}
+            hideBalance={hideBalance}
+            budgetTarget={budgetTarget}
+            budgetRisk={intel.budgetRisk}
+            consumedPct={intel.consumedPct}
+            isAheadOfPace={intel.isAheadOfPace}
+            paceDiff={intel.paceDiff}
+            onOpenDrillDown={(mode) => {
+              if (mode === "budget") {
+                setMetricDrillDown({
+                  type: "budget_risk",
+                  data: {
+                    totalCurrent: totalExpense,
+                    totalPrevious: 0,
+                    delta: 0,
+                    pctChange: 0,
+                    budget: budgetTarget,
+                    consumedPct: intel.consumedPct,
+                    timePct: intel.timePct,
+                    budgetRisk: intel.budgetRisk,
+                    budgetRiskReason: intel.budgetRiskReason,
+                  },
+                });
+              } else if (mode === "net") {
+                setMetricDrillDown({
+                  type: "snapshot",
+                  data: {
+                    totalCurrent: intel.netCashflow,
+                    totalPrevious: 0,
+                    delta: intel.netCashflow,
+                    pctChange: 0,
+                    title: "Net Cashflow",
+                    subtitle: `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
+                    badge: "Current Month",
+                    ctaLabel: "View Full Analytics Breakdown",
+                  },
+                });
+              } else {
+                const exp = intel.explainExpenseChange();
+                setMetricDrillDown({
+                  type: "snapshot",
+                  data: {
+                    totalCurrent: intel.totalExpense,
+                    totalPrevious: exp.totalPrevious,
+                    delta: exp.delta,
+                    pctChange: exp.pctChange,
+                    title: "Total Outflow",
+                    subtitle: `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
+                    badge: "Current Month",
+                    ctaLabel: "View Analytics Breakdown",
+                  },
+                });
+              }
+            }}
+          />
+        );
+
+      case "ai_insights":
+        return intel.actionCenterInsight ? (
+          <ActionCenterCard
+            insight={intel.actionCenterInsight}
+            transactions={allTxs}
+            budgetTarget={budgetTarget}
+            dailyAverage={intel.dailyAvg}
+            projectedMonthEnd={intel.projectedMonthEnd}
+            totalExpense={intel.totalExpense}
+            totalIncome={intel.totalIncome}
+          />
+        ) : null;
+
+      case "activity_heatmap":
+        return (
+          <section className="space-y-2">
+            <div className="flex justify-between items-center px-1">
+              <span className="text-[11px] font-bold tracking-wider block" style={{ color: "var(--text-tertiary)" }}>
+                {calendarExpanded ? "Monthly Activity" : "Past 7 Days Activity"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setCalendarExpanded((prev) => !prev);
+                }}
+                className="text-[10px] font-bold px-2.5 py-1 rounded-full transition-all active:scale-95 cursor-pointer select-none flex items-center gap-1"
+                style={{
+                  background: "var(--glass-fill)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <CalendarDays size={12} />
+                <span>{calendarExpanded ? "Compact (7D)" : "Full Month"}</span>
+              </button>
+            </div>
+
+            <div className="glass-surface p-3.5 rounded-[22px]">
+              {calendarExpanded ? (
+                <div className="grid grid-cols-7 gap-y-1 gap-x-1 text-center">
+                  {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
+                    <div key={i} className="text-[9px] font-bold mb-0.5" style={{ color: "var(--text-tertiary)" }}>
+                      {w}
+                    </div>
+                  ))}
+                  {Array.from({ length: calPad }).map((_, i) => (
+                    <div key={`pad-${i}`} />
+                  ))}
+                  {calDays.map((d) => renderCalendarDay(d))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-7 gap-y-1 gap-x-1 text-center">
+                  {compactDays.map((d) => (
+                    <div
+                      key={`h-${d.toISOString()}`}
+                      className="text-[9px] font-bold mb-0.5"
+                      style={{
+                        color: isToday(d) ? "var(--text-primary)" : "var(--text-tertiary)",
+                      }}
+                    >
+                      {format(d, "EEE")}
+                    </div>
+                  ))}
+                  {compactDays.map((d) => renderCalendarDay(d))}
+                </div>
+              )}
+            </div>
+          </section>
+        );
+
+      case "financial_goals":
+        if (goals.length === 0) return null;
+        return (
+          <section className="space-y-2">
+            <div className="flex justify-between items-center px-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                Financial Goals
+              </span>
+              <span className="text-[11px] font-bold" style={{ color: "var(--text-tertiary)" }}>
+                {goals.length} Target
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {goals.slice(0, size === "half" ? 1 : 3).map((g: any) => {
+                const pct = Math.min(100, Math.round((g.currentAmount / (g.targetAmount || 1)) * 100));
+                return (
+                  <div
+                    key={g.id}
+                    onClick={() => {
+                      setSelectedGoal(g);
+                      triggerHaptic("light");
+                    }}
+                    className="p-4 rounded-[22px] glass-surface cursor-pointer active:scale-[0.98] transition-transform"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className="w-8 h-8 rounded-xl flex items-center justify-center text-[15px]"
+                          style={{
+                            background: "var(--glass-fill)",
+                            border: "1px solid var(--glass-border)",
+                          }}
+                        >
+                          <Target size={16} style={{ color: "var(--text-primary)" }} />
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-bold leading-tight" style={{ color: "var(--text-primary)" }}>
+                            {g.title}
+                          </p>
+                          <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                            {formatRupiah(g.currentAmount)} of {formatRupiah(g.targetAmount)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {goalMilestonesMap.get(g.id) && size !== "half" && (
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full truncate"
+                            style={{
+                              background: "var(--glass-fill)",
+                              color: goalMilestonesMap.get(g.id)?.isComplete
+                                ? "var(--accent)"
+                                : "var(--text-secondary)",
+                              border: "1px solid var(--glass-border)",
+                            }}
+                          >
+                            {goalMilestonesMap.get(g.id)?.label}
+                          </span>
+                        )}
+                        <span
+                          className="amount text-[12px] font-semibold px-2 py-0.5 rounded-full"
+                          style={{
+                            background: "var(--glass-fill)",
+                            color: "var(--text-primary)",
+                            border: "1px solid var(--glass-border)",
+                          }}
+                        >
+                          {pct}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div
+                      className="h-2 w-full rounded-full overflow-hidden mt-2"
+                      style={{
+                        background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                      }}
+                    >
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${pct}%`,
+                          background: "var(--text-primary)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+
+      case "upcoming_bills":
+        if (upcomingBills.length === 0) return null;
+        return (
+          <section className="space-y-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wider px-1 block" style={{ color: "var(--text-tertiary)" }}>
+              Upcoming Bills
+            </span>
+            <div className="space-y-2">
+              {upcomingBills.slice(0, size === "half" ? 1 : 3).map((bill: any) => {
+                const dueStatusLabel = getBillDueStatusLabel(bill.due_date);
+                const isMarkingPaid = markBillPaid.isPending && markBillPaid.variables?.bill.id === bill.id;
+                return (
+                  <div
+                    key={bill.id}
+                    className="glass-surface flex items-center gap-3 px-4 py-3 rounded-2xl"
+                  >
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-[14px]"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--glass-border)",
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Bell size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                        {bill.title}
+                      </p>
+                      <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                        {dueStatusLabel}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <p className="amount text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                        {formatRupiah(Number(bill.amount))}
+                      </p>
+                      {size !== "half" && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markBillPaid.mutate(
+                              { bill, paid: true },
+                              {
+                                onSuccess: () => {
+                                  showToast(`${bill.title} marked as paid`, "add", () => {});
+                                },
+                                onError: (error: any) => {
+                                  showToast(error?.message || `Failed to mark ${bill.title} as paid`, "delete", () => {});
+                                },
+                              },
+                            );
+                            triggerHaptic("medium");
+                          }}
+                          disabled={isMarkingPaid}
+                          className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                          style={{
+                            background: "var(--glass-fill-strong)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--text-primary)",
+                          }}
+                          title="Tandai Sudah Bayar"
+                        >
+                          <Check size={11} />
+                          <span>{isMarkingPaid ? "Saving..." : "Paid"}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Total Kebutuhan Tagihan */}
+              {size !== "half" && (
+                <div
+                  className="p-3.5 rounded-2xl glass-surface flex items-center justify-between mt-2.5"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-6 h-6 rounded-lg flex items-center justify-center"
+                      style={{
+                        background: "var(--glass-fill)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      <CalendarDays size={13} />
+                    </div>
+                    <span className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                      Total Upcoming Bills
+                    </span>
+                  </div>
+                  <span className="amount text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {formatRupiah(
+                      upcomingBills.reduce((s: number, b: any) => s + Number(b.amount || 0), 0),
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+          </section>
+        );
+
+      case "recent_transactions":
+        if (allTxs.length === 0) return null;
+        return (
+          <section className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                Recent Transactions
+              </h3>
+              <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                Latest {size === "half" ? "3" : "5"}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {allTxs.slice(0, size === "half" ? 3 : 5).map((tx) => {
+                const resCat = resolveTransactionCategory(tx, categories);
+                return (
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between p-3 rounded-2xl glass-surface border border-[var(--glass-border)]"
+                    style={{ background: "var(--bg-elevated)" }}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.06] shrink-0">
+                        <IconRenderer icon={resCat.emoji} size="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight truncate">
+                          {resCat.name}
+                        </p>
+                        <p className="text-[11px] text-[var(--text-tertiary)] truncate max-w-[170px] mt-0.5">
+                          {tx.note || tx.occurred_on}
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className="amount font-semibold text-[13px] shrink-0 ml-2"
+                      style={{
+                        color:
+                          tx.type === "income"
+                            ? "#10b981"
+                            : tx.type === "transfer"
+                              ? "var(--text-secondary)"
+                              : "var(--text-primary)",
+                      }}
+                    >
+                      {tx.type === "income" ? "+" : tx.type === "expense" ? "-" : ""}
+                      {formatRupiah(Number(tx.amount))}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+
+      case "top_categories":
+        if (!currentMonthStats.topExpenseCategories || currentMonthStats.topExpenseCategories.length === 0) return null;
+        return (
+          <section className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                Top Spending Categories
+              </h3>
+              <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                This Month
+              </span>
+            </div>
+            <div
+              className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3"
+              style={{ background: "var(--bg-elevated)" }}
+            >
+              {currentMonthStats.topExpenseCategories.slice(0, size === "half" ? 2 : 3).map((cat) => {
+                const pct = currentMonthStats.expense > 0 ? Math.round((cat.total / currentMonthStats.expense) * 100) : 0;
+                return (
+                  <div key={cat.name} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <IconRenderer icon={cat.emoji} size="w-4 h-4" />
+                        <span className="font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                          {cat.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-semibold amount" style={{ color: "var(--text-primary)" }}>
+                          {formatRupiah(cat.total)}
+                        </span>
+                        <span className="text-[10px] font-mono" style={{ color: "var(--text-tertiary)" }}>
+                          ({pct}%)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(100, Math.max(4, pct))}%`,
+                          background: "var(--text-primary)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+
+      case "savings_rate_velocity":
+        return (
+          <section className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                Savings Rate & Velocity
+              </h3>
+              <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                Telemetry
+              </span>
+            </div>
+            <div
+              className={`p-4 rounded-3xl glass-surface border border-[var(--glass-border)] grid ${size === "half" ? "grid-cols-1" : "grid-cols-2"} gap-3`}
+              style={{ background: "var(--bg-elevated)" }}
+            >
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                  Savings Rate
+                </p>
+                <p className="text-[20px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                  {currentMonthStats.income > 0
+                    ? `${Math.max(0, Math.round(((currentMonthStats.income - currentMonthStats.expense) / currentMonthStats.income) * 100))}%`
+                    : "0%"}
+                </p>
+                <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                  Net capital retained
+                </p>
+              </div>
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                  Runway
+                </p>
+                <p className="text-[20px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                  {currentMonthStats.expense > 0
+                    ? `${(liquidAssets / currentMonthStats.expense).toFixed(1)} mo`
+                    : "∞"}
+                </p>
+                <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                  Liquid reserves buffer
+                </p>
+              </div>
+            </div>
+          </section>
+        );
+
+      case "split_bill":
+        return (
+          <section className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                Split Bill & Receivables
+              </h3>
+              <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                Piutang
+              </span>
+            </div>
+            <div
+              className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] flex items-center justify-between"
+              style={{ background: "var(--bg-elevated)" }}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Users size={16} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold leading-tight truncate" style={{ color: "var(--text-primary)" }}>
+                    Shared Piutang Status
+                  </p>
+                  <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
+                    Track friend shares from split transactions
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  _onOpenAdd?.();
+                }}
+                className="text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0 ml-2"
+                style={{
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
+                }}
+              >
+                Split
+              </button>
+            </div>
+          </section>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="px-5 pt-6 space-y-4 pb-36 relative">
       <PullToRefreshIndicator
@@ -590,884 +1295,36 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         </div>
       </header>
 
-      {/* 1. TOTAL ASSETS HERO CARD — Refined Compact Apple Stocks Layout */}
-      <section className="card-contrast-hero p-4 pb-3 relative overflow-hidden">
-        {/* Title Header */}
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-[12px] font-semibold uppercase tracking-wider text-white/80 leading-none">
-            Net Portfolio
-          </h2>
-          <button
-            onClick={toggleHideBalance}
-            className="text-white/60 hover:text-white active:scale-90 transition-all p-1 -mr-1 cursor-pointer"
-            title={hideBalance ? "Show Balance" : "Hide Balance"}
-          >
-            {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
-          </button>
-        </div>
-
-        {/* Amount */}
-        <div className="mb-1.5">
-          <span className="text-[28px] font-bold tracking-tight amount leading-tight text-white">
-            {hideBalance
-              ? "Rp ••••••••"
-              : formatRupiah(assetData.currentBalance)}
-          </span>
-        </div>
-
-        {/* Change Line + Time Label Side by Side */}
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <div
-            className="flex items-center gap-1 text-[12px] font-semibold"
-            style={{ color: assetData.diff >= 0 ? "#FFFFFF" : "#A1A1AA" }}
-          >
-            <ArrowUpRight
-              size={13}
-              className={assetData.diff < 0 ? "rotate-90" : ""}
-            />
-            <span>
-              {hideBalance
-                ? "••••"
-                : `${assetData.diff >= 0 ? "+" : ""}${formatRupiah(assetData.diff)}`}
-            </span>
-            <span className="opacity-80">
-              (
-              {hideBalance
-                ? "••••"
-                : `${assetData.percent > 0 ? "+" : ""}${assetData.percent.toFixed(2)}%`}
-              )
-            </span>
-          </div>
-          <span className="text-[11px] font-semibold text-white/50 shrink-0">
-            {stockRangeLabels[stockRange]} · IDR
-          </span>
-        </div>
-
-        {/* Range Pill Selector (1D, 1W, 1M, 6M, YTD, 1Y, ALL) */}
-        <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 mb-1.5">
-          {(["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as StockRange[]).map(
-            (r) => {
-              const isActive = stockRange === r;
-              return (
-                <button
-                  key={r}
-                  onClick={() => {
-                    setStockRange(r);
-                    triggerHaptic("light");
-                  }}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all"
-                  style={{
-                    background: isActive
-                      ? "rgba(255,255,255,0.25)"
-                      : "transparent",
-                    color: isActive ? "#FFFFFF" : "rgba(255,255,255,0.55)",
-                    border: isActive
-                      ? "1px solid rgba(255,255,255,0.35)"
-                      : "1px solid transparent",
-                  }}
-                >
-                  {r}
-                </button>
-              );
-            },
-          )}
-        </div>
-
-        {/* Chart with Right Y-Axis & Dotted Grid */}
-        <div className="h-[120px] w-full mt-0.5">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={assetData.chartData}
-              margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
+      {/* Dynamic Reorderable iOS-Style Card Springboard */}
+      <Reorder.Group
+        axis="y"
+        values={visibleCards.map((c) => c.id)}
+        onReorder={reorderCards}
+        className="grid grid-cols-2 gap-4 pb-4"
+      >
+        {visibleCards.map((card) => {
+          const content = renderCardContent(card.id, card.size);
+          if (!content) return null;
+          return (
+            <Reorder.Item
+              key={card.id}
+              value={card.id}
+              dragListener={isEditMode}
+              className={card.size === "half" ? "col-span-1" : "col-span-2"}
             >
-              <defs>
-                <linearGradient id="heroGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="2 3"
-                stroke="rgba(255,255,255,0.09)"
-                vertical={true}
-                horizontal={true}
-              />
-              <XAxis
-                dataKey="label"
-                tick={{
-                  fontSize: 9,
-                  fill: "rgba(255,255,255,0.5)",
-                  fontFamily: "Urbanist",
-                  fontWeight: 600,
-                }}
-                axisLine={false}
-                tickLine={false}
-                dy={3}
-              />
-              <YAxis
-                orientation="right"
-                width={34}
-                domain={["auto", "auto"]}
-                tick={{
-                  fontSize: 9,
-                  fill: "rgba(255,255,255,0.5)",
-                  fontFamily: "Urbanist",
-                  fontWeight: 700,
-                }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={formatAxisY}
-                dx={-2}
-              />
-              <Tooltip content={<GlassTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="balance"
-                stroke="#FFFFFF"
-                strokeWidth={2}
-                fill="url(#heroGradient)"
-                dot={false}
-                activeDot={{
-                  r: 4,
-                  fill: "#FFFFFF",
-                  stroke: "rgba(0,0,0,0.5)",
-                  strokeWidth: 1.5,
-                }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Stocks-Style Summary Footer (High, Low, Inflow, Outflow) */}
-        <div className="grid grid-cols-4 gap-1.5 pt-2.5 mt-1 border-t border-white/10 text-center">
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">High</p>
-            <p className="text-[11px] font-semibold amount text-white mt-0.5">
-              {hideBalance
-                ? "••••"
-                : assetData.highBalance >= 1000
-                  ? "Rp " + formatAxisY(assetData.highBalance)
-                  : formatRupiah(assetData.highBalance)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">Low</p>
-            <p className="text-[11px] font-semibold amount text-white mt-0.5">
-              {hideBalance
-                ? "••••"
-                : assetData.lowBalance >= 1000
-                  ? "Rp " + formatAxisY(assetData.lowBalance)
-                  : formatRupiah(assetData.lowBalance)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">
-              Inflow
-            </p>
-            <p className="text-[11px] font-semibold amount text-white mt-0.5">
-              {hideBalance
-                ? "••••"
-                : assetData.periodInflow > 0
-                  ? "+Rp " + formatAxisY(assetData.periodInflow)
-                  : "Rp 0"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">
-              Outflow
-            </p>
-            <p className="text-[11px] font-semibold amount text-white mt-0.5">
-              {hideBalance
-                ? "••••"
-                : assetData.periodOutflow > 0
-                  ? "-Rp " + formatAxisY(assetData.periodOutflow)
-                  : "Rp 0"}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. PORTFOLIO & ACCOUNTS  */}
-      <BalanceCard hideBalance={hideBalance} />
-
-      {/* 3. SPENDING STABILITY (EXPENSE VOLATILITY) */}
-      {(homeWidgets.showSpendingStability ?? true) &&
-        intel.expenseVolatility && (
-          <ExpenseVolatilityCard
-            volatility={intel.expenseVolatility}
-            hideBalance={hideBalance}
-          />
-        )}
-
-      {/* 4. CASHFLOW PULSE & BUDGET */}
-      {homeWidgets.showCashflowPulse && (
-        <CashflowPulseCard
-          netCashflow={intel.netCashflow}
-          totalIncome={intel.totalIncome}
-          totalExpense={intel.totalExpense}
-          dailyAverage={dailyAverage}
-          daysElapsed={daysInMonth}
-          savingsRate={intel.savingsRate}
-          momentum={intel.momentum}
-          momentumReason={intel.momentumReason}
-          hideBalance={hideBalance}
-          budgetTarget={budgetTarget}
-          budgetRisk={intel.budgetRisk}
-          consumedPct={intel.consumedPct}
-          isAheadOfPace={intel.isAheadOfPace}
-          paceDiff={intel.paceDiff}
-          onOpenDrillDown={(mode) => {
-            if (mode === "budget") {
-              setMetricDrillDown({
-                type: "budget_risk",
-                data: {
-                  totalCurrent: totalExpense,
-                  totalPrevious: 0,
-                  delta: 0,
-                  pctChange: 0,
-                  budget: budgetTarget,
-                  consumedPct: intel.consumedPct,
-                  timePct: intel.timePct,
-                  budgetRisk: intel.budgetRisk,
-                  budgetRiskReason: intel.budgetRiskReason,
-                },
-              });
-            } else if (mode === "net") {
-              setMetricDrillDown({
-                type: "snapshot",
-                data: {
-                  totalCurrent: intel.netCashflow,
-                  totalPrevious: 0,
-                  delta: intel.netCashflow,
-                  pctChange: 0,
-                  title: "Net Cashflow",
-                  subtitle: `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
-                  badge: "Current Month",
-                  ctaLabel: "View Full Analytics Breakdown",
-                },
-              });
-            } else {
-              const exp = intel.explainExpenseChange();
-              setMetricDrillDown({
-                type: "snapshot",
-                data: {
-                  totalCurrent: intel.totalExpense,
-                  totalPrevious: exp.totalPrevious,
-                  delta: exp.delta,
-                  pctChange: exp.pctChange,
-                  title: "Total Outflow",
-                  subtitle: `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
-                  badge: "Current Month",
-                  ctaLabel: "View Analytics Breakdown",
-                },
-              });
-            }
-          }}
-        />
-      )}
-
-      {/* 5. AI FINANCIAL INSIGHTS (ACTION CENTER) */}
-      {homeWidgets.showActionCenter && intel.actionCenterInsight && (
-        <ActionCenterCard
-          insight={intel.actionCenterInsight}
-          transactions={allTxs}
-          budgetTarget={budgetTarget}
-          dailyAverage={intel.dailyAvg}
-          projectedMonthEnd={intel.projectedMonthEnd}
-          totalExpense={intel.totalExpense}
-          totalIncome={intel.totalIncome}
-        />
-      )}
-
-      {/* 5. HEATMAP CALENDAR (Collapsible: Compact 7D vs Full Month) */}
-      {homeWidgets.showHeatmap && (
-        <section>
-          <div className="flex justify-between items-center px-1 mb-2">
-            <span
-              className="text-[11px] font-bold  tracking-wider block"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {calendarExpanded ? "Monthly Activity" : "Past 7 Days Activity"}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setCalendarExpanded((prev) => !prev);
-              }}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-full transition-all active:scale-95 cursor-pointer select-none flex items-center gap-1"
-              style={{
-                background: "var(--glass-fill)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <CalendarDays size={12} />
-              <span>{calendarExpanded ? "Compact (7D)" : "Full Month"}</span>
-            </button>
-          </div>
-
-          <div className="glass-surface p-3.5 rounded-[22px]">
-            {calendarExpanded ? (
-              <div className="grid grid-cols-7 gap-y-1 gap-x-1 text-center">
-                {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
-                  <div
-                    key={i}
-                    className="text-[9px] font-bold mb-0.5"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {w}
-                  </div>
-                ))}
-                {Array.from({ length: calPad }).map((_, i) => (
-                  <div key={`pad-${i}`} />
-                ))}
-                {calDays.map((d) => renderCalendarDay(d))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-7 gap-y-1 gap-x-1 text-center">
-                {compactDays.map((d) => (
-                  <div
-                    key={`h-${d.toISOString()}`}
-                    className="text-[9px] font-bold mb-0.5"
-                    style={{
-                      color: isToday(d)
-                        ? "var(--text-primary)"
-                        : "var(--text-tertiary)",
-                    }}
-                  >
-                    {format(d, "EEE")}
-                  </div>
-                ))}
-                {compactDays.map((d) => renderCalendarDay(d))}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* 5.5 FINANCIAL GOALS */}
-      {homeWidgets.showGoals && goals.length > 0 && (
-        <section className="mb-6">
-          <div className="flex justify-between items-center px-1 mb-2.5">
-            <span
-              className="text-[11px] font-bold uppercase tracking-wider"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Financial Goals
-            </span>
-            <span
-              className="text-[11px] font-bold"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {goals.length} Target
-            </span>
-          </div>
-
-          <div className="space-y-2.5">
-            {goals.map((g: any) => {
-              const pct = Math.min(
-                100,
-                Math.round((g.currentAmount / (g.targetAmount || 1)) * 100),
-              );
-              return (
-                <div
-                  key={g.id}
-                  onClick={() => {
-                    setSelectedGoal(g);
-                    triggerHaptic("light");
-                  }}
-                  className="p-4 rounded-[22px] glass-surface cursor-pointer active:scale-[0.98] transition-transform"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-[15px]"
-                        style={{
-                          background: "var(--glass-fill)",
-                          border: "1px solid var(--glass-border)",
-                        }}
-                      >
-                        <Target
-                          size={16}
-                          style={{ color: "var(--text-primary)" }}
-                        />
-                      </div>
-                      <div>
-                        <p
-                          className="text-[13px] font-bold leading-tight"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {g.title}
-                        </p>
-                        <p
-                          className="text-[11px] font-medium"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {formatRupiah(g.currentAmount)} of{" "}
-                          {formatRupiah(g.targetAmount)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {goalMilestonesMap.get(g.id) && (
-                        <span
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full truncate"
-                          style={{
-                            background: "var(--glass-fill)",
-                            color: goalMilestonesMap.get(g.id)?.isComplete
-                              ? "var(--accent)"
-                              : "var(--text-secondary)",
-                            border: "1px solid var(--glass-border)",
-                          }}
-                        >
-                          {goalMilestonesMap.get(g.id)?.label}
-                        </span>
-                      )}
-                      <span
-                        className="amount text-[12px] font-semibold px-2 py-0.5 rounded-full"
-                        style={{
-                          background: "var(--glass-fill)",
-                          color: "var(--text-primary)",
-                          border: "1px solid var(--glass-border)",
-                        }}
-                      >
-                        {pct}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div
-                    className="h-2 w-full rounded-full overflow-hidden mt-2"
-                    style={{
-                      background: isDark
-                        ? "rgba(255,255,255,0.08)"
-                        : "rgba(0,0,0,0.06)",
-                    }}
-                  >
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${pct}%`,
-                        background: "var(--text-primary)",
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* 6. UPCOMING BILLS */}
-      {homeWidgets.showBills && upcomingBills.length > 0 && (
-        <section className="mb-6">
-          <span
-            className="text-[11px] font-semibold uppercase tracking-wider px-1 mb-2 block"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Upcoming Bills
-          </span>
-          <div className="space-y-2">
-            {upcomingBills.slice(0, 3).map((bill: any) => {
-              const dueStatusLabel = getBillDueStatusLabel(bill.due_date);
-              const isMarkingPaid =
-                markBillPaid.isPending &&
-                markBillPaid.variables?.bill.id === bill.id;
-              return (
-                <div
-                  key={bill.id}
-                  className="glass-surface flex items-center gap-3 px-4 py-3 rounded-2xl"
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-[14px]"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Bell size={16} />
-                  </div>
-                  <div className="flex-1">
-                    <p
-                      className="text-[13px] font-semibold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {bill.title}
-                    </p>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {dueStatusLabel}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2.5 shrink-0">
-                    <p
-                      className="amount text-[14px] font-semibold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {formatRupiah(Number(bill.amount))}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        markBillPaid.mutate(
-                          { bill, paid: true },
-                          {
-                            onSuccess: () => {
-                              showToast(
-                                `${bill.title} marked as paid`,
-                                "add",
-                                () => {},
-                              );
-                            },
-                            onError: (error: any) => {
-                              showToast(
-                                error?.message ||
-                                  `Failed to mark ${bill.title} as paid`,
-                                "delete",
-                                () => {},
-                              );
-                            },
-                          },
-                        );
-                        triggerHaptic("medium");
-                      }}
-                      disabled={isMarkingPaid}
-                      className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                      style={{
-                        background: "var(--glass-fill-strong)",
-                        border: "1px solid var(--glass-border)",
-                        color: "var(--text-primary)",
-                      }}
-                      title="Tandai Sudah Bayar"
-                    >
-                      <Check size={11} />
-                      <span>{isMarkingPaid ? "Saving..." : "Paid"}</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Total Kebutuhan Tagihan */}
-            <div
-              className="p-3.5 rounded-2xl glass-surface flex items-center justify-between mt-2.5"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-6 h-6 rounded-lg flex items-center justify-center"
-                  style={{
-                    background: "var(--glass-fill)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  <CalendarDays size={13} />
-                </div>
-                <span
-                  className="text-[12px] font-medium"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Total Upcoming Bills
-                </span>
-              </div>
-              <span
-                className="amount text-[14px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
+              <WidgetCardWrapper
+                card={card}
+                isEditMode={isEditMode}
+                onEnterEditMode={() => setIsEditMode(true)}
+                onCycleSize={cycleCardSize}
+                onHide={toggleCardVisibility}
               >
-                {formatRupiah(
-                  upcomingBills.reduce(
-                    (s: number, b: any) => s + Number(b.amount || 0),
-                    0,
-                  ),
-                )}
-              </span>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 7. RECENT TRANSACTIONS FEED WIDGET */}
-      {homeWidgets.showRecentTransactions !== false && allTxs.length > 0 && (
-        <section className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h3
-              className="text-[13px] font-semibold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Recent Transactions
-            </h3>
-            <span
-              className="text-[11px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Latest 5
-            </span>
-          </div>
-          <div className="space-y-2">
-            {allTxs.slice(0, 5).map((tx) => {
-              const resCat = resolveTransactionCategory(tx, categories);
-              return (
-                <div
-                  key={tx.id}
-                  className="flex items-center justify-between p-3 rounded-2xl glass-surface border border-[var(--glass-border)]"
-                  style={{ background: "var(--bg-elevated)" }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.06]">
-                      <IconRenderer icon={resCat.emoji} size="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-                        {resCat.name}
-                      </p>
-                      <p className="text-[11px] text-[var(--text-tertiary)] truncate max-w-[170px] mt-0.5">
-                        {tx.note || tx.occurred_on}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    className="amount font-semibold text-[13px]"
-                    style={{
-                      color:
-                        tx.type === "income"
-                          ? "#10b981"
-                          : tx.type === "transfer"
-                            ? "var(--text-secondary)"
-                            : "var(--text-primary)",
-                    }}
-                  >
-                    {tx.type === "income"
-                      ? "+"
-                      : tx.type === "expense"
-                        ? "-"
-                        : ""}
-                    {formatRupiah(Number(tx.amount))}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* 8. TOP CATEGORIES BREAKDOWN WIDGET (Default OFF) */}
-      {homeWidgets.showTopCategories &&
-        currentMonthStats.topExpenseCategories &&
-        currentMonthStats.topExpenseCategories.length > 0 && (
-          <section className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h3
-                className="text-[13px] font-semibold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Top Spending Categories
-              </h3>
-              <span
-                className="text-[11px] font-medium"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                This Month
-              </span>
-            </div>
-            <div
-              className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3"
-              style={{ background: "var(--bg-elevated)" }}
-            >
-              {currentMonthStats.topExpenseCategories.slice(0, 3).map((cat) => {
-                const pct =
-                  currentMonthStats.expense > 0
-                    ? Math.round((cat.total / currentMonthStats.expense) * 100)
-                    : 0;
-                return (
-                  <div key={cat.name} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[12px]">
-                      <div className="flex items-center gap-2">
-                        <IconRenderer icon={cat.emoji} size="w-4 h-4" />
-                        <span
-                          className="font-medium"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {cat.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="font-semibold amount"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {formatRupiah(cat.total)}
-                        </span>
-                        <span
-                          className="text-[10px] font-mono"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          ({pct}%)
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${Math.min(100, Math.max(4, pct))}%`,
-                          background: "var(--text-primary)",
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-      {/* 9. SAVINGS RATE & VELOCITY WIDGET (Default OFF) */}
-      {homeWidgets.showSavingsRate && (
-        <section className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h3
-              className="text-[13px] font-semibold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Savings Rate & Velocity
-            </h3>
-            <span
-              className="text-[11px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Telemetry
-            </span>
-          </div>
-          <div
-            className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] grid grid-cols-2 gap-3"
-            style={{ background: "var(--bg-elevated)" }}
-          >
-            <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-1">
-              <p
-                className="text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Savings Rate
-              </p>
-              <p
-                className="text-[20px] font-semibold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {currentMonthStats.income > 0
-                  ? `${Math.max(0, Math.round(((currentMonthStats.income - currentMonthStats.expense) / currentMonthStats.income) * 100))}%`
-                  : "0%"}
-              </p>
-              <p
-                className="text-[10px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Net capital retained
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-1">
-              <p
-                className="text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Runway
-              </p>
-              <p
-                className="text-[20px] font-semibold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {currentMonthStats.expense > 0
-                  ? `${(liquidAssets / currentMonthStats.expense).toFixed(1)} mo`
-                  : "∞"}
-              </p>
-              <p
-                className="text-[10px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Liquid reserves buffer
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 10. SPLIT BILL & PIUTANG TRACKER WIDGET (Default OFF) */}
-      {homeWidgets.showSplitBillTracker && (
-        <section className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h3
-              className="text-[13px] font-semibold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Split Bill & Receivables
-            </h3>
-            <span
-              className="text-[11px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Piutang
-            </span>
-          </div>
-          <div
-            className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] flex items-center justify-between"
-            style={{ background: "var(--bg-elevated)" }}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Users size={16} />
-              </div>
-              <div>
-                <p
-                  className="text-[13px] font-semibold leading-tight"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  Shared Piutang Status
-                </p>
-                <p
-                  className="text-[11px] mt-0.5"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Track friend shares from split transactions
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                _onOpenAdd?.();
-              }}
-              className="text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer"
-              style={{
-                background: "var(--text-primary)",
-                color: "var(--bg-base)",
-              }}
-            >
-              Split
-            </button>
-          </div>
-        </section>
-      )}
+                {content}
+              </WidgetCardWrapper>
+            </Reorder.Item>
+          );
+        })}
+      </Reorder.Group>
 
       {/* 11. CUSTOMIZE DASHBOARD — Minimalist Floating Capsule */}
       <div className="flex justify-center pt-2 pb-2">
@@ -1638,132 +1495,27 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               </button>
             </div>
 
-            {/* Quick Layout Presets */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
-              <button
-                type="button"
-                onClick={() => applyPreset(MINIMAL_HOME_WIDGETS)}
-                className="flex-1 py-1 px-2 rounded-lg text-[11px] font-semibold transition-all text-center cursor-pointer"
-                style={{
-                  background: (!homeWidgets.showSpendingStability && !homeWidgets.showHeatmap && !homeWidgets.showBills)
-                    ? "var(--bg-elevated)"
-                    : "transparent",
-                  color: (!homeWidgets.showSpendingStability && !homeWidgets.showHeatmap && !homeWidgets.showBills)
-                    ? "var(--text-primary)"
-                    : "var(--text-tertiary)",
-                  boxShadow: (!homeWidgets.showSpendingStability && !homeWidgets.showHeatmap && !homeWidgets.showBills)
-                    ? "0 1px 3px var(--shadow-strength)"
-                    : "none",
-                  border: (!homeWidgets.showSpendingStability && !homeWidgets.showHeatmap && !homeWidgets.showBills)
-                    ? "1px solid var(--glass-border)"
-                    : "1px solid transparent",
-                }}
-              >
-                Minimal
-              </button>
-              <button
-                type="button"
-                onClick={() => applyPreset(DEFAULT_HOME_WIDGETS)}
-                className="flex-1 py-1 px-2 rounded-lg text-[11px] font-semibold transition-all text-center cursor-pointer"
-                style={{
-                  background: (homeWidgets.showSpendingStability && !homeWidgets.showRecentTransactions && !homeWidgets.showTopCategories)
-                    ? "var(--bg-elevated)"
-                    : "transparent",
-                  color: (homeWidgets.showSpendingStability && !homeWidgets.showRecentTransactions && !homeWidgets.showTopCategories)
-                    ? "var(--text-primary)"
-                    : "var(--text-tertiary)",
-                  boxShadow: (homeWidgets.showSpendingStability && !homeWidgets.showRecentTransactions && !homeWidgets.showTopCategories)
-                    ? "0 1px 3px var(--shadow-strength)"
-                    : "none",
-                  border: (homeWidgets.showSpendingStability && !homeWidgets.showRecentTransactions && !homeWidgets.showTopCategories)
-                    ? "1px solid var(--glass-border)"
-                    : "1px solid transparent",
-                }}
-              >
-                Balanced
-              </button>
-              <button
-                type="button"
-                onClick={() => applyPreset(COMPREHENSIVE_HOME_WIDGETS)}
-                className="flex-1 py-1 px-2 rounded-lg text-[11px] font-semibold transition-all text-center cursor-pointer"
-                style={{
-                  background: (homeWidgets.showRecentTransactions && homeWidgets.showTopCategories && homeWidgets.showSavingsRate)
-                    ? "var(--bg-elevated)"
-                    : "transparent",
-                  color: (homeWidgets.showRecentTransactions && homeWidgets.showTopCategories && homeWidgets.showSavingsRate)
-                    ? "var(--text-primary)"
-                    : "var(--text-tertiary)",
-                  boxShadow: (homeWidgets.showRecentTransactions && homeWidgets.showTopCategories && homeWidgets.showSavingsRate)
-                    ? "0 1px 3px var(--shadow-strength)"
-                    : "none",
-                  border: (homeWidgets.showRecentTransactions && homeWidgets.showTopCategories && homeWidgets.showSavingsRate)
-                    ? "1px solid var(--glass-border)"
-                    : "1px solid transparent",
-                }}
-              >
-                Full Suite
-              </button>
-            </div>
+            {/* Launcher for on-screen Jiggle / Drag & Drop Mode */}
+            <button
+              type="button"
+              onClick={() => {
+                setCustomizeHomeOpen(false);
+                setIsEditMode(true);
+              }}
+              className="w-full py-2.5 mb-3 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-2 bg-white text-black active:scale-95 transition-transform cursor-pointer shadow-lg"
+            >
+              <Sparkles size={13} />
+              <span>Customize & Reorder on Screen</span>
+            </button>
 
-            {/* Grouped Feature Rows (No icons/symbols, Title + Description + Right Switch) */}
-            <div className="space-y-2 max-h-[58vh] overflow-y-auto no-scrollbar pr-0.5">
-              {[
-                {
-                  key: "showSpendingStability" as const,
-                  label: "Spending Stability",
-                  desc: "Expense volatility, daily variance & consistency telemetry",
-                },
-                {
-                  key: "showCashflowPulse" as const,
-                  label: "Cashflow Pulse & Budget",
-                  desc: "Monthly income, expenses & spending pacing telemetry",
-                },
-                {
-                  key: "showActionCenter" as const,
-                  label: "AI Financial Insights",
-                  desc: "Smart diagnostics & anomalous spending alerts",
-                },
-                {
-                  key: "showHeatmap" as const,
-                  label: "Activity Heatmap",
-                  desc: "Daily transaction density & frequency calendar",
-                },
-                {
-                  key: "showGoals" as const,
-                  label: "Financial Goals",
-                  desc: "Savings targets & milestone achievement progress",
-                },
-                {
-                  key: "showBills" as const,
-                  label: "Upcoming Bills",
-                  desc: "Upcoming subscriptions & recurring bill schedule",
-                },
-                {
-                  key: "showRecentTransactions" as const,
-                  label: "Recent Transactions",
-                  desc: "Quick ledger feed of your 5 latest transactions",
-                },
-                {
-                  key: "showTopCategories" as const,
-                  label: "Top Spending Categories",
-                  desc: "Monthly breakdown of your largest expense drivers",
-                },
-                {
-                  key: "showSavingsRate" as const,
-                  label: "Savings Rate & Velocity",
-                  desc: "Net capital retention & daily runway telemetry",
-                },
-                {
-                  key: "showSplitBillTracker" as const,
-                  label: "Split Bill & Receivables",
-                  desc: "Track friend shares & pending shared receivables",
-                },
-              ].map((item) => {
-                const isEnabled = homeWidgets[item.key];
+            {/* Grouped Feature Rows for All Dashboard Cards */}
+            <div className="space-y-2 max-h-[52vh] overflow-y-auto no-scrollbar pr-0.5">
+              {widgets.map((w) => {
+                const isEnabled = w.isVisible;
                 return (
                   <div
-                    key={item.key}
-                    onClick={() => toggleWidget(item.key)}
+                    key={w.id}
+                    onClick={() => toggleCardVisibility(w.id)}
                     className="flex items-center justify-between p-3.5 rounded-2xl cursor-pointer active:scale-[0.99] transition-all duration-200 select-none"
                     style={{
                       background: isEnabled
@@ -1785,17 +1537,29 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     }}
                   >
                     <div className="min-w-0 pr-3 text-left">
-                      <p
-                        className="text-[13px] font-semibold leading-snug"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {item.label}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p
+                          className="text-[13px] font-semibold leading-snug"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {w.title}
+                        </p>
+                        <span
+                          className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
+                          style={{
+                            background: "var(--glass-fill)",
+                            color: "var(--text-tertiary)",
+                            border: "1px solid var(--glass-border)",
+                          }}
+                        >
+                          {w.size}
+                        </span>
+                      </div>
                       <p
                         className="text-[11px] leading-relaxed mt-0.5"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        {item.desc}
+                        {w.subtitle}
                       </p>
                     </div>
                     <div
@@ -1826,13 +1590,12 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               })}
             </div>
 
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("medium");
-                  setHomeWidgets(DEFAULT_HOME_WIDGETS);
-                  localStorage.removeItem("trouvaille_home_widgets_v1");
+                  resetLayout();
                 }}
                 className="flex-1 py-2 rounded-xl text-[12px] font-semibold glass-surface active:scale-95 transition-transform cursor-pointer"
                 style={{
@@ -1861,6 +1624,15 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           </div>
         </div>
       )}
+
+      {/* Floating iOS Springboard Customization Pill */}
+      <WidgetCustomizationBar
+        isEditMode={isEditMode}
+        onDone={() => setIsEditMode(false)}
+        onReset={resetLayout}
+        hiddenCards={hiddenCards}
+        onUnhideCard={toggleCardVisibility}
+      />
     </div>
   );
 }
