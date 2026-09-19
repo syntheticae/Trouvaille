@@ -4,14 +4,14 @@ import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator"
 import { useGoals } from "../hooks/useGoals";
 import { useWallets } from "../hooks/useWallets";
 import { useBills } from "../hooks/useBills";
-import { CalendarDays, Target, Sparkles } from "lucide-react";
+import { CalendarDays, Target } from "lucide-react";
 import { triggerHaptic } from "../lib/haptics";
 import { resolveTransactionCategory } from "../lib/categoryResolver";
 import { useNavigate } from "react-router-dom";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
 import { ReorderableWidgetGrid, WidgetCustomizationBar } from "../components/common";
 import type { WidgetSize } from "../lib/widgetLayoutTypes";
-import { HOME_PRESETS } from "../lib/widgetLayoutTypes";
+import { HOME_PRESETS, type HomePresetKey } from "../lib/widgetLayoutTypes";
 import {
   CompactSpendingStabilityHalf,
   CompactCashflowPulseHalf,
@@ -191,6 +191,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   } = useWidgetLayout();
 
   const [customizeHomeOpen, setCustomizeHomeOpen] = useState(false);
+  const [activePresetKey, setActivePresetKey] = useState<HomePresetKey>("executive");
 
   const intel = useFinancialIntelligence({
     transactions: allTxs,
@@ -1957,63 +1958,54 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               </button>
             </div>
 
-            {/* Quick Layout Preset Segment Control (Simple to Advanced) */}
-            <div className="space-y-1.5 pt-0.5">
-              <span
-                className="text-[10px] font-bold uppercase tracking-wider block"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Dashboard Presets
-              </span>
+            {/* Quick Layout Preset Segment Control (4-Preset Capsule Pill Bar) */}
+            <div className="space-y-1.5 pt-0.5 pb-1">
+              <div className="flex items-center justify-between px-1">
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Dashboard Presets
+                </span>
+                <span
+                  className="text-[10px] font-medium text-[var(--text-tertiary)] truncate max-w-[200px]"
+                >
+                  {HOME_PRESETS.find((p) => p.key === activePresetKey)?.description}
+                </span>
+              </div>
+
               <div
-                className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl"
+                className="flex items-center p-1 rounded-full w-full"
                 style={{
-                  background: "var(--glass-fill)",
+                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                {HOME_PRESETS.map((preset) => (
-                  <button
-                    key={preset.key}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("medium");
-                      applyPreset(preset.key);
-                    }}
-                    className="py-2 px-1 rounded-xl text-center transition-all duration-200 active:scale-95 cursor-pointer select-none"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      boxShadow: "0 2px 8px var(--shadow-strength)",
-                    }}
-                  >
-                    <p className="text-[12px] font-semibold leading-tight text-[var(--text-primary)]">
+                {HOME_PRESETS.map((preset) => {
+                  const isActive = activePresetKey === preset.key;
+                  return (
+                    <button
+                      key={preset.key}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("medium");
+                        setActivePresetKey(preset.key);
+                        applyPreset(preset.key);
+                      }}
+                      className={`flex-1 py-1.5 px-1 text-center rounded-full text-[12px] transition-all duration-200 cursor-pointer select-none ${
+                        isActive
+                          ? isDark
+                            ? "bg-white text-zinc-950 font-semibold shadow-sm"
+                            : "bg-black text-white font-semibold shadow-sm"
+                          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium"
+                      }`}
+                    >
                       {preset.label}
-                    </p>
-                    <p className="text-[9px] mt-0.5 truncate text-[var(--text-tertiary)] px-1">
-                      {preset.key === "simple"
-                        ? "Essentials"
-                        : preset.key === "balanced"
-                          ? "Optimal"
-                          : "Power"}
-                    </p>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-
-            {/* Launcher for on-screen Jiggle / Drag & Drop Mode */}
-            <button
-              type="button"
-              onClick={() => {
-                setCustomizeHomeOpen(false);
-                setIsEditMode(true);
-              }}
-              className="w-full py-2.5 mb-3 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-2 bg-white text-black active:scale-95 transition-transform cursor-pointer shadow-lg"
-            >
-              <Sparkles size={13} />
-              <span>Customize & Reorder on Screen</span>
-            </button>
 
             {/* Grouped Feature Rows for All Dashboard Cards */}
             <div className="space-y-2 max-h-[52vh] overflow-y-auto no-scrollbar pr-0.5">

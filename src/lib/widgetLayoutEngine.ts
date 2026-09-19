@@ -108,7 +108,16 @@ export function applyPresetToWidgets(
   currentWidgets: CardWidgetConfig[],
   presetKey: HomePresetKey
 ): CardWidgetConfig[] {
-  const preset = HOME_PRESETS.find((p) => p.key === presetKey);
+  const normalizedKey =
+    presetKey === "simple"
+      ? "minimal"
+      : presetKey === "balanced"
+        ? "pulse"
+        : presetKey === "advanced"
+          ? "executive"
+          : presetKey;
+
+  const preset = HOME_PRESETS.find((p) => p.key === normalizedKey);
   if (!preset) return currentWidgets;
 
   const configMap = new Map(preset.cardConfigs.map((c) => [c.id, c]));
