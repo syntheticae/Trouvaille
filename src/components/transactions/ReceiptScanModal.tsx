@@ -136,7 +136,19 @@ export function ReceiptScanModal({
 
   const startLiveCamera = async () => {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return;
-    if (Capacitor.isNativePlatform()) return;
+
+    // On native platforms (iOS/Android), ensure native camera permission is granted first
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const hasPermission = await requestCameraPermission();
+        if (!hasPermission) {
+          console.warn("[ReceiptScanModal] Native camera permission not granted");
+          return;
+        }
+      } catch (err) {
+        console.warn("[ReceiptScanModal] requestCameraPermission error:", err);
+      }
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -676,10 +688,13 @@ export function ReceiptScanModal({
 
             {/* Step 1: Idle (Liquid Glass Viewfinder Frame) */}
             {step === "idle" && (
-              <div className="flex-1 flex flex-col items-center justify-center py-2 space-y-4">
-                {/* Optical Glass Lens Viewfinder */}
+              <div className="flex-1 flex flex-col items-center justify-start pt-1 pb-2 space-y-3">
+                {/* Optical Glass Lens Viewfinder - Lengthened vertically for physical receipts & slips */}
                 <div
-                  className="relative w-full aspect-[4/3] rounded-[28px] flex flex-col items-center justify-center overflow-hidden transition-all bg-black"
+                  onClick={isLiveCameraActive ? () => captureLiveSnapshot() : undefined}
+                  className={`relative w-full aspect-[3/4] max-h-[50dvh] rounded-[28px] flex flex-col items-center justify-center overflow-hidden transition-all bg-black ${
+                    isLiveCameraActive ? "cursor-pointer" : ""
+                  }`}
                   style={{
                     border: "1px solid rgba(255, 255, 255, 0.14)",
                     boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.14)",
