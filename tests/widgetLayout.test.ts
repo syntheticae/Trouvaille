@@ -6,6 +6,7 @@ import {
   setWidgetSize,
   toggleWidgetVisibility,
   filterVisibleWidgets,
+  swapWidgetPosition,
 } from "../src/lib/widgetLayoutEngine";
 import { DEFAULT_HOME_WIDGETS, CardWidgetConfig } from "../src/lib/widgetLayoutTypes";
 
@@ -96,5 +97,55 @@ describe("Widget Layout Engine", () => {
     expect(reordered[0].id).toBe("split_bill");
     expect(reordered[1].id).toBe("upcoming_bills");
     expect(reordered[2].id).toBe("net_portfolio");
+  });
+
+  it("swaps horizontal position between adjacent half widgets correctly", () => {
+    const widgets: CardWidgetConfig[] = [
+      {
+        id: "hero",
+        title: "Hero",
+        subtitle: "",
+        page: "home",
+        category: "telemetry",
+        size: "full",
+        supportedSizes: ["full"],
+        order: 0,
+        isVisible: true,
+      },
+      {
+        id: "half_a",
+        title: "Half A",
+        subtitle: "",
+        page: "home",
+        category: "telemetry",
+        size: "half",
+        supportedSizes: ["half", "full"],
+        order: 1,
+        isVisible: true,
+      },
+      {
+        id: "half_b",
+        title: "Half B",
+        subtitle: "",
+        page: "home",
+        category: "telemetry",
+        size: "half",
+        supportedSizes: ["half", "full"],
+        order: 2,
+        isVisible: true,
+      },
+    ];
+
+    // Swapping half_a (which is in left column, col 0) with direction "right"
+    const swappedRight = swapWidgetPosition(widgets, "half_a", "right");
+    const visible = filterVisibleWidgets(swappedRight);
+    expect(visible[1].id).toBe("half_b");
+    expect(visible[2].id).toBe("half_a");
+
+    // Toggle swap on half_b when it is in left column (col 0)
+    const toggled = swapWidgetPosition(swappedRight, "half_b", "toggle");
+    const visibleToggled = filterVisibleWidgets(toggled);
+    expect(visibleToggled[1].id).toBe("half_a");
+    expect(visibleToggled[2].id).toBe("half_b");
   });
 });

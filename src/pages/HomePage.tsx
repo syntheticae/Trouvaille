@@ -185,6 +185,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     isEditMode,
     setIsEditMode,
     reorderCards,
+    swapCardPosition,
     cycleCardSize,
     toggleCardVisibility,
     resetLayout,
@@ -1694,6 +1695,15 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               value={card.id}
               dragListener={isEditMode}
               className={card.size === "half" ? "col-span-1 h-[154px]" : "col-span-2"}
+              onDragEnd={(_e, info) => {
+                if (card.size === "half") {
+                  const dx = info.offset.x;
+                  const dy = info.offset.y;
+                  if (Math.abs(dx) > 35 && Math.abs(dx) > Math.abs(dy) * 0.5) {
+                    swapCardPosition(card.id, dx > 0 ? "right" : "left");
+                  }
+                }
+              }}
             >
               <WidgetCardWrapper
                 card={card}
@@ -1701,6 +1711,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 onEnterEditMode={() => setIsEditMode(true)}
                 onCycleSize={cycleCardSize}
                 onHide={toggleCardVisibility}
+                onSwapPosition={swapCardPosition}
               >
                 {content}
               </WidgetCardWrapper>

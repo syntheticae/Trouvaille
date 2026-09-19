@@ -132,3 +132,74 @@ export function applyPresetToWidgets(
     })
     .sort((a, b) => a.order - b.order);
 }
+
+/**
+ * Swaps a half-sized widget's horizontal position with its row partner or adjacent half widget
+ */
+export function swapWidgetPosition(
+  widgets: CardWidgetConfig[],
+  cardId: string,
+  direction: "left" | "right" | "toggle" = "toggle",
+): CardWidgetConfig[] {
+  const visible = filterVisibleWidgets(widgets);
+  const currentIndex = visible.findIndex((c) => c.id === cardId);
+  if (currentIndex === -1) return widgets;
+
+  const currentCard = visible[currentIndex];
+  if (currentCard.size !== "half") return widgets;
+
+  // Determine which column (0 = left, 1 = right) each half card occupies
+  let col = 0;
+  const colMap = new Map<string, number>();
+  for (const c of visible) {
+    if (c.size === "full") {
+      col = 0;
+    } else {
+      colMap.set(c.id, col);
+      col = col === 0 ? 1 : 0;
+    }
+  }
+
+  const currentCol = colMap.get(cardId) ?? 0;
+  let targetIndex = -1;
+
+  if (direction === "right") {
+    if (currentCol === 0 && currentIndex + 1 < visible.length) {
+      targetIndex = currentIndex + 1;
+    }
+  } else if (direction === "left") {
+    if (currentCol === 1 && currentIndex - 1 >= 0) {
+      targetIndex = currentIndex - 1;
+    }
+  } else {
+    // "toggle": swap with sibling on the same row if possible, otherwise adjacent item
+    if (
+      currentCol === 0 &&
+      currentIndex + 1 < visible.length &&
+      visible[currentIndex + 1].size === "half"
+    ) {
+      targetIndex = currentIndex + 1;
+    } else if (
+      currentCol === 1 &&
+      currentIndex - 1 >= 0 &&
+      visible[currentIndex - 1].size === "half"
+    ) {
+      targetIndex = currentIndex - 1;
+    } else if (currentIndex + 1 < visible.length) {
+      targetIndex = currentIndex + 1;
+    } else if (currentIndex - 1 >= 0) {
+      targetIndex = currentIndex - 1;
+    }
+  }
+
+  if (targetIndex === -1 || targetIndex === currentIndex) {
+    return widgets;
+  }
+
+  const visibleIds = visible.map((c) => c.id);
+  const temp = visibleIds[currentIndex];
+  visibleIds[currentIndex] = visibleIds[targetIndex];
+  visibleIds[targetIndex] = temp;
+
+  return reorderWidgets(widgets, visibleIds);
+}

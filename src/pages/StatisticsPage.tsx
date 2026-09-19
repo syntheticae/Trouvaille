@@ -296,6 +296,7 @@ export function StatisticsPage() {
     isEditMode: isStatsEditMode,
     setIsEditMode: setIsStatsEditMode,
     reorderCards: reorderStatsCards,
+    swapCardPosition: swapStatsCardPosition,
     cycleCardSize: cycleStatsCardSize,
     toggleCardVisibility: toggleStatsCardVisibility,
     resetLayout: resetStatsLayout,
@@ -1740,7 +1741,16 @@ export function StatisticsPage() {
                   key={card.id}
                   value={card.id}
                   dragListener={isStatsEditMode}
-                  className={card.size === "half" ? "col-span-1" : "col-span-2"}
+                  className={card.size === "half" ? "col-span-1 h-[154px]" : "col-span-2"}
+                  onDragEnd={(_e, info) => {
+                    if (card.size === "half") {
+                      const dx = info.offset.x;
+                      const dy = info.offset.y;
+                      if (Math.abs(dx) > 35 && Math.abs(dx) > Math.abs(dy) * 0.5) {
+                        swapStatsCardPosition(card.id, dx > 0 ? "right" : "left");
+                      }
+                    }
+                  }}
                 >
                   <WidgetCardWrapper
                     card={card}
@@ -1748,6 +1758,7 @@ export function StatisticsPage() {
                     onEnterEditMode={() => setIsStatsEditMode(true)}
                     onCycleSize={cycleStatsCardSize}
                     onHide={toggleStatsCardVisibility}
+                    onSwapPosition={swapStatsCardPosition}
                   >
                     {content}
                   </WidgetCardWrapper>

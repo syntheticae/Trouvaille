@@ -16,6 +16,7 @@ import {
   toggleWidgetVisibility,
   filterVisibleWidgets,
   applyPresetToWidgets,
+  swapWidgetPosition,
 } from "../lib/widgetLayoutEngine";
 import { triggerHaptic } from "../lib/haptics";
 
@@ -79,6 +80,14 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
     setWidgets((prev) => applyPresetToWidgets(prev, presetKey));
   }, []);
 
+  const swapCardPositionHandler = useCallback(
+    (cardId: string, direction: "left" | "right" | "toggle" = "toggle") => {
+      triggerHaptic("medium");
+      setWidgets((prev) => swapWidgetPosition(prev, cardId, direction));
+    },
+    [],
+  );
+
   const visibleCards = useMemo(() => {
     return filterVisibleWidgets(widgets);
   }, [widgets]);
@@ -94,6 +103,7 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
     isEditMode,
     setIsEditMode,
     reorderCards,
+    swapCardPosition: swapCardPositionHandler,
     cycleCardSize: cycleCardSizeHandler,
     setCardSize: setCardSizeHandler,
     toggleCardVisibility: toggleCardVisibilityHandler,
