@@ -62,7 +62,7 @@ describe("Monte Carlo & FIRE Simulation Engine", () => {
       monthlyContribution: 5000000,
       annualExpenses: 80000000,
       years: 10,
-      iterations: 200,
+      iterations: 500,
     };
 
     const shockedResult = runMonteCarloSimulation({

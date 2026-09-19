@@ -415,10 +415,18 @@ export function SavingsRingCard({
   onOpenDetail?: () => void;
 }) {
   const boundedRate = Math.min(100, Math.max(0, rate));
-  const radius = size === "half" ? 26 : 36;
-  const strokeWidth = size === "half" ? 5 : 6;
+  const radius = size === "half" ? 26 : 38;
+  const strokeWidth = size === "half" ? 5 : 6.5;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (boundedRate / 100) * circ;
+
+  const netRetention = inflow - outflow;
+  const isSurplus = netRetention >= 0;
+  const targetSavings = Math.max(0, inflow * 0.2); // 20% savings rule benchmark
+  const ruleProgress =
+    targetSavings > 0
+      ? Math.min(100, Math.max(0, (netRetention / targetSavings) * 100))
+      : 0;
 
   const ringSvg = (
     <div className="relative flex items-center justify-center shrink-0">
@@ -465,9 +473,13 @@ export function SavingsRingCard({
       <CompactShell title="Savings Ring" onOpenDetail={onOpenDetail}>
         <div className="flex-1 flex items-center justify-center py-0.5">{ringSvg}</div>
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
-          <span>Retained</span>
-          <span className="font-semibold text-[var(--text-primary)] amount">
-            {formatRupiah(Math.max(0, inflow - outflow))}
+          <span>{isSurplus ? "Retained" : "Deficit"}</span>
+          <span
+            className={`font-semibold amount ${
+              isSurplus ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
+            }`}
+          >
+            {formatRupiah(Math.abs(netRetention))}
           </span>
         </div>
       </CompactShell>
@@ -475,47 +487,122 @@ export function SavingsRingCard({
   }
 
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none">
-      <div className="flex items-center justify-between mb-3">
+    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity size={15} className="text-[var(--text-tertiary)]" />
-          <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
-            Savings Velocity & Retention
-          </h3>
-        </div>
-        {onOpenDetail && (
-          <button
-            type="button"
-            onClick={onOpenDetail}
-            className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+          <div
+            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
           >
-            <Info size={13} />
-          </button>
-        )}
+            <Activity size={14} className="text-[var(--text-primary)]" />
+          </div>
+          <div>
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
+              Savings Velocity & Retention
+            </h3>
+            <p className="text-[10px] text-[var(--text-tertiary)]">
+              Capital retention rate vs monthly turnover
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: isSurplus ? "var(--text-primary)" : "var(--text-secondary)",
+            }}
+          >
+            {boundedRate.toFixed(1)}% Saved
+          </span>
+          {onOpenDetail && (
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+            >
+              <Info size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 pt-1">
         {ringSvg}
-        <div className="flex-1 space-y-1.5">
-          <div className="flex justify-between text-[11px]">
-            <span className="text-[var(--text-tertiary)]">Gross Inflow:</span>
-            <span className="font-semibold amount text-[var(--text-primary)]">
-              {formatRupiah(inflow)}
-            </span>
+        <div className="flex-1 space-y-2">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div
+              className="p-2 rounded-xl"
+              style={{ background: "var(--glass-fill)" }}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                Inflow
+              </span>
+              <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+                +{formatRupiah(inflow)}
+              </span>
+            </div>
+            <div
+              className="p-2 rounded-xl"
+              style={{ background: "var(--glass-fill)" }}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                Outflow
+              </span>
+              <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+                -{formatRupiah(outflow)}
+              </span>
+            </div>
+            <div
+              className="p-2 rounded-xl"
+              style={{ background: "var(--glass-fill)" }}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                Net Position
+              </span>
+              <span
+                className={`text-[12px] font-semibold amount block mt-0.5 ${
+                  isSurplus ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
+                }`}
+              >
+                {isSurplus ? "+" : "-"}
+                {formatRupiah(Math.abs(netRetention))}
+              </span>
+            </div>
           </div>
-          <div className="flex justify-between text-[11px]">
-            <span className="text-[var(--text-tertiary)]">Total Outflow:</span>
-            <span className="font-semibold amount text-[var(--text-primary)]">
-              {formatRupiah(outflow)}
-            </span>
-          </div>
-          <div className="flex justify-between text-[11px] pt-1 border-t border-white/5 font-bold">
-            <span className="text-[var(--text-secondary)]">Net Capital Saved:</span>
-            <span className="amount text-[var(--text-primary)]">
-              {formatRupiah(Math.max(0, inflow - outflow))}
-            </span>
+
+          {/* 20% Target Benchmark */}
+          <div className="pt-1">
+            <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
+              <span>Standard 20% Savings Rule Target</span>
+              <span className="font-semibold text-[var(--text-primary)]">
+                {formatRupiah(targetSavings)}
+              </span>
+            </div>
+            <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+              <div
+                className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-700"
+                style={{ width: `${ruleProgress}%` }}
+              />
+            </div>
           </div>
         </div>
+      </div>
+
+      <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+        <span>
+          {isSurplus
+            ? `Net capital surplus of ${formatRupiah(netRetention)} preserved.`
+            : `Outflow exceeds inflow this month by ${formatRupiah(Math.abs(netRetention))}.`}
+        </span>
+        <span className="font-semibold text-[var(--text-secondary)]">
+          {isSurplus ? "Accumulating" : "Capital Deficit"}
+        </span>
       </div>
     </section>
   );
@@ -530,12 +617,18 @@ export function SpendingVelocityBarCard({
   size = "half",
   onOpenDetail,
 }: {
-  dailyOutlays: { dayLabel: string; amount: number }[];
+  dailyOutlays: { dayLabel: string; amount: number; dateStr?: string }[];
   dailyAverage: number;
   size?: WidgetSize;
   onOpenDetail?: () => void;
 }) {
   const maxAmount = Math.max(1, ...dailyOutlays.map((d) => d.amount));
+  const total7d = dailyOutlays.reduce((sum, d) => sum + d.amount, 0);
+  const peakDay = dailyOutlays.reduce(
+    (max, d) => (d.amount > max.amount ? d : max),
+    dailyOutlays[0] || { dayLabel: "-", amount: 0 },
+  );
+  const aboveAvgDays = dailyOutlays.filter((d) => d.amount > dailyAverage).length;
 
   const bars = (
     <div className="flex items-end justify-between gap-1.5 h-11 w-full pt-1">
@@ -544,7 +637,7 @@ export function SpendingVelocityBarCard({
         return (
           <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
             <div
-              className="w-full rounded-sm bg-white/20 hover:bg-white transition-all"
+              className="w-full rounded-sm transition-all"
               style={{
                 height: `${heightPct}%`,
                 background:
@@ -578,19 +671,155 @@ export function SpendingVelocityBarCard({
   }
 
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none">
-      <div className="flex items-center justify-between mb-2">
+    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <TrendingUp size={15} className="text-[var(--text-tertiary)]" />
-          <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
-            7-Day Spending Velocity
-          </h3>
+          <div
+            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <TrendingUp size={14} className="text-[var(--text-primary)]" />
+          </div>
+          <div>
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
+              7-Day Outflow Velocity
+            </h3>
+            <p className="text-[10px] text-[var(--text-tertiary)]">
+              Daily spending run rate vs monthly average benchmark
+            </p>
+          </div>
         </div>
-        <span className="text-[11px] font-semibold amount text-[var(--text-primary)]">
-          {formatRupiah(dailyAverage)}/day
+
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full amount"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            Avg: {formatRupiah(dailyAverage)}/day
+          </span>
+          {onOpenDetail && (
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+            >
+              <Info size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 3 Summary Metric Pills */}
+      <div className="grid grid-cols-3 gap-2">
+        <div
+          className="p-2.5 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            7-Day Total Outflow
+          </span>
+          <span className="text-[13px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {formatRupiah(total7d)}
+          </span>
+        </div>
+        <div
+          className="p-2.5 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            7-Day Daily Run Rate
+          </span>
+          <span className="text-[13px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {formatRupiah(Math.round(total7d / 7))}/d
+          </span>
+        </div>
+        <div
+          className="p-2.5 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Peak Outlay Day
+          </span>
+          <span className="text-[13px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {peakDay.dayLabel} ({formatRupiah(peakDay.amount)})
+          </span>
+        </div>
+      </div>
+
+      {/* Taller Enhanced Bars with Exact Amounts */}
+      <div className="pt-2">
+        <div className="flex items-end justify-between gap-2 h-20 w-full relative">
+          {/* Average Benchmark Guide Line */}
+          <div
+            className="absolute left-0 right-0 border-b border-dashed border-white/20 pointer-events-none z-10"
+            style={{
+              bottom: `${Math.min(95, Math.max(10, (dailyAverage / maxAmount) * 100))}%`,
+            }}
+          >
+            <span className="text-[8px] font-mono text-[var(--text-tertiary)] absolute right-0 -top-3.5 px-1 bg-black/40 rounded">
+              Avg: {formatRupiah(dailyAverage)}
+            </span>
+          </div>
+
+          {dailyOutlays.map((d, i) => {
+            const heightPct = Math.min(100, Math.max(6, (d.amount / maxAmount) * 100));
+            const isPeak = d.amount === peakDay.amount && d.amount > 0;
+            return (
+              <div
+                key={i}
+                className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end z-20 group relative cursor-pointer"
+              >
+                {/* Amount Label Above Bar */}
+                <span className="text-[8.5px] font-mono font-semibold text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors truncate">
+                  {d.amount > 0
+                    ? `${Math.round(d.amount / 1000)}k`
+                    : "0"}
+                </span>
+
+                <div
+                  className="w-full rounded-md transition-all duration-300"
+                  style={{
+                    height: `${heightPct}%`,
+                    background: isPeak
+                      ? "var(--text-primary)"
+                      : d.amount > dailyAverage
+                        ? "rgba(255, 255, 255, 0.6)"
+                        : d.amount > 0
+                          ? "rgba(255, 255, 255, 0.22)"
+                          : "rgba(255, 255, 255, 0.06)",
+                    boxShadow: isPeak
+                      ? "0 0 10px rgba(255, 255, 255, 0.35)"
+                      : "none",
+                  }}
+                  title={`${d.dayLabel}: ${formatRupiah(d.amount)}`}
+                />
+
+                <span className="text-[9px] font-semibold text-[var(--text-tertiary)]">
+                  {d.dayLabel}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+        <span>
+          {aboveAvgDays > 0
+            ? `${aboveAvgDays} of 7 days exceeded daily average allowance.`
+            : "All 7 days maintained below daily average allowance."}
+        </span>
+        <span className="font-semibold text-[var(--text-secondary)]">
+          Pacing: {Math.round(total7d / 7) <= dailyAverage ? "Controlled" : "Elevated"}
         </span>
       </div>
-      <div className="pt-2">{bars}</div>
     </section>
   );
 }
@@ -604,7 +833,7 @@ export function CategoryDonutCard({
   size = "half",
   onOpenDetail,
 }: {
-  categories: { name: string; amount: number; pct: number }[];
+  categories: { name: string; amount: number; pct: number; count?: number }[];
   totalExpense: number;
   size?: WidgetSize;
   onOpenDetail?: () => void;
@@ -656,34 +885,169 @@ export function CategoryDonutCard({
     );
   }
 
+  // Multi-Segment SVG Donut calculations for Full Mode
+  const fullRadius = 38;
+  const fullStroke = 8.5;
+  const fullCirc = 2 * Math.PI * fullRadius; // ~238.7
+  const segmentShades = [
+    "rgba(255, 255, 255, 0.95)",
+    "rgba(255, 255, 255, 0.68)",
+    "rgba(255, 255, 255, 0.42)",
+    "rgba(255, 255, 255, 0.24)",
+    "rgba(255, 255, 255, 0.12)",
+  ];
+
+  let cumulativeOffset = 0;
+  const donutSegments = categories.slice(0, 5).map((cat, idx) => {
+    const strokeDash = (Math.max(0, cat.pct) / 100) * fullCirc;
+    const currentOffset = cumulativeOffset;
+    cumulativeOffset += strokeDash;
+    return {
+      ...cat,
+      strokeDash,
+      offset: currentOffset,
+      color: segmentShades[idx % segmentShades.length],
+    };
+  });
+
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none">
-      <div className="flex items-center justify-between mb-3">
+    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <PieChart size={15} className="text-[var(--text-tertiary)]" />
-          <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
-            Expense Allocation Donut
-          </h3>
+          <div
+            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <PieChart size={14} className="text-[var(--text-primary)]" />
+          </div>
+          <div>
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
+              Expense Allocation Donut
+            </h3>
+            <p className="text-[10px] text-[var(--text-tertiary)]">
+              Sector-by-sector outflow distribution
+            </p>
+          </div>
         </div>
-        <span className="text-[11px] font-semibold amount text-[var(--text-primary)]">
-          {formatRupiah(totalExpense)}
-        </span>
+
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full amount"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            Total: {formatRupiah(totalExpense)}
+          </span>
+          {onOpenDetail && (
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+            >
+              <Info size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        {donutSvg}
-        <div className="flex-1 space-y-1.5">
-          {categories.slice(0, 3).map((c, i) => (
-            <div key={i} className="flex justify-between items-center text-[11px]">
-              <span className="text-[var(--text-tertiary)] truncate max-w-[100px]">
-                {c.name}
-              </span>
-              <span className="font-semibold text-[var(--text-primary)] amount">
-                {c.pct.toFixed(0)}% ({formatRupiah(c.amount)})
-              </span>
+      <div className="flex items-center gap-5 pt-1">
+        {/* Multi-Segment Full Donut */}
+        <div className="relative flex items-center justify-center shrink-0">
+          <svg
+            width={(fullRadius + fullStroke) * 2}
+            height={(fullRadius + fullStroke) * 2}
+            className="rotate-[-90deg]"
+          >
+            <circle
+              cx={fullRadius + fullStroke}
+              cy={fullRadius + fullStroke}
+              r={fullRadius}
+              fill="none"
+              stroke="var(--glass-border)"
+              strokeWidth={fullStroke}
+              opacity={0.3}
+            />
+            {donutSegments.map((seg, idx) => (
+              <circle
+                key={idx}
+                cx={fullRadius + fullStroke}
+                cy={fullRadius + fullStroke}
+                r={fullRadius}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth={fullStroke}
+                strokeDasharray={`${seg.strokeDash} ${fullCirc - seg.strokeDash}`}
+                strokeDashoffset={-seg.offset}
+                strokeLinecap="round"
+                style={{ transition: "all 0.6s ease-in-out" }}
+              />
+            ))}
+          </svg>
+          <div className="absolute flex flex-col items-center">
+            <span className="text-[11px] font-bold amount text-[var(--text-primary)] leading-tight">
+              {categories.length}
+            </span>
+            <span className="text-[8px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+              Sectors
+            </span>
+          </div>
+        </div>
+
+        {/* Detailed Category Rows with Progress Bars */}
+        <div className="flex-1 space-y-2">
+          {categories.slice(0, 4).map((c, i) => (
+            <div key={i} className="space-y-1">
+              <div className="flex justify-between items-center text-[11px]">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ background: segmentShades[i % segmentShades.length] }}
+                  />
+                  <span className="text-[var(--text-primary)] font-medium truncate max-w-[110px]">
+                    {c.name}
+                  </span>
+                  {c.count && (
+                    <span className="text-[9px] text-[var(--text-tertiary)] font-mono">
+                      ({c.count} tx)
+                    </span>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="font-semibold amount text-[var(--text-primary)]">
+                    {formatRupiah(c.amount)}
+                  </span>
+                  <span className="text-[10px] text-[var(--text-tertiary)] ml-1 font-mono">
+                    {c.pct.toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+              <div className="w-full h-1 rounded-full overflow-hidden bg-white/10">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(100, Math.max(2, c.pct))}%`,
+                    background: segmentShades[i % segmentShades.length],
+                  }}
+                />
+              </div>
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+        <span>
+          {topCat.name} is your largest expense category ({topCat.pct.toFixed(0)}% of total).
+        </span>
+        <span className="font-semibold text-[var(--text-secondary)]">
+          {categories.length} Active Categories
+        </span>
       </div>
     </section>
   );
@@ -695,18 +1059,41 @@ export function CategoryDonutCard({
 export function MiniHeatmapCard({
   daysWithSpend,
   activeDaysCount,
+  totalMonthSpend = 0,
+  dailyAverage = 0,
   size = "half",
   onOpenDetail,
 }: {
-  daysWithSpend: { day: number; hasSpend: boolean; intensity: number }[];
+  daysWithSpend: {
+    day: number;
+    date?: Date;
+    hasSpend: boolean;
+    amount?: number;
+    intensity: number;
+    isToday?: boolean;
+    dayOfWeek?: number;
+  }[];
   activeDaysCount: number;
+  totalMonthSpend?: number;
+  dailyAverage?: number;
   size?: WidgetSize;
   onOpenDetail?: () => void;
 }) {
-  // Show 28 dots (4 rows of 7 columns)
   const dots = daysWithSpend.slice(0, 28);
+  const totalDays = daysWithSpend.length;
+  const zeroSpendDays = Math.max(0, totalDays - activeDaysCount);
+  const activeFrequency =
+    totalDays > 0 ? Math.round((activeDaysCount / totalDays) * 100) : 0;
+  const avgOnActiveDays =
+    activeDaysCount > 0 ? Math.round(totalMonthSpend / activeDaysCount) : 0;
+  const effectiveDailyAvg =
+    dailyAverage > 0 ? dailyAverage : Math.round(totalMonthSpend / Math.max(1, totalDays));
+  const peakDay = daysWithSpend.reduce(
+    (max, d) => ((d.amount || 0) > (max.amount || 0) ? d : max),
+    daysWithSpend[0] || { day: 1, amount: 0 },
+  );
 
-  const grid = (
+  const halfGrid = (
     <div className="grid grid-cols-7 gap-1.5 py-0.5 w-full max-w-[130px] mx-auto">
       {dots.map((d, i) => (
         <div
@@ -722,7 +1109,7 @@ export function MiniHeatmapCard({
                     ? "rgba(255,255,255,0.2)"
                     : "rgba(255,255,255,0.06)",
           }}
-          title={`Day ${d.day}: ${d.hasSpend ? "Active" : "Quiet"}`}
+          title={`Day ${d.day}: ${d.hasSpend ? `Active (${formatRupiah(d.amount || 0)})` : "Quiet"}`}
         />
       ))}
     </div>
@@ -730,35 +1117,232 @@ export function MiniHeatmapCard({
 
   if (size === "half") {
     return (
-      <CompactShell
-        title="Activity Matrix"
-        onOpenDetail={onOpenDetail}
-      >
-        <div className="flex-1 flex items-center justify-center py-0.5">{grid}</div>
+      <CompactShell title="Activity Matrix" onOpenDetail={onOpenDetail}>
+        <div className="flex-1 flex items-center justify-center py-0.5">
+          {halfGrid}
+        </div>
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
           <span>Active Days</span>
           <span className="font-semibold text-[var(--text-primary)]">
-            {activeDaysCount} of 28d
+            {activeDaysCount} of {totalDays}d
           </span>
         </div>
       </CompactShell>
     );
   }
 
+  // Full Month Weekday Labels
+  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none">
-      <div className="flex items-center justify-between mb-3">
+    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Calendar size={15} className="text-[var(--text-tertiary)]" />
-          <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
-            Monthly Activity Matrix
-          </h3>
+          <div
+            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <Calendar size={14} className="text-[var(--text-primary)]" />
+          </div>
+          <div>
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
+              Monthly Activity Matrix
+            </h3>
+            <p className="text-[10px] text-[var(--text-tertiary)]">
+              Daily transaction frequency & spending density
+            </p>
+          </div>
         </div>
-        <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-          {activeDaysCount} active days
+
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            {activeDaysCount} Active Days ({activeFrequency}%)
+          </span>
+          {onOpenDetail && (
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+            >
+              <Info size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 4-Column Key Metrics Bento */}
+      <div className="grid grid-cols-4 gap-2">
+        <div
+          className="p-2 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Total Outflow
+          </span>
+          <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {formatRupiah(totalMonthSpend)}
+          </span>
+        </div>
+        <div
+          className="p-2 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Run Rate/d
+          </span>
+          <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {formatRupiah(effectiveDailyAvg)}
+          </span>
+        </div>
+        <div
+          className="p-2 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Active Day Avg
+          </span>
+          <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {formatRupiah(avgOnActiveDays)}
+          </span>
+        </div>
+        <div
+          className="p-2 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Peak Outlay
+          </span>
+          <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {peakDay.amount ? formatRupiah(peakDay.amount) : "Rp 0"}
+          </span>
+        </div>
+      </div>
+
+      {/* Full Month Calendar Matrix with Weekday Headers and Numbers */}
+      <div className="pt-1">
+        {/* Weekday Header */}
+        <div className="grid grid-cols-7 gap-1.5 pb-1 text-center">
+          {weekDays.map((wd, i) => (
+            <span
+              key={i}
+              className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]"
+            >
+              {wd}
+            </span>
+          ))}
+        </div>
+
+        {/* Calendar Days Matrix */}
+        <div className="grid grid-cols-7 gap-1.5">
+          {daysWithSpend.map((d, i) => {
+            const hasSpend = Boolean(d.hasSpend && d.amount && d.amount > 0);
+            return (
+              <div
+                key={i}
+                className={`flex flex-col items-center justify-between py-1.5 px-0.5 rounded-lg border transition-all cursor-pointer ${
+                  d.isToday
+                    ? "ring-1 ring-white/50 border-white/30"
+                    : "border-white/5"
+                }`}
+                style={{
+                  background: hasSpend
+                    ? "rgba(255, 255, 255, 0.04)"
+                    : "rgba(255, 255, 255, 0.01)",
+                  minHeight: "44px",
+                }}
+                title={`Day ${d.day}: ${
+                  hasSpend ? formatRupiah(d.amount || 0) : "No spend recorded"
+                }`}
+              >
+                {/* Day Number */}
+                <span
+                  className={`text-[9px] font-medium leading-none ${
+                    d.isToday
+                      ? "font-bold text-[var(--text-primary)] underline"
+                      : "text-[var(--text-tertiary)]"
+                  }`}
+                >
+                  {d.day}
+                </span>
+
+                {/* Dot with Intensity */}
+                <div
+                  className="w-2 h-2 rounded-full my-0.5 transition-all"
+                  style={{
+                    background:
+                      d.intensity > 0.6
+                        ? "#FFFFFF"
+                        : d.intensity > 0.25
+                          ? "rgba(255,255,255,0.65)"
+                          : hasSpend
+                            ? "rgba(255,255,255,0.3)"
+                            : "rgba(255,255,255,0.06)",
+                    boxShadow:
+                      d.intensity > 0.6
+                        ? "0 0 6px rgba(255, 255, 255, 0.4)"
+                        : "none",
+                  }}
+                />
+
+                {/* Amount or Quiet Indicator */}
+                <span
+                  className={`text-[7.5px] font-mono leading-none truncate max-w-full px-0.5 ${
+                    hasSpend
+                      ? "text-[var(--text-secondary)] font-semibold"
+                      : "text-[var(--text-tertiary)] opacity-30"
+                  }`}
+                >
+                  {hasSpend
+                    ? d.amount && d.amount >= 1000
+                      ? `${Math.round(d.amount / 1000)}k`
+                      : `${d.amount}`
+                    : "·"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legend & Analytical Insight Footer */}
+      <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[var(--text-tertiary)]">
+        <div className="flex items-center gap-2">
+          <span>Legend:</span>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+            <span className="text-[9px]">0</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+            <span className="text-[9px]">&lt;50k</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-white/65" />
+            <span className="text-[9px]">Mid</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
+            <span className="text-[9px] font-semibold text-[var(--text-primary)]">
+              Peak
+            </span>
+          </div>
+        </div>
+
+        <span className="font-medium text-[var(--text-secondary)]">
+          {zeroSpendDays} zero-spend days recorded this month
         </span>
       </div>
-      {grid}
     </section>
   );
 }
@@ -777,9 +1361,17 @@ export function HealthMeterCard({
   size?: WidgetSize;
   onOpenDetail?: () => void;
 }) {
+  const statusLabel =
+    grade ||
+    (healthScore >= 80
+      ? "Optimal"
+      : healthScore >= 60
+        ? "Good"
+        : healthScore >= 40
+          ? "Fair"
+          : "Attention");
+
   if (size === "half") {
-    const statusLabel =
-      healthScore >= 80 ? "Optimal" : healthScore >= 60 ? "Good" : healthScore >= 40 ? "Fair" : "Attention";
     return (
       <CompactShell title="Health Score" onOpenDetail={onOpenDetail}>
         <div className="flex-1 flex flex-col justify-center items-center py-1">
@@ -812,35 +1404,98 @@ export function HealthMeterCard({
   }
 
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none">
-      <div className="flex items-center justify-between mb-3">
+    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Award size={15} className="text-[var(--text-tertiary)]" />
-          <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
-            Executive Financial Health Index
-          </h3>
+          <div
+            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <Award size={14} className="text-[var(--text-primary)]" />
+          </div>
+          <div>
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
+              Executive Financial Health Index
+            </h3>
+            <p className="text-[10px] text-[var(--text-tertiary)]">
+              Comprehensive telemetry across liquidity, budgeting & savings
+            </p>
+          </div>
         </div>
-        <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-white/10 text-white">
-          {grade}
-        </span>
+
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            {statusLabel} ({healthScore}/100)
+          </span>
+          {onOpenDetail && (
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+            >
+              <Info size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <span className="text-[32px] font-bold amount text-[var(--text-primary)] leading-none">
+      <div className="flex items-center justify-between gap-4 pt-1">
+        <div className="text-center shrink-0 pr-2">
+          <span className="text-[34px] font-bold amount text-[var(--text-primary)] leading-none">
             {healthScore}
           </span>
-          <span className="text-[11px] text-[var(--text-tertiary)] ml-1">
-            pts / 100
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block mt-1">
+            Score / 100
           </span>
         </div>
-        <div className="flex-1 space-y-1">
-          <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
-            <span>Overall Diagnostic Score</span>
-            <span className="font-semibold text-[var(--text-primary)]">
-              {healthScore >= 75 ? "High Efficiency" : "Moderate Risk"}
-            </span>
+
+        <div className="flex-1 space-y-2">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div
+              className="p-2 rounded-xl"
+              style={{ background: "var(--glass-fill)" }}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                Savings Pace
+              </span>
+              <span className="text-[11px] font-semibold text-[var(--text-primary)] block mt-0.5">
+                {healthScore >= 70 ? "Optimal" : "Attention"}
+              </span>
+            </div>
+            <div
+              className="p-2 rounded-xl"
+              style={{ background: "var(--glass-fill)" }}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                Budget Control
+              </span>
+              <span className="text-[11px] font-semibold text-[var(--text-primary)] block mt-0.5">
+                {healthScore >= 50 ? "Safe Track" : "Watch"}
+              </span>
+            </div>
+            <div
+              className="p-2 rounded-xl"
+              style={{ background: "var(--glass-fill)" }}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                Liquid Cushion
+              </span>
+              <span className="text-[11px] font-semibold text-[var(--text-primary)] block mt-0.5">
+                {healthScore >= 60 ? "Resilient" : "Moderate"}
+              </span>
+            </div>
           </div>
+
           <div className="w-full h-2 rounded-full overflow-hidden bg-white/10">
             <div
               className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-700"
@@ -848,6 +1503,13 @@ export function HealthMeterCard({
             />
           </div>
         </div>
+      </div>
+
+      <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+        <span>Overall health diagnostic indicates controlled cashflow.</span>
+        <span className="font-semibold text-[var(--text-secondary)]">
+          {healthScore >= 75 ? "High Efficiency" : "Moderate Action Needed"}
+        </span>
       </div>
     </section>
   );
@@ -870,7 +1532,17 @@ export function LiquidRunwayCard({
   onOpenDetail?: () => void;
 }) {
   const status =
-    runwayMonths >= 6 ? "Comfort" : runwayMonths >= 3 ? "Safe Buffer" : "Critical";
+    runwayMonths >= 6
+      ? "Comfort"
+      : runwayMonths >= 3
+        ? "Safe Buffer"
+        : "Critical";
+
+  const targetRunwayMonths = 6;
+  const targetCoveragePct = Math.min(
+    100,
+    Math.round((runwayMonths / targetRunwayMonths) * 100),
+  );
 
   if (size === "half") {
     return (
@@ -910,38 +1582,110 @@ export function LiquidRunwayCard({
   }
 
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none">
-      <div className="flex items-center justify-between mb-3">
+    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ShieldCheck size={15} className="text-[var(--text-tertiary)]" />
-          <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
-            Liquid Reserve & Emergency Runway
-          </h3>
+          <div
+            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <ShieldCheck size={14} className="text-[var(--text-primary)]" />
+          </div>
+          <div>
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
+              Liquid Reserve & Emergency Runway
+            </h3>
+            <p className="text-[10px] text-[var(--text-tertiary)]">
+              Capital survival horizon based on average monthly burn rate
+            </p>
+          </div>
         </div>
-        <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-white/10 text-white">
-          {status}
-        </span>
+
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            {status} ({runwayMonths.toFixed(1)} Mos)
+          </span>
+          {onOpenDetail && (
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+            >
+              <Info size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <div>
-          <span className="text-[10px] text-[var(--text-tertiary)]">Runway</span>
-          <p className="text-[18px] font-bold amount text-[var(--text-primary)] mt-0.5">
+        <div
+          className="p-2.5 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Survival Runway
+          </span>
+          <p className="text-[16px] font-bold amount text-[var(--text-primary)] mt-0.5">
             {runwayMonths.toFixed(1)} Mos
           </p>
         </div>
-        <div>
-          <span className="text-[10px] text-[var(--text-tertiary)]">Liquid Assets</span>
-          <p className="text-[14px] font-semibold amount text-[var(--text-primary)] mt-0.5 truncate">
+        <div
+          className="p-2.5 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Liquid Assets
+          </span>
+          <p className="text-[13px] font-semibold amount text-[var(--text-primary)] mt-0.5 truncate">
             {formatRupiah(liquidAssets)}
           </p>
         </div>
-        <div>
-          <span className="text-[10px] text-[var(--text-tertiary)]">Monthly Burn</span>
-          <p className="text-[14px] font-semibold amount text-[var(--text-primary)] mt-0.5 truncate">
-            {formatRupiah(monthlyBurn)}
+        <div
+          className="p-2.5 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Monthly Burn
+          </span>
+          <p className="text-[13px] font-semibold amount text-[var(--text-primary)] mt-0.5 truncate">
+            {formatRupiah(monthlyBurn)}/m
           </p>
         </div>
+      </div>
+
+      {/* Target Progress Bar */}
+      <div className="pt-1">
+        <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
+          <span>Target: 6 Months Emergency Reserve</span>
+          <span className="font-semibold text-[var(--text-primary)]">
+            {targetCoveragePct}% Funded
+          </span>
+        </div>
+        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+          <div
+            className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-700"
+            style={{ width: `${targetCoveragePct}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+        <span>
+          Liquid capital provides {runwayMonths.toFixed(1)} months of continuous survival runway.
+        </span>
+        <span className="font-semibold text-[var(--text-secondary)]">
+          Target: {formatRupiah(monthlyBurn * targetRunwayMonths)}
+        </span>
       </div>
     </section>
   );

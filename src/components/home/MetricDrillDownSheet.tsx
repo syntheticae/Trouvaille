@@ -30,6 +30,13 @@ interface MetricDrillDownSheetProps {
     ctaLabel?: string;
     displayValue?: string;
     hideGrid?: boolean;
+    items?: {
+      label: string;
+      amount?: number;
+      valueText?: string;
+      pct?: number;
+      detail?: string;
+    }[];
     onCta?: () => void;
   } | null;
 }
@@ -184,20 +191,19 @@ export function MetricDrillDownSheet({
                   >
                     {data.displayValue
                       ? data.displayValue
-                      : `${data.delta >= 0 ? "+" : ""}${formatRupiah(data.totalCurrent)}`}
+                      : data.delta > 0 && !data.title?.toLowerCase().includes("outflow") && !data.title?.toLowerCase().includes("expense") && !data.title?.toLowerCase().includes("pengeluaran")
+                        ? `+${formatRupiah(data.totalCurrent)}`
+                        : formatRupiah(data.totalCurrent)}
                   </h4>
                 </div>
                 <span
                   className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
                   style={{
                     background: "var(--glass-fill)",
-                    color:
-                      data.delta >= 0
-                        ? "var(--text-primary)"
-                        : "var(--text-secondary)",
+                    color: "var(--text-primary)",
                   }}
                 >
-                  {data.badge || (data.delta >= 0 ? "SURPLUS" : "DEFICIT")}
+                  {data.badge || (data.delta > 0 ? "SURPLUS" : data.delta < 0 ? "DEFICIT" : "RINGKASAN")}
                 </span>
               </div>
               {data.subtitle && (
@@ -210,7 +216,55 @@ export function MetricDrillDownSheet({
               )}
             </div>
 
-            {!data.hideGrid && (
+            {/* Itemized Categories or Breakdown if provided */}
+            {data.items && data.items.length > 0 && (
+              <div
+                className="p-3.5 rounded-2xl space-y-2.5"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider pb-1 border-b border-white/5">
+                  <span>Rincian Sektor / Kategori</span>
+                  <span>Nominal & Porsi</span>
+                </div>
+                {data.items.map((item, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className="font-medium text-[var(--text-primary)] truncate max-w-[170px]">
+                        {item.label}
+                      </span>
+                      <div className="text-right">
+                        <span className="font-semibold amount text-[var(--text-primary)]">
+                          {item.valueText || (item.amount !== undefined ? formatRupiah(item.amount) : "")}
+                        </span>
+                        {item.pct !== undefined && (
+                          <span className="text-[10px] text-[var(--text-tertiary)] ml-1.5 font-mono">
+                            ({item.pct.toFixed(0)}%)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {item.pct !== undefined && (
+                      <div className="w-full h-1 rounded-full overflow-hidden bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-[var(--text-primary)] transition-all"
+                          style={{ width: `${Math.min(100, Math.max(0, item.pct))}%` }}
+                        />
+                      </div>
+                    )}
+                    {item.detail && (
+                      <p className="text-[10px] text-[var(--text-tertiary)] leading-tight">
+                        {item.detail}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!data.hideGrid && (!data.items || data.items.length === 0) && (
               <div className="grid grid-cols-2 gap-2">
                 <div
                   className="p-3 rounded-xl"

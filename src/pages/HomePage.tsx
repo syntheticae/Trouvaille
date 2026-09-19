@@ -355,17 +355,34 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   }, [allTxs, now]);
 
   const categoryDonutData = useMemo(() => {
-    return (currentMonthStats.topExpenseCategories || []).slice(0, 4).map((c) => ({
+    const list = currentMonthStats.topExpenseCategories || [];
+    const top4 = list.slice(0, 4);
+    const top4Total = top4.reduce((s, c) => s + c.total, 0);
+    const otherTotal = Math.max(0, totalExpense - top4Total);
+
+    const res = top4.map((c) => ({
       name: c.name,
       amount: c.total,
       pct: totalExpense > 0 ? (c.total / totalExpense) * 100 : 0,
+      count: c.count,
     }));
+
+    if (otherTotal > 0 && list.length > 4) {
+      res.push({
+        name: "Lainnya",
+        amount: otherTotal,
+        pct: totalExpense > 0 ? (otherTotal / totalExpense) * 100 : 0,
+        count: list.slice(4).reduce((s, c) => s + c.count, 0),
+      });
+    }
+    return res;
   }, [currentMonthStats.topExpenseCategories, totalExpense]);
 
   const { heatmapDaysData, activeSpendDaysCount } = useMemo(() => {
     const start = startOfMonth(now);
     const end = endOfMonth(now);
     const days = eachDayOfInterval({ start, end });
+    const todayStr = format(now, "yyyy-MM-dd");
     let active = 0;
     const maxDaySpend = Math.max(
       1,
@@ -382,8 +399,12 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       if (exp > 0) active++;
       return {
         day: d.getDate(),
+        date: d,
         hasSpend: exp > 0,
+        amount: exp,
         intensity: exp / maxDaySpend,
+        isToday: dStr === todayStr,
+        dayOfWeek: d.getDay(),
       };
     });
     return { heatmapDaysData: list, activeSpendDaysCount: active };
@@ -1455,18 +1476,41 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             inflow={currentMonthStats.income}
             outflow={currentMonthStats.expense}
             onOpenDetail={() => {
+              const netRetention = currentMonthStats.income - currentMonthStats.expense;
+              const isSurplus = netRetention >= 0;
               setMetricDrillDown({
                 type: "snapshot",
                 data: {
-                  totalCurrent: Math.max(0, currentMonthStats.income - currentMonthStats.expense),
+                  totalCurrent: Math.abs(netRetention),
                   totalPrevious: 0,
-                  delta: 0,
+                  delta: netRetention,
                   pctChange: 0,
-                  displayValue: `${intel.savingsRate.toFixed(1)}%`,
+                  displayValue: `${isSurplus ? "+" : "-"}${formatRupiah(Math.abs(netRetention))}`,
                   title: "Savings Telemetry",
-                  subtitle: `Net retention rate is ${intel.savingsRate.toFixed(1)}% of total monthly inflow (${formatRupiah(currentMonthStats.income)}). Retained capital: ${formatRupiah(Math.max(0, currentMonthStats.income - currentMonthStats.expense))}.`,
-                  badge: `${intel.savingsRate.toFixed(0)}% Saved`,
-                  ctaLabel: "View Financial Statistics",
+                  subtitle: isSurplus
+                    ? `Retensi modal bersih adalah ${intel.savingsRate.toFixed(1)}% dari total pemasukan bulanan (${formatRupiah(currentMonthStats.income)}). Modal tersimpan: ${formatRupiah(netRetention)}.`
+                    : `Pengeluaran (${formatRupiah(currentMonthStats.expense)}) melebihi pemasukan (${formatRupiah(currentMonthStats.income)}) bulan ini dengan selisih defisit ${formatRupiah(Math.abs(netRetention))}.`,
+                  badge: isSurplus ? `${intel.savingsRate.toFixed(0)}% Saved` : "Defisit Kas",
+                  hideGrid: true,
+                  items: [
+                    {
+                      label: "Pemasukan Kotor (Gross Inflow)",
+                      amount: currentMonthStats.income,
+                      detail: "Seluruh pendapatan dan transfer masuk",
+                    },
+                    {
+                      label: "Pengeluaran Total (Gross Outflow)",
+                      amount: currentMonthStats.expense,
+                      detail: "Seluruh transaksi belanja & alokasi aset",
+                    },
+                    {
+                      label: isSurplus ? "Modal Bersih Tersimpan" : "Defisit Kas Bersih",
+                      amount: Math.abs(netRetention),
+                      valueText: `${isSurplus ? "+" : "-"}${formatRupiah(Math.abs(netRetention))}`,
+                      detail: isSurplus ? "Dana yang berhasil ditahan" : "Kebutuhan dana tambahan",
+                    },
+                  ],
+                  ctaLabel: "Lihat Laporan Keuangan",
                   onCta: () => navigate("/statistics"),
                 },
               });
@@ -1482,6 +1526,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             dailyAverage={dailyAverage}
             onOpenDetail={() => {
               const total7d = last7DaysOutlays.reduce((sum, d) => sum + d.amount, 0);
+              const peak7d = last7DaysOutlays.reduce(
+                (max, d) => (d.amount > max.amount ? d : max),
+                last7DaysOutlays[0] || { dayLabel: "-", amount: 0 },
+              );
               setMetricDrillDown({
                 type: "snapshot",
                 data: {
@@ -1489,10 +1537,18 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   totalPrevious: 0,
                   delta: 0,
                   pctChange: 0,
-                  title: "7-Day Outlay Velocity",
-                  subtitle: `Total outflow over the past 7 days reached ${formatRupiah(total7d)} with a daily average of ${formatRupiah(Math.round(total7d / 7))}.`,
-                  badge: "Past 7 Days",
-                  ctaLabel: "View All Transactions",
+                  displayValue: formatRupiah(total7d),
+                  title: "7-Day Outflow Velocity",
+                  subtitle: `Total pengeluaran 7 hari terakhir adalah ${formatRupiah(total7d)} dengan rata-rata harian ${formatRupiah(Math.round(total7d / 7))}. Hari tertinggi adalah ${peak7d.dayLabel} (${formatRupiah(peak7d.amount)}).`,
+                  badge: "7 Hari Terakhir",
+                  hideGrid: true,
+                  items: last7DaysOutlays.map((d) => ({
+                    label: `Hari ${d.dayLabel}`,
+                    amount: d.amount,
+                    pct: total7d > 0 ? (d.amount / total7d) * 100 : 0,
+                    detail: d.amount > dailyAverage ? "Di atas rata-rata bulanan" : "Terkendali",
+                  })),
+                  ctaLabel: "Lihat Seluruh Transaksi",
                   onCta: () => navigate("/transactions"),
                 },
               });
@@ -1512,12 +1568,20 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 data: {
                   totalCurrent: currentMonthStats.expense,
                   totalPrevious: 0,
-                  delta: 0,
+                  delta: -currentMonthStats.expense,
                   pctChange: 0,
+                  displayValue: formatRupiah(currentMonthStats.expense),
                   title: "Outflow Allocation",
-                  subtitle: `Visual distribution across ${categoryDonutData.length} key expense sectors for this month.`,
-                  badge: "Allocation",
-                  ctaLabel: "Explore Statistics",
+                  subtitle: `Total pengeluaran (gross outflow) bulan ini adalah ${formatRupiah(currentMonthStats.expense)}. Pemasukan tercatat sebesar ${formatRupiah(currentMonthStats.income)}, sehingga posisi pergerakan kas bersih berada pada defisit ${formatRupiah(Math.abs(currentMonthStats.income - currentMonthStats.expense))}.`,
+                  badge: "Gross Outflow",
+                  hideGrid: true,
+                  items: categoryDonutData.map((c) => ({
+                    label: c.name,
+                    amount: c.amount,
+                    pct: c.pct,
+                    detail: `${c.pct.toFixed(0)}% dari total pengeluaran${c.count ? ` (${c.count} transaksi)` : ""}`,
+                  })),
+                  ctaLabel: "Lihat Analisis di Statistics",
                   onCta: () => navigate("/statistics"),
                 },
               });
@@ -1531,7 +1595,13 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             size={size}
             daysWithSpend={heatmapDaysData}
             activeDaysCount={activeSpendDaysCount}
+            totalMonthSpend={currentMonthStats.expense}
+            dailyAverage={dailyAverage}
             onOpenDetail={() => {
+              const peak = heatmapDaysData.reduce(
+                (max, d) => ((d.amount || 0) > (max.amount || 0) ? d : max),
+                heatmapDaysData[0] || { day: 1, amount: 0 },
+              );
               setMetricDrillDown({
                 type: "snapshot",
                 data: {
@@ -1539,11 +1609,37 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   totalPrevious: 0,
                   delta: 0,
                   pctChange: 0,
-                  displayValue: `${activeSpendDaysCount} Days`,
+                  displayValue: `${activeSpendDaysCount} Hari Aktif`,
                   title: "Monthly Activity Matrix",
-                  subtitle: `You recorded spending on ${activeSpendDaysCount} days this month out of ${heatmapDaysData.length} days total. Total outflow is ${formatRupiah(currentMonthStats.expense)}.`,
-                  badge: `${activeSpendDaysCount} Active Days`,
-                  ctaLabel: "View Spending Patterns",
+                  subtitle: `Anda mencatat transaksi pada ${activeSpendDaysCount} hari dari total ${heatmapDaysData.length} hari bulan ini (${Math.round((activeSpendDaysCount / heatmapDaysData.length) * 100)}% frekuensi aktif). Total pengeluaran mencapai ${formatRupiah(currentMonthStats.expense)} dengan pengeluaran harian tertinggi pada tanggal ${peak.day} (${formatRupiah(peak.amount || 0)}).`,
+                  badge: `${activeSpendDaysCount} Hari Aktif`,
+                  hideGrid: true,
+                  items: [
+                    {
+                      label: "Total Pengeluaran Bulan Ini",
+                      amount: currentMonthStats.expense,
+                      detail: "Akumulasi seluruh transaksi keluar bulan ini",
+                    },
+                    {
+                      label: "Rata-rata Pengeluaran Harian",
+                      amount: Math.round(dailyAverage),
+                      detail: `Berdasarkan ${daysInMonth} hari yang telah berjalan`,
+                    },
+                    {
+                      label: "Rata-rata Hari Aktif",
+                      amount:
+                        activeSpendDaysCount > 0
+                          ? Math.round(currentMonthStats.expense / activeSpendDaysCount)
+                          : 0,
+                      detail: "Rata-rata per hari saat terjadi transaksi belanja",
+                    },
+                    {
+                      label: `Pengeluaran Tertinggi (Tgl ${peak.day})`,
+                      amount: peak.amount || 0,
+                      detail: "Hari belanja paling intensif dalam sebulan",
+                    },
+                  ],
+                  ctaLabel: "Lihat Pola Transaksi di Statistics",
                   onCta: () => navigate("/statistics"),
                 },
               });
