@@ -27,6 +27,7 @@ import {
   Search,
   X,
   EyeOff,
+  Tag,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { BackTapGuideModal } from "../components/settings/BackTapGuideModal";
@@ -79,10 +80,42 @@ export function SettingsPage() {
   const { session, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
-  const { budgetTarget, setBudgetTarget } = useBudgetTarget();
+  const { budgetTarget, setBudgetTarget, budgetPeriodStart, setBudgetPeriodStart } = useBudgetTarget();
   const { shortcuts } = useShortcuts();
   const { securitySettings, updateSettings: updateSecuritySettings, isBiometricSupported, enrollBiometric } = useSecurityLock();
   const { isPrivacyShieldEnabled, togglePrivacyShield } = usePrivacy();
+
+  const [tagsEnabled, setTagsEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem("trouvaille_enable_tags");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  const handleToggleTags = () => {
+    const next = !tagsEnabled;
+    setTagsEnabled(next);
+    localStorage.setItem("trouvaille_enable_tags", String(next));
+    showToast(
+      next ? "Transaction tags enabled" : "Transaction tags disabled",
+      "update",
+      () => {},
+    );
+  };
+
+  const [saveAttachmentsEnabled, setSaveAttachmentsEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem("trouvaille_save_attachments");
+    return saved !== null ? saved === "true" : false;
+  });
+
+  const handleToggleSaveAttachments = () => {
+    const next = !saveAttachmentsEnabled;
+    setSaveAttachmentsEnabled(next);
+    localStorage.setItem("trouvaille_save_attachments", String(next));
+    showToast(
+      next ? "Receipt attachments will be saved" : "Receipt attachments will not be stored",
+      "update",
+      () => {},
+    );
+  };
 
   const { allTxs } = useWalletBalances();
 
@@ -298,7 +331,8 @@ export function SettingsPage() {
   const showBillReminders = matches("Bill Reminders", "Local notifications for scheduled bills");
   const showShortcuts = matches("Quick-Add Shortcuts", "Fast entry shortcuts and voice input");
   const showBackTap = matches("iPhone Back Tap", "iOS accessibility shortcuts integration");
-  const hasSection2 = showTheme || showBillReminders || showShortcuts || showBackTap;
+  const showTags = matches("Transaction Tags (#)", "Categorize with #reimburse, #work, #personal");
+  const hasSection2 = showTheme || showBillReminders || showShortcuts || showBackTap || showTags;
 
   const showCloudSync = matches("Cloud Sync", "Safely backup data to private vault");
   const showVault = matches("Encrypted Vault", "Local AES-256 encrypted file backup");
@@ -311,7 +345,8 @@ export function SettingsPage() {
   const showTimeout = matches("Lock Timeout", "Duration before app automatically locks");
   const showBackupPin = matches("Backup PIN Option", "Passcode fallback when biometrics fail");
   const showMedia = matches("Camera & Photos Access", "Permissions for receipt scanning and slips");
-  const hasSection4 = showPrivacyShield || showFaceID || showTimeout || showBackupPin || showMedia;
+  const showSaveAttachments = matches("Save Attachment Files", "Turn off to read receipts without storing images");
+  const hasSection4 = showPrivacyShield || showFaceID || showTimeout || showBackupPin || showMedia || showSaveAttachments;
 
   const hasAnyMatch = hasSection1 || hasSection2 || hasSection3 || hasSection4;
 
@@ -646,7 +681,7 @@ export function SettingsPage() {
                     className="text-[12px] font-semibold font-mono amount"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {formatRupiah(budgetTarget)}
+                    {formatRupiah(budgetTarget)} · Day {budgetPeriodStart}
                   </span>
                   <ChevronRight
                     size={18}
@@ -889,6 +924,57 @@ export function SettingsPage() {
                   <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
                 </div>
               </button>
+            )}
+
+            {/* Transaction Tags (#) Toggle */}
+            {showTags && (
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Tag size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0 pr-3">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Transaction Tags (#)
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Categorize with #reimburse, #work, #personal
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={tagsEnabled}
+                  onClick={handleToggleTags}
+                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
+                    tagsEnabled
+                      ? "bg-white dark:bg-white"
+                      : "bg-zinc-300 dark:bg-zinc-700"
+                  }`}
+                >
+                  <div
+                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
+                      tagsEnabled
+                        ? "translate-x-4.5 bg-black dark:bg-black"
+                        : "translate-x-0 bg-white"
+                    }`}
+                  />
+                </button>
+              </div>
             )}
           </div>
         </section>
@@ -1414,6 +1500,57 @@ export function SettingsPage() {
                 <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
               </button>
             )}
+
+            {/* Save Attachment Files Toggle */}
+            {showSaveAttachments && (
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Camera size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0 pr-3">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Save Attachment Files
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Turn off to read receipts without storing images
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={saveAttachmentsEnabled}
+                  onClick={handleToggleSaveAttachments}
+                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
+                    saveAttachmentsEnabled
+                      ? "bg-white dark:bg-white"
+                      : "bg-zinc-300 dark:bg-zinc-700"
+                  }`}
+                >
+                  <div
+                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
+                      saveAttachmentsEnabled
+                        ? "translate-x-4.5 bg-black dark:bg-black"
+                        : "translate-x-0 bg-white"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -1443,10 +1580,10 @@ export function SettingsPage() {
       <ProfileSheet
         isOpen={profileOpen}
         onClose={() => setProfileOpen(false)}
-        avatarUrl={avatarUrl}
-        setAvatarUrl={setAvatarUrl}
         displayName={displayName}
+        avatarUrl={avatarUrl}
         setDisplayName={setDisplayName}
+        setAvatarUrl={setAvatarUrl}
       />
 
       <BillManagementSheets
@@ -1459,6 +1596,8 @@ export function SettingsPage() {
         onClose={() => setBudgetTargetOpen(false)}
         budgetTarget={budgetTarget}
         setBudgetTarget={setBudgetTarget}
+        budgetPeriodStart={budgetPeriodStart}
+        setBudgetPeriodStart={setBudgetPeriodStart}
       />
 
       <GoalManagementSheets

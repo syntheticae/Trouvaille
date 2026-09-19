@@ -183,11 +183,20 @@ export function ReceiptScanModal({
     };
   }, [isOpen, step]);
 
+  const shouldSaveAttachments = useMemo(() => {
+    return localStorage.getItem("trouvaille_save_attachments") === "true";
+  }, [isOpen]);
+
   // Reset state when modal closed
   useEffect(() => {
     if (!isOpen) {
       stopLiveCamera();
       setStep("idle");
+      if (imagePreview && imagePreview.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(imagePreview);
+        } catch {}
+      }
       setImagePreview(null);
       setInspectPhotoOpen(false);
       setProgressPct(0);
@@ -646,8 +655,14 @@ export function ReceiptScanModal({
                 >
                   Scan Receipt
                 </h3>
-                <p className="text-[11px] font-normal mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                  Physical receipts, QRIS & bank transfer slips
+                <p className="text-[11px] font-normal mt-0.5 flex items-center gap-1.5" style={{ color: "var(--text-tertiary)" }}>
+                  <span>Physical receipts, QRIS & bank transfer slips</span>
+                  {!shouldSaveAttachments && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-white/[0.06] border border-white/10 text-[var(--text-secondary)]">
+                      <Shield size={9} strokeWidth={1.5} />
+                      Ephemeral
+                    </span>
+                  )}
                 </p>
               </div>
 

@@ -157,7 +157,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   const { showToast } = useToast();
   const markBillPaid = useMarkBillPaid();
   const upcomingBills = useUpcomingBills();
-  const { budgetTarget } = useBudgetTarget();
+  const { budgetTarget, budgetPeriodStart } = useBudgetTarget();
   const { data: allTxs = [], refetch: refetchAllTxs } = useAllTransactions();
   const { data: categories = [], refetch: refetchCategories } = useCategories();
   const { refetch: refetchWallets } = useWallets();
@@ -196,6 +196,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   const intel = useFinancialIntelligence({
     transactions: allTxs,
     budgetTarget,
+    budgetPeriodStart,
     totalAssets: netWorth,
     liquidAssets,
     liquidAccounts,

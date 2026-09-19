@@ -10,6 +10,8 @@ import {
   calculateExpenseVolatility,
   calculateDynamicGoalMilestones,
   calculateDebtPayoffSchedule,
+  getBudgetPeriodInterval,
+  filterTransactionsByBudgetPeriod,
   type DebtItem,
 } from "../src/lib/financialMath";
 import {
@@ -556,6 +558,48 @@ describe("Financial Math & Analytics Test Suite", () => {
       expect(formatCurrencyAmount(5000, "JPY")).toBe("¥5,000");
     });
   });
+
+  describe("Custom Budget Period (Payday Rhythm)", () => {
+    it("handles Day 1 calendar month cycle", () => {
+      const date = new Date(2026, 8, 15); // Sept 15, 2026
+      const interval = getBudgetPeriodInterval(date, 1);
+      expect(interval.startDay).toBe(1);
+      expect(interval.startDate.getDate()).toBe(1);
+      expect(interval.startDate.getMonth()).toBe(8); // Sept
+      expect(interval.endDate.getDate()).toBe(30); // Sept has 30 days
+      expect(interval.endDate.getMonth()).toBe(8);
+      expect(interval.totalDays).toBe(30);
+    });
+
+    it("handles custom payday cycle when before payday (e.g. Sept 19 with payday 25)", () => {
+      const date = new Date(2026, 8, 19); // Sept 19, 2026
+      const interval = getBudgetPeriodInterval(date, 25);
+      expect(interval.startDay).toBe(25);
+      // Started Aug 25
+      expect(interval.startDate.getMonth()).toBe(7); // Aug
+      expect(interval.startDate.getDate()).toBe(25);
+      // Ends Sept 24
+      expect(interval.endDate.getMonth()).toBe(8); // Sept
+      expect(interval.endDate.getDate()).toBe(24);
+      expect(interval.label).toContain("25 Aug");
+      expect(interval.label).toContain("24 Sep");
+    });
+
+    it("handles custom payday cycle when on or after payday (e.g. Sept 26 with payday 25)", () => {
+      const date = new Date(2026, 8, 26); // Sept 26, 2026
+      const interval = getBudgetPeriodInterval(date, 25);
+      expect(interval.startDay).toBe(25);
+      // Started Sept 25
+      expect(interval.startDate.getMonth()).toBe(8); // Sept
+      expect(interval.startDate.getDate()).toBe(25);
+      // Ends Oct 24
+      expect(interval.endDate.getMonth()).toBe(9); // Oct
+      expect(interval.endDate.getDate()).toBe(24);
+      expect(interval.label).toContain("25 Sep");
+      expect(interval.label).toContain("24 Oct");
+    });
+  });
 });
+
 
 

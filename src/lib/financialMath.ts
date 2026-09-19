@@ -3079,3 +3079,85 @@ export function calculateDebtPayoffSchedule(
   };
 }
 
+export interface BudgetPeriodInterval {
+  startDate: Date;
+  endDate: Date;
+  startDay: number;
+  daysElapsed: number;
+  totalDays: number;
+  daysRemaining: number;
+  label: string;
+}
+
+export function getBudgetPeriodInterval(
+  referenceDate: Date = new Date(),
+  rawStartDay: number = 1
+): BudgetPeriodInterval {
+  const startDay = Math.max(1, Math.min(28, Math.floor(rawStartDay || 1)));
+  const refYear = referenceDate.getFullYear();
+  const refMonth = referenceDate.getMonth();
+  const refDay = referenceDate.getDate();
+
+  let startDate: Date;
+  let endDate: Date;
+
+  if (startDay === 1) {
+    startDate = new Date(refYear, refMonth, 1, 0, 0, 0, 0);
+    endDate = new Date(refYear, refMonth + 1, 0, 23, 59, 59, 999);
+  } else {
+    if (refDay >= startDay) {
+      startDate = new Date(refYear, refMonth, startDay, 0, 0, 0, 0);
+      endDate = new Date(refYear, refMonth + 1, startDay - 1, 23, 59, 59, 999);
+    } else {
+      startDate = new Date(refYear, refMonth - 1, startDay, 0, 0, 0, 0);
+      endDate = new Date(refYear, refMonth, startDay - 1, 23, 59, 59, 999);
+    }
+  }
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const totalDays = Math.round((endDate.getTime() - startDate.getTime()) / msPerDay);
+  
+  const now = new Date();
+  const targetDate = referenceDate > now ? referenceDate : now;
+  const clampedTarget = new Date(
+    Math.max(startDate.getTime(), Math.min(endDate.getTime(), targetDate.getTime()))
+  );
+  const daysElapsed = Math.max(
+    1,
+    Math.min(totalDays, Math.ceil((clampedTarget.getTime() - startDate.getTime()) / msPerDay))
+  );
+  const daysRemaining = Math.max(0, totalDays - daysElapsed);
+
+  const startFormatted = format(startDate, "d MMM");
+  const endFormatted = format(endDate, "d MMM yyyy");
+  const label = `${startFormatted} – ${endFormatted}`;
+
+  return {
+    startDate,
+    endDate,
+    startDay,
+    daysElapsed,
+    totalDays,
+    daysRemaining,
+    label,
+  };
+}
+
+export function filterTransactionsByBudgetPeriod(
+  transactions: Transaction[],
+  interval: BudgetPeriodInterval
+): Transaction[] {
+  const startMs = interval.startDate.getTime();
+  const endMs = interval.endDate.getTime();
+
+  return transactions.filter((tx) => {
+    const raw = tx.occurred_on || tx.created_at;
+    if (!raw) return false;
+    const txTime = raw.length === 10
+      ? new Date(`${raw}T12:00:00`).getTime()
+      : new Date(raw).getTime();
+    return !isNaN(txTime) && txTime >= startMs && txTime <= endMs;
+  });
+}
+
+

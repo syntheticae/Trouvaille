@@ -18,6 +18,9 @@ import {
   calculateCashflowFloor,
   calculateLiquidityHorizon,
   calculateExpenseVolatility,
+  getBudgetPeriodInterval,
+  filterTransactionsByBudgetPeriod,
+  type BudgetPeriodInterval,
   type BudgetRiskLevel,
   type CategoryMoMShift,
   type ActionCenterInsight,
@@ -34,6 +37,8 @@ import {
   type CashflowCalendarDayPoint,
   type ExpenseClassification,
 } from "../lib/financialMath";
+
+export type { BudgetPeriodInterval };
 
 export type {
   BudgetRiskLevel,
@@ -57,6 +62,7 @@ export type MomentumState = "positive" | "neutral" | "negative";
 interface FinancialIntelligenceOptions {
   transactions: Transaction[];
   budgetTarget: number;
+  budgetPeriodStart?: number;
   totalAssets: number;
   liquidAssets?: number;
   liquidAccounts?: Array<{ name: string; balance: number; icon: string }>;
@@ -69,6 +75,7 @@ interface FinancialIntelligenceOptions {
 export function useFinancialIntelligence({
   transactions,
   budgetTarget,
+  budgetPeriodStart = 1,
   totalAssets,
   liquidAssets,
   liquidAccounts,
@@ -121,13 +128,27 @@ export function useFinancialIntelligence({
       referenceDate,
     );
 
-    // 5. Spending Pace & Projections
+    // 5. Spending Pace & Projections (Custom Payday Interval Aware)
+    const budgetInterval = getBudgetPeriodInterval(referenceDate, budgetPeriodStart);
+    const isCustomCycle = budgetPeriodStart > 1;
+    const effectiveTotalDays = isCustomCycle ? budgetInterval.totalDays : totalDays;
+    const effectiveDaysElapsed = isCustomCycle ? budgetInterval.daysElapsed : daysElapsed;
+
+    const budgetCycleTxs = isCustomCycle
+      ? filterTransactionsByBudgetPeriod(transactions, budgetInterval)
+      : null;
+    const budgetExpense = budgetCycleTxs
+      ? budgetCycleTxs
+          .filter((t) => t.type === "expense")
+          .reduce((sum, t) => sum + (t.amount || 0), 0)
+      : totalExpense;
+
     const budget = budgetTarget > 0 ? budgetTarget : 0;
     const pace = computeSpendingPace(
-      totalExpense,
+      budgetExpense,
       budget,
-      daysElapsed,
-      totalDays,
+      effectiveDaysElapsed,
+      effectiveTotalDays,
     );
     const risk = computeBudgetRisk(pace.consumedPct, pace.timePct, budget);
 
@@ -334,6 +355,8 @@ export function useFinancialIntelligence({
       savingsRate,
       // Spending Pace
       budget,
+      budgetExpense,
+      budgetInterval,
       expectedPace: pace.expectedPace,
       paceDiff: pace.paceDiff,
       isAheadOfPace: pace.isAheadOfPace,
@@ -378,6 +401,7 @@ export function useFinancialIntelligence({
   }, [
     transactions,
     budgetTarget,
+    budgetPeriodStart,
     totalAssets,
     liquidAssets,
     liquidAccounts,

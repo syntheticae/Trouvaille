@@ -22,7 +22,11 @@ import {
   PenLine,
   AlertCircle,
   AlertTriangle,
+  Calculator,
+  Tag,
 } from "lucide-react";
+import { TransactionKeypadSheet } from "./TransactionKeypadSheet";
+import { applyKeypadInput } from "../../lib/keypadHelper";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useCategories } from "../../hooks/useCategories";
@@ -129,6 +133,43 @@ export function TransactionSheet({
   const [walletTarget, setWalletTarget] = useState<"from" | "to">("from");
   const [showSmartBar, setShowSmartBar] = useState(false);
   const [isNoteFocused, setIsNoteFocused] = useState(false);
+
+  // Keypad & Calculator Pad State
+  const [isKeypadOpen, setIsKeypadOpen] = useState(false);
+
+  // Dynamic Tags (#) State
+  const [tagsEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem("trouvaille_enable_tags");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  const activeTags = useMemo(() => {
+    if (!note) return [];
+    const matches = note.match(/#([a-zA-Z0-9_-]+)/g);
+    return matches ? matches.map((m) => m.toLowerCase()) : [];
+  }, [note]);
+
+  const quickTagPresets = [
+    "#reimburse",
+    "#kantor",
+    "#liburan",
+    "#keluarga",
+    "#proyek",
+    "#split",
+  ];
+
+  const handleToggleTag = (tag: string) => {
+    triggerHaptic("light");
+    const normalized = tag.startsWith("#") ? tag.toLowerCase() : `#${tag.toLowerCase()}`;
+    if (activeTags.includes(normalized)) {
+      const regex = new RegExp(`\\s*${normalized}\\b`, "gi");
+      const updated = note.replace(regex, "").trim();
+      setNote(updated);
+    } else {
+      const updated = note.trim() ? `${note.trim()} ${normalized}` : normalized;
+      setNote(updated);
+    }
+  };
 
   // Split Transaction & Piutang State (Innovation 2)
   const [isSplitOpen, setIsSplitOpen] = useState(false);
@@ -1008,7 +1049,7 @@ export function TransactionSheet({
           )}
 
           {/* Quick Increment & Math Operator Strip: Pre-Resolution Style with Elegant Dark Gradient */}
-          <div className="flex items-center justify-center gap-1.5 mt-3.5 px-2">
+          <div className="flex items-center justify-center gap-1.5 mt-3 px-2 flex-wrap sm:flex-nowrap">
             {[
               { label: "+10K", add: 10000 },
               { label: "+50K", add: 50000 },
@@ -1024,7 +1065,7 @@ export function TransactionSheet({
                   setAmount(String(next));
                   setAmountInput(next.toLocaleString("id-ID"));
                 }}
-                className="px-3 py-1.5 rounded-xl text-[11px] font-bold active:scale-90 transition-transform cursor-pointer select-none"
+                className="px-2.5 py-1.5 rounded-xl text-[11px] font-semibold active:scale-90 transition-transform cursor-pointer select-none"
                 style={{
                   background:
                     "linear-gradient(155deg, #222227 0%, #141417 100%)",
@@ -1037,17 +1078,44 @@ export function TransactionSheet({
                 {preset.label}
               </button>
             ))}
+
             <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
-            {["+", "-", "×"].map((op) => (
+
+            {/* Dedicated 000 (Triple Zero) Key */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                const res = applyKeypadInput(amountInput, "000");
+                setAmount(String(res.numericValue));
+                setAmountInput(res.expression);
+              }}
+              className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold active:scale-90 transition-transform cursor-pointer select-none"
+              style={{
+                background: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid rgba(255, 255, 255, 0.16)",
+                color: "var(--text-primary)",
+                boxShadow:
+                  "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+              }}
+              title="Add 000 (thousand)"
+            >
+              000
+            </button>
+
+            <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
+
+            {["+", "-", "×", "÷"].map((op) => (
               <button
                 key={op}
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
-                  const base = amountInput ? amountInput.trim() : "0";
-                  setAmountInput(`${base} ${op} `);
+                  const res = applyKeypadInput(amountInput, op);
+                  setAmount(String(res.numericValue));
+                  setAmountInput(res.expression);
                 }}
-                className="w-8 h-7.5 rounded-xl text-[12px] font-semibold flex items-center justify-center active:scale-90 transition-transform cursor-pointer select-none"
+                className="w-7.5 h-7.5 rounded-xl text-[12px] font-semibold flex items-center justify-center active:scale-90 transition-transform cursor-pointer select-none"
                 style={{
                   background:
                     "linear-gradient(155deg, #222227 0%, #141417 100%)",
@@ -1060,6 +1128,27 @@ export function TransactionSheet({
                 {op}
               </button>
             ))}
+
+            <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
+
+            {/* Custom Frosted Apple Keypad Drawer Trigger */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                setIsKeypadOpen(true);
+              }}
+              className="px-2.5 py-1.5 rounded-xl text-[11px] font-medium flex items-center gap-1 active:scale-90 transition-transform cursor-pointer select-none"
+              style={{
+                background: "rgba(255, 255, 255, 0.06)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
+              }}
+              title="Open full numpad"
+            >
+              <Calculator size={12} strokeWidth={1.75} />
+              <span>Keypad</span>
+            </button>
           </div>
 
           {/* Duplicate Transaction Warning (Monochrome Apple Luxury Alert) */}
@@ -1541,6 +1630,38 @@ export function TransactionSheet({
             )}
           </AnimatePresence>
         </div>
+
+        {/* Dynamic Multi-Tag Chips (#reimburse, #kantor, #liburan, etc.) */}
+        {tagsEnabled && (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 px-1 -mt-1 mb-2">
+            <Tag size={12} strokeWidth={1.5} className="text-[var(--text-tertiary)] shrink-0 mr-0.5" />
+            {quickTagPresets.map((t) => {
+              const isActive = activeTags.includes(t.toLowerCase());
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => handleToggleTag(t)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-all active:scale-95 cursor-pointer flex items-center gap-1 ${
+                    isActive
+                      ? "bg-white text-black font-semibold shadow-sm"
+                      : "bg-white/[0.04] text-[var(--text-secondary)] border border-white/[0.08] hover:bg-white/[0.08]"
+                  }`}
+                >
+                  <span>{t}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Reimbursable Highlight Notice */}
+        {activeTags.includes("#reimburse") && (
+          <div className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+            <span>Tag <strong>#reimburse</strong> active · Marked for expense reimbursement claim</span>
+          </div>
+        )}
 
         {/* Smart Merchant & Context Memory Suggestion Chip */}
         {merchantPrediction && (predictedCategory || predictedWallet) && (
@@ -2629,6 +2750,23 @@ export function TransactionSheet({
           </button>
         </div>
       </BottomSheet>
+
+      {/* Monveo-Style Luxury On-Screen Keypad Drawer */}
+      <TransactionKeypadSheet
+        isOpen={isKeypadOpen}
+        onClose={() => setIsKeypadOpen(false)}
+        expression={amountInput}
+        onExpressionChange={(newExpr, numericVal) => {
+          setAmountInput(newExpr);
+          setAmount(String(numericVal));
+        }}
+        onDone={() => {
+          setIsKeypadOpen(false);
+          const evaluated = evaluateMathSafe(amountInput);
+          setAmount(String(evaluated));
+          setAmountInput(evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"));
+        }}
+      />
     </BottomSheet>
   );
 }
