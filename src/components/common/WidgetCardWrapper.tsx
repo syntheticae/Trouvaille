@@ -6,7 +6,7 @@
 
 import React, { useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Minus, Maximize2, Minimize2, GripVertical, ArrowLeftRight } from "lucide-react";
+import { Minus, Maximize2, Minimize2, GripVertical } from "lucide-react";
 import type { CardWidgetConfig } from "../../lib/widgetLayoutTypes";
 import { triggerHaptic } from "../../lib/haptics";
 
@@ -16,7 +16,6 @@ interface WidgetCardWrapperProps {
   onEnterEditMode?: () => void;
   onCycleSize?: (id: string) => void;
   onHide?: (id: string) => void;
-  onSwapPosition?: (id: string) => void;
   children: React.ReactNode;
 }
 
@@ -26,7 +25,6 @@ export function WidgetCardWrapper({
   onEnterEditMode,
   onCycleSize,
   onHide,
-  onSwapPosition,
   children,
 }: WidgetCardWrapperProps) {
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,7 +75,6 @@ export function WidgetCardWrapper({
 
   return (
     <motion.div
-      layout
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUpOrCancel}
@@ -100,8 +97,8 @@ export function WidgetCardWrapper({
             }
           : { rotate: 0 }
       }
-      className={`relative select-none transition-all ${
-        isHalf ? "col-span-1 h-[154px]" : "col-span-2"
+      className={`relative select-none w-full ${
+        isHalf ? "h-full" : ""
       }`}
       style={{
         WebkitTouchCallout: "none",
@@ -109,30 +106,6 @@ export function WidgetCardWrapper({
         userSelect: "none",
       }}
     >
-      {/* Edit Mode Top-Left Swap Column Button (Half Cards only) */}
-      {isEditMode && isHalf && onSwapPosition && (
-        <div className="absolute -top-2.5 -left-1.5 z-30 flex items-center">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSwapPosition(card.id);
-            }}
-            className="px-2 py-1 rounded-full text-[10px] font-semibold flex items-center gap-1 shadow-lg active:scale-90 transition-transform cursor-pointer select-none"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-              backdropFilter: "blur(16px)",
-            }}
-            title="Tukar Posisi Kiri / Kanan"
-          >
-            <ArrowLeftRight size={10} strokeWidth={2} />
-            <span>Swap</span>
-          </button>
-        </div>
-      )}
-
       {/* Edit Mode Controls Overlay */}
       {isEditMode && (
         <div className="absolute -top-2.5 -right-1.5 z-30 flex items-center gap-1.5">
@@ -195,11 +168,11 @@ export function WidgetCardWrapper({
 
       {/* Edit Mode Specular Border Ring */}
       <div
-        className={`rounded-[26px] transition-all ${
+        className={`rounded-[26px] ${
           isHalf ? "h-full" : ""
         } ${
           isEditMode
-            ? "ring-2 ring-white/20 ring-offset-2 ring-offset-black/50"
+            ? "ring-2 ring-white/20 ring-offset-2 ring-offset-black/50 transition-shadow duration-200"
             : ""
         }`}
       >

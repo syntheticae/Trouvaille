@@ -8,9 +8,8 @@ import { CalendarDays, Target, Sparkles } from "lucide-react";
 import { triggerHaptic } from "../lib/haptics";
 import { resolveTransactionCategory } from "../lib/categoryResolver";
 import { useNavigate } from "react-router-dom";
-import { Reorder } from "framer-motion";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
-import { WidgetCardWrapper, WidgetCustomizationBar } from "../components/common";
+import { ReorderableWidgetGrid, WidgetCustomizationBar } from "../components/common";
 import type { WidgetSize } from "../lib/widgetLayoutTypes";
 import { HOME_PRESETS } from "../lib/widgetLayoutTypes";
 import {
@@ -185,7 +184,6 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     isEditMode,
     setIsEditMode,
     reorderCards,
-    swapCardPosition,
     cycleCardSize,
     toggleCardVisibility,
     resetLayout,
@@ -1613,7 +1611,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   };
 
   return (
-    <div className="px-5 pt-6 space-y-4 pb-36 relative">
+    <div className="px-5 pt-6 space-y-4 pb-36 relative max-w-full overflow-x-clip">
       <PullToRefreshIndicator
         pullDistance={pullDistance}
         isRefreshing={isRefreshing}
@@ -1680,45 +1678,15 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       </header>
 
       {/* Dynamic Reorderable iOS-Style Card Springboard */}
-      <Reorder.Group
-        axis="y"
-        values={visibleCards.map((c) => c.id)}
+      <ReorderableWidgetGrid
+        cards={visibleCards}
+        isEditMode={isEditMode}
         onReorder={reorderCards}
-        className="grid grid-cols-2 gap-4 pb-4"
-      >
-        {visibleCards.map((card) => {
-          const content = renderCardContent(card.id, card.size);
-          if (!content) return null;
-          return (
-            <Reorder.Item
-              key={card.id}
-              value={card.id}
-              dragListener={isEditMode}
-              className={card.size === "half" ? "col-span-1 h-[154px]" : "col-span-2"}
-              onDragEnd={(_e, info) => {
-                if (card.size === "half") {
-                  const dx = info.offset.x;
-                  const dy = info.offset.y;
-                  if (Math.abs(dx) > 35 && Math.abs(dx) > Math.abs(dy) * 0.5) {
-                    swapCardPosition(card.id, dx > 0 ? "right" : "left");
-                  }
-                }
-              }}
-            >
-              <WidgetCardWrapper
-                card={card}
-                isEditMode={isEditMode}
-                onEnterEditMode={() => setIsEditMode(true)}
-                onCycleSize={cycleCardSize}
-                onHide={toggleCardVisibility}
-                onSwapPosition={swapCardPosition}
-              >
-                {content}
-              </WidgetCardWrapper>
-            </Reorder.Item>
-          );
-        })}
-      </Reorder.Group>
+        onEnterEditMode={() => setIsEditMode(true)}
+        onCycleSize={cycleCardSize}
+        onHide={toggleCardVisibility}
+        renderCard={(card) => renderCardContent(card.id, card.size)}
+      />
 
       {/* 11. CUSTOMIZE DASHBOARD — Minimalist Floating Capsule */}
       <div className="flex justify-center pt-2 pb-2">

@@ -74,8 +74,7 @@ import {
   FirePlannerCard,
   FirePlannerSheet,
 } from "../components/statistics";
-import { Reorder } from "framer-motion";
-import { WidgetCardWrapper, WidgetCustomizationBar } from "../components/common";
+import { ReorderableWidgetGrid, WidgetCustomizationBar } from "../components/common";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
 import { STATS_STORAGE_KEY } from "../lib/widgetLayoutEngine";
 import { DEFAULT_STATISTICS_WIDGETS } from "../lib/widgetLayoutTypes";
@@ -296,7 +295,6 @@ export function StatisticsPage() {
     isEditMode: isStatsEditMode,
     setIsEditMode: setIsStatsEditMode,
     reorderCards: reorderStatsCards,
-    swapCardPosition: swapStatsCardPosition,
     cycleCardSize: cycleStatsCardSize,
     toggleCardVisibility: toggleStatsCardVisibility,
     resetLayout: resetStatsLayout,
@@ -1395,7 +1393,7 @@ export function StatisticsPage() {
   };
 
   return (
-    <div className="px-5 py-6 space-y-5 pb-36" style={{ minHeight: "100dvh" }}>
+    <div className="px-5 py-6 space-y-5 pb-36 max-w-full overflow-x-clip" style={{ minHeight: "100dvh" }}>
       {/* Header with Compact Timeframe Selector */}
       <div className="relative z-20 flex justify-between items-center">
         <div>
@@ -1727,45 +1725,15 @@ export function StatisticsPage() {
       {/* TAB 2: INTELLIGENCE */}
       {analyticsSubTab === "intelligence" && (
         <>
-          <Reorder.Group
-            axis="y"
-            values={visibleStatsCards.map((c) => c.id)}
+          <ReorderableWidgetGrid
+            cards={visibleStatsCards}
+            isEditMode={isStatsEditMode}
             onReorder={reorderStatsCards}
-            className="grid grid-cols-2 gap-4 pb-4"
-          >
-            {visibleStatsCards.map((card) => {
-              const content = renderIntelligenceCard(card.id, card.size);
-              if (!content) return null;
-              return (
-                <Reorder.Item
-                  key={card.id}
-                  value={card.id}
-                  dragListener={isStatsEditMode}
-                  className={card.size === "half" ? "col-span-1 h-[154px]" : "col-span-2"}
-                  onDragEnd={(_e, info) => {
-                    if (card.size === "half") {
-                      const dx = info.offset.x;
-                      const dy = info.offset.y;
-                      if (Math.abs(dx) > 35 && Math.abs(dx) > Math.abs(dy) * 0.5) {
-                        swapStatsCardPosition(card.id, dx > 0 ? "right" : "left");
-                      }
-                    }
-                  }}
-                >
-                  <WidgetCardWrapper
-                    card={card}
-                    isEditMode={isStatsEditMode}
-                    onEnterEditMode={() => setIsStatsEditMode(true)}
-                    onCycleSize={cycleStatsCardSize}
-                    onHide={toggleStatsCardVisibility}
-                    onSwapPosition={swapStatsCardPosition}
-                  >
-                    {content}
-                  </WidgetCardWrapper>
-                </Reorder.Item>
-              );
-            })}
-          </Reorder.Group>
+            onEnterEditMode={() => setIsStatsEditMode(true)}
+            onCycleSize={cycleStatsCardSize}
+            onHide={toggleStatsCardVisibility}
+            renderCard={(card) => renderIntelligenceCard(card.id, card.size)}
+          />
 
           {/* Customize Intelligence Cards Button */}
           <div className="flex justify-center pt-2 pb-2">
