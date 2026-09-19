@@ -117,10 +117,12 @@ jobs:
 
       - name: Upload .ipa as GitHub Artifact
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: trouvaille-unsigned-ipa
           path: Trouvaille.ipa
-          if-no-files-found: error
+          if-no-files-found: warn
+          retention-days: 1
 
       - name: Publish Direct .ipa Download to GitHub Releases
         uses: softprops/action-gh-release@v2
