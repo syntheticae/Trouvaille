@@ -33,31 +33,16 @@ interface CompactShellProps {
 
 export function CompactShell({
   title,
-  badge,
   onOpenDetail,
   children,
 }: CompactShellProps) {
   return (
-    <section className="glass-surface p-3.5 rounded-[22px] flex flex-col justify-between h-full min-h-[136px] relative overflow-hidden select-none">
+    <section className="glass-surface p-3.5 rounded-[22px] flex flex-col justify-between h-full min-h-[142px] relative overflow-hidden select-none">
       {/* Top Header with Title and Info Button */}
       <div className="flex items-center justify-between gap-1.5 mb-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[12px] font-semibold tracking-tight text-[var(--text-primary)] truncate">
-            {title}
-          </span>
-          {badge && (
-            <span
-              className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md shrink-0"
-              style={{
-                background: "var(--glass-fill)",
-                color: "var(--text-tertiary)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {badge}
-            </span>
-          )}
-        </div>
+        <span className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)] truncate flex-1 leading-snug">
+          {title}
+        </span>
 
         {onOpenDetail && (
           <button
@@ -67,14 +52,14 @@ export function CompactShell({
               triggerHaptic("light");
               onOpenDetail();
             }}
-            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+            className="w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
             style={{
               background: "var(--glass-fill)",
               border: "1px solid var(--glass-border)",
             }}
             title="View Details"
           >
-            <Info size={12} />
+            <Info size={11} />
           </button>
         )}
       </div>
@@ -101,17 +86,29 @@ export function CompactSpendingStabilityHalf({
   onOpenDetail?: () => void;
 }) {
   return (
-    <CompactShell title="Stability" badge={level} onOpenDetail={onOpenDetail}>
+    <CompactShell title="Stability" onOpenDetail={onOpenDetail}>
       <div>
-        <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-          Daily Outlay
-        </span>
-        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-0.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
+            Daily Outlay
+          </span>
+          <span
+            className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
+            style={{
+              background: "var(--glass-fill)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {level}
+          </span>
+        </div>
+        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
           {formatRupiah(dailyAvg)}
         </p>
       </div>
 
-      <div className="mt-2.5">
+      <div className="mt-2">
         <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
           <span>Variance</span>
           <span className="font-semibold text-[var(--text-secondary)]">
@@ -142,22 +139,30 @@ export function CompactCashflowPulseHalf({
 }) {
   const isSurplus = netCashflow >= 0;
   return (
-    <CompactShell
-      title="Cashflow"
-      badge={isAheadOfPace ? "Over Pace" : "On Track"}
-      onOpenDetail={onOpenDetail}
-    >
+    <CompactShell title="Cashflow" onOpenDetail={onOpenDetail}>
       <div>
-        <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-          Net Retention
-        </span>
-        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-0.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
+            Net Retention
+          </span>
+          <span
+            className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
+            style={{
+              background: "var(--glass-fill)",
+              color: isAheadOfPace ? "var(--text-secondary)" : "var(--text-primary)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {isAheadOfPace ? "Over Pace" : "On Track"}
+          </span>
+        </div>
+        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
           {isSurplus ? "+" : ""}
           {formatRupiah(netCashflow)}
         </p>
       </div>
 
-      <div className="mt-2.5">
+      <div className="mt-2">
         <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
           <span>Budget Used</span>
           <span className="font-semibold text-[var(--text-secondary)]">
@@ -185,20 +190,30 @@ export function CompactAIInsightsHalf({
   onOpenDetail?: () => void;
 }) {
   return (
-    <CompactShell
-      title="AI Insight"
-      badge={insightCategory || "Alert"}
-      onOpenDetail={onOpenDetail}
-    >
-      <div className="my-auto">
-        <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug line-clamp-2">
+    <CompactShell title="AI Insight" onOpenDetail={onOpenDetail}>
+      <div className="my-auto py-1">
+        <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-snug line-clamp-3">
           {insightTitle}
         </p>
       </div>
 
-      <div className="flex items-center gap-1 text-[10px] font-semibold text-[var(--text-tertiary)] mt-2">
-        <Zap size={11} />
-        <span>Diagnostic Available</span>
+      <div className="flex items-center justify-between pt-1.5 border-t border-white/5 text-[10px] font-medium text-[var(--text-tertiary)]">
+        <div className="flex items-center gap-1">
+          <Zap size={11} />
+          <span>Diagnostic</span>
+        </div>
+        {insightCategory && (
+          <span
+            className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
+            style={{
+              background: "var(--glass-fill)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {insightCategory}
+          </span>
+        )}
       </div>
     </CompactShell>
   );
@@ -218,17 +233,29 @@ export function CompactGoalsHalf({
   onOpenDetail?: () => void;
 }) {
   return (
-    <CompactShell title="Top Goal" badge={`${progressPct.toFixed(0)}%`} onOpenDetail={onOpenDetail}>
+    <CompactShell title="Top Goal" onOpenDetail={onOpenDetail}>
       <div>
-        <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
-          {goalTitle}
-        </p>
-        <p className="text-[11px] amount text-[var(--text-tertiary)] mt-0.5">
+        <div className="flex items-center justify-between">
+          <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
+            {goalTitle}
+          </p>
+          <span
+            className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded-md"
+            style={{
+              background: "var(--glass-fill)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {progressPct.toFixed(0)}%
+          </span>
+        </div>
+        <p className="text-[11px] amount text-[var(--text-tertiary)] mt-1">
           {formatRupiah(currentAmount)} / {formatRupiah(targetAmount)}
         </p>
       </div>
 
-      <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10 mt-2.5">
+      <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10 mt-2">
         <div
           className="h-full rounded-full bg-[var(--text-primary)] transition-all"
           style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
@@ -251,12 +278,24 @@ export function CompactBillsHalf({
 }) {
   const badgeLabel = daysLeft <= 0 ? "Due Today" : `In ${daysLeft}d`;
   return (
-    <CompactShell title="Next Bill" badge={badgeLabel} onOpenDetail={onOpenDetail}>
+    <CompactShell title="Next Bill" onOpenDetail={onOpenDetail}>
       <div>
-        <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
-          {nextBillName}
-        </p>
-        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-0.5">
+        <div className="flex items-center justify-between">
+          <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
+            {nextBillName}
+          </p>
+          <span
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md"
+            style={{
+              background: "var(--glass-fill)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {badgeLabel}
+          </span>
+        </div>
+        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
           {formatRupiah(nextBillAmount)}
         </p>
       </div>
@@ -281,21 +320,29 @@ export function CompactTopCategoriesHalf({
   onOpenDetail?: () => void;
 }) {
   return (
-    <CompactShell
-      title="Top Expense"
-      badge={`${topCategoryPct.toFixed(0)}%`}
-      onOpenDetail={onOpenDetail}
-    >
+    <CompactShell title="Top Category" onOpenDetail={onOpenDetail}>
       <div>
-        <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
-          {topCategoryName}
-        </p>
-        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-0.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
+            {topCategoryName}
+          </span>
+          <span
+            className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded-md"
+            style={{
+              background: "var(--glass-fill)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {topCategoryPct.toFixed(0)}%
+          </span>
+        </div>
+        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
           {formatRupiah(topCategoryAmount)}
         </p>
       </div>
 
-      <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10 mt-2.5">
+      <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10 mt-2">
         <div
           className="h-full rounded-full bg-[var(--text-primary)] transition-all"
           style={{ width: `${Math.min(100, Math.max(0, topCategoryPct))}%` }}
@@ -315,16 +362,24 @@ export function CompactSplitBillHalf({
   onOpenDetail?: () => void;
 }) {
   return (
-    <CompactShell
-      title="Split Bills"
-      badge={`${pendingCount} Pending`}
-      onOpenDetail={onOpenDetail}
-    >
+    <CompactShell title="Split Bills" onOpenDetail={onOpenDetail}>
       <div>
-        <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-          Receivables
-        </span>
-        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-0.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
+            Receivables
+          </span>
+          <span
+            className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
+            style={{
+              background: "var(--glass-fill)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {pendingCount} Pending
+          </span>
+        </div>
+        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
           {formatRupiah(totalPending)}
         </p>
       </div>
@@ -401,7 +456,7 @@ export function SavingsRingCard({
 
   if (size === "half") {
     return (
-      <CompactShell title="Savings Ring" badge="Monthly" onOpenDetail={onOpenDetail}>
+      <CompactShell title="Savings Ring" onOpenDetail={onOpenDetail}>
         <div className="flex items-center justify-center py-1">{ringSvg}</div>
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5">
           <span>Retained</span>
@@ -504,7 +559,7 @@ export function SpendingVelocityBarCard({
 
   if (size === "half") {
     return (
-      <CompactShell title="7-Day Velocity" badge="Pacing" onOpenDetail={onOpenDetail}>
+      <CompactShell title="7D Velocity" onOpenDetail={onOpenDetail}>
         <div className="py-0.5">{bars}</div>
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5">
           <span>Avg Pace</span>
@@ -583,7 +638,7 @@ export function CategoryDonutCard({
 
   if (size === "half") {
     return (
-      <CompactShell title="Category Donut" badge="Top Share" onOpenDetail={onOpenDetail}>
+      <CompactShell title="Categories" onOpenDetail={onOpenDetail}>
         <div className="flex items-center justify-center py-1">{donutSvg}</div>
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5">
           <span className="truncate max-w-[70px]">{topCat.name}</span>
@@ -670,15 +725,14 @@ export function MiniHeatmapCard({
   if (size === "half") {
     return (
       <CompactShell
-        title="Activity Heatmap"
-        badge={`${activeDaysCount}d Active`}
+        title="Activity Matrix"
         onOpenDetail={onOpenDetail}
       >
         <div className="py-1">{grid}</div>
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5">
-          <span>28-Day Cluster</span>
-          <span className="font-semibold text-[var(--text-secondary)]">
-            {28 - activeDaysCount} Quiet Days
+          <span>Active Days</span>
+          <span className="font-semibold text-[var(--text-primary)]">
+            {activeDaysCount} of 28d
           </span>
         </div>
       </CompactShell>
@@ -718,8 +772,10 @@ export function HealthMeterCard({
   onOpenDetail?: () => void;
 }) {
   if (size === "half") {
+    const statusLabel =
+      healthScore >= 80 ? "Optimal" : healthScore >= 60 ? "Good" : healthScore >= 40 ? "Fair" : "Attention";
     return (
-      <CompactShell title="Health Meter" badge={grade} onOpenDetail={onOpenDetail}>
+      <CompactShell title="Health Score" onOpenDetail={onOpenDetail}>
         <div className="flex items-center justify-center py-2">
           <div className="text-center">
             <span className="text-[26px] font-bold amount text-[var(--text-primary)] leading-none">
@@ -731,11 +787,19 @@ export function HealthMeterCard({
           </div>
         </div>
 
-        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10 mt-1">
-          <div
-            className="h-full rounded-full bg-[var(--text-primary)] transition-all"
-            style={{ width: `${Math.min(100, Math.max(0, healthScore))}%` }}
-          />
+        <div className="mt-1">
+          <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
+            <span>Status</span>
+            <span className="font-semibold text-[var(--text-secondary)]">
+              {statusLabel}
+            </span>
+          </div>
+          <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+            <div
+              className="h-full rounded-full bg-[var(--text-primary)] transition-all"
+              style={{ width: `${Math.min(100, Math.max(0, healthScore))}%` }}
+            />
+          </div>
         </div>
       </CompactShell>
     );
@@ -804,11 +868,23 @@ export function LiquidRunwayCard({
 
   if (size === "half") {
     return (
-      <CompactShell title="Runway Buffer" badge={status} onOpenDetail={onOpenDetail}>
+      <CompactShell title="Runway" onOpenDetail={onOpenDetail}>
         <div>
-          <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-            Survival Horizon
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
+              Survival Horizon
+            </span>
+            <span
+              className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
+              style={{
+                background: "var(--glass-fill)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              {status}
+            </span>
+          </div>
           <p className="text-[20px] font-bold amount text-[var(--text-primary)] leading-tight mt-0.5">
             {runwayMonths.toFixed(1)}{" "}
             <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">

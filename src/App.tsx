@@ -412,6 +412,7 @@ function AppShell() {
               }
             />
             <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/bills" element={<CalendarPage />} />
             <Route path="/statistics" element={<StatisticsPage />} />
             <Route path="/stats" element={<StatisticsPage />} />
             <Route path="/settings" element={<SettingsPage />} />

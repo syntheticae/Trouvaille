@@ -27,33 +27,47 @@ export function WidgetCardWrapper({
   onHide,
   children,
 }: WidgetCardWrapperProps) {
-  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isTouchMovedRef = useRef(false);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Handle long-press on mobile touch to enter Jiggle Edit Mode
-  const handleTouchStart = useCallback(() => {
-    if (isEditMode) return;
-    isTouchMovedRef.current = false;
-    touchTimerRef.current = setTimeout(() => {
-      if (!isTouchMovedRef.current) {
+  // Handle long-press on mobile touch or desktop pointer to enter Jiggle Edit Mode
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (isEditMode) return;
+      // Ignore right click
+      if (e.button !== 0 && e.pointerType === "mouse") return;
+      startPosRef.current = { x: e.clientX, y: e.clientY };
+
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current);
+      }
+
+      holdTimerRef.current = setTimeout(() => {
         triggerHaptic("heavy");
         onEnterEditMode?.();
-      }
-    }, 550);
-  }, [isEditMode, onEnterEditMode]);
+        holdTimerRef.current = null;
+      }, 420);
+    },
+    [isEditMode, onEnterEditMode],
+  );
 
-  const handleTouchMove = useCallback(() => {
-    isTouchMovedRef.current = true;
-    if (touchTimerRef.current) {
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!holdTimerRef.current) return;
+    const dist = Math.hypot(
+      e.clientX - startPosRef.current.x,
+      e.clientY - startPosRef.current.y,
+    );
+    // If movement exceeds 10px, treat as scroll or drag and cancel long-press
+    if (dist > 10) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
     }
   }, []);
 
-  const handleTouchEnd = useCallback(() => {
-    if (touchTimerRef.current) {
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
+  const handlePointerUpOrCancel = useCallback(() => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
     }
   }, []);
 
@@ -62,9 +76,16 @@ export function WidgetCardWrapper({
   return (
     <motion.div
       layout
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUpOrCancel}
+      onPointerCancel={handlePointerUpOrCancel}
+      onContextMenu={(e) => {
+        // Prevent browser context menu when holding down
+        if (!isEditMode) {
+          e.preventDefault();
+        }
+      }}
       animate={
         isEditMode
           ? {
@@ -77,9 +98,14 @@ export function WidgetCardWrapper({
             }
           : { rotate: 0 }
       }
-      className={`relative transition-all ${
+      className={`relative select-none transition-all ${
         isHalf ? "col-span-1" : "col-span-2"
       }`}
+      style={{
+        WebkitTouchCallout: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+      }}
     >
       {/* Edit Mode Controls Overlay */}
       {isEditMode && (

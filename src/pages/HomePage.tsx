@@ -18,7 +18,6 @@ import {
   CompactCashflowPulseHalf,
   CompactAIInsightsHalf,
   CompactGoalsHalf,
-  CompactBillsHalf,
   CompactTopCategoriesHalf,
   CompactSplitBillHalf,
   SavingsRingCard,
@@ -28,6 +27,7 @@ import {
   HealthMeterCard,
   LiquidRunwayCard,
 } from "../components/home/CompactHomeCards";
+import { BillManagementSheets } from "../components/settings/BillManagementSheets";
 
 function formatNetAmount(net: number): string {
   const abs = Math.abs(net);
@@ -175,6 +175,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     type: "expense" | "income" | "budget_risk" | "snapshot";
     data: any;
   } | null>(null);
+
+  const [billManagementOpen, setBillManagementOpen] = useState(false);
 
   const {
     widgets,
@@ -1084,24 +1086,22 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
       case "upcoming_bills":
         if (upcomingBills.length === 0) return null;
-        if (size === "half") {
-          const bill: any = upcomingBills[0];
-          const dueDay = parseInt(bill.due_date);
-          const daysLeft = isNaN(dueDay) ? 0 : Math.max(0, dueDay - now.getDate());
-          return (
-            <CompactBillsHalf
-              nextBillName={bill.title}
-              nextBillAmount={Number(bill.amount)}
-              daysLeft={daysLeft}
-              onOpenDetail={() => navigate("/bills")}
-            />
-          );
-        }
         return (
           <section className="space-y-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider px-1 block" style={{ color: "var(--text-tertiary)" }}>
-              Upcoming Bills
-            </span>
+            <div
+              className="flex items-center justify-between px-1 cursor-pointer select-none"
+              onClick={() => {
+                triggerHaptic("light");
+                setBillManagementOpen(true);
+              }}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-wider block" style={{ color: "var(--text-tertiary)" }}>
+                Upcoming Bills
+              </span>
+              <span className="text-[11px] font-medium hover:underline flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
+                Manage Bills
+              </span>
+            </div>
             <div className="space-y-2">
               {upcomingBills.slice(0, 3).map((bill: any) => {
                 const dueStatusLabel = getBillDueStatusLabel(bill.due_date);
@@ -1109,10 +1109,14 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 return (
                   <div
                     key={bill.id}
-                    className="glass-surface flex items-center gap-3 px-4 py-3 rounded-2xl"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setBillManagementOpen(true);
+                    }}
+                    className="glass-surface flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer active:scale-[0.99] transition-transform"
                   >
                     <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-[14px]"
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-[14px] shrink-0"
                       style={{
                         background: "var(--bg-elevated)",
                         border: "1px solid var(--glass-border)",
@@ -1151,7 +1155,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                           triggerHaptic("medium");
                         }}
                         disabled={isMarkingPaid}
-                        className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                         style={{
                           background: "var(--glass-fill-strong)",
                           border: "1px solid var(--glass-border)",
@@ -1169,32 +1173,36 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
               {/* Total Kebutuhan Tagihan */}
               <div
-                className="p-3.5 rounded-2xl glass-surface flex items-center justify-between mt-2.5"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setBillManagementOpen(true);
+                }}
+                className="p-3.5 rounded-2xl glass-surface flex items-center justify-between mt-2.5 cursor-pointer active:scale-[0.99] transition-transform"
                 style={{
                   background: "var(--bg-elevated)",
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-6 h-6 rounded-lg flex items-center justify-center"
-                      style={{
-                        background: "var(--glass-fill)",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      <CalendarDays size={13} />
-                    </div>
-                    <span className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                      Total Upcoming Bills
-                    </span>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-6 h-6 rounded-lg flex items-center justify-center"
+                    style={{
+                      background: "var(--glass-fill)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    <CalendarDays size={13} />
                   </div>
-                  <span className="amount text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {formatRupiah(
-                      upcomingBills.reduce((s: number, b: any) => s + Number(b.amount || 0), 0),
-                    )}
+                  <span className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                    Total Upcoming Bills
                   </span>
                 </div>
+                <span className="amount text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                  {formatRupiah(
+                    upcomingBills.reduce((s: number, b: any) => s + Number(b.amount || 0), 0),
+                  )}
+                </span>
+              </div>
             </div>
           </section>
         );
@@ -1829,6 +1837,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         onClose={() => setMetricDrillDown(null)}
         type={metricDrillDown?.type || null}
         data={metricDrillDown?.data || null}
+      />
+      <BillManagementSheets
+        isOpen={billManagementOpen}
+        onClose={() => setBillManagementOpen(false)}
       />
 
       {/* CUSTOMIZE HOME WIDGETS MODAL (Compact 2-Column Minimalist Grid) */}
