@@ -48,6 +48,9 @@ import {
   parse,
   parseISO,
   eachDayOfInterval,
+  eachWeekOfInterval,
+  endOfWeek,
+  eachMonthOfInterval,
 } from "date-fns";
 import { GroupedVirtuoso } from "react-virtuoso";
 import { useDeferredRender } from "../hooks/useDeferredRender";
@@ -513,6 +516,49 @@ export function TransactionsPage({
               points.push({ dateStr, label: format(d, "d MMM"), ...totals });
             });
             return points;
+          } else if (intervalDays.length <= 180) {
+            // Adaptive bar chart density: weekly buckets (approx 9 to 26 bars)
+            const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
+            weeks.forEach((weekStart) => {
+              const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+              const actualEnd = weekEnd > end ? end : weekEnd;
+              const actualStart = weekStart < start ? start : weekStart;
+              const weekDays = eachDayOfInterval({ start: actualStart, end: actualEnd });
+              const weekTxs: Transaction[] = [];
+              weekDays.forEach((d) => {
+                const dateStr = format(d, "yyyy-MM-dd");
+                const dayTxs = filteredTxsByDay.dayMap.get(dateStr);
+                if (dayTxs) weekTxs.push(...dayTxs);
+              });
+              const totals = summarizeTransactionsForChart(
+                weekTxs,
+                filter,
+                isTxCorrection,
+              );
+              points.push({
+                dateStr: format(actualStart, "yyyy-MM-dd"),
+                label: `${format(actualStart, "d/M")}-${format(actualEnd, "d/M")}`,
+                ...totals,
+              });
+            });
+            return points;
+          } else {
+            // Adaptive bar chart density: monthly buckets for long ranges (> 180 days)
+            const months = eachMonthOfInterval({ start, end });
+            months.forEach((monthDate) => {
+              const monthKey = format(monthDate, "yyyy-MM");
+              const totals = summarizeTransactionsForChart(
+                filteredTxsByDay.monthMap.get(monthKey) || [],
+                filter,
+                isTxCorrection,
+              );
+              points.push({
+                dateStr: monthKey,
+                label: format(monthDate, "MMM yy"),
+                ...totals,
+              });
+            });
+            return points;
           }
         } catch {
           // fallback to auto aggregation
@@ -721,7 +767,7 @@ export function TransactionsPage({
                       : `${selectedMonthLabel} Activity`}
             </p>
             <p
-              className="text-[26px] sm:text-[32px] font-extrabold tracking-tight leading-tight amount whitespace-nowrap"
+              className="text-[28px] sm:text-[32px] font-bold tracking-tight leading-tight amount whitespace-nowrap"
               style={{ color: "var(--text-primary)" }}
             >
               {isStealthMode ? "Rp ••••••••" : formatRupiah(totalPeriodAmount)}
@@ -765,7 +811,7 @@ export function TransactionsPage({
             >
               <Calendar size={12} style={{ color: "var(--text-secondary)" }} />
               <span
-                className="text-[11.5px] font-bold"
+                className="text-[11px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
                 {selectedMonthLabel}
@@ -986,10 +1032,10 @@ export function TransactionsPage({
                   title="Advanced Filters"
                 >
                   <SlidersHorizontal size={13} />
-                  <span className="text-[11px] font-extrabold">Filters</span>
+                  <span className="text-[11px] font-semibold">Filters</span>
                   {activeFiltersCount > 0 && (
                     <span
-                      className="w-4 h-4 rounded-full text-[9px] font-extrabold flex items-center justify-center"
+                      className="w-4 h-4 rounded-full text-[9px] font-semibold flex items-center justify-center"
                       style={{
                         background: "var(--accent-ink)",
                         color: "var(--accent)",
@@ -1029,7 +1075,7 @@ export function TransactionsPage({
                   }
                 >
                   <CheckSquare size={13} />
-                  <span className="text-[11px] font-extrabold">
+                  <span className="text-[11px] font-semibold">
                     {isSelectMode ? "Done" : "Select"}
                   </span>
                 </button>
@@ -1186,7 +1232,7 @@ export function TransactionsPage({
             <button
               type="button"
               onClick={handleResetAllFilters}
-              className="text-[11px] font-extrabold px-2 py-0.5 rounded-full shrink-0 touch-manipulation cursor-pointer select-none"
+              className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 touch-manipulation cursor-pointer select-none"
               style={{
                 color: "var(--accent)",
                 background: "transparent",
@@ -1245,7 +1291,7 @@ export function TransactionsPage({
               return (
                 <div className="flex justify-between items-center px-1 pb-2 pt-4 bg-[var(--bg-base)]">
                   <span
-                    className="text-[12px] font-extrabold"
+                    className="text-[12px] font-semibold"
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {getDateLabel(dateKey)}
@@ -1337,7 +1383,7 @@ export function TransactionsPage({
                     setSelectedTxIds(new Set(visibleTxs.map((t) => t.id)));
                   }
                 }}
-                className="text-[11.5px] font-semibold px-2.5 py-1 rounded-xl active:scale-95 transition-all cursor-pointer select-none"
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-xl active:scale-95 transition-all cursor-pointer select-none"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -1392,7 +1438,7 @@ export function TransactionsPage({
           <div className="flex justify-between items-center mb-1">
             <div>
               <h3
-                className="font-extrabold text-lg"
+                className="font-semibold text-base"
                 style={{ color: "var(--text-primary)" }}
               >
                 Select Timeframe
@@ -1424,7 +1470,7 @@ export function TransactionsPage({
                     setMonthPickerOpen(false);
                     triggerHaptic("light");
                   }}
-                  className="py-2.5 px-3 rounded-2xl text-[12px] font-extrabold flex items-center justify-between active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
+                  className="py-2.5 px-3 rounded-2xl text-[12px] font-semibold flex items-center justify-between active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
                   style={{
                     background: isSelected
                       ? "var(--accent)"
@@ -1448,13 +1494,13 @@ export function TransactionsPage({
           <div className="pt-2">
             <div className="flex justify-between items-center mb-2 px-1">
               <span
-                className="text-[11px] font-bold uppercase tracking-wider"
+                className="text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Specific Month in Year
               </span>
               <span
-                className="text-[12px] font-extrabold"
+                className="text-[12px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
                 {pickerYear}
@@ -1479,7 +1525,7 @@ export function TransactionsPage({
                       setPickerYear(y);
                       triggerHaptic("light");
                     }}
-                    className="flex-1 py-1.5 rounded-xl text-[12px] font-extrabold transition-all touch-manipulation cursor-pointer select-none"
+                    className="flex-1 py-1.5 rounded-xl text-[12px] font-semibold transition-all touch-manipulation cursor-pointer select-none"
                     style={{
                       background: isYSelected ? "var(--accent)" : "transparent",
                       color: isYSelected
@@ -1510,7 +1556,7 @@ export function TransactionsPage({
                       setMonthPickerOpen(false);
                       triggerHaptic("light");
                     }}
-                    className="p-3 rounded-2xl text-[12px] font-extrabold text-center active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
+                    className="p-3 rounded-2xl text-[12px] font-semibold text-center active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
                     style={{
                       background: isSelected
                         ? "var(--accent)"
@@ -1553,7 +1599,7 @@ export function TransactionsPage({
           <div className="flex items-center justify-between">
             <div>
               <h3
-                className="font-extrabold text-lg"
+                className="font-semibold text-base"
                 style={{ color: "var(--text-primary)" }}
               >
                 Filter by Account
@@ -1677,7 +1723,7 @@ export function TransactionsPage({
           <div className="flex items-center justify-between">
             <div>
               <h3
-                className="font-extrabold text-lg"
+                className="font-semibold text-base"
                 style={{ color: "var(--text-primary)" }}
               >
                 Filters
@@ -2025,7 +2071,7 @@ export function TransactionsPage({
               setFilterSheetOpen(false);
               triggerHaptic("medium");
             }}
-            className="w-full py-3.5 rounded-2xl font-extrabold text-[14px] active:scale-95 transition-all shadow-xl mt-2 cursor-pointer"
+            className="w-full py-3.5 rounded-2xl font-semibold text-[14px] active:scale-95 transition-all shadow-xl mt-2 cursor-pointer"
             style={{
               background: "var(--accent)",
               color: "var(--accent-ink)",

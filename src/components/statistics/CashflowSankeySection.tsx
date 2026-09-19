@@ -20,6 +20,21 @@ import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { IconRenderer } from "../ui/IconRenderer";
+import { BottomSheet } from "../ui/BottomSheet";
+
+function formatCompactRp(amount: number): string {
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000_000) {
+    return `Rp ${(abs / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
+  }
+  if (abs >= 1_000_000) {
+    return `Rp ${(abs / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (abs >= 1_000) {
+    return `Rp ${(abs / 1_000).toFixed(0)}K`;
+  }
+  return `Rp ${abs.toLocaleString("id-ID")}`;
+}
 
 interface CashflowSankeySectionProps {
   transactions: Transaction[];
@@ -39,6 +54,7 @@ export function CashflowSankeySection({
   const [mode, setMode] = useState<"macro" | "category">("macro");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
+  const [allAllocationsOpen, setAllAllocationsOpen] = useState(false);
 
   const sankeyData = useMemo(() => {
     return calculateSankeyFlow(transactions, categories, {
@@ -50,6 +66,8 @@ export function CashflowSankeySection({
   }, [transactions, categories, mode]);
 
   const { nodes, links, telemetry, viewBox } = sankeyData;
+
+  const allocationNodes = useMemo(() => nodes.filter((n) => !n.isHub), [nodes]);
 
   // Find active element for tooltip details
   const activeLink = useMemo(
@@ -109,7 +127,7 @@ export function CashflowSankeySection({
         <div>
           <div className="flex items-center gap-2">
             <h2
-              className="text-[18px] font-extrabold tracking-tight"
+              className="text-[18px] font-semibold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               Cashflow Allocation
@@ -178,95 +196,96 @@ export function CashflowSankeySection({
       </div>
 
       {/* Cashflow Telemetry Bento Banner */}
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-3 gap-2">
         {/* Metric 1: Capital Retention Rate */}
         <div
-          className="glass-surface p-3.5 rounded-2xl flex flex-col justify-between"
+          className="glass-surface p-3 rounded-2xl flex flex-col justify-between min-w-0"
           style={{ border: "1px solid var(--glass-border)" }}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1.5">
             <span
-              className="text-[10px] font-bold uppercase tracking-wider"
+              className="text-[10px] font-bold uppercase tracking-wider truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Retention Rate
+              Retention
             </span>
-            <ShieldCheck size={13} style={{ color: "var(--text-secondary)" }} />
+            <ShieldCheck size={12} className="shrink-0" style={{ color: "var(--text-secondary)" }} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p
-              className="text-[15px] font-extrabold tracking-tight truncate"
+              className="text-[13px] font-semibold tracking-tight truncate"
               style={{ color: "var(--text-primary)" }}
             >
               {telemetry.isDeficit ? "Deficit" : `${telemetry.savingsRatePct}% Saved`}
             </p>
             <p
-              className="text-[10px] mt-0.5 truncate"
+              className="text-[10px] mt-0.5 font-medium truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
               {telemetry.isDeficit
-                ? `${formatRupiah(Math.abs(telemetry.netSavings))} over`
-                : `${formatRupiah(telemetry.netSavings)} retained`}
+                ? `${formatCompactRp(telemetry.netSavings)} over`
+                : `${formatCompactRp(telemetry.netSavings)} saved`}
             </p>
           </div>
         </div>
 
         {/* Metric 2: Needs vs Wants Ratio */}
         <div
-          className="glass-surface p-3.5 rounded-2xl flex flex-col justify-between"
+          className="glass-surface p-3 rounded-2xl flex flex-col justify-between min-w-0"
           style={{ border: "1px solid var(--glass-border)" }}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1.5">
             <span
-              className="text-[10px] font-bold uppercase tracking-wider"
+              className="text-[10px] font-bold uppercase tracking-wider truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
               Needs / Wants
             </span>
-            <Scale size={13} style={{ color: "var(--text-secondary)" }} />
+            <Scale size={12} className="shrink-0" style={{ color: "var(--text-secondary)" }} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p
-              className="text-[15px] font-extrabold tracking-tight truncate"
+              className="text-[13px] font-semibold tracking-tight truncate"
               style={{ color: "var(--text-primary)" }}
             >
-              {telemetry.essentialPct}% / {telemetry.discretionaryPct}%
+              {telemetry.essentialPct}% · {telemetry.discretionaryPct}%
             </p>
             <p
-              className="text-[10px] mt-0.5 truncate"
+              className="text-[10px] mt-0.5 font-medium truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {formatRupiah(telemetry.essentialAmount)} essentials
+              {formatCompactRp(telemetry.essentialAmount)} needs
             </p>
           </div>
         </div>
 
         {/* Metric 3: Top Flow Sink */}
         <div
-          className="glass-surface p-3.5 rounded-2xl flex flex-col justify-between"
+          className="glass-surface p-3 rounded-2xl flex flex-col justify-between min-w-0"
           style={{ border: "1px solid var(--glass-border)" }}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1.5">
             <span
-              className="text-[10px] font-bold uppercase tracking-wider"
+              className="text-[10px] font-bold uppercase tracking-wider truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Top Flow Sink
+              Top Sink
             </span>
-            <TrendingDown size={13} style={{ color: "var(--text-secondary)" }} />
+            <TrendingDown size={12} className="shrink-0" style={{ color: "var(--text-secondary)" }} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p
-              className="text-[15px] font-extrabold tracking-tight truncate"
+              className="text-[13px] font-semibold tracking-tight truncate"
               style={{ color: "var(--text-primary)" }}
+              title={telemetry.topDestinationName}
             >
-              {telemetry.topDestinationName}
+              {telemetry.topDestinationName || "None"}
             </p>
             <p
-              className="text-[10px] mt-0.5 truncate"
+              className="text-[10px] mt-0.5 font-medium truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {formatRupiah(telemetry.topDestinationAmount)} ({telemetry.topDestinationPct}%)
+              {formatCompactRp(telemetry.topDestinationAmount)} · {telemetry.topDestinationPct}%
             </p>
           </div>
         </div>
@@ -297,25 +316,25 @@ export function CashflowSankeySection({
             Flow Summary
           </h4>
           <p
-            className="text-[11.5px] leading-relaxed"
+            className="text-[11px] leading-relaxed"
             style={{ color: "var(--text-secondary)" }}
           >
             {telemetry.totalInflow > 0 ? (
               <>
                 From total income of{" "}
-                <span className="font-extrabold text-[var(--text-primary)]">
+                <span className="font-semibold text-[var(--text-primary)]">
                   {formatRupiah(telemetry.totalInflow)}
                 </span>
                 ,{" "}
-                <span className="font-extrabold text-[var(--text-primary)]">
+                <span className="font-semibold text-[var(--text-primary)]">
                   {telemetry.essentialPct}%
                 </span>{" "}
                 routes to essentials,{" "}
-                <span className="font-extrabold text-[var(--text-primary)]">
+                <span className="font-semibold text-[var(--text-primary)]">
                   {telemetry.discretionaryPct}%
                 </span>{" "}
                 to discretionary, and{" "}
-                <span className="font-extrabold text-[var(--text-primary)]">
+                <span className="font-semibold text-[var(--text-primary)]">
                   {telemetry.savingsRatePct}% ({formatRupiah(Math.max(0, telemetry.netSavings))})
                 </span>{" "}
                 is retained as net savings.
@@ -323,7 +342,7 @@ export function CashflowSankeySection({
             ) : (
               <>
                 Period expenditure of{" "}
-                <span className="font-extrabold text-[var(--text-primary)]">
+                <span className="font-semibold text-[var(--text-primary)]">
                   {formatRupiah(telemetry.totalOutflow)}
                 </span>{" "}
                 is funded from available liquidity reserves.
@@ -565,7 +584,7 @@ export function CashflowSankeySection({
               </div>
               <div className="text-right">
                 <p
-                  className="text-[14px] font-extrabold amount"
+                  className="text-[14px] font-semibold amount"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {formatRupiah(activeLink ? activeLink.value : activeNode?.amount ?? 0)}
@@ -585,12 +604,25 @@ export function CashflowSankeySection({
         }}
       >
         <div className="flex items-center justify-between mb-3 px-1">
-          <h3
-            className="text-[13px] font-bold uppercase tracking-wider"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Capital Allocation Breakdown
-          </h3>
+          <div className="flex items-center gap-1.5">
+            <h3
+              className="text-[13px] font-bold uppercase tracking-wider"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Capital Allocation Breakdown
+            </h3>
+            <button
+              type="button"
+              onClick={() => {
+                setAllAllocationsOpen(true);
+                triggerHaptic("light");
+              }}
+              className="w-5 h-5 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors active:scale-90 cursor-pointer"
+              title="View all allocations"
+            >
+              <Info size={13} />
+            </button>
+          </div>
           <span
             className="text-[11px] font-semibold"
             style={{ color: "var(--text-tertiary)" }}
@@ -599,22 +631,138 @@ export function CashflowSankeySection({
           </span>
         </div>
 
+        {/* Top 3 Allocation Stream Cards */}
         <div className="space-y-2">
-          {nodes
-            .filter((n) => !n.isHub)
-            .map((item) => (
+          {allocationNodes.slice(0, 3).map((item) => (
+            <div
+              key={item.id}
+              onClick={() => handleNodeClick(item)}
+              className={`p-3 rounded-2xl flex items-center justify-between transition-all cursor-pointer ${
+                selectedNodeId === item.id ? "ring-1 ring-white/30" : ""
+              }`}
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  {item.emoji ? (
+                    <IconRenderer icon={item.emoji} size="w-4 h-4" />
+                  ) : item.isSavings ? (
+                    <Sparkles size={14} style={{ color: "var(--text-primary)" }} />
+                  ) : item.column === 0 ? (
+                    <TrendingUp size={14} style={{ color: "var(--text-secondary)" }} />
+                  ) : (
+                    <TrendingDown size={14} style={{ color: "var(--text-secondary)" }} />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p
+                    className="text-[13px] font-bold leading-tight truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {item.label}
+                  </p>
+                  <span
+                    className="text-[10px] font-medium"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {item.column === 0
+                      ? "Inflow Stream"
+                      : item.isSavings
+                      ? "Wealth Retention"
+                      : "Outflow Allocation"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                <p
+                  className="text-[13px] font-bold amount leading-tight"
+                  style={{
+                    color: item.isSavings
+                      ? "var(--accent)"
+                      : item.column === 0
+                      ? "var(--text-primary)"
+                      : "var(--text-primary)",
+                  }}
+                >
+                  {item.column === 0 || item.isSavings ? "+" : "-"}
+                  {formatRupiah(item.amount)}
+                </p>
+                <span
+                  className="text-[10px] font-semibold"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {item.percentage}%
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* View All Details Button */}
+        {allocationNodes.length > 3 && (
+          <button
+            type="button"
+            onClick={() => {
+              setAllAllocationsOpen(true);
+              triggerHaptic("light");
+            }}
+            className="w-full mt-3 py-2.5 rounded-xl text-center text-[11px] font-bold transition-all active:scale-[0.99] flex items-center justify-center gap-1.5 cursor-pointer select-none"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            <Info size={13} />
+            <span>View All ({allocationNodes.length}) Allocations</span>
+          </button>
+        )}
+      </div>
+
+      {/* Comprehensive Allocation Breakdown BottomSheet */}
+      <BottomSheet
+        isOpen={allAllocationsOpen}
+        onClose={() => setAllAllocationsOpen(false)}
+      >
+        <div className="p-5 pb-20 space-y-3.5 safe-area-bottom">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3
+                className="font-semibold text-lg"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Capital Allocation Breakdown
+              </h3>
+              <p
+                className="text-[12px] font-medium mt-0.5"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {allocationNodes.length} allocation streams · {periodLabel}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto no-scrollbar pt-1">
+            {allocationNodes.map((item) => (
               <div
                 key={item.id}
-                onClick={() => handleNodeClick(item)}
-                className={`p-3 rounded-2xl flex items-center justify-between transition-all cursor-pointer ${
-                  selectedNodeId === item.id ? "ring-1 ring-white/30" : ""
-                }`}
+                className="p-3 rounded-2xl flex items-center justify-between"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <div
                     className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                     style={{
@@ -632,9 +780,9 @@ export function CashflowSankeySection({
                       <TrendingDown size={14} style={{ color: "var(--text-secondary)" }} />
                     )}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p
-                      className="text-[13px] font-bold leading-tight"
+                      className="text-[13px] font-bold leading-tight truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {item.label}
@@ -652,14 +800,12 @@ export function CashflowSankeySection({
                   </div>
                 </div>
 
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <p
                     className="text-[13px] font-bold amount leading-tight"
                     style={{
                       color: item.isSavings
                         ? "var(--accent)"
-                        : item.column === 0
-                        ? "var(--text-primary)"
                         : "var(--text-primary)",
                     }}
                   >
@@ -667,7 +813,7 @@ export function CashflowSankeySection({
                     {formatRupiah(item.amount)}
                   </p>
                   <span
-                    className="text-[10px] font-extrabold"
+                    className="text-[10px] font-semibold"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {item.percentage}%
@@ -675,8 +821,9 @@ export function CashflowSankeySection({
                 </div>
               </div>
             ))}
+          </div>
         </div>
-      </div>
+      </BottomSheet>
     </div>
   );
 }

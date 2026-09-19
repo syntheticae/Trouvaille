@@ -278,7 +278,7 @@ export function MonthForecastSheet({
               {formatRupiah(displayHeroAmount)}
             </h1>
 
-            <p className="text-[12.5px] font-medium text-zinc-400 mt-1">
+            <p className="text-[12px] font-medium text-zinc-400 mt-1">
               {activeInspectDay !== null ? (
                 <span>
                   Day {activeInspectDay} of {totalDays}{" "}
@@ -455,7 +455,7 @@ export function MonthForecastSheet({
             </svg>
 
             {/* Minimalist Centered Legend */}
-            <div className="flex items-center justify-center gap-6 mt-1 text-[11.5px] font-medium text-zinc-400">
+            <div className="flex items-center justify-center gap-6 mt-1 text-[11px] font-medium text-zinc-400">
               <div className="flex items-center gap-2">
                 <span className="w-4 h-[2px] bg-white rounded-full" />
                 <span>Spent</span>

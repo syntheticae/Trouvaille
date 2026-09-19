@@ -96,7 +96,7 @@ export function MediaPermissionsSheet({
             <ShieldCheck size={20} strokeWidth={1.5} />
           </div>
           <div>
-            <h4 className="text-[13.5px] font-semibold text-[var(--text-primary)]">
+            <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
               Hardware & Media Privacy
             </h4>
             <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">
@@ -222,7 +222,7 @@ export function MediaPermissionsSheet({
 
         {/* Guidance Note */}
         <div
-          className="p-3.5 rounded-2xl border text-[11.5px] leading-relaxed text-[var(--text-secondary)]"
+          className="p-3.5 rounded-2xl border text-[11px] leading-relaxed text-[var(--text-secondary)]"
           style={{
             background: "rgba(255, 255, 255, 0.02)",
             borderColor: "var(--glass-border)",

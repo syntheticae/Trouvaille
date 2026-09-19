@@ -43,7 +43,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>
+              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
                 Monthly Review
               </span>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}>
@@ -82,7 +82,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
                   <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
                     Net Cashflow
                   </p>
-                  <p className="amount text-[15px] font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
+                  <p className="amount text-[15px] font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
                     {review.overview.netCashflow >= 0 ? "+" : ""}{formatRupiah(review.overview.netCashflow)}
                   </p>
                   <p className="text-[10px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
@@ -94,7 +94,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
                   <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
                     Activity
                   </p>
-                  <p className="amount text-[15px] font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
+                  <p className="amount text-[15px] font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
                     {review.overview.txCount} transactions
                   </p>
                   <p className="text-[10px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
@@ -118,7 +118,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
                     </p>
                   </div>
                   <span
-                    className="text-[10px] font-extrabold px-2 py-0.5 rounded-full"
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                     style={{
                       background: "rgba(255, 255, 255, 0.08)",
                       color: "var(--text-secondary)",
@@ -147,7 +147,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
                         <span className="font-bold text-[11px] truncate mr-1" style={{ color: "var(--text-primary)" }}>
                           {item.label}
                         </span>
-                        <span className="text-[10px] font-extrabold amount shrink-0" style={{ color: item.isUp ? "var(--text-primary)" : "var(--text-secondary)" }}>
+                        <span className="text-[10px] font-semibold amount shrink-0" style={{ color: item.isUp ? "var(--text-primary)" : "var(--text-secondary)" }}>
                           {item.changeText}
                         </span>
                       </div>

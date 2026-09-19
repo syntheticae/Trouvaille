@@ -111,6 +111,32 @@ const DEFAULT_HOME_WIDGETS: HomeWidgetSettings = {
   showSplitBillTracker: false,
 };
 
+const MINIMAL_HOME_WIDGETS: HomeWidgetSettings = {
+  showCashflowPulse: true,
+  showSpendingStability: false,
+  showActionCenter: true,
+  showHeatmap: false,
+  showGoals: false,
+  showBills: false,
+  showRecentTransactions: false,
+  showTopCategories: false,
+  showSavingsRate: false,
+  showSplitBillTracker: false,
+};
+
+const COMPREHENSIVE_HOME_WIDGETS: HomeWidgetSettings = {
+  showCashflowPulse: true,
+  showSpendingStability: true,
+  showActionCenter: true,
+  showHeatmap: true,
+  showGoals: true,
+  showBills: true,
+  showRecentTransactions: true,
+  showTopCategories: true,
+  showSavingsRate: true,
+  showSplitBillTracker: true,
+};
+
 type StockRange = "1D" | "1W" | "1M" | "6M" | "YTD" | "1Y" | "ALL";
 
 const GlassTooltip = ({ active, payload, label }: any) => {
@@ -146,13 +172,6 @@ function formatAxisY(val: number): string {
   return String(val);
 }
 
-function getTimeGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour >= 4 && hour < 12) return "Good Morning";
-  if (hour >= 12 && hour < 16) return "Good Afternoon";
-  if (hour >= 16 && hour < 19) return "Good Evening";
-  return "Good Night";
-}
 
 export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: HomePageProps) {
   const now = useMemo(() => new Date(), []);
@@ -202,6 +221,12 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       localStorage.setItem("trouvaille_home_widgets_v1", JSON.stringify(next));
       return next;
     });
+  };
+
+  const applyPreset = (preset: HomeWidgetSettings) => {
+    triggerHaptic("medium");
+    setHomeWidgets(preset);
+    localStorage.setItem("trouvaille_home_widgets_v1", JSON.stringify(preset));
   };
 
   const intel = useFinancialIntelligence({
@@ -434,7 +459,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         className="flex flex-col items-center justify-center rounded-lg active:scale-90 transition-transform py-0.5"
       >
         <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-extrabold transition-all"
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-semibold transition-all"
           style={{
             background: bg,
             color: textColor,
@@ -447,7 +472,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         <div className="h-[10px] flex items-center justify-center mt-0.5">
           {hasTx && net !== 0 ? (
             <span
-              className="text-[8px] font-extrabold tracking-tighter leading-none truncate max-w-[34px]"
+              className="text-[9px] font-semibold tracking-tight leading-none truncate max-w-[34px]"
               style={{
                 color: isSurplus
                   ? "var(--text-primary)"
@@ -516,7 +541,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               />
             ) : (
               <span
-                className="font-extrabold text-[14px]"
+                className="font-semibold text-[14px]"
                 style={{ color: "var(--text-primary)" }}
               >
                 {displayName.slice(0, 2).toUpperCase()}
@@ -524,18 +549,12 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             )}
           </div>
           <div>
-            <p
-              className="text-[14px] font-bold leading-tight"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {getTimeGreeting()}, {displayName}
-            </p>
-            <p
-              className="text-[11px] font-semibold"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Financial Overview
-            </p>
+            <span className="text-[11px] font-medium text-[var(--text-tertiary)] block leading-none">
+              Welcome back,
+            </span>
+            <h1 className="text-[16px] font-semibold text-[var(--text-primary)] leading-tight mt-0.5">
+              {displayName}
+            </h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -575,7 +594,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       <section className="card-contrast-hero p-4 pb-3 relative overflow-hidden">
         {/* Title Header */}
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-[13px] font-extrabold tracking-wider text-white/90 leading-none">
+          <h2 className="text-[12px] font-semibold uppercase tracking-wider text-white/80 leading-none">
             Net Portfolio
           </h2>
           <button
@@ -589,7 +608,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
         {/* Amount */}
         <div className="mb-1.5">
-          <span className="text-[28px] font-extrabold tracking-tight amount leading-tight text-white">
+          <span className="text-[28px] font-bold tracking-tight amount leading-tight text-white">
             {hideBalance
               ? "Rp ••••••••"
               : formatRupiah(assetData.currentBalance)}
@@ -599,7 +618,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         {/* Change Line + Time Label Side by Side */}
         <div className="flex items-center justify-between gap-2 mb-2.5">
           <div
-            className="flex items-center gap-1 text-[12px] font-extrabold"
+            className="flex items-center gap-1 text-[12px] font-semibold"
             style={{ color: assetData.diff >= 0 ? "#FFFFFF" : "#A1A1AA" }}
           >
             <ArrowUpRight
@@ -636,7 +655,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     setStockRange(r);
                     triggerHaptic("light");
                   }}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 transition-all"
+                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all"
                   style={{
                     background: isActive
                       ? "rgba(255,255,255,0.25)"
@@ -722,8 +741,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         {/* Stocks-Style Summary Footer (High, Low, Inflow, Outflow) */}
         <div className="grid grid-cols-4 gap-1.5 pt-2.5 mt-1 border-t border-white/10 text-center">
           <div>
-            <p className="text-[9px] font-bold uppercase text-white/45">High</p>
-            <p className="text-[11px] font-extrabold amount text-white mt-0.5">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">High</p>
+            <p className="text-[11px] font-semibold amount text-white mt-0.5">
               {hideBalance
                 ? "••••"
                 : assetData.highBalance >= 1000
@@ -732,8 +751,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             </p>
           </div>
           <div>
-            <p className="text-[9px] font-bold uppercase text-white/45">Low</p>
-            <p className="text-[11px] font-extrabold amount text-white mt-0.5">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">Low</p>
+            <p className="text-[11px] font-semibold amount text-white mt-0.5">
               {hideBalance
                 ? "••••"
                 : assetData.lowBalance >= 1000
@@ -742,10 +761,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             </p>
           </div>
           <div>
-            <p className="text-[9px] font-bold uppercase text-white/45">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">
               Inflow
             </p>
-            <p className="text-[11px] font-extrabold amount text-white mt-0.5">
+            <p className="text-[11px] font-semibold amount text-white mt-0.5">
               {hideBalance
                 ? "••••"
                 : assetData.periodInflow > 0
@@ -754,10 +773,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             </p>
           </div>
           <div>
-            <p className="text-[9px] font-bold uppercase text-white/45">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-white/45">
               Outflow
             </p>
-            <p className="text-[11px] font-extrabold amount text-white mt-0.5">
+            <p className="text-[11px] font-semibold amount text-white mt-0.5">
               {hideBalance
                 ? "••••"
                 : assetData.periodOutflow > 0
@@ -771,20 +790,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       {/* 2. PORTFOLIO & ACCOUNTS  */}
       <BalanceCard hideBalance={hideBalance} />
 
-      {/* 2.5 FINANCIAL ACTION CENTER */}
-      {homeWidgets.showActionCenter && intel.actionCenterInsight && (
-        <ActionCenterCard
-          insight={intel.actionCenterInsight}
-          transactions={allTxs}
-          budgetTarget={budgetTarget}
-          dailyAverage={intel.dailyAvg}
-          projectedMonthEnd={intel.projectedMonthEnd}
-          totalExpense={intel.totalExpense}
-          totalIncome={intel.totalIncome}
-        />
-      )}
-
-      {/* 2.7 SPENDING STABILITY (EXPENSE VOLATILITY) */}
+      {/* 3. SPENDING STABILITY (EXPENSE VOLATILITY) */}
       {(homeWidgets.showSpendingStability ?? true) &&
         intel.expenseVolatility && (
           <ExpenseVolatilityCard
@@ -793,7 +799,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           />
         )}
 
-      {/* 3. CONSOLIDATED MONTHLY CASHFLOW PULSE WITH COMPACT BUDGET */}
+      {/* 4. CASHFLOW PULSE & BUDGET */}
       {homeWidgets.showCashflowPulse && (
         <CashflowPulseCard
           netCashflow={intel.netCashflow}
@@ -860,12 +866,25 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         />
       )}
 
+      {/* 5. AI FINANCIAL INSIGHTS (ACTION CENTER) */}
+      {homeWidgets.showActionCenter && intel.actionCenterInsight && (
+        <ActionCenterCard
+          insight={intel.actionCenterInsight}
+          transactions={allTxs}
+          budgetTarget={budgetTarget}
+          dailyAverage={intel.dailyAvg}
+          projectedMonthEnd={intel.projectedMonthEnd}
+          totalExpense={intel.totalExpense}
+          totalIncome={intel.totalIncome}
+        />
+      )}
+
       {/* 5. HEATMAP CALENDAR (Collapsible: Compact 7D vs Full Month) */}
       {homeWidgets.showHeatmap && (
         <section>
           <div className="flex justify-between items-center px-1 mb-2">
             <span
-              className="text-[11px] font-bold  tracking-widest block"
+              className="text-[11px] font-bold  tracking-wider block"
               style={{ color: "var(--text-tertiary)" }}
             >
               {calendarExpanded ? "Monthly Activity" : "Past 7 Days Activity"}
@@ -932,7 +951,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         <section className="mb-6">
           <div className="flex justify-between items-center px-1 mb-2.5">
             <span
-              className="text-[11px] font-bold uppercase tracking-widest"
+              className="text-[11px] font-bold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
               Financial Goals
@@ -1010,7 +1029,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                         </span>
                       )}
                       <span
-                        className="amount text-[12px] font-extrabold px-2 py-0.5 rounded-full"
+                        className="amount text-[12px] font-semibold px-2 py-0.5 rounded-full"
                         style={{
                           background: "var(--glass-fill)",
                           color: "var(--text-primary)",
@@ -1046,11 +1065,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         </section>
       )}
 
-      {/* 6. UPCOMING BILLS (MOVED ABOVE CALENDAR) */}
+      {/* 6. UPCOMING BILLS */}
       {homeWidgets.showBills && upcomingBills.length > 0 && (
         <section className="mb-6">
           <span
-            className="text-[11px] font-bold uppercase tracking-widest px-1 mb-2 block"
+            className="text-[11px] font-semibold uppercase tracking-wider px-1 mb-2 block"
             style={{ color: "var(--text-tertiary)" }}
           >
             Upcoming Bills
@@ -1078,7 +1097,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   </div>
                   <div className="flex-1">
                     <p
-                      className="text-[14px] font-bold"
+                      className="text-[13px] font-semibold"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {bill.title}
@@ -1092,7 +1111,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   </div>
                   <div className="flex items-center gap-2.5 shrink-0">
                     <p
-                      className="amount text-[14px] font-extrabold"
+                      className="amount text-[14px] font-semibold"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {formatRupiah(Number(bill.amount))}
@@ -1124,7 +1143,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                         triggerHaptic("medium");
                       }}
                       disabled={isMarkingPaid}
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                       style={{
                         background: "var(--glass-fill-strong)",
                         border: "1px solid var(--glass-border)",
@@ -1159,14 +1178,14 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   <CalendarDays size={13} />
                 </div>
                 <span
-                  className="text-[12px] font-bold"
+                  className="text-[12px] font-medium"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   Total Upcoming Bills
                 </span>
               </div>
               <span
-                className="amount text-[14px] font-extrabold"
+                className="amount text-[14px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
                 {formatRupiah(
@@ -1186,7 +1205,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         <section className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3
-              className="text-[13px] font-bold tracking-tight"
+              className="text-[13px] font-semibold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               Recent Transactions
@@ -1212,16 +1231,16 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                       <IconRenderer icon={resCat.emoji} size="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-[12.5px] font-bold text-[var(--text-primary)] leading-tight">
+                      <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
                         {resCat.name}
                       </p>
-                      <p className="text-[10.5px] text-[var(--text-tertiary)] truncate max-w-[170px] mt-0.5">
+                      <p className="text-[11px] text-[var(--text-tertiary)] truncate max-w-[170px] mt-0.5">
                         {tx.note || tx.occurred_on}
                       </p>
                     </div>
                   </div>
                   <span
-                    className="amount font-bold text-[13px]"
+                    className="amount font-semibold text-[13px]"
                     style={{
                       color:
                         tx.type === "income"
@@ -1252,7 +1271,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           <section className="space-y-2.5">
             <div className="flex items-center justify-between">
               <h3
-                className="text-[13px] font-bold tracking-tight"
+                className="text-[13px] font-semibold tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 Top Spending Categories
@@ -1279,7 +1298,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                       <div className="flex items-center gap-2">
                         <IconRenderer icon={cat.emoji} size="w-4 h-4" />
                         <span
-                          className="font-semibold"
+                          className="font-medium"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {cat.name}
@@ -1287,7 +1306,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                       </div>
                       <div className="flex items-center gap-2">
                         <span
-                          className="font-bold amount"
+                          className="font-semibold amount"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {formatRupiah(cat.total)}
@@ -1321,7 +1340,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         <section className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3
-              className="text-[13px] font-bold tracking-tight"
+              className="text-[13px] font-semibold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               Savings Rate & Velocity
@@ -1339,13 +1358,13 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           >
             <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-1">
               <p
-                className="text-[10.5px] font-medium uppercase tracking-wider"
+                className="text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Savings Rate
               </p>
               <p
-                className="text-xl font-bold tracking-tight"
+                className="text-[20px] font-semibold tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 {currentMonthStats.income > 0
@@ -1361,13 +1380,13 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             </div>
             <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-1">
               <p
-                className="text-[10.5px] font-medium uppercase tracking-wider"
+                className="text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Runway
               </p>
               <p
-                className="text-xl font-bold tracking-tight"
+                className="text-[20px] font-semibold tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 {currentMonthStats.expense > 0
@@ -1390,7 +1409,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         <section className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3
-              className="text-[13px] font-bold tracking-tight"
+              className="text-[13px] font-semibold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               Split Bill & Receivables
@@ -1419,13 +1438,13 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               </div>
               <div>
                 <p
-                  className="text-[12.5px] font-bold leading-tight"
+                  className="text-[13px] font-semibold leading-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
                   Shared Piutang Status
                 </p>
                 <p
-                  className="text-[10.5px] mt-0.5"
+                  className="text-[11px] mt-0.5"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   Track friend shares from split transactions
@@ -1438,7 +1457,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 triggerHaptic("light");
                 _onOpenAdd?.();
               }}
-              className="text-[11px] font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer"
+              className="text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer"
               style={{
                 background: "var(--text-primary)",
                 color: "var(--bg-base)",
@@ -1458,7 +1477,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             triggerHaptic("light");
             setCustomizeHomeOpen(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-surface border border-[var(--glass-border)] text-[11.5px] font-semibold tracking-wide transition-all active:scale-95 cursor-pointer hover:opacity-80"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-surface border border-[var(--glass-border)] text-[11px] font-semibold tracking-wide transition-all active:scale-95 cursor-pointer hover:opacity-80"
           style={{
             background: "var(--glass-fill)",
             color: "var(--text-secondary)",
@@ -1479,7 +1498,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       >
         <div className="px-5 pb-10">
           <h3
-            className="font-extrabold text-lg mb-4"
+            className="font-semibold text-base mb-4"
             style={{ color: "var(--text-primary)" }}
           >
             {selectedDate ? format(selectedDate, "dd MMMM yyyy") : ""}
@@ -1522,7 +1541,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     </div>
                     <div>
                       <p
-                        className="font-bold text-sm"
+                        className="font-semibold text-[13px]"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {tx.categories?.name ||
@@ -1539,7 +1558,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     </div>
                   </div>
                   <span
-                    className="amount font-bold text-[14px]"
+                    className="amount text-[13px]"
                     style={{
                       color:
                         tx.type === "income"
@@ -1594,7 +1613,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             <div className="flex items-center justify-between pb-2 border-b border-[var(--glass-border)]">
               <div>
                 <h3
-                  className="text-[15px] font-bold"
+                  className="text-[15px] font-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
                   Customize Dashboard
@@ -1616,6 +1635,73 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 }}
               >
                 <X size={14} style={{ color: "var(--text-primary)" }} />
+              </button>
+            </div>
+
+            {/* Quick Layout Presets */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
+              <button
+                type="button"
+                onClick={() => applyPreset(MINIMAL_HOME_WIDGETS)}
+                className="flex-1 py-1 px-2 rounded-lg text-[11px] font-semibold transition-all text-center cursor-pointer"
+                style={{
+                  background: (!homeWidgets.showSpendingStability && !homeWidgets.showHeatmap && !homeWidgets.showBills)
+                    ? "var(--bg-elevated)"
+                    : "transparent",
+                  color: (!homeWidgets.showSpendingStability && !homeWidgets.showHeatmap && !homeWidgets.showBills)
+                    ? "var(--text-primary)"
+                    : "var(--text-tertiary)",
+                  boxShadow: (!homeWidgets.showSpendingStability && !homeWidgets.showHeatmap && !homeWidgets.showBills)
+                    ? "0 1px 3px var(--shadow-strength)"
+                    : "none",
+                  border: (!homeWidgets.showSpendingStability && !homeWidgets.showHeatmap && !homeWidgets.showBills)
+                    ? "1px solid var(--glass-border)"
+                    : "1px solid transparent",
+                }}
+              >
+                Minimal
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset(DEFAULT_HOME_WIDGETS)}
+                className="flex-1 py-1 px-2 rounded-lg text-[11px] font-semibold transition-all text-center cursor-pointer"
+                style={{
+                  background: (homeWidgets.showSpendingStability && !homeWidgets.showRecentTransactions && !homeWidgets.showTopCategories)
+                    ? "var(--bg-elevated)"
+                    : "transparent",
+                  color: (homeWidgets.showSpendingStability && !homeWidgets.showRecentTransactions && !homeWidgets.showTopCategories)
+                    ? "var(--text-primary)"
+                    : "var(--text-tertiary)",
+                  boxShadow: (homeWidgets.showSpendingStability && !homeWidgets.showRecentTransactions && !homeWidgets.showTopCategories)
+                    ? "0 1px 3px var(--shadow-strength)"
+                    : "none",
+                  border: (homeWidgets.showSpendingStability && !homeWidgets.showRecentTransactions && !homeWidgets.showTopCategories)
+                    ? "1px solid var(--glass-border)"
+                    : "1px solid transparent",
+                }}
+              >
+                Balanced
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset(COMPREHENSIVE_HOME_WIDGETS)}
+                className="flex-1 py-1 px-2 rounded-lg text-[11px] font-semibold transition-all text-center cursor-pointer"
+                style={{
+                  background: (homeWidgets.showRecentTransactions && homeWidgets.showTopCategories && homeWidgets.showSavingsRate)
+                    ? "var(--bg-elevated)"
+                    : "transparent",
+                  color: (homeWidgets.showRecentTransactions && homeWidgets.showTopCategories && homeWidgets.showSavingsRate)
+                    ? "var(--text-primary)"
+                    : "var(--text-tertiary)",
+                  boxShadow: (homeWidgets.showRecentTransactions && homeWidgets.showTopCategories && homeWidgets.showSavingsRate)
+                    ? "0 1px 3px var(--shadow-strength)"
+                    : "none",
+                  border: (homeWidgets.showRecentTransactions && homeWidgets.showTopCategories && homeWidgets.showSavingsRate)
+                    ? "1px solid var(--glass-border)"
+                    : "1px solid transparent",
+                }}
+              >
+                Full Suite
               </button>
             </div>
 
@@ -1748,7 +1834,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   setHomeWidgets(DEFAULT_HOME_WIDGETS);
                   localStorage.removeItem("trouvaille_home_widgets_v1");
                 }}
-                className="flex-1 py-2 rounded-xl text-[11.5px] font-bold glass-surface active:scale-95 transition-transform cursor-pointer"
+                className="flex-1 py-2 rounded-xl text-[12px] font-semibold glass-surface active:scale-95 transition-transform cursor-pointer"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -1763,7 +1849,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   triggerHaptic("light");
                   setCustomizeHomeOpen(false);
                 }}
-                className="flex-1 py-2 rounded-xl text-[11.5px] font-bold active:scale-95 transition-transform cursor-pointer"
+                className="flex-1 py-2 rounded-xl text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer"
                 style={{
                   background: "var(--text-primary)",
                   color: "var(--bg-base)",

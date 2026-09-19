@@ -458,7 +458,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                           {item.date}
                         </span>
                         {item.isDuplicate && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">
                             Duplicate
                           </span>
                         )}
@@ -493,12 +493,12 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                     {/* Amount */}
                     <div className="text-right shrink-0">
                       <span
-                        className="text-[13.5px] font-extrabold amount block"
+                        className="text-[13px] font-semibold amount block"
                         style={{ color: isIncome ? "var(--accent)" : "var(--text-primary)" }}
                       >
                         {isIncome ? "+" : "-"}{formatRupiah(item.amount)}
                       </span>
-                      <span className="text-[9.5px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
                         {isIncome ? "Inflow" : "Outflow"}
                       </span>
                     </div>

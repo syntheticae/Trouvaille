@@ -79,7 +79,7 @@ export function ProfileSheet({
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="p-5 pb-10 space-y-5">
         <h3
-          className="font-extrabold text-lg"
+          className="font-semibold text-lg"
           style={{ color: "var(--text-primary)" }}
         >
           Edit Profile
@@ -150,7 +150,7 @@ export function ProfileSheet({
         </div>
         <button
           onClick={handleUpdateProfile}
-          className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 cursor-pointer"
+          className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 cursor-pointer"
           style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
         >
           Save Profile

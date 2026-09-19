@@ -27,8 +27,8 @@ export function LiquidityHorizonCard({ liquidityHorizon, hideBalance = false }: 
                 <Droplets size={16} />
               </div>
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Liquidity Horizon</p>
-                <p className="text-[13px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+                <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Liquidity Horizon</p>
+                <p className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>
                   {liquidityHorizon.status === "sufficient" ? liquidityHorizon.resilienceTier : "Awaiting Baseline"}
                 </p>
               </div>
@@ -40,7 +40,7 @@ export function LiquidityHorizonCard({ liquidityHorizon, hideBalance = false }: 
         {liquidityHorizon.status === "sufficient" ? (
           <>
             <div className="flex items-end gap-2 mt-3">
-              <span className="amount text-[28px] font-extrabold leading-none" style={{ color: "var(--text-primary)" }}>
+              <span className="amount text-[28px] font-bold leading-none" style={{ color: "var(--text-primary)" }}>
                 {hideBalance ? "•••" : `${liquidityHorizon.totalCoverageMonths.toFixed(1)} mo`}
               </span>
               <span className="text-[11px] font-semibold pb-1" style={{ color: "var(--text-tertiary)" }}>
@@ -52,14 +52,14 @@ export function LiquidityHorizonCard({ liquidityHorizon, hideBalance = false }: 
             </p>
             <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[var(--glass-border)]">
               <div>
-                <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Liquid Assets</p>
-                <p className="amount text-[12px] font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
+                <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Liquid Assets</p>
+                <p className="amount text-[12px] mt-0.5" style={{ color: "var(--text-primary)" }}>
                   {hideBalance ? "Rp ••••••••" : formatRupiah(liquidityHorizon.liquidAssets)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Typical Outflow</p>
-                <p className="amount text-[12px] font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
+                <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Typical Outflow</p>
+                <p className="amount text-[12px] mt-0.5" style={{ color: "var(--text-primary)" }}>
                   {hideBalance ? "Rp ••••••••" : formatRupiah(liquidityHorizon.typicalMonthlyOutflow)}
                 </p>
               </div>
@@ -86,7 +86,7 @@ export function LiquidityHorizonCard({ liquidityHorizon, hideBalance = false }: 
                 <ShieldCheck size={18} />
               </div>
               <div>
-                <h3 className="text-lg font-extrabold" style={{ color: "var(--text-primary)" }}>Liquidity Horizon</h3>
+                <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Liquidity Horizon</h3>
                 <p className="text-[11px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
                   Total vs committed outflow coverage
                 </p>
@@ -96,26 +96,26 @@ export function LiquidityHorizonCard({ liquidityHorizon, hideBalance = false }: 
 
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Liquid Assets</p>
-              <p className="amount text-[15px] font-extrabold mt-1" style={{ color: "var(--text-primary)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Liquid Assets</p>
+              <p className="amount text-[15px] mt-1" style={{ color: "var(--text-primary)" }}>
                 {hideBalance ? "Rp ••••••••" : formatRupiah(liquidityHorizon.liquidAssets)}
               </p>
             </div>
             <div className="p-3 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Resilience Tier</p>
-              <p className="text-[15px] font-extrabold mt-1" style={{ color: "var(--text-primary)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Resilience Tier</p>
+              <p className="text-[15px] font-semibold mt-1" style={{ color: "var(--text-primary)" }}>
                 {liquidityHorizon.status === "sufficient" ? liquidityHorizon.resilienceTier : "N/A"}
               </p>
             </div>
             <div className="p-3 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Typical Outflow</p>
-              <p className="amount text-[15px] font-extrabold mt-1" style={{ color: "var(--text-primary)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Typical Outflow</p>
+              <p className="amount text-[15px] mt-1" style={{ color: "var(--text-primary)" }}>
                 {hideBalance ? "Rp ••••••••" : formatRupiah(liquidityHorizon.typicalMonthlyOutflow)}
               </p>
             </div>
             <div className="p-3 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Committed Outflow</p>
-              <p className="amount text-[15px] font-extrabold mt-1" style={{ color: "var(--text-primary)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Committed Outflow</p>
+              <p className="amount text-[15px] mt-1" style={{ color: "var(--text-primary)" }}>
                 {hideBalance ? "Rp ••••••••" : formatRupiah(liquidityHorizon.typicalCommittedOutflow)}
               </p>
             </div>
@@ -124,14 +124,14 @@ export function LiquidityHorizonCard({ liquidityHorizon, hideBalance = false }: 
           <div className="p-4 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
             <div className="flex justify-between items-center gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Coverage Horizon</p>
-                <p className="amount text-[22px] font-extrabold mt-1" style={{ color: "var(--text-primary)" }}>
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Coverage Horizon</p>
+                <p className="amount text-[22px] mt-1" style={{ color: "var(--text-primary)" }}>
                   {liquidityHorizon.status === "sufficient" && !hideBalance ? `${liquidityHorizon.totalCoverageMonths.toFixed(1)} months` : hideBalance ? "••••" : "Not ready"}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Committed</p>
-                <p className="amount text-[16px] font-extrabold mt-1" style={{ color: "var(--text-primary)" }}>
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Committed</p>
+                <p className="amount text-[16px] mt-1" style={{ color: "var(--text-primary)" }}>
                   {liquidityHorizon.status === "sufficient" && !hideBalance ? `${liquidityHorizon.committedCoverageMonths.toFixed(1)} months` : hideBalance ? "••••" : "Not ready"}
                 </p>
               </div>
@@ -142,15 +142,15 @@ export function LiquidityHorizonCard({ liquidityHorizon, hideBalance = false }: 
           </div>
 
           <div className="space-y-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider px-1" style={{ color: "var(--text-tertiary)" }}>Liquid Account Breakdown</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider px-1" style={{ color: "var(--text-tertiary)" }}>Liquid Account Breakdown</p>
             {liquidityHorizon.liquidAccounts.length > 0 ? liquidityHorizon.liquidAccounts.map(account => (
               <div key={account.name} className="flex items-center justify-between p-3 rounded-2xl"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
                 <div>
-                  <p className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>{account.name}</p>
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>{account.name}</p>
                   <p className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>Included in liquid coverage</p>
                 </div>
-                <span className="amount text-[13px] font-extrabold" style={{ color: "var(--text-primary)" }}>
+                <span className="amount text-[13px]" style={{ color: "var(--text-primary)" }}>
                   {hideBalance ? "Rp ••••••••" : formatRupiah(account.balance)}
                 </span>
               </div>

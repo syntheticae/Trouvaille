@@ -105,7 +105,7 @@ export function LoginPage() {
         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}>
         <img src="/icon.png" alt="Trouvaille" className="w-16 h-16 mx-auto mb-4 rounded-2xl object-contain shadow-2xl" onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
-        <h1 className="text-3xl font-extrabold" style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
+        <h1 className="text-3xl font-semibold" style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
           Trouvaille
         </h1>
         <p className="mt-1.5 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Personal expense tracker</p>
@@ -116,7 +116,7 @@ export function LoginPage() {
         transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }}>
         
         <div className="glass-surface p-7 rounded-[28px]">
-          <h2 className="text-2xl font-extrabold mb-1" style={{ color: "var(--text-primary)" }}>
+          <h2 className="text-2xl font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
             {isSignUp ? "Create Account" : "Sign In"}
           </h2>
           <p className="text-sm mb-6" style={{ color: "var(--text-tertiary)" }}>
@@ -180,7 +180,7 @@ export function LoginPage() {
             {message && <p className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{message}</p>}
 
             <motion.button type="submit" disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-extrabold text-base active:scale-95 transition-all shadow-xl"
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-semibold text-base active:scale-95 transition-all shadow-xl"
               style={{ background: "var(--accent)", color: "var(--accent-ink)", boxShadow: "0 8px 24px var(--shadow-strength)" }}
               whileTap={{ scale: 0.97 }}>
               {loading ? "Processing..." : (<><span>{isSignUp ? "Sign Up" : "Sign In"}</span><ArrowRight size={16} /></>)}

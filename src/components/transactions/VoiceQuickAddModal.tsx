@@ -748,7 +748,7 @@ export function VoiceQuickAddModal({
                         )}
                         {item.categoryName && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[10.5px] font-semibold flex items-center gap-1"
+                            className="px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1"
                             style={{
                               background: isDark
                                 ? "rgba(255, 255, 255, 0.08)"
@@ -765,7 +765,7 @@ export function VoiceQuickAddModal({
                         )}
                         {item.walletName && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[10.5px] font-semibold flex items-center gap-1"
+                            className="px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1"
                             style={{
                               background: isDark
                                 ? "rgba(255, 255, 255, 0.08)"
@@ -820,7 +820,7 @@ export function VoiceQuickAddModal({
                       </span>
                     </div>
                     <span
-                      className="text-[13px] font-extrabold amount"
+                      className="text-[13px] font-semibold amount"
                       style={{ color: "var(--text-primary)" }}
                     >
                       Total {formatRupiah(totalBatchAmount)}
@@ -845,7 +845,7 @@ export function VoiceQuickAddModal({
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           <span
-                            className="w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 text-[10.5px] font-bold"
+                            className="w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold"
                             style={{
                               background: isDark
                                 ? "rgba(255, 255, 255, 0.10)"
@@ -857,7 +857,7 @@ export function VoiceQuickAddModal({
                           </span>
                           <div className="min-w-0 flex-1">
                             <p
-                              className="text-[13.5px] font-semibold truncate leading-tight"
+                              className="text-[13px] font-semibold truncate leading-tight"
                               style={{ color: "var(--text-primary)" }}
                             >
                               {item.note ||
@@ -887,7 +887,7 @@ export function VoiceQuickAddModal({
                         </div>
                         <div className="shrink-0 pl-3 flex items-center gap-2">
                           <span
-                            className="text-[14px] font-extrabold amount"
+                            className="text-[14px] font-semibold amount"
                             style={{ color: "var(--text-primary)" }}
                           >
                             {item.amount !== null
@@ -921,7 +921,7 @@ export function VoiceQuickAddModal({
                   {/* Hero Amount */}
                   <div className="text-center">
                     <span
-                      className="text-[34px] sm:text-[40px] font-black amount tracking-tight leading-none"
+                      className="text-[34px] sm:text-[40px] font-semibold amount tracking-tight leading-none"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {parsed.amount !== null && parsed.amount > 0
@@ -934,7 +934,7 @@ export function VoiceQuickAddModal({
                   <div className="flex items-center justify-center gap-2 flex-wrap">
                     {parsed.categoryName && (
                       <span
-                        className="px-3 py-1.5 rounded-full text-[11.5px] font-semibold flex items-center gap-1.5"
+                        className="px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5"
                         style={{
                           background: isDark
                             ? "rgba(255, 255, 255, 0.08)"
@@ -956,7 +956,7 @@ export function VoiceQuickAddModal({
 
                     {parsed.walletName && (
                       <span
-                        className="px-3 py-1.5 rounded-full text-[11.5px] font-semibold flex items-center gap-1.5"
+                        className="px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5"
                         style={{
                           background: isDark
                             ? "rgba(255, 255, 255, 0.08)"
@@ -982,7 +982,7 @@ export function VoiceQuickAddModal({
                       parsed.dateLabel !== "Today" &&
                       parsed.dateLabel !== "Hari ini" && (
                         <span
-                          className="px-3 py-1.5 rounded-full text-[11.5px] font-medium flex items-center gap-1.5"
+                          className="px-3 py-1.5 rounded-full text-[11px] font-medium flex items-center gap-1.5"
                           style={{
                             background: isDark
                               ? "rgba(255, 255, 255, 0.05)"
@@ -1004,7 +1004,7 @@ export function VoiceQuickAddModal({
 
                     {parsed.note && parsed.note !== parsed.categoryName && (
                       <span
-                        className="px-3 py-1.5 rounded-full text-[11.5px] font-medium flex items-center gap-1.5 truncate max-w-[200px]"
+                        className="px-3 py-1.5 rounded-full text-[11px] font-medium flex items-center gap-1.5 truncate max-w-[200px]"
                         style={{
                           background: isDark
                             ? "rgba(255, 255, 255, 0.05)"
@@ -1052,7 +1052,7 @@ export function VoiceQuickAddModal({
               <button
                 type="button"
                 onClick={() => handleOpenForm(0)}
-                className="h-12 px-5 rounded-full flex items-center justify-center gap-2 text-[13.5px] font-semibold active:scale-95 transition-all cursor-pointer shrink-0"
+                className="h-12 px-5 rounded-full flex items-center justify-center gap-2 text-[13px] font-semibold active:scale-95 transition-all cursor-pointer shrink-0"
                 style={{
                   background: isDark
                     ? "rgba(255, 255, 255, 0.08)"
@@ -1073,7 +1073,7 @@ export function VoiceQuickAddModal({
                   type="button"
                   onClick={handleBatchSave}
                   disabled={isSubmitting}
-                  className="flex-1 h-12 rounded-full flex items-center justify-center gap-2 text-[13.5px] font-bold active:scale-98 transition-all cursor-pointer disabled:opacity-50 shadow-lg"
+                  className="flex-1 h-12 rounded-full flex items-center justify-center gap-2 text-[13px] font-bold active:scale-98 transition-all cursor-pointer disabled:opacity-50 shadow-lg"
                   style={{
                     background: "var(--accent)",
                     color: "var(--accent-ink)",
@@ -1089,7 +1089,7 @@ export function VoiceQuickAddModal({
                   type="button"
                   onClick={handleDirectSave}
                   disabled={isSubmitting}
-                  className="flex-1 h-12 rounded-full flex items-center justify-center gap-2 text-[13.5px] font-bold active:scale-98 transition-all cursor-pointer disabled:opacity-50 shadow-lg"
+                  className="flex-1 h-12 rounded-full flex items-center justify-center gap-2 text-[13px] font-bold active:scale-98 transition-all cursor-pointer disabled:opacity-50 shadow-lg"
                   style={{
                     background: "var(--accent)",
                     color: "var(--accent-ink)",

@@ -53,7 +53,7 @@ export function CategoryDrillDownSheet({
             </div>
             <div>
               <h4
-                className="font-extrabold text-[15px]"
+                className="font-semibold text-[15px]"
                 style={{ color: "var(--text-primary)" }}
               >
                 {shift.name}
@@ -69,7 +69,7 @@ export function CategoryDrillDownSheet({
 
           <div className="text-right">
             <p
-              className="amount text-[15px] font-extrabold"
+              className="amount text-[15px] font-semibold"
               style={{ color: "var(--text-primary)" }}
             >
               {shift.isIncrease ? "+" : ""}
@@ -97,7 +97,7 @@ export function CategoryDrillDownSheet({
               Selected Month
             </p>
             <p
-              className="amount text-[14px] font-extrabold mt-0.5"
+              className="amount text-[14px] font-semibold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
               {formatRupiah(shift.currentTotal)}
@@ -114,7 +114,7 @@ export function CategoryDrillDownSheet({
               Previous Month
             </p>
             <p
-              className="amount text-[14px] font-extrabold mt-0.5"
+              className="amount text-[14px] font-semibold mt-0.5"
               style={{ color: "var(--text-secondary)" }}
             >
               {formatRupiah(shift.previousTotal)}
@@ -153,7 +153,7 @@ export function CategoryDrillDownSheet({
                     </p>
                   </div>
                   <p
-                    className="amount font-extrabold text-[13px]"
+                    className="amount font-semibold text-[13px]"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {formatRupiah(c.amount)}
@@ -169,7 +169,7 @@ export function CategoryDrillDownSheet({
           <button
             type="button"
             onClick={handleViewTransactions}
-            className="w-full py-3.5 rounded-2xl text-[13px] font-extrabold flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer select-none"
+            className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer select-none"
             style={{
               background: "var(--accent)",
               color: "var(--accent-ink)",

@@ -72,7 +72,7 @@ export function MonochromeIconPickerModal({
         <div className="flex items-center justify-between">
           <div>
             <h3
-              className="font-extrabold text-lg leading-tight"
+              className="font-semibold text-lg leading-tight"
               style={{ color: "var(--text-primary)" }}
             >
               {title}
@@ -212,7 +212,7 @@ export function MonochromeIconPickerModal({
                   />
                 </div>
                 <span
-                  className="text-[9.5px] font-medium truncate w-full px-0.5"
+                  className="text-[10px] font-medium truncate w-full px-0.5"
                   style={{
                     color: isSelected
                       ? "var(--bg-base)"

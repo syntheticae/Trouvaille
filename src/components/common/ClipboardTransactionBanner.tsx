@@ -113,7 +113,7 @@ export function ClipboardTransactionBanner({
                   {detected.sourceApp} Notification
                 </span>
                 {detected.suggestedCategoryName && (
-                  <span className="text-[9.5px] px-1.5 py-0.2 rounded-md bg-white/10 text-white/80 font-medium">
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-white/10 text-white/80 font-medium">
                     {detected.suggestedCategoryName}
                   </span>
                 )}

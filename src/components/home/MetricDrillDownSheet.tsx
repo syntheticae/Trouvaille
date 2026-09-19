@@ -80,7 +80,7 @@ export function MetricDrillDownSheet({
                 </div>
                 <div>
                   <h4
-                    className="font-extrabold text-[15px]"
+                    className="font-semibold text-[15px]"
                     style={{ color: "var(--text-primary)" }}
                   >
                     Status: {data.budgetRisk || "SAFE"}
@@ -115,7 +115,7 @@ export function MetricDrillDownSheet({
                   Monthly Budget
                 </p>
                 <p
-                  className="amount text-[14px] font-extrabold mt-0.5"
+                  className="amount text-[14px] font-semibold mt-0.5"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {formatRupiah(data.budget || 0)}
@@ -132,7 +132,7 @@ export function MetricDrillDownSheet({
                   Current Spending
                 </p>
                 <p
-                  className="amount text-[14px] font-extrabold mt-0.5"
+                  className="amount text-[14px] font-semibold mt-0.5"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {formatRupiah(data.totalCurrent)}
@@ -147,7 +147,7 @@ export function MetricDrillDownSheet({
                   onClose();
                   navigate("/settings");
                 }}
-                className="w-full py-3.5 rounded-2xl text-[13px] font-extrabold flex items-center justify-center gap-2 active:scale-98 transition-transform"
+                className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform"
                 style={{
                   background: "var(--accent)",
                   color: "var(--accent-ink)",
@@ -176,7 +176,7 @@ export function MetricDrillDownSheet({
                     {data.badge || "Current Period"}
                   </p>
                   <h4
-                    className="amount font-extrabold text-[18px] mt-1"
+                    className="amount font-semibold text-[18px] mt-1"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {data.delta >= 0 ? "+" : ""}
@@ -184,7 +184,7 @@ export function MetricDrillDownSheet({
                   </h4>
                 </div>
                 <span
-                  className="text-[12px] font-extrabold px-2.5 py-1 rounded-full"
+                  className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
                   style={{
                     background: "var(--glass-fill)",
                     color:
@@ -218,7 +218,7 @@ export function MetricDrillDownSheet({
                   Current Total
                 </p>
                 <p
-                  className="amount text-[14px] font-extrabold mt-0.5"
+                  className="amount text-[14px] font-semibold mt-0.5"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {formatRupiah(data.totalCurrent)}
@@ -235,7 +235,7 @@ export function MetricDrillDownSheet({
                   Reference Change
                 </p>
                 <p
-                  className="amount text-[14px] font-extrabold mt-0.5"
+                  className="amount text-[14px] font-semibold mt-0.5"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {data.delta >= 0 ? "+" : ""}
@@ -251,7 +251,7 @@ export function MetricDrillDownSheet({
                   onClose();
                   navigate("/statistics");
                 }}
-                className="w-full py-3.5 rounded-2xl text-[13px] font-extrabold flex items-center justify-center gap-2 active:scale-98 transition-transform"
+                className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform"
                 style={{
                   background: "var(--accent)",
                   color: "var(--accent-ink)",
@@ -273,7 +273,7 @@ export function MetricDrillDownSheet({
             >
               <div>
                 <h4
-                  className="font-extrabold text-[15px]"
+                  className="font-semibold text-[15px]"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {data.delta >= 0 ? "+" : ""}
@@ -288,7 +288,7 @@ export function MetricDrillDownSheet({
                 </p>
               </div>
               <span
-                className="text-[12px] font-extrabold px-2.5 py-1 rounded-full"
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
                 style={{
                   background: "var(--glass-fill)",
                   color: "var(--text-primary)",
@@ -321,7 +321,7 @@ export function MetricDrillDownSheet({
                       </span>
                       <div className="text-right">
                         <span
-                          className="amount font-extrabold text-[13px]"
+                          className="amount font-semibold text-[13px]"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {c.deltaAmount >= 0 ? "+" : ""}
@@ -347,7 +347,7 @@ export function MetricDrillDownSheet({
                   onClose();
                   navigate("/statistics");
                 }}
-                className="w-full py-3.5 rounded-2xl text-[13px] font-extrabold flex items-center justify-center gap-2 active:scale-98 transition-transform"
+                className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform"
                 style={{
                   background: "var(--accent)",
                   color: "var(--accent-ink)",

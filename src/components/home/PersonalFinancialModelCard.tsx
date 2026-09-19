@@ -99,13 +99,13 @@ export function PersonalFinancialModelCard({
           <div>
             <div className="flex items-center gap-2">
               <span
-                className="text-[10px] font-extrabold uppercase tracking-widest"
+                className="text-[10px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Financial Model
               </span>
               <span
-                className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full"
+                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -116,7 +116,7 @@ export function PersonalFinancialModelCard({
               </span>
             </div>
             <p
-              className="text-[13px] font-bold mt-0.5"
+              className="text-[13px] font-semibold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
               Actual · Baseline · Scenario
@@ -154,7 +154,7 @@ export function PersonalFinancialModelCard({
                           setLayer(item);
                           triggerHaptic("light");
                         }}
-                        className="py-2 rounded-2xl text-[11px] font-extrabold active:scale-95 transition-all"
+                        className="py-2 rounded-2xl text-[11px] font-semibold active:scale-95 transition-all"
                         style={{
                           background: isActive
                             ? "var(--accent)"
@@ -187,13 +187,13 @@ export function PersonalFinancialModelCard({
                       <div key={row.key}>
                         <div className="flex items-center justify-between gap-2">
                           <p
-                            className="text-[11px] font-bold"
+                            className="text-[11px] font-medium"
                             style={{ color: "var(--text-primary)" }}
                           >
                             {row.label}
                           </p>
                           <p
-                            className="text-[11px] font-extrabold amount"
+                            className="text-[11px] font-semibold amount"
                             style={{
                               color: isNegative
                                 ? "var(--text-secondary)"
@@ -312,7 +312,7 @@ export function PersonalFinancialModelCard({
                 <button
                   type="button"
                   onClick={onOpenDetails}
-                  className="w-full py-2.5 rounded-2xl text-[11px] font-extrabold active:scale-95 transition-transform"
+                  className="w-full py-2.5 rounded-2xl text-[11px] font-semibold active:scale-95 transition-transform"
                   style={{
                     background: "var(--glass-fill)",
                     color: "var(--text-secondary)",

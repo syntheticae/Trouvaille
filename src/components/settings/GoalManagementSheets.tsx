@@ -51,7 +51,7 @@ export function GoalManagementSheets({
         <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between sticky top-0 bg-transparent z-10 pb-2">
             <h3
-              className="font-extrabold text-lg"
+              className="font-semibold text-lg"
               style={{ color: "var(--text-primary)" }}
             >
               Financial Goals
@@ -136,7 +136,7 @@ export function GoalManagementSheets({
       <BottomSheet isOpen={addGoalOpen} onClose={() => setAddGoalOpen(false)}>
         <div className="p-5 pb-10 space-y-4">
           <h3
-            className="font-extrabold text-lg"
+            className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
             Add Goal
@@ -191,7 +191,7 @@ export function GoalManagementSheets({
           />
           <button
             onClick={handleSaveGoal}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 cursor-pointer"
+            className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 cursor-pointer"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             Save Goal

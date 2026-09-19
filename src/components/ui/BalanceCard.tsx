@@ -131,7 +131,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           {!isEmpty && (
             <button
               onClick={() => setDetailOpen(true)}
-              className="text-[11px] font-extrabold flex items-center gap-0.5 active:scale-95 transition-transform"
+              className="text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 transition-transform"
               style={{ color: "var(--text-secondary)" }}
             >
               All Details <ChevronRight size={13} />
@@ -214,7 +214,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                     {item.name}
                   </span>
                   <span
-                    className="amount text-[10px] font-extrabold"
+                    className="amount text-[10px] font-semibold"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {item.percent}%
@@ -250,7 +250,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                     Safe to Spend:
                   </span>
                   <span
-                    className="amount font-extrabold"
+                    className="amount font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {hideBalance ? "Rp ••••••••" : formatRupiah(safeToSpend)}
@@ -279,7 +279,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           <div className="flex justify-between items-start mb-1">
             <div>
               <h3
-                className="font-extrabold text-lg leading-tight"
+                className="font-semibold text-lg leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 Portfolio Breakdown
@@ -299,7 +299,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                 Total Assets
               </p>
               <p
-                className="amount text-[16px] font-extrabold leading-tight"
+                className="amount text-[16px] font-semibold leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 {hideBalance ? "Rp ••••••••" : formatRupiah(totalAssets)}
@@ -368,7 +368,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                       </span>
                     </div>
                     <span
-                      className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shrink-0"
+                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0"
                       style={{
                         background: "var(--glass-fill)",
                         color: "var(--text-secondary)",
@@ -379,7 +379,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   </div>
                   <div>
                     <p
-                      className="amount font-extrabold text-[13px]"
+                      className="amount font-semibold text-[13px]"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {hideBalance ? "Rp ••••••••" : formatRupiah(acc.balance)}

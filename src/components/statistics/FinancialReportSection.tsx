@@ -137,14 +137,14 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <span
-                className="text-[10px] font-bold uppercase tracking-widest"
+                className="text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Statements • {periodLabel}
               </span>
             </div>
             <h2
-              className="text-[22px] font-black tracking-tight"
+              className="text-[22px] font-semibold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               Financial Report
@@ -220,7 +220,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 setSubView(tab.key as ReportSubView);
                 triggerHaptic("light");
               }}
-              className="flex-1 py-1.5 rounded-lg text-[10.5px] font-bold transition-all duration-200 active:scale-98 cursor-pointer select-none"
+              className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200 active:scale-98 cursor-pointer select-none"
               style={{
                 background: isSelected ? "var(--bg-elevated)" : "transparent",
                 color: isSelected
@@ -402,13 +402,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   <div>
                     <div className="flex items-center justify-between mb-1 pb-1 border-b border-(--glass-border)/60 px-1">
                       <span
-                        className="text-[12.5px] font-bold tracking-tight"
+                        className="text-[12px] font-bold tracking-tight"
                         style={{ color: "var(--text-primary)" }}
                       >
                         Liquid Assets
                       </span>
                       <span
-                        className="amount text-[12.5px] font-bold"
+                        className="amount text-[12px] font-bold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {formatRupiah(balanceSheet.liquidAssets.total)}
@@ -436,7 +436,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             </span>
                             <div className="text-right flex items-baseline gap-2.5">
                               <span
-                                className="text-[10.5px] font-mono"
+                                className="text-[11px] font-mono"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
                                 {it.percentageOfTotal.toFixed(1)}%
@@ -458,13 +458,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   <div>
                     <div className="flex items-center justify-between mb-1 pb-1 border-b border-[var(--glass-border)]/60 px-1">
                       <span
-                        className="text-[12.5px] font-bold tracking-tight"
+                        className="text-[12px] font-bold tracking-tight"
                         style={{ color: "var(--text-primary)" }}
                       >
                         Investments
                       </span>
                       <span
-                        className="amount text-[12.5px] font-bold"
+                        className="amount text-[12px] font-bold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {formatRupiah(balanceSheet.investmentAssets.total)}
@@ -492,7 +492,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             </span>
                             <div className="text-right flex items-baseline gap-2.5">
                               <span
-                                className="text-[10.5px] font-mono"
+                                className="text-[11px] font-mono"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
                                 {it.percentageOfTotal.toFixed(1)}%
@@ -514,13 +514,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   <div>
                     <div className="flex items-center justify-between mb-1 pb-1 border-b border-[var(--glass-border)]/60 px-1">
                       <span
-                        className="text-[12.5px] font-bold tracking-tight"
+                        className="text-[12px] font-bold tracking-tight"
                         style={{ color: "var(--text-primary)" }}
                       >
                         Receivables
                       </span>
                       <span
-                        className="amount text-[12.5px] font-bold"
+                        className="amount text-[12px] font-bold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {formatRupiah(balanceSheet.receivableAssets.total)}
@@ -548,7 +548,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             </span>
                             <div className="text-right flex items-baseline gap-2.5">
                               <span
-                                className="text-[10.5px] font-mono"
+                                className="text-[11px] font-mono"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
                                 {it.percentageOfTotal.toFixed(1)}%
@@ -646,13 +646,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   <div>
                     <div className="flex items-center justify-between mb-1 pb-1 border-b border-[var(--glass-border)]/60 px-1">
                       <span
-                        className="text-[12.5px] font-bold tracking-tight"
+                        className="text-[12px] font-bold tracking-tight"
                         style={{ color: "var(--text-primary)" }}
                       >
                         Current Liabilities
                       </span>
                       <span
-                        className="amount text-[12.5px] font-bold"
+                        className="amount text-[12px] font-bold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {formatRupiah(balanceSheet.currentLiabilities.total)}
@@ -680,7 +680,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             </span>
                             <div className="text-right flex items-baseline gap-2.5">
                               <span
-                                className="text-[10.5px] font-mono"
+                                className="text-[11px] font-mono"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
                                 {it.percentageOfTotal.toFixed(1)}%
@@ -702,13 +702,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   <div>
                     <div className="flex items-center justify-between mb-1 pb-1 border-b border-[var(--glass-border)]/60 px-1">
                       <span
-                        className="text-[12.5px] font-bold tracking-tight"
+                        className="text-[12px] font-bold tracking-tight"
                         style={{ color: "var(--text-primary)" }}
                       >
                         Long-Term Debt
                       </span>
                       <span
-                        className="amount text-[12.5px] font-bold"
+                        className="amount text-[12px] font-bold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {formatRupiah(balanceSheet.longTermLiabilities.total)}
@@ -736,7 +736,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             </span>
                             <div className="text-right flex items-baseline gap-2.5">
                               <span
-                                className="text-[10.5px] font-mono"
+                                className="text-[11px] font-mono"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
                                 {it.percentageOfTotal.toFixed(1)}%
@@ -804,7 +804,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   Net Cash Movement
                 </p>
                 <p
-                  className="amount text-[20px] font-black mt-0.5"
+                  className="amount text-[20px] font-semibold mt-0.5"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {cashFlow.netCashFlow >= 0 ? "+" : ""}
@@ -841,13 +841,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 style={{ background: "var(--glass-fill)" }}
               >
                 <p
-                  className="text-[9.5px] font-bold uppercase tracking-wider"
+                  className="text-[10px] font-bold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   Operating
                 </p>
                 <p
-                  className="amount text-[12px] font-black mt-0.5 truncate"
+                  className="amount text-[12px] font-semibold mt-0.5 truncate"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {cashFlow.netOperatingCashFlow >= 0 ? "+" : ""}
@@ -860,13 +860,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 style={{ background: "var(--glass-fill)" }}
               >
                 <p
-                  className="text-[9.5px] font-bold uppercase tracking-wider"
+                  className="text-[10px] font-bold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   Investing
                 </p>
                 <p
-                  className="amount text-[12px] font-black mt-0.5 truncate"
+                  className="amount text-[12px] font-semibold mt-0.5 truncate"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {cashFlow.netInvestingCashFlow >= 0 ? "+" : ""}
@@ -879,13 +879,13 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 style={{ background: "var(--glass-fill)" }}
               >
                 <p
-                  className="text-[9.5px] font-bold uppercase tracking-wider"
+                  className="text-[10px] font-bold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   Financing
                 </p>
                 <p
-                  className="amount text-[12px] font-black mt-0.5 truncate"
+                  className="amount text-[12px] font-semibold mt-0.5 truncate"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {cashFlow.netFinancingCashFlow >= 0 ? "+" : ""}
@@ -919,7 +919,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   1. Operating Activities
                 </h4>
                 <p
-                  className="text-[10.5px]"
+                  className="text-[11px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   Inflow: {formatRupiah(cashFlow.operatingInflow)} • Outflow:{" "}
@@ -975,7 +975,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             {it.name}
                           </span>
                           <span
-                            className="text-[10.5px] ml-2 font-mono"
+                            className="text-[11px] ml-2 font-mono"
                             style={{ color: "var(--text-tertiary)" }}
                           >
                             ({it.txCount} tx)
@@ -1022,7 +1022,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   Investing Activities
                 </h4>
                 <p
-                  className="text-[10.5px]"
+                  className="text-[11px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   In: {formatRupiah(cashFlow.investingInflow)} • Out:{" "}
@@ -1116,7 +1116,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   Financing Activities
                 </h4>
                 <p
-                  className="text-[10.5px]"
+                  className="text-[11px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   In: {formatRupiah(cashFlow.financingInflow)} • Out:{" "}
@@ -1226,20 +1226,20 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
               }}
             >
               <span
-                className="text-[9.5px] font-bold uppercase tracking-wider block"
+                className="text-[10px] font-bold uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Solvency Runway
               </span>
               <p
-                className="amount text-[16px] font-black"
+                className="amount text-[16px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
                 {calk.solvencyRunwayMonths}{" "}
                 <span className="text-[11px] font-normal">mo</span>
               </p>
               <span
-                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold  tracking-wide"
+                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold  tracking-wide"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -1259,19 +1259,19 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
               }}
             >
               <span
-                className="text-[9.5px] font-bold uppercase tracking-wider block"
+                className="text-[10px] font-bold uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Debt-to-Asset (DAR)
               </span>
               <p
-                className="amount text-[16px] font-black"
+                className="amount text-[16px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
                 {calk.debtToAssetRatioPct}%
               </p>
               <span
-                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold  tracking-wide"
+                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold  tracking-wide"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -1291,19 +1291,19 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
               }}
             >
               <span
-                className="text-[9.5px] font-bold uppercase tracking-wider block"
+                className="text-[10px] font-bold uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Free Cash Flow Rate
               </span>
               <p
-                className="amount text-[16px] font-black"
+                className="amount text-[16px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
                 {calk.freeCashflowRatePct}%
               </p>
               <span
-                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold  tracking-wide"
+                className="inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold  tracking-wide"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -1370,7 +1370,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
           >
             <div>
               <h4
-                className="text-[12.5px] font-bold"
+                className="text-[12px] font-bold"
                 style={{ color: "var(--text-primary)" }}
               >
                 Note 4: Material Transactions Disclosure (&ge; 15% Outflow)
@@ -1387,7 +1387,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
             <div className="space-y-1.5">
               {calk.materialTransactions.length === 0 ? (
                 <div
-                  className="p-3 rounded-xl text-[11.5px]"
+                  className="p-3 rounded-xl text-[11px]"
                   style={{
                     background: "var(--glass-fill)",
                     color: "var(--text-secondary)",
@@ -1457,14 +1457,14 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                 }}
               />
               <h4
-                className="text-[12.5px] font-bold"
+                className="text-[12px] font-bold"
                 style={{ color: "var(--text-primary)" }}
               >
                 Note 5: Standard Integrity & Audit Status
               </h4>
             </div>
             <p
-              className="text-[11.5px] leading-relaxed"
+              className="text-[11px] leading-relaxed"
               style={{ color: "var(--text-secondary)" }}
             >
               {calk.reconciliation.notes}

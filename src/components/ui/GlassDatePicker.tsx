@@ -21,7 +21,7 @@ export function GlassDatePicker({ date, onChange }: GlassDatePickerProps) {
         <button onClick={() => setMonth(subMonths(month, 1))} className="p-1.5 rounded-lg active:scale-95" style={{ color: "var(--text-primary)" }}>
           <ChevronLeft size={20} />
         </button>
-        <span className="font-extrabold text-[14px]" style={{ color: "var(--text-primary)" }}>{format(month, "MMMM yyyy")}</span>
+        <span className="font-semibold text-[14px]" style={{ color: "var(--text-primary)" }}>{format(month, "MMMM yyyy")}</span>
         <button onClick={() => setMonth(addMonths(month, 1))} className="p-1.5 rounded-lg active:scale-95" style={{ color: "var(--text-primary)" }}>
           <ChevronRight size={20} />
         </button>

@@ -35,7 +35,7 @@ export function BudgetTargetSheet({
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="p-5 pb-10 space-y-4">
         <h3
-          className="font-extrabold text-lg"
+          className="font-semibold text-lg"
           style={{ color: "var(--text-primary)" }}
         >
           Set Monthly Budget
@@ -73,7 +73,7 @@ export function BudgetTargetSheet({
         </div>
         <button
           onClick={handleSave}
-          className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95"
+          className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95"
           style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
         >
           Save Target

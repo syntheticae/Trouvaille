@@ -199,7 +199,7 @@ export function SmartQuickAddBar({
               ? "Listening... (e.g. Coffee 35k BCA)"
               : "Quick add: e.g. Coffee 35k BCA or 50k Lunch..."
           }
-          className="flex-1 bg-transparent text-[12.5px] font-medium outline-none placeholder:text-[var(--text-tertiary)] placeholder:font-normal"
+          className="flex-1 bg-transparent text-[12px] font-medium outline-none placeholder:text-[var(--text-tertiary)] placeholder:font-normal"
           style={{ color: "var(--text-primary)" }}
         />
 
@@ -280,7 +280,7 @@ export function SmartQuickAddBar({
             {isMulti ? (
               <>
                 <span
-                  className="px-2 py-0.5 rounded-lg text-[10.5px] font-bold flex items-center gap-1"
+                  className="px-2 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1"
                   style={{
                     background: "var(--bg-elevated)",
                     border: "1px solid var(--glass-border)",
@@ -308,7 +308,7 @@ export function SmartQuickAddBar({
               <>
                 {parsed.amount !== null && (
                   <span
-                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-bold flex items-center gap-1"
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
@@ -322,7 +322,7 @@ export function SmartQuickAddBar({
 
                 {parsed.categoryName && (
                   <span
-                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium flex items-center gap-1"
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium flex items-center gap-1"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
@@ -336,7 +336,7 @@ export function SmartQuickAddBar({
 
                 {parsed.walletName && (
                   <span
-                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium flex items-center gap-1"
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium flex items-center gap-1"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
@@ -352,7 +352,7 @@ export function SmartQuickAddBar({
 
                 {parsed.dateLabel && parsed.dateLabel !== "Today" && (
                   <span
-                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium flex items-center gap-1"
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium flex items-center gap-1"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
@@ -367,7 +367,7 @@ export function SmartQuickAddBar({
             )}
 
             <span
-              className="text-[9.5px] font-medium ml-auto"
+              className="text-[10px] font-medium ml-auto"
               style={{ color: "var(--text-tertiary)" }}
             >
               Press Enter or tap {isMulti && onBatchApply ? "Save All" : "Fill"}

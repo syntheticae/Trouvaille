@@ -125,7 +125,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               {getIcon(toast.actionType)}
             </div>
-            <p className="text-[13.5px] font-bold truncate leading-tight" style={{ color: "var(--text-primary)" }}>
+            <p className="text-[13px] font-bold truncate leading-tight" style={{ color: "var(--text-primary)" }}>
               {toast.message}
             </p>
           </div>
@@ -133,7 +133,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           {toast.onUndo && (
             <button
               onClick={toast.onUndo}
-              className="px-3.5 py-1.5 rounded-full text-[12px] font-extrabold flex items-center gap-1 active:scale-95 transition-transform shrink-0"
+              className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1 active:scale-95 transition-transform shrink-0"
               style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
             >
               <RotateCcw size={12} /> Undo

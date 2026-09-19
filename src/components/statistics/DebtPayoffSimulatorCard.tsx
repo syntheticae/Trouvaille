@@ -195,13 +195,13 @@ export function DebtPayoffSimulatorCard({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span
-                className="text-[10px] font-extrabold uppercase tracking-widest"
+                className="text-[10px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Debt Payoff Engine
               </span>
               <span
-                className="text-[9px] font-black uppercase px-2 py-0.2 rounded-full"
+                className="text-[9px] font-semibold uppercase px-2 py-0.2 rounded-full"
                 style={{
                   background: "var(--glass-fill)",
                   color: "var(--text-secondary)",
@@ -225,7 +225,7 @@ export function DebtPayoffSimulatorCard({
         <div className="flex items-center gap-2 shrink-0">
           {!isExpanded && comparison.totalInitialDebt > 0 && (
             <span
-              className="text-[11px] font-black hidden sm:inline"
+              className="text-[11px] font-semibold hidden sm:inline"
               style={{ color: "var(--text-secondary)" }}
             >
               {mask(formatRupiah(comparison.totalInitialDebt))}
@@ -270,7 +270,7 @@ export function DebtPayoffSimulatorCard({
                     Total Debt Principal
                   </span>
                   <span
-                    className="text-[16px] font-black tracking-tight block mt-0.5"
+                    className="text-[16px] font-semibold tracking-tight block mt-0.5"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {mask(formatRupiah(comparison.totalInitialDebt))}
@@ -284,7 +284,7 @@ export function DebtPayoffSimulatorCard({
                     Required Minimum / Mo
                   </span>
                   <span
-                    className="text-[16px] font-black tracking-tight block mt-0.5"
+                    className="text-[16px] font-semibold tracking-tight block mt-0.5"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {mask(formatRupiah(comparison.totalMinPayment))}
@@ -319,7 +319,7 @@ export function DebtPayoffSimulatorCard({
                       setStrategy("avalanche");
                       triggerHaptic("medium");
                     }}
-                    className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-extrabold transition-all active:scale-98 cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold transition-all active:scale-98 cursor-pointer"
                     style={{
                       background:
                         strategy === "avalanche" ? "var(--accent)" : "transparent",
@@ -343,7 +343,7 @@ export function DebtPayoffSimulatorCard({
                       setStrategy("snowball");
                       triggerHaptic("medium");
                     }}
-                    className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-extrabold transition-all active:scale-98 cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold transition-all active:scale-98 cursor-pointer"
                     style={{
                       background:
                         strategy === "snowball" ? "var(--accent)" : "transparent",
@@ -370,7 +370,7 @@ export function DebtPayoffSimulatorCard({
                     Extra Monthly Payment (Accelerator):
                   </span>
                   <span
-                    className="font-black text-[12px]"
+                    className="font-semibold text-[12px]"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {extraPayment > 0 ? `+${formatRupiah(extraPayment)}/mo` : "Min only"}
@@ -402,7 +402,7 @@ export function DebtPayoffSimulatorCard({
                       setExtraPayment(num);
                     }}
                     placeholder="0"
-                    className="flex-1 bg-transparent text-[14px] font-black focus:outline-none"
+                    className="flex-1 bg-transparent text-[14px] font-semibold focus:outline-none"
                     style={{ color: "var(--text-primary)" }}
                   />
                   {extraPayment > 0 && (
@@ -426,7 +426,7 @@ export function DebtPayoffSimulatorCard({
                         setExtraPayment(val);
                         triggerHaptic("light");
                       }}
-                      className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold whitespace-nowrap active:scale-95 transition-all cursor-pointer"
+                      className="px-2.5 py-1 rounded-xl text-[10px] font-semibold whitespace-nowrap active:scale-95 transition-all cursor-pointer"
                       style={{
                         background:
                           extraPayment === val
@@ -456,14 +456,14 @@ export function DebtPayoffSimulatorCard({
                 <div className="flex items-start justify-between">
                   <div>
                     <span
-                      className="text-[9px] font-extrabold uppercase tracking-widest block"
+                      className="text-[9px] font-semibold uppercase tracking-wider block"
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       Estimated Debt-Free Date
                     </span>
                     <div className="flex items-baseline gap-2 mt-0.5">
                       <span
-                        className="text-[22px] font-black tracking-tight"
+                        className="text-[22px] font-semibold tracking-tight"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {activeResult.totalMonths}
@@ -479,13 +479,13 @@ export function DebtPayoffSimulatorCard({
 
                   <div className="text-right">
                     <span
-                      className="text-[9px] font-extrabold uppercase tracking-widest block"
+                      className="text-[9px] font-semibold uppercase tracking-wider block"
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       Total Interest Accrued
                     </span>
                     <span
-                      className="text-[15px] font-black block mt-0.5"
+                      className="text-[15px] font-semibold block mt-0.5"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {mask(formatRupiah(activeResult.totalInterest))}
@@ -535,7 +535,7 @@ export function DebtPayoffSimulatorCard({
                         >
                           <div className="flex items-center gap-2">
                             <span
-                              className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black"
+                              className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-semibold"
                               style={{
                                 background: "var(--glass-border)",
                                 color: "var(--text-primary)",
@@ -573,7 +573,7 @@ export function DebtPayoffSimulatorCard({
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between px-0.5">
                   <span
-                    className="text-[11px] font-extrabold uppercase tracking-wider"
+                    className="text-[11px] font-semibold uppercase tracking-wider"
                     style={{ color: "var(--text-secondary)" }}
                   >
                     Your Debts ({debts.length})
@@ -595,7 +595,7 @@ export function DebtPayoffSimulatorCard({
                     <button
                       type="button"
                       onClick={openAddDebt}
-                      className="px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1 cursor-pointer active:scale-95"
+                      className="px-2.5 py-1 rounded-xl text-[10px] font-semibold flex items-center gap-1 cursor-pointer active:scale-95"
                       style={{
                         background: "var(--accent)",
                         color: "var(--accent-ink)",
@@ -626,7 +626,7 @@ export function DebtPayoffSimulatorCard({
                             {d.name}
                           </h4>
                           <span
-                            className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full"
+                            className="text-[9px] font-semibold px-1.5 py-0.2 rounded-full"
                             style={{
                               background: "var(--glass-fill)",
                               color: "var(--text-secondary)",
@@ -688,7 +688,7 @@ export function DebtPayoffSimulatorCard({
           >
             <div className="flex items-center justify-between">
               <h3
-                className="text-[14px] font-black"
+                className="text-[14px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
                 {editingDebtId ? "Edit Debt Item" : "Add Debt Item"}
@@ -742,7 +742,7 @@ export function DebtPayoffSimulatorCard({
                     const num = raw ? parseInt(raw, 10) : 0;
                     setFormBalance(num ? num.toLocaleString("id-ID") : "");
                   }}
-                  className="w-full px-3 py-2 rounded-xl text-[13px] font-black bg-transparent focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl text-[13px] font-semibold bg-transparent focus:outline-none"
                   style={{
                     border: "1px solid var(--glass-border)",
                     color: "var(--text-primary)",
@@ -770,7 +770,7 @@ export function DebtPayoffSimulatorCard({
                       const num = raw ? parseInt(raw, 10) : 0;
                       setFormMinPay(num ? num.toLocaleString("id-ID") : "");
                     }}
-                    className="w-full px-3 py-2 rounded-xl text-[12px] font-black bg-transparent focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl text-[12px] font-semibold bg-transparent focus:outline-none"
                     style={{
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
@@ -792,7 +792,7 @@ export function DebtPayoffSimulatorCard({
                     placeholder="e.g. 24"
                     value={formApr}
                     onChange={(e) => setFormApr(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-[12px] font-black bg-transparent focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl text-[12px] font-semibold bg-transparent focus:outline-none"
                     style={{
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
@@ -813,7 +813,7 @@ export function DebtPayoffSimulatorCard({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-xl text-[11px] font-black active:scale-95 transition-transform"
+                  className="px-4 py-1.5 rounded-xl text-[11px] font-semibold active:scale-95 transition-transform"
                   style={{
                     background: "var(--accent)",
                     color: "var(--accent-ink)",

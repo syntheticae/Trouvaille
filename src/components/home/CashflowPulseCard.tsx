@@ -65,11 +65,11 @@ export function CashflowPulseCard({
         <div className="flex items-center gap-2 min-w-0">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-[12px] font-bold  tracking-wider">
+              <span className="text-[13px] font-semibold tracking-tight">
                 Cashflow Pulse
               </span>
               <span
-                className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-tight"
+                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
                 style={{
                   background: "var(--glass-fill-strong)",
                   color: "var(--text-primary)",
@@ -84,7 +84,7 @@ export function CashflowPulseCard({
 
         <div className="flex items-center gap-1 shrink-0">
           <span
-            className="text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1"
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
             style={{
               background: "var(--glass-fill-strong)",
               color: "var(--text-primary)",
@@ -112,7 +112,7 @@ export function CashflowPulseCard({
       <div className="flex items-baseline justify-between gap-2 mb-1.5">
         <div>
           <div
-            className="amount text-[22px] font-extrabold leading-tight tracking-tight"
+            className="amount text-[22px] tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
             {hideBalance
@@ -170,7 +170,7 @@ export function CashflowPulseCard({
               >
                 <span>Budget Progress</span>
                 <span
-                  className="text-[8px] font-black px-1.5 py-0.2 rounded-full uppercase"
+                  className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full uppercase"
                   style={{
                     background:
                       budgetRisk === "AT RISK"
@@ -215,13 +215,13 @@ export function CashflowPulseCard({
       <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-[var(--glass-border)]">
         <div>
           <p
-            className="text-[9px] font-bold uppercase tracking-wider"
+            className="text-[9px] font-semibold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
             Inflow
           </p>
           <p
-            className="amount text-[12px] font-extrabold mt-0.5 truncate"
+            className="amount text-[12px] mt-0.5 truncate"
             style={{ color: "var(--text-primary)" }}
           >
             {hideBalance ? "••••" : `+${formatRupiah(totalIncome)}`}
@@ -230,13 +230,13 @@ export function CashflowPulseCard({
 
         <div className="text-center">
           <p
-            className="text-[9px] font-bold uppercase tracking-wider"
+            className="text-[9px] font-semibold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
             Outflow
           </p>
           <p
-            className="amount text-[12px] font-extrabold mt-0.5 truncate"
+            className="amount text-[12px] mt-0.5 truncate"
             style={{ color: "var(--text-primary)" }}
           >
             {hideBalance ? "••••" : `-${formatRupiah(totalExpense)}`}
@@ -245,13 +245,13 @@ export function CashflowPulseCard({
 
         <div className="text-right">
           <p
-            className="text-[9px] font-bold uppercase tracking-wider"
+            className="text-[9px] font-semibold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
             Daily Avg ({daysElapsed}d)
           </p>
           <p
-            className="amount text-[12px] font-extrabold mt-0.5 truncate"
+            className="amount text-[12px] mt-0.5 truncate"
             style={{ color: "var(--text-primary)" }}
           >
             {hideBalance ? "••••" : formatRupiah(dailyAverage)}

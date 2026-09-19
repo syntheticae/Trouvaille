@@ -2,11 +2,15 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { triggerHaptic } from "../lib/haptics";
 
 const PRIVACY_STORAGE_KEY = "trouvaille_stealth_mode_v1";
+const SHIELD_STORAGE_KEY = "trouvaille_privacy_shield_enabled_v1";
 
 interface PrivacyContextType {
   isStealthMode: boolean;
   toggleStealthMode: () => void;
   setStealthMode: (value: boolean) => void;
+  isPrivacyShieldEnabled: boolean;
+  togglePrivacyShield: () => void;
+  setPrivacyShieldEnabled: (value: boolean) => void;
   maskAmount: (formattedText: string, placeholder?: string) => string;
 }
 
@@ -14,10 +18,25 @@ const PrivacyContext = createContext<PrivacyContextType>({
   isStealthMode: false,
   toggleStealthMode: () => {},
   setStealthMode: () => {},
+  isPrivacyShieldEnabled: false,
+  togglePrivacyShield: () => {},
+  setPrivacyShieldEnabled: () => {},
   maskAmount: (text) => text,
 });
 
 export function PrivacyProvider({ children }: { children: React.ReactNode }) {
+  // Master Privacy Shield setting (controls app switcher overlay & auto-masking)
+  const [isPrivacyShieldEnabled, setIsPrivacyShieldEnabledState] = useState<boolean>(() => {
+    try {
+      const val = localStorage.getItem(SHIELD_STORAGE_KEY);
+      // If user hasn't explicitly set it, default to false so it doesn't trap users
+      return val === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  // Stealth mode (masks monetary figures in UI)
   const [isStealthMode, setIsStealthModeState] = useState<boolean>(() => {
     try {
       return localStorage.getItem(PRIVACY_STORAGE_KEY) === "true";
@@ -25,6 +44,36 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
   });
+
+  const setPrivacyShieldEnabled = useCallback((val: boolean) => {
+    setIsPrivacyShieldEnabledState(val);
+    if (!val) {
+      setIsStealthModeState(false);
+      try {
+        localStorage.setItem(PRIVACY_STORAGE_KEY, "false");
+      } catch {}
+    }
+    try {
+      localStorage.setItem(SHIELD_STORAGE_KEY, String(val));
+    } catch {}
+  }, []);
+
+  const togglePrivacyShield = useCallback(() => {
+    setIsPrivacyShieldEnabledState((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SHIELD_STORAGE_KEY, String(next));
+      } catch {}
+      if (!next) {
+        setIsStealthModeState(false);
+        try {
+          localStorage.setItem(PRIVACY_STORAGE_KEY, "false");
+        } catch {}
+      }
+      triggerHaptic("medium");
+      return next;
+    });
+  }, []);
 
   const setStealthMode = useCallback((val: boolean) => {
     setIsStealthModeState(val);
@@ -50,13 +99,13 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
 
   const maskAmount = useCallback(
     (formattedText: string, placeholder = "••••••••") => {
-      if (!isStealthMode) return formattedText;
+      if (!isStealthMode && !isPrivacyShieldEnabled) return formattedText;
       if (formattedText.startsWith("Rp")) {
         return `Rp ${placeholder}`;
       }
       return placeholder;
     },
-    [isStealthMode]
+    [isStealthMode, isPrivacyShieldEnabled]
   );
 
   // Global listeners: 3-finger touch on mobile & Cmd+H / Ctrl+H on keyboard
@@ -64,7 +113,7 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches && e.touches.length === 3) {
         // 3-finger tap detected!
-        toggleStealthMode();
+        togglePrivacyShield();
       }
     };
 
@@ -79,7 +128,7 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
 
         if (!isInputField) {
           e.preventDefault();
-          toggleStealthMode();
+          togglePrivacyShield();
         }
       }
     };
@@ -91,7 +140,7 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [toggleStealthMode]);
+  }, [togglePrivacyShield]);
 
   return (
     <PrivacyContext.Provider
@@ -99,6 +148,9 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
         isStealthMode,
         toggleStealthMode,
         setStealthMode,
+        isPrivacyShieldEnabled,
+        togglePrivacyShield,
+        setPrivacyShieldEnabled,
         maskAmount,
       }}
     >

@@ -167,7 +167,7 @@ export function CalendarPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1
-            className="text-[24px] font-extrabold tracking-tight"
+            className="text-[22px] font-semibold tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
             Calendar
@@ -265,7 +265,7 @@ export function CalendarPage() {
                 </div>
                 <div>
                   <p
-                    className="text-[14px] font-extrabold tracking-tight truncate"
+                    className="text-[14px] font-semibold tracking-tight truncate"
                     style={{
                       color:
                         runwayTelemetry.lowestDipStatus === "critical"
@@ -304,7 +304,7 @@ export function CalendarPage() {
                 </div>
                 <div>
                   <p
-                    className="text-[14px] font-extrabold tracking-tight truncate"
+                    className="text-[14px] font-semibold tracking-tight truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {runwayTelemetry.daysUntilPayday !== null
@@ -338,7 +338,7 @@ export function CalendarPage() {
                 </div>
                 <div>
                   <p
-                    className="text-[14px] font-extrabold tracking-tight truncate"
+                    className="text-[14px] font-semibold tracking-tight truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {runwayTelemetry.noSpendDaysCount} Days
@@ -449,6 +449,8 @@ export function CalendarPage() {
               const forecast = runwayTelemetry.days.find((df) => df.date === dStr);
               const isSel = selectedDay && isSameDay(d, selectedDay);
               const isT = isToday(d);
+
+              const hasUnpaidBills = (forecast?.scheduledBills || []).some((b) => !b.isPaid);
 
               const hasData =
                 (forecast?.actualInflow ?? 0) > 0 ||
@@ -565,7 +567,7 @@ export function CalendarPage() {
                         <span
                           className={`text-[9px] font-bold tracking-tight ${
                             forecast?.isLowestDip
-                              ? "text-amber-400 font-extrabold"
+                              ? "text-amber-400 font-bold"
                               : isSurplus
                               ? isDark
                                 ? "text-zinc-900"
@@ -585,11 +587,25 @@ export function CalendarPage() {
                     </div>
                   )}
 
-                  {/* Special Indicator Badges (Payday or Lowest Dip) */}
+                  {/* Special Indicator Badges (Payday or Lowest Dip or Unpaid Bill) */}
                   {forecast?.isPayday && (
                     <span
                       className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400"
                       title="Expected Payday"
+                    />
+                  )}
+                  {hasUnpaidBills && (
+                    <span
+                      className={`absolute top-1 ${forecast?.isPayday ? "left-1" : "right-1"} w-1.5 h-1.5 rounded-full`}
+                      style={{
+                        background: isSurplus
+                          ? (isDark ? "#121212" : "#FFFFFF")
+                          : (isDark ? "#FFFFFF" : "#18181B"),
+                        boxShadow: isDark
+                          ? "0 0 4px rgba(255,255,255,0.6)"
+                          : "0 0 4px rgba(0,0,0,0.3)",
+                      }}
+                      title="Unpaid Bill Due"
                     />
                   )}
                   {forecast?.isLowestDip && viewMode === "runway" && (
@@ -729,13 +745,13 @@ export function CalendarPage() {
                         Projected Liquid Balance
                       </span>
                       {selectedDayForecast.isLowestDip && (
-                        <span className="text-[10px] font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
                           Lowest Dip Floor
                         </span>
                       )}
                     </div>
                     <p
-                      className="amount text-[22px] font-extrabold tracking-tight"
+                      className="amount text-[22px] tracking-tight"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {formatRupiah(selectedDayForecast.projectedBalance)}

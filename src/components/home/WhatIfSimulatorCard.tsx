@@ -99,13 +99,13 @@ export function WhatIfSimulatorCard({
           </div>
           <div>
             <span
-              className="text-[10px] font-extrabold uppercase tracking-widest"
+              className="text-[10px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
               What-if Simulator
             </span>
             <p
-              className="text-[13px] font-bold mt-0.5"
+              className="text-[13px] font-semibold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
               Deterministic Planning
@@ -142,7 +142,7 @@ export function WhatIfSimulatorCard({
                         setScenarioType(scenario.type);
                         triggerHaptic("light");
                       }}
-                      className="px-3 py-2.5 rounded-2xl text-[11px] font-extrabold transition-all active:scale-95"
+                      className="px-3 py-2.5 rounded-2xl text-[11px] font-semibold transition-all active:scale-95"
                       style={{
                         background: isActive
                           ? "var(--accent)"
@@ -229,7 +229,7 @@ export function WhatIfSimulatorCard({
                       Current / year
                     </p>
                     <p
-                      className="amount font-extrabold mt-0.5"
+                      className="amount font-semibold mt-0.5"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {hideBalance
@@ -245,7 +245,7 @@ export function WhatIfSimulatorCard({
                       After adjustment
                     </p>
                     <p
-                      className="amount font-extrabold mt-0.5"
+                      className="amount font-semibold mt-0.5"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {hideBalance
@@ -261,7 +261,7 @@ export function WhatIfSimulatorCard({
                       Difference / year
                     </p>
                     <p
-                      className="amount font-extrabold mt-0.5"
+                      className="amount font-semibold mt-0.5"
                       style={{
                         color:
                           result.annualDifference >= 0

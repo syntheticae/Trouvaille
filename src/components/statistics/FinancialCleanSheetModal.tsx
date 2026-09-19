@@ -332,7 +332,7 @@ export function FinancialCleanSheetModal({
         {/* Left: Brand + Period Selectors */}
         <div className="flex items-center gap-2 flex-wrap">
           <span
-            className="text-[12px] font-black uppercase tracking-wider hidden sm:inline"
+            className="text-[12px] font-semibold uppercase tracking-wider hidden sm:inline"
             style={{ color: "var(--text-primary)" }}
           >
             E-Statement
@@ -352,7 +352,7 @@ export function FinancialCleanSheetModal({
                 setStatementType("month");
                 triggerHaptic("light");
               }}
-              className="px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer transition-all"
+              className="px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer transition-all"
               style={{
                 background:
                   statementType === "month" ? "var(--accent)" : "transparent",
@@ -370,7 +370,7 @@ export function FinancialCleanSheetModal({
                 setStatementType("year");
                 triggerHaptic("light");
               }}
-              className="px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer transition-all"
+              className="px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer transition-all"
               style={{
                 background:
                   statementType === "year" ? "var(--accent)" : "transparent",
@@ -403,7 +403,7 @@ export function FinancialCleanSheetModal({
                 }
                 triggerHaptic("light");
               }}
-              className="bg-transparent text-[11px] font-black focus:outline-none cursor-pointer pr-1"
+              className="bg-transparent text-[11px] font-semibold focus:outline-none cursor-pointer pr-1"
               style={{ color: "var(--text-primary)" }}
             >
               {statementType === "month"
@@ -438,7 +438,7 @@ export function FinancialCleanSheetModal({
               setPaperTheme(isWhite ? "dark" : "white");
               triggerHaptic("light");
             }}
-            className="px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold flex items-center gap-1.5 border cursor-pointer active:scale-95 transition-all"
+            className="px-2.5 py-1.5 rounded-xl text-[10px] font-semibold flex items-center gap-1.5 border cursor-pointer active:scale-95 transition-all"
             style={{
               background: "var(--bg-surface)",
               borderColor: "var(--glass-border)",
@@ -470,7 +470,7 @@ export function FinancialCleanSheetModal({
           <button
             type="button"
             onClick={handlePrint}
-            className="px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+            className="px-3 py-1.5 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
             style={{
               background: "var(--accent)",
               color: "var(--accent-ink)",
@@ -524,7 +524,7 @@ export function FinancialCleanSheetModal({
               <div>
                 <div className="flex items-center gap-2">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm"
+                    className="w-8 h-8 rounded-xl flex items-center justify-center font-semibold text-sm"
                     style={{
                       background: isWhite ? "#111827" : "#FFFFFF",
                       color: isWhite ? "#FFFFFF" : "#111827",
@@ -533,11 +533,11 @@ export function FinancialCleanSheetModal({
                     T
                   </div>
                   <div>
-                    <h1 className="text-[17px] font-black tracking-tight leading-none uppercase">
+                    <h1 className="text-[17px] font-semibold tracking-tight leading-none uppercase">
                       TROUVAILLE PRIVATE LEDGER
                     </h1>
                     <span
-                      className="text-[10px] font-bold tracking-widest uppercase block mt-0.5"
+                      className="text-[10px] font-bold tracking-wider uppercase block mt-0.5"
                       style={{ color: isWhite ? "#4B5563" : "#9CA3AF" }}
                     >
                       Rekening Koran Elektronik (e-Statement)
@@ -599,7 +599,7 @@ export function FinancialCleanSheetModal({
           {/* ========================================================= */}
           <div className="space-y-2">
             <h2
-              className="text-[11px] font-black tracking-wider uppercase"
+              className="text-[11px] font-semibold tracking-wider uppercase"
               style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
             >
               Ringkasan Rekening (Account Summary)
@@ -619,7 +619,7 @@ export function FinancialCleanSheetModal({
                 >
                   Saldo Awal (Initial)
                 </span>
-                <span className="text-[15px] font-black block mt-0.5">
+                <span className="text-[15px] font-semibold block mt-0.5">
                   {formatRupiah(openingBalance)}
                 </span>
               </div>
@@ -632,7 +632,7 @@ export function FinancialCleanSheetModal({
                   Dana Masuk ({incomingCount} txs)
                 </span>
                 <span
-                  className="text-[15px] font-black block mt-0.5"
+                  className="text-[15px] font-semibold block mt-0.5"
                   style={{ color: isWhite ? "#047857" : "#34D399" }}
                 >
                   +{formatRupiah(totalIncoming)}
@@ -647,7 +647,7 @@ export function FinancialCleanSheetModal({
                   Dana Keluar ({outgoingCount} txs)
                 </span>
                 <span
-                  className="text-[15px] font-black block mt-0.5"
+                  className="text-[15px] font-semibold block mt-0.5"
                   style={{ color: isWhite ? "#B91C1C" : "#F87171" }}
                 >
                   -{formatRupiah(totalOutgoing)}
@@ -661,7 +661,7 @@ export function FinancialCleanSheetModal({
                 >
                   Saldo Akhir (Closing)
                 </span>
-                <span className="text-[15px] font-black block mt-0.5">
+                <span className="text-[15px] font-semibold block mt-0.5">
                   {formatRupiah(closingBalance)}
                 </span>
               </div>
@@ -703,7 +703,7 @@ export function FinancialCleanSheetModal({
           {liquidAccounts.length > 0 && (
             <div className="space-y-2">
               <h2
-                className="text-[11px] font-black tracking-wider uppercase"
+                className="text-[11px] font-semibold tracking-wider uppercase"
                 style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
               >
                 Posisi Saldo per Akun & Brankas (Account Holdings)
@@ -740,7 +740,7 @@ export function FinancialCleanSheetModal({
                           }}
                         >
                           <td className="p-2 font-bold">{acc.name}</td>
-                          <td className="p-2 text-right font-black">
+                          <td className="p-2 text-right font-semibold">
                             {formatRupiah(acc.balance)}
                           </td>
                           <td
@@ -764,7 +764,7 @@ export function FinancialCleanSheetModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h2
-                className="text-[11px] font-black tracking-wider uppercase"
+                className="text-[11px] font-semibold tracking-wider uppercase"
                 style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
               >
                 Rincian Mutasi Transaksi (Transaction Ledger)
@@ -795,7 +795,7 @@ export function FinancialCleanSheetModal({
                   borderColor: isWhite ? "#E5E7EB" : "rgba(255, 255, 255, 0.1)",
                 }}
               >
-                <table className="w-full text-[10.5px] border-collapse">
+                <table className="w-full text-[11px] border-collapse">
                   <thead>
                     <tr
                       style={{
@@ -857,7 +857,7 @@ export function FinancialCleanSheetModal({
                             </div>
                           </td>
                           <td
-                            className="p-2 text-right font-black whitespace-nowrap font-mono"
+                            className="p-2 text-right font-semibold whitespace-nowrap font-mono"
                             style={{
                               color: isInc
                                 ? isWhite
@@ -871,7 +871,7 @@ export function FinancialCleanSheetModal({
                             {isInc ? "+" : "-"}
                             {formatRupiah(r.tx.amount)}
                           </td>
-                          <td className="p-2 text-right font-black whitespace-nowrap font-mono">
+                          <td className="p-2 text-right font-semibold whitespace-nowrap font-mono">
                             {formatRupiah(r.runningBalance)}
                           </td>
                         </tr>
@@ -889,14 +889,14 @@ export function FinancialCleanSheetModal({
           {categoryBreakdown.length > 0 && (
             <div className="space-y-2">
               <h2
-                className="text-[11px] font-black tracking-wider uppercase"
+                className="text-[11px] font-semibold tracking-wider uppercase"
                 style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
               >
                 Distribusi Pos Pengeluaran Teratas (Expense Drivers)
               </h2>
 
               <div
-                className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10.5px]"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]"
               >
                 {categoryBreakdown.slice(0, 4).map((c, i) => (
                   <div
@@ -913,7 +913,7 @@ export function FinancialCleanSheetModal({
                     >
                       {c.name}
                     </span>
-                    <span className="font-black block text-[12px] mt-0.5">
+                    <span className="font-semibold block text-[12px] mt-0.5">
                       {formatRupiah(c.amount)}
                     </span>
                     <span
@@ -949,7 +949,7 @@ export function FinancialCleanSheetModal({
 
             <div className="flex items-center gap-2 shrink-0">
               <div
-                className="px-3 py-1.5 rounded-lg border font-mono font-black text-[10px] uppercase flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg border font-mono font-semibold text-[10px] uppercase flex items-center gap-1.5"
                 style={{
                   background: isWhite ? "#F3F4F6" : "rgba(255, 255, 255, 0.05)",
                   borderColor: isWhite ? "#111827" : "#FFFFFF",
@@ -983,7 +983,7 @@ export function FinancialCleanSheetModal({
           <button
             type="button"
             onClick={handlePrint}
-            className="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-[12px] font-black flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+            className="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
             style={{
               background: "var(--glass-fill)",
               border: "1px solid var(--glass-border)",
@@ -1000,7 +1000,7 @@ export function FinancialCleanSheetModal({
               onClose();
               triggerHaptic("light");
             }}
-            className="flex-1 sm:flex-initial px-5 py-2 rounded-xl text-[12px] font-black cursor-pointer active:scale-95 transition-all"
+            className="flex-1 sm:flex-initial px-5 py-2 rounded-xl text-[12px] font-semibold cursor-pointer active:scale-95 transition-all"
             style={{
               background: "var(--accent)",
               color: "var(--accent-ink)",

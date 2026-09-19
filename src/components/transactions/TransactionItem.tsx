@@ -120,13 +120,13 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
           }}
         >
           {/* Left Side: Duplicate (revealed on swipe right) */}
-          <div className="flex items-center gap-1.5 text-blue-400 font-extrabold text-[12px]">
+          <div className="flex items-center gap-1.5 text-blue-400 font-semibold text-[12px]">
             <Copy size={16} />
             <span>Duplicate</span>
           </div>
 
           {/* Right Side: Delete (revealed on swipe left) */}
-          <div className="flex items-center gap-1.5 text-red-500 font-extrabold text-[12px]">
+          <div className="flex items-center gap-1.5 text-red-500 font-semibold text-[12px]">
             <span>Delete</span>
             <Trash2 size={16} />
           </div>
@@ -229,7 +229,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
               ) : isTransfer ? (
                 <ArrowLeftRight size={8} />
               ) : (
-                <span className="text-[9px] font-extrabold leading-none">
+                <span className="text-[9px] font-semibold leading-none">
                   {isIncome ? "+" : "−"}
                 </span>
               )}
@@ -249,7 +249,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
               </p>
               {isUnusual && (
                 <span
-                  className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full shrink-0"
+                  className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
                   style={{
                     background: "var(--glass-fill-strong)",
                     color: "var(--text-primary)",
@@ -281,7 +281,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
 
         <div className="text-right shrink-0">
           <div
-            className="amount font-extrabold text-[14px]"
+            className="amount font-semibold text-[14px]"
             style={{
               color: isCorrection
                 ? isPositiveCorrection

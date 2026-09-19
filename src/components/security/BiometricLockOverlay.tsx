@@ -114,7 +114,7 @@ export function BiometricLockOverlay() {
           </div>
 
           <h2
-            className="text-[24px] font-black tracking-tight mt-2"
+            className="text-[24px] font-semibold tracking-tight mt-2"
             style={{ color: "var(--text-primary)" }}
           >
             Trouvaille Locked
@@ -271,7 +271,7 @@ export function BiometricLockOverlay() {
               triggerHaptic("medium");
               await signOut();
             }}
-            className="flex items-center gap-1.5 text-[11.5px] font-semibold py-2 px-3 rounded-full transition-opacity opacity-70 hover:opacity-100"
+            className="flex items-center gap-1.5 text-[11px] font-semibold py-2 px-3 rounded-full transition-opacity opacity-70 hover:opacity-100"
             style={{
               color: "var(--text-tertiary)",
             }}

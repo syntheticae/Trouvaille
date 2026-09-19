@@ -30,12 +30,12 @@ export function DetectedRecurringSection({ items, confirmingId = null, onConfirm
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-bold text-[14px] truncate" style={{ color: "var(--text-primary)" }}>{item.title}</p>
-                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full capitalize"
+                  <p className="font-semibold text-[14px] truncate" style={{ color: "var(--text-primary)" }}>{item.title}</p>
+                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full capitalize"
                     style={{ background: "var(--glass-fill)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>
                     {item.confidence}
                   </span>
-                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full capitalize"
+                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full capitalize"
                     style={{ background: "var(--glass-fill-strong)", color: "var(--text-primary)", border: "1px solid var(--glass-border)" }}>
                     {item.frequency}
                   </span>
@@ -43,7 +43,7 @@ export function DetectedRecurringSection({ items, confirmingId = null, onConfirm
                 <p className="text-[11px] font-medium mt-1" style={{ color: "var(--text-tertiary)" }}>
                   {item.categoryName} · {item.occurrencesCount} occurrences · next {item.nextExpectedDate}
                 </p>
-                <p className="amount text-[15px] font-extrabold mt-2" style={{ color: "var(--text-primary)" }}>
+                <p className="amount text-[15px] font-semibold mt-2" style={{ color: "var(--text-primary)" }}>
                   {formatRupiah(item.typicalAmount)}
                 </p>
                 <div className="flex items-start gap-2 mt-2">
@@ -61,7 +61,7 @@ export function DetectedRecurringSection({ items, confirmingId = null, onConfirm
               <button
                 onClick={() => onConfirm(item)}
                 disabled={confirmingId === item.id}
-                className="flex-1 text-[11px] font-extrabold px-3 py-2 rounded-full flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60"
+                className="flex-1 text-[11px] font-semibold px-3 py-2 rounded-full flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60"
                 style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
               >
                 <Check size={12} />
@@ -69,7 +69,7 @@ export function DetectedRecurringSection({ items, confirmingId = null, onConfirm
               </button>
               <button
                 onClick={() => onIgnore(item)}
-                className="text-[11px] font-extrabold px-3 py-2 rounded-full flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                className="text-[11px] font-semibold px-3 py-2 rounded-full flex items-center justify-center gap-1.5 active:scale-95 transition-all"
                 style={{ background: "var(--glass-fill)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
               >
                 <MinusCircle size={12} />

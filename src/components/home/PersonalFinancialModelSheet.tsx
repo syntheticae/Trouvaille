@@ -47,7 +47,7 @@ export function PersonalFinancialModelSheet({
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="p-5 pb-12 space-y-4">
         <div>
-          <h3 className="font-extrabold text-[18px]" style={{ color: "var(--text-primary)" }}>
+          <h3 className="font-semibold text-[18px]" style={{ color: "var(--text-primary)" }}>
             Personal Financial Model
           </h3>
           <p className="text-[12px] mt-1" style={{ color: "var(--text-tertiary)" }}>
@@ -81,7 +81,7 @@ export function PersonalFinancialModelSheet({
                   borderTop: idx === 0 ? "none" : "1px solid var(--glass-border)",
                 }}
               >
-                <div className="p-2.5 font-bold" style={{ color: "var(--text-primary)" }}>
+                <div className="p-2.5 font-medium" style={{ color: "var(--text-primary)" }}>
                   {row.label}
                 </div>
                 <div className="p-2.5 text-right amount" style={{ color: "var(--text-secondary)" }}>
@@ -101,13 +101,13 @@ export function PersonalFinancialModelSheet({
         <div className="grid grid-cols-2 gap-2 text-[11px]">
           <div className="p-3 rounded-xl" style={{ background: "var(--glass-fill)" }}>
             <p style={{ color: "var(--text-tertiary)" }}>Net Worth</p>
-            <p className="amount font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
+            <p className="amount font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
               {amount(insights.currentNetWorth, hideBalance)}
             </p>
           </div>
           <div className="p-3 rounded-xl" style={{ background: "var(--glass-fill)" }}>
             <p style={{ color: "var(--text-tertiary)" }}>Cashflow</p>
-            <p className="amount font-extrabold mt-0.5" style={{ color: "var(--text-primary)" }}>
+            <p className="amount font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
               {amount(insights.currentCashflow, hideBalance, true)}
             </p>
           </div>

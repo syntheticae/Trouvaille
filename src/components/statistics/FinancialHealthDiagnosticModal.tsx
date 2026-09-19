@@ -116,14 +116,14 @@ export function FinancialHealthDiagnosticModal({
             <div>
               <div className="flex items-center gap-1.5">
                 <span
-                  className="text-[10px] font-extrabold uppercase tracking-widest"
+                  className="text-[10px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   Executive Advisory Audit
                 </span>
               </div>
               <h3
-                className="font-extrabold text-[17px] leading-snug"
+                className="font-semibold text-[17px] leading-snug"
                 style={{ color: "var(--text-primary)" }}
               >
                 Financial Health Diagnostic
@@ -132,7 +132,7 @@ export function FinancialHealthDiagnosticModal({
           </div>
           <div className="text-right">
             <span
-              className="text-[11px] font-extrabold px-2.5 py-1 rounded-xl"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-xl"
               style={{
                 background: "var(--glass-fill-strong)",
                 color: "var(--text-primary)",
@@ -154,13 +154,13 @@ export function FinancialHealthDiagnosticModal({
         >
           <div className="flex justify-between items-center">
             <span
-              className="text-[10px] font-extrabold uppercase tracking-wider"
+              className="text-[10px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
               Diagnostic Synthesis · {rangeTitle}
             </span>
             <span
-              className="amount text-[12px] font-extrabold"
+              className="amount text-[12px] font-semibold"
               style={{ color: "var(--text-primary)" }}
             >
               {healthScore} / 100 PTS
@@ -194,7 +194,7 @@ export function FinancialHealthDiagnosticModal({
                 Operating Margin
               </p>
               <p
-                className="amount text-[13px] font-extrabold mt-0.5 truncate"
+                className="amount text-[13px] font-semibold mt-0.5 truncate"
                 style={{ color: "var(--text-primary)" }}
               >
                 {diagnostic.operatingMarginText}
@@ -211,7 +211,7 @@ export function FinancialHealthDiagnosticModal({
                 Retained Cash
               </p>
               <p
-                className="amount text-[13px] font-extrabold mt-0.5 truncate"
+                className="amount text-[13px] font-semibold mt-0.5 truncate"
                 style={{
                   color:
                     diagnostic.netCashflow >= 0
@@ -233,7 +233,7 @@ export function FinancialHealthDiagnosticModal({
                 Burn Ratio
               </p>
               <p
-                className="amount text-[13px] font-extrabold mt-0.5"
+                className="amount text-[13px] font-semibold mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
                 {diagnostic.operatingRatio > 999
@@ -247,7 +247,7 @@ export function FinancialHealthDiagnosticModal({
         {/* 4 Quantitative Diagnostic Pillars */}
         <div className="space-y-2">
           <span
-            className="text-[10px] font-extrabold uppercase tracking-widest px-1"
+            className="text-[10px] font-semibold uppercase tracking-wider px-1"
             style={{ color: "var(--text-tertiary)" }}
           >
             Four-Pillar Structural Audit
@@ -283,7 +283,7 @@ export function FinancialHealthDiagnosticModal({
                     1. Cash Retention & Yield
                   </p>
                   <span
-                    className="text-[10px] font-extrabold amount"
+                    className="text-[10px] font-semibold amount"
                     style={{
                       color:
                         savingsRate >= 20
@@ -331,7 +331,7 @@ export function FinancialHealthDiagnosticModal({
                     2. Baseline Discipline
                   </p>
                   <span
-                    className="text-[10px] font-extrabold"
+                    className="text-[10px] font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {baselines?.currentMonthStatus
@@ -380,7 +380,7 @@ export function FinancialHealthDiagnosticModal({
                     3. Expenditure Concentration
                   </p>
                   <span
-                    className="text-[10px] font-extrabold"
+                    className="text-[10px] font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {diagnostic.topShift
@@ -427,7 +427,7 @@ export function FinancialHealthDiagnosticModal({
                     4. Capital Goal Runway
                   </p>
                   <span
-                    className="text-[10px] font-extrabold"
+                    className="text-[10px] font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
                     SOLVENT
@@ -449,7 +449,7 @@ export function FinancialHealthDiagnosticModal({
         {/* Strategic Advisory Recommendations */}
         <div className="space-y-2 pt-1">
           <span
-            className="text-[10px] font-extrabold uppercase tracking-widest px-1"
+            className="text-[10px] font-semibold uppercase tracking-wider px-1"
             style={{ color: "var(--text-tertiary)" }}
           >
             Strategic Focus Directives

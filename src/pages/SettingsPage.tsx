@@ -24,7 +24,11 @@ import {
   Clock,
   KeyRound,
   Camera,
+  Search,
+  X,
+  EyeOff,
 } from "lucide-react";
+import { usePrivacy } from "../contexts/PrivacyContext";
 import { BackTapGuideModal } from "../components/settings/BackTapGuideModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBills } from "../hooks/useBills";
@@ -45,7 +49,7 @@ import {
   transactionKeys,
 } from "../hooks/useTransactions";
 import { useWalletBalances } from "../hooks/useWalletBalances";
-import { ResetTransactionsSheet } from "../components/ui/ResetTransactionsSheet";
+import { ResetTransactionsSheet } from "../components/settings/ResetTransactionsSheet";
 import {
   requestNotificationPermission,
   syncBillNotifications,
@@ -77,12 +81,8 @@ export function SettingsPage() {
   const { showToast } = useToast();
   const { budgetTarget, setBudgetTarget } = useBudgetTarget();
   const { shortcuts } = useShortcuts();
-  const {
-    securitySettings,
-    updateSettings: updateSecuritySettings,
-    isBiometricSupported,
-    enrollBiometric,
-  } = useSecurityLock();
+  const { securitySettings, updateSettings: updateSecuritySettings, isBiometricSupported, enrollBiometric } = useSecurityLock();
+  const { isPrivacyShieldEnabled, togglePrivacyShield } = usePrivacy();
 
   const { allTxs } = useWalletBalances();
 
@@ -117,6 +117,13 @@ export function SettingsPage() {
   const [vaultDefaultTab, setVaultDefaultTab] = useState<"export" | "restore">("export");
   const [mediaPermissionsOpen, setMediaPermissionsOpen] = useState(false);
   const [valuationOpen, setValuationOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const matches = (title: string, desc?: string) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return title.toLowerCase().includes(q) || (desc ? desc.toLowerCase().includes(q) : false);
+  };
 
   // Bill Reminders toggle state & handler
   const [billRemindersEnabled, setBillRemindersEnabled] = useState(() => {
@@ -278,815 +285,1156 @@ export function SettingsPage() {
     }
   };
 
+  // Search filtering checks
+  const showCategories = matches("Manage Categories", "Expense and income classifications");
+  const showWallets = matches("Account & Wallets", "Bank accounts, e-wallets, and cash");
+  const showBills = matches("Recurring Bills", "Subscriptions and scheduled commitments");
+  const showGoals = matches("Financial Goals", "Savings targets and milestone progress");
+  const showBudget = matches("Monthly Budget Target", "Target monthly spending limit");
+  const showValuation = matches("Asset Valuation", "USDT, crypto, and investment holdings");
+  const hasSection1 = showCategories || showWallets || showBills || showGoals || showBudget || showValuation;
+
+  const showTheme = matches("Light Appearance", "Toggle light or obsidian luxury theme");
+  const showBillReminders = matches("Bill Reminders", "Local notifications for scheduled bills");
+  const showShortcuts = matches("Quick-Add Shortcuts", "Fast entry shortcuts and voice input");
+  const showBackTap = matches("iPhone Back Tap", "iOS accessibility shortcuts integration");
+  const hasSection2 = showTheme || showBillReminders || showShortcuts || showBackTap;
+
+  const showCloudSync = matches("Cloud Sync", "Safely backup data to private vault");
+  const showVault = matches("Encrypted Vault", "Local AES-256 encrypted file backup");
+  const showExport = matches("Export CSV", "Download transactions as spreadsheet");
+  const showReset = matches("Reset Data", "Wipe transaction ledger while keeping accounts");
+  const hasSection3 = showCloudSync || showVault || showExport || showReset;
+
+  const showPrivacyShield = matches("Privacy Shield", "Mask balances and monetary figures across all pages");
+  const showFaceID = matches("Require Face ID / PIN", "Protect app with biometric authentication");
+  const showTimeout = matches("Lock Timeout", "Duration before app automatically locks");
+  const showBackupPin = matches("Backup PIN Option", "Passcode fallback when biometrics fail");
+  const showMedia = matches("Camera & Photos Access", "Permissions for receipt scanning and slips");
+  const hasSection4 = showPrivacyShield || showFaceID || showTimeout || showBackupPin || showMedia;
+
+  const hasAnyMatch = hasSection1 || hasSection2 || hasSection3 || hasSection4;
+
   return (
     <div className="px-5 py-6 space-y-6 pb-36">
       <h1
-        className="text-[24px] font-extrabold mb-1"
+        className="text-[22px] font-semibold tracking-tight mb-1"
         style={{ color: "var(--text-primary)" }}
       >
         Settings
       </h1>
 
+      {/* Search Settings Bar */}
+      <div
+        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl transition-all"
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--glass-border)",
+        }}
+      >
+        <Search size={15} style={{ color: "var(--text-tertiary)" }} />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search settings, preferences & security..."
+          className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--text-tertiary)]"
+          style={{ color: "var(--text-primary)" }}
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              setSearchQuery("");
+            }}
+            className="p-1 rounded-full text-[var(--text-tertiary)] active:scale-90 cursor-pointer"
+          >
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
       {/* ============================================================ */}
       {/* 1. PROFILE SECTION */}
       {/* ============================================================ */}
-      <section className="glass-surface p-4 rounded-[24px] flex items-center justify-between">
-        <div className="flex items-center gap-3.5">
-          <div
-            className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center relative shrink-0"
+      {!searchQuery.trim() && (
+        <section className="glass-surface p-4 rounded-[24px] flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div
+              className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center relative shrink-0"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                boxShadow: "0 2px 8px var(--shadow-strength)",
+              }}
+            >
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <UserIcon size={20} style={{ color: "var(--text-secondary)" }} />
+              )}
+            </div>
+            <div>
+              <p
+                className="font-semibold text-[15px] truncate"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {displayName}
+              </p>
+              <p
+                className="text-[11px] font-normal truncate"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {session?.user?.email}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
-              boxShadow: "0 2px 8px var(--shadow-strength)",
+              color: "var(--text-primary)",
             }}
           >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt="Avatar"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <UserIcon size={20} style={{ color: "var(--text-secondary)" }} />
-            )}
-          </div>
-          <div>
-            <p
-              className="font-extrabold text-[16px] truncate"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {displayName}
-            </p>
-            <p
-              className="text-[11px] font-medium truncate"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {session?.user?.email}
-            </p>
-          </div>
+            Edit
+          </button>
+        </section>
+      )}
+
+      {/* Empty Search State */}
+      {!hasAnyMatch && searchQuery.trim() && (
+        <div className="py-12 text-center space-y-2">
+          <Search size={26} className="mx-auto text-[var(--text-tertiary)] opacity-50" />
+          <p className="text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
+            No settings found
+          </p>
+          <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+            No settings match &ldquo;{searchQuery}&rdquo;
+          </p>
         </div>
-        <button
-          onClick={() => setProfileOpen(true)}
-          className="px-4 py-2 rounded-full text-[12px] font-bold active:scale-95 transition-transform cursor-pointer"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-            color: "var(--text-primary)",
-          }}
-        >
-          Edit
-        </button>
-      </section>
+      )}
 
       {/* ============================================================ */}
       {/* 2. FINANCIAL SETUP SECTION */}
       {/* ============================================================ */}
-      <section>
-        <h2
-          className="text-[13px] font-bold mb-3 px-1"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Financial Setup
-        </h2>
-        <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
-          {/* Categories */}
-          <button
-            onClick={() => setCategoriesOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+      {hasSection1 && (
+        <section>
+          <h2
+            className="text-[11px] font-semibold uppercase tracking-wider mb-2.5 px-1"
+            style={{ color: "var(--text-tertiary)" }}
           >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
+            Financial Setup
+          </h2>
+          <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col divide-y divide-[var(--glass-border)]">
+            {/* 1. Manage Categories */}
+            {showCategories && (
+              <button
+                onClick={() => setCategoriesOpen(true)}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
               >
-                Categories
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Expense and income classifications
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span
-                className="text-[12px] font-bold font-mono"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {categories.length}
-              </span>
-              <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-            </div>
-          </button>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <FolderTree size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Manage Categories
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Expense & income groups
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className="text-[12px] font-medium font-mono"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {categories.length}
+                  </span>
+                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                </div>
+              </button>
+            )}
 
-          {/* Accounts & Wallets */}
-          <button
-            onClick={() => setBudgetsOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-          >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
+            {/* 2. Account & Wallets */}
+            {showWallets && (
+              <button
+                onClick={() => setBudgetsOpen(true)}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
               >
-                Accounts & Wallets
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Bank accounts, e-wallets, and cash
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span
-                className="text-[12px] font-bold font-mono"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {wallets.length}
-              </span>
-              <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-            </div>
-          </button>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <CreditCard size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Account & Wallets
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Bank accounts, cards & cash
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className="text-[12px] font-medium font-mono"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {wallets.length}
+                  </span>
+                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                </div>
+              </button>
+            )}
 
-          {/* Asset Valuation */}
-          <button
-            onClick={() => setValuationOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-          >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
+            {/* 3. Recurring Bills */}
+            {showBills && (
+              <button
+                onClick={() => setBillListOpen(true)}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
               >
-                Asset Valuation
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                USDT, crypto, and investment holdings
-              </p>
-            </div>
-            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-          </button>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Receipt size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Recurring Bills
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Subscriptions & recurring bills
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className="text-[12px] font-medium font-mono"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {bills.length}
+                  </span>
+                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                </div>
+              </button>
+            )}
 
-          {/* Recurring Bills */}
-          <button
-            onClick={() => setBillListOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-          >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
+            {/* 4. Financial Goals */}
+            {showGoals && (
+              <button
+                onClick={() => setGoalsOpen(true)}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
               >
-                Recurring Bills
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Subscriptions and scheduled commitments
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span
-                className="text-[12px] font-bold font-mono"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {bills.length}
-              </span>
-              <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-            </div>
-          </button>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Target size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Financial Goals
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Milestones & savings targets
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className="text-[12px] font-medium font-mono"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {goals.length}
+                  </span>
+                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                </div>
+              </button>
+            )}
 
-          {/* Financial Goals */}
-          <button
-            onClick={() => setGoalsOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-          >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
+            {/* 5. Monthly Budget Target */}
+            {showBudget && (
+              <button
+                onClick={() => setBudgetTargetOpen(true)}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
               >
-                Financial Goals
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Savings targets and milestone progress
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span
-                className="text-[12px] font-bold font-mono"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {goals.length}
-              </span>
-              <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-            </div>
-          </button>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <SlidersHorizontal size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Monthly Budget Target
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Monthly spending ceiling
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className="text-[12px] font-semibold font-mono amount"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {formatRupiah(budgetTarget)}
+                  </span>
+                  <ChevronRight
+                    size={18}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </div>
+              </button>
+            )}
 
-          {/* Monthly Budget Target */}
-          <button
-            onClick={() => setBudgetTargetOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-          >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
+            {/* Asset Valuation */}
+            {showValuation && (
+              <button
+                onClick={() => setValuationOpen(true)}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
               >
-                Monthly Budget
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Target monthly spending limit
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span
-                className="text-[12px] font-bold font-mono amount"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {formatRupiah(budgetTarget)}
-              </span>
-              <ChevronRight
-                size={18}
-                style={{ color: "var(--text-tertiary)" }}
-              />
-            </div>
-          </button>
-        </div>
-      </section>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <TrendingUp size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Asset Valuation
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Crypto & investments
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ============================================================ */}
       {/* 3. PREFERENCES SECTION */}
       {/* ============================================================ */}
-      <section>
-        <h2
-          className="text-[13px] font-bold mb-3 px-1"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          App Preferences
-        </h2>
-        <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
-          {/* Appearance Toggle */}
-          <div className="flex items-center justify-between p-4">
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Light Appearance
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Toggle light or obsidian luxury theme
-              </p>
-            </div>
-            <label className="ios-toggle cursor-pointer shrink-0">
-              <input
-                type="checkbox"
-                checked={theme === "light"}
-                onChange={toggleTheme}
-              />
-              <div className="ios-toggle-track"></div>
-              <div className="ios-toggle-knob"></div>
-            </label>
-          </div>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
-
-          {/* Bill Reminders Toggle */}
-          <div className="flex items-center justify-between p-4">
-            <div className="space-y-0.5 pr-3">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Bill Reminders
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Alert 1 day before and on due date
-              </p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={billRemindersEnabled}
-              onClick={handleToggleBillReminders}
-              className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
-                billRemindersEnabled
-                  ? "bg-white dark:bg-white"
-                  : "bg-zinc-300 dark:bg-zinc-700"
-              }`}
-            >
-              <div
-                className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
-                  billRemindersEnabled
-                    ? "translate-x-4.5 bg-black dark:bg-black"
-                    : "translate-x-0 bg-white"
-                }`}
-              />
-            </button>
-          </div>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
-
-          {/* Quick Shortcuts */}
-          <button
-            onClick={() => setShortcutsOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+      {hasSection2 && (
+        <section>
+          <h2
+            className="text-[11px] font-semibold uppercase tracking-wider mb-2.5 px-1"
+            style={{ color: "var(--text-tertiary)" }}
           >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Quick-Add Shortcuts
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Custom amounts for 1-tap logging
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span
-                className="text-[12px] font-bold font-mono"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {shortcuts.length}
-              </span>
-              <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-            </div>
-          </button>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
+            App Preferences
+          </h2>
+          <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col divide-y divide-[var(--glass-border)]">
+            {/* Appearance Toggle */}
+            {showTheme && (
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Sun size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Light Appearance
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Light or obsidian luxury theme
+                    </p>
+                  </div>
+                </div>
+                <label className="ios-toggle cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={theme === "light"}
+                    onChange={toggleTheme}
+                  />
+                  <div className="ios-toggle-track"></div>
+                  <div className="ios-toggle-knob"></div>
+                </label>
+              </div>
+            )}
 
-          {/* iPhone Back Tap */}
-          <button
-            onClick={() => setBackTapGuideOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-          >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
+            {/* Bill Reminders Toggle */}
+            {showBillReminders && (
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <BellRing size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0 pr-3">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Bill Reminders
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Alert before & on due date
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={billRemindersEnabled}
+                  onClick={handleToggleBillReminders}
+                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
+                    billRemindersEnabled
+                      ? "bg-white dark:bg-white"
+                      : "bg-zinc-300 dark:bg-zinc-700"
+                  }`}
+                >
+                  <div
+                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
+                      billRemindersEnabled
+                        ? "translate-x-4.5 bg-black dark:bg-black"
+                        : "translate-x-0 bg-white"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
+            {/* Quick Shortcuts */}
+            {showShortcuts && (
+              <button
+                onClick={() => setShortcutsOpen(true)}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
               >
-                iPhone Back Tap
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Zap size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Quick-Add Shortcuts
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      1-tap quick logging presets
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className="text-[12px] font-medium font-mono"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {shortcuts.length}
+                  </span>
+                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                </div>
+              </button>
+            )}
+
+            {/* iPhone Back Tap */}
+            {showBackTap && (
+              <button
+                onClick={() => setBackTapGuideOpen(true)}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
               >
-                Double-tap back of device to quick-record
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span
-                className="text-[11px] font-semibold px-2 py-0.5 rounded-full border"
-                style={{
-                  borderColor: "var(--glass-border)",
-                  color: "var(--text-secondary)",
-                  background: "var(--bg-elevated)",
-                }}
-              >
-                Setup
-              </span>
-              <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-            </div>
-          </button>
-        </div>
-      </section>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Smartphone size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      iPhone Back Tap
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Double-tap back to quick record
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                    style={{
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-secondary)",
+                      background: "var(--bg-elevated)",
+                    }}
+                  >
+                    Setup
+                  </span>
+                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                </div>
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ============================================================ */}
       {/* 4. DATA & STORAGE SECTION */}
       {/* ============================================================ */}
-      <section>
-        <h2
-          className="text-[13px] font-bold mb-3 px-1"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Data & Storage
-        </h2>
-        <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
-          {/* Cloud Sync */}
-          <div className="flex items-center justify-between p-4">
-            <div className="space-y-0.5 pr-2">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Cloud Sync
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {syncStatus === "syncing"
-                  ? "Synchronizing database records..."
-                  : syncStatus === "error"
-                    ? "Sync error · Local data safe"
-                    : `${allTxs.length} records cached · Last synced ${lastSyncedTime}`}
-              </p>
-            </div>
-            <button
-              onClick={handleSafeSync}
-              disabled={syncStatus === "syncing"}
-              className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-60 cursor-pointer shrink-0"
-              style={{
-                background:
-                  syncStatus === "success"
-                    ? "var(--accent)"
-                    : "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                color:
-                  syncStatus === "success"
-                    ? "var(--accent-ink)"
-                    : "var(--text-secondary)",
-              }}
-            >
-              {syncStatus === "syncing" && (
-                <Loader2 size={12} className="animate-spin" />
-              )}
-              {syncStatus === "success" && <Check size={12} />}
-              <span>
-                {syncStatus === "syncing"
-                  ? "Syncing..."
-                  : syncStatus === "success"
-                    ? "Synced"
-                    : syncStatus === "error"
-                      ? "Retry"
-                      : "Sync Now"}
-              </span>
-            </button>
-          </div>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
-
-          {/* Encrypted Vault */}
-          <button
-            type="button"
-            onClick={() => {
-              setVaultDefaultTab("export");
-              setVaultModalOpen(true);
-              triggerHaptic("light");
-            }}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+      {hasSection3 && (
+        <section>
+          <h2
+            className="text-[11px] font-semibold uppercase tracking-wider mb-2.5 px-1"
+            style={{ color: "var(--text-tertiary)" }}
           >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Encrypted Vault
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Offline AES-256 backup and file restore
-              </p>
-            </div>
-            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-          </button>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
-
-          {/* Export CSV */}
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-          >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Export CSV
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Download transaction history spreadsheet
-              </p>
-            </div>
-            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-          </button>
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
-
-          {/* Reset Data */}
-          <button
-            type="button"
-            onClick={() => setResetOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-          >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Reset Data
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Purge selected timeframes or transaction history
-              </p>
-            </div>
-            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-          </button>
-        </div>
-      </section>
-
-      {/* ============================================================ */}
-      {/* 5. SECURITY & PRIVACY */}
-      {/* ============================================================ */}
-      <section>
-        <h2
-          className="text-[13px] font-bold mb-3 px-1"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Security & Privacy
-        </h2>
-        <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col">
-          {/* Toggle: Require Face ID / PIN */}
-          <div className="flex items-center justify-between p-4">
-            <div className="space-y-0.5 pr-3">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Require Face ID / PIN
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Biometric app lock when opening or resuming
-              </p>
-            </div>
-            {/* Apple iOS Switch */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={securitySettings.enabled}
-              onClick={async () => {
-                if (!securitySettings.enabled) {
-                  // Require backup PIN first to guarantee user is never locked out
-                  if (!securitySettings.hasPin) {
-                    showToast(
-                      "Please set up a backup PIN first to enable app lock",
-                      "info",
-                      null,
-                      3000,
-                    );
-                    setPinModalOpen(true);
-                    return;
-                  }
-
-                  if (isBiometricSupported && !securitySettings.hasBiometric) {
-                    try {
-                      await enrollBiometric(session?.user?.email || undefined);
-                      if (session) {
-                        saveBiometricLoginCredentials(session.user?.email || "", session);
-                      }
-                      updateSecuritySettings({ enabled: true });
-                      showToast(
-                        "Face ID / Biometrics enabled",
-                        "update",
-                        () => {},
-                      );
-                    } catch (err: any) {
-                      showToast(
-                        err?.message ||
-                          "Biometric setup failed. App lock enabled with PIN.",
-                        "info",
-                        null,
-                        3000,
-                      );
-                      updateSecuritySettings({ enabled: true });
-                    }
-                  } else {
-                    updateSecuritySettings({ enabled: true });
-                    triggerHaptic("medium");
-                    showToast("App lock enabled", "update", () => {});
-                  }
-                } else {
-                  updateSecuritySettings({ enabled: false });
-                  triggerHaptic("light");
-                  showToast("App lock disabled", "update", () => {});
-                }
-              }}
-              className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
-                securitySettings.enabled
-                  ? "bg-white dark:bg-white"
-                  : "bg-zinc-300 dark:bg-zinc-700"
-              }`}
-            >
-              <div
-                className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
-                  securitySettings.enabled
-                    ? "translate-x-4.5 bg-black dark:bg-black"
-                    : "translate-x-0 bg-white"
-                }`}
-              />
-            </button>
-          </div>
-
-          {securitySettings.enabled && (
-            <>
-              <div
-                className="h-[1px] w-full"
-                style={{ background: "var(--glass-border)" }}
-              />
-
-              {/* Timeout Preference */}
-              <div className="p-4 space-y-2">
-                <div>
-                  <span
-                    className="text-[13.5px] font-semibold block"
-                    style={{ color: "var(--text-primary)" }}
+            Data & Storage
+          </h2>
+          <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col divide-y divide-[var(--glass-border)]">
+            {/* Cloud Sync */}
+            {showCloudSync && (
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
                   >
-                    Lock Timeout
+                    <Cloud size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0 pr-2">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Cloud Sync
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {syncStatus === "syncing"
+                        ? "Synchronizing database records..."
+                        : syncStatus === "error"
+                          ? "Sync error · Local data safe"
+                          : `${allTxs.length} records cached · Last synced ${lastSyncedTime}`}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleSafeSync}
+                  disabled={syncStatus === "syncing"}
+                  className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-60 cursor-pointer shrink-0"
+                  style={{
+                    background:
+                      syncStatus === "success"
+                        ? "var(--accent)"
+                        : "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color:
+                      syncStatus === "success"
+                        ? "var(--accent-ink)"
+                        : "var(--text-secondary)",
+                  }}
+                >
+                  {syncStatus === "syncing" && (
+                    <Loader2 size={12} className="animate-spin" />
+                  )}
+                  {syncStatus === "success" && <Check size={12} />}
+                  <span>
+                    {syncStatus === "syncing"
+                      ? "Syncing..."
+                      : syncStatus === "success"
+                        ? "Synced"
+                        : syncStatus === "error"
+                          ? "Retry"
+                          : "Sync Now"}
                   </span>
-                  <p
-                    className="text-[11px]"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    Auto-lock after period of inactivity
-                  </p>
-                </div>
-                <div className="flex gap-2 pt-1">
-                  {[
-                    { label: "Immediately", value: 0 },
-                    { label: "1 Minute", value: 1 },
-                    { label: "5 Minutes", value: 5 },
-                  ].map((opt) => {
-                    const isSelected =
-                      securitySettings.timeoutMinutes === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => {
-                          updateSecuritySettings({ timeoutMinutes: opt.value });
-                          triggerHaptic("light");
-                        }}
-                        className="flex-1 py-2 px-2.5 rounded-xl text-[11px] font-bold transition-all text-center cursor-pointer"
-                        style={{
-                          background: isSelected
-                            ? "var(--bg-elevated)"
-                            : "var(--glass-fill)",
-                          border: isSelected
-                            ? "1px solid var(--text-primary)"
-                            : "1px solid var(--glass-border)",
-                          color: isSelected
-                            ? "var(--text-primary)"
-                            : "var(--text-secondary)",
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                </button>
               </div>
+            )}
 
-              <div
-                className="h-[1px] w-full"
-                style={{ background: "var(--glass-border)" }}
-              />
-
-              {/* Security PIN Option */}
+            {/* Encrypted Vault */}
+            {showVault && (
               <button
                 type="button"
                 onClick={() => {
-                  setPinModalOpen(true);
+                  setVaultDefaultTab("export");
+                  setVaultModalOpen(true);
                   triggerHaptic("light");
                 }}
                 className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
               >
-                <div className="space-y-0.5">
-                  <span
-                    className="text-[13.5px] font-semibold block"
-                    style={{ color: "var(--text-primary)" }}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
                   >
-                    {securitySettings.hasPin
-                      ? "Change Backup PIN"
-                      : "Setup Backup PIN"}
-                  </span>
-                  <p
-                    className="text-[11px]"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {securitySettings.hasPin
-                      ? "Backup passcode active for unlock"
-                      : "Unlock using 4-6 digit numeric PIN"}
-                  </p>
+                    <FileLock2 size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Encrypted Vault
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Offline AES-256 backup & restore
+                    </p>
+                  </div>
                 </div>
-                <ChevronRight
-                  size={18}
-                  style={{ color: "var(--text-tertiary)" }}
-                />
+                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
               </button>
-            </>
-          )}
+            )}
 
-          <div
-            className="h-[1px] w-full"
-            style={{ background: "var(--glass-border)" }}
-          />
+            {/* Export CSV */}
+            {showExport && (
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <FileSpreadsheet size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Export CSV
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Download spreadsheet ledger
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+              </button>
+            )}
 
-          {/* Camera & Gallery Access (Moved to Security & Privacy!) */}
-          <button
-            type="button"
-            onClick={() => setMediaPermissionsOpen(true)}
-            className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left w-full"
+            {/* Reset Data */}
+            {showReset && (
+              <button
+                type="button"
+                onClick={() => setResetOpen(true)}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <RotateCcw size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Reset Data
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Purge transactions or period data
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ============================================================ */}
+      {/* 5. SECURITY & PRIVACY */}
+      {/* ============================================================ */}
+      {hasSection4 && (
+        <section>
+          <h2
+            className="text-[11px] font-semibold uppercase tracking-wider mb-2.5 px-1"
+            style={{ color: "var(--text-tertiary)" }}
           >
-            <div className="space-y-0.5">
-              <span
-                className="text-[13.5px] font-semibold block"
-                style={{ color: "var(--text-primary)" }}
+            Security & Privacy
+          </h2>
+          <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col divide-y divide-[var(--glass-border)]">
+            {/* Privacy Shield Toggle */}
+            {showPrivacyShield && (
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <EyeOff size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0 pr-3">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Privacy Shield
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Hide balances across all pages
+                    </p>
+                  </div>
+                </div>
+                {/* Apple iOS Switch */}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isPrivacyShieldEnabled}
+                  onClick={() => {
+                    togglePrivacyShield();
+                    showToast(
+                      isPrivacyShieldEnabled
+                        ? "Privacy Shield disabled"
+                        : "Privacy Shield enabled",
+                      "update",
+                      () => {},
+                    );
+                  }}
+                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
+                    isPrivacyShieldEnabled
+                      ? "bg-white dark:bg-white"
+                      : "bg-zinc-300 dark:bg-zinc-700"
+                  }`}
+                >
+                  <div
+                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
+                      isPrivacyShieldEnabled
+                        ? "translate-x-4.5 bg-black dark:bg-black"
+                        : "translate-x-0 bg-white"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
+            {/* Toggle: Require Face ID / PIN */}
+            {showFaceID && (
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <ShieldCheck size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0 pr-3">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Require Face ID / PIN
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Biometric app lock on resume
+                    </p>
+                  </div>
+                </div>
+                {/* Apple iOS Switch */}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={securitySettings.enabled}
+                  onClick={async () => {
+                    if (!securitySettings.enabled) {
+                      // Require backup PIN first to guarantee user is never locked out
+                      if (!securitySettings.hasPin) {
+                        showToast(
+                          "Please set up a backup PIN first to enable app lock",
+                          "info",
+                          null,
+                          3000,
+                        );
+                        setPinModalOpen(true);
+                        return;
+                      }
+
+                      if (isBiometricSupported && !securitySettings.hasBiometric) {
+                        try {
+                          await enrollBiometric(session?.user?.email || undefined);
+                          if (session) {
+                            saveBiometricLoginCredentials(session.user?.email || "", session);
+                          }
+                          updateSecuritySettings({ enabled: true });
+                          showToast(
+                            "Face ID / Biometrics enabled",
+                            "update",
+                            () => {},
+                          );
+                        } catch (err: any) {
+                          showToast(
+                            err?.message ||
+                              "Biometric setup failed. App lock enabled with PIN.",
+                            "info",
+                            null,
+                            3000,
+                          );
+                          updateSecuritySettings({ enabled: true });
+                        }
+                      } else {
+                        updateSecuritySettings({ enabled: true });
+                        triggerHaptic("medium");
+                        showToast("App lock enabled", "update", () => {});
+                      }
+                    } else {
+                      updateSecuritySettings({ enabled: false });
+                      triggerHaptic("light");
+                      showToast("App lock disabled", "update", () => {});
+                    }
+                  }}
+                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
+                    securitySettings.enabled
+                      ? "bg-white dark:bg-white"
+                      : "bg-zinc-300 dark:bg-zinc-700"
+                  }`}
+                >
+                  <div
+                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
+                      securitySettings.enabled
+                        ? "translate-x-4.5 bg-black dark:bg-black"
+                        : "translate-x-0 bg-white"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
+            {securitySettings.enabled && (
+              <>
+                {/* Timeout Preference */}
+                {showTimeout && (
+                  <div className="p-4 space-y-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: "var(--bg-elevated)",
+                          border: "1px solid var(--glass-border)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        <Clock size={16} strokeWidth={1.75} />
+                      </div>
+                      <div className="min-w-0">
+                        <span
+                          className="text-[13px] font-semibold block"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          Lock Timeout
+                        </span>
+                        <p
+                          className="text-[11px]"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          Lock after period of inactivity
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      {[
+                        { label: "Immediately", value: 0 },
+                        { label: "1 Minute", value: 1 },
+                        { label: "5 Minutes", value: 5 },
+                      ].map((opt) => {
+                        const isSelected =
+                          securitySettings.timeoutMinutes === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              updateSecuritySettings({ timeoutMinutes: opt.value });
+                              triggerHaptic("light");
+                            }}
+                            className="flex-1 py-2 px-2.5 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer"
+                            style={{
+                              background: isSelected
+                                ? "var(--bg-elevated)"
+                                : "var(--glass-fill)",
+                              border: isSelected
+                                ? "1px solid var(--text-primary)"
+                                : "1px solid var(--glass-border)",
+                              color: isSelected
+                                ? "var(--text-primary)"
+                                : "var(--text-secondary)",
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Security PIN Option */}
+                {showBackupPin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPinModalOpen(true);
+                      triggerHaptic("light");
+                    }}
+                    className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: "var(--bg-elevated)",
+                          border: "1px solid var(--glass-border)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        <KeyRound size={16} strokeWidth={1.75} />
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <span
+                          className="text-[13px] font-semibold block"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {securitySettings.hasPin
+                            ? "Change Backup PIN"
+                            : "Setup Backup PIN"}
+                        </span>
+                        <p
+                          className="text-[11px]"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {securitySettings.hasPin
+                            ? "Backup passcode active for unlock"
+                            : "Unlock using 4-6 digit PIN"}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight
+                      size={18}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Camera & Gallery Access (Moved to Security & Privacy!) */}
+            {showMedia && (
+              <button
+                type="button"
+                onClick={() => setMediaPermissionsOpen(true)}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left w-full"
               >
-                Camera & Photos Access
-              </span>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Receipt scanner permissions & privacy
-              </p>
-            </div>
-            <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-          </button>
-        </div>
-      </section>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Camera size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Camera & Photos Access
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Receipt scanner & photo access
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ============================================================ */}
       {/* 6. LOGOUT */}
       {/* ============================================================ */}
-      <button
-        onClick={handleLogout}
-        className="w-full p-4 rounded-[24px] font-semibold text-[13.5px] flex items-center justify-center gap-2 active:scale-98 transition-all mb-6 cursor-pointer"
-        style={{
-          background: "var(--glass-fill)",
-          border: "1px solid var(--glass-border)",
-          color: "var(--text-secondary)",
-        }}
-      >
-        <LogOut size={15} strokeWidth={1.75} /> Sign Out
-      </button>
+      {!searchQuery.trim() && (
+        <button
+          onClick={handleLogout}
+          className="w-full p-4 rounded-[24px] font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-98 transition-all mb-6 cursor-pointer"
+          style={{
+            background: "var(--glass-fill)",
+            border: "1px solid var(--glass-border)",
+            color: "var(--text-primary)",
+          }}
+        >
+          <LogOut size={16} strokeWidth={1.75} />
+          <span>Log Out</span>
+        </button>
+      )}
 
       {/* ============================================================ */}
       {/* MODULAR BOTTOM SHEETS / MODALS */}

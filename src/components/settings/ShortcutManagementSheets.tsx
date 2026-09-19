@@ -69,7 +69,7 @@ export function ShortcutManagementSheets({
             <div>
               <div className="flex justify-between items-center w-full">
                 <h3
-                  className="font-extrabold text-lg"
+                  className="font-semibold text-lg"
                   style={{ color: "var(--text-primary)" }}
                 >
                   Quick-Add Shortcuts
@@ -181,7 +181,7 @@ export function ShortcutManagementSheets({
       >
         <div className="p-5 pb-12 space-y-4">
           <h3
-            className="font-extrabold text-lg"
+            className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
             Add Shortcut
@@ -270,7 +270,7 @@ export function ShortcutManagementSheets({
               </label>
               <button
                 onClick={() => setShortcutMoreCatOpen(true)}
-                className="text-[11px] font-extrabold flex items-center gap-0.5 active:scale-95 cursor-pointer"
+                className="text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 cursor-pointer"
                 style={{ color: "var(--text-secondary)" }}
               >
                 More <MoreHorizontal size={12} />
@@ -326,7 +326,7 @@ export function ShortcutManagementSheets({
               </label>
               <button
                 onClick={() => setShortcutMoreWalletOpen(true)}
-                className="text-[11px] font-extrabold flex items-center gap-0.5 active:scale-95 cursor-pointer"
+                className="text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 cursor-pointer"
                 style={{ color: "var(--text-secondary)" }}
               >
                 More <MoreHorizontal size={12} />
@@ -371,7 +371,7 @@ export function ShortcutManagementSheets({
 
           <button
             onClick={handleSave}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg mt-2 cursor-pointer"
+            className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg mt-2 cursor-pointer"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             Save Shortcut
@@ -386,7 +386,7 @@ export function ShortcutManagementSheets({
       >
         <div className="p-5 pb-12">
           <h3
-            className="font-extrabold text-lg mb-3"
+            className="font-semibold text-lg mb-3"
             style={{ color: "var(--text-primary)" }}
           >
             Select Category
@@ -442,7 +442,7 @@ export function ShortcutManagementSheets({
       >
         <div className="p-5 pb-12">
           <h3
-            className="font-extrabold text-lg mb-3"
+            className="font-semibold text-lg mb-3"
             style={{ color: "var(--text-primary)" }}
           >
             Select Account

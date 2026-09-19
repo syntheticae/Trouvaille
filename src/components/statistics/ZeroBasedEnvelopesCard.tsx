@@ -100,13 +100,13 @@ export function ZeroBasedEnvelopesCard({
           <div>
             <div className="flex items-center gap-2">
               <h3
-                className="text-[14px] font-extrabold"
+                className="text-[14px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
                 Zero-Based Envelopes
               </h3>
               <span
-                className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
+                className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
                 style={{
                   background: isOverallocated
                     ? "rgba(255, 255, 255, 0.15)"
@@ -141,13 +141,13 @@ export function ZeroBasedEnvelopesCard({
         <div className="flex items-start justify-between">
           <div>
             <span
-              className="text-[10px] font-extrabold uppercase tracking-wider block"
+              className="text-[10px] font-semibold uppercase tracking-wider block"
               style={{ color: "var(--text-tertiary)" }}
             >
               {isOverallocated ? "Deficit to Rebalance" : "Unallocated Cashflow"}
             </span>
             <span
-              className="text-[20px] font-black tracking-tight block mt-0.5"
+              className="text-[20px] font-semibold tracking-tight block mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
               {mask(formatRupiah(Math.abs(unallocatedCash)))}
@@ -156,13 +156,13 @@ export function ZeroBasedEnvelopesCard({
 
           <div className="text-right">
             <span
-              className="text-[10px] font-extrabold uppercase tracking-wider block"
+              className="text-[10px] font-semibold uppercase tracking-wider block"
               style={{ color: "var(--text-tertiary)" }}
             >
               Monthly Inflow Base
             </span>
             <span
-              className="text-[13px] font-black block mt-0.5"
+              className="text-[13px] font-semibold block mt-0.5"
               style={{ color: "var(--text-secondary)" }}
             >
               {mask(formatRupiah(monthlyIncome))}
@@ -198,7 +198,7 @@ export function ZeroBasedEnvelopesCard({
             Fixed Bills
           </span>
           <span
-            className="text-[12px] font-black block mt-1"
+            className="text-[12px] font-semibold block mt-1"
             style={{ color: "var(--text-primary)" }}
           >
             {mask(formatRupiah(totalBillsAllocated))}
@@ -219,7 +219,7 @@ export function ZeroBasedEnvelopesCard({
             Envelopes
           </span>
           <span
-            className="text-[12px] font-black block mt-1"
+            className="text-[12px] font-semibold block mt-1"
             style={{ color: "var(--text-primary)" }}
           >
             {mask(formatRupiah(totalCategoryAllocated))}
@@ -240,7 +240,7 @@ export function ZeroBasedEnvelopesCard({
             Sinking Funds
           </span>
           <span
-            className="text-[12px] font-black block mt-1"
+            className="text-[12px] font-semibold block mt-1"
             style={{ color: "var(--text-primary)" }}
           >
             {mask(formatRupiah(totalGoalsAllocated))}
@@ -284,7 +284,7 @@ export function ZeroBasedEnvelopesCard({
                   </div>
                   <div className="flex items-center gap-1">
                     <span
-                      className="font-black"
+                      className="font-semibold"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {mask(formatRupiah(env.spent))}

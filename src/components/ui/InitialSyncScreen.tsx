@@ -138,7 +138,7 @@ export function InitialSyncScreen({
 
         <div>
           <h3
-            className="font-extrabold text-[15px] tracking-tight leading-tight"
+            className="font-semibold text-[15px] tracking-tight leading-tight"
             style={{ color: "var(--text-primary)" }}
           >
             Initial Sync

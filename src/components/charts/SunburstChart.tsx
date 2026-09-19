@@ -435,7 +435,7 @@ export function SunburstChart({
           {activeArc ? (
             <>
               {/* Active Slice Badge */}
-              <span className="text-[8px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-white/[0.08] text-zinc-400 border border-white/10 mb-0.5 truncate max-w-full">
+              <span className="text-[8px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/[0.08] text-zinc-400 border border-white/10 mb-0.5 truncate max-w-full">
                 {activeArc.tier === "parent"
                   ? "Sector"
                   : parentOfActive?.name || "Child"}
@@ -459,7 +459,7 @@ export function SunburstChart({
               </p>
 
               {/* Percentage of Total */}
-              <span className="text-[9.5px] font-mono text-zinc-400 mt-0.5">
+              <span className="text-[10px] font-mono text-zinc-400 mt-0.5">
                 {activeArc.percentage}% share
               </span>
             </>
@@ -485,7 +485,7 @@ export function SunburstChart({
               </p>
 
               <span
-                className="text-[8.5px] font-medium tracking-tight mt-0.5 block"
+                className="text-[9px] font-medium tracking-tight mt-0.5 block"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {data.length} Sectors

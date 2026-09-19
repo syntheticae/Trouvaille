@@ -93,7 +93,7 @@ export function CategoryManagementSheets({
           <div className="flex items-center justify-between">
             <div>
               <h3
-                className="font-extrabold text-lg"
+                className="font-semibold text-lg"
                 style={{ color: "var(--text-primary)" }}
               >
                 Categories
@@ -306,7 +306,7 @@ export function CategoryManagementSheets({
       >
         <div className="p-5 pb-16 space-y-4">
           <h3
-            className="font-extrabold text-lg"
+            className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
             Edit Category
@@ -333,7 +333,7 @@ export function CategoryManagementSheets({
                 title="Tap to change icon"
               >
                 <IconRenderer icon={editCategory?.emoji || "Tag"} size="w-6 h-6" />
-                <span className="text-[8.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                <span className="text-[9px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                   Change
                 </span>
               </button>
@@ -395,7 +395,7 @@ export function CategoryManagementSheets({
 
           <button
             onClick={handleUpdateCategory}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg cursor-pointer"
+            className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg cursor-pointer"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             Save Changes
@@ -407,7 +407,7 @@ export function CategoryManagementSheets({
       <BottomSheet isOpen={addCatOpen} onClose={() => setAddCatOpen(false)}>
         <div className="p-5 pb-16 space-y-4">
           <h3
-            className="font-extrabold text-lg"
+            className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
             Add Category
@@ -459,7 +459,7 @@ export function CategoryManagementSheets({
                 title="Tap to change icon"
               >
                 <IconRenderer icon={catIcon} size="w-6 h-6" />
-                <span className="text-[8.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                <span className="text-[9px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                   Change
                 </span>
               </button>
@@ -487,7 +487,7 @@ export function CategoryManagementSheets({
 
           <button
             onClick={handleSaveCategory}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 cursor-pointer"
+            className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 cursor-pointer"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             Save Category

@@ -884,7 +884,7 @@ export function TransactionSheet({
                   if (s.wallet_id) setWalletId(s.wallet_id);
                   triggerHaptic("light");
                 }}
-                className="whitespace-nowrap px-2.5 py-1 rounded-full text-[10.5px] font-medium shrink-0 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
+                className="whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
@@ -969,7 +969,7 @@ export function TransactionSheet({
                 }
               }}
               placeholder="0"
-              className="text-[42px] sm:text-[46px] font-black amount tracking-tight leading-none bg-transparent outline-none text-left min-w-[60px] max-w-[240px]"
+              className="text-[42px] sm:text-[46px] font-semibold amount tracking-tight leading-none bg-transparent outline-none text-left min-w-[60px] max-w-[240px]"
               style={{
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -991,7 +991,7 @@ export function TransactionSheet({
                     evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
                   );
                 }}
-                className="px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold inline-flex items-center gap-1.5 active:scale-95 transition-all shadow-md cursor-pointer select-none"
+                className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold inline-flex items-center gap-1.5 active:scale-95 transition-all shadow-md cursor-pointer select-none"
                 style={{
                   background:
                     "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
@@ -1024,7 +1024,7 @@ export function TransactionSheet({
                   setAmount(String(next));
                   setAmountInput(next.toLocaleString("id-ID"));
                 }}
-                className="px-3 py-1.5 rounded-xl text-[11.5px] font-bold active:scale-90 transition-transform cursor-pointer select-none"
+                className="px-3 py-1.5 rounded-xl text-[11px] font-bold active:scale-90 transition-transform cursor-pointer select-none"
                 style={{
                   background:
                     "linear-gradient(155deg, #222227 0%, #141417 100%)",
@@ -1047,7 +1047,7 @@ export function TransactionSheet({
                   const base = amountInput ? amountInput.trim() : "0";
                   setAmountInput(`${base} ${op} `);
                 }}
-                className="w-8 h-7.5 rounded-xl text-[12.5px] font-black flex items-center justify-center active:scale-90 transition-transform cursor-pointer select-none"
+                className="w-8 h-7.5 rounded-xl text-[12px] font-semibold flex items-center justify-center active:scale-90 transition-transform cursor-pointer select-none"
                 style={{
                   background:
                     "linear-gradient(155deg, #222227 0%, #141417 100%)",
@@ -1084,7 +1084,7 @@ export function TransactionSheet({
             <motion.div
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-2.5 mx-2 px-3 py-2 rounded-xl flex items-center justify-between text-[11.5px] font-medium"
+              className="mt-2.5 mx-2 px-3 py-2 rounded-xl flex items-center justify-between text-[11px] font-medium"
               style={{
                 background: budgetImpact.isOver
                   ? "rgba(239, 68, 68, 0.12)"
@@ -1148,7 +1148,7 @@ export function TransactionSheet({
           <div className="mb-4.5">
             <div className="flex items-center justify-between mb-2 px-1">
               <span
-                className="text-[10.5px] font-semibold uppercase tracking-wider"
+                className="text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Category
@@ -1178,7 +1178,7 @@ export function TransactionSheet({
                       triggerHaptic("light");
                       setCategoryId(cat.id);
                     }}
-                    className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12.5px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
+                    className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
                     style={{
                       background: isSelected
                         ? "rgba(255, 255, 255, 0.14)"
@@ -1206,7 +1206,7 @@ export function TransactionSheet({
                   triggerHaptic("light");
                   setMoreCatOpen(true);
                 }}
-                className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11.5px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px dashed var(--glass-border)",
@@ -1226,7 +1226,7 @@ export function TransactionSheet({
             <div>
               <div className="flex items-center justify-between mb-2 px-1">
                 <span
-                  className="text-[10.5px] font-semibold uppercase tracking-wider"
+                  className="text-[11px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   From Account
@@ -1257,7 +1257,7 @@ export function TransactionSheet({
                         triggerHaptic("light");
                         setWalletId(w.id);
                       }}
-                      className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12.5px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
+                      className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
                       style={{
                         background: isSelected
                           ? "rgba(255, 255, 255, 0.14)"
@@ -1286,7 +1286,7 @@ export function TransactionSheet({
                     setWalletTarget("from");
                     setMoreWalletOpen(true);
                   }}
-                  className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11.5px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                  className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
                   style={{
                     background: "var(--glass-fill)",
                     border: "1px dashed var(--glass-border)",
@@ -1302,7 +1302,7 @@ export function TransactionSheet({
             <div>
               <div className="flex items-center justify-between mb-2 px-1">
                 <span
-                  className="text-[10.5px] font-semibold uppercase tracking-wider"
+                  className="text-[11px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   To Account
@@ -1333,7 +1333,7 @@ export function TransactionSheet({
                         triggerHaptic("light");
                         setToWalletId(w.id);
                       }}
-                      className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12.5px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
+                      className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
                       style={{
                         background: isSelected
                           ? "rgba(255, 255, 255, 0.14)"
@@ -1362,7 +1362,7 @@ export function TransactionSheet({
                     setWalletTarget("to");
                     setMoreWalletOpen(true);
                   }}
-                  className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11.5px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                  className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
                   style={{
                     background: "var(--glass-fill)",
                     border: "1px dashed var(--glass-border)",
@@ -1378,7 +1378,7 @@ export function TransactionSheet({
           <div className="mb-4.5">
             <div className="flex items-center justify-between mb-2 px-1">
               <span
-                className="text-[10.5px] font-semibold uppercase tracking-wider"
+                className="text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Account
@@ -1409,7 +1409,7 @@ export function TransactionSheet({
                       triggerHaptic("light");
                       setWalletId(w.id);
                     }}
-                    className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12.5px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
+                    className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
                     style={{
                       background: isSelected
                         ? "rgba(255, 255, 255, 0.14)"
@@ -1438,7 +1438,7 @@ export function TransactionSheet({
                   setWalletTarget("from");
                   setMoreWalletOpen(true);
                 }}
-                className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11.5px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
+                className="whitespace-nowrap px-3 py-2 rounded-2xl text-[11px] font-medium flex items-center gap-1 shrink-0 transition-all active:scale-95 cursor-pointer"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px dashed var(--glass-border)",
@@ -1503,7 +1503,7 @@ export function TransactionSheet({
                     triggerHaptic("light");
                     setDateOpen(true);
                   }}
-                  className="px-2.5 py-1 rounded-xl text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1 rounded-xl text-[11px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
                   style={{
                     background: "var(--glass-fill)",
                     border: "1px solid var(--glass-border)",
@@ -1523,7 +1523,7 @@ export function TransactionSheet({
                     triggerHaptic("light");
                     setTimeOpen(true);
                   }}
-                  className="px-2.5 py-1 rounded-xl text-[11.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1 rounded-xl text-[11px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
                   style={{
                     background: "var(--glass-fill)",
                     border: "1px solid var(--glass-border)",
@@ -1558,7 +1558,7 @@ export function TransactionSheet({
                 if (merchantPrediction.walletId)
                   setWalletId(merchantPrediction.walletId);
               }}
-              className="px-3 py-1.5 rounded-xl text-[11.5px] font-medium flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer select-none"
+              className="px-3 py-1.5 rounded-xl text-[11px] font-medium flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer select-none"
               style={{
                 background: "var(--glass-fill)",
                 border: "1px solid var(--glass-border)",
@@ -1720,7 +1720,7 @@ export function TransactionSheet({
                       setSplitMode("friends");
                       triggerHaptic("light");
                     }}
-                    className="flex-1 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all"
+                    className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all"
                     style={{
                       background:
                         splitMode === "friends"
@@ -1745,7 +1745,7 @@ export function TransactionSheet({
                       setSplitMode("categories");
                       triggerHaptic("light");
                     }}
-                    className="flex-1 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all"
+                    className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all"
                     style={{
                       background:
                         splitMode === "categories"
@@ -2048,7 +2048,7 @@ export function TransactionSheet({
                           {formatRupiah(myShareFriends)}
                         </p>
                         <p
-                          className="text-[9.5px]"
+                          className="text-[10px]"
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           Personal Expense
@@ -2070,7 +2070,7 @@ export function TransactionSheet({
                           {formatRupiah(friendsShare)}
                         </p>
                         <p
-                          className="text-[9.5px]"
+                          className="text-[10px]"
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           Piutang ({peopleCount - 1} friend
@@ -2097,7 +2097,7 @@ export function TransactionSheet({
                           Part 1 (Primary)
                         </span>
                         <p
-                          className="text-[13px] font-extrabold amount"
+                          className="text-[13px] font-semibold amount"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {formatRupiah(cat1Share)}
@@ -2125,7 +2125,7 @@ export function TransactionSheet({
                           <select
                             value={itemCatId2 || ""}
                             onChange={(e) => setItemCatId2(e.target.value)}
-                            className="bg-transparent text-[10px] font-extrabold outline-none"
+                            className="bg-transparent text-[10px] font-semibold outline-none"
                             style={{ color: "var(--text-primary)" }}
                           >
                             {categories.map((c) => (
@@ -2140,7 +2140,7 @@ export function TransactionSheet({
                           </select>
                         </div>
                         <p
-                          className="text-[13px] font-extrabold amount"
+                          className="text-[13px] font-semibold amount"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {formatRupiah(cat2Share)}
@@ -2229,7 +2229,7 @@ export function TransactionSheet({
               addTx.isPending ||
               updateTx.isPending
             }
-            className="flex-1 h-12 rounded-2xl font-semibold text-[13.5px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border border-white/80"
+            className="flex-1 h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border border-white/80"
             style={{
               background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
               color: "#000000",
@@ -2290,7 +2290,7 @@ export function TransactionSheet({
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3
-                className="font-extrabold text-[18px] leading-tight"
+                className="font-semibold text-[18px] leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 Select Category
@@ -2307,7 +2307,7 @@ export function TransactionSheet({
                 setMoreCatOpen(false);
                 setSearchCatQuery("");
               }}
-              className="text-[12px] font-extrabold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform"
+              className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform"
               style={{
                 background: "var(--glass-fill)",
                 color: "var(--text-primary)",
@@ -2393,7 +2393,7 @@ export function TransactionSheet({
                     >
                       <IconRenderer icon={cat.emoji} size="w-6 h-6" />
                     </div>
-                    <span className="text-[10.5px] font-bold text-center line-clamp-1 truncate w-full px-0.5">
+                    <span className="text-[11px] font-bold text-center line-clamp-1 truncate w-full px-0.5">
                       {cat.name}
                     </span>
                   </button>
@@ -2416,7 +2416,7 @@ export function TransactionSheet({
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3
-                className="font-extrabold text-[18px] leading-tight"
+                className="font-semibold text-[18px] leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 Select Account / Wallet
@@ -2436,7 +2436,7 @@ export function TransactionSheet({
                 setMoreWalletOpen(false);
                 setSearchWalletQuery("");
               }}
-              className="text-[12px] font-extrabold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform"
+              className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform"
               style={{
                 background: "var(--glass-fill)",
                 color: "var(--text-primary)",
@@ -2539,7 +2539,7 @@ export function TransactionSheet({
       <BottomSheet isOpen={dateOpen} onClose={() => setDateOpen(false)}>
         <div className="p-5 pb-10 flex flex-col items-center">
           <h3
-            className="font-extrabold text-lg mb-4"
+            className="font-semibold text-lg mb-4"
             style={{ color: "var(--text-primary)" }}
           >
             Select Date
@@ -2558,7 +2558,7 @@ export function TransactionSheet({
       <BottomSheet isOpen={timeOpen} onClose={() => setTimeOpen(false)}>
         <div className="p-5 pb-12 flex flex-col items-center">
           <h3
-            className="font-extrabold text-lg mb-1"
+            className="font-semibold text-lg mb-1"
             style={{ color: "var(--text-primary)" }}
           >
             Select Time
@@ -2581,7 +2581,7 @@ export function TransactionSheet({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="bg-transparent text-3xl font-extrabold amount text-center outline-none cursor-pointer"
+              className="bg-transparent text-3xl font-semibold amount text-center outline-none cursor-pointer"
               style={{ color: "var(--text-primary)", colorScheme: "dark" }}
             />
           </div>
@@ -2618,7 +2618,7 @@ export function TransactionSheet({
           <button
             type="button"
             onClick={() => setTimeOpen(false)}
-            className="w-full max-w-[280px] h-11 mt-6 rounded-2xl font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer border border-white/80"
+            className="w-full max-w-[280px] h-11 mt-6 rounded-2xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer border border-white/80"
             style={{
               background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
               color: "#000000",

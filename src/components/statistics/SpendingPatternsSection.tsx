@@ -45,11 +45,11 @@ export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionPro
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>
+              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
                 Spending Patterns
               </span>
               <span
-                className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full"
+                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
                 style={{
                   background: "var(--glass-fill)",
                   color: "var(--text-secondary)",
@@ -93,7 +93,7 @@ export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionPro
                 >
                   <div className="flex justify-between items-center">
                     <span
-                      className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                      className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
                       style={{
                         background: "rgba(255, 255, 255, 0.08)",
                         color: "var(--text-secondary)",

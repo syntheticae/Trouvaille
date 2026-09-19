@@ -1,0 +1,841 @@
+import { useState, useMemo } from "react";
+import {
+  runMonteCarloSimulation,
+  type MonteCarloSimulationResult,
+} from "../../lib/monteCarloEngine";
+import { formatRupiah } from "../../lib/utils";
+import { triggerHaptic } from "../../lib/haptics";
+import { BottomSheet } from "../ui/BottomSheet";
+import {
+  Flame,
+  RotateCcw,
+  Sparkles,
+  AlertTriangle,
+  CheckCircle2,
+  ShieldCheck,
+  Target,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ReferenceLine,
+} from "recharts";
+
+interface MonteCarloSimulatorSheetProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialNetWorth: number;
+  defaultMonthlySavings: number;
+  defaultMonthlyBurnRate: number;
+  hideBalance?: boolean;
+}
+
+type LabTab = "fan" | "milestones" | "stress" | "insights";
+
+export function MonteCarloSimulatorSheet({
+  isOpen,
+  onClose,
+  initialNetWorth,
+  defaultMonthlySavings,
+  defaultMonthlyBurnRate,
+  hideBalance = false,
+}: MonteCarloSimulatorSheetProps) {
+  // Parameters
+  const [horizonYears, setHorizonYears] = useState<number>(20);
+  const [monthlySavings, setMonthlySavings] = useState<number>(
+    Math.max(1000000, defaultMonthlySavings || 3000000)
+  );
+  const [annualReturn, setAnnualReturn] = useState<number>(0.085);
+  const [annualVolatility, setAnnualVolatility] = useState<number>(0.15);
+  const [annualInflation, setAnnualInflation] = useState<number>(0.035);
+  const [swr, setSwr] = useState<number>(0.04);
+  const [earlyShock, setEarlyShock] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<LabTab>("fan");
+  const [seed, setSeed] = useState<number>(0);
+
+  // Annual living expenses (baseline: monthly burn rate * 12)
+  const annualExpenses = useMemo(() => {
+    return Math.max(12000000, (defaultMonthlyBurnRate || 3500000) * 12);
+  }, [defaultMonthlyBurnRate]);
+
+  // Run simulation reactively
+  const simulation: MonteCarloSimulationResult = useMemo(() => {
+    // seed triggers fresh simulation pass
+    return runMonteCarloSimulation({
+      initialNetWorth: Math.max(0, initialNetWorth),
+      monthlyContribution: monthlySavings,
+      annualExpenses,
+      years: horizonYears,
+      expectedAnnualReturn: annualReturn,
+      annualVolatility,
+      annualInflation,
+      safeWithdrawalRate: swr,
+      iterations: 600,
+      earlyShock,
+    });
+  }, [
+    initialNetWorth,
+    monthlySavings,
+    annualExpenses,
+    horizonYears,
+    annualReturn,
+    annualVolatility,
+    annualInflation,
+    swr,
+    earlyShock,
+    seed,
+  ]);
+
+  const {
+    fireMilestones,
+    successRate,
+    resilienceRating,
+    terminalValues,
+    yearlyTrajectory,
+    sequenceOfReturnsImpact,
+    insights,
+  } = simulation;
+
+  // Chart data formatting
+  const chartData = useMemo(() => {
+    return yearlyTrajectory.map((item) => ({
+      year: item.year,
+      yearLabel: item.year === 0 ? "Now" : `Y${item.year}`,
+      p10: item.p10,
+      p25: item.p25,
+      p50: item.p50,
+      p75: item.p75,
+      p90: item.p90,
+      fireTarget: item.fireTarget,
+    }));
+  }, [yearlyTrajectory]);
+
+  // Presets
+  const applyPreset = (preset: "conservative" | "moderate" | "aggressive") => {
+    triggerHaptic("light");
+    if (preset === "conservative") {
+      setAnnualReturn(0.06);
+      setAnnualVolatility(0.1);
+    } else if (preset === "moderate") {
+      setAnnualReturn(0.085);
+      setAnnualVolatility(0.15);
+    } else {
+      setAnnualReturn(0.11);
+      setAnnualVolatility(0.2);
+    }
+  };
+
+  const handleResetDefaults = () => {
+    triggerHaptic("medium");
+    setHorizonYears(20);
+    setMonthlySavings(Math.max(1000000, defaultMonthlySavings || 3000000));
+    setAnnualReturn(0.085);
+    setAnnualVolatility(0.15);
+    setAnnualInflation(0.035);
+    setSwr(0.04);
+    setEarlyShock(false);
+    setSeed((s) => s + 1);
+  };
+
+  return (
+    <BottomSheet isOpen={isOpen} onClose={onClose}>
+      <div className="p-5 pb-24 space-y-4 max-h-[86dvh] overflow-y-auto safe-area-bottom select-none">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <Flame size={20} strokeWidth={1.75} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3
+                  className="font-semibold text-[16px] tracking-tight"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  Monte Carlo & FIRE Lab
+                </h3>
+                <span
+                  className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
+                  style={{
+                    background: "var(--glass-fill-strong)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  Simulation
+                </span>
+              </div>
+              <p
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Probabilistic retirement trajectory & market resilience
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleResetDefaults}
+            className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-secondary)",
+            }}
+            title="Reset Simulation Parameters"
+          >
+            <RotateCcw size={13} />
+          </button>
+        </div>
+
+        {/* Hero Resilience Banner */}
+        <div
+          className="p-4 rounded-[22px] flex items-center justify-between"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <div>
+            <p
+              className="text-[10px] font-bold uppercase tracking-wider"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Monte Carlo Probability
+            </p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span
+                className="text-[28px] font-semibold tracking-tight leading-none"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {successRate}%
+              </span>
+              <span
+                className="text-[12px] font-bold"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {resilienceRating}
+              </span>
+            </div>
+            <p
+              className="text-[11px] font-medium mt-1"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Standard FIRE Goal: {hideBalance ? "••••••" : formatRupiah(fireMilestones.standard.targetAmount)}
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              triggerHaptic("light");
+              setSeed((s) => s + 1);
+            }}
+            className="py-2 px-3 rounded-xl flex items-center gap-1.5 text-[11px] font-bold active:scale-95 transition-transform"
+            style={{
+              background: "var(--glass-fill-strong)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <Sparkles size={13} /> Re-Simulate
+          </button>
+        </div>
+
+        {/* Interactive Parameter Controls Box */}
+        <div
+          className="p-4 rounded-[22px] space-y-3.5"
+          style={{
+            background: "var(--glass-fill)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <div className="flex justify-between items-center">
+            <span
+              className="text-[11px] font-bold uppercase tracking-wider"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Simulation Horizon & Strategy
+            </span>
+            {/* Quick Strategy Presets */}
+            <div className="flex items-center gap-1">
+              {(["conservative", "moderate", "aggressive"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => applyPreset(p)}
+                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold capitalize transition-all"
+                  style={{
+                    background:
+                      (p === "conservative" && annualReturn === 0.06) ||
+                      (p === "moderate" && annualReturn === 0.085) ||
+                      (p === "aggressive" && annualReturn === 0.11)
+                        ? "var(--glass-fill-strong)"
+                        : "transparent",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Horizon Selection */}
+          <div>
+            <div className="flex justify-between text-[11px] font-semibold mb-1.5">
+              <span style={{ color: "var(--text-secondary)" }}>Horizon</span>
+              <span style={{ color: "var(--text-primary)" }}>{horizonYears} Years</span>
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {[10, 15, 20, 25, 30].map((yr) => (
+                <button
+                  key={yr}
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setHorizonYears(yr);
+                  }}
+                  className="py-1.5 rounded-xl text-[11px] font-bold transition-all text-center"
+                  style={{
+                    background:
+                      horizonYears === yr
+                        ? "var(--glass-fill-strong)"
+                        : "var(--bg-elevated)",
+                    color:
+                      horizonYears === yr
+                        ? "var(--text-primary)"
+                        : "var(--text-tertiary)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  {yr}Y
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Monthly Contribution Slider & Stepper */}
+          <div>
+            <div className="flex justify-between text-[11px] font-semibold mb-1">
+              <span style={{ color: "var(--text-secondary)" }}>Monthly Contribution</span>
+              <span className="font-bold" style={{ color: "var(--text-primary)" }}>
+                {hideBalance ? "••••••" : formatRupiah(monthlySavings)} / mo
+              </span>
+            </div>
+            <input
+              type="range"
+              min={500000}
+              max={25000000}
+              step={500000}
+              value={monthlySavings}
+              onChange={(e) => setMonthlySavings(Number(e.target.value))}
+              className="w-full accent-[var(--text-primary)] cursor-pointer"
+            />
+            <div className="flex justify-between text-[9px] font-bold text-[var(--text-tertiary)] mt-0.5">
+              <span>Rp 500K</span>
+              <span>Rp 12.5M</span>
+              <span>Rp 25M</span>
+            </div>
+          </div>
+
+          {/* Expected Return & Volatility Sliders */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <div className="flex justify-between text-[10px] font-semibold mb-1">
+                <span style={{ color: "var(--text-secondary)" }}>Return (Nominal)</span>
+                <span className="font-bold" style={{ color: "var(--text-primary)" }}>
+                  {(annualReturn * 100).toFixed(1)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0.04}
+                max={0.14}
+                step={0.005}
+                value={annualReturn}
+                onChange={(e) => setAnnualReturn(Number(e.target.value))}
+                className="w-full accent-[var(--text-primary)] cursor-pointer"
+              />
+            </div>
+            <div>
+              <div className="flex justify-between text-[10px] font-semibold mb-1">
+                <span style={{ color: "var(--text-secondary)" }}>Volatility (σ)</span>
+                <span className="font-bold" style={{ color: "var(--text-primary)" }}>
+                  {(annualVolatility * 100).toFixed(1)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0.08}
+                max={0.24}
+                step={0.01}
+                value={annualVolatility}
+                onChange={(e) => setAnnualVolatility(Number(e.target.value))}
+                className="w-full accent-[var(--text-primary)] cursor-pointer"
+              />
+            </div>
+          </div>
+
+          {/* Safe Withdrawal Rate & Early Shock Toggle */}
+          <div className="pt-2 border-t border-[var(--glass-border)] flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>
+                SWR:
+              </span>
+              <div className="flex items-center gap-1">
+                {[0.035, 0.04, 0.045].map((rate) => (
+                  <button
+                    key={rate}
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setSwr(rate);
+                    }}
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-bold"
+                    style={{
+                      background: swr === rate ? "var(--glass-fill-strong)" : "transparent",
+                      color: swr === rate ? "var(--text-primary)" : "var(--text-tertiary)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {(rate * 100).toFixed(1)}%
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                triggerHaptic("light");
+                setEarlyShock(!earlyShock);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all"
+              style={{
+                background: earlyShock ? "rgba(255, 255, 255, 0.15)" : "transparent",
+                color: earlyShock ? "var(--text-primary)" : "var(--text-tertiary)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <AlertTriangle size={11} /> -25% Early Shock
+            </button>
+          </div>
+        </div>
+
+        {/* View Mode Navigation Tabs */}
+        <div
+          className="flex items-center gap-1 p-1 rounded-2xl"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          {[
+            { key: "fan", label: "Fan Chart" },
+            { key: "milestones", label: "FIRE Milestones" },
+            { key: "stress", label: "Stress Test" },
+            { key: "insights", label: "Executive Insights" },
+          ].map((t) => (
+            <button
+              key={t.key}
+              onClick={() => {
+                triggerHaptic("light");
+                setActiveTab(t.key as LabTab);
+              }}
+              className="flex-1 py-1.5 rounded-xl text-[11px] font-bold transition-all text-center"
+              style={{
+                background:
+                  activeTab === t.key
+                    ? "var(--glass-fill-strong)"
+                    : "transparent",
+                color:
+                  activeTab === t.key
+                    ? "var(--text-primary)"
+                    : "var(--text-tertiary)",
+                border:
+                  activeTab === t.key
+                    ? "1px solid var(--glass-border)"
+                    : "1px solid transparent",
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* TAB CONTENT 1: Fan Chart */}
+        {activeTab === "fan" && (
+          <div className="space-y-3">
+            <div
+              className="p-4 rounded-[22px] glass-surface"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <div className="flex justify-between items-center mb-3">
+                <div>
+                  <h4
+                    className="text-[12px] font-bold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Stochastic Wealth Dispersion
+                  </h4>
+                  <p
+                    className="text-[10px]"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Confidence intervals across {horizonYears} years
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 text-[10px]">
+                  <span className="flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
+                    <span className="w-2 h-0.5 bg-[var(--text-tertiary)] rounded-full" /> P10 Bear
+                  </span>
+                  <span className="flex items-center gap-1 font-bold" style={{ color: "var(--text-primary)" }}>
+                    <span className="w-2 h-0.5 bg-[var(--text-primary)] rounded-full" /> Median
+                  </span>
+                  <span className="flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
+                    <span className="w-2 h-0.5 bg-[var(--text-secondary)] rounded-full" /> P90 Bull
+                  </span>
+                </div>
+              </div>
+
+              <div className="h-[210px] -mx-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={chartData}
+                    margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="fanBandUpper" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--text-primary)" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="var(--text-primary)" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="yearLabel"
+                      tick={{
+                        fontSize: 9.5,
+                        fill: "var(--text-tertiary)",
+                        fontWeight: 600,
+                        fontFamily: "Urbanist",
+                      }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis hide />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null;
+                        const data = payload[0].payload;
+                        return (
+                          <div
+                            className="p-3 rounded-xl text-[11px] font-medium"
+                            style={{
+                              background: "var(--bg-elevated)",
+                              border: "1px solid var(--glass-border)",
+                              boxShadow: "0 8px 24px var(--shadow-strength)",
+                            }}
+                          >
+                            <p className="font-bold text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
+                              Timeline: {label}
+                            </p>
+                            <p className="text-[var(--text-primary)] font-bold">
+                              Median: {hideBalance ? "••••••" : formatRupiah(data.p50)}
+                            </p>
+                            <p className="text-[var(--text-tertiary)] text-[10px]">
+                              Bear (P10): {hideBalance ? "••••••" : formatRupiah(data.p10)}
+                            </p>
+                            <p className="text-[var(--text-secondary)] text-[10px]">
+                              Bull (P90): {hideBalance ? "••••••" : formatRupiah(data.p90)}
+                            </p>
+                            <p className="text-[10px] pt-1 mt-1 border-t border-[var(--glass-border)] text-[var(--text-tertiary)]">
+                              FIRE Target: {hideBalance ? "••••••" : formatRupiah(data.fireTarget)}
+                            </p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <ReferenceLine
+                      y={fireMilestones.standard.targetAmount}
+                      stroke="var(--glass-border)"
+                      strokeDasharray="4 4"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="p90"
+                      stroke="none"
+                      fill="url(#fanBandUpper)"
+                      fillOpacity={1}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="p50"
+                      stroke="var(--text-primary)"
+                      strokeWidth={2.5}
+                      fill="none"
+                      dot={false}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="p10"
+                      stroke="var(--text-tertiary)"
+                      strokeWidth={1.5}
+                      strokeDasharray="3 3"
+                      fill="none"
+                      dot={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Terminal Outlier Summary Bento */}
+            <div className="grid grid-cols-3 gap-2">
+              <div
+                className="p-3 rounded-2xl"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+                  10th %ile (Bear)
+                </p>
+                <p className="text-[13px] font-semibold tracking-tight mt-1 text-[var(--text-primary)]">
+                  {hideBalance ? "••••••" : formatRupiah(terminalValues.p10)}
+                </p>
+              </div>
+              <div
+                className="p-3 rounded-2xl"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                  Median Expected
+                </p>
+                <p className="text-[13px] font-semibold tracking-tight mt-1 text-[var(--text-primary)]">
+                  {hideBalance ? "••••••" : formatRupiah(terminalValues.p50)}
+                </p>
+              </div>
+              <div
+                className="p-3 rounded-2xl"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                  90th %ile (Bull)
+                </p>
+                <p className="text-[13px] font-semibold tracking-tight mt-1 text-[var(--text-primary)]">
+                  {hideBalance ? "••••••" : formatRupiah(terminalValues.p90)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB CONTENT 2: FIRE Milestones */}
+        {activeTab === "milestones" && (
+          <div className="space-y-2.5">
+            {[
+              fireMilestones.lean,
+              fireMilestones.standard,
+              fireMilestones.fat,
+              fireMilestones.coast,
+            ].map((m) => (
+              <div
+                key={m.type}
+                className="p-3.5 rounded-[22px]"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div className="flex justify-between items-start mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-bold text-[var(--text-primary)]">
+                      {m.label}
+                    </span>
+                    {m.isAchieved && (
+                      <span
+                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider"
+                        style={{
+                          background: "var(--glass-fill-strong)",
+                          color: "var(--text-primary)",
+                          border: "1px solid var(--glass-border)",
+                        }}
+                      >
+                        <CheckCircle2 size={10} /> Achieved
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[13px] font-semibold text-[var(--text-primary)]">
+                    {hideBalance ? "••••••" : formatRupiah(m.targetAmount)}
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-[var(--text-tertiary)] mb-2.5">
+                  {m.description}
+                </p>
+
+                {/* Progress bar */}
+                <div
+                  className="w-full h-1.5 rounded-full overflow-hidden mb-2"
+                  style={{ background: "var(--glass-border)" }}
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${m.currentProgressPct}%`,
+                      background: "var(--text-primary)",
+                    }}
+                  />
+                </div>
+
+                <div className="flex justify-between items-center text-[10px] text-[var(--text-secondary)]">
+                  <span>Current: {m.currentProgressPct}%</span>
+                  <span>
+                    Arrival:{" "}
+                    <strong className="text-[var(--text-primary)]">
+                      {m.isAchieved
+                        ? "Now"
+                        : m.estimatedYearsMedian !== null
+                        ? `~${m.estimatedYearsMedian} yrs (Median) · ~${m.estimatedYearsBear || ">30"} yrs (Bear)`
+                        : `Beyond ${horizonYears} years`}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* TAB CONTENT 3: Stress Test (Sequence of Returns Risk) */}
+        {activeTab === "stress" && (
+          <div className="space-y-3">
+            <div
+              className="p-4 rounded-[22px]"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle size={16} style={{ color: "var(--text-primary)" }} />
+                <h4 className="text-[13px] font-bold text-[var(--text-primary)]">
+                  Sequence of Returns Risk (SORR)
+                </h4>
+              </div>
+              <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)] mb-3">
+                Market crashes occurring early in your accumulation or withdrawal phase
+                exponentially harm compound interest. Here we simulate a <strong>-25% drawdown</strong> in Month 6 of Year 1.
+              </p>
+
+              <div
+                className="p-3 rounded-xl flex items-center justify-between"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+                    Early Shock Impact
+                  </p>
+                  <p className="text-[14px] font-semibold text-[var(--text-primary)] mt-0.5">
+                    {earlyShock
+                      ? sequenceOfReturnsImpact
+                        ? `-${sequenceOfReturnsImpact.terminalPercentageLoss}% Terminal Delta`
+                        : "Active"
+                      : "Shock Mode Off"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    triggerHaptic("medium");
+                    setEarlyShock(!earlyShock);
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all"
+                  style={{
+                    background: earlyShock
+                      ? "var(--text-primary)"
+                      : "var(--glass-fill-strong)",
+                    color: earlyShock
+                      ? "var(--bg-elevated)"
+                      : "var(--text-primary)",
+                  }}
+                >
+                  {earlyShock ? "Deactivate Shock" : "Inject -25% Crash"}
+                </button>
+              </div>
+            </div>
+
+            <div
+              className="p-3.5 rounded-[20px]"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <ShieldCheck size={14} style={{ color: "var(--text-secondary)" }} />
+                <span className="text-[11px] font-bold text-[var(--text-primary)]">
+                  Hedging Recommendations
+                </span>
+              </div>
+              <ul className="text-[11px] space-y-1 text-[var(--text-tertiary)] list-disc pl-4">
+                <li>Maintain 6–12 months of living expenses in ultra-liquid money market instruments.</li>
+                <li>Utilize a dynamic withdrawal strategy rather than fixed nominal withdrawals during bear markets.</li>
+                <li>Establish multiple non-correlated capital inflows (Barista FIRE model).</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* TAB CONTENT 4: Executive Insights */}
+        {activeTab === "insights" && (
+          <div className="space-y-2.5">
+            {insights.map((ins, i) => (
+              <div
+                key={i}
+                className="p-3.5 rounded-[20px] flex items-start gap-3"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                  style={{
+                    background: "var(--glass-fill-strong)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Target size={13} />
+                </div>
+                <p className="text-[12px] leading-relaxed text-[var(--text-secondary)] font-medium">
+                  {ins}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </BottomSheet>
+  );
+}

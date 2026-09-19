@@ -74,13 +74,13 @@ export function ExpenseStructureCard({
           <div>
             <div className="flex items-center gap-2">
               <span
-                className="text-[10px] font-extrabold uppercase tracking-widest"
+                className="text-[10px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Expense Structure
               </span>
               <span
-                className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full"
+                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
                 style={{
                   background: expenseStructure.reconciliationCheck
                     ? "var(--glass-fill-strong)"
@@ -155,7 +155,7 @@ export function ExpenseStructureCard({
                       </div>
                       <div className="text-right shrink-0">
                         <p
-                          className="amount text-[12px] font-extrabold"
+                          className="amount text-[12px] font-semibold"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {hideBalance
@@ -217,7 +217,7 @@ export function ExpenseStructureCard({
                       Committed
                     </p>
                     <p
-                      className="amount text-[13px] font-extrabold mt-1"
+                      className="amount text-[13px] font-semibold mt-1"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {hideBalance
@@ -239,7 +239,7 @@ export function ExpenseStructureCard({
                       Flexible
                     </p>
                     <p
-                      className="amount text-[13px] font-extrabold mt-1"
+                      className="amount text-[13px] font-semibold mt-1"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {hideBalance
@@ -253,7 +253,7 @@ export function ExpenseStructureCard({
               {expenseStructure.items.length > 0 && (
                 <div className="pt-2">
                   <p
-                    className="text-[11px] font-bold uppercase tracking-widest mb-2"
+                    className="text-[11px] font-bold uppercase tracking-wider mb-2"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     Largest Components
@@ -279,7 +279,7 @@ export function ExpenseStructureCard({
                           </p>
                         </div>
                         <span
-                          className="amount text-[11px] font-extrabold"
+                          className="amount text-[11px] font-semibold"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {hideBalance

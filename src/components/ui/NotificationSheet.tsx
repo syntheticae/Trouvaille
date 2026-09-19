@@ -35,7 +35,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
             </div>
             <div>
               <h3
-                className="font-extrabold text-[16px]"
+                className="font-semibold text-[16px]"
                 style={{ color: "var(--text-primary)" }}
               >
                 Notifications

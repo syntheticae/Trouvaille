@@ -55,7 +55,7 @@ export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
       <div className="p-5 pb-10 space-y-4">
         <div className="flex items-center justify-between">
           <h3
-            className="font-extrabold text-lg"
+            className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
             {pinStep === "create" ? "Enter Backup PIN" : "Confirm Backup PIN"}
@@ -89,7 +89,7 @@ export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
             else setPinConfirmValue(val);
           }}
           placeholder="••••••"
-          className="w-full text-center tracking-[0.8em] p-4 rounded-2xl outline-none font-black text-[22px]"
+          className="w-full text-center tracking-[0.8em] p-4 rounded-2xl outline-none font-semibold text-[22px]"
           style={{
             background: "var(--bg-elevated)",
             border: "1px solid var(--glass-border)",

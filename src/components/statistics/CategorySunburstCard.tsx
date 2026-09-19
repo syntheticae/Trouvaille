@@ -206,7 +206,7 @@ export function CategorySunburstCard({
               Capital Sunburst
             </h2>
             <span
-              className="text-[9.5px] font-mono font-medium px-2 py-0.5 rounded-full border border-[var(--glass-border)]"
+              className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full border border-[var(--glass-border)]"
               style={{
                 background: "var(--glass-fill)",
                 color: "var(--text-tertiary)",
@@ -304,7 +304,7 @@ export function CategorySunburstCard({
                   triggerHaptic("light");
                   setSelectedNode(null);
                 }}
-                className="flex items-center gap-1 text-[10.5px] font-medium hover:underline"
+                className="flex items-center gap-1 text-[11px] font-medium hover:underline"
                 style={{ color: "var(--text-secondary)" }}
               >
                 <RotateCcw size={11} />
@@ -479,7 +479,7 @@ export function CategorySunburstCard({
                         />
                         <div className="min-w-0">
                           <p
-                            className="text-[12.5px] font-bold truncate leading-snug"
+                            className="text-[12px] font-bold truncate leading-snug"
                             style={{ color: "var(--text-primary)" }}
                           >
                             {parent.name}
@@ -496,7 +496,7 @@ export function CategorySunburstCard({
                       <div className="flex items-center gap-3 shrink-0">
                         <div className="text-right">
                           <p
-                            className="amount text-[12.5px] font-bold"
+                            className="amount text-[12px] font-bold"
                             style={{ color: "var(--text-primary)" }}
                           >
                             {formatRupiah(parent.value)}
@@ -576,7 +576,7 @@ export function CategorySunburstCard({
                               )}
                               <span>{child.name}</span>
                               <span
-                                className="font-mono text-[9.5px] opacity-75 ml-0.5"
+                                className="font-mono text-[10px] opacity-75 ml-0.5"
                               >
                                 {childPctOfParent}%
                               </span>

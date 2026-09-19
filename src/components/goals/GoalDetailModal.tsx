@@ -158,7 +158,7 @@ export function GoalDetailModal({
             </div>
             <div>
               <h3
-                className="font-extrabold text-[18px] leading-tight"
+                className="font-semibold text-[18px] leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 {goal.title}
@@ -176,7 +176,7 @@ export function GoalDetailModal({
 
           <button
             onClick={() => setIsEditing(!isEditing)}
-            className="text-[12px] font-extrabold px-3 py-1.5 rounded-full"
+            className="text-[12px] font-semibold px-3 py-1.5 rounded-full"
             style={{
               background: isEditing ? "var(--accent)" : "var(--glass-fill)",
               color: isEditing ? "var(--accent-ink)" : "var(--text-secondary)",
@@ -206,7 +206,7 @@ export function GoalDetailModal({
                   Collected
                 </span>
                 <span
-                  className="text-[13px] font-extrabold"
+                  className="text-[13px] font-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {progress}%
@@ -215,7 +215,7 @@ export function GoalDetailModal({
 
               <div className="flex justify-between items-baseline">
                 <span
-                  className="amount text-[22px] font-extrabold"
+                  className="amount text-[22px] font-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {formatRupiah(goal.currentAmount)}
@@ -262,14 +262,14 @@ export function GoalDetailModal({
                       style={{ color: "var(--text-tertiary)" }}
                     />
                     <span
-                      className="text-[10px] font-extrabold uppercase tracking-wider"
+                      className="text-[10px] font-semibold uppercase tracking-wider"
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       Planning Trajectory
                     </span>
                   </div>
                   <span
-                    className="text-[9px] font-extrabold px-2 py-0.5 rounded-full"
+                    className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
                     style={{
                       background:
                         planning.trajectoryStatus === "ON TRACK" ||
@@ -296,7 +296,7 @@ export function GoalDetailModal({
                       Required Pace
                     </p>
                     <p
-                      className="amount font-extrabold text-[13px] mt-0.5"
+                      className="amount font-semibold text-[13px] mt-0.5"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {formatRupiah(planning.requiredMonthlyContribution)}{" "}
@@ -319,7 +319,7 @@ export function GoalDetailModal({
                       Retained Cash
                     </p>
                     <p
-                      className="amount font-extrabold text-[13px] mt-0.5"
+                      className="amount font-semibold text-[13px] mt-0.5"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {formatRupiah(planning.historicalRetainedCash)}{" "}
@@ -355,14 +355,14 @@ export function GoalDetailModal({
                   <div className="flex items-center gap-1.5">
                     <Flag size={13} style={{ color: "var(--text-tertiary)" }} />
                     <span
-                      className="text-[10px] font-extrabold uppercase tracking-wider"
+                      className="text-[10px] font-semibold uppercase tracking-wider"
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       Milestone Roadmap
                     </span>
                   </div>
                   <span
-                    className="text-[9px] font-extrabold px-2 py-0.5 rounded-full"
+                    className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
                     style={{
                       background: "var(--glass-fill)",
                       color: "var(--text-primary)",
@@ -401,7 +401,7 @@ export function GoalDetailModal({
                           />
                         )}
                         <span
-                          className="text-[11px] font-extrabold"
+                          className="text-[11px] font-semibold"
                           style={{
                             color: m.isReached
                               ? "var(--text-primary)"
@@ -418,7 +418,7 @@ export function GoalDetailModal({
                         {formatRupiah(m.targetAmount)}
                       </p>
                       <p
-                        className="text-[9px] font-extrabold truncate"
+                        className="text-[9px] font-semibold truncate"
                         style={{
                           color: m.isReached
                             ? "var(--accent)"
@@ -441,7 +441,7 @@ export function GoalDetailModal({
                       Savings Velocity Pace
                     </span>
                     <span
-                      className="text-[11px] font-extrabold amount"
+                      className="text-[11px] font-semibold amount"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {dynamicMilestones.velocityPaces[velocitySpeed]
@@ -493,7 +493,7 @@ export function GoalDetailModal({
                               : "none",
                           }}
                         >
-                          <p className="text-[10px] font-extrabold truncate">
+                          <p className="text-[10px] font-semibold truncate">
                             {tier.label}
                           </p>
                           <p className="text-[9px] font-semibold amount opacity-70 truncate">
@@ -518,7 +518,7 @@ export function GoalDetailModal({
               <div className="flex items-center gap-1.5">
                 <Compass size={13} style={{ color: "var(--text-tertiary)" }} />
                 <span
-                  className="text-[10px] font-extrabold uppercase tracking-wider"
+                  className="text-[10px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   Goal Scenario
@@ -555,7 +555,7 @@ export function GoalDetailModal({
                     </div>
                     <div className="text-right shrink-0">
                       <p
-                        className="text-[12px] font-extrabold amount"
+                        className="text-[12px] font-semibold amount"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {formatScenarioDuration(result.monthsToTarget)}
@@ -642,7 +642,7 @@ export function GoalDetailModal({
                   <button
                     key={val}
                     onClick={() => handleQuickDeposit(val)}
-                    className="py-2.5 px-2 rounded-2xl text-[11px] font-extrabold active:scale-95 transition-all text-center"
+                    className="py-2.5 px-2 rounded-2xl text-[11px] font-semibold active:scale-95 transition-all text-center"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
@@ -671,7 +671,7 @@ export function GoalDetailModal({
                 <button
                   disabled={!depositAmount || Number(depositAmount) <= 0}
                   onClick={handleCustomDeposit}
-                  className="px-5 py-3 rounded-2xl font-extrabold text-[13px] flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-40"
+                  className="px-5 py-3 rounded-2xl font-semibold text-[13px] flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-40"
                   style={{
                     background: "var(--accent)",
                     color: "var(--accent-ink)",
@@ -767,7 +767,7 @@ export function GoalDetailModal({
 
               <button
                 onClick={handleSaveEdit}
-                className="flex-1 py-3.5 rounded-2xl font-extrabold text-[14px] flex items-center justify-center gap-1.5 active:scale-95"
+                className="flex-1 py-3.5 rounded-2xl font-semibold text-[14px] flex items-center justify-center gap-1.5 active:scale-95"
                 style={{
                   background: "var(--accent)",
                   color: "var(--accent-ink)",

@@ -39,7 +39,7 @@ export function PersonalBaselineSection({
           </div>
           <div>
             <span
-              className="text-[10px] font-extrabold uppercase tracking-widest"
+              className="text-[10px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
               Personal Baseline
@@ -99,13 +99,13 @@ export function PersonalBaselineSection({
           <div>
             <div className="flex items-center gap-2">
               <span
-                className="text-[10px] font-extrabold uppercase tracking-widest"
+                className="text-[10px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Personal Baseline
               </span>
               <span
-                className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full"
+                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
                 style={{
                   background: "var(--glass-fill)",
                   color: "var(--text-secondary)",
@@ -207,7 +207,7 @@ export function PersonalBaselineSection({
                     Median Outflow
                   </p>
                   <p
-                    className="amount text-[14px] font-extrabold mt-0.5"
+                    className="amount text-[14px] font-semibold mt-0.5"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {formatRupiah(baselines.medianExpense)}
@@ -231,7 +231,7 @@ export function PersonalBaselineSection({
                     Typical Ticket Size
                   </p>
                   <p
-                    className="amount text-[14px] font-extrabold mt-0.5"
+                    className="amount text-[14px] font-semibold mt-0.5"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {formatRupiah(baselines.medianTxSize)}
@@ -249,7 +249,7 @@ export function PersonalBaselineSection({
               {baselines.categoryBaselines.length > 0 && (
                 <div className="space-y-2 pt-1">
                   <div
-                    className="flex justify-between items-center text-[10px] font-extrabold uppercase tracking-wider px-0.5"
+                    className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider px-0.5"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     <span>Category Normal Bands</span>
@@ -300,7 +300,7 @@ export function PersonalBaselineSection({
 
                           <div className="text-right">
                             <p
-                              className="amount text-[11px] font-extrabold"
+                              className="amount text-[11px] font-semibold"
                               style={{ color: "var(--text-primary)" }}
                             >
                               {formatRupiah(cat.currentMonthTotal)}

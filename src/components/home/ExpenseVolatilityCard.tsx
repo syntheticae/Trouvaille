@@ -98,7 +98,7 @@ export function ExpenseVolatilityCard({
         <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-[var(--glass-border)]">
           <div>
             <p
-              className="text-[10.5px] font-medium"
+              className="text-[11px] font-medium"
               style={{ color: "var(--text-tertiary)" }}
             >
               Daily Average
@@ -114,7 +114,7 @@ export function ExpenseVolatilityCard({
           </div>
           <div className="text-right">
             <p
-              className="text-[10.5px] font-medium"
+              className="text-[11px] font-medium"
               style={{ color: "var(--text-tertiary)" }}
             >
               Peak Day Outlay
@@ -187,7 +187,7 @@ export function ExpenseVolatilityCard({
                 Stability Status
               </p>
               <p
-                className="text-[15px] font-extrabold mt-0.5"
+                className="text-[15px] font-semibold mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
                 {volatility.stability.charAt(0).toUpperCase() +
@@ -208,7 +208,7 @@ export function ExpenseVolatilityCard({
                 Stability Score
               </p>
               <p
-                className="amount text-[15px] font-extrabold mt-0.5"
+                className="amount text-[15px] font-semibold mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
                 {volatility.score} / 100
@@ -228,7 +228,7 @@ export function ExpenseVolatilityCard({
                 Daily Variation (Std Dev)
               </p>
               <p
-                className="amount text-[15px] font-extrabold mt-0.5"
+                className="amount text-[15px] font-semibold mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
                 {hideBalance
@@ -250,7 +250,7 @@ export function ExpenseVolatilityCard({
                 Active Days Ratio
               </p>
               <p
-                className="amount text-[15px] font-extrabold mt-0.5"
+                className="amount text-[15px] font-semibold mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
                 {volatility.activeDaysCount} of {volatility.totalDaysInPeriod} days
@@ -266,7 +266,7 @@ export function ExpenseVolatilityCard({
             }}
           >
             <p
-              className="text-[10px] font-extrabold uppercase tracking-wider"
+              className="text-[10px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
               Behavioral Takeaway

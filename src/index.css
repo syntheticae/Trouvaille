@@ -198,16 +198,90 @@ html, body, #root {
 
   .amount {
     font-variant-numeric: tabular-nums;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: -0.03em;
     font-family: "Urbanist", sans-serif;
+  }
+
+  /* Standard Apple Luxury Typography Scale */
+  .type-display {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+  }
+
+  .type-title-1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .type-title-2 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+  }
+
+  .type-title-3 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    line-height: 1.35;
+  }
+
+  .type-body {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  .type-body-medium {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  .type-secondary {
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  .type-footnote {
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.35;
+  }
+
+  .type-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  .type-caption {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .type-badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1;
   }
 
   /* Section label style — consistent across all pages */
   .section-label {
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-tertiary);
   }

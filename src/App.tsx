@@ -23,6 +23,7 @@ import { fetchAllTransactionsFromSupabase } from "./hooks/useTransactions";
 import { supabase } from "./lib/supabase";
 import { flushPendingMutations } from "./lib/syncEngine";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
+import { usePrivacy } from "./contexts/PrivacyContext";
 
 const HomePage = lazy(() =>
   import("./pages/HomePage").then((module) => ({
@@ -103,6 +104,7 @@ function AppShell() {
     "Preparing financial categories & wallets...",
   );
   const [syncedTxCount, setSyncedTxCount] = useState(0);
+  const { isPrivacyShieldEnabled } = usePrivacy();
   const [isPrivacyShieldActive, setIsPrivacyShieldActive] = useState(false);
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
@@ -157,6 +159,11 @@ function AppShell() {
   }, [categories, wallets]);
 
   useEffect(() => {
+    if (!isPrivacyShieldEnabled) {
+      setIsPrivacyShieldActive(false);
+      return;
+    }
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
         setIsPrivacyShieldActive(true);
@@ -186,7 +193,7 @@ function AppShell() {
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("focus", handleFocus);
     };
-  }, []);
+  }, [user?.id, isPrivacyShieldEnabled]);
 
   const ensureCategories = useEnsureDefaultCategories();
   const ensureWallets = useEnsureDefaultWallets();
@@ -485,9 +492,10 @@ function AppShell() {
       )}
 
       {/* iOS App Switcher / Multitasking Privacy Screen Shield */}
-      {isPrivacyShieldActive && (
+      {isPrivacyShieldEnabled && isPrivacyShieldActive && (
         <div
-          className="fixed inset-0 z-[99999] flex flex-col items-center justify-between p-8 sm:p-12 overflow-hidden pointer-events-none select-none transition-colors duration-300"
+          onClick={() => setIsPrivacyShieldActive(false)}
+          className="fixed inset-0 z-[99999] flex flex-col items-center justify-between p-8 sm:p-12 overflow-hidden cursor-pointer select-none transition-colors duration-300"
           style={{
             fontFamily: "'Urbanist', sans-serif",
             backgroundColor: isDark ? "#09090c" : "#f4f4f7",

@@ -11,6 +11,7 @@ import {
   Search,
   ChevronRight,
 } from "lucide-react";
+import { format, subMinutes } from "date-fns";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
@@ -19,6 +20,8 @@ import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useCategories } from "../../hooks/useCategories";
+import { useAddTransaction } from "../../hooks/useTransactions";
 import {
   useWallets,
   saveWalletClassification,
@@ -120,12 +123,41 @@ interface UsdtValuationPref {
   costBasis: number;
 }
 
+interface DetailHoldingItem {
+  isUsdt: boolean;
+  holding?: InvestmentHolding;
+  symbol: string;
+  name: string;
+  units: number;
+  rate: number;
+  costBasis: number;
+  marketValue: number;
+  floatingPnL: number;
+  floatingPnLPct: number;
+  icon: string;
+  asset_type: AssetType;
+}
+
 export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { showToast } = useToast();
   const { data: wallets = [], refetch: refetchWallets } = useWallets();
   const { balancesByName } = useWalletBalances();
+  const { data: categories = [] } = useCategories();
+  const addTx = useAddTransaction();
+
+  // Detail Pop Card & Realization States
+  const [detailHolding, setDetailHolding] = useState<DetailHoldingItem | null>(null);
+  const [realizeModalOpen, setRealizeModalOpen] = useState(false);
+  const [realizeType, setRealizeType] = useState<"income" | "expense">("income");
+  const [realizeAmount, setRealizeAmount] = useState<string>("");
+  const [realizeDate, setRealizeDate] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
+  const [realizeTime, setRealizeTime] = useState<string>(() => format(new Date(), "HH:mm"));
+  const [realizeWalletId, setRealizeWalletId] = useState<string>("");
+  const [realizeNote, setRealizeNote] = useState<string>("");
+  const [isRealizing, setIsRealizing] = useState(false);
+  const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
 
   // Find crypto wallet
   const cryptoWallet = useMemo(() => {
@@ -311,6 +343,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setSearchQuery("");
     setFormIcon("TrendingUp");
     setHasCustomPickedAssetIcon(false);
+    setEditingHoldingId(null);
   };
 
   // Filtered presets for picker list
@@ -416,7 +449,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     showToast("USDT valuation saved", "update", () => {});
   };
 
-  // Save New Generic Holding / Fixed Asset
+  // Save New or Edited Generic Holding / Fixed Asset
   const handleSaveNewHolding = () => {
     if (!formName.trim()) {
       showToast("Asset name is required", "delete", () => {});
@@ -435,7 +468,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     const symbol = formSymbol.trim() || (formType === "fixed_asset" ? "ASSET" : formName.slice(0, 5).toUpperCase());
 
     const newH: InvestmentHolding = {
-      id: `h_${Date.now()}`,
+      id: editingHoldingId || `h_${Date.now()}`,
       symbol: symbol.toUpperCase(),
       name: formName.trim(),
       asset_type: formType,
@@ -450,7 +483,119 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setHoldings(updated);
     closeAddFlow();
     triggerHaptic("medium");
-    showToast(`${newH.name} added successfully`, "add", () => {});
+    showToast(
+      `${newH.name} ${editingHoldingId ? "updated" : "added"} successfully`,
+      "add",
+      () => {},
+    );
+  };
+
+  const handleStartEditHolding = (h: InvestmentHolding) => {
+    triggerHaptic("light");
+    setEditingHoldingId(h.id);
+    setFormSymbol(h.symbol);
+    setFormName(h.name);
+    setFormType(h.asset_type);
+    setFormUnits(String(h.units));
+    setFormBuyPrice(String(h.avg_buy_price));
+    setFormCurrentPrice(String(h.current_price));
+    setFormIcon(h.icon || getDefaultAssetIconName(h.asset_type));
+    setDetailHolding(null);
+    setAddPhase(2);
+  };
+
+  const handleOpenRealizeModal = (item: DetailHoldingItem) => {
+    triggerHaptic("light");
+    const isProfit = item.floatingPnL >= 0;
+    setRealizeType(isProfit ? "income" : "expense");
+    setRealizeAmount(String(Math.abs(item.floatingPnL) || item.marketValue));
+    setRealizeDate(format(new Date(), "yyyy-MM-dd"));
+    setRealizeTime(format(new Date(), "HH:mm"));
+    setRealizeWalletId(cryptoWallet?.id || wallets[0]?.id || "");
+    setRealizeNote(`Realized ${isProfit ? "Profit" : "Loss"} ${item.symbol}`);
+    setRealizeModalOpen(true);
+  };
+
+  const handleConfirmRealization = async () => {
+    if (!detailHolding) return;
+    const amt = parseFloat(realizeAmount);
+    if (isNaN(amt) || amt <= 0) {
+      showToast("Please enter a valid amount", "delete", () => {});
+      return;
+    }
+
+    setIsRealizing(true);
+    try {
+      // Find category: preferably 'Investasi' or 'Trading'
+      const targetCategory =
+        categories.find(
+          (c) =>
+            c.type === realizeType &&
+            (c.name.toLowerCase().includes("investasi") ||
+              c.name.toLowerCase().includes("trading")),
+        ) ||
+        categories.find((c) => c.type === realizeType) ||
+        null;
+
+      // Construct ISO datetime string from date and time inputs
+      const combinedDateTime = new Date(`${realizeDate}T${realizeTime}:00`);
+      const isoOccurredOn = isNaN(combinedDateTime.getTime())
+        ? new Date().toISOString()
+        : combinedDateTime.toISOString();
+
+      await addTx.mutateAsync({
+        amount: amt,
+        type: realizeType,
+        occurred_on: isoOccurredOn,
+        wallet_id: realizeWalletId || null,
+        category_id: targetCategory?.id || null,
+        note:
+          realizeNote.trim() ||
+          `Realized ${realizeType === "income" ? "Profit" : "Loss"}: ${detailHolding.symbol}`,
+      });
+
+      // Update cost basis of holding to lock in realized profit/loss
+      if (detailHolding.isUsdt) {
+        const newCostBasis =
+          realizeType === "income"
+            ? usdtCostBasis + amt
+            : Math.max(0, usdtCostBasis - amt);
+        const nextPref = { ...usdtPref, costBasis: newCostBasis };
+        setUsdtPref(nextPref);
+        localStorage.setItem(USDT_PREFS_STORAGE_KEY, JSON.stringify(nextPref));
+      } else if (detailHolding.holding) {
+        const currentTotalCost = detailHolding.costBasis;
+        const newTotalCost =
+          realizeType === "income"
+            ? currentTotalCost + amt
+            : Math.max(0, currentTotalCost - amt);
+        const newAvgBuy =
+          detailHolding.units > 0 ? newTotalCost / detailHolding.units : 0;
+        const updatedHolding: InvestmentHolding = {
+          ...detailHolding.holding,
+          avg_buy_price: newAvgBuy,
+        };
+        const updatedList = upsertHolding(updatedHolding);
+        setHoldings(updatedList);
+      }
+
+      triggerHaptic("medium");
+      showToast(
+        `Recorded ${realizeType === "income" ? "profit" : "loss"} of ${formatRupiah(amt)} as ${realizeType === "income" ? "Income" : "Expense"}`,
+        "add",
+        () => {},
+      );
+      setRealizeModalOpen(false);
+      setDetailHolding(null);
+    } catch (err: any) {
+      showToast(
+        err?.message || "Failed to record realization transaction",
+        "delete",
+        () => {},
+      );
+    } finally {
+      setIsRealizing(false);
+    }
   };
 
   const handleDeleteHolding = (id: string, name: string) => {
@@ -485,7 +630,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
         <div className="flex items-center justify-between pb-2 border-b border-[var(--glass-border)]">
           <div>
             <h3
-              className="text-[17px] font-extrabold tracking-tight"
+              className="text-[17px] font-semibold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               Asset Valuation
@@ -529,7 +674,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
             </span>
             {/* Strictly Monochrome Luxury P&L Badge */}
             <div
-              className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold shrink-0 whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold shrink-0 whitespace-nowrap"
               style={{
                 background: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)",
                 color: "var(--text-primary)",
@@ -550,7 +695,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           </div>
 
           <p
-            className="amount text-[28px] font-extrabold tracking-tight leading-none"
+            className="amount text-[28px] font-semibold tracking-tight leading-none"
             style={{ color: "var(--text-primary)" }}
           >
             {formatRupiah(totalMarketValuation)}
@@ -585,7 +730,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
               type="button"
               onClick={handleFetchLiveRate}
               disabled={isFetchingRate}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold active:scale-95 cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold active:scale-95 cursor-pointer"
               style={{
                 background: "var(--glass-fill)",
                 border: "1px solid var(--glass-border)",
@@ -600,7 +745,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
               <button
                 type="button"
                 onClick={openAssetPicker}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold active:scale-95 cursor-pointer"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold active:scale-95 cursor-pointer"
                 style={{
                   background: "var(--text-primary)",
                   color: "var(--bg-base)",
@@ -624,7 +769,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           >
             {/* Header */}
             <div className="flex items-center justify-between">
-              <span className="text-[12.5px] font-bold" style={{ color: "var(--text-primary)" }}>
+              <span className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>
                 Select or Create Asset
               </span>
               <button
@@ -649,7 +794,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search symbol, property, or custom name..."
-                className="flex-1 bg-transparent outline-none text-[12.5px] font-medium"
+                className="flex-1 bg-transparent outline-none text-[12px] font-medium"
                 style={{ color: "var(--text-primary)" }}
               />
               {searchQuery && (
@@ -760,7 +905,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
               {filteredPresets.length === 0 && (
                 <div className="py-6 text-center">
-                  <p className="text-[11.5px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                  <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
                     No presets found for "{searchQuery}".
                   </p>
                   <button
@@ -788,16 +933,16 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[13px] font-extrabold leading-snug" style={{ color: "var(--text-primary)" }}>
+                <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
                   {formType === "fixed_asset" ? "Add Fixed Asset" : "Add Market Holding"}
                 </p>
-                <p className="text-[10.5px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
                   {formType === "fixed_asset" ? "Real estate, vehicle, land, or collectibles" : "Stock, crypto, gold, or fund position"}
                 </p>
               </div>
               <div className="flex items-center gap-1.5">
                 <span
-                  className="px-2 py-0.5 rounded-full text-[9.5px] font-bold uppercase"
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
                   style={{
                     background: "var(--glass-fill)",
                     border: "1px solid var(--glass-border)",
@@ -837,7 +982,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                   title="Choose Icon"
                 >
                   <IconRenderer icon={formIcon} size="w-4 h-4" />
-                  <span className="text-[7.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  <span className="text-[8px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                     Change
                   </span>
                 </button>
@@ -853,7 +998,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                     }
                   }}
                   placeholder={formType === "fixed_asset" ? "e.g. Rumah BSD, Honda Civic 2023" : "e.g. Bank Central Asia"}
-                  className="w-full px-3 py-2 rounded-xl text-[12.5px] font-bold outline-none"
+                  className="w-full px-3 py-2 rounded-xl text-[12px] font-bold outline-none"
                   style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
                 />
               </div>
@@ -941,7 +1086,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
               <button
                 type="button"
                 onClick={handleSaveNewHolding}
-                className="flex-[2] py-2 rounded-xl text-[11.5px] font-extrabold active:scale-95 cursor-pointer"
+                className="flex-[2] py-2 rounded-xl text-[11px] font-semibold active:scale-95 cursor-pointer"
                 style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
               >
                 Save Holding
@@ -960,7 +1105,25 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
               border: "1px solid var(--glass-border)",
             }}
           >
-            <div className="flex items-center justify-between gap-2.5">
+            <div
+              onClick={() => {
+                triggerHaptic("light");
+                setDetailHolding({
+                  isUsdt: true,
+                  symbol: "USDT",
+                  name: "Tether USD",
+                  units: usdtPref.units,
+                  rate: usdtPref.rate,
+                  costBasis: usdtCostBasis,
+                  marketValue: usdtMarketValue,
+                  floatingPnL: usdtFloatingPnL,
+                  floatingPnLPct: usdtFloatingPnLPct,
+                  icon: "Coins",
+                  asset_type: "crypto",
+                });
+              }}
+              className="flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
+            >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
                   className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
@@ -969,29 +1132,24 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                   <Coins size={17} style={{ color: "var(--text-primary)" }} />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className="px-1.5 py-0.5 rounded text-[10.5px] font-bold uppercase shrink-0 font-mono"
-                      style={{
-                        background: "var(--glass-fill-strong)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      USDT
-                    </span>
-                    <span className="text-[13px] font-bold whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
-                      Tether USD
-                    </span>
-                  </div>
-                  <p className="text-[10px] font-medium mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
-                    {usdtPref.units.toLocaleString()} units · Cost: {formatRupiah(usdtCostBasis)}
+                  <span
+                    className="font-semibold font-mono text-[12px] tracking-wide block leading-none"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    USDT
+                  </span>
+                  <p
+                    className="text-[11px] font-medium truncate mt-1 leading-tight"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Tether USD
                   </p>
                 </div>
               </div>
 
               {/* Amount & Strictly Monochrome P&L */}
               <div className="text-right shrink-0">
-                <span className="text-[14.5px] font-extrabold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+                <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
                   {formatRupiah(usdtMarketValue)}
                 </span>
                 <span
@@ -1013,7 +1171,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                   triggerHaptic("light");
                   setIsEditingUsdt(!isEditingUsdt);
                 }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-bold active:scale-95 cursor-pointer"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
                 style={{
                   background: isEditingUsdt ? "var(--text-primary)" : "var(--glass-fill)",
                   color: isEditingUsdt ? "var(--bg-base)" : "var(--text-secondary)",
@@ -1062,7 +1220,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
               >
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[9.5px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
+                    <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
                       USDT Balance ($)
                     </label>
                     <input
@@ -1075,7 +1233,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                     />
                   </div>
                   <div>
-                    <label className="text-[9.5px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
+                    <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
                       USD Rate (IDR)
                     </label>
                     <input
@@ -1089,7 +1247,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 </div>
 
                 <div>
-                  <label className="text-[9.5px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
                     Total Cost Basis (IDR)
                   </label>
                   <input
@@ -1105,14 +1263,14 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                   <button
                     type="button"
                     onClick={() => setIsEditingUsdt(false)}
-                    className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold text-[var(--text-tertiary)] active:scale-95 cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-[var(--text-tertiary)] active:scale-95 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleSaveUsdt}
-                    className="px-3 py-1 rounded-lg text-[10.5px] font-bold active:scale-95 cursor-pointer"
+                    className="px-3 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
                     style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
                   >
                     Save
@@ -1128,7 +1286,24 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
             return (
               <div
                 key={h.id}
-                className="p-3.5 rounded-2xl flex items-center justify-between gap-2.5"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setDetailHolding({
+                    isUsdt: false,
+                    holding: h,
+                    symbol: h.symbol,
+                    name: h.name,
+                    units: h.units,
+                    rate: h.current_price || h.avg_buy_price,
+                    costBasis: val.costBasis,
+                    marketValue: val.marketValue,
+                    floatingPnL: val.floatingPnL,
+                    floatingPnLPct: val.floatingPnLPct,
+                    icon: h.icon || getDefaultAssetIconName(h.asset_type),
+                    asset_type: h.asset_type,
+                  });
+                }}
+                className="p-3.5 rounded-2xl flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
                 style={{
                   background: "var(--bg-elevated)",
                   border: "1px solid var(--glass-border)",
@@ -1136,30 +1311,23 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                     style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
                   >
                     <IconRenderer icon={h.icon || getDefaultAssetIconName(h.asset_type)} size="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="px-1.5 py-0.5 rounded text-[10.5px] font-bold uppercase shrink-0 font-mono"
-                        style={{
-                          background: "var(--glass-fill-strong)",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        {h.symbol}
-                      </span>
-                      <span className="text-[13px] font-bold truncate max-w-[130px]" style={{ color: "var(--text-primary)" }}>
-                        {h.name}
-                      </span>
-                    </div>
-                    <p className="text-[10px] font-medium mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
-                      {h.asset_type === "fixed_asset"
-                        ? `Cost: ${formatRupiah(val.costBasis)}`
-                        : `${h.units} units · Buy: ${formatRupiah(h.avg_buy_price)}`}
+                    <span
+                      className="font-semibold font-mono text-[12px] tracking-wide block leading-none"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {h.symbol}
+                    </span>
+                    <p
+                      className="text-[11px] font-medium truncate mt-1 leading-tight"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {h.name}
                     </p>
                   </div>
                 </div>
@@ -1167,11 +1335,11 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 <div className="flex items-center gap-2.5 shrink-0">
                   {/* Amount & Strictly Monochrome P&L */}
                   <div className="text-right">
-                    <span className="text-[13.5px] font-extrabold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+                    <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
                       {formatRupiah(val.marketValue)}
                     </span>
                     <span
-                      className="text-[9.5px] font-bold mt-1 inline-block whitespace-nowrap font-mono"
+                      className="text-[10px] font-bold mt-1 inline-block whitespace-nowrap font-mono"
                       style={{ color: "var(--text-secondary)" }}
                     >
                       {val.floatingPnL >= 0 ? "+" : ""}
@@ -1179,16 +1347,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                       {val.floatingPnLPct.toFixed(1)}%)
                     </span>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteHolding(h.id, h.name)}
-                    className="w-6 h-6 rounded-lg flex items-center justify-center active:scale-90 transition-all cursor-pointer"
-                    style={{ color: "var(--text-tertiary)" }}
-                    title="Delete Asset"
-                  >
-                    <Trash2 size={13} />
-                  </button>
                 </div>
               </div>
             );
@@ -1202,7 +1360,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
             triggerHaptic("light");
             onClose();
           }}
-          className="w-full py-3 rounded-xl text-[13px] font-extrabold active:scale-98 transition-transform cursor-pointer mt-1"
+          className="w-full py-3 rounded-xl text-[13px] font-semibold active:scale-98 transition-transform cursor-pointer mt-1"
           style={{
             background: "var(--text-primary)",
             color: "var(--bg-base)",
@@ -1223,6 +1381,419 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
         }}
         title="Choose Asset Icon"
       />
+
+      {/* ── Apple Luxury Detail Pop Card ─────────────────────────────────── */}
+      {detailHolding && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-md p-0 sm:p-4 animate-fadeIn">
+          <div
+            className="w-full max-w-md rounded-t-[28px] sm:rounded-[28px] p-5 space-y-4 max-h-[90vh] overflow-y-auto animate-slideUp"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
+            }}
+          >
+            {/* Pop Card Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                >
+                  <IconRenderer icon={detailHolding.icon} size="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="text-[12px] font-semibold font-mono px-1.5 py-0.5 rounded"
+                      style={{ background: "var(--glass-fill-strong)", color: "var(--text-primary)" }}
+                    >
+                      {detailHolding.symbol}
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+                      {TYPE_LABELS[detailHolding.asset_type] || detailHolding.asset_type}
+                    </span>
+                  </div>
+                  <p className="text-[14px] font-bold truncate mt-0.5" style={{ color: "var(--text-primary)" }}>
+                    {detailHolding.name}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDetailHolding(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
+                style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Current Market Valuation Hero Readout */}
+            <div
+              className="p-4 rounded-2xl text-center space-y-1"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                Current Market Valuation
+              </span>
+              <p className="text-[26px] font-semibold amount tracking-tight leading-tight" style={{ color: "var(--text-primary)" }}>
+                {formatRupiah(detailHolding.marketValue)}
+              </p>
+              <div className="pt-1 flex justify-center">
+                <span
+                  className="text-[11px] font-bold font-mono px-2.5 py-1 rounded-full inline-flex items-center gap-1"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color: detailHolding.floatingPnL >= 0 ? "var(--text-primary)" : "var(--text-secondary)",
+                  }}
+                >
+                  {detailHolding.floatingPnL >= 0 ? "+" : ""}
+                  {formatRupiah(detailHolding.floatingPnL)} ({detailHolding.floatingPnLPct >= 0 ? "+" : ""}
+                  {detailHolding.floatingPnLPct.toFixed(1)}%) Floating P&L
+                </span>
+              </div>
+            </div>
+
+            {/* 2x2 Metric Grid */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div
+                className="p-3 rounded-xl space-y-0.5"
+                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+              >
+                <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                  Holding Units
+                </span>
+                <p className="text-[13px] font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                  {detailHolding.units.toLocaleString()} {detailHolding.symbol}
+                </p>
+              </div>
+
+              <div
+                className="p-3 rounded-xl space-y-0.5"
+                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+              >
+                <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                  Initial Investment (Cost)
+                </span>
+                <p className="text-[13px] font-bold font-mono amount" style={{ color: "var(--text-primary)" }}>
+                  {formatRupiah(detailHolding.costBasis)}
+                </p>
+              </div>
+
+              <div
+                className="p-3 rounded-xl space-y-0.5"
+                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+              >
+                <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                  Live Market Rate
+                </span>
+                <p className="text-[13px] font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                  {formatRupiah(detailHolding.rate)}
+                </p>
+              </div>
+
+              <div
+                className="p-3 rounded-xl space-y-0.5"
+                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+              >
+                <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                  Avg Buy / Cost Rate
+                </span>
+                <p className="text-[13px] font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                  {detailHolding.units > 0
+                    ? formatRupiah(Math.round(detailHolding.costBasis / detailHolding.units))
+                    : "-"}
+                </p>
+              </div>
+            </div>
+
+            {/* Actions: Instant Realize P&L, Quick Edit & Delete */}
+            <div className="space-y-2 pt-1">
+              {/* Realize Profit / Loss Instant Button */}
+              <button
+                type="button"
+                onClick={() => handleOpenRealizeModal(detailHolding)}
+                className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer"
+                style={{
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
+                }}
+              >
+                {detailHolding.floatingPnL >= 0 ? (
+                  <>
+                    <ArrowUpRight size={16} strokeWidth={2.5} />
+                    Realize Profit ({formatRupiah(Math.abs(detailHolding.floatingPnL))})
+                  </>
+                ) : (
+                  <>
+                    <ArrowDownRight size={16} strokeWidth={2.5} />
+                    Realize Loss ({formatRupiah(Math.abs(detailHolding.floatingPnL))})
+                  </>
+                )}
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (detailHolding.isUsdt) {
+                      setIsEditingUsdt(true);
+                      setDetailHolding(null);
+                    } else if (detailHolding.holding) {
+                      handleStartEditHolding(detailHolding.holding);
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-[12px] font-bold active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Edit3 size={13} />
+                  Edit Holding
+                </button>
+
+                {!detailHolding.isUsdt && detailHolding.holding && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleDeleteHolding(detailHolding.holding!.id, detailHolding.name);
+                      setDetailHolding(null);
+                    }}
+                    className="py-2.5 px-3 rounded-xl text-[12px] font-bold active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer"
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-tertiary)",
+                    }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Instant Realize Profit / Loss Modal ──────────────────────────── */}
+      {realizeModalOpen && detailHolding && (
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-md p-0 sm:p-4 animate-fadeIn">
+          <div
+            className="w-full max-w-md rounded-t-[28px] sm:rounded-[28px] p-5 space-y-4 max-h-[92vh] overflow-y-auto animate-slideUp"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                  Realize Floating {realizeType === "income" ? "Profit" : "Loss"}
+                </h3>
+                <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  Record directly into Trouvaille ledger without broker sync
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRealizeModalOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
+                style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Realize Type Switcher: Income (Profit) vs Expense (Loss) */}
+            <div
+              className="flex items-center gap-1 p-1 rounded-xl border border-[var(--glass-border)]"
+              style={{ background: "var(--glass-fill)" }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setRealizeType("income");
+                }}
+                className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                style={{
+                  background: realizeType === "income" ? "var(--bg-elevated)" : "transparent",
+                  color: realizeType === "income" ? "var(--text-primary)" : "var(--text-tertiary)",
+                  boxShadow: realizeType === "income" ? "0 1px 3px var(--shadow-strength)" : "none",
+                }}
+              >
+                <ArrowUpRight size={13} />
+                Income (Profit)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setRealizeType("expense");
+                }}
+                className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                style={{
+                  background: realizeType === "expense" ? "var(--bg-elevated)" : "transparent",
+                  color: realizeType === "expense" ? "var(--text-primary)" : "var(--text-tertiary)",
+                  boxShadow: realizeType === "expense" ? "0 1px 3px var(--shadow-strength)" : "none",
+                }}
+              >
+                <ArrowDownRight size={13} />
+                Expense (Loss)
+              </button>
+            </div>
+
+            {/* Realized Amount */}
+            <div>
+              <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
+                Realized Amount (IDR)
+              </label>
+              <input
+                type="number"
+                value={realizeAmount}
+                onChange={(e) => setRealizeAmount(e.target.value)}
+                placeholder="0"
+                className="w-full px-3 py-2.5 rounded-xl text-[16px] font-semibold font-mono outline-none amount"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
+
+            {/* Date & Time with Quick Offsets */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium block" style={{ color: "var(--text-tertiary)" }}>
+                Realization Date & Time
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  value={realizeDate}
+                  onChange={(e) => setRealizeDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-[12px] font-bold outline-none"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+                <input
+                  type="time"
+                  value={realizeTime}
+                  onChange={(e) => setRealizeTime(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-[12px] font-bold outline-none font-mono"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </div>
+
+              {/* Quick Time Offsets */}
+              <div className="flex items-center gap-1.5 pt-0.5">
+                {[
+                  { label: "Just now", mins: 0 },
+                  { label: "5m ago", mins: 5 },
+                  { label: "15m ago", mins: 15 },
+                  { label: "1h ago", mins: 60 },
+                ].map((pill) => (
+                  <button
+                    key={pill.label}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      const target = pill.mins === 0 ? new Date() : subMinutes(new Date(), pill.mins);
+                      setRealizeDate(format(target, "yyyy-MM-dd"));
+                      setRealizeTime(format(target, "HH:mm"));
+                    }}
+                    className="flex-1 py-1 px-1.5 rounded-lg text-[10px] font-bold active:scale-95 transition-all text-center cursor-pointer"
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {pill.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Target Wallet Selection */}
+            <div>
+              <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
+                {realizeType === "income" ? "Receive into Account" : "Deduct from Account"}
+              </label>
+              <select
+                value={realizeWalletId}
+                onChange={(e) => setRealizeWalletId(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-[12px] font-bold outline-none cursor-pointer"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                {wallets.map((w) => (
+                  <option
+                    key={w.id}
+                    value={w.id}
+                    style={{ background: "var(--bg-elevated)", color: "var(--text-primary)" }}
+                  >
+                    {w.name} ({formatRupiah(balancesByName[w.name.toLowerCase()] || 0)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Note */}
+            <div>
+              <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
+                Ledger Note
+              </label>
+              <input
+                type="text"
+                value={realizeNote}
+                onChange={(e) => setRealizeNote(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-[12px] font-medium outline-none"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
+
+            {/* Confirm Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleConfirmRealization}
+                  disabled={isRealizing}
+                  className="w-full py-3 rounded-xl text-[13px] font-semibold active:scale-98 transition-transform cursor-pointer disabled:opacity-50"
+                  style={{
+                    background: "var(--text-primary)",
+                    color: "var(--bg-base)",
+                  }}
+                >
+                  {isRealizing ? "Recording Transaction..." : "Confirm & Record Transaction"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </BottomSheet>
   );
 }

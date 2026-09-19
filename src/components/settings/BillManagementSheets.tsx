@@ -206,7 +206,7 @@ export function BillManagementSheets({
           <div className="flex items-center justify-between sticky top-0 bg-transparent z-10 pb-2">
             <div>
               <h3
-                className="font-extrabold text-lg"
+                className="font-semibold text-lg"
                 style={{ color: "var(--text-primary)" }}
               >
                 Recurring Bills
@@ -283,7 +283,7 @@ export function BillManagementSheets({
                           {b.title}
                         </p>
                         {isPaid && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-semibold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                             Paid
                           </span>
                         )}
@@ -327,7 +327,7 @@ export function BillManagementSheets({
                         triggerHaptic("medium");
                       }}
                       disabled={isTogglingBill}
-                      className="text-[11px] font-extrabold px-2.5 py-1.5 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                      className="text-[11px] font-semibold px-2.5 py-1.5 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                       style={{
                         background: isPaid
                           ? "var(--glass-fill-strong)"
@@ -389,7 +389,7 @@ export function BillManagementSheets({
       >
         <div className="p-5 pb-16 space-y-4">
           <h3
-            className="font-extrabold text-lg"
+            className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
             {editingBill ? "Edit Recurring Bill" : "Add Recurring Bill"}
@@ -545,7 +545,7 @@ export function BillManagementSheets({
           </div>
           <button
             onClick={handleSaveBill}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] shadow-lg active:scale-95 cursor-pointer"
+            className="w-full py-4 rounded-[20px] font-semibold text-[15px] shadow-lg active:scale-95 cursor-pointer"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             {editingBill ? "Update Bill" : "Save Bill"}
@@ -557,7 +557,7 @@ export function BillManagementSheets({
       <BottomSheet isOpen={pickerOpen} onClose={() => setPickerOpen(false)}>
         <div className="p-5 pb-10 flex flex-col items-center">
           <h3
-            className="font-extrabold text-lg mb-4"
+            className="font-semibold text-lg mb-4"
             style={{ color: "var(--text-primary)" }}
           >
             Select Due Date

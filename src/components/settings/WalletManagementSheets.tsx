@@ -161,7 +161,7 @@ export function WalletManagementSheets({
           <div className="flex items-center justify-between">
             <div>
               <h3
-                className="font-extrabold text-lg leading-tight"
+                className="font-semibold text-lg leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 Accounts & Wallets
@@ -198,13 +198,13 @@ export function WalletManagementSheets({
           >
             <div>
               <p
-                className="text-[10px] font-extrabold uppercase tracking-wider"
+                className="text-[10px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 Total Liquid Assets
               </p>
               <p
-                className="amount text-[20px] font-extrabold mt-0.5"
+                className="amount text-[20px] font-semibold mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
                 {formatRupiah(totalAssets)}
@@ -253,7 +253,7 @@ export function WalletManagementSheets({
                       </div>
                       <div className="min-w-0">
                         <p
-                          className="font-extrabold text-[14px] truncate"
+                          className="font-semibold text-[14px] truncate"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {w.name}
@@ -269,7 +269,7 @@ export function WalletManagementSheets({
 
                     <div className="text-right shrink-0">
                       <p
-                        className="amount text-[15px] font-extrabold"
+                        className="amount text-[15px] font-semibold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {formatRupiah(bal)}
@@ -316,7 +316,7 @@ export function WalletManagementSheets({
                             setCorrectNote("");
                           }, 300);
                         }}
-                        className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full active:scale-95 transition-all cursor-pointer"
+                        className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full active:scale-95 transition-all cursor-pointer"
                         style={{
                           background: "var(--accent)",
                           color: "var(--accent-ink)",
@@ -381,7 +381,7 @@ export function WalletManagementSheets({
             </div>
             <div>
               <h3
-                className="font-extrabold text-lg leading-tight"
+                className="font-semibold text-lg leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 Adjust Balance ({correctWallet?.name})
@@ -444,7 +444,7 @@ export function WalletManagementSheets({
                 Adjustment Delta:
               </span>
               <span
-                className="amount text-[13px] font-extrabold"
+                className="amount text-[13px] font-semibold"
                 style={{
                   color:
                     Number(correctTargetBalance || 0) -
@@ -506,7 +506,7 @@ export function WalletManagementSheets({
           <button
             disabled={isSavingCorrection}
             onClick={handleSaveCorrection}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+            className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             {isSavingCorrection ? "Saving Correction..." : "Save Correction"}
@@ -519,7 +519,7 @@ export function WalletManagementSheets({
         <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between">
             <h3
-              className="font-extrabold text-lg"
+              className="font-semibold text-lg"
               style={{ color: "var(--text-primary)" }}
             >
               Edit Account
@@ -541,7 +541,7 @@ export function WalletManagementSheets({
                 icon={editWallet?.icon || getWalletIcon(editWallet?.name || "")}
                 size="w-5 h-5"
               />
-              <span className="text-[7.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+              <span className="text-[8px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                 Change
               </span>
             </button>
@@ -683,7 +683,7 @@ export function WalletManagementSheets({
                 },
               );
             }}
-            className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg cursor-pointer"
+            className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg cursor-pointer"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             Save Changes
@@ -699,7 +699,7 @@ export function WalletManagementSheets({
         <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between">
             <h3
-              className="font-extrabold text-lg"
+              className="font-semibold text-lg"
               style={{ color: "var(--text-primary)" }}
             >
               Add Account
@@ -721,7 +721,7 @@ export function WalletManagementSheets({
                 icon={walletIcon}
                 size="w-5 h-5"
               />
-              <span className="text-[7.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+              <span className="text-[8px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                 Change
               </span>
             </button>
@@ -815,7 +815,7 @@ export function WalletManagementSheets({
                 title="Tap to change icon"
               >
                 <IconRenderer icon={walletIcon} size="w-5 h-5" />
-                <span className="text-[7.5px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                <span className="text-[8px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                   Change
                 </span>
               </button>
@@ -837,7 +837,7 @@ export function WalletManagementSheets({
 
             <button
               onClick={handleSaveBudget}
-              className="w-full py-4 rounded-[20px] font-extrabold text-[15px] active:scale-95 shadow-lg cursor-pointer"
+              className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg cursor-pointer"
               style={{
                 background: "var(--accent)",
                 color: "var(--accent-ink)",
