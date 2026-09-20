@@ -19,6 +19,7 @@ import {
   Plane,
   Layers,
   User,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   BarChart,
@@ -42,6 +43,7 @@ import { useSpace } from "../contexts/SpaceContext";
 import { SpaceSwitcherSheet } from "../components/spaces/SpaceSwitcherSheet";
 import { TransactionSheet } from "../components/transactions/TransactionSheet";
 import { BottomSheet } from "../components/ui/BottomSheet";
+import { LuxuryReportExportSheet } from "../components/export/LuxuryReportExportSheet";
 import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
 import { formatRupiah, getDateLabel } from "../lib/utils";
 import { IconRenderer } from "../components/ui/IconRenderer";
@@ -209,6 +211,7 @@ export function TransactionsPage({
   const { showToast } = useToast();
   const { activeSpace, activeSpaceId, setActiveSpaceId, filterTransactionsBySpace } = useSpace();
   const [spaceSwitcherOpen, setSpaceSwitcherOpen] = useState(false);
+  const [exportSheetOpen, setExportSheetOpen] = useState(false);
 
   // Selection Mode State for Bulk Actions
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -833,6 +836,23 @@ export function TransactionsPage({
               title={isStealthMode ? "Disable Stealth Mode" : "Enable Stealth Mode (or 3-finger tap)"}
             >
               {isStealthMode ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setExportSheetOpen(true);
+                triggerHaptic("light");
+              }}
+              className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
+              }}
+              title="Export Financial Statement & Data"
+            >
+              <FileSpreadsheet size={14} strokeWidth={1.75} />
             </button>
 
             <button
@@ -2155,6 +2175,13 @@ export function TransactionsPage({
       <SpaceSwitcherSheet
         isOpen={spaceSwitcherOpen}
         onClose={() => setSpaceSwitcherOpen(false)}
+      />
+
+      {/* Luxury Report & Tax Export Sheet */}
+      <LuxuryReportExportSheet
+        isOpen={exportSheetOpen}
+        onClose={() => setExportSheetOpen(false)}
+        defaultSpaceId={activeSpaceId}
       />
     </div>
   );

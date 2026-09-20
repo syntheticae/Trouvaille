@@ -60,6 +60,7 @@ export interface Wallet {
   icon: string;
   created_at: string;
   classification?: AccountClassification;
+  balance?: number;
 }
 
 export interface Transaction {
@@ -74,6 +75,7 @@ export interface Transaction {
   occurred_on: string;
   created_at: string;
   categories?: Category | null;
+  space_id?: string | null;
 }
 
 export interface Bill {

@@ -499,7 +499,9 @@ export function VoiceQuickAddModal({
   const resolvedType = parsed.type || "expense";
   const resolvedCategory =
     categories.find((c) => c.id === parsed.categoryId) ||
-    (categories.length > 0 ? categories[0] : null);
+    (categories.filter((c) => c.type === resolvedType).length > 0
+      ? categories.filter((c) => c.type === resolvedType)[0]
+      : categories[0] || null);
   const resolvedWallet =
     wallets.find((w) => w.id === parsed.walletId) ||
     (wallets.length > 0 ? wallets[0] : null);
@@ -569,7 +571,9 @@ export function VoiceQuickAddModal({
       const itemType = item.type || "expense";
       const itemCat =
         categories.find((c) => c.id === item.categoryId) ||
-        (categories.length > 0 ? categories[0] : null);
+        (categories.filter((c) => c.type === itemType).length > 0
+          ? categories.filter((c) => c.type === itemType)[0]
+          : categories[0] || null);
       const itemWallet =
         wallets.find((w) => w.id === item.walletId) ||
         (wallets.length > 0 ? wallets[0] : null);
@@ -621,7 +625,9 @@ export function VoiceQuickAddModal({
     const itemType = targetItem.type || "expense";
     const itemCat =
       categories.find((c) => c.id === targetItem.categoryId) ||
-      (categories.length > 0 ? categories[0] : null);
+      (categories.filter((c) => c.type === itemType).length > 0
+        ? categories.filter((c) => c.type === itemType)[0]
+        : categories[0] || null);
     const itemWallet =
       wallets.find((w) => w.id === targetItem.walletId) ||
       (wallets.length > 0 ? wallets[0] : null);

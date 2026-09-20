@@ -27,9 +27,141 @@ export interface ParsedTransactionResult {
   };
 }
 
+export function stemIndonesianCategoryWord(word: string): string {
+  let w = word.toLowerCase().trim();
+  // Strip common Indonesian STT artifacts
+  w = w.replace(/[^a-z0-9]/g, "");
+  if (!w) return "";
+
+  // Common direct verb/slang to noun root mappings
+  if (w === "ngopi" || w === "ngops") return "kopi";
+  if (w === "ngemil" || w === "nyemil") return "makan";
+  if (w === "sarapan") return "makan";
+  if (w === "makann" || w === "makam" || w === "mkn") return "makan";
+  if (w === "bensin" || w === "pertalite" || w === "pertamax" || w === "solar") return "bensin";
+
+  // Strip suffix -nya (makannya -> makan, bensinnya -> bensin, kopinya -> kopi)
+  if (w.endsWith("nya") && w.length > 5) {
+    w = w.slice(0, -3);
+  }
+
+  // Common root words ending in "an" that should NOT be stripped further
+  if (w === "makan" || w === "jajan") {
+    return w;
+  }
+
+  // Strip suffix -an (makanan -> makan, minuman -> minum, jajanan -> jajan, gajian -> gaji)
+  if (w.endsWith("an") && w.length > 4) {
+    w = w.slice(0, -2);
+  }
+
+  // Strip prefix ng- or nge- (ngopi -> kopi)
+  if (w.startsWith("nge") && w.length > 5) {
+    w = w.slice(3);
+  } else if (w.startsWith("ng") && w.length > 4) {
+    w = w.slice(2);
+  }
+
+  return w;
+}
+
+export function normalizeSpokenIndonesianNumbers(input: string): string {
+  let s = input;
+
+  // Common STT mishearings for "makan"
+  s = s.replace(/\b(?:bahkan|makam|makann|mkn)\b/gi, "makan");
+
+  // Multi-word million phrases: e.g. "satu juta", "dua juta", "setengah juta", "sejuta"
+  s = s.replace(/\bsetengah\s+juta\b/gi, "500000");
+  s = s.replace(/\b(?:satu\s+juta|sejuta)\b/gi, "1000000");
+  s = s.replace(/\bdua\s+juta\b/gi, "2000000");
+  s = s.replace(/\btiga\s+juta\b/gi, "3000000");
+  s = s.replace(/\bempat\s+juta\b/gi, "4000000");
+  s = s.replace(/\blima\s+juta\b/gi, "5000000");
+  s = s.replace(/\benam\s+juta\b/gi, "6000000");
+  s = s.replace(/\btujuh\s+juta\b/gi, "7000000");
+  s = s.replace(/\bdelapan\s+juta\b/gi, "8000000");
+  s = s.replace(/\bsembilan\s+juta\b/gi, "9000000");
+  s = s.replace(/\bsepuluh\s+juta\b/gi, "10000000");
+
+  // Ratus ribu phrases: e.g. "seratus lima puluh ribu", "seratus ribu", "dua ratus ribu", "lima ratus ribu"
+  s = s.replace(/\bseratus\s+lima\s+puluh\s+ribu\b/gi, "150000");
+  s = s.replace(/\bseratus\s+dua\s+puluh\s+ribu\b/gi, "120000");
+  s = s.replace(/\bseratus\s+tujuh\s+puluh\s+lima\s+ribu\b/gi, "175000");
+  s = s.replace(/\bseratus\s+ribu\b/gi, "100000");
+  s = s.replace(/\bdua\s+ratus\s+lima\s+puluh\s+ribu\b/gi, "250000");
+  s = s.replace(/\bdua\s+ratus\s+ribu\b/gi, "200000");
+  s = s.replace(/\btiga\s+ratus\s+ribu\b/gi, "300000");
+  s = s.replace(/\bempat\s+ratus\s+ribu\b/gi, "400000");
+  s = s.replace(/\blima\s+ratus\s+ribu\b/gi, "500000");
+  s = s.replace(/\benam\s+ratus\s+ribu\b/gi, "600000");
+  s = s.replace(/\btujuh\s+ratus\s+ribu\b/gi, "700000");
+  s = s.replace(/\bdelapan\s+ratus\s+ribu\b/gi, "800000");
+  s = s.replace(/\bsembilan\s+ratus\s+ribu\b/gi, "900000");
+
+  const digits: Record<string, number> = {
+    satu: 1,
+    dua: 2,
+    tiga: 3,
+    empat: 4,
+    lima: 5,
+    enam: 6,
+    tujuh: 7,
+    delapan: 8,
+    sembilan: 9,
+  };
+
+  // Pattern: "(dua|tiga|empat|lima|enam|tujuh|delapan|sembilan) puluh (satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan) ribu"
+  s = s.replace(
+    /\b(dua|tiga|empat|lima|enam|tujuh|delapan|sembilan)\s+puluh\s+(satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan)\s+ribu\b/gi,
+    (_, tens, ones) => {
+      const tVal = digits[tens.toLowerCase()] || 0;
+      const oVal = digits[ones.toLowerCase()] || 0;
+      return `${tVal * 10000 + oVal * 1000}`;
+    },
+  );
+
+  // Pattern: "(dua|tiga|empat|lima|enam|tujuh|delapan|sembilan) puluh ribu"
+  s = s.replace(
+    /\b(dua|tiga|empat|lima|enam|tujuh|delapan|sembilan)\s+puluh\s+ribu\b/gi,
+    (_, tens) => {
+      const tVal = digits[tens.toLowerCase()] || 0;
+      return `${tVal * 10000}`;
+    },
+  );
+
+  // Belas ribu phrases: e.g. "sebelas ribu", "dua belas ribu", "lima belas ribu"
+  s = s.replace(/\bsebelas\s+ribu\b/gi, "11000");
+  s = s.replace(/\bdua\s+belas\s+ribu\b/gi, "12000");
+  s = s.replace(/\btiga\s+belas\s+ribu\b/gi, "13000");
+  s = s.replace(/\bempat\s+belas\s+ribu\b/gi, "14000");
+  s = s.replace(/\blima\s+belas\s+ribu\b/gi, "15000");
+  s = s.replace(/\benam\s+belas\s+ribu\b/gi, "16000");
+  s = s.replace(/\btujuh\s+belas\s+ribu\b/gi, "17000");
+  s = s.replace(/\bdelapan\s+belas\s+ribu\b/gi, "18000");
+  s = s.replace(/\bsembilan\s+belas\s+ribu\b/gi, "19000");
+
+  // Sepuluh ribu, seribu
+  s = s.replace(/\bsepuluh\s+ribu\b/gi, "10000");
+  s = s.replace(/\bseribu\b/gi, "1000");
+  s = s.replace(
+    /\b(dua|tiga|empat|lima|enam|tujuh|delapan|sembilan)\s+ribu\b/gi,
+    (_, ones) => {
+      const oVal = digits[ones.toLowerCase()] || 0;
+      return `${oVal * 1000}`;
+    },
+  );
+
+  // Numeric + "ribu" (e.g. "50 ribu" -> "50000", "25 ribu" -> "25000")
+  s = s.replace(/\b(\d+)\s+ribu\b/gi, "$1000");
+
+  return s;
+}
+
 const CATEGORY_ALIASES: Record<string, string[]> = {
   kopi: [
     "kopi",
+    "ngopi",
     "coffee",
     "cafe",
     "kafe",
@@ -48,9 +180,33 @@ const CATEGORY_ALIASES: Record<string, string[]> = {
     "anomali",
     "flash coffee",
   ],
+  minuman: [
+    "minum",
+    "minuman",
+    "drink",
+    "drinks",
+    "beverage",
+    "beverages",
+    "boba",
+    "jus",
+    "juice",
+    "es teh",
+    "aqua",
+    "air mineral",
+    "teh",
+    "chatime",
+    "haus",
+    "kopi",
+    "ngopi",
+  ],
   makanan: [
     "makan",
     "makanan",
+    "makann",
+    "mkn",
+    "food",
+    "kuliner",
+    "f&b",
     "sarapan",
     "lunch",
     "dinner",
@@ -65,8 +221,12 @@ const CATEGORY_ALIASES: Record<string, string[]> = {
     "restoran",
     "resto",
     "warung",
+    "warteg",
     "snack",
     "jajan",
+    "jajanan",
+    "ngemil",
+    "cemilan",
     "gorengan",
     "sate",
     "pecel",
@@ -86,6 +246,22 @@ const CATEGORY_ALIASES: Record<string, string[]> = {
     "soto",
     "rendang",
     "rawon",
+    "kantin",
+  ],
+  bensin: [
+    "bensin",
+    "pertalite",
+    "pertamax",
+    "solar",
+    "shell",
+    "bbm",
+    "spbu",
+    "pom bensin",
+  ],
+  parkir: [
+    "parkir",
+    "parkiran",
+    "valet",
   ],
   transportasi: [
     "transport",
@@ -115,6 +291,7 @@ const CATEGORY_ALIASES: Record<string, string[]> = {
     "taxi",
     "taksi",
     "angkot",
+    "kendaraan",
   ],
   hunian: [
     "hunian",
@@ -378,7 +555,8 @@ export function parseNaturalTransaction(
   const matchedTokens: ParsedTransactionResult["matchedTokens"] = {};
   let confidence = 0;
 
-  // 0. Pre-clean STT artifacts: trailing periods on numbers, phonetic cash, and STT mishearings
+  // 0. Pre-clean STT artifacts: spoken Indonesian numbers, trailing periods on numbers, phonetic cash, and STT mishearings
+  text = normalizeSpokenIndonesianNumbers(text);
   text = text.replace(/(\d{1,3}(?:\.\d{3})+)\./g, "$1");
   text = text.replace(/\bbahkan\b/gi, "makan");
 
@@ -635,7 +813,42 @@ export function parseNaturalTransaction(
     }
   }
 
-  // B. Alias matching (if no direct category name match)
+  // B. Indonesian Morphological Stem & Root Matcher (e.g. "makan" -> "Makanan", "minum" -> "Minuman", "ngopi" -> "Kopi")
+  if (!detectedCategoryId) {
+    const textWords = text.split(/[\s,.;]+/).filter(Boolean);
+    for (const w of textWords) {
+      const stem = stemIndonesianCategoryWord(w);
+      if (!stem || stem.length < 3) continue;
+
+      // Find matching category by stem, prefix, or canonical concept
+      const matchedCat = targetCategories.find((cat) => {
+        const catLower = cat.name.toLowerCase();
+        const catStem = stemIndonesianCategoryWord(cat.name);
+        return (
+          catStem === stem ||
+          catLower.startsWith(stem) ||
+          catLower === stem ||
+          (stem === "makan" && (catLower.includes("makan") || catLower.includes("food") || catLower.includes("kuliner") || catLower.includes("f&b"))) ||
+          (stem === "minum" && (catLower.includes("minum") || catLower.includes("drink") || catLower.includes("beverage"))) ||
+          (stem === "kopi" && (catLower.includes("kopi") || catLower.includes("coffee") || catLower.includes("cafe"))) ||
+          (stem === "bensin" && (catLower.includes("bensin") || catLower.includes("transport") || catLower.includes("bbm"))) ||
+          (stem === "gaji" && (catLower.includes("gaji") || catLower.includes("salary") || catLower.includes("income")))
+        );
+      });
+
+      if (matchedCat) {
+        detectedCategoryId = matchedCat.id;
+        detectedCategoryName = matchedCat.name;
+        detectedCategoryEmoji = matchedCat.emoji;
+        matchedTokens.categoryToken = matchedCat.name;
+        confidence += 0.35;
+        text = text.replace(new RegExp(`\\b${w}\\b`, "i"), " ");
+        break;
+      }
+    }
+  }
+
+  // C. Alias matching (if no direct category name or stem match)
   if (!detectedCategoryId) {
     for (const [canonKey, aliasList] of Object.entries(CATEGORY_ALIASES)) {
       const foundAlias = aliasList.find((alias) =>
@@ -649,12 +862,22 @@ export function parseNaturalTransaction(
             return (
               n === canonKey ||
               n.includes(canonKey) ||
-              aliasList.some((a) => n.includes(a))
+              canonKey.includes(n) ||
+              aliasList.some((a) => n.includes(a)) ||
+              (canonKey === "makanan" && (n.includes("food") || n.includes("kuliner") || n.includes("f&b"))) ||
+              (canonKey === "minuman" && (n.includes("drink") || n.includes("beverage"))) ||
+              (canonKey === "kopi" && (n.includes("coffee") || n.includes("cafe"))) ||
+              (canonKey === "bensin" && (n.includes("transport") || n.includes("bbm")))
             );
           }) ||
           categories.find((c) => {
             const n = c.name.toLowerCase();
-            return n === canonKey || n.includes(canonKey);
+            return (
+              n === canonKey ||
+              n.includes(canonKey) ||
+              canonKey.includes(n) ||
+              aliasList.some((a) => n.includes(a))
+            );
           });
 
         if (matchedCategory) {
@@ -847,11 +1070,16 @@ export function splitIntoClauses(
   const trimmed = input.trim();
   if (!trimmed) return [];
 
+  // 0. Pre-normalize spoken numbers (e.g. "lima puluh ribu" -> "50000")
+  const preprocessed = normalizeSpokenIndonesianNumbers(trimmed);
+
   // 1. Normalize sequential conjunctions & line breaks into delimiter " ||| "
-  const normalized = trimmed
+  const normalized = preprocessed
     .replace(/[\n;]+/g, " ||| ")
-    .replace(/\b(?:habis\s+itu|setelah\s+itu)\b/gi, " ||| ")
-    .replace(/\b(?:terus|lalu|kemudian|sekalian)\b/gi, " ||| ");
+    .replace(/\b(?:habis\s+itu|setelah\s+itu|abis\s+itu)\b/gi, " ||| ")
+    .replace(/\b(?:terus|lalu|kemudian|sekalian)\b/gi, " ||| ")
+    .replace(/\s*,\s*(?=(?:dan|sama|terus|lalu|kemudian|abis|habis|\d|kopi|ngopi|makan|minum|bensin|beli|bayar|transfer|topup|gaji))/gi, " ||| ")
+    .replace(/\s+\b(?:dan|sama|plus)\s+(?=(?:kopi|ngopi|makan|minum|bensin|beli|bayar|transfer|topup|gaji|\d))/gi, " ||| ");
 
   const rawSegments = normalized
     .split("|||")
@@ -864,7 +1092,9 @@ export function splitIntoClauses(
     finalClauses.push(...subClauses);
   }
 
-  return finalClauses.filter((c) => c.trim().length > 0);
+  return finalClauses
+    .map((c) => c.replace(/^(?:dan|sama|plus|lalu|terus)\s+/i, "").trim())
+    .filter((c) => c.length > 0);
 }
 
 export function parseMultiNaturalTransactions(

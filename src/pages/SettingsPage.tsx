@@ -54,6 +54,7 @@ import {
 } from "../hooks/useTransactions";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { ResetTransactionsSheet } from "../components/settings/ResetTransactionsSheet";
+import { LuxuryReportExportSheet } from "../components/export/LuxuryReportExportSheet";
 import {
   requestNotificationPermission,
   syncBillNotifications,
@@ -154,6 +155,7 @@ export function SettingsPage() {
   const [mediaPermissionsOpen, setMediaPermissionsOpen] = useState(false);
   const [valuationOpen, setValuationOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [reportExportOpen, setReportExportOpen] = useState(false);
   const { preferredCurrency, currencyMeta } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -283,40 +285,6 @@ export function SettingsPage() {
     }
   };
 
-  const handleExportCSV = () => {
-    if (allTxs.length === 0) {
-      showToast("No transaction data to export", "delete", () => {});
-      return;
-    }
-    const headers = ["Date,Type,Amount,Category,Note"];
-    const rows = allTxs.map((t: any) => {
-      const date = t.occurred_on;
-      const type =
-        t.type === "income"
-          ? "Income"
-          : t.type === "expense"
-            ? "Expense"
-            : "Transfer";
-      const amount = t.amount;
-      const cat = t.categories?.name || "General";
-      const note = t.note || "";
-      return `${date},${type},${amount},"${cat}","${note}"`;
-    });
-    const csvContent =
-      "data:text/csv;charset=utf-8," + headers.concat(rows).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute(
-      "download",
-      `trouvaille_export_${format(new Date(), "yyyyMMdd")}.csv`,
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("CSV exported successfully", "add", () => {});
-  };
-
   const handleLogout = async () => {
     if (confirm("Are you sure you want to sign out?")) {
       await signOut();
@@ -341,7 +309,7 @@ export function SettingsPage() {
 
   const showCloudSync = matches("Cloud Sync", "Safely backup data to private vault");
   const showVault = matches("Encrypted Vault", "Local AES-256 encrypted file backup");
-  const showExport = matches("Export CSV", "Download transactions as spreadsheet");
+  const showExport = matches("Report & Tax Export", "Editorial statement, CSV ledger & JSON vault");
   const showReset = matches("Reset Data", "Wipe transaction ledger while keeping accounts");
   const hasSection3 = showCloudSync || showVault || showExport || showReset;
 
@@ -1222,11 +1190,14 @@ export function SettingsPage() {
               </button>
             )}
 
-            {/* Export CSV */}
+            {/* Report & Tax Export */}
             {showExport && (
               <button
                 type="button"
-                onClick={handleExportCSV}
+                onClick={() => {
+                  triggerHaptic("light");
+                  setReportExportOpen(true);
+                }}
                 className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -1245,13 +1216,13 @@ export function SettingsPage() {
                       className="text-[13px] font-semibold block"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      Export CSV
+                      Report & Tax Export
                     </span>
                     <p
                       className="text-[11px]"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Download spreadsheet ledger
+                      Editorial statement, CSV ledger & JSON vault
                     </p>
                   </div>
                 </div>
@@ -1777,6 +1748,11 @@ export function SettingsPage() {
       <CurrencySwitcherSheet
         isOpen={currencySheetOpen}
         onClose={() => setCurrencySheetOpen(false)}
+      />
+
+      <LuxuryReportExportSheet
+        isOpen={reportExportOpen}
+        onClose={() => setReportExportOpen(false)}
       />
     </div>
   );
