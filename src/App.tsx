@@ -93,8 +93,11 @@ function AppShell() {
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [receiptScanOpen, setReceiptScanOpen] = useState(false);
   const [statementImportOpen, setStatementImportOpen] = useState(false);
-  const [onboardingOpen, setOnboardingOpen] = useState(() => {
-    return localStorage.getItem("trouvaille_onboarded") !== "true";
+  const [isOnboarded, setIsOnboarded] = useState(() => {
+    return (
+      localStorage.getItem("trouvaille_onboarded") === "true" &&
+      localStorage.getItem("trouvaille_onboarding_focus") !== null
+    );
   });
   const [prefilledValues, setPrefilledValues] = useState<any>(null);
   const syncStorageKey = user
@@ -389,6 +392,25 @@ function AppShell() {
     );
   }
 
+  // Dedicated Full-Screen Customization Step:
+  // User MUST complete customization before Home is ever rendered.
+  if (!isOnboarded) {
+    return (
+      <Suspense fallback={<LoadingScreen />}>
+        <OnboardingModal
+          isOpen={true}
+          onComplete={() => {
+            localStorage.setItem("trouvaille_onboarded", "true");
+            setIsOnboarded(true);
+            queryClient.invalidateQueries({ queryKey: ["categories"] });
+            queryClient.invalidateQueries({ queryKey: ["wallets"] });
+            queryClient.invalidateQueries({ queryKey: ["transactions"] });
+          }}
+        />
+      </Suspense>
+    );
+  }
+
   return (
     <div
       className="h-[100dvh] w-full relative overflow-hidden"
@@ -526,19 +548,6 @@ function AppShell() {
         </Suspense>
       )}
 
-      {onboardingOpen && (
-        <Suspense fallback={null}>
-          <OnboardingModal
-            isOpen={onboardingOpen}
-            onComplete={() => {
-              setOnboardingOpen(false);
-              queryClient.invalidateQueries({ queryKey: ["categories"] });
-              queryClient.invalidateQueries({ queryKey: ["wallets"] });
-              queryClient.invalidateQueries({ queryKey: ["transactions"] });
-            }}
-          />
-        </Suspense>
-      )}
 
       {/* iOS App Switcher / Multitasking Privacy Screen Shield */}
       {isPrivacyShieldEnabled && isPrivacyShieldActive && (

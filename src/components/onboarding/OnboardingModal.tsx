@@ -259,11 +259,15 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex flex-col justify-between overflow-hidden select-none"
+      className="fixed inset-0 z-[1000] flex flex-col justify-between overflow-hidden select-none px-4 sm:px-6"
       style={{
-        background: "var(--bg-canvas, #08080a)",
+        background: `
+          radial-gradient(ellipse 90% 55% at 50% 15%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 45%, transparent 75%),
+          radial-gradient(ellipse 70% 40% at 50% 90%, rgba(255, 255, 255, 0.06) 0%, transparent 60%),
+          #060608
+        `,
         fontFamily: "'Urbanist', sans-serif",
-        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 16px), 24px)",
+        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 20px), 28px)",
         paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 24px)",
       }}
     >
@@ -271,9 +275,9 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       {/* 1. CINEMATIC MONOCHROME AURORA BLOOM (SOFT GLOW) */}
       {/* ============================================================ */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 -left-32 w-[420px] h-[420px] rounded-full bg-white/[0.045] blur-[150px]" />
-        <div className="absolute bottom-1/4 -right-32 w-[380px] h-[380px] rounded-full bg-white/[0.035] blur-[140px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-white/[0.02] blur-[160px]" />
+        <div className="absolute top-1/4 -left-32 w-[420px] h-[420px] rounded-full bg-white/[0.065] blur-[120px]" />
+        <div className="absolute bottom-1/4 -right-32 w-[380px] h-[380px] rounded-full bg-white/[0.045] blur-[110px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-white/[0.03] blur-[140px]" />
       </div>
 
       {/* ============================================================ */}
