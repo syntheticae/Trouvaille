@@ -341,7 +341,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               className="space-y-4"
             >
               <div className="space-y-1">
-                <span className="text-[10.5px] font-semibold tracking-wider text-white/40 uppercase block">
+                <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
                   Step 01 · Intent
                 </span>
                 <h1 className="text-[26px] font-semibold tracking-tight text-white leading-tight">
@@ -381,7 +381,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3.5">
                           <span
-                            className="text-[12px] font-bold amount pt-0.5 tracking-wider"
+                            className="text-[12px] font-semibold amount pt-0.5 tracking-wider"
                             style={{
                               color: isSelected
                                 ? "rgba(255, 255, 255, 0.9)"
@@ -437,7 +437,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               className="space-y-4"
             >
               <div className="space-y-1">
-                <span className="text-[10.5px] font-semibold tracking-wider text-white/40 uppercase block">
+                <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
                   Step 02 · Accounts
                 </span>
                 <h1 className="text-[26px] font-semibold tracking-tight text-white leading-tight">
@@ -490,7 +490,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                           </div>
                           <div>
                             <h4
-                              className="text-[13.5px] font-semibold leading-tight"
+                              className="text-[13px] font-semibold leading-tight"
                               style={{
                                 color: isChecked ? "#ffffff" : "rgba(255, 255, 255, 0.75)",
                               }}
@@ -533,7 +533,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               className="space-y-5"
             >
               <div className="space-y-1">
-                <span className="text-[10.5px] font-semibold tracking-wider text-white/40 uppercase block">
+                <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
                   Step 03 · Starting Baseline
                 </span>
                 <h1 className="text-[26px] font-semibold tracking-tight text-white leading-tight">
@@ -614,7 +614,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               className="space-y-4"
             >
               <div className="space-y-1">
-                <span className="text-[10.5px] font-semibold tracking-wider text-white/40 uppercase block">
+                <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
                   Step 04 · Habit Formation
                 </span>
                 <h1 className="text-[26px] font-semibold tracking-tight text-white leading-tight">
@@ -690,7 +690,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   <div className="text-[44px] font-semibold tracking-wider text-white amount leading-none">
                     {reminderHour}:00
                   </div>
-                  <span className="text-[11px] font-medium text-white/45 tracking-widest uppercase block mt-1.5">
+                  <span className="text-[11px] font-medium text-white/45 tracking-wider uppercase block mt-1.5">
                     {reminderHour === 20 ? "8:00 PM · Evening Nudge" : `${reminderHour}:00 Local Time`}
                   </span>
                 </div>

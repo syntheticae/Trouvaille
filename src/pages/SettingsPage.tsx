@@ -29,6 +29,7 @@ import {
   EyeOff,
   Tag,
   Coins,
+  Trash2,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -76,6 +77,7 @@ import { PinSetupModal } from "../components/settings/PinSetupModal";
 import { BudgetTargetSheet } from "../components/settings/BudgetTargetSheet";
 import { MediaPermissionsSheet } from "../components/settings/MediaPermissionsSheet";
 import { AssetValuationSheet } from "../components/settings/AssetValuationSheet";
+import { DeleteAccountModal } from "../components/settings/DeleteAccountModal";
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
@@ -158,8 +160,22 @@ export function SettingsPage() {
   const [valuationOpen, setValuationOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const { preferredCurrency, currencyMeta } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
+
+  const handleRerunCustomization = () => {
+    triggerHaptic("medium");
+    if (
+      confirm(
+        "Reset onboarding state? Your existing transaction ledger will remain safe, and you can re-experience the customization wizard immediately."
+      )
+    ) {
+      localStorage.removeItem("trouvaille_onboarded");
+      localStorage.removeItem("trouvaille_onboarding_focus");
+      window.location.reload();
+    }
+  };
 
   const matches = (title: string, desc?: string) => {
     if (!searchQuery.trim()) return true;
@@ -339,7 +355,9 @@ export function SettingsPage() {
   const showVault = matches("Encrypted Vault", "Local AES-256 encrypted file backup");
   const showExport = matches("Report & Tax Export", "Editorial statement, CSV ledger & JSON vault");
   const showReset = matches("Reset Data", "Wipe transaction ledger while keeping accounts");
-  const hasSection3 = showCloudSync || showVault || showExport || showReset;
+  const showRerunOnboarding = matches("Re-run Customization Wizard", "Reset onboarding state to preview initial setup");
+  const showDeleteAccount = matches("Delete Account & Reset Vault", "Permanently wipe all records and reset local app");
+  const hasSection3 = showCloudSync || showVault || showExport || showReset || showRerunOnboarding || showDeleteAccount;
 
   const showPrivacyShield = matches("Privacy Shield", "Mask balances and monetary figures across all pages");
   const showFaceID = matches("Require Face ID / PIN", "Protect app with biometric authentication");
@@ -1345,6 +1363,80 @@ export function SettingsPage() {
                 <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
               </button>
             )}
+
+            {/* Re-run Customization Wizard */}
+            {showRerunOnboarding && (
+              <button
+                type="button"
+                onClick={handleRerunCustomization}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <SlidersHorizontal size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Re-run Customization Wizard
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Reset onboarding state to test setup flow
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+              </button>
+            )}
+
+            {/* Delete Account & Reset Vault */}
+            {showDeleteAccount && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("medium");
+                  setDeleteAccountOpen(true);
+                }}
+                className="flex items-center justify-between p-4 active:bg-red-500/10 transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "rgba(239, 68, 68, 0.12)",
+                      border: "1px solid rgba(239, 68, 68, 0.25)",
+                      color: "#ef4444",
+                    }}
+                  >
+                    <Trash2 size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span className="text-[13px] font-semibold block text-red-500">
+                      Delete Account & Reset Vault
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Permanently wipe all records & session
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-red-400/60" />
+              </button>
+            )}
           </div>
         </section>
       )}
@@ -1832,6 +1924,11 @@ export function SettingsPage() {
       <LuxuryReportExportSheet
         isOpen={reportExportOpen}
         onClose={() => setReportExportOpen(false)}
+      />
+
+      <DeleteAccountModal
+        isOpen={deleteAccountOpen}
+        onClose={() => setDeleteAccountOpen(false)}
       />
     </div>
   );
