@@ -18,7 +18,6 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import {
   authenticateWithBiometrics,
-  getSecuritySettings,
   getBiometricLoginCredentials,
   saveBiometricLoginCredentials,
 } from "../lib/biometricAuth";
@@ -72,7 +71,6 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [hasBiometric, setHasBiometric] = useState(false);
 
   // Auto-advance showcase slides every 6 seconds
   useEffect(() => {
@@ -112,8 +110,6 @@ export function LoginPage() {
   }, [email, setSession]);
 
   useEffect(() => {
-    const s = getSecuritySettings();
-    setHasBiometric(s.hasBiometric);
     const hint = getBiometricLoginCredentials();
     if (hint?.email && !email) {
       setEmail(hint.email);
@@ -968,54 +964,46 @@ export function LoginPage() {
                 ) : (
                   /* DEFAULT LOGIN BUTTONS */
                   <>
-                    {/* 1. Sign In with Face ID (if enrolled on this device) */}
-                    {hasBiometric && (
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={handleBiometricLogin}
-                        className="w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 shadow-xl hover:bg-zinc-100"
-                        style={{
-                          boxShadow:
-                            "0 8px 24px rgba(255, 255, 255, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.8)",
-                        }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <ScanFace size={17} strokeWidth={1.75} className="text-zinc-900" />
-                          <span>Sign In with Face ID</span>
-                        </div>
-                        <ArrowRight size={15} strokeWidth={2} className="text-zinc-500" />
-                      </button>
-                    )}
+                    {/* 1. Sign In with Face ID / Passkey */}
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={handleBiometricLogin}
+                      className="w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 shadow-xl hover:bg-zinc-100"
+                      style={{
+                        boxShadow:
+                          "0 8px 24px rgba(255, 255, 255, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.8)",
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <ScanFace size={17} strokeWidth={1.75} className="text-zinc-900" />
+                        <span>Sign In with Face ID / Passkey</span>
+                      </div>
+                      <ArrowRight size={15} strokeWidth={2} className="text-zinc-500" />
+                    </button>
 
                     {/* 2. Log in with Email */}
                     <button
                       type="button"
                       disabled={loading}
                       onClick={handleToggleEmailForm}
-                      className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer ${
-                        hasBiometric
-                          ? "bg-white/[0.055] border border-white/16 text-white hover:bg-white/[0.08]"
-                          : "bg-white text-zinc-950 shadow-xl hover:bg-zinc-100"
-                      }`}
+                      className="w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer bg-white/[0.055] border border-white/16 text-white hover:bg-white/[0.08]"
                       style={{
-                        boxShadow: hasBiometric
-                          ? "inset 0 1px 1px rgba(255, 255, 255, 0.15)"
-                          : "0 8px 24px rgba(255, 255, 255, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.8)",
+                        boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.15)",
                       }}
                     >
                       <div className="flex items-center gap-3">
                         <Mail
                           size={17}
                           strokeWidth={1.75}
-                          className={hasBiometric ? "text-white/80" : "text-zinc-900"}
+                          className="text-white/80"
                         />
                         <span>Log in with Email</span>
                       </div>
                       <ArrowRight
                         size={15}
                         strokeWidth={2}
-                        className={hasBiometric ? "text-white/40" : "text-zinc-500"}
+                        className="text-white/40"
                       />
                     </button>
 
