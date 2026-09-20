@@ -5,7 +5,8 @@ import { useGoals } from "../hooks/useGoals";
 import { useWallets } from "../hooks/useWallets";
 import { useBills } from "../hooks/useBills";
 import { CalendarDays, Target } from "lucide-react";
-import { triggerHaptic } from "../lib/haptics";
+import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics";
+import { SplitBillSheet } from "../components/tools/SplitBillSheet";
 import { resolveTransactionCategory } from "../lib/categoryResolver";
 import { useNavigate } from "react-router-dom";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
@@ -56,6 +57,7 @@ import {
   Plane,
   Layers,
   User,
+  Flame,
 } from "lucide-react";
 import { useSpace } from "../contexts/SpaceContext";
 import { SpaceSwitcherSheet } from "../components/spaces/SpaceSwitcherSheet";
@@ -69,7 +71,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { useAllTransactions } from "../hooks/useTransactions";
+import { useAllTransactions, useAddTransaction } from "../hooks/useTransactions";
 import {
   useUpcomingBills,
   useMarkBillPaid,
@@ -191,6 +193,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   }, [rawAllTxs, activeSpaceId, filterTransactionsBySpace]);
   const [spaceSwitcherOpen, setSpaceSwitcherOpen] = useState(false);
   const [nfcModalOpen, setNfcModalOpen] = useState(false);
+  const [splitBillSheetOpen, setSplitBillSheetOpen] = useState(false);
+  const addTx = useAddTransaction();
 
   const {
     widgets,
@@ -1441,7 +1445,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           return (
             <CompactSplitBillHalf
               onOpenDetail={() => {
-                _onOpenAdd?.();
+                triggerHaptic("light");
+                setSplitBillSheetOpen(true);
               }}
             />
           );
@@ -1484,7 +1489,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
-                  _onOpenAdd?.();
+                  setSplitBillSheetOpen(true);
                 }}
                 className="text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0 ml-2"
                 style={{
@@ -1776,31 +1781,56 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             <h1 className="text-[16px] font-semibold text-[var(--text-primary)] leading-tight mt-0.5">
               {displayName}
             </h1>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setSpaceSwitcherOpen(true);
-              }}
-              className="mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border border-white/10 hover:border-white/20"
-              style={{
-                background: "var(--glass-fill)",
-                color: "var(--text-primary)",
-              }}
-              title="Switch Money Space"
-            >
-              {activeSpace.icon === "Briefcase" ? (
-                <Briefcase size={11} strokeWidth={1.75} />
-              ) : activeSpace.icon === "Plane" ? (
-                <Plane size={11} strokeWidth={1.75} />
-              ) : activeSpace.icon === "Layers" ? (
-                <Layers size={11} strokeWidth={1.75} />
-              ) : (
-                <User size={11} strokeWidth={1.75} />
+            <div className="flex items-center gap-1.5 mt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSpaceSwitcherOpen(true);
+                }}
+                className="px-2 py-0.5 rounded-full text-[10px] font-semibold inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border border-white/10 hover:border-white/20"
+                style={{
+                  background: "var(--glass-fill)",
+                  color: "var(--text-primary)",
+                }}
+                title="Switch Money Space"
+              >
+                {activeSpace.icon === "Briefcase" ? (
+                  <Briefcase size={11} strokeWidth={1.75} />
+                ) : activeSpace.icon === "Plane" ? (
+                  <Plane size={11} strokeWidth={1.75} />
+                ) : activeSpace.icon === "Layers" ? (
+                  <Layers size={11} strokeWidth={1.75} />
+                ) : (
+                  <User size={11} strokeWidth={1.75} />
+                )}
+                <span>{activeSpace.name}</span>
+                <span className="text-[8px] opacity-60">▾</span>
+              </button>
+
+              {intel.loggingStreak > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerSuccessHaptic();
+                    showToast(
+                      `${intel.loggingStreak} hari berturut-turut mencatat transaksi! Pertahankan konsistensi finansial Anda.`,
+                      "add",
+                      () => {},
+                    );
+                  }}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold inline-flex items-center gap-1 transition-all active:scale-95 cursor-pointer border border-white/10 hover:border-white/20"
+                  style={{
+                    background: "var(--glass-fill)",
+                    color: "var(--text-primary)",
+                  }}
+                  title={`${intel.loggingStreak} hari berturut-turut mencatat transaksi`}
+                >
+                  <Flame size={11} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+                  <span>{intel.loggingStreak} Hari</span>
+                </button>
               )}
-              <span>{activeSpace.name}</span>
-              <span className="text-[8px] opacity-60">▾</span>
-            </button>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -2250,6 +2280,24 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         onReset={resetLayout}
         hiddenCards={hiddenCards}
         onUnhideCard={toggleCardVisibility}
+      />
+
+      {/* Gen Z Social Split Bill Sheet */}
+      <SplitBillSheet
+        isOpen={splitBillSheetOpen}
+        onClose={() => setSplitBillSheetOpen(false)}
+        onRecordTransaction={(data) => {
+          addTx.mutate({
+            type: "expense",
+            amount: data.myShare,
+            note: data.note,
+            occurred_on: format(new Date(), "yyyy-MM-dd"),
+            created_at: new Date().toISOString(),
+            category_id: categories.length > 0 ? categories[0].id : null,
+            wallet_id: _walletsData.length > 0 ? _walletsData[0].id : null,
+            to_wallet_id: null,
+          });
+        }}
       />
     </div>
   );

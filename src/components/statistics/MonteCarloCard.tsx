@@ -20,6 +20,7 @@ import {
   XAxis,
   Tooltip,
 } from "recharts";
+import { FinancialGlossaryTooltip } from "../common/FinancialGlossaryTooltip";
 
 interface MonteCarloCardProps {
   netWorth: number;
@@ -85,12 +86,15 @@ export function MonteCarloCard({
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h2
-                className="text-[13px] font-bold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Monte Carlo Simulation
-              </h2>
+              <div className="flex items-center gap-1">
+                <h2
+                  className="text-[13px] font-semibold tracking-tight"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  Monte Carlo Simulation
+                </h2>
+                <FinancialGlossaryTooltip term="monte_carlo" />
+              </div>
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
                 style={{

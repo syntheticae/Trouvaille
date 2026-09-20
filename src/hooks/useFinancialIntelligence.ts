@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { getDaysInMonth, isSameMonth, subMonths } from "date-fns";
+import { getDaysInMonth, isSameMonth, subMonths, format, subDays } from "date-fns";
 import type { Transaction, Bill, Category, Goal } from "../lib/types";
 import {
   computeMonthAggregates,
@@ -346,6 +346,26 @@ export function useFinancialIntelligence({
       referenceDate,
     );
 
+    // 19. Daily Logging Streak (Gamification & Retention)
+    const uniqueTxDays = new Set(
+      transactions
+        .filter((t) => t.occurred_on)
+        .map((t) => t.occurred_on)
+    );
+    const todayStr = format(now, "yyyy-MM-dd");
+    const yesterdayStr = format(subDays(now, 1), "yyyy-MM-dd");
+    const loggedToday = uniqueTxDays.has(todayStr);
+    const loggedYesterday = uniqueTxDays.has(yesterdayStr);
+
+    let loggingStreak = 0;
+    if (loggedToday || loggedYesterday) {
+      let checkDate = loggedToday ? now : subDays(now, 1);
+      while (uniqueTxDays.has(format(checkDate, "yyyy-MM-dd"))) {
+        loggingStreak++;
+        checkDate = subDays(checkDate, 1);
+      }
+    }
+
     return {
       daysElapsed,
       totalDays,
@@ -353,6 +373,8 @@ export function useFinancialIntelligence({
       totalExpense,
       netCashflow,
       savingsRate,
+      loggingStreak,
+      loggedToday,
       // Spending Pace
       budget,
       budgetExpense,

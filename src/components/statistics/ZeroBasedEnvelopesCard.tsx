@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { formatRupiah } from "../../lib/utils";
 import { Layers, Folder } from "lucide-react";
 import { IconRenderer } from "../ui/IconRenderer";
+import { FinancialGlossaryTooltip } from "../common/FinancialGlossaryTooltip";
 import type { Category, Bill, Goal } from "../../lib/types";
 
 interface ZeroBasedEnvelopesCardProps {
@@ -99,12 +100,15 @@ export function ZeroBasedEnvelopesCard({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3
-                className="text-[14px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Zero-Based Envelopes
-              </h3>
+              <div className="flex items-center gap-1">
+                <h3
+                  className="text-[14px] font-semibold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  Zero-Based Envelopes
+                </h3>
+                <FinancialGlossaryTooltip term="zero_based" />
+              </div>
               <span
                 className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
                 style={{

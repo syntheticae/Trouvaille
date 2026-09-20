@@ -2,6 +2,7 @@ import { Info, ShieldCheck } from "lucide-react";
 import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
+import { FinancialGlossaryTooltip } from "../../common/FinancialGlossaryTooltip";
 
 export function LiquidRunwayCard({
   runwayMonths,
@@ -80,9 +81,12 @@ export function LiquidRunwayCard({
             <ShieldCheck size={14} className="text-[var(--text-primary)]" />
           </div>
           <div>
-            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-              Liquid Reserve & Emergency Runway
-            </h3>
+            <div className="flex items-center gap-1">
+              <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
+                Liquid Reserve & Emergency Runway
+              </h3>
+              <FinancialGlossaryTooltip term="solvency_runway" />
+            </div>
             <p className="text-[10px] text-[var(--text-tertiary)]">
               Capital survival horizon based on average monthly burn rate
             </p>
