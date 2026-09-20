@@ -1,21 +1,42 @@
 import { useState, useEffect, useCallback } from "react";
 
-export type SupportedCurrency = "IDR" | "USD" | "SGD" | "EUR" | "JPY";
+export type SupportedCurrency =
+  | "IDR"
+  | "USD"
+  | "SGD"
+  | "EUR"
+  | "JPY"
+  | "MYR"
+  | "THB"
+  | "AUD"
+  | "GBP"
+  | "CNY"
+  | "SAR"
+  | "AED"
+  | "USDT";
 
 export interface CurrencyMeta {
   code: SupportedCurrency;
   symbol: string;
   name: string;
-  flag: string;
+  countryCode: string;
   decimals: number;
 }
 
 export const CURRENCY_METADATA: Record<SupportedCurrency, CurrencyMeta> = {
-  IDR: { code: "IDR", symbol: "Rp", name: "Indonesian Rupiah", flag: "🇮🇩", decimals: 0 },
-  USD: { code: "USD", symbol: "$", name: "US Dollar", flag: "🇺🇸", decimals: 2 },
-  SGD: { code: "SGD", symbol: "S$", name: "Singapore Dollar", flag: "🇸🇬", decimals: 2 },
-  EUR: { code: "EUR", symbol: "€", name: "Euro", flag: "🇪🇺", decimals: 2 },
-  JPY: { code: "JPY", symbol: "¥", name: "Japanese Yen", flag: "🇯🇵", decimals: 0 },
+  IDR: { code: "IDR", symbol: "Rp", name: "Indonesian Rupiah", countryCode: "ID", decimals: 0 },
+  USD: { code: "USD", symbol: "$", name: "US Dollar", countryCode: "US", decimals: 2 },
+  SGD: { code: "SGD", symbol: "S$", name: "Singapore Dollar", countryCode: "SG", decimals: 2 },
+  EUR: { code: "EUR", symbol: "€", name: "Euro", countryCode: "EU", decimals: 2 },
+  JPY: { code: "JPY", symbol: "¥", name: "Japanese Yen", countryCode: "JP", decimals: 0 },
+  MYR: { code: "MYR", symbol: "RM", name: "Malaysian Ringgit", countryCode: "MY", decimals: 2 },
+  THB: { code: "THB", symbol: "฿", name: "Thai Baht", countryCode: "TH", decimals: 2 },
+  AUD: { code: "AUD", symbol: "A$", name: "Australian Dollar", countryCode: "AU", decimals: 2 },
+  GBP: { code: "GBP", symbol: "£", name: "British Pound", countryCode: "GB", decimals: 2 },
+  CNY: { code: "CNY", symbol: "¥", name: "Chinese Yuan", countryCode: "CN", decimals: 2 },
+  SAR: { code: "SAR", symbol: "﷼", name: "Saudi Riyal", countryCode: "SA", decimals: 2 },
+  AED: { code: "AED", symbol: "د.إ", name: "UAE Dirham", countryCode: "AE", decimals: 2 },
+  USDT: { code: "USDT", symbol: "₮", name: "Tether USD", countryCode: "US", decimals: 2 },
 };
 
 // Default offline fallback rates (Units of Foreign Currency per 1 IDR)
@@ -25,6 +46,14 @@ export const DEFAULT_RATES: Record<SupportedCurrency, number> = {
   SGD: 1 / 11820,
   EUR: 1 / 17150,
   JPY: 1 / 106,
+  MYR: 1 / 3580,
+  THB: 1 / 460,
+  AUD: 1 / 10250,
+  GBP: 1 / 20500,
+  CNY: 1 / 2180,
+  SAR: 1 / 4225,
+  AED: 1 / 4315,
+  USDT: 1 / 15900,
 };
 
 export interface ExchangeRatesData {
@@ -81,6 +110,14 @@ export async function fetchLiveExchangeRates(): Promise<ExchangeRatesData> {
         SGD: json.rates.SGD || DEFAULT_RATES.SGD,
         EUR: json.rates.EUR || DEFAULT_RATES.EUR,
         JPY: json.rates.JPY || DEFAULT_RATES.JPY,
+        MYR: json.rates.MYR || DEFAULT_RATES.MYR,
+        THB: json.rates.THB || DEFAULT_RATES.THB,
+        AUD: json.rates.AUD || DEFAULT_RATES.AUD,
+        GBP: json.rates.GBP || DEFAULT_RATES.GBP,
+        CNY: json.rates.CNY || DEFAULT_RATES.CNY,
+        SAR: json.rates.SAR || DEFAULT_RATES.SAR,
+        AED: json.rates.AED || DEFAULT_RATES.AED,
+        USDT: json.rates.USDT || json.rates.USD || DEFAULT_RATES.USDT,
       };
       const data: ExchangeRatesData = {
         base: "IDR",
@@ -133,14 +170,12 @@ export function formatCurrencyAmount(
   const absAmount = Math.abs(amount);
 
   let formattedNumber = "";
-  if (currency === "IDR") {
-    formattedNumber = Math.round(absAmount).toLocaleString("id-ID");
-  } else if (currency === "JPY") {
-    formattedNumber = Math.round(absAmount).toLocaleString("ja-JP");
+  if (meta.decimals === 0) {
+    formattedNumber = Math.round(absAmount).toLocaleString(currency === "IDR" ? "id-ID" : "ja-JP");
   } else {
     formattedNumber = absAmount.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: meta.decimals,
+      maximumFractionDigits: meta.decimals,
     });
   }
 
@@ -172,6 +207,9 @@ export function useCurrency() {
     setPreferredCurrencyState(curr);
     try {
       localStorage.setItem(PREFERRED_CURRENCY_KEY, curr);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("trouvaille_currency_changed", { detail: curr }));
+      }
     } catch {
       // ignore
     }
@@ -191,6 +229,24 @@ export function useCurrency() {
       refreshRates();
     }
   }, [ratesData.timestamp, refreshRates]);
+
+  // Synchronize across tabs and storage events
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const saved = localStorage.getItem(PREFERRED_CURRENCY_KEY) as SupportedCurrency;
+        if (saved && CURRENCY_METADATA[saved] && saved !== preferredCurrency) {
+          setPreferredCurrencyState(saved);
+        }
+      } catch {}
+    };
+    window.addEventListener("trouvaille_currency_changed", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener("trouvaille_currency_changed", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, [preferredCurrency]);
 
   const convertFromIdr = useCallback(
     (idrAmount: number, targetCurr: SupportedCurrency = preferredCurrency) => {

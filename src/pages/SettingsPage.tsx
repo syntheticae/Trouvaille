@@ -28,8 +28,11 @@ import {
   X,
   EyeOff,
   Tag,
+  Coins,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
+import { useCurrency } from "../contexts/CurrencyContext";
+import { CurrencySwitcherSheet } from "../components/currency/CurrencySwitcherSheet";
 import { AppleShortcutsGuideModal } from "../components/settings/AppleShortcutsGuideModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBills } from "../hooks/useBills";
@@ -150,6 +153,8 @@ export function SettingsPage() {
   const [vaultDefaultTab, setVaultDefaultTab] = useState<"export" | "restore">("export");
   const [mediaPermissionsOpen, setMediaPermissionsOpen] = useState(false);
   const [valuationOpen, setValuationOpen] = useState(false);
+  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const { preferredCurrency, currencyMeta } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
 
   const matches = (title: string, desc?: string) => {
@@ -803,6 +808,63 @@ export function SettingsPage() {
             App Preferences
           </h2>
           <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col divide-y divide-[var(--glass-border)]">
+            {/* Base Currency & Exchange Rates */}
+            {matches("Base Currency", "Active valuation currency & live rates") && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setCurrencySheetOpen(true);
+                }}
+                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Coins size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Base Currency & Rates
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Valuation currency & live quotes
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className="text-[11px] font-semibold px-2.5 py-1 rounded-full border border-[var(--glass-border)] flex items-center gap-1.5"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <span className="font-mono font-bold text-[10px] opacity-70">
+                      {currencyMeta.countryCode}
+                    </span>
+                    <span>{preferredCurrency} ({currencyMeta.symbol})</span>
+                  </span>
+                  <ChevronRight
+                    size={18}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
             {/* Appearance Toggle */}
             {showTheme && (
               <div className="flex items-center justify-between p-4">
@@ -1710,6 +1772,11 @@ export function SettingsPage() {
       <AssetValuationSheet
         isOpen={valuationOpen}
         onClose={() => setValuationOpen(false)}
+      />
+
+      <CurrencySwitcherSheet
+        isOpen={currencySheetOpen}
+        onClose={() => setCurrencySheetOpen(false)}
       />
     </div>
   );
