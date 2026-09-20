@@ -88,6 +88,8 @@ export interface Bill {
   is_paid: boolean;
   note: string | null;
   created_at: string;
+  category_id?: string | null;
+  wallet_id?: string | null;
 }
 
 export interface Goal {

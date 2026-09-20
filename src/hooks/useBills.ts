@@ -12,6 +12,7 @@ import {
 } from "date-fns";
 import { syncBillNotifications } from "../lib/notifications";
 import { useAuth } from "../contexts/AuthContext";
+import { useAddTransaction } from "./useTransactions";
 
 interface BillInput {
   title: string;
@@ -289,8 +290,20 @@ export function useMarkBillPaid() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const userId = user?.id;
+  const addTransaction = useAddTransaction();
+
   return useMutation({
-    mutationFn: async ({ bill, paid }: { bill: Bill; paid: boolean }) => {
+    mutationFn: async ({
+      bill,
+      paid,
+      recordTransaction = true,
+      walletId,
+    }: {
+      bill: Bill;
+      paid: boolean;
+      recordTransaction?: boolean;
+      walletId?: string;
+    }) => {
       const updateData: Partial<Bill> = { is_paid: paid };
       const { data, error } = await supabase
         .from("bills")
@@ -299,6 +312,23 @@ export function useMarkBillPaid() {
         .select()
         .single();
       if (error) throw error;
+
+      // Auto-record expense transaction in ledger when marking bill as paid
+      if (paid && recordTransaction && Number(bill.amount) > 0) {
+        try {
+          await addTransaction.mutateAsync({
+            amount: Number(bill.amount),
+            type: "expense",
+            category_id: bill.category_id || null,
+            wallet_id: walletId || bill.wallet_id || null,
+            occurred_on: format(new Date(), "yyyy-MM-dd"),
+            note: `Pembayaran tagihan: ${bill.title}`,
+          });
+        } catch (err) {
+          console.warn("[useMarkBillPaid] Auto-record ledger transaction warning:", err);
+        }
+      }
+
       return data as Bill;
     },
     onMutate: async ({ bill, paid }) => {

@@ -98,32 +98,61 @@ export function ClipboardTransactionBanner({
         className="w-full mb-3 select-none"
       >
         <div
-          className="p-3.5 rounded-[22px] bg-[#141418] border border-white/18 backdrop-blur-2xl shadow-[0_12px_32px_rgba(0,0,0,0.7)] text-white flex items-center justify-between gap-3"
-          style={{ fontFamily: "'Urbanist', sans-serif" }}
+          className="p-3.5 rounded-[22px] glass-surface backdrop-blur-2xl flex items-center justify-between gap-3"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
+            fontFamily: "'Urbanist', sans-serif",
+            color: "var(--text-primary)",
+          }}
         >
           {/* Left: Indicator Icon & Content */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
-              <Sparkles size={14} className="text-white" />
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 glass-surface"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <Sparkles size={14} />
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   {detected.sourceApp} Notification
                 </span>
                 {detected.suggestedCategoryName && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-white/10 text-white/80 font-medium">
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                    style={{
+                      background: "var(--glass-fill)",
+                      color: "var(--text-secondary)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
                     {detected.suggestedCategoryName}
                   </span>
                 )}
               </div>
 
-              <p className="text-[13px] font-bold text-white truncate mt-0.5">
-                <span className="font-mono text-white">
+              <p
+                className="text-[13px] font-semibold truncate mt-0.5"
+                style={{ color: "var(--text-primary)" }}
+              >
+                <span className="amount">
                   {formatRupiah(detected.amount)}
                 </span>
-                <span className="text-zinc-400 font-normal ml-1.5 text-[12px]">
+                <span
+                  className="font-normal ml-1.5 text-[12px]"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   · {detected.merchantOrNote}
                 </span>
               </p>
@@ -135,7 +164,11 @@ export function ClipboardTransactionBanner({
             <button
               type="button"
               onClick={handleConfirm}
-              className="px-3.5 py-1.5 rounded-full bg-white text-black text-[12px] font-bold flex items-center gap-1 hover:bg-zinc-200 active:scale-95 transition-all shadow-md"
+              className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1 active:scale-95 transition-all shadow-sm cursor-pointer"
+              style={{
+                background: "var(--text-primary)",
+                color: "var(--bg-base)",
+              }}
             >
               <span>Catat</span>
               <ArrowRight size={12} />
@@ -144,7 +177,14 @@ export function ClipboardTransactionBanner({
             <button
               type="button"
               onClick={handleDismiss}
-              className="w-7 h-7 rounded-full bg-white/[0.06] hover:bg-white/[0.12] active:scale-95 flex items-center justify-center text-zinc-400 hover:text-white transition-all"
+              className="w-7 h-7 rounded-full flex items-center justify-center glass-surface active:scale-95 transition-all cursor-pointer"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-tertiary)",
+              }}
+              title="Tutup"
+              aria-label="Tutup"
             >
               <X size={13} />
             </button>

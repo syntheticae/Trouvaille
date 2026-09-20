@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, type PanInfo } from "framer-motion";
-import { X } from "lucide-react";
+import { X, CalendarDays } from "lucide-react";
 import { getDaysInMonth } from "date-fns";
 import type { Transaction } from "../../lib/types";
 import { formatRupiah } from "../../lib/utils";
@@ -30,6 +31,7 @@ export function MonthForecastSheet({
   actionInsight: _actionInsight,
   referenceDate = new Date(),
 }: MonthForecastSheetProps) {
+  const navigate = useNavigate();
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const chartRef = useRef<SVGSVGElement | null>(null);
 
@@ -238,9 +240,11 @@ export function MonthForecastSheet({
             dragElastic={{ top: 0.05, bottom: 0.8 }}
             dragSnapToOrigin
             onDragEnd={handleDragEnd}
-            className="fixed bottom-0 left-0 right-0 z-[999] shadow-2xl flex flex-col bg-[#111114] text-white select-none overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 z-[999] shadow-2xl flex flex-col select-none overflow-hidden"
             style={{
-              borderTop: "1px solid rgba(255,255,255,0.12)",
+              background: "var(--bg-elevated)",
+              color: "var(--text-primary)",
+              borderTop: "1px solid var(--glass-border)",
               borderRadius: "32px 32px 0 0",
               maxHeight: "92dvh",
               paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
@@ -250,14 +254,20 @@ export function MonthForecastSheet({
           >
             {/* Top Grab Handle Area */}
             <div className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing w-full">
-              <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/40 transition-colors" />
+              <div
+                className="w-10 h-1 rounded-full transition-colors"
+                style={{ background: "var(--text-tertiary)", opacity: 0.3 }}
+              />
             </div>
 
             {/* Inner Content Container */}
             <div className="w-full max-w-md mx-auto px-6 flex flex-col overflow-y-auto">
               {/* Modal Header Row */}
               <div className="relative flex items-center justify-center py-1">
-            <h2 className="text-[15px] font-semibold text-white tracking-tight">
+            <h2
+              className="text-[15px] font-semibold tracking-tight"
+              style={{ color: "var(--text-primary)" }}
+            >
               Month Forecast
             </h2>
             <button
@@ -266,7 +276,14 @@ export function MonthForecastSheet({
                 triggerHaptic("light");
                 onClose();
               }}
-              className="absolute right-0 w-8 h-8 rounded-full bg-[#1e1e24] hover:bg-[#282830] active:scale-95 flex items-center justify-center text-zinc-300 hover:text-white transition-all"
+              className="absolute right-0 w-8 h-8 rounded-full flex items-center justify-center glass-surface active:scale-95 transition-all"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
+              }}
+              title="Tutup"
+              aria-label="Tutup"
             >
               <X size={15} />
             </button>
@@ -274,11 +291,17 @@ export function MonthForecastSheet({
 
           {/* Hero Forecast Number & Elapsed Counter */}
           <div className="text-center pt-3 pb-1">
-            <h1 className="text-4xl sm:text-[44px] font-bold font-mono tracking-tight text-white leading-tight">
+            <h1
+              className="text-4xl sm:text-[42px] font-bold amount tracking-tight leading-tight"
+              style={{ color: "var(--text-primary)" }}
+            >
               {formatRupiah(displayHeroAmount)}
             </h1>
 
-            <p className="text-[12px] font-medium text-zinc-400 mt-1">
+            <p
+              className="text-[12px] font-medium mt-1"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               {activeInspectDay !== null ? (
                 <span>
                   Day {activeInspectDay} of {totalDays}{" "}
@@ -289,7 +312,10 @@ export function MonthForecastSheet({
               )}
             </p>
 
-            <p className="text-[12px] text-zinc-400 max-w-[270px] mx-auto mt-2 leading-relaxed font-light">
+            <p
+              className="text-[12px] max-w-[270px] mx-auto mt-2 leading-relaxed font-normal"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               If you keep spending at the same pace, here is what the full month will look like.
             </p>
           </div>
@@ -436,9 +462,9 @@ export function MonthForecastSheet({
               <text
                 x={padLeft}
                 y={svgHeight - 6}
-                fill="rgba(255,255,255,0.4)"
+                fill="var(--text-tertiary)"
                 fontSize="9"
-                fontFamily="monospace"
+                fontFamily="'Urbanist', sans-serif"
               >
                 1
               </text>
@@ -446,24 +472,33 @@ export function MonthForecastSheet({
                 x={padLeft + plotWidth}
                 y={svgHeight - 6}
                 textAnchor="end"
-                fill="rgba(255,255,255,0.4)"
+                fill="var(--text-tertiary)"
                 fontSize="9"
-                fontFamily="monospace"
+                fontFamily="'Urbanist', sans-serif"
               >
                 {totalDays}
               </text>
             </svg>
 
             {/* Minimalist Centered Legend */}
-            <div className="flex items-center justify-center gap-6 mt-1 text-[11px] font-medium text-zinc-400">
+            <div
+              className="flex items-center justify-center gap-6 mt-1 text-[11px] font-medium"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               <div className="flex items-center gap-2">
-                <span className="w-4 h-[2px] bg-white rounded-full" />
+                <span
+                  className="w-4 h-[2px] rounded-full"
+                  style={{ background: "var(--text-primary)" }}
+                />
                 <span>Spent</span>
               </div>
               <div className="flex items-center gap-2">
                 <span
-                  className="w-4 h-[2px] rounded-full border-t border-dashed border-zinc-400"
-                  style={{ borderTopWidth: "2px" }}
+                  className="w-4 h-[2px] rounded-full border-t border-dashed"
+                  style={{
+                    borderTopWidth: "2px",
+                    borderColor: "var(--text-tertiary)",
+                  }}
                 />
                 <span>Forecast</span>
               </div>
@@ -472,24 +507,68 @@ export function MonthForecastSheet({
 
           {/* Minimalist Metric Cards (Side-by-Side Reference Layout) */}
           <div className="grid grid-cols-2 gap-3 mt-3">
-            <div className="p-4 rounded-2xl bg-[#1a1a1f] border border-white/[0.05] flex flex-col justify-between">
-              <span className="text-[12px] font-medium text-zinc-400">
+            <div
+              className="p-3.5 rounded-2xl flex flex-col justify-between glass-surface"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 Spent so far
               </span>
-              <p className="text-xl font-bold font-mono text-white mt-1">
+              <p
+                className="text-[17px] font-semibold amount mt-1"
+                style={{ color: "var(--text-primary)" }}
+              >
                 {formatRupiah(effectiveTotalExpense)}
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#1a1a1f] border border-white/[0.05] flex flex-col justify-between">
-              <span className="text-[12px] font-medium text-zinc-400">
+            <div
+              className="p-3.5 rounded-2xl flex flex-col justify-between glass-surface"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 Daily average
               </span>
-              <p className="text-xl font-bold font-mono text-white mt-1">
+              <p
+                className="text-[17px] font-semibold amount mt-1"
+                style={{ color: "var(--text-primary)" }}
+              >
                 {formatRupiah(Math.round(effectiveDailyAvg))}
               </p>
             </div>
           </div>
+
+          {/* Calendar Runway Action Button */}
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              onClose();
+              navigate("/calendar");
+            }}
+            className="w-full mt-3 py-3 rounded-2xl text-[12px] font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer glass-surface"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+            title="Buka Kalender & Runway Harian"
+          >
+            <CalendarDays size={14} strokeWidth={1.75} />
+            <span>Buka Kalender & Runway Harian</span>
+          </button>
         </div>
       </motion.div>
     </>

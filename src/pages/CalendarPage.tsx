@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -61,6 +62,7 @@ function formatCompactRupiah(val: number): string {
 }
 
 export function CalendarPage() {
+  const navigate = useNavigate();
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isStealthMode, toggleStealthMode } = usePrivacy();
@@ -165,21 +167,40 @@ export function CalendarPage() {
     >
       {/* Header & View Mode Switcher */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1
-            className="text-[22px] font-semibold tracking-tight"
-            style={{ color: "var(--text-primary)" }}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              navigate(-1);
+            }}
+            className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+            title="Kembali"
+            aria-label="Kembali"
           >
-            Calendar
-          </h1>
-          <p
-            className="text-[12px] font-medium"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            {viewMode === "runway"
-              ? "Cashflow Runway & Liquidity Forecasting"
-              : "Ledger Activity & Scheduled Reminders"}
-          </p>
+            <ChevronLeft size={16} />
+          </button>
+          <div>
+            <h1
+              className="text-[20px] font-semibold tracking-tight"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Calendar
+            </h1>
+            <p
+              className="text-[11px] font-medium"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {viewMode === "runway"
+                ? "Cashflow Runway & Liquidity Forecasting"
+                : "Ledger Activity & Scheduled Reminders"}
+            </p>
+          </div>
         </div>
 
         {/* Apple Luxury Segmented Pill & Stealth Mode Toggle */}

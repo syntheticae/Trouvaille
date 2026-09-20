@@ -2,11 +2,14 @@ import { useState, useEffect, useMemo } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
 import type { Goal } from "../../hooks/useGoals";
 import { formatRupiah } from "../../lib/utils";
-import { Plus, Trash2, CheckCircle2, TrendingUp, Compass, Flag, Target } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, TrendingUp, Compass, Flag, Target, Wallet as WalletIcon } from "lucide-react";
 import { IconRenderer } from "../ui/IconRenderer";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
-import { useAllTransactions } from "../../hooks/useTransactions";
+import { useAllTransactions, useAddTransaction } from "../../hooks/useTransactions";
+import { useWallets } from "../../hooks/useWallets";
+import { useCategories } from "../../hooks/useCategories";
+import { format } from "date-fns";
 import {
   calculatePersonalBaselines,
   calculateGoalPlanning,
@@ -58,7 +61,29 @@ export function GoalDetailModal({
     "conservative" | "current" | "accelerated"
   >("current");
 
-  const baselines = useMemo(() => calculatePersonalBaselines(allTxs), [allTxs]);
+  const { data: wallets = [] } = useWallets();
+  const { data: categories = [] } = useCategories();
+  const addTransaction = useAddTransaction();
+  const [selectedWalletId, setSelectedWalletId] = useState<string>("");
+  const [recordInLedger, setRecordInLedger] = useState(true);
+
+  useEffect(() => {
+    if (wallets.length > 0 && !selectedWalletId) {
+      setSelectedWalletId(wallets[0].id);
+    }
+  }, [wallets, selectedWalletId]);
+
+  const progress = useMemo(() => {
+    if (!goal || goal.targetAmount <= 0) return 0;
+    return Math.min(
+      100,
+      Math.round((goal.currentAmount / goal.targetAmount) * 100)
+    );
+  }, [goal]);
+
+  const baselines = useMemo(() => {
+    return calculatePersonalBaselines(allTxs);
+  }, [allTxs]);
 
   const planning = useMemo(() => {
     if (!goal) return null;
@@ -72,24 +97,27 @@ export function GoalDetailModal({
 
   const scenarioPresets = useMemo(() => {
     if (!goal) return [];
-    return [1000000, 2000000, 3000000].map((amount) => ({
-      amount,
-      result: calculateGoalScenario(goal, amount),
+    const baseContribution = planning?.requiredMonthlyContribution || 1000000;
+    const amounts = [
+      Math.round(baseContribution * 0.75),
+      Math.round(baseContribution),
+      Math.round(baseContribution * 1.5),
+    ].filter((v, i, arr) => arr.indexOf(v) === i && v > 0);
+
+    return amounts.map((amt) => ({
+      amount: amt,
+      result: calculateGoalScenario(goal, amt),
     }));
-  }, [goal]);
+  }, [goal, planning]);
 
   const customScenario = useMemo(() => {
     if (!goal) return null;
-    const amount = Number(scenarioAmount || 0);
-    return calculateGoalScenario(goal, amount);
+    const amt = Number(scenarioAmount) || 0;
+    return calculateGoalScenario(goal, amt);
   }, [goal, scenarioAmount]);
 
   if (!goal) return null;
 
-  const progress = Math.min(
-    100,
-    Math.round((goal.currentAmount / (goal.targetAmount || 1)) * 100),
-  );
   const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
 
   const formatScenarioDuration = (months: number) => {
@@ -101,23 +129,62 @@ export function GoalDetailModal({
     return `${years} yr ${extraMonths} mo`;
   };
 
-  const handleQuickDeposit = (add: number) => {
-    if (isSubmitting) return;
+  const handleQuickDeposit = async (add: number) => {
+    if (!goal || isSubmitting) return;
     setIsSubmitting(true);
-    onDeposit(goal.id, add);
-    triggerHaptic("medium");
-    showToast(`+${formatRupiah(add)} added to ${goal.title}`, "add", () => {});
-    onClose();
+    try {
+      onDeposit(goal.id, add);
+      if (recordInLedger && selectedWalletId) {
+        const tabunganCategory = categories.find(
+          (c: any) => c.name.toLowerCase() === "tabungan" && c.type === "expense"
+        );
+        await addTransaction.mutateAsync({
+          amount: add,
+          type: "expense",
+          category_id: tabunganCategory?.id || null,
+          wallet_id: selectedWalletId,
+          occurred_on: format(new Date(), "yyyy-MM-dd"),
+          note: `Alokasi Tabungan: ${goal.title}`,
+        });
+      }
+      triggerHaptic("medium");
+      showToast(`+${formatRupiah(add)} dialokasikan ke ${goal.title}`, "add", () => {});
+      onClose();
+    } catch (err) {
+      console.warn("Failed to deposit to goal:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleCustomDeposit = () => {
+  const handleCustomDeposit = async () => {
+    if (!goal) return;
     const amt = Number(depositAmount);
     if (amt <= 0 || isSubmitting) return;
     setIsSubmitting(true);
-    onDeposit(goal.id, amt);
-    triggerHaptic("medium");
-    showToast(`+${formatRupiah(amt)} added to ${goal.title}`, "add", () => {});
-    onClose();
+    try {
+      onDeposit(goal.id, amt);
+      if (recordInLedger && selectedWalletId) {
+        const tabunganCategory = categories.find(
+          (c: any) => c.name.toLowerCase() === "tabungan" && c.type === "expense"
+        );
+        await addTransaction.mutateAsync({
+          amount: amt,
+          type: "expense",
+          category_id: tabunganCategory?.id || null,
+          wallet_id: selectedWalletId,
+          occurred_on: format(new Date(), "yyyy-MM-dd"),
+          note: `Alokasi Tabungan: ${goal.title}`,
+        });
+      }
+      triggerHaptic("medium");
+      showToast(`+${formatRupiah(amt)} dialokasikan ke ${goal.title}`, "add", () => {});
+      onClose();
+    } catch (err) {
+      console.warn("Failed to deposit to goal:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSaveEdit = () => {
@@ -635,6 +702,84 @@ export function GoalDetailModal({
                   Add Funds (Top Up)
                 </span>
               </div>
+
+              {/* Source Account & Ledger Sync Selector */}
+              {wallets.length > 0 && (
+                <div
+                  className="p-3 rounded-2xl space-y-2 glass-surface"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <WalletIcon size={12} style={{ color: "var(--text-tertiary)" }} />
+                      <span
+                        className="text-[11px] font-semibold"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        Potong Saldo Dompet (Buku Besar)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRecordInLedger(!recordInLedger)}
+                      className="cursor-pointer"
+                      title={recordInLedger ? "Catat mutasi di dompet" : "Hanya catat di target goal"}
+                    >
+                      <div
+                        className="w-9 h-5 rounded-full transition-colors flex items-center p-0.5"
+                        style={{
+                          background: recordInLedger
+                            ? "var(--text-primary)"
+                            : "var(--glass-fill-strong)",
+                        }}
+                      >
+                        <div
+                          className={`w-4 h-4 rounded-full shadow-sm transition-transform ${
+                            recordInLedger ? "translate-x-4" : "translate-x-0"
+                          }`}
+                          style={{
+                            background: recordInLedger
+                              ? "var(--bg-base)"
+                              : "var(--text-tertiary)",
+                          }}
+                        />
+                      </div>
+                    </button>
+                  </div>
+
+                  {recordInLedger && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
+                      {wallets.map((w) => {
+                        const isSelected = selectedWalletId === w.id;
+                        return (
+                          <button
+                            key={w.id}
+                            type="button"
+                            onClick={() => setSelectedWalletId(w.id)}
+                            className="px-2.5 py-1 rounded-xl text-[11px] font-semibold whitespace-nowrap active:scale-95 transition-all cursor-pointer"
+                            style={{
+                              background: isSelected
+                                ? "var(--text-primary)"
+                                : "var(--glass-fill)",
+                              color: isSelected
+                                ? "var(--bg-base)"
+                                : "var(--text-secondary)",
+                              border: isSelected
+                                ? "1px solid var(--text-primary)"
+                                : "1px solid var(--glass-border)",
+                            }}
+                          >
+                            {w.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Quick Preset Buttons */}
               <div className="grid grid-cols-4 gap-2">

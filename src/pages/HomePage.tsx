@@ -1207,17 +1207,18 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 );
               })}
 
-              {/* Total Kebutuhan Tagihan */}
+              {/* Total Kebutuhan Tagihan & Link to Calendar */}
               <div
                 onClick={() => {
                   triggerHaptic("light");
-                  setBillManagementOpen(true);
+                  navigate("/calendar");
                 }}
                 className="p-3.5 rounded-2xl glass-surface flex items-center justify-between mt-2.5 cursor-pointer active:scale-[0.99] transition-transform"
                 style={{
                   background: "var(--bg-elevated)",
                   border: "1px solid var(--glass-border)",
                 }}
+                title="Buka Kalender & Runway Tagihan"
               >
                 <div className="flex items-center gap-2">
                   <div
@@ -1230,7 +1231,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     <CalendarDays size={13} />
                   </div>
                   <span className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                    Total Upcoming Bills
+                    Total Upcoming Bills · Buka Kalender
                   </span>
                 </div>
                 <span className="amount text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
@@ -1790,6 +1791,22 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              navigate("/calendar");
+            }}
+            className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer select-none"
+            title="Kalender & Cashflow Runway"
+            aria-label="Kalender & Cashflow Runway"
+          >
+            <CalendarDays
+              size={14}
+              strokeWidth={1.75}
+              style={{ color: "var(--text-primary)" }}
+            />
+          </button>
           <button
             type="button"
             onClick={() => {

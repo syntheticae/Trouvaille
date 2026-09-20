@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     amount NUMERIC NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('expense', 'income', 'transfer')),
+    type TEXT NOT NULL CHECK (type IN ('expense', 'income', 'transfer', 'adjustment')),
     category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
     wallet_id UUID REFERENCES public.wallets(id) ON DELETE SET NULL,
     to_wallet_id UUID REFERENCES public.wallets(id) ON DELETE SET NULL,
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Ensure to_wallet_id column exists on transactions
+-- Ensure to_wallet_id column exists on transactions & update type check constraint
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -112,6 +112,12 @@ BEGIN
     ) THEN
         ALTER TABLE public.transactions ADD COLUMN to_wallet_id UUID REFERENCES public.wallets(id) ON DELETE SET NULL;
     END IF;
+
+    -- Update check constraint to support 'adjustment'
+    ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_type_check;
+    ALTER TABLE public.transactions ADD CONSTRAINT transactions_type_check CHECK (type IN ('expense', 'income', 'transfer', 'adjustment'));
+EXCEPTION WHEN OTHERS THEN
+    NULL;
 END $$;
 
 -- ------------------------------------------------------------------------------
