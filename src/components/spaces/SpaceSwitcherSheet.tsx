@@ -55,14 +55,14 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
     triggerHaptic("medium");
     setActiveSpaceId(id);
     const selected = spaces.find((s) => s.id === id);
-    showToast(`Switched to ${selected?.name || "Space"}`, "update", () => {});
+    showToast(`Beralih ke ${selected?.name || "Domain"}`, "update", () => {});
     onClose();
   };
 
   const handleCreateSpace = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSpaceName.trim()) {
-      showToast("Space name is required", "delete", () => {});
+      showToast("Nama domain wajib diisi", "delete", () => {});
       return;
     }
 
@@ -77,7 +77,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
     setIsAddingSpace(false);
     setNewSpaceName("");
     setNewSpaceTag("");
-    showToast(`Created space "${created.name}"`, "add", () => {});
+    showToast(`Domain "${created.name}" berhasil dibuat`, "add", () => {});
     onClose();
   };
 
@@ -85,18 +85,18 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
     e.stopPropagation();
     triggerHaptic("light");
     deleteCustomSpace(space.id);
-    showToast(`Removed space "${space.name}"`, "delete", () => {});
+    showToast(`Domain "${space.name}" dihapus`, "delete", () => {});
   };
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} title="Money Spaces">
-      <div className="space-y-4 pb-6 pt-1">
+    <BottomSheet isOpen={isOpen} onClose={onClose} title="Domain Finansial">
+      <div className="space-y-4 pb-6 pt-1 select-none">
         {/* Header Subtitle */}
-        <p className="text-[12px] text-[var(--text-tertiary)] -mt-2">
-          Organize cashflow, split budgets, and isolate expenses into dedicated spaces.
+        <p className="text-[12px] text-[var(--text-tertiary)] -mt-2 leading-relaxed">
+          Kelola arus kas, pisahkan anggaran, dan isolasi transaksi ke dalam domain tersendiri.
         </p>
 
-        {/* Spaces List */}
+        {/* Domains List */}
         <div className="space-y-2">
           {spaces.map((space) => {
             const isActive = space.id === activeSpaceId;
@@ -104,15 +104,20 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
               <div
                 key={space.id}
                 onClick={() => handleSelectSpace(space.id)}
-                className={`p-3.5 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition-all select-none active:scale-[0.99] border ${
+                className={`p-3.5 rounded-[22px] flex items-center justify-between gap-3 cursor-pointer transition-all select-none active:scale-[0.99] border ${
                   isActive
-                    ? "bg-white/[0.06] border-white/20 shadow-sm"
+                    ? "bg-white/[0.08] border-white/20 shadow-md"
                     : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]"
                 }`}
+                style={{
+                  boxShadow: isActive
+                    ? "inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 4px 16px rgba(0, 0, 0, 0.2)"
+                    : undefined,
+                }}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
                       isActive
                         ? "bg-white text-black border-white"
                         : "bg-white/[0.05] text-[var(--text-secondary)] border-white/10"
@@ -143,7 +148,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
                       type="button"
                       onClick={(e) => handleDeleteSpace(e, space)}
                       className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-rose-400 active:scale-90 transition-colors"
-                      title="Delete Space"
+                      title="Hapus Domain"
                     >
                       <Trash2 size={14} strokeWidth={1.5} />
                     </button>
@@ -163,7 +168,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
           })}
         </div>
 
-        {/* Add New Space Expandable Section */}
+        {/* Add New Domain Expandable Section */}
         {!isAddingSpace ? (
           <button
             type="button"
@@ -171,19 +176,19 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
               triggerHaptic("light");
               setIsAddingSpace(true);
             }}
-            className="w-full py-3 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)] bg-white/[0.03] border border-dashed border-white/15 hover:bg-white/[0.06] active:scale-[0.99] transition-all cursor-pointer"
+            className="w-full py-3 rounded-[22px] flex items-center justify-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)] bg-white/[0.03] border border-dashed border-white/15 hover:bg-white/[0.06] active:scale-[0.99] transition-all cursor-pointer"
           >
             <Plus size={15} strokeWidth={1.75} />
-            <span>Create New Custom Space</span>
+            <span>Buat Domain Finansial Baru</span>
           </button>
         ) : (
           <form
             onSubmit={handleCreateSpace}
-            className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3 animate-fadeIn"
+            className="p-4 rounded-[22px] bg-white/[0.03] border border-white/10 space-y-3 animate-fadeIn"
           >
             <div className="flex items-center justify-between">
               <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                New Custom Money Space
+                Domain Kustom Baru
               </span>
               <button
                 type="button"
@@ -196,7 +201,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
 
             <div>
               <label className="text-[10px] font-medium text-[var(--text-tertiary)] block mb-1">
-                Space Name
+                Nama Domain
               </label>
               <input
                 type="text"
@@ -207,7 +212,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
                     setNewSpaceTag(`#${e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "")}`);
                   }
                 }}
-                placeholder="e.g. Side Hustle, Wedding Fund"
+                placeholder="contoh: Side Project, Dana Darurat, Tabungan Nikah"
                 className="w-full px-3 py-2 rounded-xl text-[12px] font-medium bg-white/[0.04] border border-white/10 text-[var(--text-primary)] outline-none focus:border-white/30"
               />
             </div>
@@ -215,19 +220,19 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] font-medium text-[var(--text-tertiary)] block mb-1">
-                  Tag Identifier
+                  Tag Identifier (#)
                 </label>
                 <input
                   type="text"
                   value={newSpaceTag}
                   onChange={(e) => setNewSpaceTag(e.target.value)}
-                  placeholder="#sidehustle"
+                  placeholder="#project"
                   className="w-full px-3 py-2 rounded-xl text-[12px] font-mono font-medium bg-white/[0.04] border border-white/10 text-[var(--text-primary)] outline-none focus:border-white/30"
                 />
               </div>
               <div>
                 <label className="text-[10px] font-medium text-[var(--text-tertiary)] block mb-1">
-                  Icon
+                  Ikon
                 </label>
                 <select
                   value={newSpaceIcon}
@@ -249,13 +254,13 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
                 onClick={() => setIsAddingSpace(false)}
                 className="flex-1 py-2 rounded-xl text-[11px] font-medium text-[var(--text-tertiary)] bg-white/[0.04] border border-white/10"
               >
-                Cancel
+                Batal
               </button>
               <button
                 type="submit"
-                className="flex-[2] py-2 rounded-xl text-[11px] font-semibold text-black bg-white active:scale-95 transition-transform"
+                className="flex-[2] py-2 rounded-xl text-[11px] font-semibold text-black bg-white active:scale-95 transition-transform cursor-pointer"
               >
-                Save Space
+                Simpan Domain
               </button>
             </div>
           </form>
@@ -268,9 +273,9 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
             triggerHaptic("light");
             onClose();
           }}
-          className="w-full py-3 rounded-xl text-[13px] font-semibold text-black bg-white active:scale-98 transition-transform cursor-pointer"
+          className="w-full py-3 rounded-2xl text-[13px] font-semibold text-black bg-white active:scale-98 transition-transform cursor-pointer"
         >
-          Done
+          Selesai
         </button>
       </div>
     </BottomSheet>

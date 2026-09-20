@@ -1289,13 +1289,13 @@ export function TransactionSheet({
           }}
         />
 
-        {/* Money Space Explicit 1-Tap Selector */}
+        {/* Financial Domain Explicit 1-Tap Selector */}
         <div className="flex items-center justify-between mb-2.5 px-1">
           <span
             className="text-[11px] font-semibold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Space
+            Domain
           </span>
           <div
             className="flex items-center gap-1 p-0.5 rounded-full glass-surface"
@@ -1308,6 +1308,7 @@ export function TransactionSheet({
               .filter((s) => s.id !== "all")
               .map((s) => {
                 const isSelected = selectedSpaceId === s.id;
+                const displayName = s.name.replace(/^Domain\s+/i, "");
                 return (
                   <button
                     key={s.id}
@@ -1323,7 +1324,7 @@ export function TransactionSheet({
                         : "var(--text-secondary)",
                     }}
                   >
-                    <span>{s.name}</span>
+                    <span>{displayName}</span>
                   </button>
                 );
               })}

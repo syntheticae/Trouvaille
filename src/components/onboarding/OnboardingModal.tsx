@@ -1,34 +1,22 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MinusCircle,
-  Wallet,
-  PieChart,
+  GraduationCap,
+  Briefcase,
+  Laptop,
+  TrendingUp,
+  SlidersHorizontal,
   Check,
-  ChevronLeft,
   ArrowRight,
-  Info,
-  X,
+  ShieldCheck,
   Coffee,
   ShoppingBag,
   Car,
   Home,
   Receipt,
-  Tag,
   HeartPulse,
   Utensils,
-  Sparkles,
-  Plane,
-  GraduationCap,
-  Users,
-  Fuel,
-  Dumbbell,
-  Gift,
-  ShieldCheck,
-  Briefcase,
-  TrendingUp,
-  Laptop,
-  HandCoins,
+  Wallet,
 } from "lucide-react";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import type { HomePresetKey } from "../../lib/widgetLayoutTypes";
@@ -44,108 +32,157 @@ interface OnboardingModalProps {
   onComplete: () => void;
 }
 
-type ScopeKey = "expense_only" | "expense_income" | "net_worth";
+export type PresetKey = "student" | "professional" | "business" | "investor" | "custom";
 
-interface ScopeOption {
-  key: ScopeKey;
+interface PresetOption {
+  key: PresetKey;
+  code: string;
   title: string;
-  subtitle: string;
-  preset: HomePresetKey;
-  icon: typeof MinusCircle;
-  bullets: string[];
+  tagline: string;
+  widgetPreset: HomePresetKey;
+  icon: any;
+  accounts: { name: string; icon: string }[];
+  categories: { id: string; name: string; type: "expense" | "income" }[];
 }
 
-const SCOPE_OPTIONS: ScopeOption[] = [
+export const ONBOARDING_PRESETS: PresetOption[] = [
   {
-    key: "expense_only",
-    title: "Expense Only",
-    subtitle: "I just want to know where my money goes.",
-    preset: "pulse",
-    icon: MinusCircle,
-    bullets: [
-      "Streamlined daily spending pulse",
-      "Category breakdown & budget pacing",
-      "Quick transaction input & camera receipt scan",
+    key: "student",
+    code: "01",
+    title: "Mahasiswa & Pelajar",
+    tagline: "Sederhana untuk uang saku, kos & nongkrong santai",
+    widgetPreset: "pulse",
+    icon: GraduationCap,
+    accounts: [
+      { name: "Cash (Tunai)", icon: "Banknote" },
+      { name: "GoPay / E-Wallet", icon: "Smartphone" },
+      { name: "Rekening BCA", icon: "Landmark" },
+    ],
+    categories: [
+      { id: "makanan", name: "Makanan", type: "expense" },
+      { id: "kopi", name: "Kopi / Nongkrong", type: "expense" },
+      { id: "transportasi", name: "Transportasi", type: "expense" },
+      { id: "kuliah", name: "Kuliah & Buku", type: "expense" },
+      { id: "kos", name: "Kos & Sewa", type: "expense" },
+      { id: "hiburan", name: "Hiburan / Game", type: "expense" },
+      { id: "uang_saku", name: "Uang Saku", type: "income" },
     ],
   },
   {
-    key: "expense_income",
-    title: "Expense & Income",
-    subtitle: "I want to manage cashflow, wallets, budgets, and transfers.",
-    preset: "minimal",
-    icon: Wallet,
-    bullets: [
-      "Income vs expense monthly pacing",
-      "Multi-wallet cash & bank balance tracking",
-      "Upcoming recurring bills and payroll calendar",
+    key: "professional",
+    code: "02",
+    title: "Pekerja & Profesional",
+    tagline: "Standar ideal gaji bulanan, tabungan & kebutuhan rutin",
+    widgetPreset: "minimal",
+    icon: Briefcase,
+    accounts: [
+      { name: "Rekening Gaji (BCA)", icon: "Landmark" },
+      { name: "E-Wallet (GoPay/Dana)", icon: "Smartphone" },
+      { name: "Tabungan Darurat", icon: "Wallet" },
+    ],
+    categories: [
+      { id: "makanan", name: "Makanan", type: "expense" },
+      { id: "groceries", name: "Belanja Bulanan", type: "expense" },
+      { id: "transportasi", name: "Transportasi", type: "expense" },
+      { id: "tagihan", name: "Tagihan & Listrik", type: "expense" },
+      { id: "kopi", name: "Kopi / Kafe", type: "expense" },
+      { id: "kesehatan", name: "Kesehatan", type: "expense" },
+      { id: "tabungan", name: "Tabungan", type: "expense" },
+      { id: "gaji", name: "Gaji Pokok", type: "income" },
+      { id: "bonus", name: "Bonus / THR", type: "income" },
     ],
   },
   {
-    key: "net_worth",
-    title: "Full Net Worth",
-    subtitle: "I want to track what I own, what I owe, and my total financial health.",
-    preset: "executive",
-    icon: PieChart,
-    bullets: [
-      "Wallet balances feed Cash & Liquidity",
-      "Net Worth tab for owns and owes",
-      "Track investments, fixed assets, receivables, and debt",
+    key: "business",
+    code: "03",
+    title: "Bisnis & Freelance",
+    tagline: "Arus kas usaha, klien, operasional & pajak",
+    widgetPreset: "executive",
+    icon: Laptop,
+    accounts: [
+      { name: "Rekening Operasional Bisnis", icon: "Landmark" },
+      { name: "Rekening Pribadi", icon: "Landmark" },
+      { name: "Kas Kecil (Petty Cash)", icon: "Banknote" },
+      { name: "Piutang Klien", icon: "Wallet" },
+    ],
+    categories: [
+      { id: "operasional", name: "Operasional Usaha", type: "expense" },
+      { id: "vendor", name: "Jasa & Vendor", type: "expense" },
+      { id: "transport_bisnis", name: "Transportasi Bisnis", type: "expense" },
+      { id: "pajak", name: "Pajak & Legal", type: "expense" },
+      { id: "gaji_tim", name: "Gaji Tim", type: "expense" },
+      { id: "inflow_klien", name: "Inflow Pembayaran Klien", type: "income" },
+      { id: "proyek", name: "Pendapatan Proyek", type: "income" },
+    ],
+  },
+  {
+    key: "investor",
+    code: "04",
+    title: "Investor & Wealth",
+    tagline: "Portofolio lengkap aset investasi, dividen & ketahanan kas",
+    widgetPreset: "executive",
+    icon: TrendingUp,
+    accounts: [
+      { name: "Rekening Utama (BCA/Mandiri)", icon: "Landmark" },
+      { name: "Portofolio Saham / RDN", icon: "TrendingUp" },
+      { name: "Dompet Kripto / USDT", icon: "Coins" },
+      { name: "Kas Likuid", icon: "Banknote" },
+    ],
+    categories: [
+      { id: "makanan", name: "Kebutuhan Hidup", type: "expense" },
+      { id: "lifestyle", name: "Gaya Hidup & Leisure", type: "expense" },
+      { id: "asuransi", name: "Premi Asuransi", type: "expense" },
+      { id: "pajak", name: "Pajak Tahunan", type: "expense" },
+      { id: "investasi", name: "Investasi & Deposito", type: "expense" },
+      { id: "gaji", name: "Active Inflow", type: "income" },
+      { id: "dividen", name: "Dividen & Bunga Modal", type: "income" },
     ],
   },
 ];
 
-const INITIAL_EXPENSE_CATEGORIES = [
-  { id: "coffee", name: "Coffee", icon: Coffee, defaultSelected: true },
-  { id: "groceries", name: "Groceries", icon: ShoppingBag, defaultSelected: true },
-  { id: "transport", name: "Transport", icon: Car, defaultSelected: true },
-  { id: "rent", name: "Rent", icon: Home, defaultSelected: true },
-  { id: "bills", name: "Bills", icon: Receipt, defaultSelected: true },
-  { id: "shopping", name: "Shopping", icon: Tag, defaultSelected: true },
-  { id: "health", name: "Health", icon: HeartPulse, defaultSelected: true },
-  { id: "dining", name: "Dining", icon: Utensils, defaultSelected: true },
-  { id: "subscriptions", name: "Subscriptions", icon: Sparkles, defaultSelected: false },
-  { id: "travel", name: "Travel", icon: Plane, defaultSelected: false },
-  { id: "education", name: "Education", icon: GraduationCap, defaultSelected: false },
-  { id: "family", name: "Family", icon: Users, defaultSelected: false },
-  { id: "fuel", name: "Fuel", icon: Fuel, defaultSelected: false },
-  { id: "gym", name: "Gym", icon: Dumbbell, defaultSelected: false },
-  { id: "gifts", name: "Gifts", icon: Gift, defaultSelected: false },
-  { id: "insurance", name: "Insurance", icon: ShieldCheck, defaultSelected: false },
-];
-
-const INITIAL_INCOME_CATEGORIES = [
-  { id: "salary", name: "Salary / Gaji", icon: Briefcase, defaultSelected: true },
-  { id: "bonus", name: "Bonus", icon: Sparkles, defaultSelected: true },
-  { id: "investments", name: "Investasi", icon: TrendingUp, defaultSelected: true },
-  { id: "side_job", name: "Side Job", icon: Laptop, defaultSelected: false },
-  { id: "gift", name: "Hadiah", icon: Gift, defaultSelected: false },
-  { id: "cashback", name: "Cashback", icon: HandCoins, defaultSelected: false },
+const ALL_CUSTOM_CATEGORIES = [
+  { id: "makanan", name: "Makanan", icon: Utensils },
+  { id: "kopi", name: "Kopi & Kafe", icon: Coffee },
+  { id: "groceries", name: "Groceries", icon: ShoppingBag },
+  { id: "transportasi", name: "Transportasi", icon: Car },
+  { id: "kos", name: "Sewa / Properti", icon: Home },
+  { id: "tagihan", name: "Tagihan & Utilitas", icon: Receipt },
+  { id: "kesehatan", name: "Kesehatan", icon: HeartPulse },
+  { id: "gaji", name: "Gaji & Inflow", icon: Briefcase },
+  { id: "investasi", name: "Investasi", icon: TrendingUp },
 ];
 
 export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [selectedScope, setSelectedScope] = useState<ScopeKey>("net_worth");
-  const [infoModalScope, setInfoModalScope] = useState<ScopeOption | null>(null);
-
-  const [categoryTypeTab, setCategoryTypeTab] = useState<"expense" | "income">("expense");
-  const [selectedCategories, setSelectedCategories] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
-    INITIAL_EXPENSE_CATEGORIES.forEach((c) => {
-      initial[c.id] = c.defaultSelected;
-    });
-    INITIAL_INCOME_CATEGORIES.forEach((c) => {
-      initial[c.id] = c.defaultSelected;
-    });
-    return initial;
+  const [selectedPreset, setSelectedPreset] = useState<PresetKey>("professional");
+  const [isCustomMode, setIsCustomMode] = useState(false);
+  const [customCategorySelection, setCustomCategorySelection] = useState<Record<string, boolean>>({
+    makanan: true,
+    kopi: true,
+    groceries: true,
+    transportasi: true,
+    tagihan: true,
+    gaji: true,
   });
 
   if (!isOpen) return null;
 
-  const currentOption = SCOPE_OPTIONS.find((o) => o.key === selectedScope) || SCOPE_OPTIONS[2];
+  const currentPreset =
+    ONBOARDING_PRESETS.find((p) => p.key === selectedPreset) || ONBOARDING_PRESETS[1];
 
-  const toggleCategory = (id: string) => {
+  const handleSelectPreset = (key: PresetKey) => {
     triggerHaptic("light");
-    setSelectedCategories((prev) => ({
+    if (key === "custom") {
+      setIsCustomMode(true);
+      setSelectedPreset("custom");
+    } else {
+      setIsCustomMode(false);
+      setSelectedPreset(key);
+    }
+  };
+
+  const toggleCustomCategory = (id: string) => {
+    triggerHaptic("light");
+    setCustomCategorySelection((prev) => ({
       ...prev,
       [id]: !prev[id],
     }));
@@ -154,18 +191,19 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const handleFinish = () => {
     triggerSuccessHaptic();
 
-    // 1. Apply Preset to Widgets
+    // 1. Apply Layout Preset
     try {
+      const targetPreset = isCustomMode ? "minimal" : currentPreset.widgetPreset;
       const stored = loadStoredWidgets(localStorage.getItem(STORAGE_KEY), DEFAULT_HOME_WIDGETS);
-      const updated = applyPresetToWidgets(stored, currentOption.preset);
+      const updated = applyPresetToWidgets(stored, targetPreset);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } catch (e) {
       console.warn("[OnboardingModal] Failed to write preset:", e);
     }
 
-    // 2. Persist chosen onboarding scope and mark onboarded
+    // 2. Persist chosen onboarding preset and mark onboarded
     try {
-      localStorage.setItem("trouvaille_onboarding_scope", selectedScope);
+      localStorage.setItem("trouvaille_onboarding_preset", selectedPreset);
       localStorage.setItem("trouvaille_onboarded", "true");
     } catch {}
 
@@ -174,381 +212,260 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex flex-col justify-between overflow-hidden"
+      className="fixed inset-0 z-[1000] flex flex-col justify-between overflow-hidden select-none"
       style={{
-        background: "var(--bg-canvas)",
+        background: "var(--bg-canvas, #08080a)",
+        fontFamily: "'Urbanist', sans-serif",
         paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 16px), 24px)",
-        paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+        paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 24px)",
       }}
     >
-      {/* Top Segmented Progress Bar */}
-      <div className="px-6 w-full max-w-md mx-auto">
-        <div className="flex items-center gap-2">
-          <div
-            className="h-1 flex-1 rounded-full transition-all duration-300"
-            style={{
-              background: "var(--text-primary)",
-              opacity: step >= 1 ? 0.9 : 0.2,
-            }}
-          />
-          <div
-            className="h-1 flex-1 rounded-full transition-all duration-300"
-            style={{
-              background: "var(--text-primary)",
-              opacity: step >= 2 ? 0.9 : 0.2,
-            }}
-          />
-        </div>
+      {/* 1. ATMOSPHERIC LIQUID GLASS GLOW BACKDROP */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/4 -left-28 w-96 h-96 rounded-full bg-white/[0.045] blur-[140px]" />
+        <div className="absolute bottom-1/4 -right-28 w-96 h-96 rounded-full bg-white/[0.035] blur-[130px]" />
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 w-full max-w-md mx-auto flex flex-col justify-between">
-        <AnimatePresence mode="wait">
-          {step === 1 && (
-            <motion.div
-              key="step1"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ type: "spring", stiffness: 320, damping: 30 }}
-              className="space-y-6 my-auto"
-            >
-              {/* Header */}
-              <div className="space-y-2">
-                <h1
-                  className="text-[28px] sm:text-[32px] font-semibold tracking-tight leading-[1.15]"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  What do you want to track?
-                </h1>
-                <p
-                  className="text-[13px] sm:text-[14px] leading-relaxed font-normal"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Choose how Trouvaille shapes your home, analytics, and main navigation. You can change this later.
-                </p>
-              </div>
+      {/* 2. HEADER: MINIMAL & ELEGANT */}
+      <div className="px-6 relative z-10 space-y-1 pt-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold tracking-wider uppercase border border-white/10 bg-white/[0.03] text-white/60">
+          <span>Pengaturan Awal</span>
+        </div>
+        <h1 className="text-[26px] font-semibold tracking-tight text-white leading-tight">
+          Pilih Profil Finansialmu
+        </h1>
+        <p className="text-[12.5px] font-normal text-white/50 leading-snug">
+          Konfigurasi cerdas siap pakai sesuai kebutuhan gaya hidupmu
+        </p>
+      </div>
 
-              {/* Selection List */}
-              <div
-                className="rounded-[24px] p-2 space-y-2 border"
+      {/* 3. INTERACTIVE PRESET SELECTOR (LIQUID GLASS PODS) */}
+      <div className="px-6 flex-1 overflow-y-auto no-scrollbar py-3 space-y-2.5 relative z-10">
+        <div className="grid grid-cols-2 gap-2">
+          {ONBOARDING_PRESETS.map((preset) => {
+            const isSelected = !isCustomMode && selectedPreset === preset.key;
+            const Icon = preset.icon;
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                onClick={() => handleSelectPreset(preset.key)}
+                className={`p-3.5 rounded-[26px] text-left transition-all cursor-pointer active:scale-95 border flex flex-col justify-between ${
+                  isSelected
+                    ? "bg-white/[0.09] border-white/30 shadow-lg"
+                    : "bg-white/[0.02] border-white/[0.07] hover:bg-white/[0.04]"
+                }`}
                 style={{
-                  background: "var(--bg-elevated)",
-                  borderColor: "var(--glass-border)",
+                  minHeight: "124px",
+                  boxShadow: isSelected
+                    ? "inset 0 1px 1.5px rgba(255, 255, 255, 0.25), 0 8px 24px rgba(0, 0, 0, 0.4)"
+                    : undefined,
                 }}
               >
-                {SCOPE_OPTIONS.map((option) => {
-                  const isSelected = selectedScope === option.key;
-                  const Icon = option.icon;
+                <div className="flex justify-between items-start w-full">
+                  <span className="text-[10px] font-mono font-medium text-white/40">
+                    {preset.code}
+                  </span>
+                  <div
+                    className={`w-7 h-7 rounded-xl flex items-center justify-center border ${
+                      isSelected
+                        ? "bg-white text-black border-white"
+                        : "bg-white/[0.04] text-white/70 border-white/10"
+                    }`}
+                  >
+                    <Icon size={14} strokeWidth={1.75} />
+                  </div>
+                </div>
 
+                <div className="mt-2">
+                  <h3 className="text-[13px] font-semibold text-white leading-tight">
+                    {preset.title}
+                  </h3>
+                  <p className="text-[10px] text-white/45 line-clamp-2 mt-1 leading-snug">
+                    {preset.tagline}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 05 Kustom Mandiri Card */}
+        <button
+          type="button"
+          onClick={() => handleSelectPreset("custom")}
+          className={`w-full p-3.5 rounded-[24px] text-left transition-all cursor-pointer active:scale-98 border flex items-center justify-between ${
+            isCustomMode
+              ? "bg-white/[0.09] border-white/30 shadow-lg"
+              : "bg-white/[0.02] border-white/[0.07] hover:bg-white/[0.04]"
+          }`}
+          style={{
+            boxShadow: isCustomMode
+              ? "inset 0 1px 1.5px rgba(255, 255, 255, 0.25)"
+              : undefined,
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-8 h-8 rounded-xl flex items-center justify-center border ${
+                isCustomMode
+                  ? "bg-white text-black border-white"
+                  : "bg-white/[0.04] text-white/70 border-white/10"
+              }`}
+            >
+              <SlidersHorizontal size={14} strokeWidth={1.75} />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono text-white/40">05</span>
+                <h4 className="text-[13px] font-semibold text-white">
+                  Kustom Mandiri
+                </h4>
+              </div>
+              <p className="text-[10.5px] text-white/45">
+                Pilih sendiri kategori & akun sesuai kebutuhan pribadimu
+              </p>
+            </div>
+          </div>
+          <div
+            className={`w-4.5 h-4.5 rounded-full flex items-center justify-center border ${
+              isCustomMode
+                ? "bg-white text-black border-white"
+                : "border-white/20"
+            }`}
+          >
+            {isCustomMode && <Check size={10} strokeWidth={3} />}
+          </div>
+        </button>
+
+        {/* 4. DYNAMIC PREVIEW PANEL (LIQUID CHIPS) */}
+        <div
+          className="p-4 rounded-[26px] border space-y-3"
+          style={{
+            background: "rgba(255, 255, 255, 0.03)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            borderColor: "rgba(255, 255, 255, 0.12)",
+            boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.15)",
+          }}
+        >
+          <div className="flex justify-between items-center text-[11px]">
+            <span className="font-semibold text-white/80">
+              {isCustomMode ? "Kustomisasi Kategori" : `Pratinjau Profil: ${currentPreset.title}`}
+            </span>
+            <span className="text-white/40 text-[10px]">
+              {isCustomMode
+                ? `${Object.values(customCategorySelection).filter(Boolean).length} dipilih`
+                : `${currentPreset.categories.length} kategori & ${currentPreset.accounts.length} akun`}
+            </span>
+          </div>
+
+          {/* Preset Preview vs Custom Selection */}
+          <AnimatePresence mode="wait">
+            {!isCustomMode ? (
+              <motion.div
+                key={currentPreset.key}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-2.5"
+              >
+                {/* Accounts Chips */}
+                <div>
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40 block mb-1.5">
+                    Akun & Dompet Awal
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {currentPreset.accounts.map((acc) => (
+                      <span
+                        key={acc.name}
+                        className="px-2.5 py-1 rounded-xl text-[10.5px] font-medium bg-white/[0.06] text-white/80 border border-white/10 flex items-center gap-1.5"
+                      >
+                        <Wallet size={11} strokeWidth={1.5} className="text-white/50" />
+                        <span>{acc.name}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Categories Chips */}
+                <div>
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40 block mb-1.5">
+                    Kategori Transaksi
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {currentPreset.categories.map((cat) => (
+                      <span
+                        key={cat.id}
+                        className="px-2.5 py-1 rounded-xl text-[10.5px] font-medium bg-white/[0.04] text-white/70 border border-white/5"
+                      >
+                        {cat.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              /* Custom Chips Toggle Grid */
+              <motion.div
+                key="custom-selection"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-wrap gap-1.5 pt-0.5"
+              >
+                {ALL_CUSTOM_CATEGORIES.map((cat) => {
+                  const active = customCategorySelection[cat.id];
+                  const Icon = cat.icon;
                   return (
-                    <div
-                      key={option.key}
-                      onClick={() => {
-                        triggerHaptic("medium");
-                        setSelectedScope(option.key);
-                      }}
-                      className={`relative flex items-center justify-between p-3.5 rounded-[18px] transition-all cursor-pointer select-none ${
-                        isSelected
-                          ? "bg-white/[0.08] border border-white/20 shadow-sm"
-                          : "hover:bg-white/[0.03] border border-transparent opacity-80"
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => toggleCustomCategory(cat.id)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-medium flex items-center gap-1.5 transition-all cursor-pointer border active:scale-95 ${
+                        active
+                          ? "bg-white text-black border-white shadow-sm"
+                          : "bg-white/[0.03] text-white/60 border-white/10"
                       }`}
                     >
-                      <div className="flex items-center gap-3.5 pr-2">
-                        <div
-                          className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border"
-                          style={{
-                            background: isSelected ? "var(--bg-base)" : "var(--glass-fill)",
-                            borderColor: "var(--glass-border)",
-                            color: "var(--text-primary)",
-                          }}
-                        >
-                          <Icon size={19} strokeWidth={1.75} />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className="text-[14px] font-semibold tracking-tight"
-                              style={{ color: "var(--text-primary)" }}
-                            >
-                              {option.title}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                triggerHaptic("light");
-                                setInfoModalScope(option);
-                              }}
-                              className="p-1 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                            >
-                              <Info size={13} />
-                            </button>
-                          </div>
-                          <p
-                            className="text-[11px] leading-tight font-normal mt-0.5 line-clamp-1"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            {option.subtitle}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                          isSelected
-                            ? "bg-white text-zinc-950 font-bold"
-                            : "border border-[var(--glass-border)] opacity-40"
-                        }`}
-                      >
-                        {isSelected && <Check size={12} strokeWidth={3} />}
-                      </div>
-                    </div>
+                      <Icon size={12} strokeWidth={1.75} />
+                      <span>{cat.name}</span>
+                    </button>
                   );
                 })}
-              </div>
-            </motion.div>
-          )}
-
-          {step === 2 && (
-            <motion.div
-              key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ type: "spring", stiffness: 320, damping: 30 }}
-              className="space-y-5 my-auto"
-            >
-              {/* Header */}
-              <div className="space-y-1.5">
-                <h1
-                  className="text-[28px] sm:text-[32px] font-semibold tracking-tight leading-[1.15]"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  Pick your first categories.
-                </h1>
-                <p
-                  className="text-[13px] leading-relaxed font-normal"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Choose the spending groups you want Trouvaille to recognize first. You can customize them anytime.
-                </p>
-              </div>
-
-              {/* Category Container */}
-              <div
-                className="rounded-[24px] p-4 space-y-4 border"
-                style={{
-                  background: "var(--bg-elevated)",
-                  borderColor: "var(--glass-border)",
-                }}
-              >
-                {/* Segmented Control (Expense vs Income) */}
-                <div
-                  className="flex items-center p-1 rounded-2xl border"
-                  style={{
-                    background: "var(--bg-base)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setCategoryTypeTab("expense");
-                    }}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
-                      categoryTypeTab === "expense"
-                        ? "bg-white/[0.1] text-white shadow-sm border border-white/15"
-                        : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                    }`}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500/80" />
-                    <span>Expense</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setCategoryTypeTab("income");
-                    }}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
-                      categoryTypeTab === "income"
-                        ? "bg-white/[0.1] text-white shadow-sm border border-white/15"
-                        : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                    }`}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80" />
-                    <span>Income</span>
-                  </button>
-                </div>
-
-                {/* Chips Grid */}
-                <div className="flex flex-wrap gap-2 pt-1 max-h-[320px] overflow-y-auto pr-1">
-                  {(categoryTypeTab === "expense"
-                    ? INITIAL_EXPENSE_CATEGORIES
-                    : INITIAL_INCOME_CATEGORIES
-                  ).map((cat) => {
-                    const isChecked = !!selectedCategories[cat.id];
-                    const Icon = cat.icon;
-
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => toggleCategory(cat.id)}
-                        className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-medium transition-all active:scale-95 cursor-pointer select-none ${
-                          isChecked
-                            ? "bg-white/[0.12] border border-white/25 text-white shadow-sm"
-                            : "bg-white/[0.03] border border-white/5 text-[var(--text-secondary)] opacity-70 hover:opacity-100"
-                        }`}
-                      >
-                        <Icon size={14} strokeWidth={1.5} />
-                        <span>{cat.name}</span>
-                        {isChecked && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Bottom Actions Bar */}
-        <div className="pt-6 flex items-center gap-3">
-          {step === 2 && (
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setStep(1);
-              }}
-              className="w-12 h-12 rounded-2xl flex items-center justify-center border shrink-0 active:scale-95 transition-transform cursor-pointer"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--glass-border)",
-                color: "var(--text-primary)",
-              }}
-            >
-              <ChevronLeft size={18} />
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => {
-              if (step === 1) {
-                triggerHaptic("medium");
-                setStep(2);
-              } else {
-                handleFinish();
-              }
-            }}
-            className="flex-1 py-4 px-6 rounded-2xl font-semibold text-[14px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-xl cursor-pointer"
-            style={{
-              background: "var(--accent)",
-              color: "var(--accent-ink)",
-            }}
-          >
-            <span>{step === 1 ? "Next" : "Get Started"}</span>
-            <ArrowRight size={15} />
-          </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* Info Popup Sheet (Monveo Style) */}
-      <AnimatePresence>
-        {infoModalScope && (
-          <div className="fixed inset-0 z-[1100] flex items-center justify-center p-6 bg-black/70 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-sm rounded-[28px] p-6 border relative overflow-hidden shadow-2xl space-y-5"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--glass-border)",
-              }}
-            >
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={() => setInfoModalScope(null)}
-                className="absolute top-5 right-5 w-8 h-8 rounded-full flex items-center justify-center bg-white/[0.08] text-[var(--text-secondary)] hover:text-white cursor-pointer"
-              >
-                <X size={15} />
-              </button>
-
-              {/* Graphic Mock Card */}
-              <div
-                className="p-4 rounded-2xl border space-y-2"
-                style={{
-                  background: "var(--bg-base)",
-                  borderColor: "var(--glass-border)",
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-                    {infoModalScope.title}
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-medium">
-                    Preset: {infoModalScope.preset}
-                  </span>
-                </div>
-                <div className="text-[20px] font-semibold text-[var(--text-primary)]">
-                  {infoModalScope.key === "expense_only"
-                    ? "Rp 4.250.000"
-                    : infoModalScope.key === "expense_income"
-                      ? "Net Cashflow"
-                      : "Total Net Worth"}
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-                  <div className="h-full w-2/3 bg-white/80 rounded-full" />
-                </div>
-              </div>
-
-              {/* Title & Description */}
-              <div className="space-y-1.5">
-                <h3
-                  className="text-[19px] font-semibold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {infoModalScope.title}
-                </h3>
-                <p
-                  className="text-[12px] leading-relaxed"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {infoModalScope.subtitle}
-                </p>
-              </div>
-
-              {/* Bullet Points */}
-              <div className="space-y-2.5 pt-1">
-                {infoModalScope.bullets.map((b, i) => (
-                  <div key={i} className="flex items-start gap-2.5 text-[12px]">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white/60 mt-1.5 shrink-0" />
-                    <span style={{ color: "var(--text-tertiary)" }}>{b}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Done Button */}
-              <button
-                type="button"
-                onClick={() => setInfoModalScope(null)}
-                className="w-full py-3 rounded-xl font-semibold text-[13px] bg-white/[0.1] hover:bg-white/[0.15] text-white border border-white/10 transition-colors cursor-pointer"
-              >
-                Done
-              </button>
-            </motion.div>
+      {/* 5. FLOATING BOTTOM ACTION POD (LIQUID GLASS BUTTON) */}
+      <div className="px-6 pt-2 relative z-10 space-y-2">
+        <motion.button
+          type="button"
+          onClick={handleFinish}
+          whileTap={{ scale: 0.98 }}
+          className="w-full py-3.5 px-5 rounded-[24px] font-semibold text-[14px] flex items-center justify-between cursor-pointer shadow-xl transition-transform bg-white text-zinc-950"
+          style={{
+            boxShadow:
+              "0 12px 36px rgba(255, 255, 255, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.9)",
+          }}
+        >
+          <span className="font-semibold tracking-tight">
+            Mulai Gunakan Trouvaille
+          </span>
+          <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center">
+            <ArrowRight size={14} strokeWidth={2} />
           </div>
-        )}
-      </AnimatePresence>
+        </motion.button>
+
+        <div className="flex items-center justify-center gap-1.5 text-[10px] text-white/35 text-center">
+          <ShieldCheck size={11} strokeWidth={1.5} />
+          <span>Pengaturan dapat diubah sewaktu-waktu di menu Settings</span>
+        </div>
+      </div>
     </div>
   );
 }

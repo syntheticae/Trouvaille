@@ -794,7 +794,7 @@ export function TransactionsPage({
                   background: "var(--glass-fill)",
                   color: "var(--text-primary)",
                 }}
-                title="Switch Money Space"
+                title="Ganti Domain Finansial"
               >
                 {activeSpace.icon === "Briefcase" ? (
                   <Briefcase size={10} strokeWidth={1.75} />

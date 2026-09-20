@@ -1816,7 +1816,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   background: "var(--glass-fill)",
                   color: "var(--text-primary)",
                 }}
-                title="Switch Money Space"
+                title="Ganti Domain Finansial"
               >
                 {activeSpace.icon === "Briefcase" ? (
                   <Briefcase size={11} strokeWidth={1.75} />

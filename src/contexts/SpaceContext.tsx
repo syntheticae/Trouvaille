@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useMemo, useCallback } from "react";
 import type { Transaction } from "../types";
 
-export interface MoneySpace {
+export interface FinancialDomain {
   id: string;
   name: string;
   description: string;
@@ -10,34 +10,37 @@ export interface MoneySpace {
   isDefault?: boolean;
 }
 
-export const DEFAULT_MONEY_SPACES: MoneySpace[] = [
+// Backward-compatible alias for existing codebase
+export type MoneySpace = FinancialDomain;
+
+export const DEFAULT_MONEY_SPACES: FinancialDomain[] = [
   {
     id: "personal",
-    name: "Personal Space",
-    description: "Daily personal finances, groceries, living expenses & personal savings",
+    name: "Domain Pribadi",
+    description: "Keuangan harian, kebutuhan hidup, belanja & tabungan pribadi",
     icon: "User",
     isDefault: true,
   },
   {
     id: "business",
-    name: "Business & Work",
-    description: "Side-hustles, client projects, invoicing & deductible business costs",
+    name: "Domain Bisnis",
+    description: "Proyek klien, operasional usaha, faktur & beban bisnis",
     tag: "#business",
     icon: "Briefcase",
     isDefault: true,
   },
   {
     id: "travel",
-    name: "Holiday & Travel",
-    description: "Flights, hotels, dining out & dedicated vacation itineraries",
+    name: "Domain Perjalanan",
+    description: "Tiket, hotel, kuliner & anggaran rencana perjalanan khusus",
     tag: "#travel",
     icon: "Plane",
     isDefault: true,
   },
   {
     id: "all",
-    name: "All Spaces",
-    description: "Consolidated balance sheet across all personal, business, and travel spaces",
+    name: "Seluruh Domain",
+    description: "Neraca konsolidasi lintas seluruh domain finansial",
     icon: "Layers",
     isDefault: true,
   },
@@ -248,3 +251,5 @@ export function useSpace(): SpaceContextValue {
   }
   return context;
 }
+
+export const useDomain = useSpace;

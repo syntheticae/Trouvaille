@@ -209,13 +209,21 @@ function AppShell() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (isGuest) {
+      setHasInitialSynced(true);
+      setIsInitDone(true);
+      try {
+        localStorage.setItem(syncStorageKey, "true");
+      } catch {}
+      return;
+    }
     setHasInitialSynced(localStorage.getItem(syncStorageKey) === "true");
     if (user?.id) {
       flushPendingMutations().catch((e) =>
         console.warn("[App] Background flush warning:", e),
       );
     }
-  }, [syncStorageKey, user?.id]);
+  }, [syncStorageKey, user?.id, isGuest]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -236,8 +244,30 @@ function AppShell() {
 
   useEffect(() => {
     async function init() {
-      if (hasInitialSynced || isGuest) {
+      if (hasInitialSynced) {
         setIsInitDone(true);
+        return;
+      }
+
+      // Guest / Offline local mode: smooth fluid progression without Supabase calls
+      if (isGuest || user?.id === "guest_local_user") {
+        setSyncStatusText("Menyiapkan brankas lokal...");
+        setSyncProgress(35);
+        await new Promise((r) => setTimeout(r, 120));
+
+        setSyncStatusText("Memuat akun dan preferensi offline...");
+        setSyncProgress(75);
+        await new Promise((r) => setTimeout(r, 150));
+
+        setSyncStatusText("Siap! Selamat datang di Trouvaille.");
+        setSyncProgress(100);
+        await new Promise((r) => setTimeout(r, 180));
+
+        setIsInitDone(true);
+        setHasInitialSynced(true);
+        try {
+          localStorage.setItem(syncStorageKey, "true");
+        } catch {}
         return;
       }
 
