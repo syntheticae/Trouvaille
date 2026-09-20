@@ -37,6 +37,7 @@ import {
   deleteHolding,
   calculateHoldingValuation,
   calculatePortfolioSummary,
+  calculateAssetDepreciation,
 } from "../../lib/marketPriceService";
 import type { InvestmentHolding, AssetType } from "../../lib/types";
 
@@ -252,7 +253,23 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const [formIcon, setFormIcon] = useState("TrendingUp");
   const [hasCustomPickedAssetIcon, setHasCustomPickedAssetIcon] = useState(false);
   const [isAssetIconPickerOpen, setIsAssetIconPickerOpen] = useState(false);
+  const [formAnnualRate, setFormAnnualRate] = useState<string>("");
+  const [formAnnualRateSign, setFormAnnualRateSign] = useState<"+" | "-">("-");
+  const [formPurchaseDate, setFormPurchaseDate] = useState<string>(() =>
+    format(new Date(), "yyyy-MM-dd")
+  );
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Live calculation of compound depreciation / appreciation
+  const dynamicValuationPreview = useMemo(() => {
+    const buy = parseFloat(formBuyPrice);
+    const rate = parseFloat(formAnnualRate);
+    if (isNaN(buy) || buy <= 0 || isNaN(rate) || !formPurchaseDate) {
+      return null;
+    }
+    const signedRate = formAnnualRateSign === "-" ? -Math.abs(rate) : Math.abs(rate);
+    return calculateAssetDepreciation(buy, signedRate, formPurchaseDate);
+  }, [formBuyPrice, formAnnualRate, formAnnualRateSign, formPurchaseDate]);
 
   // Open asset picker (Phase 1)
   const openAssetPicker = () => {
@@ -292,6 +309,26 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
         : "TrendingUp";
     setFormIcon(defaultIcon);
     setHasCustomPickedAssetIcon(false);
+    setFormPurchaseDate(format(new Date(), "yyyy-MM-dd"));
+    if (preset.type === "fixed_asset") {
+      if (preset.symbol === "VEHICLE" || preset.symbol === "MOTORCYCLE") {
+        setFormAnnualRateSign("-");
+        setFormAnnualRate("15");
+      } else if (
+        preset.symbol === "PROPERTY" ||
+        preset.symbol === "APARTMENT" ||
+        preset.symbol === "LAND"
+      ) {
+        setFormAnnualRateSign("+");
+        setFormAnnualRate("5");
+      } else {
+        setFormAnnualRateSign("-");
+        setFormAnnualRate("");
+      }
+    } else {
+      setFormAnnualRateSign("+");
+      setFormAnnualRate("");
+    }
     setAddPhase(2);
 
     if (preset.type !== "fixed_asset") {
@@ -324,6 +361,14 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setFormUnits(type === "fixed_asset" ? "1" : "1");
     setFormBuyPrice("");
     setFormCurrentPrice("");
+    setFormPurchaseDate(format(new Date(), "yyyy-MM-dd"));
+    if (type === "fixed_asset") {
+      setFormAnnualRateSign("-");
+      setFormAnnualRate("10");
+    } else {
+      setFormAnnualRateSign("+");
+      setFormAnnualRate("");
+    }
     const defaultIcon =
       type === "fixed_asset"
         ? "Home"
@@ -344,6 +389,9 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setFormIcon("TrendingUp");
     setHasCustomPickedAssetIcon(false);
     setEditingHoldingId(null);
+    setFormAnnualRate("");
+    setFormAnnualRateSign("-");
+    setFormPurchaseDate(format(new Date(), "yyyy-MM-dd"));
   };
 
   // Filtered presets for picker list
@@ -467,6 +515,14 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
     const symbol = formSymbol.trim() || (formType === "fixed_asset" ? "ASSET" : formName.slice(0, 5).toUpperCase());
 
+    const rawRate = parseFloat(formAnnualRate);
+    const signedRate =
+      !isNaN(rawRate) && rawRate !== 0
+        ? formAnnualRateSign === "-"
+          ? -Math.abs(rawRate)
+          : Math.abs(rawRate)
+        : undefined;
+
     const newH: InvestmentHolding = {
       id: editingHoldingId || `h_${Date.now()}`,
       symbol: symbol.toUpperCase(),
@@ -477,6 +533,8 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
       current_price: currentPrice,
       last_price_updated_at: new Date().toISOString(),
       icon: formIcon,
+      annual_rate: signedRate,
+      purchase_date: formPurchaseDate || undefined,
     };
 
     const updated = upsertHolding(newH);
@@ -500,6 +558,14 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setFormBuyPrice(String(h.avg_buy_price));
     setFormCurrentPrice(String(h.current_price));
     setFormIcon(h.icon || getDefaultAssetIconName(h.asset_type));
+    if (typeof h.annual_rate === "number" && h.annual_rate !== 0) {
+      setFormAnnualRateSign(h.annual_rate >= 0 ? "+" : "-");
+      setFormAnnualRate(String(Math.abs(h.annual_rate)));
+    } else {
+      setFormAnnualRateSign(h.asset_type === "fixed_asset" ? "-" : "+");
+      setFormAnnualRate("");
+    }
+    setFormPurchaseDate(h.purchase_date || format(new Date(), "yyyy-MM-dd"));
     setDetailHolding(null);
     setAddPhase(2);
   };
@@ -1037,11 +1103,27 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
               </div>
             )}
 
-            {/* Valuation Inputs: Purchase Cost vs Current Valuation */}
+            {/* Acquisition Date & Cost */}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                  {formType === "fixed_asset" ? "Acquisition Cost (Rp)" : "Buy Price per Unit (Rp)"}
+                  Purchase / Acquired Date
+                </label>
+                <input
+                  type="date"
+                  value={formPurchaseDate}
+                  onChange={(e) => setFormPurchaseDate(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl text-[12px] font-semibold outline-none"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
+                  {formType === "fixed_asset" ? "Acquisition Cost (Rp)" : "Buy Price / Unit (Rp)"}
                 </label>
                 <input
                   type="number"
@@ -1052,25 +1134,181 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                   style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
                 />
               </div>
-              <div>
-                <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                  {formType === "fixed_asset" ? "Estimated Value (Rp)" : "Current Price per Unit (Rp)"}
-                  {isFetchingCurrentPrice && <RefreshCw size={9} className="inline ml-1 animate-spin" />}
+            </div>
+
+            {/* Annual Depreciation or Growth Rate */}
+            <div className="p-3 rounded-2xl space-y-2" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-semibold block" style={{ color: "var(--text-primary)" }}>
+                  Annual Depreciation / Growth Rate
                 </label>
-                <input
-                  type="number"
-                  value={formCurrentPrice}
-                  onChange={(e) => setFormCurrentPrice(e.target.value)}
-                  placeholder={isFetchingCurrentPrice ? "Fetching..." : "1200000"}
-                  disabled={isFetchingCurrentPrice}
-                  className="w-full px-2.5 py-2 rounded-xl text-[12px] font-bold outline-none"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: isFetchingCurrentPrice ? "var(--text-tertiary)" : "var(--text-primary)",
-                  }}
-                />
+                {dynamicValuationPreview && (
+                  <span className="text-[10px] font-mono font-medium text-[var(--text-tertiary)]">
+                    {dynamicValuationPreview.yearsElapsed.toFixed(1)} yrs holding
+                  </span>
+                )}
               </div>
+
+              <div className="flex items-center gap-2">
+                {/* Sign Selector */}
+                <div
+                  className="flex items-center p-0.5 rounded-xl shrink-0"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setFormAnnualRateSign("-");
+                    }}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
+                      formAnnualRateSign === "-"
+                        ? "bg-white text-black shadow-sm"
+                        : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    }`}
+                  >
+                    - Deprec.
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setFormAnnualRateSign("+");
+                    }}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
+                      formAnnualRateSign === "+"
+                        ? "bg-white text-black shadow-sm"
+                        : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    }`}
+                  >
+                    + Growth
+                  </button>
+                </div>
+
+                {/* Percentage input */}
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={formAnnualRate}
+                    onChange={(e) => setFormAnnualRate(e.target.value)}
+                    placeholder="e.g. 15"
+                    className="w-full pl-2.5 pr-7 py-1.5 rounded-xl text-[12px] font-bold outline-none font-mono"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  />
+                  <span
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-[var(--text-tertiary)]"
+                  >
+                    %/yr
+                  </span>
+                </div>
+              </div>
+
+              {/* Preset Rate Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
+                {[
+                  { label: "-15% Vehicle", rate: "15", sign: "-" as const },
+                  { label: "-20% Tech", rate: "20", sign: "-" as const },
+                  { label: "+5% House", rate: "5", sign: "+" as const },
+                  { label: "+8% Land", rate: "8", sign: "+" as const },
+                  { label: "0% Fixed", rate: "0", sign: "-" as const },
+                ].map((p) => {
+                  const isActive = formAnnualRate === p.rate && formAnnualRateSign === p.sign;
+                  return (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setFormAnnualRateSign(p.sign);
+                        setFormAnnualRate(p.rate);
+                      }}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 transition-all cursor-pointer border ${
+                        isActive
+                          ? "bg-white text-black font-semibold border-white"
+                          : "bg-white/[0.04] text-[var(--text-secondary)] border-white/[0.08] hover:bg-white/[0.08]"
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Dynamic Compound Valuation Result */}
+              {dynamicValuationPreview && (
+                <div
+                  className="mt-2 p-2 rounded-xl text-[11px] space-y-1 border border-white/[0.08]"
+                  style={{ background: "var(--bg-elevated)" }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-[var(--text-tertiary)]">Estimated Value Today:</span>
+                    <span className="font-mono font-semibold text-[var(--text-primary)]">
+                      {formatRupiah(dynamicValuationPreview.currentPrice)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-[var(--text-tertiary)]">Total Valuation Drift:</span>
+                    <span className="font-mono font-medium text-[var(--text-secondary)]">
+                      {dynamicValuationPreview.totalChange >= 0 ? "+" : ""}
+                      {formatRupiah(dynamicValuationPreview.totalChange)} (
+                      {dynamicValuationPreview.totalChangePct >= 0 ? "+" : ""}
+                      {dynamicValuationPreview.totalChangePct.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setFormCurrentPrice(String(dynamicValuationPreview.currentPrice));
+                    }}
+                    className="w-full mt-1 py-1 rounded-lg text-[10px] font-semibold text-center cursor-pointer transition-all active:scale-98"
+                    style={{
+                      background: "var(--glass-fill-strong)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    Apply Compound Price to Field
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Current Price / Valuation Input */}
+            <div>
+              <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
+                {formType === "fixed_asset" ? "Current Estimated Valuation (Rp)" : "Current Price per Unit (Rp)"}
+                {isFetchingCurrentPrice && <RefreshCw size={9} className="inline ml-1 animate-spin" />}
+              </label>
+              <input
+                type="number"
+                value={formCurrentPrice}
+                onChange={(e) => setFormCurrentPrice(e.target.value)}
+                placeholder={
+                  dynamicValuationPreview
+                    ? String(dynamicValuationPreview.currentPrice)
+                    : isFetchingCurrentPrice
+                    ? "Fetching..."
+                    : "1200000"
+                }
+                disabled={isFetchingCurrentPrice}
+                className="w-full px-2.5 py-2 rounded-xl text-[12px] font-bold outline-none"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: isFetchingCurrentPrice ? "var(--text-tertiary)" : "var(--text-primary)",
+                }}
+              />
             </div>
 
             {/* Action Buttons */}
@@ -1512,6 +1750,35 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 </p>
               </div>
             </div>
+
+            {/* Annual Valuation Model & Acquisition Date Banner */}
+            {detailHolding.holding && (detailHolding.holding.annual_rate !== undefined || detailHolding.holding.purchase_date) && (
+              <div
+                className="p-3 rounded-xl flex items-center justify-between text-[11px]"
+                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+              >
+                <div>
+                  <span className="font-medium block text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                    Annual Valuation Model
+                  </span>
+                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {typeof detailHolding.holding.annual_rate === "number"
+                      ? `${detailHolding.holding.annual_rate >= 0 ? "+" : ""}${detailHolding.holding.annual_rate}% / year (${detailHolding.holding.annual_rate >= 0 ? "Appreciation" : "Depreciation"})`
+                      : "Fixed Valuation"}
+                  </span>
+                </div>
+                {detailHolding.holding.purchase_date && (
+                  <div className="text-right">
+                    <span className="font-medium block text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                      Acquisition Date
+                    </span>
+                    <span className="font-mono font-medium" style={{ color: "var(--text-secondary)" }}>
+                      {detailHolding.holding.purchase_date}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Actions: Instant Realize P&L, Quick Edit & Delete */}
             <div className="space-y-2 pt-1">

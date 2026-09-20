@@ -35,6 +35,8 @@ export interface InvestmentHolding {
   last_price_updated_at?: string;
   notes?: string;
   icon?: string;
+  annual_rate?: number; // Estimated annual appreciation (+) or depreciation (-) rate in percent
+  purchase_date?: string; // YYYY-MM-DD
 }
 
 export type CashflowNature = "operating" | "investing" | "financing";

@@ -227,12 +227,75 @@ export async function fetchStockPriceInIDR(symbol: string): Promise<number | nul
 }
 
 /**
+ * Calculates current price/value given buy price, annual growth/depreciation rate %, and purchase date.
+ * Uses continuous/compound annual rate: value = buyPrice * (1 + rate / 100)^yearsElapsed
+ */
+export function calculateAssetDepreciation(
+  buyPrice: number,
+  annualRatePct: number,
+  purchaseDate: string,
+  targetDate: Date = new Date(),
+): {
+  currentPrice: number;
+  yearsElapsed: number;
+  totalChange: number;
+  totalChangePct: number;
+} {
+  const buy = Math.max(0, Number(buyPrice) || 0);
+  if (buy === 0 || !purchaseDate) {
+    return { currentPrice: buy, yearsElapsed: 0, totalChange: 0, totalChangePct: 0 };
+  }
+
+  const pDate = new Date(purchaseDate);
+  if (isNaN(pDate.getTime())) {
+    return { currentPrice: buy, yearsElapsed: 0, totalChange: 0, totalChangePct: 0 };
+  }
+
+  const msDiff = targetDate.getTime() - pDate.getTime();
+  const yearsElapsed = Math.max(0, msDiff / (365.25 * 24 * 3600 * 1000));
+  const rate = Number(annualRatePct) || 0;
+
+  // Compound rate: price = buyPrice * (1 + rate / 100)^yearsElapsed
+  let factor = 1;
+  if (rate <= -100) {
+    factor = 0;
+  } else {
+    factor = Math.pow(1 + rate / 100, yearsElapsed);
+  }
+
+  const currentPrice = Math.max(0, Math.round(buy * factor));
+  const totalChange = currentPrice - buy;
+  const totalChangePct = buy > 0 ? (totalChange / buy) * 100 : 0;
+
+  return {
+    currentPrice,
+    yearsElapsed,
+    totalChange,
+    totalChangePct,
+  };
+}
+
+/**
  * Calculate valuation and floating profit/loss for a single holding.
  */
 export function calculateHoldingValuation(holding: InvestmentHolding): HoldingValuation {
   const units = Number(holding.units || 0);
   const buyPrice = Number(holding.avg_buy_price || 0);
-  const currentPrice = Number(holding.current_price || buyPrice);
+  let currentPrice = Number(holding.current_price || buyPrice);
+
+  // If holding has annual depreciation/growth rate and purchase date, dynamically adjust current market price
+  if (
+    typeof holding.annual_rate === "number" &&
+    holding.annual_rate !== 0 &&
+    holding.purchase_date
+  ) {
+    const dep = calculateAssetDepreciation(
+      buyPrice,
+      holding.annual_rate,
+      holding.purchase_date,
+    );
+    currentPrice = dep.currentPrice;
+  }
 
   const costBasis = units * buyPrice;
   const marketValue = units * currentPrice;

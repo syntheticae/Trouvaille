@@ -51,7 +51,15 @@ import {
   SlidersHorizontal,
   X,
   Users,
+  Radio,
+  Briefcase,
+  Plane,
+  Layers,
+  User,
 } from "lucide-react";
+import { useSpace } from "../contexts/SpaceContext";
+import { SpaceSwitcherSheet } from "../components/spaces/SpaceSwitcherSheet";
+import { NfcCardReaderModal } from "../components/nfc/NfcCardReaderModal";
 import {
   AreaChart,
   Area,
@@ -176,6 +184,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   } | null>(null);
 
   const [billManagementOpen, setBillManagementOpen] = useState(false);
+  const { activeSpace, activeSpaceId, setActiveSpaceId } = useSpace();
+  const [spaceSwitcherOpen, setSpaceSwitcherOpen] = useState(false);
+  const [nfcModalOpen, setNfcModalOpen] = useState(false);
 
   const {
     widgets,
@@ -1748,9 +1759,49 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             <h1 className="text-[16px] font-semibold text-[var(--text-primary)] leading-tight mt-0.5">
               {displayName}
             </h1>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setSpaceSwitcherOpen(true);
+              }}
+              className="mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border border-white/10 hover:border-white/20"
+              style={{
+                background: "var(--glass-fill)",
+                color: "var(--text-primary)",
+              }}
+              title="Switch Money Space"
+            >
+              {activeSpace.icon === "Briefcase" ? (
+                <Briefcase size={11} strokeWidth={1.75} />
+              ) : activeSpace.icon === "Plane" ? (
+                <Plane size={11} strokeWidth={1.75} />
+              ) : activeSpace.icon === "Layers" ? (
+                <Layers size={11} strokeWidth={1.75} />
+              ) : (
+                <User size={11} strokeWidth={1.75} />
+              )}
+              <span>{activeSpace.name}</span>
+              <span className="text-[8px] opacity-60">▾</span>
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              setNfcModalOpen(true);
+            }}
+            className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer select-none"
+            title="Scan Kartu E-Money / Flazz"
+          >
+            <Radio
+              size={14}
+              strokeWidth={1.75}
+              style={{ color: "var(--text-primary)" }}
+            />
+          </button>
           <button
             onClick={() => {
               triggerHaptic("light");
@@ -1774,6 +1825,32 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           </button>
         </div>
       </header>
+
+      {/* Active Space Segregation Notice */}
+      {activeSpaceId !== "all" && activeSpaceId !== "personal" && (
+        <div
+          className="px-3.5 py-2 rounded-2xl flex items-center justify-between text-[11px] font-medium animate-fadeIn"
+          style={{
+            background: "var(--glass-fill)",
+            border: "1px solid var(--glass-border)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            <span>
+              Active Space: <strong className="text-[var(--text-primary)]">{activeSpace.name}</strong> ({activeSpace.tag})
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveSpaceId("personal")}
+            className="text-[10px] font-semibold text-[var(--text-primary)] hover:underline cursor-pointer"
+          >
+            Reset
+          </button>
+        </div>
+      )}
 
       {/* Dynamic Reorderable iOS-Style Card Springboard */}
       <ReorderableWidgetGrid
@@ -1918,6 +1995,14 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       <BillManagementSheets
         isOpen={billManagementOpen}
         onClose={() => setBillManagementOpen(false)}
+      />
+      <SpaceSwitcherSheet
+        isOpen={spaceSwitcherOpen}
+        onClose={() => setSpaceSwitcherOpen(false)}
+      />
+      <NfcCardReaderModal
+        isOpen={nfcModalOpen}
+        onClose={() => setNfcModalOpen(false)}
       />
 
       {/* CUSTOMIZE HOME WIDGETS MODAL (Compact 2-Column Minimalist Grid) */}

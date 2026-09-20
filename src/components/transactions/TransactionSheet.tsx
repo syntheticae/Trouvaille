@@ -51,6 +51,7 @@ import type { Transaction, TransactionType } from "../../lib/types";
 import { useShortcuts } from "../../hooks/useShortcuts";
 import { SmartQuickAddBar } from "./SmartQuickAddBar";
 import { evaluateMathSafe } from "../../lib/evaluateMathSafe";
+import { useSpace } from "../../contexts/SpaceContext";
 
 interface TransactionSheetProps {
   isOpen: boolean;
@@ -149,14 +150,22 @@ export function TransactionSheet({
     return matches ? matches.map((m) => m.toLowerCase()) : [];
   }, [note]);
 
-  const quickTagPresets = [
-    "#reimburse",
-    "#kantor",
-    "#liburan",
-    "#keluarga",
-    "#proyek",
-    "#split",
-  ];
+  const { activeSpace } = useSpace();
+
+  const quickTagPresets = useMemo(() => {
+    const base = [
+      "#reimburse",
+      "#kantor",
+      "#liburan",
+      "#keluarga",
+      "#proyek",
+      "#split",
+    ];
+    if (activeSpace?.tag && !base.includes(activeSpace.tag.toLowerCase())) {
+      return [activeSpace.tag.toLowerCase(), ...base];
+    }
+    return base;
+  }, [activeSpace]);
 
   const handleToggleTag = (tag: string) => {
     triggerHaptic("light");
@@ -1652,6 +1661,25 @@ export function TransactionSheet({
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Dedicated Money Space Active Notice */}
+        {activeSpace?.tag && activeSpace.id !== "all" && activeSpace.id !== "personal" && (
+          <div className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span>
+                Money Space: <strong className="text-[var(--text-primary)]">{activeSpace.name}</strong>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleToggleTag(activeSpace.tag!)}
+              className="text-[10px] font-semibold text-[var(--text-primary)] hover:underline cursor-pointer"
+            >
+              {activeTags.includes(activeSpace.tag.toLowerCase()) ? "Tagged" : `Attach ${activeSpace.tag}`}
+            </button>
           </div>
         )}
 
