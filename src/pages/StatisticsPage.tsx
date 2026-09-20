@@ -1252,7 +1252,7 @@ export function StatisticsPage() {
                 <div className="flex items-center gap-2">
                   <Calendar size={16} style={{ color: "var(--text-tertiary)" }} />
                   <h2
-                    className="text-[13px] font-bold"
+                    className="text-[13px] font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
                     Spending Density & Heatmap
@@ -1278,7 +1278,7 @@ export function StatisticsPage() {
                 {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
                   <div
                     key={i}
-                    className="text-[9px] font-bold"
+                    className="text-[9px] font-semibold"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {w}
@@ -1344,7 +1344,7 @@ export function StatisticsPage() {
                         {d.getDate()}
                       </span>
                       {spent > 0 && (
-                        <span className="text-[7px] font-bold opacity-80 scale-90 leading-none mt-0.5">
+                        <span className="text-[8px] font-semibold opacity-80 scale-90 leading-none mt-0.5">
                           {spent >= 1000000
                             ? (spent / 1000000).toFixed(0) + "M"
                             : spent >= 1000
@@ -1897,7 +1897,7 @@ export function StatisticsPage() {
           >
             <button
               onClick={() => setBreakdownType("expense")}
-              className="px-3 py-1 rounded-full text-[11px] font-bold transition-all flex items-center gap-1"
+              className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1"
               style={{
                 background:
                   breakdownType === "expense" ? "var(--accent)" : "transparent",
@@ -1911,7 +1911,7 @@ export function StatisticsPage() {
             </button>
             <button
               onClick={() => setBreakdownType("income")}
-              className="px-3 py-1 rounded-full text-[11px] font-bold transition-all flex items-center gap-1"
+              className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1"
               style={{
                 background:
                   breakdownType === "income" ? "var(--accent)" : "transparent",
@@ -2323,7 +2323,7 @@ export function StatisticsPage() {
             }}
           >
             <p
-              className="text-[13px] font-bold"
+              className="text-[13px] font-semibold"
               style={{ color: "var(--text-secondary)" }}
             >
               No {breakdownType} recorded
@@ -2351,7 +2351,7 @@ export function StatisticsPage() {
           <TrendingUp size={16} style={{ color: "var(--text-tertiary)" }} />
           <div>
             <h2
-              className="text-[13px] font-bold"
+              className="text-[13px] font-semibold"
               style={{ color: "var(--text-primary)" }}
             >
               Net Capital Trajectory

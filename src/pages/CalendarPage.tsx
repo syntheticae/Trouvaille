@@ -277,7 +277,7 @@ export function CalendarPage() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <span
-                    className="text-[10px] font-bold uppercase tracking-wider"
+                    className="text-[10px] font-semibold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     Runway Floor
@@ -316,7 +316,7 @@ export function CalendarPage() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <span
-                    className="text-[10px] font-bold uppercase tracking-wider"
+                    className="text-[10px] font-semibold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     Payday Horizon
@@ -350,7 +350,7 @@ export function CalendarPage() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <span
-                    className="text-[10px] font-bold uppercase tracking-wider"
+                    className="text-[10px] font-semibold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     No-Spend Days
@@ -398,7 +398,7 @@ export function CalendarPage() {
 
           <div className="flex items-center gap-2">
             <span
-              className="font-bold text-[15px] tracking-tight"
+              className="font-semibold text-[15px] tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               {format(currentDate, "MMMM yyyy")}
@@ -406,7 +406,7 @@ export function CalendarPage() {
             {!isCurrentMonthView && (
               <button
                 onClick={handleResetToToday}
-                className="px-2 py-0.5 rounded-full text-[10px] font-bold glass-surface active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                className="px-2 py-0.5 rounded-full text-[10px] font-semibold glass-surface active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
                 style={{
                   border: "1px solid var(--glass-border)",
                   color: "var(--text-secondary)",
@@ -452,7 +452,7 @@ export function CalendarPage() {
             {WEEKS.map((w) => (
               <div
                 key={w}
-                className="text-[11px] font-bold mb-1 uppercase tracking-wider"
+                className="text-[11px] font-semibold mb-1 uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {w}
@@ -527,7 +527,7 @@ export function CalendarPage() {
                 >
                   {/* Day Number */}
                   <span
-                    className="text-[13px] font-bold leading-tight"
+                    className="text-[13px] font-semibold leading-tight"
                     style={{ color: textColor }}
                   >
                     {format(d, "d")}
@@ -586,9 +586,9 @@ export function CalendarPage() {
                     <div className="flex flex-col items-center mt-0.5">
                       {forecast?.isFuture || forecast?.isToday ? (
                         <span
-                          className={`text-[9px] font-bold tracking-tight ${
+                          className={`text-[9px] font-semibold tracking-tight ${
                             forecast?.isLowestDip
-                              ? "text-amber-400 font-bold"
+                              ? "text-amber-400 font-semibold"
                               : isSurplus
                               ? isDark
                                 ? "text-zinc-900"
@@ -599,9 +599,9 @@ export function CalendarPage() {
                           {displayCompact(forecast?.projectedBalance ?? 0)}
                         </span>
                       ) : forecast?.isNoSpendDay ? (
-                        <span className="text-[8px] font-bold opacity-60">0</span>
+                        <span className="text-[9px] font-semibold opacity-60">0</span>
                       ) : (
-                        <span className="text-[8px] font-semibold opacity-40">
+                        <span className="text-[9px] font-semibold opacity-40">
                           {forecast?.transactionsCount ? `${forecast.transactionsCount} tx` : ""}
                         </span>
                       )}
@@ -647,7 +647,7 @@ export function CalendarPage() {
         <section>
           <div className="flex items-center justify-between mb-3 px-1">
             <p
-              className="text-[13px] font-bold"
+              className="text-[13px] font-semibold"
               style={{ color: "var(--text-tertiary)" }}
             >
               Upcoming Reminders
@@ -682,7 +682,7 @@ export function CalendarPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
-                      className="text-[14px] font-bold truncate"
+                      className="text-[14px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {b.title}
@@ -696,7 +696,7 @@ export function CalendarPage() {
                   </div>
                   {b.amount && (
                     <span
-                      className="amount text-[13px] font-bold"
+                      className="amount text-[13px] font-semibold"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {formatRupiah(Number(b.amount))}
@@ -717,7 +717,7 @@ export function CalendarPage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2
-                    className="text-[20px] font-bold tracking-tight"
+                    className="text-[20px] font-semibold tracking-tight"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {format(selectedDay, "EEEE, dd MMMM yyyy")}
@@ -737,7 +737,7 @@ export function CalendarPage() {
                 {/* No-Spend Day Celebration Badge */}
                 {selectedDayForecast.isNoSpendDay && (
                   <div
-                    className="px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5"
+                    className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
@@ -760,7 +760,7 @@ export function CalendarPage() {
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span
-                        className="text-[11px] font-bold"
+                        className="text-[11px] font-semibold"
                         style={{ color: "var(--text-tertiary)" }}
                       >
                         Projected Liquid Balance
@@ -794,14 +794,14 @@ export function CalendarPage() {
                       <div className="flex items-center gap-1.5 mb-1">
                         <ArrowUpCircle size={14} style={{ color: "var(--text-secondary)" }} />
                         <span
-                          className="text-[11px] font-bold"
+                          className="text-[11px] font-semibold"
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           Expected Inflow
                         </span>
                       </div>
                       <p
-                        className="amount text-[16px] font-bold"
+                        className="amount text-[16px] font-semibold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {formatRupiah(selectedDayForecast.expectedInflowsTotal)}
@@ -815,14 +815,14 @@ export function CalendarPage() {
                       <div className="flex items-center gap-1.5 mb-1">
                         <ArrowDownCircle size={14} style={{ color: "var(--text-tertiary)" }} />
                         <span
-                          className="text-[11px] font-bold"
+                          className="text-[11px] font-semibold"
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           Bills & Est. Burn
                         </span>
                       </div>
                       <p
-                        className="amount text-[16px] font-bold"
+                        className="amount text-[16px] font-semibold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {displayRupiah(
@@ -836,7 +836,7 @@ export function CalendarPage() {
                   {selectedDayForecast.scheduledBills.length > 0 && (
                     <div className="space-y-2 mt-4">
                       <p
-                        className="text-[12px] font-bold px-1"
+                        className="text-[12px] font-semibold px-1"
                         style={{ color: "var(--text-tertiary)" }}
                       >
                         Scheduled Obligations
@@ -859,7 +859,7 @@ export function CalendarPage() {
                             </div>
                             <div>
                               <p
-                                className="text-[13px] font-bold"
+                                className="text-[13px] font-semibold"
                                 style={{ color: "var(--text-primary)" }}
                               >
                                 {b.title}
@@ -875,7 +875,7 @@ export function CalendarPage() {
 
                           <div className="flex items-center gap-3">
                             <span
-                              className="text-[13px] font-bold"
+                              className="text-[13px] font-semibold"
                               style={{ color: "var(--text-primary)" }}
                             >
                               {displayRupiah(b.amount)}
@@ -892,7 +892,7 @@ export function CalendarPage() {
                                     triggerHaptic("medium");
                                   }
                                 }}
-                                className="px-2.5 py-1 rounded-xl text-[11px] font-bold glass-surface active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                                className="px-2.5 py-1 rounded-xl text-[11px] font-semibold glass-surface active:scale-95 transition-all cursor-pointer flex items-center gap-1"
                                 style={{
                                   border: "1px solid var(--glass-border)",
                                   color: "var(--text-primary)",
@@ -912,7 +912,7 @@ export function CalendarPage() {
                   {selectedDayForecast.expectedInflows.length > 0 && (
                     <div className="space-y-2 mt-4">
                       <p
-                        className="text-[12px] font-bold px-1"
+                        className="text-[12px] font-semibold px-1"
                         style={{ color: "var(--text-tertiary)" }}
                       >
                         Expected Income Inflow
@@ -935,7 +935,7 @@ export function CalendarPage() {
                             </div>
                             <div>
                               <p
-                                className="text-[13px] font-bold"
+                                className="text-[13px] font-semibold"
                                 style={{ color: "var(--text-primary)" }}
                               >
                                 {inf.title}
@@ -948,7 +948,7 @@ export function CalendarPage() {
                             </div>
                           </div>
                           <span
-                            className="text-[13px] font-bold text-emerald-400"
+                            className="text-[13px] font-semibold text-emerald-400"
                           >
                             +{displayRupiah(inf.amount)}
                           </span>
@@ -971,14 +971,14 @@ export function CalendarPage() {
                           style={{ color: "var(--text-primary)" }}
                         />
                         <p
-                          className="text-[11px] font-bold"
+                          className="text-[11px] font-semibold"
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           Inflow
                         </p>
                       </div>
                       <p
-                        className="amount text-[17px] font-bold"
+                        className="amount text-[17px] font-semibold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {displayRupiah(selectedDayForecast.actualInflow)}
@@ -995,14 +995,14 @@ export function CalendarPage() {
                           style={{ color: "var(--text-tertiary)" }}
                         />
                         <p
-                          className="text-[11px] font-bold"
+                          className="text-[11px] font-semibold"
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           Outflow
                         </p>
                       </div>
                       <p
-                        className="amount text-[17px] font-bold"
+                        className="amount text-[17px] font-semibold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {displayRupiah(selectedDayForecast.actualOutflow)}
@@ -1044,7 +1044,7 @@ export function CalendarPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p
-                              className="text-[14px] font-bold"
+                              className="text-[14px] font-semibold"
                               style={{ color: "var(--text-primary)" }}
                             >
                               {tx.categories?.name ?? "General"}
@@ -1059,7 +1059,7 @@ export function CalendarPage() {
                             )}
                           </div>
                           <span
-                            className="amount text-[14px] font-bold"
+                            className="amount text-[14px] font-semibold"
                             style={{
                               color:
                                 tx.type === "income"

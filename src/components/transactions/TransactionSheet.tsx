@@ -150,7 +150,30 @@ export function TransactionSheet({
     return matches ? matches.map((m) => m.toLowerCase()) : [];
   }, [note]);
 
-  const { activeSpace } = useSpace();
+  const { activeSpace, activeSpaceId, spaces } = useSpace();
+
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string>(() => {
+    if (transaction?.space_id) return transaction.space_id;
+    if (transaction?.note?.toLowerCase().includes("#business") || transaction?.note?.toLowerCase().includes("#kantor")) return "business";
+    if (transaction?.note?.toLowerCase().includes("#travel") || transaction?.note?.toLowerCase().includes("#liburan")) return "travel";
+    return activeSpaceId !== "all" ? activeSpaceId : "personal";
+  });
+
+  const handleSelectSpace = (spaceId: string) => {
+    setSelectedSpaceId(spaceId);
+    triggerHaptic("light");
+    if (spaceId === "business") {
+      if (!note.toLowerCase().includes("#business") && !note.toLowerCase().includes("#kantor")) {
+        setNote((prev) => (prev.trim() ? `${prev.trim()} #business` : "#business"));
+      }
+    } else if (spaceId === "travel") {
+      if (!note.toLowerCase().includes("#travel") && !note.toLowerCase().includes("#liburan")) {
+        setNote((prev) => (prev.trim() ? `${prev.trim()} #travel` : "#travel"));
+      }
+    } else if (spaceId === "personal") {
+      setNote((prev) => prev.replace(/#(business|kantor|travel|liburan)\b/gi, "").trim());
+    }
+  };
 
   const quickTagPresets = useMemo(() => {
     const base = [
@@ -784,6 +807,7 @@ export function TransactionSheet({
       type,
       amount: numAmount,
       note: note || null,
+      space_id: selectedSpaceId === "personal" ? null : selectedSpaceId,
       occurred_on: format(date, "yyyy-MM-dd"),
       created_at: txDate.toISOString(),
       category_id:
@@ -1548,6 +1572,47 @@ export function TransactionSheet({
             </div>
           </div>
         )}
+
+        {/* Money Space Explicit 1-Tap Selector */}
+        <div className="flex items-center justify-between mb-2.5 px-1">
+          <span
+            className="text-[11px] font-semibold uppercase tracking-wider"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            Space
+          </span>
+          <div
+            className="flex items-center gap-1 p-0.5 rounded-full glass-surface"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {spaces
+              .filter((s) => s.id !== "all")
+              .map((s) => {
+                const isSelected = selectedSpaceId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => handleSelectSpace(s.id)}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                    style={{
+                      background: isSelected
+                        ? "var(--text-primary)"
+                        : "transparent",
+                      color: isSelected
+                        ? "var(--bg-base)"
+                        : "var(--text-secondary)",
+                    }}
+                  >
+                    <span>{s.name}</span>
+                  </button>
+                );
+              })}
+          </div>
+        </div>
 
         {/* 3. Note & Date/Time Compact Island with Dynamic Focus Animation */}
         <div

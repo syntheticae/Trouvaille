@@ -166,10 +166,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   const markBillPaid = useMarkBillPaid();
   const upcomingBills = useUpcomingBills();
   const { budgetTarget, budgetPeriodStart } = useBudgetTarget();
-  const { data: rawAllTxs = [], refetch: refetchAllTxs } = useAllTransactions();
+  const { data: rawAllTxs = [], refetch: refetchAllTxs, isLoading: isTxsLoading } = useAllTransactions();
   const { data: categories = [], refetch: refetchCategories } = useCategories();
-  const { refetch: refetchWallets } = useWallets();
+  const { data: _walletsData = [], refetch: refetchWallets, isLoading: isWalletsLoading } = useWallets();
   const { data: allBills = [], refetch: refetchBills } = useBills();
+  const isColdLoading = (isTxsLoading || isWalletsLoading) && rawAllTxs.length === 0;
   const { goals, depositToGoal, updateGoal, deleteGoal } = useGoals();
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null);
   const {
@@ -608,36 +609,44 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
             {/* Amount */}
             <div className="mb-1.5">
-              <span className="text-[28px] font-bold tracking-tight amount leading-tight text-white">
-                {hideBalance
-                  ? "Rp ••••••••"
-                  : formatRupiah(assetData.currentBalance)}
-              </span>
+              {isColdLoading ? (
+                <div className="h-8 w-44 rounded-xl bg-white/10 animate-pulse my-1" />
+              ) : (
+                <span className="text-[28px] font-bold tracking-tight amount leading-tight text-white">
+                  {hideBalance
+                    ? "Rp ••••••••"
+                    : formatRupiah(assetData.currentBalance)}
+                </span>
+              )}
             </div>
 
             {/* Change Line + Time Label Side by Side */}
             <div className="flex items-center justify-between gap-2 mb-2.5">
-              <div
-                className="flex items-center gap-1 text-[12px] font-semibold"
-                style={{ color: assetData.diff >= 0 ? "#FFFFFF" : "#A1A1AA" }}
-              >
-                <ArrowUpRight
-                  size={13}
-                  className={assetData.diff < 0 ? "rotate-90" : ""}
-                />
-                <span>
-                  {hideBalance
-                    ? "••••"
-                    : `${assetData.diff >= 0 ? "+" : ""}${formatRupiah(assetData.diff)}`}
-                </span>
-                <span className="opacity-80">
-                  (
-                  {hideBalance
-                    ? "••••"
-                    : `${assetData.percent > 0 ? "+" : ""}${assetData.percent.toFixed(2)}%`}
-                  )
-                </span>
-              </div>
+              {isColdLoading ? (
+                <div className="h-4 w-28 rounded-lg bg-white/10 animate-pulse" />
+              ) : (
+                <div
+                  className="flex items-center gap-1 text-[12px] font-semibold"
+                  style={{ color: assetData.diff >= 0 ? "#FFFFFF" : "#A1A1AA" }}
+                >
+                  <ArrowUpRight
+                    size={13}
+                    className={assetData.diff < 0 ? "rotate-90" : ""}
+                  />
+                  <span>
+                    {hideBalance
+                      ? "••••"
+                      : `${assetData.diff >= 0 ? "+" : ""}${formatRupiah(assetData.diff)}`}
+                  </span>
+                  <span className="opacity-80">
+                    (
+                    {hideBalance
+                      ? "••••"
+                      : `${assetData.percent > 0 ? "+" : ""}${assetData.percent.toFixed(2)}%`}
+                    )
+                  </span>
+                </div>
+              )}
               <span className="text-[11px] font-semibold text-white/50 shrink-0">
                 {stockRangeLabels[stockRange]} · IDR
               </span>
@@ -675,7 +684,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
             {/* Chart with Right Y-Axis & Dotted Grid */}
             <div className="h-[120px] w-full mt-0.5">
-              <ResponsiveContainer width="100%" height="100%">
+              {isColdLoading ? (
+                <div className="h-full w-full rounded-2xl bg-white/5 animate-pulse" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={assetData.chartData}
                   margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
@@ -736,6 +748,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   />
                 </AreaChart>
               </ResponsiveContainer>
+              )}
             </div>
 
             {/* Stocks-Style Summary Footer (High, Low, Inflow, Outflow) */}
