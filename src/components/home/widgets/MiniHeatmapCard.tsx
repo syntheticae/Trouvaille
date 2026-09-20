@@ -1,0 +1,295 @@
+import { Info, Calendar } from "lucide-react";
+import { formatRupiah } from "../../../lib/utils";
+import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
+import { CompactShell } from "./CompactShell";
+
+export function MiniHeatmapCard({
+  daysWithSpend,
+  activeDaysCount,
+  totalMonthSpend = 0,
+  dailyAverage = 0,
+  size = "half",
+  onOpenDetail,
+}: {
+  daysWithSpend: {
+    day: number;
+    date?: Date;
+    hasSpend: boolean;
+    amount?: number;
+    intensity: number;
+    isToday?: boolean;
+    dayOfWeek?: number;
+  }[];
+  activeDaysCount: number;
+  totalMonthSpend?: number;
+  dailyAverage?: number;
+  size?: WidgetSize;
+  onOpenDetail?: () => void;
+}) {
+  const dots = daysWithSpend.slice(0, 28);
+  const totalDays = daysWithSpend.length;
+  const zeroSpendDays = Math.max(0, totalDays - activeDaysCount);
+  const activeFrequency =
+    totalDays > 0 ? Math.round((activeDaysCount / totalDays) * 100) : 0;
+  const avgOnActiveDays =
+    activeDaysCount > 0 ? Math.round(totalMonthSpend / activeDaysCount) : 0;
+  const effectiveDailyAvg =
+    dailyAverage > 0 ? dailyAverage : Math.round(totalMonthSpend / Math.max(1, totalDays));
+  const peakDay = daysWithSpend.reduce(
+    (max, d) => ((d.amount || 0) > (max.amount || 0) ? d : max),
+    daysWithSpend[0] || { day: 1, amount: 0 },
+  );
+
+  const halfGrid = (
+    <div className="grid grid-cols-7 gap-1.5 py-0.5 w-full max-w-[130px] mx-auto">
+      {dots.map((d, i) => (
+        <div
+          key={i}
+          className="w-2.5 h-2.5 rounded-full mx-auto transition-all"
+          style={{
+            background:
+              d.intensity > 0.6
+                ? "#FFFFFF"
+                : d.intensity > 0.2
+                  ? "rgba(255,255,255,0.45)"
+                  : d.hasSpend
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(255,255,255,0.06)",
+          }}
+          title={`Day ${d.day}: ${d.hasSpend ? `Active (${formatRupiah(d.amount || 0)})` : "Quiet"}`}
+        />
+      ))}
+    </div>
+  );
+
+  if (size === "half") {
+    return (
+      <CompactShell title="Activity Matrix" onOpenDetail={onOpenDetail}>
+        <div className="flex-1 flex items-center justify-center py-0.5">
+          {halfGrid}
+        </div>
+        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
+          <span>Active Days</span>
+          <span className="font-semibold text-[var(--text-primary)]">
+            {activeDaysCount} of {totalDays}d
+          </span>
+        </div>
+      </CompactShell>
+    );
+  }
+
+  // Full Month Weekday Labels
+  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  return (
+    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <Calendar size={14} className="text-[var(--text-primary)]" />
+          </div>
+          <div>
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
+              Monthly Activity Matrix
+            </h3>
+            <p className="text-[10px] text-[var(--text-tertiary)]">
+              Daily transaction frequency & spending density
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            {activeDaysCount} Active Days ({activeFrequency}%)
+          </span>
+          {onOpenDetail && (
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+            >
+              <Info size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 4-Column Key Metrics Bento */}
+      <div className="grid grid-cols-4 gap-2">
+        <div
+          className="p-2 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Total Outflow
+          </span>
+          <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {formatRupiah(totalMonthSpend)}
+          </span>
+        </div>
+        <div
+          className="p-2 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Run Rate/d
+          </span>
+          <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {formatRupiah(effectiveDailyAvg)}
+          </span>
+        </div>
+        <div
+          className="p-2 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Active Day Avg
+          </span>
+          <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {formatRupiah(avgOnActiveDays)}
+          </span>
+        </div>
+        <div
+          className="p-2 rounded-xl text-center"
+          style={{ background: "var(--glass-fill)" }}
+        >
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+            Peak Outlay
+          </span>
+          <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
+            {peakDay.amount ? formatRupiah(peakDay.amount) : "Rp 0"}
+          </span>
+        </div>
+      </div>
+
+      {/* Full Month Calendar Matrix with Weekday Headers and Numbers */}
+      <div className="pt-1">
+        {/* Weekday Header */}
+        <div className="grid grid-cols-7 gap-1.5 pb-1 text-center">
+          {weekDays.map((wd, i) => (
+            <span
+              key={i}
+              className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]"
+            >
+              {wd}
+            </span>
+          ))}
+        </div>
+
+        {/* Calendar Days Matrix */}
+        <div className="grid grid-cols-7 gap-1.5">
+          {daysWithSpend.map((d, i) => {
+            const hasSpend = Boolean(d.hasSpend && d.amount && d.amount > 0);
+            return (
+              <div
+                key={i}
+                className={`flex flex-col items-center justify-between py-1.5 px-0.5 rounded-lg border transition-all cursor-pointer ${
+                  d.isToday
+                    ? "ring-1 ring-white/50 border-white/30"
+                    : "border-white/5"
+                }`}
+                style={{
+                  background: hasSpend
+                    ? "rgba(255, 255, 255, 0.04)"
+                    : "rgba(255, 255, 255, 0.01)",
+                  minHeight: "44px",
+                }}
+                title={`Day ${d.day}: ${
+                  hasSpend ? formatRupiah(d.amount || 0) : "No spend recorded"
+                }`}
+              >
+                {/* Day Number */}
+                <span
+                  className={`text-[9px] font-medium leading-none ${
+                    d.isToday
+                      ? "font-semibold text-[var(--text-primary)] underline"
+                      : "text-[var(--text-tertiary)]"
+                  }`}
+                >
+                  {d.day}
+                </span>
+
+                {/* Dot with Intensity */}
+                <div
+                  className="w-2 h-2 rounded-full my-0.5 transition-all"
+                  style={{
+                    background:
+                      d.intensity > 0.6
+                        ? "#FFFFFF"
+                        : d.intensity > 0.25
+                          ? "rgba(255,255,255,0.65)"
+                          : hasSpend
+                            ? "rgba(255,255,255,0.3)"
+                            : "rgba(255,255,255,0.06)",
+                    boxShadow:
+                      d.intensity > 0.6
+                        ? "0 0 6px rgba(255, 255, 255, 0.4)"
+                        : "none",
+                  }}
+                />
+
+                {/* Amount or Quiet Indicator */}
+                <span
+                  className={`text-[7.5px] font-mono leading-none truncate max-w-full px-0.5 ${
+                    hasSpend
+                      ? "text-[var(--text-secondary)] font-semibold"
+                      : "text-[var(--text-tertiary)] opacity-30"
+                  }`}
+                >
+                  {hasSpend
+                    ? d.amount && d.amount >= 1000
+                      ? `${Math.round(d.amount / 1000)}k`
+                      : `${d.amount}`
+                    : "·"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legend & Analytical Insight Footer */}
+      <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[var(--text-tertiary)]">
+        <div className="flex items-center gap-2">
+          <span>Legend:</span>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+            <span className="text-[9px]">0</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+            <span className="text-[9px]">&lt;50k</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-white/65" />
+            <span className="text-[9px]">Mid</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
+            <span className="text-[9px] font-semibold text-[var(--text-primary)]">
+              Peak
+            </span>
+          </div>
+        </div>
+
+        <span className="font-medium text-[var(--text-secondary)]">
+          {zeroSpendDays} zero-spend days recorded this month
+        </span>
+      </div>
+    </section>
+  );
+}
