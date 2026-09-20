@@ -30,7 +30,7 @@ import {
   Tag,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
-import { BackTapGuideModal } from "../components/settings/BackTapGuideModal";
+import { AppleShortcutsGuideModal } from "../components/settings/AppleShortcutsGuideModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBills } from "../hooks/useBills";
 import { useToast } from "../contexts/ToastContext";
@@ -77,7 +77,7 @@ export function SettingsPage() {
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
   const { goals } = useGoals();
-  const { session, signOut } = useAuth();
+  const { session, signOut, isGuest, exitGuestMode } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
   const { budgetTarget, setBudgetTarget, budgetPeriodStart, setBudgetPeriodStart } = useBudgetTarget();
@@ -394,52 +394,113 @@ export function SettingsPage() {
       {/* 1. PROFILE SECTION */}
       {/* ============================================================ */}
       {!searchQuery.trim() && (
-        <section className="glass-surface p-4 rounded-[24px] flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
+        <section className="glass-surface p-4 rounded-[24px] space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
+              <div
+                className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center relative shrink-0"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  boxShadow: "0 2px 8px var(--shadow-strength)",
+                }}
+              >
+                {isGuest ? (
+                  <Zap size={20} style={{ color: "var(--text-secondary)" }} />
+                ) : avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <UserIcon size={20} style={{ color: "var(--text-secondary)" }} />
+                )}
+              </div>
+              <div>
+                <p
+                  className="font-semibold text-[15px] truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isGuest ? "Local Guest" : displayName}
+                </p>
+                <p
+                  className="text-[11px] font-normal truncate"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isGuest ? "Free · On-device storage" : session?.user?.email}
+                </p>
+              </div>
+            </div>
+            {isGuest ? (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("medium");
+                  exitGuestMode();
+                }}
+                className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer"
+                style={{
+                  background: "var(--accent)",
+                  color: "var(--accent-ink)",
+                }}
+              >
+                Sign In
+              </button>
+            ) : (
+              <button
+                onClick={() => setProfileOpen(true)}
+                className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                Edit
+              </button>
+            )}
+          </div>
+
+          {isGuest && (
             <div
-              className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center relative shrink-0"
+              className="p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-left"
               style={{
                 background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "0 2px 8px var(--shadow-strength)",
+                borderColor: "var(--glass-border)",
               }}
             >
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <UserIcon size={20} style={{ color: "var(--text-secondary)" }} />
-              )}
-            </div>
-            <div>
-              <p
-                className="font-semibold text-[15px] truncate"
-                style={{ color: "var(--text-primary)" }}
+              <div className="space-y-0.5">
+                <p
+                  className="text-[12px] font-semibold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  Enable Cloud Sync & Backup
+                </p>
+                <p
+                  className="text-[11px] leading-relaxed"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Sign in with Google, Apple, or Email to backup transactions.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("medium");
+                  exitGuestMode();
+                }}
+                className="px-3.5 py-1.5 rounded-xl text-[11px] font-semibold shrink-0 active:scale-95 transition-transform cursor-pointer border"
+                style={{
+                  background: "var(--glass-fill)",
+                  borderColor: "var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
               >
-                {displayName}
-              </p>
-              <p
-                className="text-[11px] font-normal truncate"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {session?.user?.email}
-              </p>
+                Connect
+              </button>
             </div>
-          </div>
-          <button
-            onClick={() => setProfileOpen(true)}
-            className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-          >
-            Edit
-          </button>
+          )}
         </section>
       )}
 
@@ -1560,7 +1621,7 @@ export function SettingsPage() {
       {/* ============================================================ */}
       {!searchQuery.trim() && (
         <button
-          onClick={handleLogout}
+          onClick={isGuest ? exitGuestMode : handleLogout}
           className="w-full p-4 rounded-[24px] font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-98 transition-all mb-6 cursor-pointer"
           style={{
             background: "var(--glass-fill)",
@@ -1569,7 +1630,7 @@ export function SettingsPage() {
           }}
         >
           <LogOut size={16} strokeWidth={1.75} />
-          <span>Log Out</span>
+          <span>{isGuest ? "Exit Guest Mode" : "Log Out"}</span>
         </button>
       )}
 
@@ -1620,7 +1681,7 @@ export function SettingsPage() {
         onClose={() => setShortcutsOpen(false)}
       />
 
-      <BackTapGuideModal
+      <AppleShortcutsGuideModal
         isOpen={backTapGuideOpen}
         onClose={() => setBackTapGuideOpen(false)}
       />

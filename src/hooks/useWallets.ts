@@ -247,6 +247,21 @@ export function useWallets() {
     queryKey: walletKeys.all(userId),
     queryFn: async () => {
       if (!userId) return [];
+      if (userId === "guest_local_user") {
+        try {
+          const cached = localStorage.getItem(WALLETS_BACKUP_STORAGE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              return parsed.map((w: Wallet) => ({
+                ...w,
+                classification: resolveWalletClassification(w),
+              }));
+            }
+          }
+        } catch {}
+        return FALLBACK_WALLETS;
+      }
       try {
         const query = supabase
           .from("wallets")

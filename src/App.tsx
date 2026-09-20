@@ -75,11 +75,16 @@ const StatementImportModal = lazy(() =>
     default: module.StatementImportModal,
   })),
 );
+const OnboardingModal = lazy(() =>
+  import("./components/onboarding/OnboardingModal").then((module) => ({
+    default: module.OnboardingModal,
+  })),
+);
 
 import { useTheme } from "./contexts/ThemeContext";
 
 function AppShell() {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   useRealtimeSync(user?.id);
 
   const { theme } = useTheme();
@@ -88,11 +93,15 @@ function AppShell() {
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [receiptScanOpen, setReceiptScanOpen] = useState(false);
   const [statementImportOpen, setStatementImportOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(() => {
+    return localStorage.getItem("trouvaille_onboarded") !== "true";
+  });
   const [prefilledValues, setPrefilledValues] = useState<any>(null);
   const syncStorageKey = user
     ? `trouvaille_initial_synced:${user.id}`
     : "trouvaille_initial_synced";
   const [hasInitialSynced, setHasInitialSynced] = useState(() => {
+    if (isGuest) return true;
     return localStorage.getItem(syncStorageKey) === "true";
   });
   const { data: allTxs = [] } = useAllTransactions(undefined, {
@@ -227,7 +236,7 @@ function AppShell() {
 
   useEffect(() => {
     async function init() {
-      if (hasInitialSynced) {
+      if (hasInitialSynced || isGuest) {
         setIsInitDone(true);
         return;
       }
@@ -492,6 +501,19 @@ function AppShell() {
         </Suspense>
       )}
 
+      {onboardingOpen && (
+        <Suspense fallback={null}>
+          <OnboardingModal
+            isOpen={onboardingOpen}
+            onComplete={() => {
+              setOnboardingOpen(false);
+              queryClient.invalidateQueries({ queryKey: ["categories"] });
+              queryClient.invalidateQueries({ queryKey: ["wallets"] });
+            }}
+          />
+        </Suspense>
+      )}
+
       {/* iOS App Switcher / Multitasking Privacy Screen Shield */}
       {isPrivacyShieldEnabled && isPrivacyShieldActive && (
         <div
@@ -621,13 +643,13 @@ function AppShell() {
 import { BiometricLockOverlay } from "./components/security/BiometricLockOverlay";
 
 export default function App() {
-  const { session, loading } = useAuth();
+  const { session, loading, isGuest } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
   }
 
-  if (!session) {
+  if (!session && !isGuest) {
     return (
       <Suspense fallback={<LoadingScreen />}>
         <LoginPage />

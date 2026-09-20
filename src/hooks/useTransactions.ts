@@ -214,6 +214,36 @@ export async function fetchAllTransactionsFromSupabase(
   const allRecords: Transaction[] = [];
   let hasMore = true;
 
+  if (effectiveUserId === "guest_local_user" || localStorage.getItem("trouvaille_guest_mode") === "true") {
+    const pendingMutations = getPendingMutations();
+    const pendingDeletes = new Set<string>();
+    const pendingUpserts = new Map<string, Transaction>();
+    for (const m of pendingMutations) {
+      if (m.type === "delete") {
+        const id = m.payload?.id || m.payload;
+        if (id) pendingDeletes.add(id);
+      } else if ((m.type === "insert" || m.type === "update") && m.payload?.id) {
+        pendingUpserts.set(m.payload.id, m.payload as Transaction);
+      }
+    }
+    let restored: Transaction[] = [];
+    try {
+      const cached = localStorage.getItem(TX_BACKUP_STORAGE_KEY);
+      if (cached) {
+        restored = JSON.parse(cached);
+      }
+    } catch {}
+    const map = new Map<string, Transaction>();
+    for (const item of restored) {
+      if (!pendingDeletes.has(item.id)) map.set(item.id, item);
+    }
+    for (const [id, tx] of pendingUpserts) {
+      if (!pendingDeletes.has(id)) map.set(id, tx);
+    }
+    const all = sortTransactionsDesc(Array.from(map.values()));
+    return all.filter((t) => matchesTransactionFilters(t, filters));
+  }
+
   while (hasMore) {
     let chunk: Transaction[] = [];
     let fetchError: unknown = null;
@@ -422,6 +452,16 @@ export function useRecentTransactions(limit = 10) {
     queryKey: transactionKeys.recent(userId, limit),
     queryFn: async () => {
       if (!userId) return [];
+      if (userId === "guest_local_user" || localStorage.getItem("trouvaille_guest_mode") === "true") {
+        try {
+          const cached = localStorage.getItem(TX_BACKUP_STORAGE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached) as Transaction[];
+            if (Array.isArray(parsed)) return parsed.slice(0, limit);
+          }
+        } catch {}
+        return [];
+      }
       const { data, error } = await supabase
         .from("transactions")
         .select("*, categories(*)")

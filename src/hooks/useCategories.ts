@@ -427,6 +427,30 @@ export function useCategories(type?: TransactionType) {
   return useQuery({
     queryKey: categoryKeys.byType(userId, type),
     queryFn: async () => {
+      if (userId === "guest_local_user") {
+        try {
+          const cached = localStorage.getItem(CATEGORIES_BACKUP_STORAGE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached) as Category[];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              return type ? parsed.filter((c) => c.type === type) : parsed;
+            }
+          }
+        } catch {}
+
+        const fallbackList: Category[] = DEFAULT_CATEGORIES.filter(
+          (c) => !type || c.type === type,
+        ).map((c, i) => ({
+          id: `fallback-cat-${i}-${c.name.toLowerCase()}`,
+          user_id: "guest_local_user",
+          name: c.name,
+          emoji: c.emoji,
+          type: c.type,
+          is_default: true,
+          created_at: new Date().toISOString(),
+        }));
+        return fallbackList;
+      }
       try {
         let query = supabase
           .from("categories")

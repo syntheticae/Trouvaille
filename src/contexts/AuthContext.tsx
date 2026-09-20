@@ -8,20 +8,38 @@ import {
   clearBiometricLoginCredentials,
 } from "../lib/biometricAuth";
 
+export const GUEST_USER_ID = "guest_local_user";
+
+export const GUEST_USER: User = {
+  id: GUEST_USER_ID,
+  app_metadata: { provider: "guest" },
+  user_metadata: { display_name: "Guest" },
+  aud: "authenticated",
+  created_at: new Date().toISOString(),
+  email: "guest@trouvaille.local",
+  role: "authenticated",
+} as User;
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  isGuest: boolean;
   setSession: (session: Session | null) => void;
   signOut: () => Promise<void>;
+  continueAsGuest: () => void;
+  exitGuestMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   loading: true,
+  isGuest: false,
   setSession: () => {},
   signOut: async () => {},
+  continueAsGuest: () => {},
+  exitGuestMode: () => {},
 });
 
 function getStoredSupabaseSession(): Session | null {
@@ -48,6 +66,20 @@ function getStoredSupabaseSession(): Session | null {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("trouvaille_guest_mode") === "true";
+  });
+
+  const continueAsGuest = () => {
+    localStorage.setItem("trouvaille_guest_mode", "true");
+    setIsGuest(true);
+  };
+
+  const exitGuestMode = () => {
+    localStorage.removeItem("trouvaille_guest_mode");
+    setIsGuest(false);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -60,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data?.session) {
           savePersistentSession(data.session);
           setSession(data.session);
+          setIsGuest(false);
+          localStorage.removeItem("trouvaille_guest_mode");
           setLoading(false);
           return;
         }
@@ -76,6 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (refreshed?.session && isMounted) {
                 savePersistentSession(refreshed.session);
                 setSession(refreshed.session);
+                setIsGuest(false);
+                localStorage.removeItem("trouvaille_guest_mode");
                 setLoading(false);
                 return;
               }
@@ -130,6 +166,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (newSession) {
         savePersistentSession(newSession);
         setSession(newSession);
+        setIsGuest(false);
+        localStorage.removeItem("trouvaille_guest_mode");
         setLoading(false);
         return;
       }
@@ -166,21 +204,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.removeItem("TROUVAILLE_OFFLINE_CACHE_V1");
       localStorage.removeItem("TROUVAILLE_TX_BACKUP_V1");
+      localStorage.removeItem("trouvaille_guest_mode");
       clearPersistentSession();
       clearBiometricLoginCredentials();
     } catch {}
     await supabase.auth.signOut();
     setSession(null);
+    setIsGuest(false);
   };
+
+  const effectiveUser = session?.user ?? (isGuest ? GUEST_USER : null);
 
   return (
     <AuthContext.Provider
       value={{
         session,
-        user: session?.user ?? null,
+        user: effectiveUser,
         loading,
-        setSession,
+        isGuest,
+        setSession: (s) => {
+          if (s) {
+            setIsGuest(false);
+            localStorage.removeItem("trouvaille_guest_mode");
+          }
+          setSession(s);
+        },
         signOut,
+        continueAsGuest,
+        exitGuestMode,
       }}
     >
       {children}
