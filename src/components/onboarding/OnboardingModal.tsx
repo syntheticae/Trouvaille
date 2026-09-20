@@ -10,6 +10,10 @@ import {
   PiggyBank,
   TrendingUp,
   Bell,
+  Sparkles,
+  Layers,
+  PieChart,
+  Zap,
 } from "lucide-react";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import type { HomePresetKey } from "../../lib/widgetLayoutTypes";
@@ -33,47 +37,71 @@ type FocusKey = "expenses" | "budget" | "domain" | "wealth" | "complete";
 
 interface FocusOption {
   key: FocusKey;
-  num: string;
+  chipLabel: string;
   title: string;
   desc: string;
+  badge: string;
+  metric: string;
+  subMetric: string;
   widgetPreset: HomePresetKey;
+  icon: any;
 }
 
 const FOCUS_OPTIONS: FocusOption[] = [
   {
     key: "expenses",
-    num: "01",
+    chipLabel: "Daily Cashflow",
     title: "Daily Expenses & Cashflow",
-    desc: "Capture everyday outlays & monitor daily burn rate.",
+    desc: "Fast, distraction-free logging to monitor daily burn rate.",
+    badge: "Minimalist Mode",
+    metric: "Daily Burn: Rp 140.000",
+    subMetric: "Zero clutter · Sub-second voice & receipt entry",
     widgetPreset: "minimal",
+    icon: Zap,
   },
   {
     key: "budget",
-    num: "02",
+    chipLabel: "Budget & Caps",
     title: "Budgeting & Savings Discipline",
     desc: "Enforce category spending caps & reach target reserves.",
+    badge: "Budget Guardian",
+    metric: "Caps: 64% Utilized",
+    subMetric: "Spending limit alerts & emergency reserve tracker",
     widgetPreset: "minimal",
+    icon: PieChart,
   },
   {
     key: "domain",
-    num: "03",
-    title: "Dual Domain (Personal & Work)",
-    desc: "Strictly isolate personal expenses from side-hustles & projects.",
+    chipLabel: "Personal & Work",
+    title: "Dual Domain Separation",
+    desc: "Strictly isolate personal spending from side-projects.",
+    badge: "Partitioned Books",
+    metric: "Personal ↔ Business",
+    subMetric: "Zero co-mingling of personal and venture funds",
     widgetPreset: "executive",
+    icon: Layers,
   },
   {
     key: "wealth",
-    num: "04",
+    chipLabel: "Net Worth",
     title: "Net Worth & Asset Intelligence",
-    desc: "Monitor portfolio velocity, investment allocations & growth.",
+    desc: "Monitor portfolio velocity, investment growth & runway.",
+    badge: "Wealth Intelligence",
+    metric: "+24.8% Portfolio Growth",
+    subMetric: "Multi-currency assets, crypto & runway telemetry",
     widgetPreset: "executive",
+    icon: TrendingUp,
   },
   {
     key: "complete",
-    num: "05",
+    chipLabel: "Full Command",
     title: "Complete Financial Command",
     desc: "All-in-one comprehensive telemetry with full widget suite.",
+    badge: "Executive Suite",
+    metric: "All 12 Widgets Active",
+    subMetric: "Forecasting, debt simulators, sankey & analytics",
     widgetPreset: "executive",
+    icon: Sparkles,
   },
 ];
 
@@ -83,49 +111,43 @@ interface AccountOption {
   sub: string;
   icon: any;
   classification: "liquid" | "investment";
-  defaultSelected: boolean;
 }
 
 const ACCOUNT_OPTIONS: AccountOption[] = [
   {
     id: "cash",
     name: "Physical Cash",
-    sub: "Wallet cash & everyday paper notes",
+    sub: "Everyday wallet cash",
     icon: Banknote,
     classification: "liquid",
-    defaultSelected: true,
   },
   {
     id: "bank",
-    name: "Main Bank Account",
-    sub: "Payroll & daily checking account (e.g. BCA, Mandiri)",
+    name: "Main Bank",
+    sub: "Payroll & checking (BCA)",
     icon: Landmark,
     classification: "liquid",
-    defaultSelected: true,
   },
   {
     id: "ewallet",
     name: "Digital E-Wallet",
-    sub: "Quick mobile QRIS & payments (e.g. GoPay, OVO, Dana)",
+    sub: "Mobile QRIS & payments",
     icon: Smartphone,
     classification: "liquid",
-    defaultSelected: true,
   },
   {
     id: "savings",
     name: "Savings & Reserve",
-    sub: "Emergency fund & high-yield cushion",
+    sub: "Emergency fund cushion",
     icon: PiggyBank,
     classification: "liquid",
-    defaultSelected: false,
   },
   {
     id: "invest",
-    name: "Investments & Holdings",
-    sub: "Stocks, mutual funds, or crypto assets",
+    name: "Investments & Assets",
+    sub: "Stocks, funds & crypto",
     icon: TrendingUp,
     classification: "investment",
-    defaultSelected: false,
   },
 ];
 
@@ -262,28 +284,27 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       className="fixed inset-0 z-[1000] flex flex-col justify-between overflow-hidden select-none px-4 sm:px-6"
       style={{
         background: `
-          radial-gradient(ellipse 90% 55% at 50% 15%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 45%, transparent 75%),
-          radial-gradient(ellipse 70% 40% at 50% 90%, rgba(255, 255, 255, 0.06) 0%, transparent 60%),
+          radial-gradient(ellipse 90% 55% at 50% 15%, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 45%, transparent 75%),
+          radial-gradient(ellipse 70% 40% at 50% 90%, rgba(255, 255, 255, 0.05) 0%, transparent 60%),
           #060608
         `,
         fontFamily: "'Urbanist', sans-serif",
-        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 20px), 28px)",
+        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 16px), 24px)",
         paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 24px)",
       }}
     >
       {/* ============================================================ */}
-      {/* 1. CINEMATIC MONOCHROME AURORA BLOOM (SOFT GLOW) */}
+      {/* 1. CINEMATIC MONOCHROME AURORA BLOOM                         */}
       {/* ============================================================ */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 -left-32 w-[420px] h-[420px] rounded-full bg-white/[0.065] blur-[120px]" />
-        <div className="absolute bottom-1/4 -right-32 w-[380px] h-[380px] rounded-full bg-white/[0.045] blur-[110px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-white/[0.03] blur-[140px]" />
+        <div className="absolute top-1/4 -left-32 w-[400px] h-[400px] rounded-full bg-white/[0.05] blur-[120px]" />
+        <div className="absolute bottom-1/4 -right-32 w-[360px] h-[360px] rounded-full bg-white/[0.04] blur-[110px]" />
       </div>
 
       {/* ============================================================ */}
-      {/* 2. TOP NAV: STEP INDICATOR & BACK BUTTON */}
+      {/* 2. TOP NAV: STEP INDICATOR & BACK BUTTON                     */}
       {/* ============================================================ */}
-      <div className="px-6 relative z-10 flex items-center justify-between pt-1">
+      <div className="px-3 relative z-10 flex items-center justify-between pt-1">
         {step > 1 ? (
           <button
             type="button"
@@ -307,7 +328,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               key={s}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 s === step
-                  ? "w-6 bg-white"
+                  ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]"
                   : s < step
                   ? "w-1.5 bg-white/40"
                   : "w-1.5 bg-white/15"
@@ -324,132 +345,160 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       </div>
 
       {/* ============================================================ */}
-      {/* 3. STEP CONTENT CAROUSEL */}
+      {/* 3. STEP CONTENT CONTAINER (AIRY, UNCLUTTERED, FLUID)         */}
       {/* ============================================================ */}
-      <div className="px-6 flex-1 overflow-y-auto no-scrollbar py-3 relative z-10 flex flex-col justify-center">
+      <div className="px-3 flex-1 overflow-y-auto no-scrollbar py-2 relative z-10 flex flex-col justify-center max-w-sm mx-auto w-full">
         <AnimatePresence mode="wait">
-          {/* -------------------------------------------------------- */}
-          {/* STEP 1: FINANCIAL FOCUS (MONVEO-STYLE GOALS) */}
-          {/* -------------------------------------------------------- */}
+          {/* ======================================================== */}
+          {/* STEP 1: RESOLUSI 1 (LIVE PREVIEW CARD + SEGMENTED CHIPS) */}
+          {/* ======================================================== */}
           {step === 1 && (
             <motion.div
               key="step-1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.26, ease: "easeOut" }}
               className="space-y-4"
             >
-              <div className="space-y-1">
+              <div className="space-y-1 text-center">
                 <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
                   Step 01 · Intent
                 </span>
-                <h1 className="text-[26px] font-semibold tracking-tight text-white leading-tight">
-                  What is your primary financial focus?
+                <h1 className="text-[24px] sm:text-[26px] font-semibold tracking-tight text-white leading-tight">
+                  Choose your financial focus
                 </h1>
-                <p className="text-[13px] font-normal text-white/50 leading-snug">
-                  Choose the objective that reflects your lifestyle and telemetry needs
+                <p className="text-[12px] font-normal text-white/50 leading-snug max-w-xs mx-auto">
+                  Select an objective to dynamically tailor your workspace
                 </p>
               </div>
 
-              <div className="space-y-2.5 pt-1">
-                {FOCUS_OPTIONS.map((opt) => {
+              {/* 1. Live Interactive Preview Card */}
+              <motion.div
+                key={currentFocus.key}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                className="w-full p-4 rounded-[26px] border border-white/14 bg-white/[0.035] backdrop-blur-2xl space-y-2.5 text-left"
+                style={{
+                  boxShadow:
+                    "0 14px 32px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2)",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5.5 h-5.5 rounded-full bg-white/10 flex items-center justify-center border border-white/15">
+                      <currentFocus.icon size={12} className="text-white" />
+                    </div>
+                    <span className="text-[11px] font-semibold text-white/70">
+                      Workspace Simulation
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-white/10 text-white border border-white/15">
+                    {currentFocus.badge}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-[18px] bg-white/[0.04] border border-white/8 space-y-1">
+                  <div className="text-[14px] font-semibold text-white tracking-tight">
+                    {currentFocus.title}
+                  </div>
+                  <div className="text-[11px] font-semibold text-white/85">
+                    {currentFocus.metric}
+                  </div>
+                  <p className="text-[11px] text-white/45 leading-relaxed">
+                    {currentFocus.subMetric}
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* 2. Segmented Minimalist Chips Grid */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {FOCUS_OPTIONS.slice(0, 4).map((opt) => {
+                    const isSelected = selectedFocus === opt.key;
+                    const OptIcon = opt.icon;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setSelectedFocus(opt.key);
+                        }}
+                        className={`py-2.5 px-2 rounded-[20px] text-[11px] font-semibold transition-all active:scale-[0.98] cursor-pointer text-center border flex items-center justify-center gap-1.5 ${
+                          isSelected
+                            ? "bg-white text-zinc-950 border-white shadow-lg"
+                            : "bg-white/[0.035] border-white/10 text-white/70 hover:text-white hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        <OptIcon size={12} strokeWidth={1.75} className={isSelected ? "text-zinc-950" : "text-white/60"} />
+                        <span>{opt.chipLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 5th Option (Full Width) */}
+                {(() => {
+                  const opt = FOCUS_OPTIONS[4];
                   const isSelected = selectedFocus === opt.key;
+                  const OptIcon = opt.icon;
                   return (
                     <button
-                      key={opt.key}
                       type="button"
                       onClick={() => {
                         triggerHaptic("light");
                         setSelectedFocus(opt.key);
                       }}
-                      className="w-full p-4 rounded-[26px] text-left transition-all active:scale-[0.98] cursor-pointer relative overflow-hidden group"
-                      style={{
-                        background: isSelected
-                          ? "rgba(255, 255, 255, 0.08)"
-                          : "rgba(255, 255, 255, 0.025)",
-                        backdropFilter: "blur(28px)",
-                        WebkitBackdropFilter: "blur(28px)",
-                        border: isSelected
-                          ? "1px solid rgba(255, 255, 255, 0.3)"
-                          : "1px solid rgba(255, 255, 255, 0.08)",
-                        boxShadow: isSelected
-                          ? "0 12px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3)"
-                          : "none",
-                      }}
+                      className={`w-full py-2.5 px-3 rounded-[20px] text-[11px] font-semibold transition-all active:scale-[0.98] cursor-pointer text-center border flex items-center justify-center gap-1.5 ${
+                        isSelected
+                          ? "bg-white text-zinc-950 border-white shadow-lg"
+                          : "bg-white/[0.035] border-white/10 text-white/70 hover:text-white hover:bg-white/[0.06]"
+                      }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3.5">
-                          <span
-                            className="text-[12px] font-semibold amount pt-0.5 tracking-wider"
-                            style={{
-                              color: isSelected
-                                ? "rgba(255, 255, 255, 0.9)"
-                                : "rgba(255, 255, 255, 0.35)",
-                            }}
-                          >
-                            {opt.num}
-                          </span>
-                          <div className="space-y-0.5">
-                            <h3
-                              className="text-[14px] font-semibold leading-tight"
-                              style={{
-                                color: isSelected
-                                  ? "#ffffff"
-                                  : "rgba(255, 255, 255, 0.85)",
-                              }}
-                            >
-                              {opt.title}
-                            </h3>
-                            <p className="text-[12px] font-normal text-white/50 leading-relaxed">
-                              {opt.desc}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div
-                          className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-all mt-0.5 ${
-                            isSelected
-                              ? "bg-white border-white text-zinc-950"
-                              : "border-white/20 bg-transparent"
-                          }`}
-                        >
-                          {isSelected && <Check size={11} strokeWidth={2.5} />}
-                        </div>
-                      </div>
+                      <OptIcon size={12} strokeWidth={1.75} className={isSelected ? "text-zinc-950" : "text-white/60"} />
+                      <span>{opt.chipLabel}</span>
                     </button>
                   );
-                })}
+                })()}
               </div>
+
+              {/* Dynamic 1-sentence descriptor */}
+              <p className="text-[11px] text-center text-white/45 px-2">
+                {currentFocus.desc}
+              </p>
             </motion.div>
           )}
 
-          {/* -------------------------------------------------------- */}
-          {/* STEP 2: ACTIVE PAYMENT ACCOUNTS (CLEAN SEEDING) */}
-          {/* -------------------------------------------------------- */}
+          {/* ======================================================== */}
+          {/* STEP 2: ACTIVE ACCOUNTS (COMPACT SQUIRCLE TILES GRID)     */}
+          {/* ======================================================== */}
           {step === 2 && (
             <motion.div
               key="step-2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.26, ease: "easeOut" }}
               className="space-y-4"
             >
-              <div className="space-y-1">
+              <div className="space-y-1 text-center">
                 <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
-                  Step 02 · Accounts
+                  Step 02 · Channels
                 </span>
-                <h1 className="text-[26px] font-semibold tracking-tight text-white leading-tight">
+                <h1 className="text-[24px] sm:text-[26px] font-semibold tracking-tight text-white leading-tight">
                   Select your active accounts
                 </h1>
-                <p className="text-[13px] font-normal text-white/50 leading-snug">
-                  Only include accounts you actually use for a distraction-free ledger
+                <p className="text-[12px] font-normal text-white/50 leading-snug max-w-xs mx-auto">
+                  Only include accounts you actually use for a clean, noise-free ledger
                 </p>
               </div>
 
-              <div className="space-y-2 pt-1">
-                {ACCOUNT_OPTIONS.map((acc) => {
+              {/* 2-Column Compact Squircle Grid */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                {ACCOUNT_OPTIONS.slice(0, 4).map((acc) => {
                   const isChecked = Boolean(selectedAccounts[acc.id]);
                   const Icon = acc.icon;
                   return (
@@ -457,127 +506,141 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                       key={acc.id}
                       type="button"
                       onClick={() => handleToggleAccount(acc.id)}
-                      className="w-full p-3.5 rounded-[24px] text-left transition-all active:scale-[0.98] cursor-pointer relative overflow-hidden"
-                      style={{
-                        background: isChecked
-                          ? "rgba(255, 255, 255, 0.065)"
-                          : "rgba(255, 255, 255, 0.02)",
-                        backdropFilter: "blur(24px)",
-                        WebkitBackdropFilter: "blur(24px)",
-                        border: isChecked
-                          ? "1px solid rgba(255, 255, 255, 0.22)"
-                          : "1px solid rgba(255, 255, 255, 0.08)",
-                      }}
+                      className={`p-3.5 rounded-[22px] text-left transition-all active:scale-[0.98] cursor-pointer border relative overflow-hidden ${
+                        isChecked
+                          ? "bg-white/[0.08] border-white/28 shadow-lg"
+                          : "bg-white/[0.025] border-white/8 opacity-55 hover:opacity-80"
+                      }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-[16px] flex items-center justify-center border"
-                            style={{
-                              background: isChecked
-                                ? "rgba(255, 255, 255, 0.1)"
-                                : "rgba(255, 255, 255, 0.04)",
-                              borderColor: isChecked
-                                ? "rgba(255, 255, 255, 0.25)"
-                                : "rgba(255, 255, 255, 0.1)",
-                            }}
-                          >
-                            <Icon
-                              size={17}
-                              strokeWidth={1.75}
-                              className={isChecked ? "text-white" : "text-white/50"}
-                            />
-                          </div>
-                          <div>
-                            <h4
-                              className="text-[13px] font-semibold leading-tight"
-                              style={{
-                                color: isChecked ? "#ffffff" : "rgba(255, 255, 255, 0.75)",
-                              }}
-                            >
-                              {acc.name}
-                            </h4>
-                            <p className="text-[11px] font-normal text-white/45">
-                              {acc.sub}
-                            </p>
-                          </div>
-                        </div>
-
+                      <div className="flex items-center justify-between mb-2">
                         <div
-                          className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
+                          className={`w-8.5 h-8.5 rounded-[13px] flex items-center justify-center border ${
+                            isChecked
+                              ? "bg-white/15 border-white/30 text-white"
+                              : "bg-white/5 border-white/10 text-white/40"
+                          }`}
+                        >
+                          <Icon size={16} strokeWidth={1.75} />
+                        </div>
+                        <div
+                          className={`w-4.5 h-4.5 rounded-full flex items-center justify-center border transition-all ${
                             isChecked
                               ? "bg-white border-white text-zinc-950"
                               : "border-white/20 bg-transparent"
                           }`}
                         >
-                          {isChecked && <Check size={11} strokeWidth={2.5} />}
+                          {isChecked && <Check size={10} strokeWidth={2.5} />}
                         </div>
+                      </div>
+                      <div className="text-[12px] font-semibold text-white leading-tight">
+                        {acc.name}
+                      </div>
+                      <div className="text-[11px] text-white/45 mt-0.5 leading-snug">
+                        {acc.sub}
                       </div>
                     </button>
                   );
                 })}
+
+                {/* 5th Option: Investments & Assets (Full Width Tile) */}
+                <div className="col-span-2">
+                  {(() => {
+                    const acc = ACCOUNT_OPTIONS[4];
+                    const isChecked = Boolean(selectedAccounts[acc.id]);
+                    const Icon = acc.icon;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAccount(acc.id)}
+                        className={`w-full p-3.5 rounded-[22px] text-left transition-all active:scale-[0.98] cursor-pointer border flex items-center justify-between ${
+                          isChecked
+                            ? "bg-white/[0.08] border-white/28 shadow-lg"
+                            : "bg-white/[0.025] border-white/8 opacity-55 hover:opacity-80"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-8.5 h-8.5 rounded-[13px] flex items-center justify-center border ${
+                              isChecked
+                                ? "bg-white/15 border-white/30 text-white"
+                                : "bg-white/5 border-white/10 text-white/40"
+                            }`}
+                          >
+                            <Icon size={16} strokeWidth={1.75} />
+                          </div>
+                          <div>
+                            <div className="text-[12px] font-semibold text-white leading-tight">
+                              {acc.name}
+                            </div>
+                            <div className="text-[11px] text-white/45">
+                              {acc.sub}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`w-4.5 h-4.5 rounded-full flex items-center justify-center border transition-all ${
+                            isChecked
+                              ? "bg-white border-white text-zinc-950"
+                              : "border-white/20 bg-transparent"
+                          }`}
+                        >
+                          {isChecked && <Check size={10} strokeWidth={2.5} />}
+                        </div>
+                      </button>
+                    );
+                  })()}
+                </div>
               </div>
             </motion.div>
           )}
 
-          {/* -------------------------------------------------------- */}
-          {/* STEP 3: STARTING BALANCE (THE "AHA!" MOMENT) */}
-          {/* -------------------------------------------------------- */}
+          {/* ======================================================== */}
+          {/* STEP 3: STARTING BASELINE (MINIMAL LUXURY TYPOGRAPHY)     */}
+          {/* ======================================================== */}
           {step === 3 && (
             <motion.div
               key="step-3"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="space-y-5"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.26, ease: "easeOut" }}
+              className="space-y-5 text-center"
             >
               <div className="space-y-1">
                 <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
                   Step 03 · Starting Baseline
                 </span>
-                <h1 className="text-[26px] font-semibold tracking-tight text-white leading-tight">
+                <h1 className="text-[24px] sm:text-[26px] font-semibold tracking-tight text-white leading-tight">
                   Set starting cash balance
                 </h1>
-                <p className="text-[13px] font-normal text-white/50 leading-snug">
-                  Seeds your baseline Net Worth so your analytics start with real data
+                <p className="text-[12px] font-normal text-white/50 leading-snug max-w-xs mx-auto">
+                  Seeds your baseline Net Worth so your analytics start with real figures
                 </p>
               </div>
 
-              {/* Central Luminous Number Card */}
-              <div
-                className="p-6 rounded-[32px] text-center relative overflow-hidden border"
-                style={{
-                  background: "rgba(255, 255, 255, 0.035)",
-                  backdropFilter: "blur(32px)",
-                  WebkitBackdropFilter: "blur(32px)",
-                  borderColor: "rgba(255, 255, 255, 0.14)",
-                  boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.2)",
-                }}
-              >
-                <span className="text-[11px] font-medium text-white/40 uppercase tracking-wider block">
-                  Primary Account Balance
+              {/* Clean Floating Number Centerpiece (No Heavy Bounding Box) */}
+              <div className="py-3">
+                <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest block mb-1">
+                  Primary Liquid Reserve
                 </span>
-                <div className="text-[34px] font-semibold text-white tracking-tight amount mt-2 leading-none">
+                <div className="text-[38px] sm:text-[44px] font-semibold text-white tracking-tight amount leading-none">
                   {formatRupiah(startingBalance)}
                 </div>
-                <p className="text-[11px] font-normal text-white/45 mt-2">
+                <p className="text-[11px] text-white/40 mt-2">
                   Can be adjusted anytime from Wallet Management
                 </p>
               </div>
 
-              {/* Quick Increment Chips */}
-              <div className="space-y-2">
-                <span className="text-[11px] font-semibold text-white/50 block">
-                  Quick Amount Presets
-                </span>
+              {/* Quick Preset Chips */}
+              <div className="space-y-2.5 max-w-xs mx-auto">
                 <div className="grid grid-cols-4 gap-2">
                   {[250000, 500000, 1000000, 5000000].map((inc) => (
                     <button
                       key={inc}
                       type="button"
                       onClick={() => handleQuickAddBalance(inc)}
-                      className="py-2.5 px-1 rounded-[16px] text-[11px] font-semibold amount border active:scale-95 transition-all cursor-pointer text-white text-center"
+                      className="py-2.5 px-1 rounded-[16px] text-[11px] font-semibold amount border active:scale-95 transition-all cursor-pointer text-white text-center hover:bg-white/10"
                       style={{
                         background: "rgba(255, 255, 255, 0.04)",
                         borderColor: "rgba(255, 255, 255, 0.12)",
@@ -588,7 +651,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   ))}
                 </div>
 
-                <div className="flex justify-end pt-1">
+                <div className="flex justify-center pt-1">
                   <button
                     type="button"
                     onClick={handleClearBalance}
@@ -601,65 +664,47 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
             </motion.div>
           )}
 
-          {/* -------------------------------------------------------- */}
-          {/* STEP 4: DAILY HABIT & REMINDER (MEDIA REFERENCE) */}
-          {/* -------------------------------------------------------- */}
+          {/* ======================================================== */}
+          {/* STEP 4: DAILY HABIT & REMINDER (COMPACT LUMINOUS DIAL)    */}
+          {/* ======================================================== */}
           {step === 4 && (
             <motion.div
               key="step-4"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="space-y-4"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.26, ease: "easeOut" }}
+              className="space-y-4 text-center"
             >
               <div className="space-y-1">
                 <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
                   Step 04 · Habit Formation
                 </span>
-                <h1 className="text-[26px] font-semibold tracking-tight text-white leading-tight">
-                  Daily Logging Reminder
+                <h1 className="text-[24px] sm:text-[26px] font-semibold tracking-tight text-white leading-tight">
+                  Daily Logging Routine
                 </h1>
-                <p className="text-[13px] font-normal text-white/50 leading-snug">
-                  Protect your daily streak and capture expenses in under 5 seconds
+                <p className="text-[12px] font-normal text-white/50 leading-snug max-w-xs mx-auto">
+                  A subtle evening nudge to capture your day's outlays under 5 seconds
                 </p>
               </div>
 
-              {/* Luminous Bloom Dial Pod (Inspired by media_1789874376503.png) */}
+              {/* Compact Luminous Glass Pod */}
               <div
-                className="p-6 rounded-[34px] relative overflow-hidden border flex flex-col items-center justify-center min-h-[220px]"
+                className="p-5 rounded-[28px] relative overflow-hidden border flex flex-col items-center justify-center space-y-4"
                 style={{
                   background: "rgba(255, 255, 255, 0.03)",
-                  backdropFilter: "blur(36px)",
-                  WebkitBackdropFilter: "blur(36px)",
+                  backdropFilter: "blur(32px)",
+                  WebkitBackdropFilter: "blur(32px)",
                   borderColor: "rgba(255, 255, 255, 0.14)",
                   boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.2)",
                 }}
               >
-                {/* Central Soft Monochrome Glow Sphere */}
-                <motion.div
-                  animate={{
-                    scale: [1, 1.15, 1],
-                    opacity: [0.35, 0.6, 0.35],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute w-48 h-48 rounded-full pointer-events-none"
-                  style={{
-                    background:
-                      "radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)",
-                  }}
-                />
-
-                {/* Top Pill Switch */}
-                <div className="w-full flex items-center justify-between relative z-10 px-2">
+                {/* Switch Bar */}
+                <div className="w-full flex items-center justify-between px-1">
                   <div className="flex items-center gap-2">
                     <Bell size={15} strokeWidth={1.75} className="text-white/80" />
                     <span className="text-[13px] font-semibold text-white">
-                      Daily Reminder
+                      Daily Evening Nudge
                     </span>
                   </div>
 
@@ -685,18 +730,18 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   </button>
                 </div>
 
-                {/* Dotted LED Time Display */}
-                <div className="my-6 text-center relative z-10">
-                  <div className="text-[44px] font-semibold tracking-wider text-white amount leading-none">
+                {/* Minimal LED Time Display */}
+                <div className="py-1">
+                  <div className="text-[42px] font-semibold tracking-wider text-white amount leading-none">
                     {reminderHour}:00
                   </div>
                   <span className="text-[11px] font-medium text-white/45 tracking-wider uppercase block mt-1.5">
-                    {reminderHour === 20 ? "8:00 PM · Evening Nudge" : `${reminderHour}:00 Local Time`}
+                    {reminderHour === 20 ? "8:00 PM · Evening Catchup" : `${reminderHour}:00 Local Time`}
                   </span>
                 </div>
 
                 {/* Hour Selectors */}
-                <div className="flex items-center gap-2 relative z-10">
+                <div className="flex items-center gap-2">
                   {[19, 20, 21, 22].map((h) => (
                     <button
                       key={h}
@@ -722,13 +767,13 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       </div>
 
       {/* ============================================================ */}
-      {/* 4. BOTTOM ACTION PILL */}
+      {/* 4. BOTTOM ACTION PILL                                        */}
       {/* ============================================================ */}
-      <div className="px-6 relative z-10 pt-2">
+      <div className="px-3 relative z-10 pt-2 max-w-sm mx-auto w-full">
         <button
           type="button"
           onClick={handleNextStep}
-          className="w-full py-4 rounded-[24px] font-semibold text-[14px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 shadow-xl flex items-center justify-center gap-2"
+          className="w-full py-3.5 rounded-[22px] font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 shadow-xl flex items-center justify-center gap-2"
           style={{
             boxShadow:
               "0 10px 30px rgba(255, 255, 255, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.8)",
