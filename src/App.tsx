@@ -101,7 +101,6 @@ function AppShell() {
     ? `trouvaille_initial_synced:${user.id}`
     : "trouvaille_initial_synced";
   const [hasInitialSynced, setHasInitialSynced] = useState(() => {
-    if (isGuest) return true;
     return localStorage.getItem(syncStorageKey) === "true";
   });
   const { data: allTxs = [] } = useAllTransactions(undefined, {
@@ -209,16 +208,12 @@ function AppShell() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (isGuest) {
-      setHasInitialSynced(true);
+    const isAlreadySynced = localStorage.getItem(syncStorageKey) === "true";
+    setHasInitialSynced(isAlreadySynced);
+    if (isAlreadySynced) {
       setIsInitDone(true);
-      try {
-        localStorage.setItem(syncStorageKey, "true");
-      } catch {}
-      return;
     }
-    setHasInitialSynced(localStorage.getItem(syncStorageKey) === "true");
-    if (user?.id) {
+    if (user?.id && !isGuest) {
       flushPendingMutations().catch((e) =>
         console.warn("[App] Background flush warning:", e),
       );
@@ -251,17 +246,17 @@ function AppShell() {
 
       // Guest / Offline local mode: smooth fluid progression without Supabase calls
       if (isGuest || user?.id === "guest_local_user") {
-        setSyncStatusText("Menyiapkan brankas lokal...");
+        setSyncStatusText("Initializing private encryption vault...");
         setSyncProgress(35);
-        await new Promise((r) => setTimeout(r, 120));
+        await new Promise((r) => setTimeout(r, 220));
 
-        setSyncStatusText("Memuat akun dan preferensi offline...");
+        setSyncStatusText("Configuring offline intelligence engine...");
         setSyncProgress(75);
-        await new Promise((r) => setTimeout(r, 150));
+        await new Promise((r) => setTimeout(r, 280));
 
-        setSyncStatusText("Siap! Selamat datang di Trouvaille.");
+        setSyncStatusText("Vault ready. Welcome to Trouvaille.");
         setSyncProgress(100);
-        await new Promise((r) => setTimeout(r, 180));
+        await new Promise((r) => setTimeout(r, 300));
 
         setIsInitDone(true);
         setHasInitialSynced(true);
@@ -539,6 +534,7 @@ function AppShell() {
               setOnboardingOpen(false);
               queryClient.invalidateQueries({ queryKey: ["categories"] });
               queryClient.invalidateQueries({ queryKey: ["wallets"] });
+              queryClient.invalidateQueries({ queryKey: ["transactions"] });
             }}
           />
         </Suspense>

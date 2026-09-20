@@ -227,6 +227,9 @@ export function useEnsureDefaultWallets() {
 }
 
 import { useAuth } from "../contexts/AuthContext";
+import { format } from "date-fns";
+import { generateUUID, TX_BACKUP_STORAGE_KEY } from "./useTransactions";
+import type { Transaction } from "../lib/types";
 
 function withTimeout<T>(promise: PromiseLike<T>, ms = 6000): Promise<T> {
   return Promise.race([
@@ -237,7 +240,100 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 6000): Promise<T> {
   ]);
 }
 
-const WALLETS_BACKUP_STORAGE_KEY = "TROUVAILLE_WALLETS_BACKUP_V1";
+export const WALLETS_BACKUP_STORAGE_KEY = "TROUVAILLE_WALLETS_BACKUP_V1";
+
+export interface OnboardingWalletChoice {
+  name: string;
+  icon: string;
+  classification: AccountClassification;
+}
+
+export async function seedOnboardingWallets(
+  userId: string | undefined,
+  selectedWallets: OnboardingWalletChoice[],
+  initialBalance?: number,
+): Promise<Wallet[]> {
+  const isGuest =
+    !userId ||
+    userId === "guest_local_user" ||
+    localStorage.getItem("trouvaille_guest_mode") === "true";
+  const now = new Date().toISOString();
+  const today = format(new Date(), "yyyy-MM-dd");
+
+  const seeded: Wallet[] = selectedWallets.map((w, idx) => ({
+    id: isGuest ? `wallet-onboard-${idx}-${Date.now()}` : generateUUID(),
+    user_id: isGuest ? "guest_local_user" : userId!,
+    name: w.name,
+    icon: w.icon || getWalletIcon(w.name),
+    classification: w.classification,
+    created_at: now,
+  }));
+
+  if (isGuest) {
+    try {
+      localStorage.setItem(WALLETS_BACKUP_STORAGE_KEY, JSON.stringify(seeded));
+    } catch (e) {
+      console.warn("[seedOnboardingWallets] Local storage error:", e);
+    }
+
+    if (initialBalance && initialBalance > 0 && seeded.length > 0) {
+      const primaryWallet = seeded[0];
+      const initialTx: Transaction = {
+        id: `tx-init-balance-${Date.now()}`,
+        user_id: "guest_local_user",
+        type: "adjustment",
+        amount: initialBalance,
+        occurred_on: today,
+        created_at: now,
+        note: "Initial Starting Balance",
+        wallet_id: primaryWallet.id,
+        to_wallet_id: null,
+        category_id: null,
+      };
+      try {
+        let existingTxs: Transaction[] = [];
+        const raw = localStorage.getItem(TX_BACKUP_STORAGE_KEY);
+        if (raw) existingTxs = JSON.parse(raw);
+        if (!Array.isArray(existingTxs)) existingTxs = [];
+        existingTxs.unshift(initialTx);
+        localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(existingTxs));
+      } catch (e) {
+        console.warn("[seedOnboardingWallets] Failed to store initial tx:", e);
+      }
+    }
+  } else if (userId) {
+    try {
+      const { error } = await supabase
+        .from("wallets")
+        .insert(
+          seeded.map((w) => ({
+            id: w.id,
+            user_id: userId,
+            name: w.name,
+            icon: w.icon,
+          })),
+        );
+
+      if (!error && initialBalance && initialBalance > 0 && seeded.length > 0) {
+        const primaryWallet = seeded[0];
+        await supabase.from("transactions").insert({
+          id: generateUUID(),
+          user_id: userId,
+          type: "adjustment",
+          amount: initialBalance,
+          occurred_on: today,
+          note: "Initial Starting Balance",
+          wallet_id: primaryWallet.id,
+          category_id: null,
+        });
+      }
+    } catch (e) {
+      console.warn("[seedOnboardingWallets] Supabase insert warning:", e);
+    }
+  }
+
+  return seeded;
+}
 
 export function useWallets() {
   const { user } = useAuth();

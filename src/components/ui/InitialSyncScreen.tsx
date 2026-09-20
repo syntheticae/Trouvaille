@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Check, ShieldCheck, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, Sparkles, ShieldCheck } from "lucide-react";
 import { preloadAllIcons } from "../../lib/assetPreloader";
 
 interface InitialSyncScreenProps {
@@ -11,6 +11,13 @@ interface InitialSyncScreenProps {
   statusText?: string;
 }
 
+const ROTATING_TIPS = [
+  "Private & Offline-first: Your data remains encrypted on this device.",
+  "Monochrome clarity: Zero distractions, pure financial telemetry.",
+  "Fast capture: Record expenses via voice NLP or camera scan in seconds.",
+  "Daily streak discipline: Consistent logging transforms wealth clarity.",
+];
+
 export function InitialSyncScreen({
   onComplete,
   totalCount = 0,
@@ -20,13 +27,22 @@ export function InitialSyncScreen({
 }: InitialSyncScreenProps) {
   const [internalProgress, setInternalProgress] = useState(25);
   const [internalStatusText, setInternalStatusText] = useState(
-    "Menyiapkan brankas & enkripsi lokal...",
+    "Initializing private encryption vault...",
   );
   const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
+  const [tipIndex, setTipIndex] = useState(0);
 
   const displayProgress =
     externalProgress !== undefined ? externalProgress : internalProgress;
   const displayStatus = externalStatusText || internalStatusText;
+
+  // Rotate micro-tips every 2.4 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTipIndex((prev) => (prev + 1) % ROTATING_TIPS.length);
+    }, 2400);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -35,13 +51,13 @@ export function InitialSyncScreen({
       .then(() => {
         if (!isMounted) return;
         setIsAssetsLoaded(true);
-        setInternalProgress((prev) => Math.max(prev, 45));
-        setInternalStatusText("Menyelaraskan dompet & telemetry...");
+        setInternalProgress((prev) => Math.max(prev, 55));
+        setInternalStatusText("Calibrating financial telemetry & accounts...");
       })
       .catch(() => {
         if (!isMounted) return;
         setIsAssetsLoaded(true);
-        setInternalProgress((prev) => Math.max(prev, 45));
+        setInternalProgress((prev) => Math.max(prev, 55));
       });
 
     return () => {
@@ -54,7 +70,7 @@ export function InitialSyncScreen({
     if (displayProgress >= 100 && isAssetsLoaded && isDataReady) {
       const t = setTimeout(() => {
         onComplete?.();
-      }, 400);
+      }, 500);
       return () => clearTimeout(t);
     }
   }, [displayProgress, isAssetsLoaded, isDataReady, onComplete]);
@@ -64,7 +80,7 @@ export function InitialSyncScreen({
     if (isDataReady) {
       const fallback = setTimeout(() => {
         onComplete?.();
-      }, 1500);
+      }, 1400);
       return () => clearTimeout(fallback);
     }
   }, [isDataReady, onComplete]);
@@ -77,19 +93,28 @@ export function InitialSyncScreen({
         fontFamily: "'Urbanist', sans-serif",
       }}
     >
-      {/* 1. ATMOSPHERIC LIQUID GLASS GLOW ORBS */}
+      {/* 1. ATMOSPHERIC CINEMATIC MONOCHROME AURORA BLOOM */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/3 -left-28 w-80 h-80 rounded-full bg-white/[0.04] blur-[130px]" />
-        <div className="absolute bottom-1/3 -right-28 w-80 h-80 rounded-full bg-white/[0.03] blur-[120px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-white/[0.02] blur-[150px]" />
+        <div className="absolute top-1/3 -left-32 w-88 h-88 rounded-full bg-white/[0.04] blur-[140px]" />
+        <div className="absolute bottom-1/3 -right-32 w-88 h-88 rounded-full bg-white/[0.035] blur-[130px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] rounded-full bg-white/[0.02] blur-[160px]" />
+
+        {/* Fluted glass radial lines */}
+        <div
+          className="absolute inset-0 opacity-[0.25]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 50% 45%, rgba(255,255,255,0.05) 0%, transparent 60%)",
+          }}
+        />
       </div>
 
       {/* 2. LIQUID GLASS HERO CONTAINER */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-[340px] p-6 rounded-[32px] text-center relative z-10 flex flex-col items-center space-y-5"
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="w-full max-w-[340px] p-6.5 rounded-[32px] text-center relative z-10 flex flex-col items-center space-y-5"
         style={{
           background: "rgba(255, 255, 255, 0.03)",
           backdropFilter: "blur(40px)",
@@ -103,22 +128,23 @@ export function InitialSyncScreen({
         <div className="relative flex items-center justify-center">
           <motion.div
             animate={{
-              scale: [1, 1.12, 1],
-              opacity: [0.35, 0.65, 0.35],
+              scale: [1, 1.15, 1],
+              opacity: [0.3, 0.65, 0.3],
             }}
             transition={{
-              duration: 2.4,
+              duration: 2.2,
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute w-16 h-16 rounded-full"
+            className="absolute w-18 h-18 rounded-full"
             style={{
-              background: "radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%)",
+              background:
+                "radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%)",
             }}
           />
 
           <div
-            className="w-13 h-13 rounded-[20px] flex items-center justify-center relative border"
+            className="w-14 h-14 rounded-[22px] flex items-center justify-center relative border"
             style={{
               background: "rgba(255, 255, 255, 0.06)",
               borderColor: "rgba(255, 255, 255, 0.18)",
@@ -143,7 +169,7 @@ export function InitialSyncScreen({
           </p>
           {totalCount > 0 && (
             <p className="text-[10px] font-semibold text-white/40 amount mt-0.5">
-              {totalCount.toLocaleString("id-ID")} entri siap
+              {totalCount.toLocaleString()} records synchronized
             </p>
           )}
         </div>
@@ -158,28 +184,43 @@ export function InitialSyncScreen({
             }}
           >
             <motion.div
-              className="h-full rounded-full transition-all duration-300"
+              className="h-full rounded-full bg-white relative"
+              initial={{ width: "15%" }}
+              animate={{ width: `${Math.min(100, Math.max(10, displayProgress))}%` }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
               style={{
-                width: `${Math.min(100, Math.max(8, displayProgress))}%`,
-                background: "linear-gradient(90deg, rgba(255,255,255,0.7) 0%, #ffffff 100%)",
-                boxShadow: "0 0 12px rgba(255, 255, 255, 0.5)",
+                boxShadow: "0 0 12px rgba(255, 255, 255, 0.6)",
               }}
             />
           </div>
 
-          <div className="flex justify-between items-center text-[10px] text-white/40 font-medium px-0.5">
-            <span>Inisialisasi</span>
-            <span className="font-semibold text-white/70 amount">
-              {Math.min(100, Math.round(displayProgress))}%
-            </span>
+          <div className="flex justify-between items-center text-[10px] font-medium text-white/40 px-0.5">
+            <span>Security Verified</span>
+            <span className="amount">{Math.round(displayProgress)}%</span>
           </div>
+        </div>
+
+        {/* Rotating Micro-Telemetry Tip */}
+        <div className="h-9 flex items-center justify-center w-full px-2">
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={tipIndex}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.25 }}
+              className="text-[10.5px] font-normal text-white/45 text-center leading-tight line-clamp-2"
+            >
+              {ROTATING_TIPS[tipIndex]}
+            </motion.p>
+          </AnimatePresence>
         </div>
       </motion.div>
 
-      {/* Floating Bottom Pod */}
-      <div className="absolute bottom-8 flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] text-white/40 border border-white/5 bg-white/[0.02]">
+      {/* Floating Trust Badge */}
+      <div className="absolute bottom-8 flex items-center gap-1.5 text-[11px] font-medium text-white/35">
         <ShieldCheck size={12} strokeWidth={1.5} />
-        <span>Brankas Terenkripsi Lokal</span>
+        <span>End-to-End Client Encryption</span>
       </div>
     </div>
   );

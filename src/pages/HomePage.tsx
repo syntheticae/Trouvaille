@@ -61,6 +61,9 @@ import {
   Layers,
   User,
   Flame,
+  Plus,
+  Sparkles,
+  ArrowRight,
 } from "lucide-react";
 import { useSpace } from "../contexts/SpaceContext";
 import { SpaceSwitcherSheet } from "../components/spaces/SpaceSwitcherSheet";
@@ -155,9 +158,12 @@ function formatAxisY(val: number): string {
 }
 
 
-export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: HomePageProps) {
+export function HomePage({ onOpenAdd, onOpenScan: _onOpenScan }: HomePageProps) {
   const navigate = useNavigate();
   const now = useMemo(() => new Date(), []);
+  const [starterDismissed, setStarterDismissed] = useState(() => {
+    return localStorage.getItem("trouvaille_starter_dismissed") === "true";
+  });
   const { session } = useAuth();
   const { theme } = useTheme();
   const isDark = theme !== "light";
@@ -604,6 +610,16 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     session?.user?.user_metadata?.avatar_url ||
     localStorage.getItem("trouvaille_avatar") ||
     "";
+
+  const hour = now.getHours();
+  const greetingSubtitle =
+    allTxs.length <= 1
+      ? "Welcome to Trouvaille,"
+      : hour < 12
+      ? "Good morning,"
+      : hour < 18
+      ? "Good afternoon,"
+      : "Good evening,";
 
   const stockRangeLabels: Record<StockRange, string> = {
     "1D": "Past Day",
@@ -1799,7 +1815,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           </div>
           <div>
             <span className="text-[11px] font-medium text-[var(--text-tertiary)] block leading-none">
-              Welcome back,
+              {greetingSubtitle}
             </span>
             <h1 className="text-[16px] font-semibold text-[var(--text-primary)] leading-tight mt-0.5">
               {displayName}
@@ -1933,6 +1949,125 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           >
             Reset
           </button>
+        </div>
+      )}
+
+      {/* 0. INTERACTIVE FIRST-RUN STARTER CHECKLIST */}
+      {!starterDismissed && allTxs.length <= 1 && (
+        <div
+          className="p-4 rounded-[28px] relative overflow-hidden border mb-3"
+          style={{
+            background: "var(--glass-fill)",
+            borderColor: "var(--glass-border)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border"
+                style={{
+                  background: "rgba(255, 255, 255, 0.06)",
+                  borderColor: "var(--glass-border)",
+                }}
+              >
+                <Sparkles size={15} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+              </div>
+              <div>
+                <h3 className="text-[13.5px] font-semibold text-[var(--text-primary)] leading-tight">
+                  Getting Started with Trouvaille
+                </h3>
+                <p className="text-[11px] text-[var(--text-tertiary)] font-normal mt-0.5">
+                  Complete these quick steps to calibrate your intelligence engine
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setStarterDismissed(true);
+                try {
+                  localStorage.setItem("trouvaille_starter_dismissed", "true");
+                } catch {}
+              }}
+              className="p-1 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            >
+              <X size={14} strokeWidth={1.75} />
+            </button>
+          </div>
+
+          <div className="space-y-2 mt-3.5">
+            {/* Step 1: Accounts */}
+            <div className="flex items-center gap-2.5 p-2.5 rounded-[18px] bg-white/[0.02] border border-white/[0.04]">
+              <div className="w-5 h-5 rounded-full bg-white text-zinc-950 flex items-center justify-center shrink-0">
+                <Check size={11} strokeWidth={2.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-none line-through opacity-70">
+                  Core Accounts & Baseline Configured
+                </p>
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                  Active wallets and initial balance established
+                </p>
+              </div>
+            </div>
+
+            {/* Step 2: First Transaction */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                onOpenAdd?.();
+              }}
+              className="w-full flex items-center gap-2.5 p-2.5 rounded-[18px] text-left transition-all active:scale-[0.98] cursor-pointer hover:bg-white/[0.03] border border-white/[0.06]"
+              style={{
+                background: "rgba(255, 255, 255, 0.02)",
+              }}
+            >
+              <div className="w-5 h-5 rounded-full border border-white/30 flex items-center justify-center shrink-0 text-white/50">
+                <Plus size={10} strokeWidth={2.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-none">
+                  Log your first transaction
+                </p>
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                  Try recording coffee, groceries, or salary
+                </p>
+              </div>
+              <ArrowRight size={13} className="text-[var(--text-tertiary)]" />
+            </button>
+
+            {/* Step 3: Budget Limit */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                navigate("/statistics");
+              }}
+              className="w-full flex items-center gap-2.5 p-2.5 rounded-[18px] text-left transition-all active:scale-[0.98] cursor-pointer hover:bg-white/[0.03] border border-white/[0.06]"
+              style={{
+                background: "rgba(255, 255, 255, 0.02)",
+              }}
+            >
+              <div className="w-5 h-5 rounded-full border border-white/30 flex items-center justify-center shrink-0 text-white/50">
+                <SlidersHorizontal size={10} strokeWidth={2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-none">
+                  Set monthly budget target
+                </p>
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                  Establish your monthly spending threshold
+                </p>
+              </div>
+              <ArrowRight size={13} className="text-[var(--text-tertiary)]" />
+            </button>
+          </div>
         </div>
       )}
 

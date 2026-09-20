@@ -190,7 +190,7 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
   ]);
 }
 
-const TX_BACKUP_STORAGE_KEY = "TROUVAILLE_TX_BACKUP_V1";
+export const TX_BACKUP_STORAGE_KEY = "TROUVAILLE_TX_BACKUP_V1";
 
 import { useAuth } from "../contexts/AuthContext";
 
