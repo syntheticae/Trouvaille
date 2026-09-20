@@ -59,6 +59,8 @@ import {
   requestNotificationPermission,
   syncBillNotifications,
   cancelAllBillNotifications,
+  syncDailyStreakReminder,
+  cancelDailyStreakReminder,
 } from "../lib/notifications";
 import { flushPendingMutations } from "../lib/syncEngine";
 import { EncryptedVaultModal } from "../components/security/EncryptedVaultModal";
@@ -190,6 +192,31 @@ export function SettingsPage() {
     }
   };
 
+  // Daily Streak Reminder toggle state & handler
+  const [dailyReminderEnabled, setDailyReminderEnabled] = useState(() => {
+    return localStorage.getItem("trouvaille_daily_reminder_enabled") !== "false";
+  });
+
+  const handleToggleDailyReminder = async () => {
+    triggerHaptic("light");
+    if (dailyReminderEnabled) {
+      setDailyReminderEnabled(false);
+      localStorage.setItem("trouvaille_daily_reminder_enabled", "false");
+      await cancelDailyStreakReminder();
+      showToast("Daily streak reminder turned off", "delete", () => {});
+    } else {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setDailyReminderEnabled(true);
+        localStorage.setItem("trouvaille_daily_reminder_enabled", "true");
+        await syncDailyStreakReminder(false);
+        showToast("Daily streak reminder enabled", "add", () => {});
+      } else {
+        showToast("Notification permission denied", "delete", () => {});
+      }
+    }
+  };
+
   // Safe Sync state
   const [syncStatus, setSyncStatus] = useState<
     "idle" | "syncing" | "success" | "error"
@@ -302,10 +329,11 @@ export function SettingsPage() {
 
   const showTheme = matches("Light Appearance", "Toggle light or obsidian luxury theme");
   const showBillReminders = matches("Bill Reminders", "Local notifications for scheduled bills");
+  const showDailyReminder = matches("Daily Streak Reminder", "Pengingat catat harian pukul 20:00 untuk menjaga streak");
   const showShortcuts = matches("Quick-Add Shortcuts", "Fast entry shortcuts and voice input");
   const showBackTap = matches("iPhone Back Tap", "iOS accessibility shortcuts integration");
   const showTags = matches("Transaction Tags (#)", "Categorize with #reimburse, #work, #personal");
-  const hasSection2 = showTheme || showBillReminders || showShortcuts || showBackTap || showTags;
+  const hasSection2 = showTheme || showBillReminders || showDailyReminder || showShortcuts || showBackTap || showTags;
 
   const showCloudSync = matches("Cloud Sync", "Safely backup data to private vault");
   const showVault = matches("Encrypted Vault", "Local AES-256 encrypted file backup");
@@ -917,6 +945,57 @@ export function SettingsPage() {
                   <div
                     className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
                       billRemindersEnabled
+                        ? "translate-x-4.5 bg-black dark:bg-black"
+                        : "translate-x-0 bg-white"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
+            {/* Daily Streak Reminder Toggle */}
+            {showDailyReminder && (
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Clock size={16} strokeWidth={1.75} />
+                  </div>
+                  <div className="space-y-0.5 min-w-0 pr-3">
+                    <span
+                      className="text-[13px] font-semibold block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Daily Streak Reminder
+                    </span>
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Alert at 20:00 if no transactions logged today
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={dailyReminderEnabled}
+                  onClick={handleToggleDailyReminder}
+                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
+                    dailyReminderEnabled
+                      ? "bg-white dark:bg-white"
+                      : "bg-zinc-300 dark:bg-zinc-700"
+                  }`}
+                >
+                  <div
+                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
+                      dailyReminderEnabled
                         ? "translate-x-4.5 bg-black dark:bg-black"
                         : "translate-x-0 bg-white"
                     }`}

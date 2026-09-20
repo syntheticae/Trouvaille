@@ -18,17 +18,52 @@ export function LiquidRunwayCard({
   onOpenDetail?: () => void;
 }) {
   const status =
-    runwayMonths >= 6
-      ? "Comfort"
-      : runwayMonths >= 3
-        ? "Safe Buffer"
-        : "Critical";
+    runwayMonths >= 12
+      ? "Fortress Reserve"
+      : runwayMonths >= 6
+        ? "Ideal Buffer"
+        : runwayMonths >= 3
+          ? "Safety Net"
+          : "Critical";
 
-  const targetRunwayMonths = 6;
-  const targetCoveragePct = Math.min(
+  // CFP 3-Tier Emergency Fund Benchmarks (3, 6, 12 Months)
+  const maxBenchmarkMonths = 12;
+  const overallCoveragePct = Math.min(
     100,
-    Math.round((runwayMonths / targetRunwayMonths) * 100),
+    Math.round((runwayMonths / maxBenchmarkMonths) * 100),
   );
+
+  const nextTierInfo = (() => {
+    if (runwayMonths < 3) {
+      const deficit = Math.max(0, 3 * monthlyBurn - liquidAssets);
+      return {
+        label: "Tier 1: Safety Net (3 Bln)",
+        deficit,
+        desc: `Perlu ${formatRupiah(deficit)} lagi untuk mencapai jaring pengaman darurat 3 bulan.`,
+      };
+    }
+    if (runwayMonths < 6) {
+      const deficit = Math.max(0, 6 * monthlyBurn - liquidAssets);
+      return {
+        label: "Tier 2: Ideal Buffer (6 Bln)",
+        deficit,
+        desc: `Perlu ${formatRupiah(deficit)} lagi untuk mencapai standar aman 6 bulan pengeluaran.`,
+      };
+    }
+    if (runwayMonths < 12) {
+      const deficit = Math.max(0, 12 * monthlyBurn - liquidAssets);
+      return {
+        label: "Tier 3: Fortress Reserve (12 Bln)",
+        deficit,
+        desc: `Perlu ${formatRupiah(deficit)} lagi untuk benteng ketahanan mandiri 1 tahun penuh.`,
+      };
+    }
+    return {
+      label: "Benteng Mandiri Penuh (≥12 Bln)",
+      deficit: 0,
+      desc: "Ketahanan kas melebihi 12 bulan pengeluaran. Likuiditas darurat dalam kondisi prima.",
+    };
+  })();
 
   if (size === "half") {
     return (
@@ -39,7 +74,7 @@ export function LiquidRunwayCard({
               Survival Horizon
             </span>
             <span
-              className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
+              className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md truncate max-w-[90px]"
               style={{
                 background: "var(--glass-fill)",
                 color: "var(--text-secondary)",
@@ -88,7 +123,7 @@ export function LiquidRunwayCard({
               <FinancialGlossaryTooltip term="solvency_runway" />
             </div>
             <p className="text-[10px] text-[var(--text-tertiary)]">
-              Capital survival horizon based on average monthly burn rate
+              Ketahanan kas darurat berdasarkan rata-rata pengeluaran bulanan
             </p>
           </div>
         </div>
@@ -152,28 +187,52 @@ export function LiquidRunwayCard({
         </div>
       </div>
 
-      {/* Target Progress Bar */}
-      <div className="pt-1">
-        <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
-          <span>Target: 6 Months Emergency Reserve</span>
+      {/* CFP 3-Tier Emergency Fund Progress Bar */}
+      <div className="pt-1 space-y-1.5">
+        <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
+          <span>Benchmark Dana Darurat (CFP Standard)</span>
           <span className="font-semibold text-[var(--text-primary)]">
-            {targetCoveragePct}% Funded
+            {nextTierInfo.label}
           </span>
         </div>
-        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+
+        {/* Multi-milestone Progress Bar (Scale to 12 Mos: 25%=3m, 50%=6m, 100%=12m) */}
+        <div className="relative">
+          <div className="w-full h-2 rounded-full overflow-hidden bg-white/10">
+            <div
+              className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-700"
+              style={{ width: `${overallCoveragePct}%` }}
+            />
+          </div>
+
+          {/* Marker pins for 3 Mo (25%) and 6 Mo (50%) */}
           <div
-            className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-700"
-            style={{ width: `${targetCoveragePct}%` }}
+            className="absolute top-0 bottom-0 w-0.5 bg-[var(--bg-elevated)] opacity-80"
+            style={{ left: "25%" }}
+            title="Tier 1: 3 Bulan"
           />
+          <div
+            className="absolute top-0 bottom-0 w-0.5 bg-[var(--bg-elevated)] opacity-80"
+            style={{ left: "50%" }}
+            title="Tier 2: 6 Bulan"
+          />
+        </div>
+
+        {/* Milestone Labels */}
+        <div className="flex justify-between text-[9px] text-[var(--text-tertiary)]">
+          <span>0 Bln</span>
+          <span className="text-center">3 Bln (Min)</span>
+          <span className="text-center">6 Bln (Ideal)</span>
+          <span>12 Bln (Benteng)</span>
         </div>
       </div>
 
       <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
-        <span>
-          Liquid capital provides {runwayMonths.toFixed(1)} months of continuous survival runway.
+        <span className="line-clamp-1 flex-1 pr-2">
+          {nextTierInfo.desc}
         </span>
-        <span className="font-semibold text-[var(--text-secondary)]">
-          Target: {formatRupiah(monthlyBurn * targetRunwayMonths)}
+        <span className="font-semibold text-[var(--text-secondary)] shrink-0 amount">
+          Cadangan: {formatRupiah(liquidAssets)}
         </span>
       </div>
     </section>

@@ -7,6 +7,9 @@ import { useBills } from "../hooks/useBills";
 import { CalendarDays, Target } from "lucide-react";
 import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics";
 import { SplitBillSheet } from "../components/tools/SplitBillSheet";
+import { MilestoneBadgesSheet } from "../components/gamification";
+import { useMilestones } from "../hooks/useMilestones";
+import { syncDailyStreakReminder } from "../lib/notifications";
 import { resolveTransactionCategory } from "../lib/categoryResolver";
 import { useNavigate } from "react-router-dom";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
@@ -42,7 +45,7 @@ function formatNetAmount(net: number): string {
   return net < 0 ? `-${val}` : `+${val}`;
 }
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Bell,
   ArrowUpRight,
@@ -321,6 +324,26 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   }, [allTxs, categories, now]);
 
   const totalExpense = currentMonthStats.expense;
+
+  const [milestonesSheetOpen, setMilestonesSheetOpen] = useState(false);
+
+  const loggedDates = useMemo(() => {
+    return new Set(allTxs.map((t) => t.occurred_on));
+  }, [allTxs]);
+
+  const milestoneSummary = useMilestones({
+    transactions: allTxs,
+    streak: intel.loggingStreak,
+    liquidAssets,
+    monthlyBurn: currentMonthStats.expense > 0 ? currentMonthStats.expense : 1,
+    savingsRate: intel.savingsRate,
+    goals,
+    isCertifiedBalanced: true,
+  });
+
+  useEffect(() => {
+    syncDailyStreakReminder(intel.loggedToday);
+  }, [intel.loggedToday]);
 
   const daysInMonth = now.getDate();
   const dailyAverage = daysInMonth > 0 ? totalExpense / daysInMonth : 0;
@@ -1808,28 +1831,26 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 <span className="text-[8px] opacity-60">▾</span>
               </button>
 
-              {intel.loggingStreak > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerSuccessHaptic();
-                    showToast(
-                      `${intel.loggingStreak} hari berturut-turut mencatat transaksi! Pertahankan konsistensi finansial Anda.`,
-                      "add",
-                      () => {},
-                    );
-                  }}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold inline-flex items-center gap-1 transition-all active:scale-95 cursor-pointer border border-white/10 hover:border-white/20"
-                  style={{
-                    background: "var(--glass-fill)",
-                    color: "var(--text-primary)",
-                  }}
-                  title={`${intel.loggingStreak} hari berturut-turut mencatat transaksi`}
-                >
-                  <Flame size={11} strokeWidth={1.75} className="text-[var(--text-primary)]" />
-                  <span>{intel.loggingStreak} Hari</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerSuccessHaptic();
+                  setMilestonesSheetOpen(true);
+                }}
+                className="px-2 py-0.5 rounded-full text-[10px] font-semibold inline-flex items-center gap-1 transition-all active:scale-95 cursor-pointer border border-white/10 hover:border-white/20"
+                style={{
+                  background: "var(--glass-fill)",
+                  color: "var(--text-primary)",
+                }}
+                title={
+                  intel.loggingStreak > 0
+                    ? `${intel.loggingStreak} hari berturut-turut mencatat transaksi (Buka Prestasi)`
+                    : "Prestasi Finansial & Konsistensi"
+                }
+              >
+                <Flame size={11} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+                <span>{intel.loggingStreak > 0 ? `${intel.loggingStreak} Hari` : "Prestasi"}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -2298,6 +2319,16 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             to_wallet_id: null,
           });
         }}
+      />
+
+      {/* Financial Health Milestones & Streak Sheet */}
+      <MilestoneBadgesSheet
+        isOpen={milestonesSheetOpen}
+        onClose={() => setMilestonesSheetOpen(false)}
+        milestoneSummary={milestoneSummary}
+        streak={intel.loggingStreak}
+        loggedToday={intel.loggedToday}
+        loggedDates={loggedDates}
       />
     </div>
   );
