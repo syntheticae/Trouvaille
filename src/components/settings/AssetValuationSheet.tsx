@@ -492,6 +492,9 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     };
     setUsdtPref(nextPref);
     localStorage.setItem(USDT_PREFS_STORAGE_KEY, JSON.stringify(nextPref));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("trouvaille_holdings_updated"));
+    }
     setIsEditingUsdt(false);
     triggerHaptic("medium");
     showToast("USDT valuation saved", "update", () => {});

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   PieChart,
   Pie,
@@ -62,8 +62,22 @@ export function AssetAnalyticsSection({
     balancesByName,
   } = useWalletBalances();
 
-  // Retrieve saved market holdings & fixed assets
-  const holdings = useMemo(() => getSavedHoldings(), []);
+  // Retrieve saved market holdings & fixed assets reactively
+  const [holdings, setHoldings] = useState(() => getSavedHoldings());
+  const [usdtVersion, setUsdtVersion] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setHoldings(getSavedHoldings());
+      setUsdtVersion((v) => v + 1);
+    };
+    window.addEventListener("trouvaille_holdings_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("trouvaille_holdings_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
 
   // USDT holding detailed info
   const usdtInfo = useMemo(() => {
@@ -94,7 +108,7 @@ export function AssetAnalyticsSection({
       asset_type: "crypto" as const,
       units,
     };
-  }, []);
+  }, [usdtVersion]);
 
   // Find crypto wallet if user tracks one in wallets table
   const cryptoWallet = useMemo(() => {

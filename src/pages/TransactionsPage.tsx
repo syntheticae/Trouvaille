@@ -15,6 +15,10 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Briefcase,
+  Plane,
+  Layers,
+  User,
 } from "lucide-react";
 import {
   BarChart,
@@ -34,6 +38,8 @@ import { useWallets, resolveTransactionWallets } from "../hooks/useWallets";
 import { useCategories } from "../hooks/useCategories";
 import { useToast } from "../contexts/ToastContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
+import { useSpace } from "../contexts/SpaceContext";
+import { SpaceSwitcherSheet } from "../components/spaces/SpaceSwitcherSheet";
 import { TransactionSheet } from "../components/transactions/TransactionSheet";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
@@ -201,7 +207,8 @@ export function TransactionsPage({
   const deleteTx = useDeleteTransaction();
   const batchDeleteTx = useBatchDeleteTransactions();
   const { showToast } = useToast();
-  const { checkUnusual } = useUnusualSpending(allTxs);
+  const { activeSpace, activeSpaceId, setActiveSpaceId, filterTransactionsBySpace } = useSpace();
+  const [spaceSwitcherOpen, setSpaceSwitcherOpen] = useState(false);
 
   // Selection Mode State for Bulk Actions
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -221,9 +228,14 @@ export function TransactionsPage({
   }, [wallets]);
 
   const visibleTxs = useMemo(
-    () => allTxs.filter((t) => !pendingDeletedIds.has(t.id)),
-    [allTxs, pendingDeletedIds],
+    () =>
+      filterTransactionsBySpace(allTxs, activeSpaceId).filter(
+        (t) => !pendingDeletedIds.has(t.id),
+      ),
+    [allTxs, activeSpaceId, filterTransactionsBySpace, pendingDeletedIds],
   );
+
+  const { checkUnusual } = useUnusualSpending(visibleTxs);
 
   // 5-second Undo Grace Period for single deletion
   const handleDeleteTransaction = (tx: Transaction) => {
@@ -752,20 +764,47 @@ export function TransactionsPage({
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-start justify-between mb-3 gap-3">
           <div className="min-w-0 flex-1">
-            <p
-              className="text-[12px] font-semibold"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {filter === "income"
-                ? `${selectedMonthLabel} Inflow`
-                : filter === "expense"
-                  ? `${selectedMonthLabel} Outflow`
-                  : filter === "transfer"
-                    ? `${selectedMonthLabel} Transfers`
-                    : filter === "adjustment"
-                      ? `${selectedMonthLabel} Corrections`
-                      : `${selectedMonthLabel} Activity`}
-            </p>
+            <div className="flex items-center gap-2 mb-0.5">
+              <p
+                className="text-[12px] font-semibold"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {filter === "income"
+                  ? `${selectedMonthLabel} Inflow`
+                  : filter === "expense"
+                    ? `${selectedMonthLabel} Outflow`
+                    : filter === "transfer"
+                      ? `${selectedMonthLabel} Transfers`
+                      : filter === "adjustment"
+                        ? `${selectedMonthLabel} Corrections`
+                        : `${selectedMonthLabel} Activity`}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSpaceSwitcherOpen(true);
+                }}
+                className="px-2 py-0.5 rounded-full text-[10px] font-semibold inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border border-white/10 hover:border-white/20"
+                style={{
+                  background: "var(--glass-fill)",
+                  color: "var(--text-primary)",
+                }}
+                title="Switch Money Space"
+              >
+                {activeSpace.icon === "Briefcase" ? (
+                  <Briefcase size={10} strokeWidth={1.75} />
+                ) : activeSpace.icon === "Plane" ? (
+                  <Plane size={10} strokeWidth={1.75} />
+                ) : activeSpace.icon === "Layers" ? (
+                  <Layers size={10} strokeWidth={1.75} />
+                ) : (
+                  <User size={10} strokeWidth={1.75} />
+                )}
+                <span>{activeSpace.name}</span>
+                <span className="text-[8px] opacity-60">▾</span>
+              </button>
+            </div>
             <p
               className="text-[28px] sm:text-[32px] font-bold tracking-tight leading-tight amount whitespace-nowrap"
               style={{ color: "var(--text-primary)" }}
@@ -820,6 +859,36 @@ export function TransactionsPage({
             </button>
           </div>
         </div>
+
+        {/* Active Space Segregation Notice */}
+        {activeSpaceId !== "all" && activeSpaceId !== "personal" && (
+          <div
+            className="mb-3 px-3 py-1.5 rounded-xl flex items-center justify-between text-[11px] font-medium animate-fadeIn"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse" />
+              <span>
+                Filtered to <strong>{activeSpace.name}</strong> space ({visibleTxs.length} txs)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setActiveSpaceId("all");
+              }}
+              className="text-[10px] font-semibold underline underline-offset-2 opacity-80 hover:opacity-100 cursor-pointer"
+              style={{ color: "var(--text-primary)" }}
+            >
+              View All
+            </button>
+          </div>
+        )}
 
         {/* DYNAMIC TIMEFRAME GRADIENT BAR CHART */}
         <div className="h-[95px] w-full mb-3.5 flex items-end">
@@ -2081,6 +2150,12 @@ export function TransactionsPage({
           </button>
         </div>
       </BottomSheet>
+
+      {/* Money Space Switcher */}
+      <SpaceSwitcherSheet
+        isOpen={spaceSwitcherOpen}
+        onClose={() => setSpaceSwitcherOpen(false)}
+      />
     </div>
   );
 }

@@ -14,6 +14,8 @@ import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useWallets } from "../../hooks/useWallets";
+import { useWalletBalances } from "../../hooks/useWalletBalances";
+import { useCategories } from "../../hooks/useCategories";
 import { useAddTransaction } from "../../hooks/useTransactions";
 import { format } from "date-fns";
 
@@ -101,11 +103,14 @@ interface NfcCardReaderModalProps {
 export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps) {
   const { showToast } = useToast();
   const { data: wallets = [] } = useWallets();
+  const { balancesById, balancesByName } = useWalletBalances();
+  const { data: categories = [] } = useCategories();
   const addTransaction = useAddTransaction();
 
   const [scanStatus, setScanStatus] = useState<"ready" | "scanning" | "detected">("ready");
   const [detectedCard, setDetectedCard] = useState<EmoneyCardData | null>(null);
   const [hasNfcHardware, setHasNfcHardware] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const ndefAbortRef = useRef<AbortController | null>(null);
 
   // Check Web NFC support on mount
@@ -169,42 +174,100 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
     setScanStatus("scanning");
   };
 
-  const handleSyncToWallet = () => {
-    if (!detectedCard) return;
+  const handleSyncToWallet = async () => {
+    if (!detectedCard || isSyncing) return;
     triggerHaptic("medium");
 
     // Check if wallet exists with matching name
     const targetWallet = wallets.find((w) =>
       w.name.toLowerCase().includes(detectedCard.cardType) ||
+      w.name.toLowerCase().includes(detectedCard.issuerName.toLowerCase().replace("bank ", "")) ||
       w.name.toLowerCase().includes("flazz") ||
       w.name.toLowerCase().includes("e-money") ||
-      w.name.toLowerCase().includes("tapcash")
+      w.name.toLowerCase().includes("emoney") ||
+      w.name.toLowerCase().includes("tapcash") ||
+      w.name.toLowerCase().includes("brizzi") ||
+      w.name.toLowerCase().includes("jakcard")
     );
 
-    showToast(
-      targetWallet
-        ? `Synced ${formatRupiah(detectedCard.balance)} to ${targetWallet.name}`
-        : `Verified ${detectedCard.productName} balance: ${formatRupiah(detectedCard.balance)}`,
-      "add",
-      () => {}
-    );
+    if (targetWallet) {
+      const currentBal = balancesById[targetWallet.id] ?? balancesByName[targetWallet.name.toLowerCase()] ?? 0;
+      const delta = detectedCard.balance - currentBal;
+
+      if (delta !== 0) {
+        setIsSyncing(true);
+        try {
+          await addTransaction.mutateAsync({
+            amount: Math.abs(delta),
+            type: "adjustment",
+            wallet_id: targetWallet.id,
+            category_id: null,
+            occurred_on: format(new Date(), "yyyy-MM-dd"),
+            note: delta > 0
+              ? `NFC Balance Sync ${detectedCard.productName} (+)`
+              : `NFC Balance Sync ${detectedCard.productName} (-)`,
+          });
+          showToast(
+            `Synchronized ${targetWallet.name} to ${formatRupiah(detectedCard.balance)}`,
+            "add",
+            () => {}
+          );
+        } catch {
+          showToast("Failed to synchronize balance", "delete", () => {});
+        } finally {
+          setIsSyncing(false);
+        }
+      } else {
+        showToast(
+          `${targetWallet.name} is already up to date (${formatRupiah(detectedCard.balance)})`,
+          "update",
+          () => {}
+        );
+      }
+    } else {
+      showToast(
+        `Verified ${detectedCard.productName}: ${formatRupiah(detectedCard.balance)}. Add wallet "${detectedCard.productName}" to link`,
+        "update",
+        () => {}
+      );
+    }
   };
 
   const handleRecordTransitExpense = async () => {
     if (!detectedCard) return;
     triggerHaptic("medium");
 
-    const targetWallet = wallets[0];
+    const cardWallet = wallets.find((w) =>
+      w.name.toLowerCase().includes(detectedCard.cardType) ||
+      w.name.toLowerCase().includes("flazz") ||
+      w.name.toLowerCase().includes("e-money") ||
+      w.name.toLowerCase().includes("tapcash") ||
+      w.name.toLowerCase().includes("brizzi") ||
+      w.name.toLowerCase().includes("jakcard")
+    );
+    const targetWallet = cardWallet || wallets[0];
+
+    const transportCategory = categories.find((c) =>
+      c.name.toLowerCase().includes("transport") ||
+      c.name.toLowerCase().includes("transit") ||
+      c.name.toLowerCase().includes("bensin") ||
+      c.name.toLowerCase().includes("tol")
+    );
+
     try {
       await addTransaction.mutateAsync({
         amount: detectedCard.lastTapAmount,
         type: "expense",
         wallet_id: targetWallet?.id || null,
-        category_id: null,
+        category_id: transportCategory?.id || null,
         occurred_on: format(new Date(), "yyyy-MM-dd"),
         note: `${detectedCard.lastTapLocation} (${detectedCard.productName}) #transit`,
       });
-      showToast(`Logged transit fare ${formatRupiah(detectedCard.lastTapAmount)}`, "add", () => {});
+      showToast(
+        `Logged transit fare ${formatRupiah(detectedCard.lastTapAmount)} from ${targetWallet ? targetWallet.name : "Wallet"}`,
+        "add",
+        () => {}
+      );
       onClose();
     } catch {
       showToast("Unable to record transaction", "delete", () => {});

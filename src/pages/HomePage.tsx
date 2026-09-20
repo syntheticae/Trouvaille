@@ -166,7 +166,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   const markBillPaid = useMarkBillPaid();
   const upcomingBills = useUpcomingBills();
   const { budgetTarget, budgetPeriodStart } = useBudgetTarget();
-  const { data: allTxs = [], refetch: refetchAllTxs } = useAllTransactions();
+  const { data: rawAllTxs = [], refetch: refetchAllTxs } = useAllTransactions();
   const { data: categories = [], refetch: refetchCategories } = useCategories();
   const { refetch: refetchWallets } = useWallets();
   const { data: allBills = [], refetch: refetchBills } = useBills();
@@ -184,7 +184,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   } | null>(null);
 
   const [billManagementOpen, setBillManagementOpen] = useState(false);
-  const { activeSpace, activeSpaceId, setActiveSpaceId } = useSpace();
+  const { activeSpace, activeSpaceId, setActiveSpaceId, filterTransactionsBySpace } = useSpace();
+  const allTxs = useMemo(() => {
+    return filterTransactionsBySpace(rawAllTxs, activeSpaceId);
+  }, [rawAllTxs, activeSpaceId, filterTransactionsBySpace]);
   const [spaceSwitcherOpen, setSpaceSwitcherOpen] = useState(false);
   const [nfcModalOpen, setNfcModalOpen] = useState(false);
 

@@ -47,6 +47,9 @@ export function getSavedHoldings(): InvestmentHolding[] {
 export function saveHoldings(holdings: InvestmentHolding[]): void {
   try {
     localStorage.setItem(HOLDINGS_STORAGE_KEY, JSON.stringify(holdings));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("trouvaille_holdings_updated", { detail: holdings }));
+    }
   } catch (e) {
     console.warn("Failed to persist holdings:", e);
   }
