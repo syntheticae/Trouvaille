@@ -1,7 +1,9 @@
 import { CalendarDays, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 export function CalendarCard({
   monthTransactionsCount = 0,
@@ -14,10 +16,12 @@ export function CalendarCard({
   size?: WidgetSize;
   onOpenDetail?: () => void;
 }) {
+  const { t, isIndonesian } = useLanguage();
   const now = new Date();
-  const dayStr = format(now, "EEE, d MMM");
-  const fullDateStr = format(now, "EEEE, d MMMM yyyy");
-  const monthName = format(now, "MMMM yyyy");
+  const locale = isIndonesian ? idLocale : undefined;
+  const dayStr = format(now, "EEE, d MMM", { locale });
+  const fullDateStr = format(now, "EEEE, d MMMM", { locale });
+  const monthName = format(now, "MMMM yyyy", { locale });
 
   if (size === "full") {
     return (
@@ -29,7 +33,7 @@ export function CalendarCard({
           boxShadow: "var(--shadow-card)",
         }}
       >
-        <div className="flex items-center gap-3.5 min-w-0">
+        <div className="flex items-center gap-3.5 min-w-0 flex-1 mr-2">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
             style={{
@@ -40,37 +44,42 @@ export function CalendarCard({
           >
             <CalendarDays size={18} strokeWidth={1.75} />
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p
-                className="text-[14px] font-semibold tracking-tight truncate"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {fullDateStr}
-              </p>
-              <span
-                className="text-[10px] font-semibold px-2 py-0.5 rounded-full truncate shrink-0"
-                style={{
-                  background: "var(--glass-fill)",
-                  color: "var(--text-secondary)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                {activeDaysCount}d Active
-              </span>
-            </div>
+          <div className="min-w-0 flex-1">
             <p
-              className="text-[11px] mt-0.5 truncate"
+              className="text-[14px] font-semibold tracking-tight truncate leading-snug"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {fullDateStr}
+            </p>
+            <p
+              className="text-[11px] mt-0.5 truncate leading-tight"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {monthTransactionsCount} recorded transactions in {monthName}
+              {monthTransactionsCount} {t("calendar.recordedTransactions", "transactions this month")}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0 text-[11px] font-medium text-[var(--text-secondary)] pl-2">
-          <span>Calendar</span>
-          <ChevronRight size={14} />
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {activeDaysCount}d {t("calendar.activeDays", "Active")}
+          </span>
+          <div
+            className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <ChevronRight size={13} strokeWidth={2} />
+          </div>
         </div>
       </div>
     );
@@ -78,7 +87,7 @@ export function CalendarCard({
 
   return (
     <div onClick={onOpenDetail} className="cursor-pointer">
-      <CompactShell title="Calendar" onOpenDetail={onOpenDetail}>
+      <CompactShell title={t("calendar.title", "Calendar")} onOpenDetail={onOpenDetail}>
         <div className="flex-1 flex flex-col justify-center py-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-medium text-[var(--text-tertiary)] truncate">
@@ -92,13 +101,13 @@ export function CalendarCard({
                 border: "1px solid var(--glass-border)",
               }}
             >
-              {activeDaysCount}d Active
+              {activeDaysCount}d {t("calendar.activeDays", "Active")}
             </span>
           </div>
           <p className="text-[18px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight mt-0.5 truncate">
             {monthTransactionsCount}{" "}
             <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
-              Entries
+              {t("calendar.entries", "Entries")}
             </span>
           </p>
         </div>
@@ -109,7 +118,7 @@ export function CalendarCard({
             <span className="truncate">{monthName}</span>
           </div>
           <span className="text-[9px] font-medium text-[var(--text-secondary)] opacity-80 shrink-0">
-            Tap to view calendar
+            {t("calendar.tapToView", "Tap to view calendar")}
           </span>
         </div>
       </CompactShell>

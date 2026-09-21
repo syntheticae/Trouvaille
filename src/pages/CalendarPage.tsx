@@ -30,6 +30,7 @@ import {
   isSameMonth,
   parseISO,
 } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { useMonthTransactions, useAllTransactions } from "../hooks/useTransactions";
 import { useBills, useMarkBillPaid } from "../hooks/useBills";
 import { useWalletBalances } from "../hooks/useWalletBalances";
@@ -44,6 +45,7 @@ import { formatRupiah } from "../lib/utils";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { triggerHaptic } from "../lib/haptics";
 
 function formatCompactRupiah(val: number): string {
@@ -66,6 +68,8 @@ export function CalendarPage() {
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isStealthMode, toggleStealthMode } = usePrivacy();
+  const { t, isIndonesian } = useLanguage();
+  const dateLocale = isIndonesian ? idLocale : undefined;
   const displayRupiah = (val: number) => (isStealthMode ? "Rp ••••••••" : formatRupiah(val));
   const displayCompact = (val: number) => (isStealthMode ? "••••" : formatCompactRupiah(val));
 
@@ -178,38 +182,38 @@ export function CalendarPage() {
     >
       {/* Header & View Mode Switcher */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
           <button
             type="button"
             onClick={() => {
               triggerHaptic("light");
               navigate(-1);
             }}
-            className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none"
+            className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none shrink-0"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
-            title="Back"
-            aria-label="Back"
+            title={isIndonesian ? "Kembali" : "Back"}
+            aria-label={isIndonesian ? "Kembali" : "Back"}
           >
             <ChevronLeft size={16} />
           </button>
-          <div>
+          <div className="min-w-0 flex-1">
             <h1
-              className="text-[20px] font-semibold tracking-tight"
+              className="text-[18px] font-semibold tracking-tight truncate leading-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              Calendar
+              {t("calendar.title", "Calendar")}
             </h1>
             <p
-              className="text-[11px] font-medium"
+              className="text-[11px] font-medium truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
               {viewMode === "runway"
-                ? "Cashflow Runway & Liquidity Forecasting"
-                : "Ledger Activity & Scheduled Reminders"}
+                ? t("calendar.runwaySubtitle", "Runway & Projections")
+                : t("calendar.activitySubtitle", "Activity & Schedule")}
             </p>
           </div>
         </div>
@@ -248,7 +252,7 @@ export function CalendarPage() {
               }`}
             >
               <CalendarDays size={12} strokeWidth={1.75} />
-              Activity
+              {t("calendar.activityTab", "Activity")}
             </button>
             <button
               onClick={() => {
@@ -264,7 +268,7 @@ export function CalendarPage() {
               }`}
             >
               <TrendingUp size={12} strokeWidth={1.75} />
-              Runway
+              {t("calendar.runwayTab", "Runway")}
             </button>
           </div>
         </div>
@@ -298,14 +302,7 @@ export function CalendarPage() {
                 <div>
                   <p
                     className="text-[14px] font-semibold tracking-tight truncate"
-                    style={{
-                      color:
-                        runwayTelemetry.lowestDipStatus === "critical"
-                          ? "#ef4444"
-                          : runwayTelemetry.lowestDipStatus === "caution"
-                          ? "#f59e0b"
-                          : "var(--text-primary)",
-                    }}
+                    style={{ color: "var(--text-primary)" }}
                   >
                     {displayRupiah(runwayTelemetry.lowestDipAmount)}
                   </p>
@@ -412,7 +409,7 @@ export function CalendarPage() {
               className="font-semibold text-[15px] tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              {format(currentDate, "MMMM yyyy")}
+              {format(currentDate, "MMMM yyyy", { locale: dateLocale })}
             </span>
             {!isCurrentMonthView && (
               <button
@@ -424,7 +421,7 @@ export function CalendarPage() {
                 }}
               >
                 <RotateCcw size={10} />
-                Today
+                {t("common.today", "Today")}
               </button>
             )}
           </div>
@@ -520,6 +517,59 @@ export function CalendarPage() {
                 textColor = "var(--text-tertiary)";
               }
 
+              // Determine sub-figure (angka pada tiap tanggal)
+              let subFigure: string | null = null;
+              let subFigureColor = isT
+                ? (isDark ? "text-zinc-900" : "text-white")
+                : isSel
+                ? "text-[var(--text-primary)]"
+                : "text-[var(--text-tertiary)]";
+
+              if (viewMode === "activity") {
+                if (forecast) {
+                  if (forecast.actualInflow > 0 && forecast.actualOutflow === 0) {
+                    subFigure = `+${displayCompact(forecast.actualInflow)}`;
+                    if (!isT && !isSel) subFigureColor = "text-[var(--text-primary)] font-semibold";
+                  } else if (forecast.actualOutflow > 0 && forecast.actualInflow === 0) {
+                    subFigure = `-${displayCompact(forecast.actualOutflow)}`;
+                    if (!isT && !isSel) subFigureColor = "text-[var(--text-secondary)] font-medium";
+                  } else if (forecast.actualInflow > 0 && forecast.actualOutflow > 0) {
+                    if (forecast.netActualCashflow >= 0) {
+                      subFigure = `+${displayCompact(forecast.netActualCashflow)}`;
+                      if (!isT && !isSel) subFigureColor = "text-[var(--text-primary)] font-semibold";
+                    } else {
+                      subFigure = `-${displayCompact(Math.abs(forecast.netActualCashflow))}`;
+                      if (!isT && !isSel) subFigureColor = "text-[var(--text-secondary)] font-medium";
+                    }
+                  } else if (forecast.isNoSpendDay) {
+                    subFigure = "0";
+                    if (!isT && !isSel) subFigureColor = "text-[var(--text-tertiary)] opacity-60";
+                  } else if (forecast.billsTotal > 0 && forecast.isFuture) {
+                    subFigure = `-${displayCompact(forecast.billsTotal)}`;
+                    if (!isT && !isSel) subFigureColor = "text-[var(--text-secondary)]";
+                  } else if (forecast.expectedInflowsTotal > 0 && forecast.isFuture) {
+                    subFigure = `+${displayCompact(forecast.expectedInflowsTotal)}`;
+                    if (!isT && !isSel) subFigureColor = "text-[var(--text-primary)] font-semibold";
+                  }
+                }
+              } else {
+                // Runway mode
+                if (forecast?.isFuture || forecast?.isToday) {
+                  subFigure = displayCompact(forecast?.projectedBalance ?? 0);
+                  if (!isT && !isSel) {
+                    subFigureColor = forecast?.isLowestDip
+                      ? "text-[var(--text-primary)] font-bold"
+                      : "text-[var(--text-secondary)] font-medium";
+                  }
+                } else if (forecast?.isNoSpendDay) {
+                  subFigure = "0";
+                  if (!isT && !isSel) subFigureColor = "text-[var(--text-tertiary)] opacity-60";
+                } else if (forecast?.actualOutflow) {
+                  subFigure = `-${displayCompact(forecast.actualOutflow)}`;
+                  if (!isT && !isSel) subFigureColor = "text-[var(--text-tertiary)]";
+                }
+              }
+
               return (
                 <button
                   key={d.toISOString()}
@@ -527,7 +577,7 @@ export function CalendarPage() {
                     setSelectedDay(d);
                     triggerHaptic("light");
                   }}
-                  className="flex flex-col items-center justify-center rounded-2xl py-1 transition-all active:scale-95 cursor-pointer relative min-h-[44px]"
+                  className="flex flex-col items-center justify-center rounded-2xl py-1 transition-all active:scale-95 cursor-pointer relative min-h-[46px] overflow-hidden"
                   style={{
                     background: bg,
                     border,
@@ -544,85 +594,55 @@ export function CalendarPage() {
                     {format(d, "d")}
                   </span>
 
-                  {/* Activity View Markers - Minimalist Micro-Dots */}
-                  {viewMode === "activity" && hasData && (
-                    <div className="flex items-center gap-1 mt-1 h-1.5">
-                      {(forecast?.actualInflow ?? 0) > 0 && (
-                        <div
-                          className="w-1 h-1 rounded-full"
-                          style={{
-                            background: isT
-                              ? (isDark ? "#09090C" : "#FFFFFF")
-                              : "var(--text-primary)",
-                          }}
-                        />
-                      )}
-                      {(forecast?.actualOutflow ?? 0) > 0 && (
-                        <div
-                          className="w-1 h-1 rounded-full"
-                          style={{
-                            background: isT
-                              ? (isDark ? "#09090C" : "#FFFFFF")
-                              : "var(--text-tertiary)",
-                          }}
-                        />
-                      )}
-                      {(forecast?.scheduledBills.length ?? 0) > 0 && (
-                        <div
-                          className="w-1 h-1 rounded-full"
-                          style={{
-                            background: isT
-                              ? (isDark ? "#09090C" : "#FFFFFF")
-                              : "#f59e0b",
-                          }}
-                        />
-                      )}
-                    </div>
+                  {/* Figure Under Date (Angka pada tiap tanggal) */}
+                  {subFigure !== null ? (
+                    <span
+                      className={`text-[9px] tracking-tight truncate leading-none mt-0.5 max-w-[92%] ${subFigureColor}`}
+                    >
+                      {subFigure}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] leading-none mt-0.5 opacity-0 select-none">
+                      -
+                    </span>
                   )}
 
-                  {/* Runway Mode Telemetry Micro-Badge */}
-                  {viewMode === "runway" && (
-                    <div className="flex flex-col items-center mt-0.5">
-                      {forecast?.isFuture || forecast?.isToday ? (
-                        <span
-                          className={`text-[9px] font-semibold tracking-tight ${
-                            forecast?.isLowestDip
-                              ? "text-amber-400 font-semibold"
-                              : isT
-                              ? isDark
-                                ? "text-zinc-900"
-                                : "text-white"
-                              : "text-[var(--text-tertiary)]"
-                          }`}
-                        >
-                          {displayCompact(forecast?.projectedBalance ?? 0)}
-                        </span>
-                      ) : forecast?.isNoSpendDay ? (
-                        <span className="text-[9px] font-semibold opacity-60">0</span>
-                      ) : (
-                        <span className="text-[9px] font-semibold opacity-40">
-                          {forecast?.transactionsCount ? `${forecast.transactionsCount} tx` : ""}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Special Indicator Badges (Payday or Unpaid Bill) */}
+                  {/* Special Indicator Badges (STRICT MONOCHROME: NO GREEN, RED, YELLOW) */}
                   {forecast?.isPayday && (
                     <span
-                      className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400"
-                      title="Expected Payday"
+                      className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
+                      style={{
+                        background: isT
+                          ? (isDark ? "#09090C" : "#FFFFFF")
+                          : "var(--text-primary)",
+                        boxShadow: isDark
+                          ? "0 0 4px rgba(255,255,255,0.45)"
+                          : "0 0 4px rgba(0,0,0,0.25)",
+                      }}
+                      title={isIndonesian ? "Pemasukan Gaji" : "Expected Payday"}
                     />
                   )}
+
                   {hasUnpaidBills && !isT && (
                     <span
-                      className={`absolute top-1 ${forecast?.isPayday ? "left-1" : "right-1"} w-1.5 h-1.5 rounded-full bg-amber-400`}
-                      title="Unpaid Bill Due"
+                      className={`absolute top-1 ${forecast?.isPayday ? "left-1" : "right-1"} w-1.5 h-1.5 rounded-full`}
+                      style={{
+                        border: isDark
+                          ? "1.5px solid rgba(255,255,255,0.7)"
+                          : "1.5px solid rgba(0,0,0,0.6)",
+                        background: "transparent",
+                      }}
+                      title={isIndonesian ? "Tagihan Belum Bayar" : "Unpaid Bill Due"}
                     />
                   )}
-                  {forecast?.isLowestDip && viewMode === "runway" && (
+
+                  {forecast?.isLowestDip && viewMode === "runway" && !isT && (
                     <span
-                      className="absolute bottom-0.5 w-1 h-1 rounded-full bg-amber-400"
+                      className="absolute bottom-0.5 w-1 h-1 rounded-full"
+                      style={{
+                        background: "var(--text-primary)",
+                        opacity: 0.8,
+                      }}
                       title="Runway Dip Floor"
                     />
                   )}
@@ -632,6 +652,120 @@ export function CalendarPage() {
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Monochrome Apple Luxury Calendar Legend / Keterangan */}
+      <div
+        className="glass-surface p-3.5 rounded-2xl border border-[var(--glass-border)]"
+        style={{
+          background: "var(--bg-elevated)",
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        <div className="flex items-center justify-between mb-2.5 px-0.5">
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            {t("calendar.legendTitle", "Calendar Legend")}
+          </span>
+          <span
+            className="text-[10px] font-medium"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            {viewMode === "activity"
+              ? (isIndonesian ? "Mode Aktivitas" : "Activity Mode")
+              : (isIndonesian ? "Mode Runway" : "Runway Mode")}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
+          {/* 1. Today */}
+          <div className="flex items-center gap-2">
+            <span
+              className="w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-bold shrink-0"
+              style={{
+                background: isDark ? "#FFFFFF" : "#18181B",
+                color: isDark ? "#09090C" : "#FFFFFF",
+                boxShadow: isDark
+                  ? "0 1px 4px rgba(255,255,255,0.2)"
+                  : "0 1px 4px rgba(0,0,0,0.15)",
+              }}
+            >
+              {format(new Date(), "d")}
+            </span>
+            <span className="truncate" style={{ color: "var(--text-secondary)" }}>
+              {t("calendar.legendToday", "Today")}
+            </span>
+          </div>
+
+          {/* 2. Figures / Activity */}
+          <div className="flex items-center gap-2">
+            <span
+              className="px-1.5 h-5 rounded-lg flex items-center justify-center text-[9px] font-semibold shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              {viewMode === "runway" ? "15M" : "-50k"}
+            </span>
+            <span className="truncate" style={{ color: "var(--text-secondary)" }}>
+              {viewMode === "runway"
+                ? (isIndonesian ? "Saldo Proyeksi" : "Projected Balance")
+                : t("calendar.legendActivity", "Cashflow Activity")}
+            </span>
+          </div>
+
+          {/* 3. Payday Inflow */}
+          <div className="flex items-center gap-2">
+            <div
+              className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{
+                  background: "var(--text-primary)",
+                  boxShadow: isDark
+                    ? "0 0 4px rgba(255,255,255,0.45)"
+                    : "0 0 4px rgba(0,0,0,0.25)",
+                }}
+              />
+            </div>
+            <span className="truncate" style={{ color: "var(--text-secondary)" }}>
+              {t("calendar.legendPayday", "Payday Inflow")}
+            </span>
+          </div>
+
+          {/* 4. Scheduled Bill */}
+          <div className="flex items-center gap-2">
+            <div
+              className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{
+                  border: isDark
+                    ? "1.5px solid rgba(255,255,255,0.7)"
+                    : "1.5px solid rgba(0,0,0,0.6)",
+                  background: "transparent",
+                }}
+              />
+            </div>
+            <span className="truncate" style={{ color: "var(--text-secondary)" }}>
+              {t("calendar.legendBill", "Scheduled Bill")}
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Upcoming Reminders Section */}
       {bills.filter((b) => !b.is_paid).length > 0 && (
@@ -757,7 +891,14 @@ export function CalendarPage() {
                         Projected Liquid Balance
                       </span>
                       {selectedDayForecast.isLowestDip && (
-                        <span className="text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                          style={{
+                            background: "var(--glass-fill)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--text-primary)",
+                          }}
+                        >
                           Lowest Dip Floor
                         </span>
                       )}
@@ -916,9 +1057,9 @@ export function CalendarPage() {
                         >
                           <div className="flex items-center gap-3">
                             <div
-                              className="w-8 h-8 rounded-xl flex items-center justify-center text-emerald-400"
+                              className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-primary)]"
                               style={{
-                                background: "var(--bg-elevated)",
+                                background: "var(--glass-fill)",
                                 border: "1px solid var(--glass-border)",
                               }}
                             >
@@ -932,14 +1073,14 @@ export function CalendarPage() {
                                 {inf.title}
                               </p>
                               <span
-                                className="text-[11px] text-emerald-400 font-semibold"
+                                className="text-[11px] text-[var(--text-secondary)] font-semibold"
                               >
                                 Scheduled Payday
                               </span>
                             </div>
                           </div>
                           <span
-                            className="text-[13px] font-semibold text-emerald-400"
+                            className="text-[13px] font-semibold text-[var(--text-primary)]"
                           >
                             +{displayRupiah(inf.amount)}
                           </span>
