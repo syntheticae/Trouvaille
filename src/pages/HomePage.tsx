@@ -59,6 +59,8 @@ import {
   Users,
   CalendarDays,
   Target,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { useSpace } from "../contexts/SpaceContext";
 import { SpaceSwitcherSheet } from "../components/spaces/SpaceSwitcherSheet";
@@ -173,7 +175,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     };
   }, []);
   const { session } = useAuth();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const isDark = theme !== "light";
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarExpanded, setCalendarExpanded] = useState(false);
@@ -2045,6 +2047,21 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           <button
             onClick={() => {
               triggerHaptic("light");
+              toggleTheme();
+            }}
+            className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer select-none"
+            title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+            aria-label="Toggle Theme"
+          >
+            {theme === "light" ? (
+              <Moon size={14} strokeWidth={1.75} style={{ color: "var(--text-primary)" }} />
+            ) : (
+              <Sun size={14} strokeWidth={1.75} style={{ color: "var(--text-primary)" }} />
+            )}
+          </button>
+          <button
+            onClick={() => {
+              triggerHaptic("light");
               setCustomizeHomeOpen(true);
             }}
             className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer select-none"
@@ -2061,7 +2078,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer"
             title="Notifications"
           >
-            <Bell size={14} style={{ color: "var(--text-primary)" }} />
+            <Bell size={14} strokeWidth={1.75} style={{ color: "var(--text-primary)" }} />
           </button>
         </div>
       </header>

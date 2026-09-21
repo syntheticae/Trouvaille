@@ -145,8 +145,26 @@ export function ReorderableWidgetGrid({
 
   return (
     <div ref={containerRef} className={className}>
-      {renderedItems.map(({ card, content }) => {
-        const isHalf = card.size === "half";
+      {renderedItems.map(({ card, content }, index) => {
+        let isHalf = card.size === "half";
+        if (isHalf) {
+          // Count preceding half cards in the current contiguous half block
+          let precedingHalvesInCurrentBlock = 0;
+          for (let i = index - 1; i >= 0; i--) {
+            if (renderedItems[i].card.size === "full") break;
+            precedingHalvesInCurrentBlock++;
+          }
+          const isSecondInPair = precedingHalvesInCurrentBlock % 2 === 1;
+          if (!isSecondInPair) {
+            // First half of potential pair: verify if next item is also a half card
+            const nextItem = renderedItems[index + 1];
+            const hasPartner = nextItem && nextItem.card.size === "half";
+            if (!hasPartner) {
+              // Orphan half card! Auto-expand to col-span-2 so no empty space appears
+              isHalf = false;
+            }
+          }
+        }
         return (
           <motion.div
             key={card.id}
