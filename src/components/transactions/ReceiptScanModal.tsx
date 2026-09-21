@@ -512,7 +512,7 @@ export function ReceiptScanModal({
       addCategoryMutation.mutate(
         {
           name: unregisteredCategoryName,
-          emoji: "🏷️",
+          emoji: "tag",
           type: "expense",
         },
         {

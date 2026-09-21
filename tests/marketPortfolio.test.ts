@@ -244,3 +244,114 @@ describe("Bifocal Liquidity Segmentation Rules", () => {
     expect(result.marketAccounts.length).toBe(0);
   });
 });
+
+describe("DCA Position Management & History Curves", () => {
+  it("recalculates weighted average buy price on DCA purchases", async () => {
+    const { recordHoldingActivity, upsertHolding, getSavedHoldings } = await import(
+      "../src/lib/marketPriceService"
+    );
+
+    const testUser = "test-user-dca";
+    const initialHolding: InvestmentHolding = {
+      id: "h-eth-dca",
+      symbol: "ETH",
+      name: "Ethereum",
+      asset_type: "crypto",
+      units: 1,
+      avg_buy_price: 40_000_000,
+      current_price: 45_000_000,
+      currency: "IDR",
+    };
+
+    const saved = upsertHolding(initialHolding, testUser);
+    const holdingId = saved[0].id;
+
+    // DCA Buy: buy 1 more ETH at 50,000,000
+    // Total units: 2, Total cost: 40M + 50M = 90M -> new avg buy price: 45M
+    const { updatedHolding } = recordHoldingActivity(
+      holdingId,
+      {
+        type: "buy",
+        units: 1,
+        price_per_unit: 50_000_000,
+        total_amount: 50_000_000,
+        date: "2026-09-21",
+        note: "DCA Dip Buy",
+      },
+      testUser,
+    );
+
+    expect(updatedHolding.units).toBe(2);
+    expect(updatedHolding.avg_buy_price).toBe(45_000_000);
+    expect(updatedHolding.activities?.length).toBeGreaterThan(0);
+  });
+
+  it("calculates realized gain/loss on position liquidation and preserves per-unit cost basis", async () => {
+    const { recordHoldingActivity, upsertHolding } = await import(
+      "../src/lib/marketPriceService"
+    );
+
+    const testUser = "test-user-sell";
+    const initialHolding: InvestmentHolding = {
+      id: "h-btc-sell",
+      symbol: "BTC",
+      name: "Bitcoin",
+      asset_type: "crypto",
+      units: 2,
+      avg_buy_price: 1_000_000_000,
+      current_price: 1_200_000_000,
+      currency: "IDR",
+    };
+
+    const saved = upsertHolding(initialHolding, testUser);
+    const holdingId = saved[0].id;
+
+    // Liquidate 1 BTC at 1,300,000,000
+    // Realized Profit: 1 * (1.3B - 1.0B) = +300M
+    const { updatedHolding, realizedPnL } = recordHoldingActivity(
+      holdingId,
+      {
+        type: "sell",
+        units: 1,
+        price_per_unit: 1_300_000_000,
+        total_amount: 1_300_000_000,
+        date: "2026-09-21",
+        note: "Take profit",
+      },
+      testUser,
+    );
+
+    expect(realizedPnL).toBe(300_000_000);
+    expect(updatedHolding.units).toBe(1);
+    expect(updatedHolding.avg_buy_price).toBe(1_000_000_000); // unchanged cost basis per remaining unit
+  });
+
+  it("generates smooth multi-timeframe asset history curves for both Value and Return", async () => {
+    const { generateAssetHistoryCurve } = await import(
+      "../src/lib/marketPriceService"
+    );
+
+    const holding: InvestmentHolding = {
+      id: "h-curve",
+      symbol: "SOL",
+      name: "Solana",
+      asset_type: "crypto",
+      units: 10,
+      avg_buy_price: 2_000_000,
+      current_price: 2_500_000,
+      currency: "IDR",
+    };
+
+    const curve1W = generateAssetHistoryCurve(holding, "1W", 2_500_000);
+    expect(curve1W.length).toBe(7);
+    expect(curve1W[0]).toHaveProperty("value");
+    expect(curve1W[0]).toHaveProperty("returnVal");
+    expect(curve1W[0]).toHaveProperty("returnPct");
+    expect(curve1W[6].value).toBe(25_000_000); // 10 * 2.5M
+    expect(curve1W[6].returnVal).toBe(5_000_000); // 25M - 20M
+
+    const curve1Y = generateAssetHistoryCurve(holding, "1Y", 2_500_000);
+    expect(curve1Y.length).toBe(12);
+  });
+});
+

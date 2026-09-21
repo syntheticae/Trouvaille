@@ -22,8 +22,21 @@ export type AssetType =
   | "bond"
   | "fixed_asset";
 
+export interface HoldingActivity {
+  id: string;
+  holding_id: string;
+  type: "buy" | "sell" | "initial";
+  date: string; // YYYY-MM-DD
+  units: number;
+  price_per_unit: number;
+  total_amount: number;
+  note?: string;
+  created_at?: string;
+}
+
 export interface InvestmentHolding {
   id: string;
+  user_id?: string;
   wallet_id?: string;
   symbol: string;
   name: string;
@@ -37,6 +50,7 @@ export interface InvestmentHolding {
   icon?: string;
   annual_rate?: number; // Estimated annual appreciation (+) or depreciation (-) rate in percent
   purchase_date?: string; // YYYY-MM-DD
+  activities?: HoldingActivity[];
 }
 
 export type CashflowNature = "operating" | "investing" | "financing";
@@ -63,6 +77,19 @@ export interface Wallet {
   balance?: number;
 }
 
+export interface FinancialLedger {
+  id: string;
+  user_id?: string;
+  name: string;
+  description: string;
+  icon: string;
+  currency?: string;
+  is_default?: boolean;
+  isDefault?: boolean;
+  created_at?: string;
+  tag?: string;
+}
+
 export interface Transaction {
   id: string;
   user_id: string;
@@ -76,6 +103,7 @@ export interface Transaction {
   created_at: string;
   categories?: Category | null;
   space_id?: string | null;
+  ledger_id?: string | null;
 }
 
 export interface Bill {

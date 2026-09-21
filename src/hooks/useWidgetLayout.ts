@@ -5,7 +5,12 @@
 // ======================================================================
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import type { CardWidgetConfig, WidgetSize, HomePresetKey } from "../lib/widgetLayoutTypes";
+import type {
+  CardWidgetConfig,
+  WidgetSize,
+  HomePresetKey,
+  StatisticsPresetKey,
+} from "../lib/widgetLayoutTypes";
 import { DEFAULT_HOME_WIDGETS } from "../lib/widgetLayoutTypes";
 import {
   STORAGE_KEY,
@@ -75,7 +80,7 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
     setWidgets(defaultWidgets);
   }, [defaultWidgets]);
 
-  const applyPreset = useCallback((presetKey: HomePresetKey) => {
+  const applyPreset = useCallback((presetKey: HomePresetKey | StatisticsPresetKey) => {
     triggerHaptic("medium");
     setWidgets((prev) => applyPresetToWidgets(prev, presetKey));
   }, []);

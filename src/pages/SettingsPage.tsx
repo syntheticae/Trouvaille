@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { triggerHaptic } from "../lib/haptics";
 import {
   ChevronRight,
@@ -12,32 +12,33 @@ import {
   Receipt,
   Target,
   SlidersHorizontal,
-  Sun,
-  BellRing,
   Zap,
   Smartphone,
   Cloud,
   FileLock2,
   FileSpreadsheet,
   RotateCcw,
-  ShieldCheck,
   Clock,
   KeyRound,
   Camera,
   Search,
   X,
-  EyeOff,
-  Tag,
   Coins,
-  Calculator,
   Languages,
+  Sun,
+  Calculator,
+  Tag,
+  Paperclip,
+  BellRing,
+  CalendarClock,
+  EyeOff,
+  ShieldCheck,
+  BookOpen,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useLanguage } from "../contexts/LanguageContext";
-import { CurrencySwitcherSheet } from "../components/currency/CurrencySwitcherSheet";
-import { LanguageSwitcherSheet } from "../components/settings/LanguageSwitcherSheet";
-import { AppleShortcutsGuideModal } from "../components/settings/AppleShortcutsGuideModal";
+import { useSpace } from "../contexts/SpaceContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBills } from "../hooks/useBills";
 import { useToast } from "../contexts/ToastContext";
@@ -57,8 +58,6 @@ import {
   fetchAllTransactionsFromSupabase,
   transactionKeys,
 } from "../hooks/useTransactions";
-import { ResetTransactionsSheet } from "../components/settings/ResetTransactionsSheet";
-import { LuxuryReportExportSheet } from "../components/export/LuxuryReportExportSheet";
 import {
   requestNotificationPermission,
   syncBillNotifications,
@@ -67,20 +66,99 @@ import {
   cancelDailyStreakReminder,
 } from "../lib/notifications";
 import { flushPendingMutations } from "../lib/syncEngine";
-import { EncryptedVaultModal } from "../components/security/EncryptedVaultModal";
 import { saveBiometricLoginCredentials } from "../lib/biometricAuth";
 
-import { ProfileSheet } from "../components/settings/ProfileSheet";
-import { BillManagementSheets } from "../components/settings/BillManagementSheets";
-import { CategoryManagementSheets } from "../components/settings/CategoryManagementSheets";
-import { WalletManagementSheets } from "../components/settings/WalletManagementSheets";
-import { GoalManagementSheets } from "../components/settings/GoalManagementSheets";
-import { ShortcutManagementSheets } from "../components/settings/ShortcutManagementSheets";
-import { PinSetupModal } from "../components/settings/PinSetupModal";
-import { BudgetTargetSheet } from "../components/settings/BudgetTargetSheet";
-import { MediaPermissionsSheet } from "../components/settings/MediaPermissionsSheet";
-import { AssetValuationSheet } from "../components/settings/AssetValuationSheet";
-import { DeleteAccountModal } from "../components/settings/DeleteAccountModal";
+// Code-split heavy modular sheets and exporters
+const CurrencySwitcherSheet = lazy(() =>
+  import("../components/currency/CurrencySwitcherSheet").then((m) => ({
+    default: m.CurrencySwitcherSheet,
+  }))
+);
+const LanguageSwitcherSheet = lazy(() =>
+  import("../components/settings/LanguageSwitcherSheet").then((m) => ({
+    default: m.LanguageSwitcherSheet,
+  }))
+);
+const AppleShortcutsGuideModal = lazy(() =>
+  import("../components/settings/AppleShortcutsGuideModal").then((m) => ({
+    default: m.AppleShortcutsGuideModal,
+  }))
+);
+const ResetTransactionsSheet = lazy(() =>
+  import("../components/settings/ResetTransactionsSheet").then((m) => ({
+    default: m.ResetTransactionsSheet,
+  }))
+);
+const LuxuryReportExportSheet = lazy(() =>
+  import("../components/export/LuxuryReportExportSheet").then((m) => ({
+    default: m.LuxuryReportExportSheet,
+  }))
+);
+const EncryptedVaultModal = lazy(() =>
+  import("../components/security/EncryptedVaultModal").then((m) => ({
+    default: m.EncryptedVaultModal,
+  }))
+);
+const ProfileSheet = lazy(() =>
+  import("../components/settings/ProfileSheet").then((m) => ({
+    default: m.ProfileSheet,
+  }))
+);
+const BillManagementSheets = lazy(() =>
+  import("../components/settings/BillManagementSheets").then((m) => ({
+    default: m.BillManagementSheets,
+  }))
+);
+const CategoryManagementSheets = lazy(() =>
+  import("../components/settings/CategoryManagementSheets").then((m) => ({
+    default: m.CategoryManagementSheets,
+  }))
+);
+const WalletManagementSheets = lazy(() =>
+  import("../components/settings/WalletManagementSheets").then((m) => ({
+    default: m.WalletManagementSheets,
+  }))
+);
+const GoalManagementSheets = lazy(() =>
+  import("../components/settings/GoalManagementSheets").then((m) => ({
+    default: m.GoalManagementSheets,
+  }))
+);
+const ShortcutManagementSheets = lazy(() =>
+  import("../components/settings/ShortcutManagementSheets").then((m) => ({
+    default: m.ShortcutManagementSheets,
+  }))
+);
+const PinSetupModal = lazy(() =>
+  import("../components/settings/PinSetupModal").then((m) => ({
+    default: m.PinSetupModal,
+  }))
+);
+const BudgetTargetSheet = lazy(() =>
+  import("../components/settings/BudgetTargetSheet").then((m) => ({
+    default: m.BudgetTargetSheet,
+  }))
+);
+const MediaPermissionsSheet = lazy(() =>
+  import("../components/settings/MediaPermissionsSheet").then((m) => ({
+    default: m.MediaPermissionsSheet,
+  }))
+);
+const AssetValuationSheet = lazy(() =>
+  import("../components/settings/AssetValuationSheet").then((m) => ({
+    default: m.AssetValuationSheet,
+  }))
+);
+const ManageLedgersSheet = lazy(() =>
+  import("../components/settings/ManageLedgersSheet").then((m) => ({
+    default: m.ManageLedgersSheet,
+  }))
+);
+const DeleteAccountModal = lazy(() =>
+  import("../components/settings/DeleteAccountModal").then((m) => ({
+    default: m.DeleteAccountModal,
+  }))
+);
 
 
 
@@ -108,7 +186,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   } = useSecurityLock();
   const { isPrivacyShieldEnabled, togglePrivacyShield } = usePrivacy();
   const { preferredCurrency, currencyMeta } = useCurrency();
-  const { language, t } = useLanguage();
+  const { language, isIndonesian, t } = useLanguage();
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -199,10 +277,13 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   );
   const [mediaPermissionsOpen, setMediaPermissionsOpen] = useState(false);
   const [valuationOpen, setValuationOpen] = useState(false);
+  const [manageLedgersOpen, setManageLedgersOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [languageSheetOpen, setLanguageSheetOpen] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+
+  const { activeSpace } = useSpace();
 
   // Notification toggles
   const [billRemindersEnabled, setBillRemindersEnabled] = useState(() => {
@@ -620,6 +701,49 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             Financial Architecture
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
+            {/* Manage Ledgers */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setManageLedgersOpen(true);
+              }}
+              className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <BookOpen size={14} strokeWidth={1.75} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {isIndonesian ? "Kelola Buku Kas" : "Manage Ledgers"}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span
+                  className="text-[12px] font-mono"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {activeSpace?.name || "Personal Ledger"}
+                </span>
+                <ChevronRight
+                  size={15}
+                  style={{ color: "var(--text-secondary)" }}
+                />
+              </div>
+            </button>
+
             {/* Manage Categories */}
             {showCategories && (
               <button
@@ -966,8 +1090,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
             {/* Light Appearance Toggle */}
             {showTheme && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
@@ -978,12 +1102,22 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   >
                     <Sun size={14} strokeWidth={1.75} />
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Light Appearance
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Tampilan Terang" : "Light Appearance"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Gunakan estetika monokrom alabaster"
+                        : "Use clean alabaster luxury monochrome"}
+                    </span>
+                  </div>
                 </div>
                 <ToggleSwitch
                   checked={theme === "light"}
@@ -998,8 +1132,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
             {/* Liquid Custom Keypad Toggle */}
             {showKeypad && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
@@ -1010,12 +1144,22 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   >
                     <Calculator size={14} strokeWidth={1.75} />
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Liquid Numeric Keypad
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Papan Tombol Angka Kustom" : "Liquid Numeric Keypad"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Keypad floating haptik khusus input nominal"
+                        : "Tactile haptic numpad for seamless transaction entry"}
+                    </span>
+                  </div>
                 </div>
                 <ToggleSwitch
                   checked={customKeypadEnabled}
@@ -1027,8 +1171,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
             {/* Transaction Tags Toggle */}
             {showTags && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
@@ -1039,12 +1183,22 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   >
                     <Tag size={14} strokeWidth={1.75} />
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Transaction Tags (#)
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Label Transaksi (#)" : "Transaction Tags (#)"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Kelompokkan transaksi dengan tagar kustom"
+                        : "Organize transactions with multi-tag hashtags"}
+                    </span>
+                  </div>
                 </div>
                 <ToggleSwitch
                   checked={tagsEnabled}
@@ -1056,8 +1210,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
             {/* Save Attachment Files Toggle */}
             {showSaveAttachments && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
@@ -1066,14 +1220,24 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Camera size={14} strokeWidth={1.75} />
+                    <Paperclip size={14} strokeWidth={1.75} />
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Save Attachment Files
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Simpan File Lampiran" : "Save Attachment Files"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Simpan foto struk langsung ke penyimpanan lokal"
+                        : "Store receipt photo attachments locally on device"}
+                    </span>
+                  </div>
                 </div>
                 <ToggleSwitch
                   checked={saveAttachmentsEnabled}
@@ -1199,8 +1363,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
             {/* Daily Streak Reminder Toggle */}
             {showDailyReminder && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
@@ -1209,14 +1373,24 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Clock size={14} strokeWidth={1.75} />
+                    <BellRing size={14} strokeWidth={1.75} />
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Daily Streak Reminder (20:00)
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Pengingat Streak Harian (20:00)" : "Daily Streak Reminder (20:00)"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Notifikasi malam untuk menjaga catatan finansial rutin"
+                        : "Evening notification to keep your ledger up to date"}
+                    </span>
+                  </div>
                 </div>
                 <ToggleSwitch
                   checked={dailyReminderEnabled}
@@ -1228,8 +1402,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
             {/* Bill Reminders Toggle */}
             {showBillReminders && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
@@ -1238,14 +1412,24 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       color: "var(--text-primary)",
                     }}
                   >
-                    <BellRing size={14} strokeWidth={1.75} />
+                    <CalendarClock size={14} strokeWidth={1.75} />
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Bill Due Alerts
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Peringatan Tagihan Jatuh Tempo" : "Bill Due Alerts"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Peringatan proaktif sebelum tanggal tagihan rutin"
+                        : "Proactive reminders before recurring payment due dates"}
+                    </span>
+                  </div>
                 </div>
                 <ToggleSwitch
                   checked={billRemindersEnabled}
@@ -1272,8 +1456,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
             {/* Privacy Shield Toggle */}
             {showPrivacyShield && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
@@ -1284,12 +1468,22 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   >
                     <EyeOff size={14} strokeWidth={1.75} />
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Privacy Shield (Mask Balances)
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Perisai Privasi (Sensor Saldo)" : "Privacy Shield (Mask Balances)"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Samarkan angka saldo di seluruh kartu dan laporan"
+                        : "Obfuscate currency balances across cards and reports"}
+                    </span>
+                  </div>
                 </div>
                 <ToggleSwitch
                   checked={isPrivacyShieldEnabled}
@@ -1297,8 +1491,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     togglePrivacyShield();
                     showToast(
                       isPrivacyShieldEnabled
-                        ? "Privacy Shield disabled"
-                        : "Privacy Shield enabled",
+                        ? (isIndonesian ? "Perisai Privasi dinonaktifkan" : "Privacy Shield disabled")
+                        : (isIndonesian ? "Perisai Privasi diaktifkan" : "Privacy Shield enabled"),
                       "update",
                       () => {},
                     );
@@ -1310,8 +1504,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
             {/* Require Face ID / PIN Toggle */}
             {showFaceID && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
@@ -1322,12 +1516,22 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   >
                     <ShieldCheck size={14} strokeWidth={1.75} />
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Require Face ID / PIN
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Kunci Aplikasi (Biometrik / PIN)" : "Require Face ID / PIN"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Wajibkan otentikasi biometrik atau PIN saat membuka aplikasi"
+                        : "Enforce biometric verification or passcode on launch"}
+                    </span>
+                  </div>
                 </div>
                 <ToggleSwitch
                   checked={securitySettings.enabled}
@@ -1830,106 +2034,113 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
       )}
 
       {/* ============================================================ */}
-      {/* MODULAR BOTTOM SHEETS / MODALS */}
+      {/* MODULAR BOTTOM SHEETS / MODALS (LAZY LOADED) */}
       {/* ============================================================ */}
 
-      <ProfileSheet
-        isOpen={profileOpen}
-        onClose={() => setProfileOpen(false)}
-        displayName={displayName}
-        avatarUrl={avatarUrl}
-        setDisplayName={setDisplayName}
-        setAvatarUrl={setAvatarUrl}
-        onOpenDeleteAccount={() => {
-          setProfileOpen(false);
-          setDeleteAccountOpen(true);
-        }}
-      />
+      <Suspense fallback={null}>
+        <ProfileSheet
+          isOpen={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          setDisplayName={setDisplayName}
+          setAvatarUrl={setAvatarUrl}
+          onOpenDeleteAccount={() => {
+            setProfileOpen(false);
+            setDeleteAccountOpen(true);
+          }}
+        />
 
-      <BillManagementSheets
-        isOpen={billListOpen}
-        onClose={() => setBillListOpen(false)}
-      />
+        <BillManagementSheets
+          isOpen={billListOpen}
+          onClose={() => setBillListOpen(false)}
+        />
 
-      <BudgetTargetSheet
-        isOpen={budgetTargetOpen}
-        onClose={() => setBudgetTargetOpen(false)}
-        budgetTarget={budgetTarget}
-        setBudgetTarget={setBudgetTarget}
-        budgetPeriodStart={budgetPeriodStart}
-        setBudgetPeriodStart={setBudgetPeriodStart}
-      />
+        <BudgetTargetSheet
+          isOpen={budgetTargetOpen}
+          onClose={() => setBudgetTargetOpen(false)}
+          budgetTarget={budgetTarget}
+          setBudgetTarget={setBudgetTarget}
+          budgetPeriodStart={budgetPeriodStart}
+          setBudgetPeriodStart={setBudgetPeriodStart}
+        />
 
-      <GoalManagementSheets
-        isOpen={goalsOpen}
-        onClose={() => setGoalsOpen(false)}
-      />
+        <GoalManagementSheets
+          isOpen={goalsOpen}
+          onClose={() => setGoalsOpen(false)}
+        />
 
-      <CategoryManagementSheets
-        isOpen={categoriesOpen}
-        onClose={() => setCategoriesOpen(false)}
-      />
+        <CategoryManagementSheets
+          isOpen={categoriesOpen}
+          onClose={() => setCategoriesOpen(false)}
+        />
 
-      <WalletManagementSheets
-        isOpen={budgetsOpen}
-        onClose={() => setBudgetsOpen(false)}
-      />
+        <WalletManagementSheets
+          isOpen={budgetsOpen}
+          onClose={() => setBudgetsOpen(false)}
+        />
 
-      <ShortcutManagementSheets
-        isOpen={shortcutsOpen}
-        onClose={() => setShortcutsOpen(false)}
-      />
+        <ShortcutManagementSheets
+          isOpen={shortcutsOpen}
+          onClose={() => setShortcutsOpen(false)}
+        />
 
-      <AppleShortcutsGuideModal
-        isOpen={backTapGuideOpen}
-        onClose={() => setBackTapGuideOpen(false)}
-      />
+        <AppleShortcutsGuideModal
+          isOpen={backTapGuideOpen}
+          onClose={() => setBackTapGuideOpen(false)}
+        />
 
-      <PinSetupModal
-        isOpen={pinModalOpen}
-        onClose={() => setPinModalOpen(false)}
-      />
+        <PinSetupModal
+          isOpen={pinModalOpen}
+          onClose={() => setPinModalOpen(false)}
+        />
 
-      <ResetTransactionsSheet
-        isOpen={resetOpen}
-        onClose={() => setResetOpen(false)}
-      />
+        <ResetTransactionsSheet
+          isOpen={resetOpen}
+          onClose={() => setResetOpen(false)}
+        />
 
-      <EncryptedVaultModal
-        isOpen={vaultModalOpen}
-        onClose={() => setVaultModalOpen(false)}
-        defaultTab={vaultDefaultTab}
-      />
+        <EncryptedVaultModal
+          isOpen={vaultModalOpen}
+          onClose={() => setVaultModalOpen(false)}
+          defaultTab={vaultDefaultTab}
+        />
 
-      <MediaPermissionsSheet
-        isOpen={mediaPermissionsOpen}
-        onClose={() => setMediaPermissionsOpen(false)}
-      />
+        <MediaPermissionsSheet
+          isOpen={mediaPermissionsOpen}
+          onClose={() => setMediaPermissionsOpen(false)}
+        />
 
-      <AssetValuationSheet
-        isOpen={valuationOpen}
-        onClose={() => setValuationOpen(false)}
-      />
+        <AssetValuationSheet
+          isOpen={valuationOpen}
+          onClose={() => setValuationOpen(false)}
+        />
 
-      <CurrencySwitcherSheet
-        isOpen={currencySheetOpen}
-        onClose={() => setCurrencySheetOpen(false)}
-      />
+        <ManageLedgersSheet
+          isOpen={manageLedgersOpen}
+          onClose={() => setManageLedgersOpen(false)}
+        />
 
-      <LanguageSwitcherSheet
-        isOpen={languageSheetOpen}
-        onClose={() => setLanguageSheetOpen(false)}
-      />
+        <CurrencySwitcherSheet
+          isOpen={currencySheetOpen}
+          onClose={() => setCurrencySheetOpen(false)}
+        />
 
-      <LuxuryReportExportSheet
-        isOpen={reportExportOpen}
-        onClose={() => setReportExportOpen(false)}
-      />
+        <LanguageSwitcherSheet
+          isOpen={languageSheetOpen}
+          onClose={() => setLanguageSheetOpen(false)}
+        />
 
-      <DeleteAccountModal
-        isOpen={deleteAccountOpen}
-        onClose={() => setDeleteAccountOpen(false)}
-      />
+        <LuxuryReportExportSheet
+          isOpen={reportExportOpen}
+          onClose={() => setReportExportOpen(false)}
+        />
+
+        <DeleteAccountModal
+          isOpen={deleteAccountOpen}
+          onClose={() => setDeleteAccountOpen(false)}
+        />
+      </Suspense>
     </div>
   );
 }

@@ -93,6 +93,7 @@ import {
   endOfMonth,
   getDay,
   subDays,
+  startOfDay,
 } from "date-fns";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { BalanceCard } from "../components/ui/BalanceCard";
@@ -159,14 +160,22 @@ function formatAxisY(val: number): string {
 export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: HomePageProps) {
   const navigate = useNavigate();
   const { t, isIndonesian } = useLanguage();
-  const [now, setNow] = useState(() => new Date());
+  const [todayDate, setTodayDate] = useState(() => startOfDay(new Date()));
+  const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(new Date());
-    }, 60000);
+    const checkDateAndHour = () => {
+      const current = new Date();
+      const h = current.getHours();
+      setCurrentHour((prev) => (prev !== h ? h : prev));
+
+      const dayMidnight = startOfDay(current);
+      setTodayDate((prev) => (prev.getTime() !== dayMidnight.getTime() ? dayMidnight : prev));
+    };
+
+    const timer = setInterval(checkDateAndHour, 60000);
     const handleVis = () => {
-      if (!document.hidden) setNow(new Date());
+      if (!document.hidden) checkDateAndHour();
     };
     document.addEventListener("visibilitychange", handleVis);
     return () => {
@@ -174,6 +183,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       document.removeEventListener("visibilitychange", handleVis);
     };
   }, []);
+
+  // `now` maintains stable date reference throughout the day to prevent invalidating useMemos
+  const now = todayDate;
   const { session } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isDark = theme !== "light";
@@ -635,7 +647,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     }
   }, [session]);
 
-  const hour = now.getHours();
+  const hour = currentHour;
   const greetingPrefix = isIndonesian
     ? hour >= 4 && hour < 12
       ? "Selamat Pagi"

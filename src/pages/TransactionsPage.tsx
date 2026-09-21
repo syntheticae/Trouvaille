@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   Tag,
   CheckSquare,
+  Check,
   Trash2,
   Eye,
   EyeOff,
@@ -36,6 +37,7 @@ import { useCategories } from "../hooks/useCategories";
 import { useToast } from "../contexts/ToastContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useSpace } from "../contexts/SpaceContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { TransactionSheet } from "../components/transactions/TransactionSheet";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
@@ -203,6 +205,7 @@ export function TransactionsPage({
   const deleteTx = useDeleteTransaction();
   const batchDeleteTx = useBatchDeleteTransactions();
   const { showToast } = useToast();
+  const { t, isIndonesian } = useLanguage();
   const { activeSpace, activeSpaceId, setActiveSpaceId, filterTransactionsBySpace } = useSpace();
 
   // Selection Mode State for Bulk Actions
@@ -1308,16 +1311,16 @@ export function TransactionsPage({
               style={{ color: "var(--text-primary)" }}
             >
               {search
-                ? "No matching transactions found"
-                : "No transactions recorded in this period"}
+                ? (isIndonesian ? "Tidak ada transaksi yang cocok" : "No matching transactions found")
+                : (isIndonesian ? "Tidak ada transaksi pada periode ini" : "No transactions recorded in this period")}
             </p>
             <p
               className="text-[12px] mt-1 max-w-[260px] leading-relaxed"
               style={{ color: "var(--text-tertiary)" }}
             >
               {search
-                ? "Try searching with different keywords or adjust your filters."
-                : "Start managing your finances by logging your expenses and income."}
+                ? t("transactions.emptySearch", "Try searching with different keywords or adjust your filters.")
+                : t("transactions.emptyFresh", "Start managing your finances by logging your expenses and income.")}
             </p>
           </div>
         ) : (
@@ -1399,11 +1402,11 @@ export function TransactionsPage({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 35, scale: 0.96 }}
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="fixed bottom-[calc(90px+env(safe-area-inset-bottom))] left-4 right-4 z-[9999] p-3 rounded-[24px] flex items-center justify-between shadow-2xl pointer-events-auto"
+            className="fixed bottom-[calc(78px+env(safe-area-inset-bottom,16px))] left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-md z-[9999] p-3 rounded-[24px] flex items-center justify-between pointer-events-auto"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
-              boxShadow: "0 16px 48px rgba(0,0,0,0.55)",
+              boxShadow: "var(--shadow-card), 0 16px 40px rgba(0,0,0,0.35)",
               backdropFilter: "blur(24px) saturate(180%)",
               WebkitBackdropFilter: "blur(24px) saturate(180%)",
             }}
@@ -1413,7 +1416,7 @@ export function TransactionsPage({
                 className="text-[13px] font-bold px-1.5"
                 style={{ color: "var(--text-primary)" }}
               >
-                {selectedTxIds.size} Selected
+                {selectedTxIds.size} {isIndonesian ? "Dipilih" : "Selected"}
               </span>
               <button
                 type="button"
@@ -1437,8 +1440,8 @@ export function TransactionsPage({
               >
                 {selectedTxIds.size === visibleTxs.length &&
                 visibleTxs.length > 0
-                  ? "Deselect All"
-                  : "Select All"}
+                  ? (isIndonesian ? "Batalkan Pilihan" : "Deselect All")
+                  : (isIndonesian ? "Pilih Semua" : "Select All")}
               </button>
             </div>
 
@@ -1486,13 +1489,15 @@ export function TransactionsPage({
                 className="font-semibold text-base"
                 style={{ color: "var(--text-primary)" }}
               >
-                Select Timeframe
+                {isIndonesian ? "Pilih Rentang Waktu" : "Select Timeframe"}
               </h3>
               <p
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Filter transactions by month or year
+                {isIndonesian
+                  ? "Filter transaksi berdasarkan bulan atau tahun"
+                  : "Filter transactions by month or year"}
               </p>
             </div>
           </div>
@@ -1500,10 +1505,10 @@ export function TransactionsPage({
           {/* Quick Presets */}
           <div className="grid grid-cols-2 gap-2">
             {[
-              { key: "this_month", label: "This Month" },
-              { key: "last_month", label: "Last Month" },
-              { key: "last_30", label: "Last 30 Days" },
-              { key: "all", label: "All Time" },
+              { key: "this_month", label: isIndonesian ? "Bulan Ini" : "This Month" },
+              { key: "last_month", label: isIndonesian ? "Bulan Lalu" : "Last Month" },
+              { key: "last_30", label: isIndonesian ? "30 Hari Terakhir" : "Last 30 Days" },
+              { key: "all", label: isIndonesian ? "Semua Waktu" : "All Time" },
             ].map((preset) => {
               const isSelected = timeRange === preset.key;
               return (
@@ -1529,7 +1534,7 @@ export function TransactionsPage({
                   }}
                 >
                   <span>{preset.label}</span>
-                  {isSelected && <span className="text-[11px]">✓</span>}
+                  {isSelected && <Check size={12} strokeWidth={2.5} />}
                 </button>
               );
             })}
@@ -1542,7 +1547,7 @@ export function TransactionsPage({
                 className="text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Specific Month in Year
+                {isIndonesian ? "Pilih Bulan dalam Tahun" : "Specific Month in Year"}
               </span>
               <span
                 className="text-[12px] font-semibold"

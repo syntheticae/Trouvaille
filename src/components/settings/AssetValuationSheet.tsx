@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import {
   RefreshCw,
   Plus,
-  Trash2,
   Edit3,
   Coins,
   ArrowUpRight,
@@ -10,19 +9,20 @@ import {
   X,
   Search,
   ChevronRight,
+  TrendingUp,
+  ShieldCheck,
 } from "lucide-react";
-import { format, subMinutes } from "date-fns";
+import { format } from "date-fns";
 import { BottomSheet } from "../ui/BottomSheet";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { IconRenderer } from "../ui/IconRenderer";
 import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
+import { AssetDetailSheet } from "./AssetDetailSheet";
 import { autoSuggestIcon } from "../../lib/iconRegistry";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
-import { useCategories } from "../../hooks/useCategories";
-import { useAddTransaction } from "../../hooks/useTransactions";
 import {
   useWallets,
   saveWalletClassification,
@@ -124,40 +124,12 @@ interface AssetValuationSheetProps {
   onClose: () => void;
 }
 
-interface DetailHoldingItem {
-  isUsdt: boolean;
-  holding?: InvestmentHolding;
-  symbol: string;
-  name: string;
-  units: number;
-  rate: number;
-  costBasis: number;
-  marketValue: number;
-  floatingPnL: number;
-  floatingPnLPct: number;
-  icon: string;
-  asset_type: AssetType;
-}
-
 export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { showToast } = useToast();
   const { data: wallets = [], refetch: refetchWallets } = useWallets();
   const { balancesByName } = useWalletBalances();
-  const { data: categories = [] } = useCategories();
-  const addTx = useAddTransaction();
-
-  // Detail Pop Card & Realization States
-  const [detailHolding, setDetailHolding] = useState<DetailHoldingItem | null>(null);
-  const [realizeModalOpen, setRealizeModalOpen] = useState(false);
-  const [realizeType, setRealizeType] = useState<"income" | "expense">("income");
-  const [realizeAmount, setRealizeAmount] = useState<string>("");
-  const [realizeDate, setRealizeDate] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
-  const [realizeTime, setRealizeTime] = useState<string>(() => format(new Date(), "HH:mm"));
-  const [realizeWalletId, setRealizeWalletId] = useState<string>("");
-  const [realizeNote, setRealizeNote] = useState<string>("");
-  const [isRealizing, setIsRealizing] = useState(false);
   const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
 
   // Find crypto wallet
@@ -248,8 +220,10 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const [formName, setFormName] = useState("");
   const [formType, setFormType] = useState<AssetType>("stock");
   const [formUnits, setFormUnits] = useState("1");
+  const [formInvestedAmount, setFormInvestedAmount] = useState("");
   const [formBuyPrice, setFormBuyPrice] = useState("");
   const [formCurrentPrice, setFormCurrentPrice] = useState("");
+  const [selectedDetailHolding, setSelectedDetailHolding] = useState<InvestmentHolding | null>(null);
   const [isFetchingCurrentPrice, setIsFetchingCurrentPrice] = useState(false);
   const [formIcon, setFormIcon] = useState("TrendingUp");
   const [hasCustomPickedAssetIcon, setHasCustomPickedAssetIcon] = useState(false);
@@ -432,6 +406,65 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     return calculatePortfolioSummary(nonUsdtHoldings);
   }, [holdings]);
 
+  // Split holdings into Liquid Portfolios vs Fixed & Tangible Assets
+  const liquidHoldings = useMemo(() => {
+    return holdings.filter(
+      (h) => h.symbol?.toUpperCase() !== "USDT" && h.asset_type !== "fixed_asset",
+    );
+  }, [holdings]);
+
+  const fixedHoldings = useMemo(() => {
+    return holdings.filter(
+      (h) => h.symbol?.toUpperCase() !== "USDT" && h.asset_type === "fixed_asset",
+    );
+  }, [holdings]);
+
+  // Subtotal for Liquid Portfolios (includes USDT)
+  const liquidSubtotal = useMemo(() => {
+    const liquidSummary = calculatePortfolioSummary(liquidHoldings);
+    const totalMarketValue = usdtMarketValue + liquidSummary.totalMarketValue;
+    const totalCostBasis = usdtCostBasis + liquidSummary.totalCostBasis;
+    const floatingPnL = totalMarketValue - totalCostBasis;
+    const floatingPnLPct = totalCostBasis > 0 ? (floatingPnL / totalCostBasis) * 100 : 0;
+    const count = (usdtPref.units > 0 || recordedCryptoBalance > 0 ? 1 : 0) + liquidHoldings.length;
+    return {
+      totalMarketValue,
+      totalCostBasis,
+      floatingPnL,
+      floatingPnLPct,
+      count,
+    };
+  }, [liquidHoldings, usdtMarketValue, usdtCostBasis, usdtPref.units, recordedCryptoBalance]);
+
+  // Subtotal for Fixed Assets
+  const fixedSubtotal = useMemo(() => {
+    const fixedSummary = calculatePortfolioSummary(fixedHoldings);
+    return {
+      totalMarketValue: fixedSummary.totalMarketValue,
+      totalCostBasis: fixedSummary.totalCostBasis,
+      floatingPnL: fixedSummary.totalFloatingPnL,
+      floatingPnLPct: fixedSummary.totalFloatingPnLPct,
+      count: fixedHoldings.length,
+    };
+  }, [fixedHoldings]);
+
+  // Open USDT in AssetDetailSheet
+  const openUsdtDetail = () => {
+    triggerHaptic("light");
+    const usdtHolding: InvestmentHolding = {
+      id: `usdt-${user?.id || "guest"}`,
+      symbol: "USDT",
+      name: "Tether USD",
+      asset_type: "crypto",
+      units: usdtPref.units > 0 ? usdtPref.units : suggestedUsdtUnits,
+      avg_buy_price: usdtPref.units > 0 ? Math.round(usdtCostBasis / usdtPref.units) : usdtPref.rate,
+      current_price: usdtPref.rate,
+      currency: "IDR",
+      icon: "Coins",
+    };
+    setSelectedDetailHolding(usdtHolding);
+  };
+
   // Total Floating Profit across all assets
   const totalCostBasis = usdtCostBasis + otherHoldingsSummary.totalCostBasis;
   const totalMarketValuation = usdtMarketValue + otherHoldingsSummary.totalMarketValue;
@@ -575,8 +608,10 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setFormName(h.name);
     setFormType(h.asset_type);
     setFormUnits(String(h.units));
+    const invested = Math.round(h.units * h.avg_buy_price);
+    setFormInvestedAmount(invested > 0 ? String(invested) : "");
     setFormBuyPrice(String(h.avg_buy_price));
-    setFormCurrentPrice(String(h.current_price));
+    setFormCurrentPrice(String(h.current_price || h.avg_buy_price));
     setFormIcon(h.icon || getDefaultAssetIconName(h.asset_type));
     if (typeof h.annual_rate === "number" && h.annual_rate !== 0) {
       setFormAnnualRateSign(h.annual_rate >= 0 ? "+" : "-");
@@ -586,103 +621,18 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
       setFormAnnualRate("");
     }
     setFormPurchaseDate(h.purchase_date || "");
-    setDetailHolding(null);
     setAddPhase(2);
-  };
-
-  const handleOpenRealizeModal = (item: DetailHoldingItem) => {
-    triggerHaptic("light");
-    const isProfit = item.floatingPnL >= 0;
-    setRealizeType(isProfit ? "income" : "expense");
-    setRealizeAmount(String(Math.abs(item.floatingPnL) || item.marketValue));
-    setRealizeDate(format(new Date(), "yyyy-MM-dd"));
-    setRealizeTime(format(new Date(), "HH:mm"));
-    setRealizeWalletId(cryptoWallet?.id || wallets[0]?.id || "");
-    setRealizeNote(`Realized ${isProfit ? "Profit" : "Loss"} ${item.symbol}`);
-    setRealizeModalOpen(true);
-  };
-
-  const handleConfirmRealization = async () => {
-    if (!detailHolding) return;
-    const amt = parseFloat(realizeAmount);
-    if (isNaN(amt) || amt <= 0) {
-      showToast("Please enter a valid amount", "delete", () => {});
-      return;
-    }
-
-    setIsRealizing(true);
-    try {
-      const targetCategory =
-        categories.find(
-          (c) =>
-            c.type === realizeType &&
-            (c.name.toLowerCase().includes("investasi") ||
-              c.name.toLowerCase().includes("trading")),
-        ) ||
-        categories.find((c) => c.type === realizeType) ||
-        null;
-
-      const combinedDateTime = new Date(`${realizeDate}T${realizeTime}:00`);
-      const isoOccurredOn = isNaN(combinedDateTime.getTime())
-        ? new Date().toISOString()
-        : combinedDateTime.toISOString();
-
-      await addTx.mutateAsync({
-        amount: amt,
-        type: realizeType,
-        occurred_on: isoOccurredOn,
-        wallet_id: realizeWalletId || null,
-        category_id: targetCategory?.id || null,
-        note:
-          realizeNote.trim() ||
-          `Realized ${realizeType === "income" ? "Profit" : "Loss"}: ${detailHolding.symbol}`,
-      });
-
-      if (detailHolding.isUsdt) {
-        const newCostBasis =
-          realizeType === "income"
-            ? usdtCostBasis + amt
-            : Math.max(0, usdtCostBasis - amt);
-        const nextPref = { ...usdtPref, costBasis: newCostBasis };
-        setUsdtPref(nextPref);
-        saveUsdtPref(nextPref, user?.id);
-      } else if (detailHolding.holding) {
-        const currentTotalCost = detailHolding.costBasis;
-        const newTotalCost =
-          realizeType === "income"
-            ? currentTotalCost + amt
-            : Math.max(0, currentTotalCost - amt);
-        const newAvgBuy =
-          detailHolding.units > 0 ? newTotalCost / detailHolding.units : 0;
-        const updatedHolding: InvestmentHolding = {
-          ...detailHolding.holding,
-          avg_buy_price: newAvgBuy,
-        };
-        const updatedList = upsertHolding(updatedHolding, user?.id);
-        setHoldings(updatedList);
-      }
-
-      triggerHaptic("medium");
-      showToast(
-        `Recorded ${realizeType === "income" ? "profit" : "loss"} of ${formatRupiah(amt)} as ${realizeType === "income" ? "Income" : "Expense"}`,
-        "add",
-        () => {},
-      );
-      setRealizeModalOpen(false);
-      setDetailHolding(null);
-    } catch (err: any) {
-      showToast(
-        err?.message || "Failed to record realization transaction",
-        "delete",
-        () => {},
-      );
-    } finally {
-      setIsRealizing(false);
-    }
   };
 
   const handleDeleteHolding = (id: string, name: string) => {
     triggerHaptic("heavy");
+    if (id.startsWith("usdt-") || id === "usdt-core-holding") {
+      const cleared: UsdtValuationPref = { units: 0, costBasis: 0, rate: usdtPref.rate };
+      setUsdtPref(cleared);
+      saveUsdtPref(cleared, user?.id);
+      showToast("USDT holding removed", "delete", () => {});
+      return;
+    }
     const updated = deleteHolding(id, user?.id);
     setHoldings(updated);
     showToast(`${name} removed`, "delete", () => {});
@@ -1131,35 +1081,72 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
             {/* For market securities, show Ticker and Units */}
             {formType !== "fixed_asset" && (
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                    Symbol / Ticker
-                  </label>
-                  <input
-                    type="text"
-                    value={formSymbol}
-                    onChange={(e) => setFormSymbol(e.target.value.toUpperCase())}
-                    placeholder="BBCA.JK"
-                    className="w-full px-2.5 py-1.5 rounded-xl text-[12px] font-bold outline-none font-mono"
-                    style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                  />
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
+                      Symbol / Ticker
+                    </label>
+                    <input
+                      type="text"
+                      value={formSymbol}
+                      onChange={(e) => setFormSymbol(e.target.value.toUpperCase())}
+                      placeholder="BBCA.JK"
+                      className="w-full px-2.5 py-1.5 rounded-xl text-[12px] font-bold outline-none font-mono"
+                      style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
+                      Invested Amount (IDR)
+                    </label>
+                    <input
+                      type="number"
+                      value={formInvestedAmount}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormInvestedAmount(val);
+                        const nominal = parseFloat(val);
+                        const price = parseFloat(formBuyPrice) || parseFloat(formCurrentPrice);
+                        if (!isNaN(nominal) && nominal > 0 && price > 0) {
+                          const dec = formType === "crypto" ? 8 : formType === "gold" ? 4 : 2;
+                          setFormUnits(Number((nominal / price).toFixed(dec)).toString());
+                        }
+                      }}
+                      placeholder="e.g. 500000"
+                      className="w-full px-2.5 py-1.5 rounded-xl text-[12px] font-bold outline-none font-mono"
+                      style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                    Units / Shares
-                  </label>
+                <div className="mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                      Estimated Received Units / Shares
+                    </label>
+                    <span className="text-[9px] font-mono text-[var(--text-tertiary)]">
+                      Auto-calculated
+                    </span>
+                  </div>
                   <input
                     type="number"
                     step="any"
                     value={formUnits}
-                    onChange={(e) => setFormUnits(e.target.value)}
-                    placeholder="100"
-                    className="w-full px-2.5 py-1.5 rounded-xl text-[12px] font-bold outline-none"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormUnits(val);
+                      const units = parseFloat(val);
+                      const price = parseFloat(formBuyPrice) || parseFloat(formCurrentPrice);
+                      if (!isNaN(units) && units > 0 && price > 0) {
+                        setFormInvestedAmount(String(Math.round(units * price)));
+                      }
+                    }}
+                    placeholder="e.g. 0.05"
+                    className="w-full px-2.5 py-1.5 rounded-xl text-[12px] font-bold outline-none font-mono"
                     style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
                   />
                 </div>
-              </div>
+              </>
             )}
 
             {/* Acquisition Date & Cost */}
@@ -1392,263 +1379,337 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           </div>
         )}
 
-        {/* 3. Holdings List Deck */}
-        <div className="space-y-2.5">
-          {/* A. Core USDT Holding Row with Quick Toggle */}
-          {(usdtPref.units > 0 || recordedCryptoBalance > 0) && (
-            <div
-              className="p-3.5 rounded-2xl space-y-3"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <div
-              onClick={() => {
-                triggerHaptic("light");
-                setDetailHolding({
-                  isUsdt: true,
-                  symbol: "USDT",
-                  name: "Tether USD",
-                  units: usdtPref.units > 0 ? usdtPref.units : suggestedUsdtUnits,
-                  rate: usdtPref.rate,
-                  costBasis: usdtCostBasis || recordedCryptoBalance,
-                  marketValue: usdtMarketValue || recordedCryptoBalance,
-                  floatingPnL: usdtFloatingPnL,
-                  floatingPnLPct: usdtFloatingPnLPct,
-                  icon: "Coins",
-                  asset_type: "crypto",
-                });
-              }}
-              className="flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-                >
-                  <Coins size={17} style={{ color: "var(--text-primary)" }} />
-                </div>
-                <div className="min-w-0">
-                  <span
-                    className="font-semibold font-mono text-[12px] tracking-wide block leading-none"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    USDT
+        {/* 3. Holdings Sections Deck */}
+        <div className="space-y-4">
+          {/* A. Liquid Market Portfolios Section */}
+          {liquidSubtotal.count > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp size={13} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
+                    Liquid Portfolios
+                  </h4>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)]">
+                    {liquidSubtotal.count}
                   </span>
-                  <p
-                    className="text-[11px] font-medium truncate mt-1 leading-tight"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {usdtPref.units > 0 ? "Tether USD" : `Wallet linked · ${suggestedUsdtUnits} USDT`}
-                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[12px] font-mono font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {formatRupiah(liquidSubtotal.totalMarketValue)}
+                  </span>
                 </div>
               </div>
 
-              {/* Amount & Strictly Monochrome P&L */}
-              <div className="text-right shrink-0">
-                <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
-                  {usdtPref.units > 0 ? formatRupiah(usdtMarketValue) : `~${formatRupiah(recordedCryptoBalance)}`}
-                </span>
-                <span
-                  className="text-[10px] font-bold mt-1 inline-block whitespace-nowrap font-mono"
-                  style={{ color: "var(--text-secondary)" }}
+              {/* Core USDT Holding Row with Quick Toggle */}
+              {(usdtPref.units > 0 || recordedCryptoBalance > 0) && (
+                <div
+                  className="p-3.5 rounded-2xl space-y-3"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                  }}
                 >
-                  {usdtPref.units > 0
-                    ? `${usdtFloatingPnL >= 0 ? "+" : ""}${formatRupiah(usdtFloatingPnL)} (${usdtFloatingPnLPct >= 0 ? "+" : ""}${usdtFloatingPnLPct.toFixed(1)}%)`
-                    : `Tap to calibrate (${suggestedUsdtUnits} USDT)`}
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Actions & Liquid Cash Switch */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--glass-border)]">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setIsEditingUsdt(!isEditingUsdt);
-                }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
-                style={{
-                  background: isEditingUsdt ? "var(--text-primary)" : "var(--glass-fill)",
-                  color: isEditingUsdt ? "var(--bg-base)" : "var(--text-secondary)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <Edit3 size={11} />
-                <span>{isEditingUsdt ? "Close Editor" : "Edit USDT"}</span>
-              </button>
-
-              {/* Apple Luxury Switch for Liquid Cash */}
-              <div
-                onClick={handleToggleCryptoLiquid}
-                className="flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform"
-                title="Toggle counting USDT as liquid operating cash"
-              >
-                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-                  {isCryptoLiquid ? "Liquid Cash: On" : "Liquid Cash: Off"}
-                </span>
-                <div onClick={(e) => e.stopPropagation()}>
-                  <ToggleSwitch
-                    checked={isCryptoLiquid}
-                    onChange={handleToggleCryptoLiquid}
-                    size="sm"
-                    ariaLabel="Toggle USDT as liquid operating cash"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Inline Quick Editor for USDT */}
-            {isEditingUsdt && (
-              <div
-                className="p-3 rounded-xl space-y-2.5 animate-fadeIn mt-1"
-                style={{
-                  background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
-                      USDT Balance ($)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={editUnits}
-                      onChange={(e) => setEditUnits(e.target.value)}
-                      className="w-full px-2 py-1.5 rounded-lg text-[12px] font-bold outline-none"
-                      style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
-                      USD Rate (IDR)
-                    </label>
-                    <input
-                      type="number"
-                      value={editRate}
-                      onChange={(e) => setEditRate(e.target.value)}
-                      className="w-full px-2 py-1.5 rounded-lg text-[12px] font-bold outline-none"
-                      style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    Total Cost Basis (IDR)
-                  </label>
-                  <input
-                    type="number"
-                    value={editCostBasis}
-                    onChange={(e) => setEditCostBasis(e.target.value)}
-                    className="w-full px-2 py-1.5 rounded-lg text-[12px] font-bold outline-none"
-                    style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-1.5 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingUsdt(false)}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-[var(--text-tertiary)] active:scale-95 cursor-pointer"
+                  <div
+                    onClick={openUsdtDetail}
+                    className="flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveUsdt}
-                    className="px-3 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
-                    style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
-                  >
-                    Save
-                  </button>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                      >
+                        <Coins size={17} style={{ color: "var(--text-primary)" }} />
+                      </div>
+                      <div className="min-w-0">
+                        <span
+                          className="font-semibold font-mono text-[12px] tracking-wide block leading-none"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          USDT
+                        </span>
+                        <p
+                          className="text-[11px] font-medium truncate mt-1 leading-tight"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {usdtPref.units > 0 ? "Tether USD" : `Wallet linked · ${suggestedUsdtUnits} USDT`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Amount & Strictly Monochrome P&L */}
+                    <div className="text-right shrink-0">
+                      <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+                        {usdtPref.units > 0 ? formatRupiah(usdtMarketValue) : `~${formatRupiah(recordedCryptoBalance)}`}
+                      </span>
+                      <span
+                        className="text-[10px] font-bold mt-1 inline-block whitespace-nowrap font-mono"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {usdtPref.units > 0
+                          ? `${usdtFloatingPnL >= 0 ? "+" : ""}${formatRupiah(usdtFloatingPnL)} (${usdtFloatingPnLPct >= 0 ? "+" : ""}${usdtFloatingPnLPct.toFixed(1)}%)`
+                          : `Tap to calibrate (${suggestedUsdtUnits} USDT)`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions & Liquid Cash Switch */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--glass-border)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setIsEditingUsdt(!isEditingUsdt);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
+                      style={{
+                        background: isEditingUsdt ? "var(--text-primary)" : "var(--glass-fill)",
+                        color: isEditingUsdt ? "var(--bg-base)" : "var(--text-secondary)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <Edit3 size={11} />
+                      <span>{isEditingUsdt ? "Close Editor" : "Edit USDT"}</span>
+                    </button>
+
+                    {/* Apple Luxury Switch for Liquid Cash */}
+                    <div
+                      onClick={handleToggleCryptoLiquid}
+                      className="flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform"
+                      title="Toggle counting USDT as liquid operating cash"
+                    >
+                      <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>
+                        {isCryptoLiquid ? "Liquid Cash: On" : "Liquid Cash: Off"}
+                      </span>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <ToggleSwitch
+                          checked={isCryptoLiquid}
+                          onChange={handleToggleCryptoLiquid}
+                          size="sm"
+                          ariaLabel="Toggle USDT as liquid operating cash"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Inline Quick Editor for USDT */}
+                  {isEditingUsdt && (
+                    <div
+                      className="p-3 rounded-xl space-y-2.5 animate-fadeIn mt-1"
+                      style={{
+                        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
+                            USDT Balance ($)
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={editUnits}
+                            onChange={(e) => setEditUnits(e.target.value)}
+                            className="w-full px-2 py-1.5 rounded-lg text-[12px] font-bold outline-none"
+                            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
+                            USD Rate (IDR)
+                          </label>
+                          <input
+                            type="number"
+                            value={editRate}
+                            onChange={(e) => setEditRate(e.target.value)}
+                            className="w-full px-2 py-1.5 rounded-lg text-[12px] font-bold outline-none"
+                            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
+                          Total Cost Basis (IDR)
+                        </label>
+                        <input
+                          type="number"
+                          value={editCostBasis}
+                          onChange={(e) => setEditCostBasis(e.target.value)}
+                          className="w-full px-2 py-1.5 rounded-lg text-[12px] font-bold outline-none"
+                          style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-1.5 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingUsdt(false)}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-[var(--text-tertiary)] active:scale-95 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveUsdt}
+                          className="px-3 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
+                          style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Liquid Holdings (Crypto, Stocks, Gold, Mutual Funds, Bonds) */}
+              {liquidHoldings.map((h) => {
+                const val = calculateHoldingValuation(h);
+                return (
+                  <div
+                    key={h.id}
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setSelectedDetailHolding(h);
+                    }}
+                    className="p-3.5 rounded-2xl flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                      >
+                        <IconRenderer icon={h.icon || getDefaultAssetIconName(h.asset_type)} size="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="font-semibold font-mono text-[12px] tracking-wide block leading-none"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {h.symbol}
+                          </span>
+                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.05] text-[var(--text-tertiary)]">
+                            {TYPE_LABELS[h.asset_type] || h.asset_type}
+                          </span>
+                        </div>
+                        <p
+                          className="text-[11px] font-medium truncate mt-1 leading-tight"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {h.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+                        {formatRupiah(val.marketValue)}
+                      </span>
+                      <span
+                        className="text-[10px] font-bold mt-1 inline-block whitespace-nowrap font-mono"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {val.floatingPnL >= 0 ? "+" : ""}
+                        {formatRupiah(val.floatingPnL)} ({val.floatingPnLPct >= 0 ? "+" : ""}
+                        {val.floatingPnLPct.toFixed(1)}%)
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {/* B. Generic & Fixed Assets List */}
-          {holdings
-            .filter((h) => h.symbol?.toUpperCase() !== "USDT")
-            .map((h) => {
-            const val = calculateHoldingValuation(h);
-            return (
-              <div
-                key={h.id}
-                onClick={() => {
-                  triggerHaptic("light");
-                  setDetailHolding({
-                    isUsdt: false,
-                    holding: h,
-                    symbol: h.symbol,
-                    name: h.name,
-                    units: h.units,
-                    rate: h.current_price || h.avg_buy_price,
-                    costBasis: val.costBasis,
-                    marketValue: val.marketValue,
-                    floatingPnL: val.floatingPnL,
-                    floatingPnLPct: val.floatingPnLPct,
-                    icon: h.icon || getDefaultAssetIconName(h.asset_type),
-                    asset_type: h.asset_type,
-                  });
-                }}
-                className="p-3.5 rounded-2xl flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-                  >
-                    <IconRenderer icon={h.icon || getDefaultAssetIconName(h.asset_type)} size="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="font-semibold font-mono text-[12px] tracking-wide block leading-none"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {h.symbol}
-                      </span>
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.05] text-[var(--text-tertiary)]">
-                        {TYPE_LABELS[h.asset_type] || h.asset_type}
-                      </span>
-                    </div>
-                    <p
-                      className="text-[11px] font-medium truncate mt-1 leading-tight"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {h.name}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
-                    {formatRupiah(val.marketValue)}
+          {/* B. Fixed & Tangible Assets Section */}
+          {fixedHoldings.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck size={13} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
+                    Fixed &amp; Tangible Assets
+                  </h4>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)]">
+                    {fixedHoldings.length}
                   </span>
-                  <span
-                    className="text-[10px] font-bold mt-1 inline-block whitespace-nowrap font-mono"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {val.floatingPnL >= 0 ? "+" : ""}
-                    {formatRupiah(val.floatingPnL)} ({val.floatingPnLPct >= 0 ? "+" : ""}
-                    {val.floatingPnLPct.toFixed(1)}%)
+                </div>
+                <div className="text-right">
+                  <span className="text-[12px] font-mono font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {formatRupiah(fixedSubtotal.totalMarketValue)}
                   </span>
                 </div>
               </div>
-            );
-          })}
 
-          {usdtPref.units <= 0 && holdings.length === 0 && (
+              {fixedHoldings.map((h) => {
+                const val = calculateHoldingValuation(h);
+                return (
+                  <div
+                    key={h.id}
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setSelectedDetailHolding(h);
+                    }}
+                    className="p-3.5 rounded-2xl flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                      >
+                        <IconRenderer icon={h.icon || getDefaultAssetIconName(h.asset_type)} size="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="font-semibold font-mono text-[12px] tracking-wide block leading-none"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {h.symbol}
+                          </span>
+                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.05] text-[var(--text-tertiary)]">
+                            {TYPE_LABELS[h.asset_type] || h.asset_type}
+                          </span>
+                        </div>
+                        <p
+                          className="text-[11px] font-medium truncate mt-1 leading-tight"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {h.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+                        {formatRupiah(val.marketValue)}
+                      </span>
+                      <span
+                        className="text-[10px] font-bold mt-1 inline-block whitespace-nowrap font-mono"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {val.floatingPnL >= 0 ? "+" : ""}
+                        {formatRupiah(val.floatingPnL)} ({val.floatingPnLPct >= 0 ? "+" : ""}
+                        {val.floatingPnLPct.toFixed(1)}%)
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {liquidSubtotal.count === 0 && fixedHoldings.length === 0 && (
             <div className="py-8 px-4 text-center rounded-2xl border border-dashed border-[var(--glass-border)] bg-black/[0.01] dark:bg-white/[0.01] space-y-2">
               <div className="w-10 h-10 rounded-xl mx-auto flex items-center justify-center bg-black/[0.03] dark:bg-white/[0.05] border border-[var(--glass-border)] text-[var(--text-tertiary)]">
                 <Coins size={18} strokeWidth={1.5} />
@@ -1692,463 +1753,49 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
         title="Choose Asset Icon"
       />
 
-      {/* ── Apple Luxury Detail Pop Card ─────────────────────────────────── */}
-      {detailHolding && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-md p-0 sm:p-4 animate-fadeIn">
-          <div
-            className="w-full max-w-md rounded-t-[28px] sm:rounded-[28px] p-5 space-y-4 max-h-[90vh] overflow-y-auto animate-slideUp"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "var(--shadow-card)",
-            }}
-          >
-            {/* Pop Card Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-                >
-                  <IconRenderer icon={detailHolding.icon} size="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className="text-[12px] font-semibold font-mono px-1.5 py-0.5 rounded"
-                      style={{ background: "var(--glass-fill-strong)", color: "var(--text-primary)" }}
-                    >
-                      {detailHolding.symbol}
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                      {TYPE_LABELS[detailHolding.asset_type] || detailHolding.asset_type}
-                    </span>
-                  </div>
-                  <p className="text-[14px] font-bold truncate mt-0.5" style={{ color: "var(--text-primary)" }}>
-                    {detailHolding.name}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setDetailHolding(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
-                style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Current Market Valuation Hero Readout */}
-            <div
-              className="p-4 rounded-2xl text-center space-y-1"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                Current Market Valuation
-              </span>
-              <p className="text-[26px] font-semibold amount tracking-tight leading-tight" style={{ color: "var(--text-primary)" }}>
-                {formatRupiah(detailHolding.marketValue)}
-              </p>
-              <div className="pt-1 flex justify-center">
-                <span
-                  className="text-[11px] font-bold font-mono px-2.5 py-1 rounded-full inline-flex items-center gap-1"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                    color: detailHolding.floatingPnL >= 0 ? "var(--text-primary)" : "var(--text-secondary)",
-                  }}
-                >
-                  {detailHolding.floatingPnL >= 0 ? "+" : ""}
-                  {formatRupiah(detailHolding.floatingPnL)} ({detailHolding.floatingPnLPct >= 0 ? "+" : ""}
-                  {detailHolding.floatingPnLPct.toFixed(1)}%) Floating P&L
-                </span>
-              </div>
-            </div>
-
-            {/* 2x2 Metric Grid */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div
-                className="p-3 rounded-xl space-y-0.5"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-              >
-                <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                  Holding Units
-                </span>
-                <p className="text-[13px] font-bold font-mono" style={{ color: "var(--text-primary)" }}>
-                  {detailHolding.units.toLocaleString()} {detailHolding.symbol}
-                </p>
-              </div>
-
-              <div
-                className="p-3 rounded-xl space-y-0.5"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-              >
-                <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                  Initial Investment (Cost)
-                </span>
-                <p className="text-[13px] font-bold font-mono amount" style={{ color: "var(--text-primary)" }}>
-                  {formatRupiah(detailHolding.costBasis)}
-                </p>
-              </div>
-
-              <div
-                className="p-3 rounded-xl space-y-0.5"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-              >
-                <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                  Live Market Rate
-                </span>
-                <p className="text-[13px] font-bold font-mono" style={{ color: "var(--text-primary)" }}>
-                  {formatRupiah(detailHolding.rate)}
-                </p>
-              </div>
-
-              <div
-                className="p-3 rounded-xl space-y-0.5"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-              >
-                <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                  Avg Buy / Cost Rate
-                </span>
-                <p className="text-[13px] font-bold font-mono" style={{ color: "var(--text-primary)" }}>
-                  {detailHolding.units > 0
-                    ? formatRupiah(Math.round(detailHolding.costBasis / detailHolding.units))
-                    : "-"}
-                </p>
-              </div>
-            </div>
-
-            {/* Annual Valuation Model & Acquisition Date Banner */}
-            {detailHolding.holding && (detailHolding.holding.annual_rate !== undefined || detailHolding.holding.purchase_date) && (
-              <div
-                className="p-3 rounded-xl flex items-center justify-between text-[11px]"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-              >
-                <div>
-                  <span className="font-medium block text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                    Annual Valuation Model
-                  </span>
-                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {typeof detailHolding.holding.annual_rate === "number"
-                      ? `${detailHolding.holding.annual_rate >= 0 ? "+" : ""}${detailHolding.holding.annual_rate}% / year (${detailHolding.holding.annual_rate >= 0 ? "Appreciation" : "Depreciation"})`
-                      : "Fixed Valuation"}
-                  </span>
-                </div>
-                {detailHolding.holding.purchase_date && (
-                  <div className="text-right">
-                    <span className="font-medium block text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                      Acquisition Date
-                    </span>
-                    <span className="font-mono font-medium" style={{ color: "var(--text-secondary)" }}>
-                      {detailHolding.holding.purchase_date}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Actions: Instant Realize P&L, Quick Edit & Delete */}
-            <div className="space-y-2 pt-1">
-              {/* Realize Profit / Loss Instant Button */}
-              <button
-                type="button"
-                onClick={() => handleOpenRealizeModal(detailHolding)}
-                className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer"
-                style={{
-                  background: "var(--text-primary)",
-                  color: "var(--bg-base)",
-                }}
-              >
-                {detailHolding.floatingPnL >= 0 ? (
-                  <>
-                    <ArrowUpRight size={16} strokeWidth={2.5} />
-                    Realize Profit ({formatRupiah(Math.abs(detailHolding.floatingPnL))})
-                  </>
-                ) : (
-                  <>
-                    <ArrowDownRight size={16} strokeWidth={2.5} />
-                    Realize Loss ({formatRupiah(Math.abs(detailHolding.floatingPnL))})
-                  </>
-                )}
-              </button>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (detailHolding.isUsdt) {
-                      setIsEditingUsdt(true);
-                      setDetailHolding(null);
-                    } else if (detailHolding.holding) {
-                      handleStartEditHolding(detailHolding.holding);
-                    }
-                  }}
-                  className="flex-1 py-2.5 rounded-xl text-[12px] font-bold active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Edit3 size={13} />
-                  Edit Holding
-                </button>
-
-                {detailHolding.isUsdt ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("heavy");
-                      const cleared: UsdtValuationPref = { units: 0, costBasis: 0, rate: usdtPref.rate };
-                      setUsdtPref(cleared);
-                      saveUsdtPref(cleared, user?.id);
-                      setDetailHolding(null);
-                      showToast("USDT holding removed", "delete", () => {});
-                    }}
-                    className="py-2.5 px-3 rounded-xl text-[12px] font-bold active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer text-red-500 hover:bg-red-500/10 border border-[var(--glass-border)] bg-[var(--glass-fill)]"
-                    title="Remove USDT from holdings"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                ) : detailHolding.holding && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleDeleteHolding(detailHolding.holding!.id, detailHolding.name);
-                      setDetailHolding(null);
-                    }}
-                    className="py-2.5 px-3 rounded-xl text-[12px] font-bold active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-tertiary)",
-                    }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Instant Realize Profit / Loss Modal ──────────────────────────── */}
-      {realizeModalOpen && detailHolding && (
-        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-md p-0 sm:p-4 animate-fadeIn">
-          <div
-            className="w-full max-w-md rounded-t-[28px] sm:rounded-[28px] p-5 space-y-4 max-h-[92vh] overflow-y-auto animate-slideUp"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "var(--shadow-card)",
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                  Realize Floating {realizeType === "income" ? "Profit" : "Loss"}
-                </h3>
-                <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                  Record directly into Trouvaille ledger without broker sync
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRealizeModalOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
-                style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Realize Type Switcher: Income (Profit) vs Expense (Loss) */}
-            <div
-              className="flex items-center gap-1 p-1 rounded-xl border border-[var(--glass-border)]"
-              style={{ background: "var(--glass-fill)" }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setRealizeType("income");
-                }}
-                className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
-                style={{
-                  background: realizeType === "income" ? "var(--bg-elevated)" : "transparent",
-                  color: realizeType === "income" ? "var(--text-primary)" : "var(--text-tertiary)",
-                  boxShadow: realizeType === "income" ? "0 1px 3px var(--shadow-strength)" : "none",
-                }}
-              >
-                <ArrowUpRight size={13} />
-                Income (Profit)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setRealizeType("expense");
-                }}
-                className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
-                style={{
-                  background: realizeType === "expense" ? "var(--bg-elevated)" : "transparent",
-                  color: realizeType === "expense" ? "var(--text-primary)" : "var(--text-tertiary)",
-                  boxShadow: realizeType === "expense" ? "0 1px 3px var(--shadow-strength)" : "none",
-                }}
-              >
-                <ArrowDownRight size={13} />
-                Expense (Loss)
-              </button>
-            </div>
-
-            {/* Realized Amount */}
-            <div>
-              <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                Realized Amount (IDR)
-              </label>
-              <input
-                type="number"
-                value={realizeAmount}
-                onChange={(e) => setRealizeAmount(e.target.value)}
-                placeholder="0"
-                className="w-full px-3 py-2.5 rounded-xl text-[16px] font-semibold font-mono outline-none amount"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              />
-            </div>
-
-            {/* Date & Time with Quick Offsets */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-medium block" style={{ color: "var(--text-tertiary)" }}>
-                Realization Date & Time
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="date"
-                  value={realizeDate}
-                  onChange={(e) => setRealizeDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl text-[12px] font-bold outline-none"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-                <input
-                  type="time"
-                  value={realizeTime}
-                  onChange={(e) => setRealizeTime(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl text-[12px] font-bold outline-none font-mono"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-              </div>
-
-              {/* Quick Time Offsets */}
-              <div className="flex items-center gap-1.5 pt-0.5">
-                {[
-                  { label: "Just now", mins: 0 },
-                  { label: "5m ago", mins: 5 },
-                  { label: "15m ago", mins: 15 },
-                  { label: "1h ago", mins: 60 },
-                ].map((pill) => (
-                  <button
-                    key={pill.label}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      const target = pill.mins === 0 ? new Date() : subMinutes(new Date(), pill.mins);
-                      setRealizeDate(format(target, "yyyy-MM-dd"));
-                      setRealizeTime(format(target, "HH:mm"));
-                    }}
-                    className="flex-1 py-1 px-1.5 rounded-lg text-[10px] font-bold active:scale-95 transition-all text-center cursor-pointer"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {pill.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Target Wallet Selection */}
-            <div>
-              <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                {realizeType === "income" ? "Receive into Account" : "Deduct from Account"}
-              </label>
-              <select
-                value={realizeWalletId}
-                onChange={(e) => setRealizeWalletId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-[12px] font-bold outline-none cursor-pointer"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                {wallets.map((w) => (
-                  <option
-                    key={w.id}
-                    value={w.id}
-                    style={{ background: "var(--bg-elevated)", color: "var(--text-primary)" }}
-                  >
-                    {w.name} ({formatRupiah(balancesByName[w.name.toLowerCase()] || 0)})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Note */}
-            <div>
-              <label className="text-[11px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                Ledger Note
-              </label>
-              <input
-                type="text"
-                value={realizeNote}
-                onChange={(e) => setRealizeNote(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-[12px] font-medium outline-none"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              />
-            </div>
-
-            {/* Confirm Button */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleConfirmRealization}
-                  disabled={isRealizing}
-                  className="w-full py-3 rounded-xl text-[13px] font-semibold active:scale-98 transition-transform cursor-pointer disabled:opacity-50"
-                  style={{
-                    background: "var(--text-primary)",
-                    color: "var(--bg-base)",
-                  }}
-                >
-                  {isRealizing ? "Recording Transaction..." : "Confirm & Record Transaction"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* ── Trouvaille Investment Ecosystem: Modern Asset Detail Sheet ──── */}
+      <AssetDetailSheet
+        isOpen={!!selectedDetailHolding}
+        onClose={() => setSelectedDetailHolding(null)}
+        holding={selectedDetailHolding}
+        onHoldingUpdated={() => {
+          const freshHoldings = getSavedHoldings(user?.id);
+          setHoldings(freshHoldings);
+          const freshUsdt = getSavedUsdtPref(user?.id);
+          setUsdtPref(freshUsdt);
+          if (user?.id && user.id !== "guest_local_user") {
+            fetchHoldingsFromSupabase(user.id).then(setHoldings);
+          }
+          if (selectedDetailHolding) {
+            if (selectedDetailHolding.symbol?.toUpperCase() === "USDT") {
+              setSelectedDetailHolding({
+                ...selectedDetailHolding,
+                units: freshUsdt.units,
+                avg_buy_price:
+                  freshUsdt.units > 0
+                    ? Math.round(freshUsdt.costBasis / freshUsdt.units)
+                    : freshUsdt.rate,
+                current_price: freshUsdt.rate,
+              });
+            } else {
+              const refreshed = freshHoldings.find((x) => x.id === selectedDetailHolding.id);
+              if (refreshed) setSelectedDetailHolding(refreshed);
+            }
+          }
+        }}
+        onDeleteHolding={(id, name) => {
+          handleDeleteHolding(id, name);
+          setSelectedDetailHolding(null);
+        }}
+        onStartEditHolding={(h) => {
+          setSelectedDetailHolding(null);
+          if (h.symbol?.toUpperCase() === "USDT") {
+            setIsEditingUsdt(true);
+          } else {
+            handleStartEditHolding(h);
+          }
+        }}
+      />
     </BottomSheet>
   );
 }

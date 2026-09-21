@@ -161,6 +161,7 @@ export function TransactionSheet({
   const { activeSpace, activeSpaceId } = useSpace();
 
   const selectedSpaceId = useMemo<string>(() => {
+    if (transaction?.ledger_id) return transaction.ledger_id;
     if (transaction?.space_id) return transaction.space_id;
     if (transaction?.note?.toLowerCase().includes("#business") || transaction?.note?.toLowerCase().includes("#kantor")) return "business";
     if (transaction?.note?.toLowerCase().includes("#travel") || transaction?.note?.toLowerCase().includes("#liburan")) return "travel";
@@ -785,6 +786,7 @@ export function TransactionSheet({
       amount: numAmount,
       note: note || null,
       space_id: selectedSpaceId === "personal" ? null : selectedSpaceId,
+      ledger_id: selectedSpaceId || "personal",
       occurred_on: format(date, "yyyy-MM-dd"),
       created_at: txDate.toISOString(),
       category_id:
@@ -1319,22 +1321,28 @@ export function TransactionSheet({
           </AnimatePresence>
         </div>
 
-        {/* Dedicated Money Space Active Notice */}
-        {activeSpace?.tag && activeSpace.id !== "all" && activeSpace.id !== "personal" && (
+        {/* Dedicated Ledger Active Notice */}
+        {activeSpace && activeSpace.id !== "all" && activeSpace.id !== "personal" && (
           <div className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span>
-                Money Space: <strong className="text-[var(--text-primary)]">{activeSpace.name}</strong>
+                Ledger: <strong className="text-[var(--text-primary)]">{activeSpace.name}</strong>
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => handleToggleTag(activeSpace.tag!)}
-              className="text-[10px] font-semibold text-[var(--text-primary)] hover:underline cursor-pointer"
-            >
-              {activeTags.includes(activeSpace.tag.toLowerCase()) ? "Tagged" : `Attach ${activeSpace.tag}`}
-            </button>
+            {activeSpace.tag ? (
+              <button
+                type="button"
+                onClick={() => handleToggleTag(activeSpace.tag!)}
+                className="text-[10px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-white/[0.06] border border-white/10 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+              >
+                {activeTags.includes(activeSpace.tag.toLowerCase()) ? "Tagged" : `Attach ${activeSpace.tag}`}
+              </button>
+            ) : (
+              <span className="text-[10px] font-mono text-[var(--text-secondary)] bg-white/[0.06] border border-white/10 px-2 py-0.5 rounded-full">
+                Auto-linked
+              </span>
+            )}
           </div>
         )}
 

@@ -3,7 +3,6 @@ import {
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
-  isBefore,
   isToday,
   differenceInCalendarDays,
   parseISO,
@@ -110,7 +109,7 @@ export function calculateMonthCalendarRunway(
   const calendarDays = eachDayOfInterval({ start: mStart, end: mEnd });
 
   const refDateStr = format(referenceDate, "yyyy-MM-dd");
-  const refMidnight = new Date(refDateStr + "T00:00:00Z");
+  const refDateParsed = parseISO(refDateStr);
 
   // Recurring salaries
   const recurringSalaries = recurringItems.filter(
@@ -136,12 +135,12 @@ export function calculateMonthCalendarRunway(
 
   for (const dayObj of calendarDays) {
     const dStr = format(dayObj, "yyyy-MM-dd");
-    const dayMidnight = new Date(dStr + "T00:00:00Z");
-    const isPast = isBefore(dayMidnight, refMidnight);
+    const isPast = dStr < refDateStr;
     const isTod = options.referenceDate
       ? dStr === refDateStr
       : isToday(dayObj);
     const isFut = !isPast && !isTod;
+    const dayDateParsed = parseISO(dStr);
 
     // Actual transactions
     const dayTxs = transactions.filter((t) => t.occurred_on === dStr);
@@ -212,7 +211,7 @@ export function calculateMonthCalendarRunway(
       nextPaydayDate = dStr;
       daysUntilPayday = Math.max(
         0,
-        differenceInCalendarDays(dayMidnight, refMidnight),
+        differenceInCalendarDays(dayDateParsed, refDateParsed),
       );
       nextPaydayAmount = expectedInflowsTotal;
     }
@@ -246,7 +245,7 @@ export function calculateMonthCalendarRunway(
         lowestDipDate = dStr;
         daysUntilLowestDip = Math.max(
           0,
-          differenceInCalendarDays(dayMidnight, refMidnight),
+          differenceInCalendarDays(dayDateParsed, refDateParsed),
         );
       }
     }

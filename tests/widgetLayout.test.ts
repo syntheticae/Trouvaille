@@ -7,8 +7,13 @@ import {
   toggleWidgetVisibility,
   filterVisibleWidgets,
   swapWidgetPosition,
+  applyPresetToWidgets,
 } from "../src/lib/widgetLayoutEngine";
-import { DEFAULT_HOME_WIDGETS, CardWidgetConfig } from "../src/lib/widgetLayoutTypes";
+import {
+  DEFAULT_HOME_WIDGETS,
+  DEFAULT_STATISTICS_WIDGETS,
+  CardWidgetConfig,
+} from "../src/lib/widgetLayoutTypes";
 
 describe("Widget Layout Engine", () => {
   it("loads default widgets when storage JSON is null or empty", () => {
@@ -147,5 +152,111 @@ describe("Widget Layout Engine", () => {
     const visibleToggled = filterVisibleWidgets(toggled);
     expect(visibleToggled[1].id).toBe("half_a");
     expect(visibleToggled[2].id).toBe("half_b");
+  });
+
+  describe("Statistics Presets & Layout Engine", () => {
+    it("loads default statistics widgets properly", () => {
+      const loaded = loadStoredWidgets(null, DEFAULT_STATISTICS_WIDGETS);
+      expect(loaded.length).toBe(DEFAULT_STATISTICS_WIDGETS.length);
+      expect(loaded.map((w) => w.id)).toContain("health_score");
+      expect(loaded.map((w) => w.id)).toContain("monte_carlo");
+      expect(loaded.map((w) => w.id)).toContain("fire_planner");
+    });
+
+    it("applies 'executive' preset to statistics widgets correctly", () => {
+      const updated = applyPresetToWidgets(DEFAULT_STATISTICS_WIDGETS, "executive");
+      const visible = filterVisibleWidgets(updated);
+
+      expect(visible.some((w) => w.id === "health_score")).toBe(true);
+      expect(visible.some((w) => w.id === "cashflow_outlook")).toBe(true);
+      expect(visible.some((w) => w.id === "liquidity_horizon")).toBe(true);
+      expect(visible.some((w) => w.id === "monte_carlo")).toBe(true);
+      expect(visible.some((w) => w.id === "fire_planner")).toBe(true);
+      expect(visible.some((w) => w.id === "spending_patterns")).toBe(true);
+      expect(visible.some((w) => w.id === "personal_financial_model")).toBe(true);
+      expect(visible.some((w) => w.id === "what_if_simulator")).toBe(true);
+
+      // Hidden in executive
+      expect(visible.some((w) => w.id === "zero_based_envelopes")).toBe(false);
+      expect(visible.some((w) => w.id === "debt_payoff")).toBe(false);
+      expect(visible.some((w) => w.id === "spending_density_heatmap")).toBe(false);
+    });
+
+    it("applies 'telemetry' preset with operational focus", () => {
+      const updated = applyPresetToWidgets(DEFAULT_STATISTICS_WIDGETS, "telemetry");
+      const visible = filterVisibleWidgets(updated);
+
+      expect(visible.some((w) => w.id === "health_score")).toBe(true);
+      expect(visible.some((w) => w.id === "cashflow_outlook")).toBe(true);
+      expect(visible.some((w) => w.id === "liquidity_horizon")).toBe(true);
+      expect(visible.some((w) => w.id === "spending_patterns")).toBe(true);
+      expect(visible.some((w) => w.id === "spending_density_heatmap")).toBe(true);
+
+      // Planning models hidden
+      expect(visible.some((w) => w.id === "monte_carlo")).toBe(false);
+      expect(visible.some((w) => w.id === "fire_planner")).toBe(false);
+      expect(visible.some((w) => w.id === "personal_financial_model")).toBe(false);
+    });
+
+    it("applies 'planning' preset with wealth and retirement focus", () => {
+      const updated = applyPresetToWidgets(DEFAULT_STATISTICS_WIDGETS, "planning");
+      const visible = filterVisibleWidgets(updated);
+
+      expect(visible.some((w) => w.id === "fire_planner")).toBe(true);
+      expect(visible.some((w) => w.id === "monte_carlo")).toBe(true);
+      expect(visible.some((w) => w.id === "personal_financial_model")).toBe(true);
+      expect(visible.some((w) => w.id === "what_if_simulator")).toBe(true);
+      expect(visible.some((w) => w.id === "debt_payoff")).toBe(true);
+      expect(visible.some((w) => w.id === "zero_based_envelopes")).toBe(true);
+      expect(visible.some((w) => w.id === "liquidity_horizon")).toBe(true);
+
+      // Operational telemetry hidden
+      expect(visible.some((w) => w.id === "health_score")).toBe(false);
+      expect(visible.some((w) => w.id === "spending_patterns")).toBe(false);
+      expect(visible.some((w) => w.id === "spending_density_heatmap")).toBe(false);
+    });
+
+    it("applies 'essential' preset with minimal cards across all sections", () => {
+      const updated = applyPresetToWidgets(DEFAULT_STATISTICS_WIDGETS, "essential");
+      const visible = filterVisibleWidgets(updated);
+
+      expect(visible.length).toBe(6);
+      expect(visible.map((w) => w.id)).toEqual([
+        "health_score",
+        "cashflow_outlook",
+        "liquidity_horizon",
+        "financial_report",
+        "cashflow_summary",
+        "asset_analytics",
+      ]);
+      // Verify every section has at least one card
+      expect(visible.some((w) => ["financial_report", "monthly_review", "personal_baseline", "expense_structure"].includes(w.id))).toBe(true);
+      expect(visible.some((w) => ["health_score", "cashflow_outlook", "liquidity_horizon"].includes(w.id))).toBe(true);
+      expect(visible.some((w) => ["cashflow_summary", "cashflow_sankey"].includes(w.id))).toBe(true);
+      expect(visible.some((w) => w.id === "asset_analytics")).toBe(true);
+    });
+
+    it("ensures every preset has at least one card in each of the 4 analytics sections", () => {
+      const presets = ["executive", "telemetry", "planning", "essential"] as const;
+      const reportCards = ["financial_report", "monthly_review", "personal_baseline", "expense_structure"];
+      const intelligenceCards = ["health_score", "cashflow_outlook", "liquidity_horizon", "monte_carlo", "fire_planner", "spending_patterns", "spending_density_heatmap", "zero_based_envelopes", "debt_payoff", "what_if_simulator", "personal_financial_model"];
+      const cashflowCards = ["cashflow_summary", "cashflow_sankey"];
+      const assetCards = ["asset_analytics"];
+
+      for (const presetKey of presets) {
+        const updated = applyPresetToWidgets(DEFAULT_STATISTICS_WIDGETS, presetKey);
+        const visible = filterVisibleWidgets(updated);
+
+        const hasReport = visible.some((w) => reportCards.includes(w.id));
+        const hasIntel = visible.some((w) => intelligenceCards.includes(w.id));
+        const hasCashflow = visible.some((w) => cashflowCards.includes(w.id));
+        const hasAsset = visible.some((w) => assetCards.includes(w.id));
+
+        expect(hasReport, `Preset ${presetKey} must have at least one report card`).toBe(true);
+        expect(hasIntel, `Preset ${presetKey} must have at least one intelligence card`).toBe(true);
+        expect(hasCashflow, `Preset ${presetKey} must have at least one cashflow card`).toBe(true);
+        expect(hasAsset, `Preset ${presetKey} must have at least one asset card`).toBe(true);
+      }
+    });
   });
 });

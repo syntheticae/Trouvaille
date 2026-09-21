@@ -409,7 +409,7 @@ export async function restoreVaultData(
           .insert({
             user_id: userId,
             name: vCat.name,
-            emoji: vCat.emoji || "📝",
+            emoji: vCat.emoji || "file-text",
             type: vCat.type,
             is_default: vCat.is_default ?? false,
             cashflow_nature: vCat.cashflow_nature || "operating",

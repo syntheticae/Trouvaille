@@ -90,9 +90,9 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title="Financial Ledgers">
-      <div className="space-y-4 pb-6 pt-1 select-none">
+      <div className="px-5 sm:px-6 space-y-4 pb-[calc(env(safe-area-inset-bottom,16px)+28px)] pt-1 select-none">
         {/* Header Subtitle */}
-        <p className="text-[12px] text-[var(--text-tertiary)] -mt-2 leading-relaxed">
+        <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
           Manage cashflow, isolate transactions, and track finances across dedicated ledgers.
         </p>
 

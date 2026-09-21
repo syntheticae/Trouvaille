@@ -8,8 +8,13 @@ import type {
   CardWidgetConfig,
   WidgetSize,
   HomePresetKey,
+  StatisticsPresetKey,
 } from "./widgetLayoutTypes";
-import { DEFAULT_HOME_WIDGETS, HOME_PRESETS } from "./widgetLayoutTypes";
+import {
+  DEFAULT_HOME_WIDGETS,
+  HOME_PRESETS,
+  STATISTICS_PRESETS,
+} from "./widgetLayoutTypes";
 
 export const HOME_STORAGE_KEY = "trouvaille_home_widget_layout_v1";
 export const STATS_STORAGE_KEY = "trouvaille_statistics_widget_layout_v1";
@@ -106,8 +111,39 @@ export function filterVisibleWidgets(
 
 export function applyPresetToWidgets(
   currentWidgets: CardWidgetConfig[],
-  presetKey: HomePresetKey
+  presetKey: HomePresetKey | StatisticsPresetKey,
+  targetPage?: "home" | "statistics"
 ): CardWidgetConfig[] {
+  const isStats =
+    targetPage === "statistics" ||
+    (!targetPage && currentWidgets.some((w) => w.page === "statistics"));
+
+  if (isStats) {
+    const preset = STATISTICS_PRESETS.find((p) => p.key === presetKey);
+    if (!preset) return currentWidgets;
+
+    const configMap = new Map(preset.cardConfigs.map((c) => [c.id, c]));
+    let fallbackOrder = preset.cardConfigs.length;
+
+    return currentWidgets
+      .map((w) => {
+        const target = configMap.get(w.id);
+        if (target) {
+          return {
+            ...w,
+            size: w.supportedSizes.includes(target.size) ? target.size : w.size,
+            isVisible: target.isVisible,
+            order: target.order,
+          };
+        }
+        return {
+          ...w,
+          order: fallbackOrder++,
+        };
+      })
+      .sort((a, b) => a.order - b.order);
+  }
+
   const normalizedKey =
     presetKey === "simple"
       ? "minimal"

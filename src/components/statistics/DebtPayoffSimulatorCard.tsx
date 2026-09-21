@@ -417,7 +417,7 @@ export function DebtPayoffSimulatorCard({
                     <button
                       type="button"
                       onClick={() => setExtraPayment(0)}
-                      className="text-[10px] font-bold px-2 py-1 rounded-lg text-white/40 hover:text-white"
+                      className="text-[10px] font-bold px-2 py-1 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                     >
                       Clear
                     </button>
@@ -511,7 +511,7 @@ export function DebtPayoffSimulatorCard({
                       color: "var(--text-secondary)",
                     }}
                   >
-                    <TrendingDown size={14} className="shrink-0 text-white" />
+                    <TrendingDown size={14} className="shrink-0" style={{ color: "var(--text-primary)" }} />
                     <span>
                       Avalanche saves{" "}
                       <strong style={{ color: "var(--text-primary)" }}>
@@ -662,7 +662,7 @@ export function DebtPayoffSimulatorCard({
                         <button
                           type="button"
                           onClick={() => openEditDebt(d)}
-                          className="p-2 rounded-lg text-white/40 hover:text-white transition-colors cursor-pointer"
+                          className="p-2 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                           title="Edit nominal"
                         >
                           <Edit2 size={13} />
@@ -670,7 +670,7 @@ export function DebtPayoffSimulatorCard({
                         <button
                           type="button"
                           onClick={() => handleDeleteDebt(d.id)}
-                          className="p-2 rounded-lg text-white/40 hover:text-white transition-colors cursor-pointer"
+                          className="p-2 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                           title="Delete debt"
                         >
                           <Trash2 size={13} />
@@ -689,13 +689,13 @@ export function DebtPayoffSimulatorCard({
 
       {/* Add / Edit Debt Modal */}
       {debtModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
           <div
             className="w-full max-w-sm rounded-[24px] p-5 space-y-4"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
-              boxShadow: "0 12px 36px rgba(0,0,0,0.5)",
+              boxShadow: "var(--shadow-card), 0 16px 40px var(--shadow-strength)",
             }}
           >
             <div className="flex items-center justify-between">
@@ -708,7 +708,7 @@ export function DebtPayoffSimulatorCard({
               <button
                 type="button"
                 onClick={() => setDebtModalOpen(false)}
-                className="p-1 rounded-lg text-white/50 hover:text-white"
+                className="p-1 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>

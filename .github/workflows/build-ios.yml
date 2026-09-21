@@ -3,6 +3,8 @@ name: Build Unsigned iOS IPA
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
       - 'build-*'
@@ -132,7 +134,7 @@ jobs:
           overwrite: true
           make_latest: true
           body: |
-            ### 📱 Trouvaille iOS Native App (.ipa)
+            ### Trouvaille iOS Native App (.ipa)
             **Commit**: `${{ github.sha }}`
             Direct download for AltStore / Sideloadly / LiveContainer:
             - Tap **Trouvaille.ipa** below in Safari on your iPhone.

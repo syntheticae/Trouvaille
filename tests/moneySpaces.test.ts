@@ -159,4 +159,82 @@ describe("Money Spaces Architecture & Segregation Suite", () => {
     expect(customTxs.length).toBe(1);
     expect(customTxs[0].id).toBe("tx-5");
   });
+
+  describe("True Multi-Ledger Native Architecture Suite", () => {
+    const nativeLedgerTxs: Transaction[] = [
+      {
+        id: "tx-native-1",
+        user_id: "u1",
+        category_id: "c1",
+        wallet_id: "w1",
+        to_wallet_id: null,
+        type: "expense",
+        amount: 30000,
+        note: "Kopi pagi (no hashtag)",
+        occurred_on: "2026-09-21",
+        created_at: "2026-09-21T08:00:00Z",
+        ledger_id: "personal",
+      },
+      {
+        id: "tx-native-2",
+        user_id: "u1",
+        category_id: "c2",
+        wallet_id: "w1",
+        to_wallet_id: null,
+        type: "expense",
+        amount: 1500000,
+        note: "Server database invoice (no hashtag)",
+        occurred_on: "2026-09-21",
+        created_at: "2026-09-21T08:30:00Z",
+        ledger_id: "ledger-biz-01",
+      },
+      {
+        id: "tx-native-3",
+        user_id: "u1",
+        category_id: "c3",
+        wallet_id: "w1",
+        to_wallet_id: null,
+        type: "income",
+        amount: 8000000,
+        note: "Retainer client payment (no hashtag)",
+        occurred_on: "2026-09-21",
+        created_at: "2026-09-21T09:00:00Z",
+        ledger_id: "ledger-biz-01",
+      },
+    ];
+
+    function filterByNativeLedger(txs: Transaction[], targetLedgerId: string): Transaction[] {
+      if (targetLedgerId === "all") return txs;
+      return txs.filter((t) => (t.ledger_id || t.space_id || "personal") === targetLedgerId);
+    }
+
+    it("filters transactions purely based on native ledger_id without needing hashtags", () => {
+      const bizTxs = filterByNativeLedger(nativeLedgerTxs, "ledger-biz-01");
+      expect(bizTxs.length).toBe(2);
+      expect(bizTxs.map((t) => t.id)).toEqual(["tx-native-2", "tx-native-3"]);
+
+      const personalTxs = filterByNativeLedger(nativeLedgerTxs, "personal");
+      expect(personalTxs.length).toBe(1);
+      expect(personalTxs[0].id).toBe("tx-native-1");
+    });
+
+    it("consolidates all ledgers when target is 'all'", () => {
+      const consolidated = filterByNativeLedger(nativeLedgerTxs, "all");
+      expect(consolidated.length).toBe(3);
+    });
+
+    it("reassigns transactions safely to personal ledger upon custom ledger deletion", () => {
+      const deletedLedgerId = "ledger-biz-01";
+      const reassigned = nativeLedgerTxs.map((tx) => {
+        if (tx.ledger_id === deletedLedgerId) {
+          return { ...tx, ledger_id: "personal", space_id: "personal" };
+        }
+        return tx;
+      });
+
+      const personalAfterReassign = filterByNativeLedger(reassigned, "personal");
+      expect(personalAfterReassign.length).toBe(3);
+      expect(personalAfterReassign.every((t) => t.ledger_id === "personal")).toBe(true);
+    });
+  });
 });

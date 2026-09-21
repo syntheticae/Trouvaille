@@ -1,4 +1,4 @@
-import { motion, AnimatePresence, type PanInfo } from "framer-motion"
+import { motion, AnimatePresence, type PanInfo, useDragControls } from "framer-motion"
 import { useEffect } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
@@ -11,6 +11,8 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ isOpen, onClose, children, title }: BottomSheetProps) {
+  const dragControls = useDragControls()
+
   useEffect(() => {
     const scrollEl = document.getElementById("app-scroll-container")
     if (isOpen) {
@@ -60,31 +62,45 @@ export function BottomSheet({ isOpen, onClose, children, title }: BottomSheetPro
               display: "flex",
               flexDirection: "column",
               paddingBottom: "max(env(safe-area-inset-bottom, 0px), 12px)",
-              touchAction: "pan-y"
             }}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 350, damping: 35 }}
             drag="y"
+            dragControls={dragControls}
+            dragListener={false}
             dragConstraints={{ top: 0 }}
             dragElastic={{ top: 0.05, bottom: 0.8 }}
             dragSnapToOrigin
             onDragEnd={handleDragEnd}
           >
-            {/* Drag handle */}
-            <div className="flex justify-center pt-3 pb-2 shrink-0 cursor-grab active:cursor-grabbing w-full">
-              <div style={{ width: 40, height: 5, borderRadius: 3, background: "var(--text-tertiary)", opacity: 0.45 }} />
-            </div>
-            {title && (
-              <div className="flex items-center justify-between px-5 pb-4 shrink-0">
-                <h2 className="text-xl font-semibold" style={{ color: "var(--text-primary)" }}>{title}</h2>
-                <button onClick={onClose} style={{ color: "var(--text-tertiary)" }} className="p-1 active:scale-90 transition-transform">
-                  <X size={20} />
-                </button>
+            {/* Drag handle header area - exclusively handles swipe down gesture */}
+            <div
+              className="flex flex-col shrink-0 cursor-grab active:cursor-grabbing w-full select-none touch-none"
+              onPointerDown={(e) => dragControls.start(e)}
+            >
+              <div className="flex justify-center pt-3 pb-2 w-full">
+                <div style={{ width: 40, height: 5, borderRadius: 3, background: "var(--text-tertiary)", opacity: 0.45 }} />
               </div>
-            )}
-            {/* Scrollable content */}
+              {title && (
+                <div className="flex items-center justify-between px-5 pb-4">
+                  <h2 className="text-xl font-semibold pointer-events-none" style={{ color: "var(--text-primary)" }}>{title}</h2>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClose();
+                    }}
+                    style={{ color: "var(--text-tertiary)" }}
+                    className="p-1 active:scale-90 transition-transform cursor-pointer pointer-events-auto"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              )}
+            </div>
+            {/* Scrollable content - uninterrupted native scrolling */}
             <div className="overflow-y-auto flex-1 overscroll-contain">
               {children}
             </div>

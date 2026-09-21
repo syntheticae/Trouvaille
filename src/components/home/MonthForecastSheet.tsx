@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence, type PanInfo } from "framer-motion";
+import { motion, AnimatePresence, type PanInfo, useDragControls } from "framer-motion";
 import { X, CalendarDays } from "lucide-react";
 import { getDaysInMonth } from "date-fns";
 import type { Transaction } from "../../lib/types";
@@ -33,6 +33,7 @@ export function MonthForecastSheet({
   referenceDate = new Date(),
 }: MonthForecastSheetProps) {
   const navigate = useNavigate();
+  const dragControls = useDragControls();
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
@@ -239,6 +240,8 @@ export function MonthForecastSheet({
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 350, damping: 35 }}
             drag="y"
+            dragControls={dragControls}
+            dragListener={false}
             dragConstraints={{ top: 0 }}
             dragElastic={{ top: 0.05, bottom: 0.8 }}
             dragSnapToOrigin
@@ -252,11 +255,13 @@ export function MonthForecastSheet({
               maxHeight: "92dvh",
               paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
               fontFamily: "'Urbanist', sans-serif",
-              touchAction: "pan-y",
             }}
           >
-            {/* Top Grab Handle Area */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing w-full">
+            {/* Top Grab Handle Area - exclusively handles downward drag dismiss */}
+            <div 
+              className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing w-full touch-none"
+              onPointerDown={(e) => dragControls.start(e)}
+            >
               <div
                 className="w-10 h-1 rounded-full transition-colors"
                 style={{ background: "var(--text-tertiary)", opacity: 0.3 }}

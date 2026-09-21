@@ -32,6 +32,8 @@ interface TransactionInput {
   note?: string | null;
   occurred_on: string;
   created_at?: string;
+  space_id?: string | null;
+  ledger_id?: string | null;
 }
 
 export interface TransactionFilters {
@@ -40,6 +42,7 @@ export interface TransactionFilters {
   startDate?: string;
   endDate?: string;
   userId?: string;
+  ledgerId?: string;
 }
 
 interface TransactionQueryOptions {
@@ -87,6 +90,10 @@ function matchesTransactionFilters(
   if (filters.categoryId && tx.category_id !== filters.categoryId) return false;
   if (filters.startDate && tx.occurred_on < filters.startDate) return false;
   if (filters.endDate && tx.occurred_on > filters.endDate) return false;
+  if (filters.ledgerId && filters.ledgerId !== "all") {
+    const txLedger = tx.ledger_id || tx.space_id || "personal";
+    if (txLedger !== filters.ledgerId) return false;
+  }
   if (filters.search) {
     const search = filters.search.toLowerCase();
     if (!tx.note?.toLowerCase().includes(search)) return false;
@@ -592,6 +599,8 @@ export function useAddTransaction() {
       const categoryObj =
         allCategories?.find((c) => c.id === input.category_id) || null;
 
+      const assignedLedger = input.ledger_id || input.space_id || "personal";
+
       const fullTx: Transaction = {
         id: effectiveId,
         user_id: currentUser?.id || userId || "",
@@ -604,6 +613,8 @@ export function useAddTransaction() {
         occurred_on: input.occurred_on,
         created_at: input.created_at || new Date().toISOString(),
         categories: categoryObj,
+        ledger_id: assignedLedger,
+        space_id: assignedLedger,
       };
 
       // Always save to persistent pending mutations queue first
@@ -623,10 +634,13 @@ export function useAddTransaction() {
 
         let res = await withTimeout(query, 7000);
         if (res.error) {
+          // Graceful fallback: If ledger_id or space_id column does not exist yet in Supabase,
+          // retry without them so the operation succeeds unconditionally.
+          const { ledger_id, space_id, ...fallbackPayload } = dbPayload;
           res = await withTimeout(
             supabase
               .from("transactions")
-              .upsert({ ...dbPayload, user_id: currentUser.id })
+              .upsert({ ...fallbackPayload, user_id: currentUser.id })
               .select("*"),
             7000,
           );
@@ -863,6 +877,13 @@ export function useUpdateTransaction() {
       if (input.category_id !== undefined) cleanUpdate.category_id = input.category_id ?? null;
       if (input.wallet_id !== undefined) cleanUpdate.wallet_id = input.wallet_id ?? null;
       if (input.to_wallet_id !== undefined) cleanUpdate.to_wallet_id = input.to_wallet_id ?? null;
+      if (input.ledger_id !== undefined) {
+        cleanUpdate.ledger_id = input.ledger_id ?? "personal";
+        cleanUpdate.space_id = input.ledger_id ?? "personal";
+      } else if (input.space_id !== undefined) {
+        cleanUpdate.space_id = input.space_id ?? "personal";
+        cleanUpdate.ledger_id = input.space_id ?? "personal";
+      }
 
       // DO NOT include id or user_id in cleanUpdate payload sent to supabase.update()!
       const mutation = enqueuePendingMutation("update", { id, ...cleanUpdate });
@@ -876,10 +897,12 @@ export function useUpdateTransaction() {
 
         let res = await withTimeout(query, 7000);
         if (res.error) {
+          // Graceful fallback: retry without ledger_id/space_id if columns don't exist yet
+          const { ledger_id, space_id, ...fallbackPayload } = cleanUpdate;
           res = await withTimeout(
             supabase
               .from("transactions")
-              .update(cleanUpdate)
+              .update(fallbackPayload)
               .eq("id", id)
               .select("*"),
             7000,
@@ -910,10 +933,14 @@ export function useUpdateTransaction() {
         allCategories?.find((c) => c.id === nextCatId) || existing?.categories || null;
 
       if (existing) {
+        const assignedLedger =
+          updated.ledger_id || updated.space_id || existing.ledger_id || existing.space_id || "personal";
         upsertTransactionAcrossCaches(qc, {
           ...existing,
           ...updated,
           id,
+          ledger_id: assignedLedger,
+          space_id: assignedLedger,
           categories: categoryObj,
         } as Transaction);
       }

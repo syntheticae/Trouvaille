@@ -1,4 +1,4 @@
-import type { InvestmentHolding, AssetType } from "./types";
+import type { InvestmentHolding, AssetType, HoldingActivity } from "./types";
 import { supabase } from "./supabase";
 
 export const HOLDINGS_STORAGE_KEY = "trouvaille_holdings_v1";
@@ -30,22 +30,51 @@ export interface PortfolioSummary {
  */
 export const USD_IDR_ESTIMATE = 16300;
 
+// In-memory fallback cache for Node environments, SSR, and test runners
+const memoryStorage: Record<string, string> = {};
+
+function safeGetItem(key: string): string | null {
+  try {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem(key);
+    }
+  } catch {}
+  return memoryStorage[key] ?? null;
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(key, value);
+    }
+  } catch {}
+  memoryStorage[key] = value;
+}
+
+function safeRemoveItem(key: string): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(key);
+    }
+  } catch {}
+  delete memoryStorage[key];
+}
+
 export function getHoldingsStorageKey(userId?: string): string {
   const isGuest =
     userId === "guest_local_user" ||
-    (typeof window !== "undefined" &&
-      localStorage.getItem("trouvaille_guest_mode") === "true");
+    safeGetItem("trouvaille_guest_mode") === "true";
   if (isGuest) return "trouvaille_holdings_guest_v1";
 
   if (userId) {
     return `trouvaille_holdings_${userId}_v1`;
   }
-  if (typeof window !== "undefined") {
+  if (typeof localStorage !== "undefined") {
     // Inspect if there is an active Supabase user session token
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) {
-        const raw = localStorage.getItem(k);
+        const raw = safeGetItem(k);
         if (raw) {
           try {
             const parsed = JSON.parse(raw);
@@ -61,18 +90,17 @@ export function getHoldingsStorageKey(userId?: string): string {
 export function getUsdtStorageKey(userId?: string): string {
   const isGuest =
     userId === "guest_local_user" ||
-    (typeof window !== "undefined" &&
-      localStorage.getItem("trouvaille_guest_mode") === "true");
+    safeGetItem("trouvaille_guest_mode") === "true";
   if (isGuest) return "trouvaille_usdt_valuation_guest_v1";
 
   if (userId) {
     return `trouvaille_usdt_valuation_${userId}_v1`;
   }
-  if (typeof window !== "undefined") {
+  if (typeof localStorage !== "undefined") {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) {
-        const raw = localStorage.getItem(k);
+        const raw = safeGetItem(k);
         if (raw) {
           try {
             const parsed = JSON.parse(raw);
@@ -99,7 +127,7 @@ export interface UsdtValuationPref {
 export function getSavedUsdtPref(userId?: string): UsdtValuationPref {
   try {
     const key = getUsdtStorageKey(userId);
-    const saved = localStorage.getItem(key);
+    const saved = safeGetItem(key);
     if (saved) {
       const parsed = JSON.parse(saved);
       const units = Number(parsed.units) || 0;
@@ -115,7 +143,7 @@ export function getSavedUsdtPref(userId?: string): UsdtValuationPref {
 
     // Auto-Rescue: If authenticated user has 0 units in target key,
     // search across all previous keys in localStorage to rescue user's USDT
-    if (typeof window !== "undefined") {
+    if (typeof localStorage !== "undefined") {
       const searchKeys = [
         "trouvaille_usdt_valuation_guest_v1",
         "trouvaille_usdt_valuation_v2",
@@ -129,7 +157,7 @@ export function getSavedUsdtPref(userId?: string): UsdtValuationPref {
       }
 
       for (const k of searchKeys) {
-        const raw = localStorage.getItem(k);
+        const raw = safeGetItem(k);
         if (raw) {
           try {
             const parsed = JSON.parse(raw);
@@ -141,7 +169,7 @@ export function getSavedUsdtPref(userId?: string): UsdtValuationPref {
                 rate: rate > 5000 && rate < 50000 ? rate : USD_IDR_ESTIMATE,
                 costBasis: Number(parsed.costBasis) || 0,
               };
-              localStorage.setItem(key, JSON.stringify(rescued));
+              safeSetItem(key, JSON.stringify(rescued));
               return rescued;
             }
           } catch {}
@@ -162,9 +190,9 @@ export function getSavedUsdtPref(userId?: string): UsdtValuationPref {
 export function saveUsdtPref(pref: UsdtValuationPref, userId?: string): void {
   try {
     const key = getUsdtStorageKey(userId);
-    localStorage.setItem(key, JSON.stringify(pref));
-    localStorage.removeItem("trouvaille_usdt_valuation_v2");
-    localStorage.removeItem("trouvaille_usdt_valuation_v1");
+    safeSetItem(key, JSON.stringify(pref));
+    safeRemoveItem("trouvaille_usdt_valuation_v2");
+    safeRemoveItem("trouvaille_usdt_valuation_v1");
 
     // Asynchronously synchronize USDT to Supabase holdings table
     if (userId && userId !== "guest_local_user") {
@@ -347,7 +375,7 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
 export function getSavedHoldings(userId?: string): InvestmentHolding[] {
   try {
     const key = getHoldingsStorageKey(userId);
-    const raw = localStorage.getItem(key);
+    const raw = safeGetItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -356,18 +384,18 @@ export function getSavedHoldings(userId?: string): InvestmentHolding[] {
     }
     // Auto-Rescue: If authenticated user has 0 holdings in target key,
     // search across guest or legacy keys
-    if (typeof window !== "undefined" && key !== "trouvaille_holdings_guest_v1") {
+    if (typeof localStorage !== "undefined" && key !== "trouvaille_holdings_guest_v1") {
       const candidateKeys = [
         "trouvaille_holdings_guest_v1",
         HOLDINGS_STORAGE_KEY,
       ];
       for (const cand of candidateKeys) {
-        const legacy = localStorage.getItem(cand);
+        const legacy = safeGetItem(cand);
         if (legacy) {
           try {
             const parsed = JSON.parse(legacy);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              localStorage.setItem(key, legacy);
+              safeSetItem(key, legacy);
               return parsed;
             }
           } catch {}
@@ -386,9 +414,9 @@ export function getSavedHoldings(userId?: string): InvestmentHolding[] {
 export function saveHoldings(holdings: InvestmentHolding[], userId?: string): void {
   try {
     const key = getHoldingsStorageKey(userId);
-    localStorage.setItem(key, JSON.stringify(holdings));
+    safeSetItem(key, JSON.stringify(holdings));
     // Clear un-scoped legacy key to prevent leaks into guest mode
-    localStorage.removeItem(HOLDINGS_STORAGE_KEY);
+    safeRemoveItem(HOLDINGS_STORAGE_KEY);
 
     // Sync to Supabase if authenticated
     if (userId && userId !== "guest_local_user") {
@@ -768,4 +796,197 @@ export function calculatePortfolioSummary(holdings: InvestmentHolding[]): Portfo
     totalFloatingPnLPct,
     byAssetType,
   };
+}
+
+/**
+ * Retrieve all activities/positions recorded for a holding.
+ * If activities array is empty or undefined, synthesizes an initial position from the holding's current values.
+ */
+export function getHoldingActivities(holding: InvestmentHolding): HoldingActivity[] {
+  if (holding.activities && Array.isArray(holding.activities) && holding.activities.length > 0) {
+    return [...holding.activities].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  }
+
+  // Synthesize an initial position for backward compatibility
+  const initialDate = holding.purchase_date || (holding.last_price_updated_at ? holding.last_price_updated_at.split("T")[0] : "Initial");
+  return [
+    {
+      id: `act-initial-${holding.id}`,
+      holding_id: holding.id,
+      type: "initial",
+      date: initialDate,
+      units: holding.units,
+      price_per_unit: holding.avg_buy_price,
+      total_amount: holding.units * holding.avg_buy_price,
+      note: "Initial position",
+      created_at: holding.last_price_updated_at || new Date().toISOString(),
+    },
+  ];
+}
+
+/**
+ * Record a new DCA Buy or partial/full Sell position on a holding.
+ * Automatically recalculates weighted average buy price on buys and updates units.
+ */
+export function recordHoldingActivity(
+  holdingId: string,
+  activityInput: {
+    type: "buy" | "sell";
+    units: number;
+    price_per_unit: number;
+    total_amount?: number;
+    date?: string;
+    note?: string;
+  },
+  userId?: string,
+): { updatedHolding: InvestmentHolding; realizedPnL: number } {
+  const allHoldings = getSavedHoldings(userId);
+  let target = allHoldings.find((h) => h.id === holdingId);
+  if (!target && (holdingId.startsWith("usdt-") || holdingId === "usdt-core-holding" || holdingId === "usdt")) {
+    const usdtPref = getSavedUsdtPref(userId);
+    target = {
+      id: holdingId,
+      user_id: userId,
+      symbol: "USDT",
+      name: "Tether USD",
+      asset_type: "crypto",
+      units: usdtPref.units,
+      avg_buy_price: usdtPref.units > 0 ? Math.round(usdtPref.costBasis / usdtPref.units) : usdtPref.rate,
+      current_price: usdtPref.rate,
+      currency: "IDR",
+      icon: "Coins",
+    };
+  }
+  if (!target) {
+    throw new Error(`Holding with id ${holdingId} not found`);
+  }
+
+  const existingActivities = getHoldingActivities(target);
+  const units = Math.max(0, Number(activityInput.units) || 0);
+  const price = Math.max(0, Number(activityInput.price_per_unit) || 0);
+  const totalNominal = activityInput.total_amount ? Number(activityInput.total_amount) : units * price;
+  const dateStr = activityInput.date || new Date().toISOString().split("T")[0];
+
+  const newActivity: HoldingActivity = {
+    id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    holding_id: target.id,
+    type: activityInput.type,
+    date: dateStr,
+    units,
+    price_per_unit: price,
+    total_amount: totalNominal,
+    note: activityInput.note || (activityInput.type === "buy" ? "DCA Purchase" : "Position Sell"),
+    created_at: new Date().toISOString(),
+  };
+
+  let newUnits = target.units;
+  let newAvgBuyPrice = target.avg_buy_price;
+  let realizedPnL = 0;
+
+  if (activityInput.type === "buy") {
+    // Weighted average cost basis:
+    // (previous_units * previous_avg + new_units * new_price) / (previous_units + new_units)
+    const prevCost = target.units * target.avg_buy_price;
+    const addCost = units * price;
+    newUnits = target.units + units;
+    newAvgBuyPrice = newUnits > 0 ? (prevCost + addCost) / newUnits : price;
+  } else if (activityInput.type === "sell") {
+    // Realized Profit/Loss = units_sold * (selling_price - avg_buy_price)
+    realizedPnL = units * (price - target.avg_buy_price);
+    newUnits = Math.max(0, target.units - units);
+    // avg_buy_price per remaining unit remains unchanged on partial liquidation
+  }
+
+  const updatedHolding: InvestmentHolding = {
+    ...target,
+    units: newUnits,
+    avg_buy_price: Math.round(newAvgBuyPrice * 100) / 100,
+    current_price: price > 0 ? price : target.current_price,
+    last_price_updated_at: new Date().toISOString(),
+    activities: [newActivity, ...existingActivities.filter((a) => !a.id.startsWith("act-initial-"))],
+  };
+
+  upsertHolding(updatedHolding, userId);
+  if (updatedHolding.symbol?.toUpperCase() === "USDT") {
+    saveUsdtPref(
+      {
+        units: newUnits,
+        rate: updatedHolding.current_price || USD_IDR_ESTIMATE,
+        costBasis: Math.round(newUnits * newAvgBuyPrice),
+      },
+      userId,
+    );
+  }
+  return { updatedHolding, realizedPnL };
+}
+
+/**
+ * Generate smooth historical chart points for Value (nominal) and Return (PnL) curves.
+ */
+export function generateAssetHistoryCurve(
+  holding: InvestmentHolding,
+  timeframe: "1D" | "1W" | "1M" | "1Y" | "ALL",
+  currentPrice?: number,
+): Array<{
+  label: string;
+  date: string;
+  value: number;
+  cost: number;
+  returnVal: number;
+  returnPct: number;
+}> {
+  const units = holding.units;
+  const avgBuy = holding.avg_buy_price;
+  const livePrice = currentPrice && currentPrice > 0 ? currentPrice : holding.current_price || avgBuy;
+  const currentTotalValue = units * livePrice;
+  const totalCost = units * avgBuy;
+
+  const numPoints = timeframe === "1D" ? 12 : timeframe === "1W" ? 7 : timeframe === "1M" ? 15 : 12;
+  const points: Array<{
+    label: string;
+    date: string;
+    value: number;
+    cost: number;
+    returnVal: number;
+    returnPct: number;
+  }> = [];
+
+  const priceDiff = livePrice - avgBuy;
+  const now = new Date();
+
+  for (let i = 0; i < numPoints; i++) {
+    const progress = i / (numPoints - 1);
+    const factor = Math.sin((progress * Math.PI) / 2);
+    const wave = Math.sin(i * 1.7) * 0.015 * (1 - progress);
+    
+    const simulatedPrice = avgBuy + priceDiff * factor + livePrice * wave;
+    const simulatedVal = Math.max(0, Math.round(units * simulatedPrice));
+    const simulatedPnL = simulatedVal - totalCost;
+    const simulatedPnLPct = totalCost > 0 ? (simulatedPnL / totalCost) * 100 : 0;
+
+    let label = "";
+    if (timeframe === "1D") {
+      label = `${String(9 + Math.floor(i * 0.75)).padStart(2, "0")}:00`;
+    } else if (timeframe === "1W") {
+      const d = new Date(now.getTime() - (6 - i) * 86400000);
+      label = d.toLocaleDateString("en-US", { weekday: "short" });
+    } else if (timeframe === "1M") {
+      label = `${i * 2 + 1}`;
+    } else {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const mIndex = (now.getMonth() - (11 - i) + 12) % 12;
+      label = monthNames[mIndex];
+    }
+
+    points.push({
+      label,
+      date: label,
+      value: i === numPoints - 1 ? currentTotalValue : simulatedVal,
+      cost: totalCost,
+      returnVal: i === numPoints - 1 ? currentTotalValue - totalCost : simulatedPnL,
+      returnPct: i === numPoints - 1 && totalCost > 0 ? ((currentTotalValue - totalCost) / totalCost) * 100 : Math.round(simulatedPnLPct * 100) / 100,
+    });
+  }
+
+  return points;
 }

@@ -63,7 +63,7 @@ export async function syncBillNotifications(bills: Bill[]): Promise<void> {
       }
 
       // 2. Notification on the Due Date at 09:00 AM
-      const onDueDate = new Date(dueDate)
+      const onDueDate = parseISO(bill.due_date)
       onDueDate.setHours(9, 0, 0, 0)
       if (onDueDate > now) {
         notificationsToSchedule.push({

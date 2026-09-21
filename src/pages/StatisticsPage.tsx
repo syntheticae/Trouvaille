@@ -11,7 +11,8 @@ import {
   getParentIcon,
 } from "../hooks/useCategories";
 import { CreditCard, Layers, Calendar } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, lazy, Suspense } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck,
   ArrowDownCircle,
@@ -45,6 +46,7 @@ import { BottomSheet } from "../components/ui/BottomSheet";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useBills } from "../hooks/useBills";
 import { useGoals } from "../hooks/useGoals";
@@ -54,31 +56,60 @@ import { MonthlyReviewSection } from "../components/statistics/MonthlyReviewSect
 import { PersonalBaselineSection } from "../components/statistics/PersonalBaselineSection";
 import { SpendingPatternsSection } from "../components/statistics/SpendingPatternsSection";
 import { ExpenseStructureCard } from "../components/statistics/ExpenseStructureCard";
-import { CategoryDrillDownSheet } from "../components/statistics/CategoryDrillDownSheet";
-import { FinancialHealthDiagnosticModal } from "../components/statistics/FinancialHealthDiagnosticModal";
-import { FinancialWrappedModal } from "../components/statistics/FinancialWrappedModal";
 import { DebtPayoffSimulatorCard } from "../components/statistics/DebtPayoffSimulatorCard";
 import { ZeroBasedEnvelopesCard } from "../components/statistics/ZeroBasedEnvelopesCard";
 import { CashflowOutlookCard } from "../components/home/CashflowOutlookCard";
 import { LiquidityHorizonCard } from "../components/home/LiquidityHorizonCard";
 import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
 import { PersonalFinancialModelCard } from "../components/home/PersonalFinancialModelCard";
-import { PersonalFinancialModelSheet } from "../components/home/PersonalFinancialModelSheet";
 import { FinancialReportSection } from "../components/statistics/FinancialReportSection";
 import { AssetAnalyticsSection } from "../components/statistics/AssetAnalyticsSection";
-import { AssetValuationSheet } from "../components/settings/AssetValuationSheet";
 import { CashflowSankeySection } from "../components/statistics/CashflowSankeySection";
-import {
-  MonteCarloCard,
-  MonteCarloSimulatorSheet,
-  FirePlannerCard,
-  FirePlannerSheet,
-} from "../components/statistics";
+import { MonteCarloCard } from "../components/statistics/MonteCarloCard";
+import { FirePlannerCard } from "../components/statistics/FirePlannerCard";
+
+// Code-split heavy analytics modals and simulators
+const CategoryDrillDownSheet = lazy(() =>
+  import("../components/statistics/CategoryDrillDownSheet").then((m) => ({
+    default: m.CategoryDrillDownSheet,
+  }))
+);
+const FinancialHealthDiagnosticModal = lazy(() =>
+  import("../components/statistics/FinancialHealthDiagnosticModal").then((m) => ({
+    default: m.FinancialHealthDiagnosticModal,
+  }))
+);
+const FinancialWrappedModal = lazy(() =>
+  import("../components/statistics/FinancialWrappedModal").then((m) => ({
+    default: m.FinancialWrappedModal,
+  }))
+);
+const PersonalFinancialModelSheet = lazy(() =>
+  import("../components/home/PersonalFinancialModelSheet").then((m) => ({
+    default: m.PersonalFinancialModelSheet,
+  }))
+);
+const AssetValuationSheet = lazy(() =>
+  import("../components/settings/AssetValuationSheet").then((m) => ({
+    default: m.AssetValuationSheet,
+  }))
+);
+const MonteCarloSimulatorSheet = lazy(() =>
+  import("../components/statistics/MonteCarloSimulatorSheet").then((m) => ({
+    default: m.MonteCarloSimulatorSheet,
+  }))
+);
+const FirePlannerSheet = lazy(() =>
+  import("../components/statistics/FirePlannerSheet").then((m) => ({
+    default: m.FirePlannerSheet,
+  }))
+);
 import { ReorderableWidgetGrid, WidgetCustomizationBar } from "../components/common";
+import { CustomizeStatisticsModal } from "../components/statistics/CustomizeStatisticsModal";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
 import { STATS_STORAGE_KEY } from "../lib/widgetLayoutEngine";
 import { DEFAULT_STATISTICS_WIDGETS } from "../lib/widgetLayoutTypes";
-import type { WidgetSize } from "../lib/widgetLayoutTypes";
+import type { WidgetSize, StatisticsPresetKey } from "../lib/widgetLayoutTypes";
 import {
   calculateAssetTrend,
   calculateWhatIfScenario,
@@ -96,18 +127,12 @@ import {
   getDay,
   isToday,
 } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 type Range = "week" | "month" | "year" | "all";
 type BreakdownType = "expense" | "income";
 type GroupMode = "category" | "parent";
 type AnalyticsSubTab = "report" | "intelligence" | "cashflow" | "assets";
-
-const analyticsTabs: { key: AnalyticsSubTab; label: string }[] = [
-  { key: "report", label: "Report" },
-  { key: "intelligence", label: "Intelligence" },
-  { key: "cashflow", label: "Cashflow" },
-  { key: "assets", label: "Net Worth" },
-];
 
 const isTxCorrection = isCorrectionTx;
 
@@ -255,6 +280,7 @@ function useChartColors() {
 
 export function StatisticsPage() {
   const { theme } = useTheme();
+  const { isIndonesian } = useLanguage();
   const isDark = theme !== "light";
   const [range, setRange] = useState<Range>("month");
   const [breakdownType, setBreakdownType] = useState<BreakdownType>("expense");
@@ -263,6 +289,16 @@ export function StatisticsPage() {
   const [timeframeMenuOpen, setTimeframeMenuOpen] = useState(false);
   const [analyticsSubTab, setAnalyticsSubTab] =
     useState<AnalyticsSubTab>("report");
+
+  const analyticsTabs = useMemo<{ key: AnalyticsSubTab; label: string }[]>(
+    () => [
+      { key: "report", label: isIndonesian ? "Laporan" : "Report" },
+      { key: "intelligence", label: isIndonesian ? "Kecerdasan" : "Intelligence" },
+      { key: "cashflow", label: isIndonesian ? "Arus Kas" : "Cashflow" },
+      { key: "assets", label: isIndonesian ? "Aset & Kekayaan" : "Net Worth" },
+    ],
+    [isIndonesian],
+  );
   const now = useMemo(() => new Date(), []);
   const { data: allTxs = [] } = useAllTransactions();
   const { data: wallets = [] } = useWallets();
@@ -276,6 +312,7 @@ export function StatisticsPage() {
     "all" | "expense" | "income"
   >("all");
   const [monthOffset, setMonthOffset] = useState(0);
+  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
   const [selectedCategoryShift, setSelectedCategoryShift] = useState<
     any | null
   >(null);
@@ -285,12 +322,36 @@ export function StatisticsPage() {
   const [assetValuationOpen, setAssetValuationOpen] = useState(false);
   const [monteCarloOpen, setMonteCarloOpen] = useState(false);
   const [firePlannerOpen, setFirePlannerOpen] = useState(false);
+  // Collapsible card states (Default: false / folded to keep page clean & compact)
+  const [categoryBreakdownExpanded, setCategoryBreakdownExpanded] = useState(false);
+  const [netTrajectoryExpanded, setNetTrajectoryExpanded] = useState(false);
+  const [inflowOutflowExpanded, setInflowOutflowExpanded] = useState(false);
+  const [heatmapExpanded, setHeatmapExpanded] = useState(false);
   const { isStealthMode: hideBalance } = usePrivacy();
   const colors = useChartColors();
 
+  // Extract all available years from transactions + current year
+  const availableYears = useMemo(() => {
+    const currentYear = now.getFullYear();
+    const yearSet = new Set<number>();
+    yearSet.add(currentYear);
+
+    for (let i = 0; i < allTxs.length; i++) {
+      const dateStr = allTxs[i]?.occurred_on;
+      if (dateStr && dateStr.length >= 4) {
+        const y = parseInt(dateStr.slice(0, 4), 10);
+        if (!isNaN(y) && y >= 2000 && y <= currentYear + 1) {
+          yearSet.add(y);
+        }
+      }
+    }
+
+    return Array.from(yearSet).sort((a, b) => b - a);
+  }, [allTxs, now]);
+
   // iOS-Style Springboard Widget Layout for Intelligence cards
   const {
-    widgets: _statsWidgets,
+    widgets: statsWidgets,
     visibleCards: visibleStatsCards,
     hiddenCards: hiddenStatsCards,
     isEditMode: isStatsEditMode,
@@ -299,10 +360,36 @@ export function StatisticsPage() {
     cycleCardSize: cycleStatsCardSize,
     toggleCardVisibility: toggleStatsCardVisibility,
     resetLayout: resetStatsLayout,
+    applyPreset: applyStatsPreset,
   } = useWidgetLayout({
     storageKey: STATS_STORAGE_KEY,
     defaultWidgets: DEFAULT_STATISTICS_WIDGETS,
   });
+
+  const [customizeStatsOpen, setCustomizeStatsOpen] = useState(false);
+  const [activeStatsPresetKey, setActiveStatsPresetKey] = useState<StatisticsPresetKey | null>("executive");
+
+  const isSectionVisible = useCallback(
+    (id: string) => statsWidgets.find((w) => w.id === id)?.isVisible ?? true,
+    [statsWidgets],
+  );
+
+  const visibleIntelligenceCards = useMemo(() => {
+    const intelligenceIds = new Set([
+      "health_score",
+      "cashflow_outlook",
+      "liquidity_horizon",
+      "monte_carlo",
+      "fire_planner",
+      "spending_patterns",
+      "spending_density_heatmap",
+      "zero_based_envelopes",
+      "debt_payoff",
+      "what_if_simulator",
+      "personal_financial_model",
+    ]);
+    return visibleStatsCards.filter((c) => intelligenceIds.has(c.id));
+  }, [visibleStatsCards]);
 
   const activeMonthDate = useMemo(
     () => subMonths(now, monthOffset),
@@ -338,8 +425,9 @@ export function StatisticsPage() {
       startStr = format(startOfMonth(targetMonth), "yyyy-MM-dd");
       endStr = format(endOfMonth(targetMonth), "yyyy-MM-dd");
     } else if (range === "year") {
-      startStr = format(startOfYear(now), "yyyy-MM-dd");
-      endStr = format(endOfYear(now), "yyyy-MM-dd");
+      const targetYearDate = new Date(selectedYear, 0, 1);
+      startStr = format(startOfYear(targetYearDate), "yyyy-MM-dd");
+      endStr = format(endOfYear(targetYearDate), "yyyy-MM-dd");
     } else {
       return allTxs;
     }
@@ -347,15 +435,17 @@ export function StatisticsPage() {
       if (!t.occurred_on) return false;
       return t.occurred_on >= startStr && t.occurred_on <= endStr;
     });
-  }, [allTxs, range, monthOffset, now]);
+  }, [allTxs, range, monthOffset, selectedYear, now]);
 
   const currentPeriodLabel = useMemo(() => {
-    if (range === "week") return "Last 7 Days";
+    if (range === "week") return isIndonesian ? "7 Hari Terakhir" : "Last 7 Days";
     if (range === "month")
-      return format(subMonths(now, monthOffset), "MMMM yyyy");
-    if (range === "year") return format(now, "yyyy");
-    return "All Time";
-  }, [range, monthOffset, now]);
+      return format(subMonths(now, monthOffset), "MMMM yyyy", {
+        locale: isIndonesian ? idLocale : undefined,
+      });
+    if (range === "year") return `${selectedYear}`;
+    return isIndonesian ? "Semua Waktu" : "All Time";
+  }, [range, monthOffset, selectedYear, now, isIndonesian]);
 
   const currentPeriodBounds = useMemo(() => {
     if (range === "week") {
@@ -370,13 +460,14 @@ export function StatisticsPage() {
         end: format(endOfMonth(targetMonth), "yyyy-MM-dd"),
       };
     } else if (range === "year") {
+      const targetYearDate = new Date(selectedYear, 0, 1);
       return {
-        start: format(startOfYear(now), "yyyy-MM-dd"),
-        end: format(endOfYear(now), "yyyy-MM-dd"),
+        start: format(startOfYear(targetYearDate), "yyyy-MM-dd"),
+        end: format(endOfYear(targetYearDate), "yyyy-MM-dd"),
       };
     }
     return { start: undefined, end: undefined };
-  }, [range, monthOffset, now]);
+  }, [range, monthOffset, selectedYear, now]);
 
   const { totalIncome, totalExpense } = useMemo(
     () => ({
@@ -643,13 +734,12 @@ export function StatisticsPage() {
         };
       });
     } else if (range === "year") {
-      const currentYear = now.getFullYear();
       return Array.from({ length: 12 }, (_, m) => {
-        const d = new Date(currentYear, m, 1);
+        const d = new Date(selectedYear, m, 1);
         const key = format(d, "yyyy-MM");
         const agg = monthlyAggregates.get(key) || { income: 0, expense: 0 };
         return {
-          label: format(d, "MMM"),
+          label: format(d, "MMM", { locale: isIndonesian ? idLocale : undefined }),
           income: agg.income,
           expense: agg.expense,
         };
@@ -683,7 +773,7 @@ export function StatisticsPage() {
         };
       });
     }
-  }, [allTxs, range, monthOffset, monthlyAggregates, now]);
+  }, [allTxs, range, monthOffset, selectedYear, monthlyAggregates, now, isIndonesian]);
 
   // 3. Cumulative Net Worth trend
   const netWorthData = useMemo(() => {
@@ -1093,13 +1183,23 @@ export function StatisticsPage() {
   }, [allTxs, now, monthOffset]);
 
   const rangeTitle = useMemo(() => {
-    if (range === "week") return "This Week";
+    if (range === "week") return isIndonesian ? "Minggu Ini" : "This Week";
     if (range === "month") {
-      return format(subMonths(now, monthOffset), "MMMM yyyy");
+      if (monthOffset === 0) {
+        return isIndonesian ? "Bulan Ini" : "This Month";
+      }
+      return format(subMonths(now, monthOffset), "MMM yyyy", {
+        locale: isIndonesian ? idLocale : undefined,
+      });
     }
-    if (range === "year") return "This Year";
-    return "All Time";
-  }, [range, monthOffset, now]);
+    if (range === "year") {
+      if (selectedYear === now.getFullYear()) {
+        return isIndonesian ? "Tahun Ini" : "This Year";
+      }
+      return isIndonesian ? `Tahun ${selectedYear}` : `Year ${selectedYear}`;
+    }
+    return isIndonesian ? "Semua Waktu" : "All Time";
+  }, [range, monthOffset, selectedYear, now, isIndonesian]);
 
   const renderIntelligenceCard = (cardId: string, _size: WidgetSize) => {
     switch (cardId) {
@@ -1260,7 +1360,13 @@ export function StatisticsPage() {
       case "spending_density_heatmap":
         return (
           <div className="p-5 rounded-[24px] glass-surface">
-            <div className="flex justify-between items-center mb-3">
+            <div
+              className="flex justify-between items-center cursor-pointer select-none"
+              onClick={() => {
+                setHeatmapExpanded((v) => !v);
+                triggerHaptic("light");
+              }}
+            >
               <div>
                 <div className="flex items-center gap-2">
                   <Calendar size={16} style={{ color: "var(--text-tertiary)" }} />
@@ -1278,98 +1384,129 @@ export function StatisticsPage() {
                   Daily expense cluster · {rangeTitle}
                 </p>
               </div>
+
+              <button
+                type="button"
+                className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer active:scale-90 shrink-0"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+                aria-label={heatmapExpanded ? "Lipat" : "Bentangkan"}
+              >
+                <motion.div
+                  animate={{ rotate: heatmapExpanded ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center justify-center"
+                >
+                  <ChevronDown size={14} strokeWidth={1.75} />
+                </motion.div>
+              </button>
             </div>
 
-            <div
-              className="p-3 rounded-2xl"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
-                {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
+            <AnimatePresence initial={false}>
+              {heatmapExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden pt-3"
+                >
                   <div
-                    key={i}
-                    className="text-[9px] font-semibold"
-                    style={{ color: "var(--text-tertiary)" }}
+                    className="p-3 rounded-2xl"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                    }}
                   >
-                    {w}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {Array.from({ length: calendarSpendingHeatmap.pad }).map((_, i) => (
-                  <div key={`pad-${i}`} />
-                ))}
-                {calendarSpendingHeatmap.days.map((d) => {
-                  const dStr = format(d, "yyyy-MM-dd");
-                  const spent =
-                    calendarSpendingHeatmap.dailySpendMap.get(dStr) || 0;
-                  const intensity =
-                    calendarSpendingHeatmap.maxSpend > 0
-                      ? spent / calendarSpendingHeatmap.maxSpend
-                      : 0;
-                  const isT = isToday(d);
-
-                  let bg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
-                  let textColor = "var(--text-tertiary)";
-                  if (spent > 0) {
-                    if (isDark) {
-                      if (intensity > 0.6) {
-                        bg = "#FFFFFF";
-                        textColor = "#0A0A0B";
-                      } else if (intensity > 0.3) {
-                        bg = "rgba(255,255,255,0.45)";
-                        textColor = "#FFFFFF";
-                      } else {
-                        bg = "rgba(255,255,255,0.18)";
-                        textColor = "rgba(255,255,255,0.9)";
-                      }
-                    } else {
-                      if (intensity > 0.6) {
-                        bg = "#18181B";
-                        textColor = "#FFFFFF";
-                      } else if (intensity > 0.3) {
-                        bg = "rgba(24,24,27,0.5)";
-                        textColor = "#FFFFFF";
-                      } else {
-                        bg = "rgba(24,24,27,0.18)";
-                        textColor = "#18181B";
-                      }
-                    }
-                  }
-
-                  return (
-                    <div
-                      key={dStr}
-                      className="aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all"
-                      style={{
-                        background: bg,
-                        color: textColor,
-                        border: isT
-                          ? "1px solid var(--accent)"
-                          : "1px solid transparent",
-                      }}
-                      title={`${format(d, "dd MMM")}: ${spent > 0 ? formatRupiah(spent) : "No spend"}`}
-                    >
-                      <span className="text-[10px] font-semibold">
-                        {d.getDate()}
-                      </span>
-                      {spent > 0 && (
-                        <span className="text-[8px] font-semibold opacity-80 scale-90 leading-none mt-0.5">
-                          {spent >= 1000000
-                            ? (spent / 1000000).toFixed(0) + "M"
-                            : spent >= 1000
-                              ? (spent / 1000).toFixed(0) + "K"
-                              : spent}
-                        </span>
-                      )}
+                    <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
+                      {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
+                        <div
+                          key={i}
+                          className="text-[9px] font-semibold"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {w}
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {Array.from({ length: calendarSpendingHeatmap.pad }).map((_, i) => (
+                        <div key={`pad-${i}`} />
+                      ))}
+                      {calendarSpendingHeatmap.days.map((d) => {
+                        const dStr = format(d, "yyyy-MM-dd");
+                        const spent =
+                          calendarSpendingHeatmap.dailySpendMap.get(dStr) || 0;
+                        const intensity =
+                          calendarSpendingHeatmap.maxSpend > 0
+                            ? spent / calendarSpendingHeatmap.maxSpend
+                            : 0;
+                        const isT = isToday(d);
+
+                        let bg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
+                        let textColor = "var(--text-tertiary)";
+                        if (spent > 0) {
+                          if (isDark) {
+                            if (intensity > 0.6) {
+                              bg = "#FFFFFF";
+                              textColor = "#0A0A0B";
+                            } else if (intensity > 0.3) {
+                              bg = "rgba(255,255,255,0.45)";
+                              textColor = "#FFFFFF";
+                            } else {
+                              bg = "rgba(255,255,255,0.18)";
+                              textColor = "rgba(255,255,255,0.9)";
+                            }
+                          } else {
+                            if (intensity > 0.6) {
+                              bg = "#18181B";
+                              textColor = "#FFFFFF";
+                            } else if (intensity > 0.3) {
+                              bg = "rgba(24,24,27,0.5)";
+                              textColor = "#FFFFFF";
+                            } else {
+                              bg = "rgba(24,24,27,0.18)";
+                              textColor = "#18181B";
+                            }
+                          }
+                        }
+
+                        return (
+                          <div
+                            key={dStr}
+                            className="aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all"
+                            style={{
+                              background: bg,
+                              color: textColor,
+                              border: isT
+                                ? "1px solid var(--accent)"
+                                : "1px solid transparent",
+                            }}
+                            title={`${format(d, "dd MMM")}: ${spent > 0 ? formatRupiah(spent) : "No spend"}`}
+                          >
+                            <span className="text-[10px] font-semibold">
+                              {d.getDate()}
+                            </span>
+                            {spent > 0 && (
+                              <span className="text-[8px] font-semibold opacity-80 scale-90 leading-none mt-0.5">
+                                {spent >= 1000000
+                                  ? (spent / 1000000).toFixed(0) + "M"
+                                  : spent >= 1000
+                                    ? (spent / 1000).toFixed(0) + "K"
+                                    : spent}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         );
 
@@ -1414,25 +1551,46 @@ export function StatisticsPage() {
             className="text-[22px] font-semibold tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
-            Analytics
+            {isIndonesian ? "Statistik" : "Analytics"}
           </h1>
           <p
             className="text-[11px] font-semibold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Performance & Distribution
+            {isIndonesian ? "Kinerja & Distribusi" : "Performance & Distribution"}
           </p>
         </div>
 
-        {/* Compact Timeframe Dropdown Pill */}
-        <div className="relative">
+        {/* Action Controls: Customize Button (Icon Only) + Compact Timeframe Dropdown Pill */}
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
-              setTimeframeMenuOpen((o) => !o);
               triggerHaptic("light");
+              setCustomizeStatsOpen(true);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-tight active:scale-95 transition-all select-none"
+            className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-all select-none cursor-pointer shrink-0"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+              boxShadow: "var(--shadow-card)",
+            }}
+            aria-label={isIndonesian ? "Kustomisasi Analitik" : "Customize Analytics"}
+            title={isIndonesian ? "Kustomisasi Analitik" : "Customize Analytics"}
+          >
+            <SlidersHorizontal size={14} strokeWidth={1.75} />
+          </button>
+
+          {/* Compact Timeframe Dropdown Pill */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setTimeframeMenuOpen((o) => !o);
+                triggerHaptic("light");
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-tight active:scale-95 transition-all select-none"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
@@ -1456,7 +1614,7 @@ export function StatisticsPage() {
                 onClick={() => setTimeframeMenuOpen(false)}
               />
               <div
-                className="absolute right-0 top-full mt-2 w-56 p-2 rounded-2xl z-50 overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+                className="absolute right-0 top-full mt-2 w-60 p-2 rounded-2xl z-50 overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150"
                 style={{
                   background: isDark ? "#121214" : "#FFFFFF",
                   border: "1px solid var(--glass-border)",
@@ -1464,7 +1622,7 @@ export function StatisticsPage() {
                 }}
               >
                 <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] border-b border-[var(--glass-border)] mb-1">
-                  Timeframe
+                  {isIndonesian ? "Rentang Waktu" : "Timeframe"}
                 </div>
 
                 <div className="space-y-0.5">
@@ -1474,13 +1632,13 @@ export function StatisticsPage() {
                       setTimeframeMenuOpen(false);
                       triggerHaptic("light");
                     }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
                     style={{
                       color: range === "week" ? "var(--accent)" : "var(--text-primary)",
                       background: range === "week" ? "var(--glass-fill)" : "transparent",
                     }}
                   >
-                    <span>This Week</span>
+                    <span>{isIndonesian ? "Minggu Ini" : "This Week"}</span>
                     {range === "week" && <Check size={14} />}
                   </button>
 
@@ -1491,30 +1649,31 @@ export function StatisticsPage() {
                       setTimeframeMenuOpen(false);
                       triggerHaptic("light");
                     }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
                     style={{
                       color: range === "month" && monthOffset === 0 ? "var(--accent)" : "var(--text-primary)",
                       background: range === "month" && monthOffset === 0 ? "var(--glass-fill)" : "transparent",
                     }}
                   >
-                    <span>This Month</span>
+                    <span>{isIndonesian ? "Bulan Ini" : "This Month"}</span>
                     {range === "month" && monthOffset === 0 && <Check size={14} />}
                   </button>
 
                   <button
                     onClick={() => {
                       setRange("year");
+                      setSelectedYear(now.getFullYear());
                       setTimeframeMenuOpen(false);
                       triggerHaptic("light");
                     }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
                     style={{
-                      color: range === "year" ? "var(--accent)" : "var(--text-primary)",
-                      background: range === "year" ? "var(--glass-fill)" : "transparent",
+                      color: range === "year" && selectedYear === now.getFullYear() ? "var(--accent)" : "var(--text-primary)",
+                      background: range === "year" && selectedYear === now.getFullYear() ? "var(--glass-fill)" : "transparent",
                     }}
                   >
-                    <span>This Year</span>
-                    {range === "year" && <Check size={14} />}
+                    <span>{isIndonesian ? "Tahun Ini" : "This Year"}</span>
+                    {range === "year" && selectedYear === now.getFullYear() && <Check size={14} />}
                   </button>
 
                   <button
@@ -1523,21 +1682,26 @@ export function StatisticsPage() {
                       setTimeframeMenuOpen(false);
                       triggerHaptic("light");
                     }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
                     style={{
                       color: range === "all" ? "var(--accent)" : "var(--text-primary)",
                       background: range === "all" ? "var(--glass-fill)" : "transparent",
                     }}
                   >
-                    <span>All Time</span>
+                    <span>{isIndonesian ? "Semua Waktu" : "All Time"}</span>
                     {range === "all" && <Check size={14} />}
                   </button>
                 </div>
 
                 {/* Specific Month Stepper */}
                 <div className="mt-1 pt-1.5 border-t border-[var(--glass-border)]">
-                  <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                    Specific Month
+                  <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center justify-between">
+                    <span>{isIndonesian ? "Bulan Tertentu" : "Specific Month"}</span>
+                    {range === "month" && monthOffset > 0 && (
+                      <span className="text-[9px] font-medium text-[var(--accent)]">
+                        {isIndonesian ? "Aktif" : "Active"}
+                      </span>
+                    )}
                   </div>
                   <div
                     className="flex items-center justify-between p-1 rounded-xl mt-1"
@@ -1550,8 +1714,9 @@ export function StatisticsPage() {
                         setMonthOffset((o) => o + 1);
                         triggerHaptic("light");
                       }}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
                       style={{ color: "var(--text-secondary)" }}
+                      title="Previous Month"
                     >
                       <ChevronLeft size={14} />
                     </button>
@@ -1566,7 +1731,9 @@ export function StatisticsPage() {
                         color: range === "month" ? "var(--accent)" : "var(--text-primary)",
                       }}
                     >
-                      {format(subMonths(now, monthOffset), "MMM yyyy")}
+                      {format(subMonths(now, monthOffset), "MMM yyyy", {
+                        locale: isIndonesian ? idLocale : undefined,
+                      })}
                     </span>
                     <button
                       disabled={monthOffset === 0}
@@ -1576,18 +1743,121 @@ export function StatisticsPage() {
                         setMonthOffset((o) => Math.max(0, o - 1));
                         triggerHaptic("light");
                       }}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer"
                       style={{ color: "var(--text-secondary)" }}
+                      title="Next Month"
                     >
                       <ChevronRight size={14} />
                     </button>
                   </div>
+                </div>
+
+                {/* Specific Year Stepper & Available Years */}
+                <div className="mt-1 pt-1.5 border-t border-[var(--glass-border)]">
+                  <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center justify-between">
+                    <span>{isIndonesian ? "Pilih Tahun" : "Select Year"}</span>
+                    {range === "year" && selectedYear !== now.getFullYear() && (
+                      <span className="text-[9px] font-medium text-[var(--accent)]">
+                        {isIndonesian ? "Aktif" : "Active"}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className="flex items-center justify-between p-1 rounded-xl mt-1"
+                    style={{ background: "var(--glass-fill)" }}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRange("year");
+                        setSelectedYear((y) => {
+                          const prevYears = availableYears.filter((ay) => ay < y);
+                          return prevYears.length > 0 ? Math.max(...prevYears) : y - 1;
+                        });
+                        triggerHaptic("light");
+                      }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+                      style={{ color: "var(--text-secondary)" }}
+                      title={isIndonesian ? "Tahun Sebelumnya" : "Previous Year"}
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <span
+                      onClick={() => {
+                        setRange("year");
+                        setTimeframeMenuOpen(false);
+                        triggerHaptic("light");
+                      }}
+                      className="text-[11px] font-semibold cursor-pointer hover:underline text-center"
+                      style={{
+                        color: range === "year" ? "var(--accent)" : "var(--text-primary)",
+                      }}
+                    >
+                      {isIndonesian ? `Tahun ${selectedYear}` : `Year ${selectedYear}`}
+                    </span>
+                    <button
+                      disabled={selectedYear >= now.getFullYear()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRange("year");
+                        setSelectedYear((y) => {
+                          const nextYears = availableYears.filter((ay) => ay > y);
+                          return nextYears.length > 0 ? Math.min(...nextYears) : Math.min(now.getFullYear(), y + 1);
+                        });
+                        triggerHaptic("light");
+                      }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer"
+                      style={{ color: "var(--text-secondary)" }}
+                      title={isIndonesian ? "Tahun Berikutnya" : "Next Year"}
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+
+                  {/* Available Year Chips */}
+                  {availableYears.length > 1 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5 px-0.5">
+                      {availableYears.map((yr) => {
+                        const isSelected = range === "year" && selectedYear === yr;
+                        return (
+                          <button
+                            key={yr}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRange("year");
+                              setSelectedYear(yr);
+                              setTimeframeMenuOpen(false);
+                              triggerHaptic("light");
+                            }}
+                            className="flex-1 min-w-[50px] py-1 px-2 rounded-lg text-[10.5px] font-semibold text-center transition-all cursor-pointer select-none"
+                            style={{
+                              background: isSelected
+                                ? "var(--text-primary)"
+                                : "var(--glass-fill)",
+                              color: isSelected
+                                ? (isDark ? "#000000" : "#FFFFFF")
+                                : "var(--text-secondary)",
+                              border: isSelected
+                                ? "1px solid transparent"
+                                : "1px solid var(--glass-border)",
+                              boxShadow: isSelected
+                                ? "0 1px 4px var(--shadow-strength)"
+                                : "none",
+                            }}
+                          >
+                            {yr}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </>
           )}
         </div>
       </div>
+    </div>
 
       {/* 4-Tab Luxury Apple Glass Segmented Control Bar */}
       <div
@@ -1669,14 +1939,24 @@ export function StatisticsPage() {
                         border: "1px solid var(--glass-border)",
                       }}
                     >
-                      {range === "year" ? "Year in Review" : "Monthly Recap"}
+                      {range === "year"
+                        ? isIndonesian
+                          ? selectedYear === now.getFullYear()
+                            ? "Kilas Balik Tahun Ini"
+                            : `Kilas Balik ${selectedYear}`
+                          : selectedYear === now.getFullYear()
+                            ? "Year in Review"
+                            : `${selectedYear} Wrapped`
+                        : isIndonesian ? "Rekap Bulanan" : "Monthly Recap"}
                     </span>
                   </div>
                   <p
                     className="text-[11px] font-medium truncate"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Interactive financial recap & archetype
+                    {isIndonesian
+                      ? `Rekap finansial interaktif & arketipe ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy", { locale: idLocale })}`
+                      : `Interactive financial recap & archetype for ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy")}`}
                   </p>
                 </div>
               </div>
@@ -1688,18 +1968,20 @@ export function StatisticsPage() {
             </section>
           )}
 
-          <FinancialReportSection
-            wallets={wallets}
-            transactions={rangeTxs}
-            allTransactions={allTxs}
-            categories={categories}
-            startDate={currentPeriodBounds.start}
-            endDate={currentPeriodBounds.end}
-            periodLabel={currentPeriodLabel}
-          />
+          {isSectionVisible("financial_report") && (
+            <FinancialReportSection
+              wallets={wallets}
+              transactions={rangeTxs}
+              allTransactions={allTxs}
+              categories={categories}
+              startDate={currentPeriodBounds.start}
+              endDate={currentPeriodBounds.end}
+              periodLabel={currentPeriodLabel}
+            />
+          )}
 
           {/* Monthly Financial Review (when Month view is active - Below CALK Notes) */}
-          {range === "month" && intel.monthlyReview && (
+          {isSectionVisible("monthly_review") && range === "month" && intel.monthlyReview && (
             <MonthlyReviewSection
               review={intel.monthlyReview}
               onCategoryClick={(catName) => {
@@ -1715,21 +1997,23 @@ export function StatisticsPage() {
           )}
 
           {/* Personal Baseline (Phase II - Below CALK Notes) */}
-          <PersonalBaselineSection
-            baselines={intel.personalBaselines}
-            onCategoryClick={(catName) => {
-              const found = intel.categoryShifts.find(
-                (s) => s.name.toLowerCase() === catName.toLowerCase(),
-              );
-              if (found) {
-                setSelectedCategoryShift(found);
-                triggerHaptic("light");
-              }
-            }}
-          />
+          {isSectionVisible("personal_baseline") && (
+            <PersonalBaselineSection
+              baselines={intel.personalBaselines}
+              onCategoryClick={(catName) => {
+                const found = intel.categoryShifts.find(
+                  (s) => s.name.toLowerCase() === catName.toLowerCase(),
+                );
+                if (found) {
+                  setSelectedCategoryShift(found);
+                  triggerHaptic("light");
+                }
+              }}
+            />
+          )}
 
           {/* Expense Structure (Below CALK Notes) */}
-          {range === "month" && (
+          {isSectionVisible("expense_structure") && range === "month" && (
             <ExpenseStructureCard expenseStructure={intel.expenseStructure} />
           )}
         </>
@@ -1737,139 +2021,122 @@ export function StatisticsPage() {
 
       {/* TAB 2: INTELLIGENCE */}
       {analyticsSubTab === "intelligence" && (
-        <>
-          <ReorderableWidgetGrid
-            cards={visibleStatsCards}
-            isEditMode={isStatsEditMode}
-            onReorder={reorderStatsCards}
-            onEnterEditMode={() => setIsStatsEditMode(true)}
-            onCycleSize={cycleStatsCardSize}
-            onHide={toggleStatsCardVisibility}
-            renderCard={(card) => renderIntelligenceCard(card.id, card.size)}
-          />
-
-          {/* Customize Intelligence Cards Button */}
-          <div className="flex justify-center pt-2 pb-2">
-            <button
-              type="button"
-              onClick={() => setIsStatsEditMode(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-tight cursor-pointer active:scale-95 transition-all"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-tertiary)",
-              }}
-            >
-              <SlidersHorizontal size={12} />
-              <span>Customize Intelligence Cards</span>
-            </button>
-          </div>
-        </>
+        <ReorderableWidgetGrid
+          cards={visibleIntelligenceCards}
+          isEditMode={isStatsEditMode}
+          onReorder={reorderStatsCards}
+          onEnterEditMode={() => setIsStatsEditMode(true)}
+          onCycleSize={cycleStatsCardSize}
+          onHide={toggleStatsCardVisibility}
+          renderCard={(card) => renderIntelligenceCard(card.id, card.size)}
+        />
       )}
 
       {/* TAB 3: CASHFLOW */}
       {analyticsSubTab === "cashflow" && (
         <>
           {/* Net Income Summary Row with MoM Delta */}
-      <div
-        className="p-5 rounded-[24px]"
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <div className="flex justify-between items-center mb-3">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Period Summary · {rangeTitle}
-          </p>
-          {range === "month" && (
-            <span
-              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+          {isSectionVisible("cashflow_summary") && (
+            <div
+              className="p-5 rounded-[24px]"
               style={{
-                background: "var(--glass-fill)",
-                color: "var(--text-tertiary)",
+                background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
+                boxShadow: "var(--shadow-card)",
               }}
             >
-              vs prev month
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            {
-              label: "Total In",
-              value: totalIncome,
-              delta: range === "month" ? incomeDelta : null,
-              isExpense: false,
-            },
-            {
-              label: "Total Out",
-              value: totalExpense,
-              delta: range === "month" ? expenseDelta : null,
-              isExpense: true,
-            },
-            {
-              label: "Net",
-              value: totalIncome - totalExpense,
-              delta: range === "month" ? netDelta : null,
-              isNet: true,
-            },
-          ].map(({ label, value, delta, isNet }) => {
-            const abs = Math.abs(value);
-            let formatted = "0";
-            if (abs >= 1000000) {
-              formatted = (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
-            } else if (abs >= 1000) {
-              formatted = (abs / 1000).toFixed(0) + "K";
-            } else {
-              formatted = abs.toLocaleString("id-ID");
-            }
-            const sign = isNet ? (value < 0 ? "-" : value > 0 ? "+" : "") : "";
-            return (
-              <div
-                key={label}
-                className="text-center p-2 rounded-2xl flex flex-col justify-between"
-                style={{ background: "var(--glass-fill)" }}
-              >
-                <div>
-                  <p
-                    className="text-[10px] font-semibold uppercase tracking-wider mb-1"
-                    style={{ color: "var(--text-tertiary)" }}
+              <div className="flex justify-between items-center mb-3">
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "Ringkasan Periode" : "Period Summary"} · {rangeTitle}
+                </p>
+                {range === "month" && (
+                  <span
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "var(--glass-fill)",
+                      color: "var(--text-tertiary)",
+                      border: "1px solid var(--glass-border)",
+                    }}
                   >
-                    {label}
-                  </p>
-                  <p
-                    className="amount text-[14px] leading-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {sign}
-                    {formatted}
-                  </p>
-                </div>
-                {delta && (
-                  <div className="mt-1.5 pt-1 border-t border-[var(--glass-border)] flex items-center justify-center gap-0.5">
-                    <span
-                      className="text-[10px] font-medium flex items-center"
-                      style={{
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      {delta.isUp ? "↑" : "↓"} {delta.pct}%
-                    </span>
-                  </div>
+                    {isIndonesian ? "vs bln lalu" : "vs prev month"}
+                  </span>
                 )}
               </div>
-            );
-          })}
-        </div>
-      </div>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  {
+                    label: isIndonesian ? "Total Masuk" : "Total In",
+                    value: totalIncome,
+                    delta: range === "month" ? incomeDelta : null,
+                    isExpense: false,
+                  },
+                  {
+                    label: isIndonesian ? "Total Keluar" : "Total Out",
+                    value: totalExpense,
+                    delta: range === "month" ? expenseDelta : null,
+                    isExpense: true,
+                  },
+                  {
+                    label: isIndonesian ? "Bersih" : "Net",
+                    value: totalIncome - totalExpense,
+                    delta: range === "month" ? netDelta : null,
+                    isNet: true,
+                  },
+                ].map(({ label, value, delta, isNet }) => {
+                  const abs = Math.abs(value);
+                  let formatted = "0";
+                  if (abs >= 1000000) {
+                    formatted = (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+                  } else if (abs >= 1000) {
+                    formatted = (abs / 1000).toFixed(0) + "K";
+                  } else {
+                    formatted = abs.toLocaleString("id-ID");
+                  }
+                  const sign = isNet ? (value < 0 ? "-" : value > 0 ? "+" : "") : "";
+                  return (
+                    <div
+                      key={label}
+                      className="text-center p-2 rounded-2xl flex flex-col justify-between"
+                      style={{ background: "var(--glass-fill)" }}
+                    >
+                      <div>
+                        <p
+                          className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {label}
+                        </p>
+                        <p
+                          className="amount text-[14px] leading-tight"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {sign}
+                          {formatted}
+                        </p>
+                      </div>
+                      {delta && (
+                        <div className="mt-1.5 pt-1 border-t border-[var(--glass-border)] flex items-center justify-center gap-0.5">
+                          <span
+                            className="text-[10px] font-medium flex items-center"
+                            style={{
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            {delta.isUp ? "↑" : "↓"} {delta.pct}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-          {/* Category Breakdown */}
+      {/* Category Breakdown (Collapsible, Default: Folded) */}
       <div className="p-5 rounded-[24px] glass-surface">
         <div className="flex justify-between items-center mb-3">
           <div>
@@ -1884,11 +2151,21 @@ export function StatisticsPage() {
               </h2>
               {categoryStats.length > 0 && (
                 <button
-                  onClick={() => setAllDetailsOpen(true)}
-                  className="text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 transition-transform"
-                  style={{ color: "var(--text-secondary)" }}
+                  type="button"
+                  onClick={() => {
+                    setAllDetailsOpen(true);
+                    triggerHaptic("light");
+                  }}
+                  className="w-5 h-5 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-secondary)",
+                  }}
+                  aria-label={isIndonesian ? "Detail Rincian" : "All Details"}
+                  title={isIndonesian ? "Detail Rincian" : "All Details"}
                 >
-                  All Details <ChevronRight size={13} />
+                  <Info size={11} strokeWidth={1.75} />
                 </button>
               )}
             </div>
@@ -1901,78 +2178,141 @@ export function StatisticsPage() {
               {rangeTitle}
             </p>
           </div>
-          <div
-            className="flex p-1 rounded-full"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <button
-              onClick={() => setBreakdownType("expense")}
-              className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1"
+          <div className="flex items-center gap-2">
+            <div
+              className="flex p-1 rounded-full"
               style={{
-                background:
-                  breakdownType === "expense" ? "var(--accent)" : "transparent",
-                color:
-                  breakdownType === "expense"
-                    ? "var(--accent-ink)"
-                    : "var(--text-secondary)",
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
               }}
             >
-              <ArrowDownCircle size={11} /> Out
-            </button>
+              <button
+                type="button"
+                onClick={() => setBreakdownType("expense")}
+                className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                style={{
+                  background:
+                    breakdownType === "expense" ? "var(--accent)" : "transparent",
+                  color:
+                    breakdownType === "expense"
+                      ? "var(--accent-ink)"
+                      : "var(--text-secondary)",
+                }}
+              >
+                <ArrowDownCircle size={11} /> Out
+              </button>
+              <button
+                type="button"
+                onClick={() => setBreakdownType("income")}
+                className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                style={{
+                  background:
+                    breakdownType === "income" ? "var(--accent)" : "transparent",
+                  color:
+                    breakdownType === "income"
+                      ? "var(--accent-ink)"
+                      : "var(--text-secondary)",
+                }}
+              >
+                <ArrowUpCircle size={11} /> In
+              </button>
+            </div>
+
+            {/* Fold/Unfold Toggle Button (>) */}
             <button
-              onClick={() => setBreakdownType("income")}
-              className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1"
-              style={{
-                background:
-                  breakdownType === "income" ? "var(--accent)" : "transparent",
-                color:
-                  breakdownType === "income"
-                    ? "var(--accent-ink)"
-                    : "var(--text-secondary)",
+              type="button"
+              onClick={() => {
+                setCategoryBreakdownExpanded((v) => !v);
+                triggerHaptic("light");
               }}
+              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
+              }}
+              aria-label={categoryBreakdownExpanded ? "Lipat" : "Bentangkan"}
+              title={categoryBreakdownExpanded ? (isIndonesian ? "Lipat" : "Collapse") : (isIndonesian ? "Bentangkan" : "Expand")}
             >
-              <ArrowUpCircle size={11} /> In
+              <motion.div
+                animate={{ rotate: categoryBreakdownExpanded ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center justify-center"
+              >
+                <ChevronDown size={14} strokeWidth={1.75} />
+              </motion.div>
             </button>
           </div>
         </div>
 
-        {/* Sub-toggle: By Category vs By Parent (Induk) */}
-        <div
-          className="flex items-center gap-1.5 mb-4 p-1 rounded-xl w-fit"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-          }}
-        >
-          <button
-            onClick={() => setGroupMode("category")}
-            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all"
-            style={{
-              background:
-                groupMode === "category"
-                  ? "var(--glass-fill-strong)"
-                  : "transparent",
-              color:
-                groupMode === "category"
-                  ? "var(--text-primary)"
-                  : "var(--text-tertiary)",
+        {/* When folded: Sleek minimal summary row */}
+        {!categoryBreakdownExpanded && (
+          <div
+            onClick={() => {
+              setCategoryBreakdownExpanded(true);
+              triggerHaptic("light");
             }}
+            className="flex items-center justify-between pt-2.5 mt-2 border-t border-[var(--glass-border)] cursor-pointer text-[12px] select-none active:opacity-75 transition-opacity"
           >
-            By Category
-          </button>
-          <button
-            onClick={() => setGroupMode("parent")}
-            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1"
-            style={{
-              background:
-                groupMode === "parent"
-                  ? "var(--glass-fill-strong)"
-                  : "transparent",
-              color:
-                groupMode === "parent"
+            <span style={{ color: "var(--text-tertiary)" }}>
+              {breakdownType === "expense"
+                ? (isIndonesian ? "Total Pengeluaran" : "Total Outflow")
+                : (isIndonesian ? "Total Pemasukan" : "Total Inflow")}
+            </span>
+            <div className="flex items-center gap-2 font-semibold" style={{ color: "var(--text-primary)" }}>
+              <span className="amount">{formatRupiah(totalBreakdownAmount)}</span>
+              <span className="text-[10px] font-normal" style={{ color: "var(--text-tertiary)" }}>
+                ({activeBreakdownData.length} {groupMode === "parent" ? (isIndonesian ? "grup" : "groups") : (isIndonesian ? "kategori" : "categories")})
+              </span>
+              <ChevronRight size={13} style={{ color: "var(--text-tertiary)" }} />
+            </div>
+          </div>
+        )}
+
+        {/* When expanded: Full Breakdown Details */}
+        <AnimatePresence initial={false}>
+          {categoryBreakdownExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden space-y-4 pt-1"
+            >
+              {/* Sub-toggle: By Category vs By Parent (Induk) */}
+              <div
+                className="flex items-center gap-1.5 mb-4 p-1 rounded-xl w-fit"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <button
+                  onClick={() => setGroupMode("category")}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all"
+                  style={{
+                    background:
+                      groupMode === "category"
+                        ? "var(--glass-fill-strong)"
+                        : "transparent",
+                    color:
+                      groupMode === "category"
+                        ? "var(--text-primary)"
+                        : "var(--text-tertiary)",
+                  }}
+                >
+                  By Category
+                </button>
+                <button
+                  onClick={() => setGroupMode("parent")}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1"
+                  style={{
+                    background:
+                      groupMode === "parent"
+                        ? "var(--glass-fill-strong)"
+                        : "transparent",
+                    color:
+                      groupMode === "parent"
                   ? "var(--text-primary)"
                   : "var(--text-tertiary)",
             }}
@@ -2349,98 +2689,156 @@ export function StatisticsPage() {
             </p>
           </div>
         )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-          <CashflowSankeySection
-            transactions={rangeTxs}
-            categories={categories}
-            wallets={wallets}
-            periodLabel={rangeTitle}
-          />
+          {isSectionVisible("cashflow_sankey") && (
+            <CashflowSankeySection
+              transactions={rangeTxs}
+              categories={categories}
+              wallets={wallets}
+              periodLabel={rangeTitle}
+            />
+          )}
 
-          {/* Cumulative Net Worth Line Chart */}
+      {/* Cumulative Net Worth Line Chart (Collapsible, Default: Folded) */}
       <div className="p-5 rounded-[24px] glass-surface">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp size={16} style={{ color: "var(--text-tertiary)" }} />
-          <div>
-            <h2
-              className="text-[13px] font-semibold"
-              style={{ color: "var(--text-primary)" }}
+        <div
+          className="flex items-center justify-between cursor-pointer select-none"
+          onClick={() => {
+            setNetTrajectoryExpanded((v) => !v);
+            triggerHaptic("light");
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <TrendingUp size={16} style={{ color: "var(--text-tertiary)" }} />
+            <div>
+              <h2
+                className="text-[13px] font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Net Capital Trajectory
+              </h2>
+              <p
+                className="text-[11px]"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Cumulative net worth change ({rangeTitle})
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {!netTrajectoryExpanded && (
+              <span className="amount text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                {hideBalance ? "••••••" : formatRupiah(netWorth)}
+              </span>
+            )}
+            <button
+              type="button"
+              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer active:scale-90 shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
+              }}
+              aria-label={netTrajectoryExpanded ? "Lipat" : "Bentangkan"}
+              title={netTrajectoryExpanded ? (isIndonesian ? "Lipat" : "Collapse") : (isIndonesian ? "Bentangkan" : "Expand")}
             >
-              Net Capital Trajectory
-            </h2>
-            <p
-              className="text-[11px]"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Cumulative net worth change ({rangeTitle})
-            </p>
+              <motion.div
+                animate={{ rotate: netTrajectoryExpanded ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center justify-center"
+              >
+                <ChevronDown size={14} strokeWidth={1.75} />
+              </motion.div>
+            </button>
           </div>
         </div>
-        <div className="h-[160px] -mx-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={netWorthData}
-              margin={{ top: 5, right: 0, left: 0, bottom: 0 }}
+
+        <AnimatePresence initial={false}>
+          {netTrajectoryExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden pt-4"
             >
-              <defs>
-                <linearGradient id="netG" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor={colors.lineStroke}
-                    stopOpacity={0.2}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor={colors.lineStroke}
-                    stopOpacity={0}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke={isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)"}
-                vertical={false}
-              />
-              <XAxis
-                dataKey="label"
-                tick={{
-                  fontSize: 10,
-                  fill: "var(--text-tertiary)",
-                  fontWeight: 600,
-                }}
-                axisLine={false}
-                tickLine={false}
-                dy={6}
-              />
-              <YAxis hide />
-              <Tooltip
-                content={<GlassTooltip />}
-                cursor={{
-                  stroke: colors.lineStroke,
-                  strokeWidth: 1,
-                  strokeDasharray: "4 4",
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="net"
-                name="net"
-                stroke={colors.lineStroke}
-                strokeWidth={2.5}
-                fill="url(#netG)"
-                fillOpacity={1}
-                dot={false}
-                activeDot={{ r: 4, fill: colors.lineStroke }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+              <div className="h-[160px] -mx-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={netWorthData}
+                    margin={{ top: 5, right: 0, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="netG" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="5%"
+                          stopColor={colors.lineStroke}
+                          stopOpacity={0.2}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor={colors.lineStroke}
+                          stopOpacity={0}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)"}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="label"
+                      tick={{
+                        fontSize: 10,
+                        fill: "var(--text-tertiary)",
+                        fontWeight: 600,
+                      }}
+                      axisLine={false}
+                      tickLine={false}
+                      dy={6}
+                    />
+                    <YAxis hide />
+                    <Tooltip
+                      content={<GlassTooltip />}
+                      cursor={{
+                        stroke: colors.lineStroke,
+                        strokeWidth: 1,
+                        strokeDasharray: "4 4",
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="net"
+                      name="net"
+                      stroke={colors.lineStroke}
+                      strokeWidth={2.5}
+                      fill="url(#netG)"
+                      fillOpacity={1}
+                      dot={false}
+                      activeDot={{ r: 4, fill: colors.lineStroke }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-          {/* Inflow vs Outflow Bar Chart */}
+      {/* Inflow vs Outflow Bar Chart (Collapsible, Default: Folded) */}
       <div className="p-4 rounded-[22px] glass-surface">
-        <div className="flex items-center justify-between mb-3">
+        <div
+          className="flex items-center justify-between cursor-pointer select-none"
+          onClick={() => {
+            setInflowOutflowExpanded((v) => !v);
+            triggerHaptic("light");
+          }}
+        >
           <div>
             <h2
               className="text-[13px] font-semibold tracking-tight"
@@ -2453,111 +2851,145 @@ export function StatisticsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div
-              className="flex items-center gap-1.5 text-[10px] font-medium"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <div className="flex items-center gap-3">
               <div
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: colors.barHigh }}
-              />
-              Inflow
-            </div>
-            <div
-              className="flex items-center gap-1.5 text-[10px] font-medium"
-              style={{ color: "var(--text-secondary)" }}
-            >
+                className="flex items-center gap-1.5 text-[10px] font-medium"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                <div
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ background: colors.barHigh }}
+                />
+                Inflow
+              </div>
               <div
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: colors.barMid }}
-              />
-              Outflow
+                className="flex items-center gap-1.5 text-[10px] font-medium"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                <div
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ background: colors.barMid }}
+                />
+                Outflow
+              </div>
             </div>
+
+            <button
+              type="button"
+              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer active:scale-90 shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
+              }}
+              aria-label={inflowOutflowExpanded ? "Lipat" : "Bentangkan"}
+              title={inflowOutflowExpanded ? (isIndonesian ? "Lipat" : "Collapse") : (isIndonesian ? "Bentangkan" : "Expand")}
+            >
+              <motion.div
+                animate={{ rotate: inflowOutflowExpanded ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center justify-center"
+              >
+                <ChevronDown size={14} strokeWidth={1.75} />
+              </motion.div>
+            </button>
           </div>
         </div>
 
-        <div className="h-[145px] -mx-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={trendData}
-              margin={{ top: 2, right: 0, left: 0, bottom: 0 }}
-              barSize={range === "year" || range === "all" ? 5 : 6}
-              barGap={2}
+        <AnimatePresence initial={false}>
+          {inflowOutflowExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden pt-3"
             >
-              <defs>
-                <linearGradient id="inflowG" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="0%"
-                    stopColor={colors.barHigh}
-                    stopOpacity={0.95}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={colors.barMid}
-                    stopOpacity={0.7}
-                  />
-                </linearGradient>
-                <linearGradient id="outflowG" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="0%"
-                    stopColor={colors.barMid}
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={colors.barLow}
-                    stopOpacity={0.5}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="2 2"
-                stroke={isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)"}
-                vertical={false}
-              />
-              <XAxis
-                dataKey="label"
-                tick={{
-                  fontSize: 9.5,
-                  fill: "var(--text-tertiary)",
-                  fontWeight: 500,
-                }}
-                axisLine={false}
-                tickLine={false}
-                dy={4}
-              />
-              <YAxis hide />
-              <Tooltip
-                content={<GlassTooltip />}
-                cursor={{ fill: colors.cursorFill, radius: 4 }}
-              />
-              <Bar
-                dataKey="income"
-                name="income"
-                fill="url(#inflowG)"
-                radius={[3, 3, 0, 0]}
-              />
-              <Bar
-                dataKey="expense"
-                name="expense"
-                fill="url(#outflowG)"
-                radius={[3, 3, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+              <div className="h-[145px] -mx-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={trendData}
+                    margin={{ top: 2, right: 0, left: 0, bottom: 0 }}
+                    barSize={range === "year" || range === "all" ? 5 : 6}
+                    barGap={2}
+                  >
+                    <defs>
+                      <linearGradient id="inflowG" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="0%"
+                          stopColor={colors.barHigh}
+                          stopOpacity={0.95}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor={colors.barMid}
+                          stopOpacity={0.7}
+                        />
+                      </linearGradient>
+                      <linearGradient id="outflowG" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="0%"
+                          stopColor={colors.barMid}
+                          stopOpacity={0.8}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor={colors.barLow}
+                          stopOpacity={0.5}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="2 2"
+                      stroke={isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)"}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="label"
+                      tick={{
+                        fontSize: 9.5,
+                        fill: "var(--text-tertiary)",
+                        fontWeight: 500,
+                      }}
+                      axisLine={false}
+                      tickLine={false}
+                      dy={4}
+                    />
+                    <YAxis hide />
+                    <Tooltip
+                      content={<GlassTooltip />}
+                      cursor={{ fill: colors.cursorFill, radius: 4 }}
+                    />
+                    <Bar
+                      dataKey="income"
+                      name="income"
+                      fill="url(#inflowG)"
+                      radius={[3, 3, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="expense"
+                      name="expense"
+                      fill="url(#outflowG)"
+                      radius={[3, 3, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
 
-        {/* Phase II: Longitudinal Trajectory Factual Interpretation */}
-        {(range === "year" || range === "all") && (
-          <div className="mt-3.5 pt-3 border-t border-[var(--glass-border)] text-center">
-            <p
-              className="text-[11px] leading-relaxed"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {longitudinal.trajectoryInterpretation}
-            </p>
-          </div>
-        )}
+              {/* Phase II: Longitudinal Trajectory Factual Interpretation */}
+              {(range === "year" || range === "all") && (
+                <div className="mt-3.5 pt-3 border-t border-[var(--glass-border)] text-center">
+                  <p
+                    className="text-[11px] leading-relaxed"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {longitudinal.trajectoryInterpretation}
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
           {/* 2-column mini stat cards (Savings Rate & Average Expense) */}
@@ -2858,12 +3290,16 @@ export function StatisticsPage() {
 
       {/* TAB 4: NET WORTH (ASSETS) */}
       {analyticsSubTab === "assets" && (
-        <AssetAnalyticsSection
-          wallets={wallets}
-          monthlyBurnRate={intel.totalExpense || 3500000}
-          hideBalance={hideBalance}
-          onOpenValuation={() => setAssetValuationOpen(true)}
-        />
+        <>
+          {isSectionVisible("asset_analytics") && (
+            <AssetAnalyticsSection
+              wallets={wallets}
+              monthlyBurnRate={intel.totalExpense || 3500000}
+              hideBalance={hideBalance}
+              onOpenValuation={() => setAssetValuationOpen(true)}
+            />
+          )}
+        </>
       )}
 
       
@@ -3128,65 +3564,67 @@ export function StatisticsPage() {
         </div>
       </BottomSheet>
 
-      <CategoryDrillDownSheet
-        isOpen={!!selectedCategoryShift}
-        onClose={() => setSelectedCategoryShift(null)}
-        shift={selectedCategoryShift}
-      />
+      <Suspense fallback={null}>
+        <CategoryDrillDownSheet
+          isOpen={!!selectedCategoryShift}
+          onClose={() => setSelectedCategoryShift(null)}
+          shift={selectedCategoryShift}
+        />
 
-      <PersonalFinancialModelSheet
-        isOpen={personalModelOpen}
-        onClose={() => setPersonalModelOpen(false)}
-        hideBalance={hideBalance}
-        actual={personalFinancialModel.actual}
-        baseline={personalFinancialModel.baseline}
-        scenario={personalFinancialModel.scenario}
-        insights={personalFinancialModel.insights}
-      />
+        <PersonalFinancialModelSheet
+          isOpen={personalModelOpen}
+          onClose={() => setPersonalModelOpen(false)}
+          hideBalance={hideBalance}
+          actual={personalFinancialModel.actual}
+          baseline={personalFinancialModel.baseline}
+          scenario={personalFinancialModel.scenario}
+          insights={personalFinancialModel.insights}
+        />
 
-      <FinancialHealthDiagnosticModal
-        isOpen={healthDiagnosticOpen}
-        onClose={() => setHealthDiagnosticOpen(false)}
-        healthScore={healthScore}
-        savingsRate={savingsRate}
-        totalIncome={totalIncome}
-        totalExpense={totalExpense}
-        rangeTitle={rangeTitle}
-        baselines={range === "month" ? intel.personalBaselines : undefined}
-        categoryShifts={range === "month" ? intel.categoryShifts : []}
-      />
+        <FinancialHealthDiagnosticModal
+          isOpen={healthDiagnosticOpen}
+          onClose={() => setHealthDiagnosticOpen(false)}
+          healthScore={healthScore}
+          savingsRate={savingsRate}
+          totalIncome={totalIncome}
+          totalExpense={totalExpense}
+          rangeTitle={rangeTitle}
+          baselines={range === "month" ? intel.personalBaselines : undefined}
+          categoryShifts={range === "month" ? intel.categoryShifts : []}
+        />
 
-      <FinancialWrappedModal
-        isOpen={wrappedOpen}
-        onClose={() => setWrappedOpen(false)}
-        transactions={allTxs}
-        categories={categories}
-        mode={range === "year" ? "year" : "month"}
-        targetDate={range === "month" ? activeMonthDate : now}
-      />
+        <FinancialWrappedModal
+          isOpen={wrappedOpen}
+          onClose={() => setWrappedOpen(false)}
+          transactions={allTxs}
+          categories={categories}
+          mode={range === "year" ? "year" : "month"}
+          targetDate={range === "year" ? new Date(selectedYear, 0, 1) : activeMonthDate}
+        />
 
-      <AssetValuationSheet
-        isOpen={assetValuationOpen}
-        onClose={() => setAssetValuationOpen(false)}
-      />
+        <AssetValuationSheet
+          isOpen={assetValuationOpen}
+          onClose={() => setAssetValuationOpen(false)}
+        />
 
-      <MonteCarloSimulatorSheet
-        isOpen={monteCarloOpen}
-        onClose={() => setMonteCarloOpen(false)}
-        initialNetWorth={netWorth}
-        defaultMonthlySavings={Math.max(1000000, totalIncome - totalExpense)}
-        defaultMonthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
-        hideBalance={hideBalance}
-      />
+        <MonteCarloSimulatorSheet
+          isOpen={monteCarloOpen}
+          onClose={() => setMonteCarloOpen(false)}
+          initialNetWorth={netWorth}
+          defaultMonthlySavings={Math.max(1000000, totalIncome - totalExpense)}
+          defaultMonthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
+          hideBalance={hideBalance}
+        />
 
-      <FirePlannerSheet
-        isOpen={firePlannerOpen}
-        onClose={() => setFirePlannerOpen(false)}
-        initialNetWorth={netWorth}
-        defaultMonthlySavings={Math.max(1000000, totalIncome - totalExpense)}
-        defaultMonthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
-        hideBalance={hideBalance}
-      />
+        <FirePlannerSheet
+          isOpen={firePlannerOpen}
+          onClose={() => setFirePlannerOpen(false)}
+          initialNetWorth={netWorth}
+          defaultMonthlySavings={Math.max(1000000, totalIncome - totalExpense)}
+          defaultMonthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
+          hideBalance={hideBalance}
+        />
+      </Suspense>
 
       {/* Floating iOS Springboard Customization Pill for Intelligence Tab */}
       {analyticsSubTab === "intelligence" && (
@@ -3198,6 +3636,19 @@ export function StatisticsPage() {
           onUnhideCard={toggleStatsCardVisibility}
         />
       )}
+
+      {/* Intelligence Cards Customization Modal */}
+      <CustomizeStatisticsModal
+        isOpen={customizeStatsOpen}
+        onClose={() => setCustomizeStatsOpen(false)}
+        widgets={statsWidgets}
+        onToggleVisibility={toggleStatsCardVisibility}
+        onReset={resetStatsLayout}
+        onApplyPreset={applyStatsPreset}
+        onEnterGridEdit={() => setIsStatsEditMode(true)}
+        activePresetKey={activeStatsPresetKey}
+        onSelectPresetKey={setActiveStatsPresetKey}
+      />
     </div>
   );
 }

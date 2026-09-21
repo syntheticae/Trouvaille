@@ -45,10 +45,10 @@ export function FinancialReportSection({
   const [subView, setSubView] = useState<ReportSubView>("all");
   const [copied, setCopied] = useState(false);
 
-  // Section collapse toggles
-  const [assetsOpen, setAssetsOpen] = useState(true);
-  const [liabilitiesOpen, setLiabilitiesOpen] = useState(true);
-  const [operatingOpen, setOperatingOpen] = useState(true);
+  // Section collapse toggles (default folded as requested by user)
+  const [assetsOpen, setAssetsOpen] = useState(false);
+  const [liabilitiesOpen, setLiabilitiesOpen] = useState(false);
+  const [operatingOpen, setOperatingOpen] = useState(false);
   const [investingOpen, setInvestingOpen] = useState(false);
   const [financingOpen, setFinancingOpen] = useState(false);
 
