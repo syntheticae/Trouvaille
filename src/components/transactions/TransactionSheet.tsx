@@ -18,6 +18,7 @@ import {
   PenLine,
   AlertCircle,
   AlertTriangle,
+  Coins,
 } from "lucide-react";
 import { TransactionKeypadSheet } from "./TransactionKeypadSheet";
 import { CategorySelectorRibbon } from "./CategorySelectorRibbon";
@@ -49,6 +50,17 @@ import { SmartQuickAddBar } from "./SmartQuickAddBar";
 import { evaluateMathSafe } from "../../lib/evaluateMathSafe";
 import { useSpace } from "../../contexts/SpaceContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  isInvestmentOrCryptoWallet,
+  syncTransactionWithHolding,
+  reverseTransactionWithHolding,
+} from "../../lib/holdingSyncEngine";
+import {
+  getSavedUsdtPref,
+  fetchUsdtPriceInIDR,
+  USD_IDR_ESTIMATE,
+} from "../../lib/marketPriceService";
 
 interface TransactionSheetProps {
   isOpen: boolean;
@@ -138,6 +150,54 @@ export function TransactionSheet({
     transaction?.to_wallet_id || null,
   );
   const { shortcuts } = useShortcuts();
+  const { user } = useAuth();
+  const { data: wallets = [] } = useWallets();
+
+  // Crypto Asset Units and Sync State
+  const fromWallet = useMemo(() => wallets.find((w) => w.id === walletId), [wallets, walletId]);
+  const toWallet = useMemo(() => wallets.find((w) => w.id === toWalletId), [wallets, toWalletId]);
+
+  const isFromCrypto = useMemo(() => isInvestmentOrCryptoWallet(fromWallet), [fromWallet]);
+  const isToCrypto = useMemo(() => isInvestmentOrCryptoWallet(toWallet), [toWallet]);
+  const isCryptoInvolved = isFromCrypto || (type === "transfer" && isToCrypto);
+
+  const [cryptoRate, setCryptoRate] = useState<number>(() => {
+    return getSavedUsdtPref(user?.id).rate || USD_IDR_ESTIMATE;
+  });
+  const [cryptoUnits, setCryptoUnits] = useState<string>("");
+  const [isUnitsInputMode, setIsUnitsInputMode] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isCryptoInvolved) {
+      fetchUsdtPriceInIDR().then((rate) => {
+        if (rate > 5000 && rate < 50000) setCryptoRate(rate);
+      }).catch(() => {});
+    }
+  }, [isCryptoInvolved]);
+
+  useEffect(() => {
+    if (isCryptoInvolved && !isUnitsInputMode) {
+      const num = Number(amount) || 0;
+      if (num > 0 && cryptoRate > 0) {
+        setCryptoUnits(Number((num / cryptoRate).toFixed(4)).toString());
+      } else {
+        setCryptoUnits("");
+      }
+    }
+  }, [amount, cryptoRate, isCryptoInvolved, isUnitsInputMode]);
+
+  const handleCryptoUnitsChange = (valStr: string) => {
+    setCryptoUnits(valStr);
+    const u = parseFloat(valStr);
+    if (!isNaN(u) && u > 0 && cryptoRate > 0) {
+      const calcAmount = Math.round(u * cryptoRate);
+      setAmount(String(calcAmount));
+      setAmountInput(calcAmount.toLocaleString("id-ID"));
+    } else if (!valStr) {
+      setAmount("0");
+      setAmountInput("");
+    }
+  };
 
   const [moreCatOpen, setMoreCatOpen] = useState(false);
   const [moreWalletOpen, setMoreWalletOpen] = useState(false);
@@ -196,7 +256,6 @@ export function TransactionSheet({
     if (type === "transfer") return allCategories;
     return allCategories.filter((c) => c.type === type);
   }, [allCategories, type]);
-  const { data: wallets = [] } = useWallets();
   const { data: allTxs = [] } = useAllTransactions();
 
   const addTx = useAddTransaction();
@@ -806,6 +865,25 @@ export function TransactionSheet({
       showToast("Saving transaction...", "info", null, 1600);
     }
 
+    // Synchronize with investment holding if crypto/investment wallet is involved
+    const effectiveUnits = cryptoUnits ? parseFloat(cryptoUnits) : undefined;
+    if (isCryptoInvolved) {
+      syncTransactionWithHolding(
+        {
+          type,
+          amount: numAmount,
+          wallet_id: effectiveWalletId,
+          to_wallet_id: effectiveToWalletId,
+          occurred_on: format(date, "yyyy-MM-dd"),
+          note,
+          customUnits: effectiveUnits,
+          customPrice: cryptoRate,
+        },
+        wallets,
+        user?.id,
+      );
+    }
+
     // Close sheet immediately for instant response
     onClose();
 
@@ -838,6 +916,20 @@ export function TransactionSheet({
 
   const handleDelete = () => {
     if (!transaction) return;
+    if (isCryptoInvolved) {
+      reverseTransactionWithHolding(
+        {
+          type: transaction.type,
+          amount: Number(transaction.amount),
+          wallet_id: transaction.wallet_id,
+          to_wallet_id: transaction.to_wallet_id,
+          occurred_on: transaction.occurred_on,
+          note: transaction.note,
+        },
+        wallets,
+        user?.id,
+      );
+    }
     deleteTx.mutate(transaction.id, {
       onSuccess: () => {
         showToast("Transaction deleted", "delete", () => {});
@@ -1118,6 +1210,91 @@ export function TransactionSheet({
               </button>
             ))}
           </div>
+
+          {/* Crypto & Asset Execution Helper (Monochrome Apple Luxury) */}
+          {isCryptoInvolved && (
+            <div
+              className="mt-3.5 p-3 rounded-2xl max-w-[340px] mx-auto text-left space-y-2 select-none"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                boxShadow: "var(--shadow-card)",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Coins size={13} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                  <span className="text-[11px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                    {isFromCrypto && type === "transfer"
+                      ? "P2P Withdrawal / Penarikan"
+                      : isToCrypto && type === "transfer"
+                      ? "P2P Purchase / Deposit"
+                      : type === "income"
+                      ? "Staking Yield / Income"
+                      : "Crypto Asset Execution"}
+                  </span>
+                </div>
+                <span
+                  className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  1 USDT ≈ Rp {cryptoRate.toLocaleString("id-ID")}
+                </span>
+              </div>
+
+              {/* Units Input & Live Preview */}
+              <div className="flex items-center justify-between gap-3 pt-1 border-t border-[var(--glass-border)]/40">
+                <div className="flex-1">
+                  <div className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                    Kuantitas Koin
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <input
+                      type="number"
+                      step="any"
+                      value={cryptoUnits}
+                      onFocus={() => setIsUnitsInputMode(true)}
+                      onBlur={() => setIsUnitsInputMode(false)}
+                      onChange={(e) => handleCryptoUnitsChange(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full text-[13px] font-mono font-semibold bg-transparent outline-none py-0.5 px-1.5 rounded-md"
+                      style={{
+                        color: "var(--text-primary)",
+                        background: "var(--glass-fill)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    />
+                    <span className="text-[11px] font-semibold uppercase shrink-0" style={{ color: "var(--text-tertiary)" }}>
+                      USDT
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <div className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                    Dampak Kepemilikan
+                  </div>
+                  <div
+                    className="text-[12px] font-mono font-semibold mt-1"
+                    style={{
+                      color:
+                        isFromCrypto && (type === "transfer" || type === "expense")
+                          ? "#ef4444"
+                          : "var(--accent, #10b981)",
+                    }}
+                  >
+                    {isFromCrypto && (type === "transfer" || type === "expense")
+                      ? `-${cryptoUnits || "0"} USDT`
+                      : `+${cryptoUnits || "0"} USDT`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Duplicate Transaction Warning (Monochrome Apple Luxury Alert) */}
           {isDuplicateDetected && (

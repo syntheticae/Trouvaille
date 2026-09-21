@@ -60,6 +60,9 @@ export function WalletManagementSheets({
   } | null>(null);
   const [correctTargetBalance, setCorrectTargetBalance] = useState("");
   const [correctNote, setCorrectNote] = useState("");
+  const [correctEffectiveDate, setCorrectEffectiveDate] = useState(
+    format(new Date(), "yyyy-MM-dd"),
+  );
   const [isSavingCorrection, setIsSavingCorrection] = useState(false);
 
   const activeWalletNames = useMemo(
@@ -135,20 +138,26 @@ export function WalletManagementSheets({
       categories[0];
     const catIdToSave = isValidUuid(otherCat?.id) ? otherCat.id : null;
 
+    const txDate =
+      correctEffectiveDate && /^\d{4}-\d{2}-\d{2}$/.test(correctEffectiveDate)
+        ? correctEffectiveDate
+        : format(new Date(), "yyyy-MM-dd");
+
     addTx.mutate(
       {
         type: isPositive ? "income" : "expense",
         amount: Math.abs(diff),
         wallet_id: walletIdToSave,
         note: noteToSave,
-        occurred_on: format(new Date(), "yyyy-MM-dd"),
-        created_at: new Date().toISOString(),
+        occurred_on: txDate,
+        created_at: new Date(`${txDate}T12:00:00Z`).toISOString(),
         category_id: catIdToSave,
       },
       {
         onSuccess: () => {
           setIsSavingCorrection(false);
           setCorrectWallet(null);
+          setCorrectEffectiveDate(format(new Date(), "yyyy-MM-dd"));
           showToast(`Balance corrected to ${formatRupiah(target)}`, "update");
         },
         onError: (err: any) => {
@@ -325,6 +334,7 @@ export function WalletManagementSheets({
                               });
                               setCorrectTargetBalance(String(bal));
                               setCorrectNote("");
+                              setCorrectEffectiveDate(format(new Date(), "yyyy-MM-dd"));
                             }, 300);
                           }}
                           className="h-7 px-2 flex items-center gap-1 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer"
@@ -491,6 +501,32 @@ export function WalletManagementSheets({
               </span>
             </div>
           )}
+
+          <div>
+            <label
+              className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Effective Date / Tanggal Efektif
+            </label>
+            <input
+              type="date"
+              value={correctEffectiveDate}
+              onChange={(e) => setCorrectEffectiveDate(e.target.value)}
+              className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            />
+            <p
+              className="text-[10.5px] mt-1 px-1 leading-relaxed"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Pilih tanggal lampau (misal: 2025-01-01) jika ini saldo awal tahun lalu agar tercatat di Laporan Neraca historis.
+            </p>
+          </div>
 
           <div>
             <label

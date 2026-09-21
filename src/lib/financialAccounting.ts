@@ -47,6 +47,11 @@ export interface BalanceSheetStatement {
   // Invariant: Assets === Liabilities + Equity
   isBalanced: boolean;
   discrepancy: number; // totalAssets - (totalLiabilities + netWorth)
+
+  // Contextual Historical Metadata
+  asOfDate?: string;
+  uninitializedAccounts?: string[];
+  isHistoricalPeriod?: boolean;
 }
 
 export interface CashFlowActivityItem {
@@ -134,6 +139,11 @@ export interface FinancialReportPackage {
 export function calculateBalanceSheet(
   wallets: Wallet[],
   transactions: Transaction[],
+  allTransactions?: Transaction[],
+  options: {
+    endDate?: string;
+    includeCarriedBalances?: boolean;
+  } = {},
 ): BalanceSheetStatement {
   // 1. Calculate raw balances per wallet using the central calculateWalletBalances engine
   const walletBalances = calculateWalletBalances(transactions, wallets);
@@ -247,6 +257,30 @@ export function calculateBalanceSheet(
   const discrepancy = totalAssets - (totalLiabilities + netWorth);
   const isBalanced = Math.abs(discrepancy) < 0.001;
 
+  const uninitializedAccounts: string[] = [];
+  const endStr = options.endDate ? options.endDate.slice(0, 10) : "";
+  const isHistorical = !!endStr && endStr < new Date().toISOString().slice(0, 10);
+
+  if (isHistorical && allTransactions && allTransactions.length > 0) {
+    wallets.forEach((w) => {
+      const balAtEnd = balanceMap.get(w.id) || 0;
+      if (balAtEnd === 0) {
+        const hasLaterTx = allTransactions.some((tx) => {
+          const tDate = (tx.occurred_on || tx.created_at || "").slice(0, 10);
+          return (
+            tDate > endStr &&
+            (tx.wallet_id === w.id ||
+              tx.to_wallet_id === w.id ||
+              (tx.note && tx.note.toLowerCase().includes(w.name.toLowerCase())))
+          );
+        });
+        if (hasLaterTx) {
+          uninitializedAccounts.push(w.name);
+        }
+      }
+    });
+  }
+
   return {
     liquidAssets: {
       title: "Liquid Assets (Cash & Bank)",
@@ -285,6 +319,9 @@ export function calculateBalanceSheet(
     netWorth,
     isBalanced,
     discrepancy,
+    asOfDate: options.endDate,
+    uninitializedAccounts,
+    isHistoricalPeriod: isHistorical,
   };
 }
 
@@ -564,9 +601,14 @@ export function calculateCALKReport(
   const auditStatus = balanceSheet.isBalanced
     ? "CERTIFIED_BALANCED"
     : "AUDIT_WARNING";
-  const notes = balanceSheet.isBalanced
-    ? "All balance sheet line items reconcile with zero discrepancy against total recorded assets under standard accounting principles."
-    : `Attention: An unexplained discrepancy of ${Math.abs(balanceSheet.discrepancy)} was detected between Total Assets and Liabilities + Equity.`;
+  const uninitializedNote = balanceSheet.uninitializedAccounts?.length
+    ? `\n\nCatatan Periode Historis: ${balanceSheet.uninitializedAccounts.length} rekening (${balanceSheet.uninitializedAccounts.slice(0, 4).join(", ")}${balanceSheet.uninitializedAccounts.length > 4 ? "..." : ""}) tercatat Rp 0 karena saldo awal atau aktivitas pertamanya baru dicatat pada tahun berikutnya.`
+    : "";
+  const notes =
+    (balanceSheet.isBalanced
+      ? "All balance sheet line items reconcile with zero discrepancy against total recorded assets under standard accounting principles."
+      : `Attention: An unexplained discrepancy of ${Math.abs(balanceSheet.discrepancy)} was detected between Total Assets and Liabilities + Equity.`) +
+    uninitializedNote;
 
   return {
     periodLabel,
@@ -606,11 +648,12 @@ export function generateFinancialReportPackage(
     endDate?: string;
     periodLabel?: string;
     allTransactions?: Transaction[];
+    includeCarriedBalances?: boolean;
   } = {},
 ): FinancialReportPackage {
   // Balance Sheet reflects cumulative financial position as of the end of the period
   let balanceSheetTxs = options.allTransactions || transactions;
-  if (options.allTransactions && options.endDate) {
+  if (!options.includeCarriedBalances && options.allTransactions && options.endDate) {
     const endStr = options.endDate.slice(0, 10);
     balanceSheetTxs = options.allTransactions.filter((tx) => {
       const txDate = (tx.occurred_on || tx.created_at || "").slice(0, 10);
@@ -618,7 +661,12 @@ export function generateFinancialReportPackage(
     });
   }
 
-  const balanceSheet = calculateBalanceSheet(wallets, balanceSheetTxs);
+  const balanceSheet = calculateBalanceSheet(
+    wallets,
+    balanceSheetTxs,
+    options.allTransactions,
+    options,
+  );
   const cashFlow = calculateCashFlowStatement(
     transactions,
     categories,

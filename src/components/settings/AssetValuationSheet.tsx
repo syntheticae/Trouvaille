@@ -11,6 +11,8 @@ import {
   ChevronRight,
   TrendingUp,
   ShieldCheck,
+  Sparkles,
+  CheckCircle2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { BottomSheet } from "../ui/BottomSheet";
@@ -30,6 +32,12 @@ import {
 } from "../../hooks/useWallets";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useAuth } from "../../contexts/AuthContext";
+import { useAllTransactions, useAddTransaction } from "../../hooks/useTransactions";
+import { useCategories } from "../../hooks/useCategories";
+import {
+  auditUsdtReconciliation,
+  applyUsdtReconciliation,
+} from "../../lib/holdingSyncEngine";
 import {
   fetchUsdtPriceInIDR,
   fetchCryptoPriceInIDR,
@@ -44,6 +52,7 @@ import {
   calculateAssetDepreciation,
   fetchHoldingsFromSupabase,
   refreshAllPortfolioPrices,
+  USD_IDR_ESTIMATE,
 } from "../../lib/marketPriceService";
 import type { InvestmentHolding, AssetType } from "../../lib/types";
 import type { UsdtValuationPref } from "../../lib/marketPriceService";
@@ -129,6 +138,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const isDark = theme !== "light";
   const { showToast } = useToast();
   const { data: wallets = [], refetch: refetchWallets } = useWallets();
+  const { data: categories = [] } = useCategories();
   const { balancesByName } = useWalletBalances();
   const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
 
@@ -206,6 +216,78 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const [editUnits, setEditUnits] = useState(String(usdtPref.units));
   const [editRate, setEditRate] = useState(String(usdtPref.rate));
   const [editCostBasis, setEditCostBasis] = useState(String(usdtPref.costBasis || recordedCryptoBalance));
+
+  const { data: allTxs = [] } = useAllTransactions();
+  const addTx = useAddTransaction();
+
+  // Audit discrepancy between transactions and USDT units
+  const reconciliationAudit = useMemo(() => {
+    return auditUsdtReconciliation(allTxs, wallets, user?.id);
+  }, [allTxs, wallets, user?.id, usdtPref.units, usdtPref.rate]);
+
+  // Handle applying reconciliation
+  const handleApplyReconciliation = () => {
+    if (!reconciliationAudit.hasDiscrepancy) return;
+    triggerHaptic("medium");
+    const res = applyUsdtReconciliation(reconciliationAudit, user?.id);
+    setUsdtPref((prev) => ({ ...prev, units: res.updatedUnits }));
+    setEditUnits(String(res.updatedUnits));
+    showToast(
+      `Kuantitas USDT berhasil disinkronkan ke ${res.updatedUnits}`,
+      "update",
+      () => {},
+    );
+  };
+
+  // Staking Yield Quick Modal State
+  const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
+  const [yieldAmountInput, setYieldAmountInput] = useState("0.15");
+  const [yieldNoteInput, setYieldNoteInput] = useState("Staking Yield");
+
+  const handleSaveStakingYield = () => {
+    const units = parseFloat(yieldAmountInput);
+    if (isNaN(units) || units <= 0) {
+      showToast("Masukkan jumlah yield yang valid", "delete", () => {});
+      return;
+    }
+    const currentRate = usdtPref.rate || USD_IDR_ESTIMATE;
+    const idrAmount = Math.round(units * currentRate);
+    const targetWallet = cryptoWallet || wallets[0];
+
+    const incomeCat =
+      categories.find(
+        (c) =>
+          c.type === "income" &&
+          (c.name.toLowerCase().includes("invest") ||
+            c.name.toLowerCase().includes("bunga") ||
+            c.name.toLowerCase().includes("lainnya")),
+      ) ||
+      categories.find((c) => c.type === "income") ||
+      null;
+
+    // Add income transaction
+    addTx.mutate({
+      type: "income",
+      amount: idrAmount,
+      wallet_id: targetWallet?.id || null,
+      category_id: incomeCat?.id || null,
+      occurred_on: format(new Date(), "yyyy-MM-dd"),
+      note: yieldNoteInput.trim() ? `USDT Yield: ${yieldNoteInput.trim()}` : "USDT Staking Yield",
+    });
+
+    // Record holding activity & update usdtPref
+    const nextUnits = Number((usdtPref.units + units).toFixed(4));
+    const nextPref: UsdtValuationPref = {
+      ...usdtPref,
+      units: nextUnits,
+    };
+    saveUsdtPref(nextPref, user?.id);
+    setUsdtPref(nextPref);
+    setEditUnits(String(nextUnits));
+    setIsStakingModalOpen(false);
+    triggerHaptic("medium");
+    showToast(`+${units} USDT yield staking berhasil dicatat!`, "add", () => {});
+  };
 
   // Other Market Holdings & Fixed Assets
   const [holdings, setHoldings] = useState<InvestmentHolding[]>(() => getSavedHoldings(user?.id));
@@ -1453,24 +1535,90 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                     </div>
                   </div>
 
-                  {/* Quick Actions & Liquid Cash Switch */}
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--glass-border)]">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setIsEditingUsdt(!isEditingUsdt);
-                      }}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
+                  {/* Auto-Reconciliation Alert Banner (e.g. tgl 18 P2P withdrawal to SeaBank) */}
+                  {reconciliationAudit.hasDiscrepancy && (
+                    <div
+                      className="p-3 rounded-xl space-y-2 animate-fadeIn border"
                       style={{
-                        background: isEditingUsdt ? "var(--text-primary)" : "var(--glass-fill)",
-                        color: isEditingUsdt ? "var(--bg-base)" : "var(--text-secondary)",
-                        border: "1px solid var(--glass-border)",
+                        background: "rgba(255, 255, 255, 0.04)",
+                        borderColor: "var(--glass-border)",
                       }}
                     >
-                      <Edit3 size={11} />
-                      <span>{isEditingUsdt ? "Close Editor" : "Edit USDT"}</span>
-                    </button>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles size={13} style={{ color: "var(--accent, #10b981)" }} />
+                            <span className="text-[11px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                              Sinkronisasi Mutasi Dompet & Kuantitas
+                            </span>
+                          </div>
+                          <p className="text-[10px] leading-tight" style={{ color: "var(--text-secondary)" }}>
+                            Ditemukan {reconciliationAudit.unreconciledTxs.length} transaksi dompet (seperti transfer penarikan P2P) yang belum disesuaikan ke kuantitas kepemilikan.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] font-mono pt-1 border-t border-[var(--glass-border)]/40">
+                        <span style={{ color: "var(--text-tertiary)" }}>
+                          Saat ini: <span style={{ color: "var(--text-primary)" }}>{reconciliationAudit.currentUnits} USDT</span>
+                        </span>
+                        <span style={{ color: "var(--accent, #10b981)" }}>
+                          → Rekonsiliasi: {reconciliationAudit.suggestedReconciledUnits} USDT
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleApplyReconciliation}
+                        className="w-full py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                        style={{
+                          background: "var(--text-primary)",
+                          color: "var(--bg-base)",
+                        }}
+                      >
+                        <CheckCircle2 size={12} strokeWidth={2} />
+                        <span>Sesuaikan Kuantitas Sekarang ({reconciliationAudit.suggestedReconciledUnits} USDT)</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Quick Actions & Liquid Cash Switch */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--glass-border)]">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setIsEditingUsdt(!isEditingUsdt);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
+                        style={{
+                          background: isEditingUsdt ? "var(--text-primary)" : "var(--glass-fill)",
+                          color: isEditingUsdt ? "var(--bg-base)" : "var(--text-secondary)",
+                          border: "1px solid var(--glass-border)",
+                        }}
+                      >
+                        <Edit3 size={11} />
+                        <span>{isEditingUsdt ? "Close" : "Edit"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setIsStakingModalOpen(true);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
+                        style={{
+                          background: "var(--glass-fill)",
+                          color: "var(--text-primary)",
+                          border: "1px solid var(--glass-border)",
+                        }}
+                      >
+                        <Plus size={11} />
+                        <span>+ Yield Staking</span>
+                      </button>
+                    </div>
 
                     {/* Apple Luxury Switch for Liquid Cash */}
                     <div
@@ -1796,6 +1944,97 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           }
         }}
       />
+
+      {/* Quick Staking Yield Logger Modal */}
+      {isStakingModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setIsStakingModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm p-4 rounded-2xl space-y-3"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Coins size={15} style={{ color: "var(--accent, #10b981)" }} />
+                <h3 className="text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                  Catat Staking Yield
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsStakingModalOpen(false)}
+                className="w-6 h-6 rounded-full flex items-center justify-center"
+                style={{ background: "var(--glass-fill)", color: "var(--text-tertiary)" }}
+              >
+                <X size={13} />
+              </button>
+            </div>
+
+            <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
+              Yield harian akan otomatis dicatat sebagai transaksi Income ke akun USDT dan menambah kuantitas kepemilikan koin.
+            </p>
+
+            <div className="space-y-2">
+              <div>
+                <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
+                  Yield Diperoleh (USDT)
+                </label>
+                <div className="flex items-center gap-1 px-3 py-2 rounded-xl" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
+                  <input
+                    type="number"
+                    step="any"
+                    value={yieldAmountInput}
+                    onChange={(e) => setYieldAmountInput(e.target.value)}
+                    placeholder="0.15"
+                    className="w-full text-[15px] font-mono font-semibold bg-transparent outline-none"
+                    style={{ color: "var(--text-primary)" }}
+                    autoFocus
+                  />
+                  <span className="text-[11px] font-bold" style={{ color: "var(--text-tertiary)" }}>
+                    USDT
+                  </span>
+                </div>
+                <div className="text-[10px] font-mono mt-1 text-right" style={{ color: "var(--text-tertiary)" }}>
+                  ≈ Rp {Math.round((parseFloat(yieldAmountInput) || 0) * (usdtPref.rate || 16300)).toLocaleString("id-ID")}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
+                  Catatan / Keterangan
+                </label>
+                <input
+                  type="text"
+                  value={yieldNoteInput}
+                  onChange={(e) => setYieldNoteInput(e.target.value)}
+                  placeholder="Staking Yield"
+                  className="w-full px-3 py-2 rounded-xl text-[12px] outline-none"
+                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSaveStakingYield}
+              className="w-full py-2.5 rounded-xl text-[12px] font-semibold active:scale-98 transition-all cursor-pointer mt-1"
+              style={{
+                background: "var(--text-primary)",
+                color: "var(--bg-base)",
+              }}
+            >
+              Simpan Yield (+{yieldAmountInput || "0"} USDT)
+            </button>
+          </div>
+        </div>
+      )}
     </BottomSheet>
   );
 }
