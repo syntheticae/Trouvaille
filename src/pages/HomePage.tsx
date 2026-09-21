@@ -158,7 +158,7 @@ function formatAxisY(val: number): string {
 
 export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: HomePageProps) {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, isIndonesian } = useLanguage();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -636,14 +636,23 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   }, [session]);
 
   const hour = now.getHours();
-  const greetingSubtitle =
-    hour >= 4 && hour < 12
-      ? "Good morning,"
-      : hour >= 12 && hour < 17
-      ? "Good afternoon,"
-      : hour >= 17 && hour < 21
-      ? "Good evening,"
-      : "Good night,";
+  const greetingPrefix = isIndonesian
+    ? hour >= 4 && hour < 12
+      ? "Selamat Pagi"
+      : hour >= 12 && hour < 15
+      ? "Selamat Siang"
+      : hour >= 15 && hour < 19
+      ? "Selamat Sore"
+      : "Selamat Malam"
+    : hour >= 4 && hour < 12
+    ? "Good Morning"
+    : hour >= 12 && hour < 17
+    ? "Good Afternoon"
+    : hour >= 17 && hour < 21
+    ? "Good Evening"
+    : "Good Night";
+
+  const greetingTitle = `${greetingPrefix}, ${displayName}`;
 
   const stockRangeLabels: Record<StockRange, string> = {
     "1D": "Past Day",
@@ -2013,16 +2022,16 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 </span>
               )}
             </div>
-            <div>
-              <span className="text-[11px] font-medium text-[var(--text-tertiary)] block leading-none">
-                {greetingSubtitle}
-              </span>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <h1 className="text-[16px] font-semibold text-[var(--text-primary)] leading-tight">
-                  {displayName}
+            <div className="min-w-0 text-left">
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-[15px] font-semibold text-[var(--text-primary)] leading-tight truncate">
+                  {greetingTitle}
                 </h1>
-                <span className="text-[10px] text-[var(--text-tertiary)] opacity-60">▾</span>
+                <span className="text-[10px] text-[var(--text-tertiary)] opacity-60 shrink-0">▾</span>
               </div>
+              <p className="text-[11px] font-normal text-[var(--text-tertiary)] leading-none mt-1 truncate">
+                {t("home.financialOverview", "Financial Overview")}
+              </p>
             </div>
           </button>
 

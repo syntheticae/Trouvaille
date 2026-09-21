@@ -124,6 +124,7 @@ export const translations = {
       logOut: "Log Out",
     },
     home: {
+      financialOverview: "Financial Overview",
       totalBalance: "Total Net Worth",
       netPortfolio: "Net Portfolio",
       cashflowPulse: "Cashflow Pulse",
@@ -290,6 +291,7 @@ export const translations = {
       logOut: "Keluar",
     },
     home: {
+      financialOverview: "Financial Overview",
       totalBalance: "Total Kekayaan Bersih",
       netPortfolio: "Portofolio Bersih",
       cashflowPulse: "Arus Kas Bulanan",
