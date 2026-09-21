@@ -19,7 +19,6 @@ import {
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
-import { ToggleSwitch } from "../ui/ToggleSwitch";
 
 interface FinancialReportSectionProps {
   wallets: Wallet[];
@@ -45,7 +44,6 @@ export function FinancialReportSection({
   const { showToast } = useToast();
   const [subView, setSubView] = useState<ReportSubView>("all");
   const [copied, setCopied] = useState(false);
-  const [includeCarriedBalances, setIncludeCarriedBalances] = useState(false);
 
   // Section collapse toggles (default folded as requested by user)
   const [assetsOpen, setAssetsOpen] = useState(false);
@@ -60,7 +58,6 @@ export function FinancialReportSection({
       endDate,
       periodLabel,
       allTransactions,
-      includeCarriedBalances,
     });
   }, [
     wallets,
@@ -70,7 +67,6 @@ export function FinancialReportSection({
     startDate,
     endDate,
     periodLabel,
-    includeCarriedBalances,
   ]);
 
   const { balanceSheet, cashFlow, calk } = report;
@@ -268,73 +264,6 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
               Verified
             </span>
           </div>
-
-          {/* Historical Closing Disclosure Banner & Carried Balance Switch */}
-          {balanceSheet.isHistoricalPeriod && (
-            <div
-              className="p-3.5 rounded-[22px] space-y-2.5 transition-all"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-[12px] font-semibold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Posisi Tutup Buku Historis
-                  </span>
-                  <span
-                    className="px-2 py-0.5 rounded-full text-[9.5px] font-bold tracking-wider"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {periodLabel}
-                  </span>
-                </div>
-                <p
-                  className="text-[11px] leading-relaxed"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Neraca historis menampilkan posisi akhir aset & liabilitas pada penutupan {periodLabel}.
-                  {balanceSheet.uninitializedAccounts &&
-                    balanceSheet.uninitializedAccounts.length > 0 &&
-                    !includeCarriedBalances && (
-                      <> Rekening ({balanceSheet.uninitializedAccounts.slice(0, 3).join(", ")}{balanceSheet.uninitializedAccounts.length > 3 ? "..." : ""}) bernilai Rp 0 karena saldo awalnya baru dicatat di periode berikutnya.</>
-                    )}
-                </p>
-              </div>
-
-              {/* Strict Rule 3: Settings/Customization Toggle */}
-              <div className="pt-2 border-t border-[var(--glass-border)] flex items-center justify-between">
-                <div>
-                  <div
-                    className="text-[12px] font-semibold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Sertakan Saldo Berjalan
-                  </div>
-                  <div
-                    className="text-[10px]"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    Bawa saldo awal dan struktur rekening dari periode saat ini
-                  </div>
-                </div>
-                <ToggleSwitch
-                  checked={includeCarriedBalances}
-                  onChange={setIncludeCarriedBalances}
-                  size="sm"
-                  ariaLabel="Sertakan Saldo Berjalan"
-                />
-              </div>
-            </div>
-          )}
 
           {/* Neraca Summary Card */}
           <section

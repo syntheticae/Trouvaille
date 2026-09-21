@@ -507,7 +507,7 @@ export function WalletManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Effective Date / Tanggal Efektif
+              Effective Date
             </label>
             <input
               type="date"
@@ -524,7 +524,7 @@ export function WalletManagementSheets({
               className="text-[10.5px] mt-1 px-1 leading-relaxed"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Pilih tanggal lampau (misal: 2025-01-01) jika ini saldo awal tahun lalu agar tercatat di Laporan Neraca historis.
+              Select a past date (e.g. 2025-01-01) if setting an opening balance for historical statements.
             </p>
           </div>
 

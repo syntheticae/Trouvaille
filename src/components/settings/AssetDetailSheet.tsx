@@ -13,7 +13,6 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  XAxis,
   Tooltip,
 } from "recharts";
 import { BottomSheet } from "../ui/BottomSheet";
@@ -67,8 +66,6 @@ export function AssetDetailSheet({
   const { data: wallets = [] } = useWallets();
   const addTx = useAddTransaction();
 
-  // Chart view mode: 'value' (nominal) vs 'return' (PnL)
-  const [chartMode, setChartMode] = useState<"value" | "return">("value");
   const [timeframe, setTimeframe] = useState<"1D" | "1W" | "1M" | "1Y" | "ALL">("1M");
 
   // Buy / Sell action modal states
@@ -247,9 +244,10 @@ export function AssetDetailSheet({
     <BottomSheet isOpen={isOpen} onClose={onClose} title={holding.name}>
       <div className="px-5 sm:px-6 space-y-4 pb-[calc(env(safe-area-inset-bottom,16px)+28px)] pt-1 select-none">
         {/* ============================================================ */}
-        {/* 1. HERO HEADER: Balance & PnL Badge */}
+        {/* 1. HERO & BALANCE (Apple Luxury Minimalist) */}
         {/* ============================================================ */}
-        <div className="p-4 rounded-2xl bg-[var(--glass-fill)] border border-[var(--glass-border)] shadow-[var(--shadow-card)] space-y-3">
+        <div className="p-5 rounded-2xl bg-[var(--glass-fill)] border border-[var(--glass-border)] shadow-[var(--shadow-card)] space-y-4">
+          {/* Header Row: Icon, Asset Name/Type, Actions */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-[var(--bg-elevated)] border border-[var(--glass-border)] flex items-center justify-center shrink-0">
@@ -270,7 +268,7 @@ export function AssetDetailSheet({
               </div>
             </div>
 
-            {/* Edit / Delete Icon Buttons */}
+            {/* Actions: Edit / Delete */}
             <div className="flex items-center gap-1">
               {onStartEditHolding && (
                 <button
@@ -299,302 +297,249 @@ export function AssetDetailSheet({
             </div>
           </div>
 
-          {/* Nominal Total Balance & Floating Return Badge */}
-          <div className="pt-1 flex items-baseline justify-between gap-2">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                {isIndonesian ? "Total Nilai Pasar" : "Total Balance"}
-              </p>
-              <h2 className="text-[22px] font-extrabold tracking-tight text-[var(--text-primary)] mt-0.5 font-mono">
+          {/* Big Balance & Floating PnL */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+              {isIndonesian ? "Total Nilai Pasar" : "Total Market Value"}
+            </p>
+            <div className="flex items-baseline justify-between flex-wrap gap-2">
+              <h2 className="text-[26px] font-bold tracking-tight text-[var(--text-primary)] font-mono">
                 {formatRupiah(valuation.marketValue)}
               </h2>
+              <div
+                className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold font-mono flex items-center gap-1 shrink-0 ${
+                  isProfitable
+                    ? "bg-white/[0.06] border-[var(--glass-border)] text-[var(--text-primary)]"
+                    : "bg-white/[0.04] border-[var(--glass-border)] text-[var(--text-secondary)]"
+                }`}
+              >
+                {isProfitable ? (
+                  <ArrowUpRight size={13} strokeWidth={2} />
+                ) : (
+                  <ArrowDownRight size={13} strokeWidth={2} />
+                )}
+                <span>
+                  {isProfitable ? "+" : ""}
+                  {formatRupiah(valuation.floatingPnL)} ({isProfitable ? "+" : ""}
+                  {valuation.floatingPnLPct.toFixed(2)}%)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Sparkline Chart with Quiet Timeframes */}
+          <div className="pt-2 border-t border-[var(--glass-border)] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
+                Performance
+              </span>
+              <div className="flex items-center gap-1">
+                {(["1D", "1W", "1M", "1Y", "ALL"] as const).map((tf) => (
+                  <button
+                    key={tf}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setTimeframe(tf);
+                    }}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium transition-colors cursor-pointer ${
+                      timeframe === tf
+                        ? "bg-[var(--text-primary)] text-[var(--bg-elevated)]"
+                        : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    {tf}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Floating PnL Pill Badge */}
-            <div
-              className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1 shrink-0 ${
-                isProfitable
-                  ? "bg-white/[0.06] border-[var(--glass-border)] text-[var(--text-primary)]"
-                  : "bg-white/[0.04] border-[var(--glass-border)] text-[var(--text-secondary)]"
-              }`}
-            >
-              {isProfitable ? (
-                <ArrowUpRight size={13} strokeWidth={2} />
-              ) : (
-                <ArrowDownRight size={13} strokeWidth={2} />
-              )}
-              <span>
+            <div className="h-28 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="assetDetailGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor={isDark ? "#FFFFFF" : "#18181b"}
+                        stopOpacity={isDark ? 0.22 : 0.12}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={isDark ? "#FFFFFF" : "#18181b"}
+                        stopOpacity={0.0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--glass-border)] shadow-lg text-[11px] font-mono">
+                            <p className="text-[var(--text-tertiary)] text-[9px] mb-0.5">{data.date}</p>
+                            <p className="font-bold text-[var(--text-primary)]">
+                              {formatRupiah(data.value)}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke={isDark ? "rgba(255,255,255,0.8)" : "#18181b"}
+                    strokeWidth={1.5}
+                    fill="url(#assetDetailGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* 2. KEY HOLDING METRICS (Apple Card List Style) */}
+        {/* ============================================================ */}
+        <div className="rounded-2xl bg-[var(--glass-fill)] border border-[var(--glass-border)] shadow-[var(--shadow-card)] overflow-hidden divide-y divide-[var(--glass-border)]">
+          {/* Row 1: Units Owned */}
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-[12px] text-[var(--text-tertiary)]">Units Owned</span>
+            <div className="text-right font-mono">
+              <span className="text-[13px] font-bold text-[var(--text-primary)]">
+                {holding.units.toLocaleString()} {holding.symbol}
+              </span>
+              <p className="text-[10px] text-[var(--text-tertiary)]">
+                Cost basis: {formatRupiah(valuation.costBasis)}
+              </p>
+            </div>
+          </div>
+
+          {/* Row 2: Average Buy Price */}
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-[12px] text-[var(--text-tertiary)]">Average Price</span>
+            <span className="text-[13px] font-bold text-[var(--text-primary)] font-mono">
+              {formatRupiah(holding.avg_buy_price)}
+            </span>
+          </div>
+
+          {/* Row 3: Current Market Price */}
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-[12px] text-[var(--text-tertiary)]">Market Price</span>
+            <span className="text-[13px] font-bold text-[var(--text-primary)] font-mono">
+              {formatRupiah(currentPrice)}
+            </span>
+          </div>
+
+          {/* Row 4: Unrealized Profit / Loss */}
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-[12px] text-[var(--text-tertiary)]">Unrealized P&L</span>
+            <div className="text-right font-mono">
+              <span className="text-[13px] font-bold text-[var(--text-primary)]">
                 {isProfitable ? "+" : ""}
-                {formatRupiah(valuation.floatingPnL)} ({isProfitable ? "+" : ""}
-                {valuation.floatingPnLPct.toFixed(2)}%)
+                {formatRupiah(valuation.floatingPnL)}
+              </span>
+              <span className="text-[10px] text-[var(--text-tertiary)] block">
+                {isProfitable ? "+" : ""}
+                {valuation.floatingPnLPct.toFixed(2)}%
               </span>
             </div>
           </div>
         </div>
 
         {/* ============================================================ */}
-        {/* 2. INTERACTIVE CHART: [ Value | Return ] Segmented Switcher */}
+        {/* 3. PRIMARY ACTIONS: Add Units & Reduce Units */}
         {/* ============================================================ */}
-        <div className="p-4 rounded-2xl bg-[var(--glass-fill)] border border-[var(--glass-border)] shadow-[var(--shadow-card)] space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            {/* Value vs Return Segmented Control */}
-            <div className="flex items-center p-0.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--glass-border)]">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setChartMode("value");
-                }}
-                className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                  chartMode === "value"
-                    ? "bg-[var(--text-primary)] text-[var(--bg-elevated)] shadow-sm"
-                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                Value
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setChartMode("return");
-                }}
-                className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                  chartMode === "return"
-                    ? "bg-[var(--text-primary)] text-[var(--bg-elevated)] shadow-sm"
-                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                Return
-              </button>
-            </div>
-
-            {/* Timeframe Selector Pills */}
-            <div className="flex items-center gap-1">
-              {(["1D", "1W", "1M", "1Y", "ALL"] as const).map((tf) => (
-                <button
-                  key={tf}
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setTimeframe(tf);
-                  }}
-                  className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium transition-colors cursor-pointer ${
-                    timeframe === tf
-                      ? "bg-white/[0.12] text-[var(--text-primary)] border border-[var(--glass-border)]"
-                      : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                  }`}
-                >
-                  {tf}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Area Chart Rendering */}
-          <div className="h-40 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="assetDetailGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                      stopOpacity={isDark ? 0.25 : 0.12}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                      stopOpacity={0.0}
-                    />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="label"
-                  tick={{
-                    fontSize: 9,
-                    fill: isDark ? "rgba(255,255,255,0.4)" : "#71717a",
-                    fontFamily: "Urbanist",
-                    fontWeight: 600,
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                  dy={4}
-                />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--glass-border)] shadow-lg text-[11px] font-mono">
-                          <p className="text-[var(--text-tertiary)] text-[9px] mb-0.5">{data.date}</p>
-                          <p className="font-bold text-[var(--text-primary)]">
-                            {chartMode === "value"
-                              ? formatRupiah(data.value)
-                              : `${data.returnVal >= 0 ? "+" : ""}${formatRupiah(data.returnVal)} (${data.returnPct.toFixed(2)}%)`}
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey={chartMode === "value" ? "value" : "returnVal"}
-                  stroke={isDark ? "rgba(255,255,255,0.85)" : "#18181b"}
-                  strokeWidth={1.75}
-                  fill="url(#assetDetailGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* ============================================================ */}
-        {/* 3. 2x2 METRIC GRID (Apple Luxury Style) */}
-        {/* ============================================================ */}
-        <div className="grid grid-cols-2 gap-2.5">
-          {/* Metric 1: Profit / Loss */}
-          <div className="p-3 rounded-xl bg-[var(--glass-fill)] border border-[var(--glass-border)]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-              Profit / Loss
-            </span>
-            <p className="text-[13px] font-bold text-[var(--text-primary)] mt-0.5 font-mono truncate">
-              {isProfitable ? "+" : ""}
-              {formatRupiah(valuation.floatingPnL)}
-            </p>
-            <span className="text-[10px] font-mono text-[var(--text-secondary)]">
-              {isProfitable ? "+" : ""}
-              {valuation.floatingPnLPct.toFixed(2)}%
-            </span>
-          </div>
-
-          {/* Metric 2: Quantity / Units */}
-          <div className="p-3 rounded-xl bg-[var(--glass-fill)] border border-[var(--glass-border)]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-              Quantity / Units
-            </span>
-            <p className="text-[13px] font-bold text-[var(--text-primary)] mt-0.5 font-mono truncate">
-              {holding.units.toLocaleString()} {holding.symbol}
-            </p>
-            <span className="text-[10px] font-mono text-[var(--text-secondary)]">
-              Cost: {formatRupiah(valuation.costBasis)}
-            </span>
-          </div>
-
-          {/* Metric 3: Average Buy Price */}
-          <div className="p-3 rounded-xl bg-[var(--glass-fill)] border border-[var(--glass-border)]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-              Avg Buy Price
-            </span>
-            <p className="text-[13px] font-bold text-[var(--text-primary)] mt-0.5 font-mono truncate">
-              {formatRupiah(holding.avg_buy_price)}
-            </p>
-            <span className="text-[10px] font-mono text-[var(--text-secondary)]">
-              Per unit basis
-            </span>
-          </div>
-
-          {/* Metric 4: Market Price */}
-          <div className="p-3 rounded-xl bg-[var(--glass-fill)] border border-[var(--glass-border)]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-              Market Price
-            </span>
-            <p className="text-[13px] font-bold text-[var(--text-primary)] mt-0.5 font-mono truncate">
-              {formatRupiah(currentPrice)}
-            </p>
-            <span className="text-[10px] font-mono text-[var(--text-secondary)]">
-              Live quote
-            </span>
-          </div>
-        </div>
-
-        {/* ============================================================ */}
-        {/* 4. DUAL PRIMARY ACTIONS: + Buy / — Sell */}
-        {/* ============================================================ */}
-        <div className="flex items-center gap-2.5 pt-1">
+        <div className="flex items-center gap-2 pt-1">
           <button
             type="button"
             onClick={handleOpenBuy}
-            className="flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 bg-[var(--text-primary)] text-[var(--bg-elevated)] font-bold text-[13px] hover:opacity-90 transition-all cursor-pointer shadow-sm active:scale-[0.99]"
+            className="flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 bg-[var(--text-primary)] text-[var(--bg-elevated)] font-semibold text-[13px] hover:opacity-90 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
           >
-            <Plus size={15} strokeWidth={2.5} />
-            <span>+ Buy</span>
+            <Plus size={14} strokeWidth={2} />
+            <span>Add Units</span>
           </button>
 
           <button
             type="button"
             onClick={handleOpenSell}
-            className="flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)] font-bold text-[13px] hover:bg-white/[0.06] transition-all cursor-pointer active:scale-[0.99]"
+            className="flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)] font-semibold text-[13px] hover:bg-white/[0.06] transition-all cursor-pointer active:scale-[0.99]"
           >
-            <Minus size={15} strokeWidth={2.5} />
-            <span>— Sell</span>
+            <Minus size={14} strokeWidth={2} />
+            <span>Reduce Units</span>
           </button>
         </div>
 
         {/* ============================================================ */}
-        {/* 5. RECENT ACTIVITY: Chronological Position History */}
+        {/* 4. ACTIVITY HISTORY */}
         {/* ============================================================ */}
         <div className="space-y-2 pt-2">
           <div className="flex items-center justify-between px-0.5">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-              {isIndonesian ? "Aktivitas Terakhir" : "Recent Activity"}
+              {isIndonesian ? "Riwayat Aktivitas" : "Activity History"}
             </h3>
             <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-              {activities.length} entries
+              {activities.length} {activities.length === 1 ? "entry" : "entries"}
             </span>
           </div>
 
           <div className="space-y-1.5">
-            {activities.map((act) => {
-              const isBuy = act.type === "buy" || act.type === "initial";
-              return (
-                <div
-                  key={act.id}
-                  className="p-3 rounded-xl bg-[var(--glass-fill)] border border-[var(--glass-border)] flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold ${
-                        isBuy
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                      }`}
-                    >
-                      {isBuy ? "+" : "—"}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
-                          {act.type === "initial"
-                            ? "Initial Position"
-                            : act.type === "buy"
-                            ? "Buy"
-                            : "Sell"}
-                        </span>
-                        <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-                          {act.date}
-                        </span>
+            {activities.length === 0 ? (
+              <div className="p-4 rounded-xl bg-[var(--glass-fill)] border border-[var(--glass-border)] text-center text-[11px] text-[var(--text-tertiary)]">
+                {isIndonesian ? "Belum ada riwayat transaksi" : "No activity recorded yet"}
+              </div>
+            ) : (
+              activities.map((act) => {
+                const isBuy = act.type === "buy" || act.type === "initial";
+                return (
+                  <div
+                    key={act.id}
+                    className="p-3 rounded-xl bg-[var(--glass-fill)] border border-[var(--glass-border)] flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold ${
+                          isBuy
+                            ? "bg-white/[0.08] text-[var(--text-primary)] border border-[var(--glass-border)]"
+                            : "bg-white/[0.04] text-[var(--text-secondary)] border border-[var(--glass-border)]"
+                        }`}
+                      >
+                        {isBuy ? "+" : "—"}
                       </div>
-                      <p className="text-[10px] text-[var(--text-tertiary)] truncate">
-                        @ {formatRupiah(act.price_per_unit)}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
+                            {act.type === "initial"
+                              ? (isIndonesian ? "Saldo Awal" : "Initial Position")
+                              : act.type === "buy"
+                              ? (isIndonesian ? "Beli Unit" : "Add Units")
+                              : (isIndonesian ? "Jual Unit" : "Reduce Units")}
+                          </span>
+                          <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+                            {act.date}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+                          @ {formatRupiah(act.price_per_unit)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0 font-mono">
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)]">
+                        {formatRupiah(act.total_amount)}
+                      </p>
+                      <p className="text-[10px] text-[var(--text-secondary)]">
+                        {isBuy ? "+" : "—"}
+                        {act.units.toLocaleString()} {holding.symbol}
                       </p>
                     </div>
                   </div>
-
-                  <div className="text-right shrink-0">
-                    <p className="text-[12px] font-mono font-semibold text-[var(--text-primary)]">
-                      {formatRupiah(act.total_amount)}
-                    </p>
-                    <p className="text-[10px] font-mono text-[var(--text-secondary)]">
-                      {isBuy ? "+" : "—"}
-                      {act.units.toLocaleString()} {holding.symbol}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -615,7 +560,7 @@ export function AssetDetailSheet({
                   </div>
                   <div>
                     <h3 className="text-[14px] font-bold text-[var(--text-primary)]">
-                      {actionModal === "buy" ? `Buy ${holding.symbol}` : `Sell ${holding.symbol}`}
+                      {actionModal === "buy" ? `Add ${holding.symbol} Units` : `Reduce ${holding.symbol} Units`}
                     </h3>
                     <p className="text-[11px] text-[var(--text-tertiary)]">
                       {actionModal === "buy" ? "Add to investment portfolio" : "Liquidate asset position"}
@@ -634,7 +579,7 @@ export function AssetDetailSheet({
               {/* Input 1: Invested / Realized Amount in IDR */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] px-0.5">
-                  {actionModal === "buy" ? "Invested Amount (IDR)" : "Sold Amount (IDR)"}
+                  {actionModal === "buy" ? "Investment Amount (IDR)" : "Liquidated Amount (IDR)"}
                 </label>
                 <input
                   type="text"
@@ -650,7 +595,7 @@ export function AssetDetailSheet({
               <div className="space-y-1">
                 <div className="flex items-center justify-between px-0.5">
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                    {actionModal === "buy" ? "Estimated Received Units" : "Units to Sell"}
+                    {actionModal === "buy" ? "Units to Add" : "Units to Reduce"}
                   </label>
                   {actionModal === "sell" ? (
                     <button
@@ -757,7 +702,7 @@ export function AssetDetailSheet({
                   type="submit"
                   className="flex-1 py-2.5 px-4 rounded-xl text-[13px] font-bold bg-[var(--text-primary)] text-[var(--bg-elevated)] hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
                 >
-                  {actionModal === "buy" ? "Confirm Purchase" : "Confirm Sale"}
+                  {actionModal === "buy" ? "Confirm Add" : "Confirm Reduce"}
                 </button>
               </div>
             </form>

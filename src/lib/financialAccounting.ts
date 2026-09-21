@@ -142,7 +142,6 @@ export function calculateBalanceSheet(
   allTransactions?: Transaction[],
   options: {
     endDate?: string;
-    includeCarriedBalances?: boolean;
   } = {},
 ): BalanceSheetStatement {
   // 1. Calculate raw balances per wallet using the central calculateWalletBalances engine
@@ -602,7 +601,7 @@ export function calculateCALKReport(
     ? "CERTIFIED_BALANCED"
     : "AUDIT_WARNING";
   const uninitializedNote = balanceSheet.uninitializedAccounts?.length
-    ? `\n\nCatatan Periode Historis: ${balanceSheet.uninitializedAccounts.length} rekening (${balanceSheet.uninitializedAccounts.slice(0, 4).join(", ")}${balanceSheet.uninitializedAccounts.length > 4 ? "..." : ""}) tercatat Rp 0 karena saldo awal atau aktivitas pertamanya baru dicatat pada tahun berikutnya.`
+    ? `\n\nHistorical Period Note: ${balanceSheet.uninitializedAccounts.length} account(s) (${balanceSheet.uninitializedAccounts.slice(0, 4).join(", ")}${balanceSheet.uninitializedAccounts.length > 4 ? "..." : ""}) reflect Rp 0 as of this closing date because their first recorded ledger transactions occurred in a subsequent period.`
     : "";
   const notes =
     (balanceSheet.isBalanced
@@ -648,12 +647,11 @@ export function generateFinancialReportPackage(
     endDate?: string;
     periodLabel?: string;
     allTransactions?: Transaction[];
-    includeCarriedBalances?: boolean;
   } = {},
 ): FinancialReportPackage {
   // Balance Sheet reflects cumulative financial position as of the end of the period
   let balanceSheetTxs = options.allTransactions || transactions;
-  if (!options.includeCarriedBalances && options.allTransactions && options.endDate) {
+  if (options.allTransactions && options.endDate) {
     const endStr = options.endDate.slice(0, 10);
     balanceSheetTxs = options.allTransactions.filter((tx) => {
       const txDate = (tx.occurred_on || tx.created_at || "").slice(0, 10);

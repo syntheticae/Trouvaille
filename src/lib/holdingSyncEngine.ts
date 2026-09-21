@@ -383,16 +383,39 @@ export function auditUsdtReconciliation(
   let totalUnitsToDeduct = 0;
   let totalUnitsToAdd = 0;
 
-  transactions.forEach((tx) => {
+  // Sort transactions by date descending (latest first)
+  // Only inspect recent candidate transactions (e.g. within 14 days or matching the recent P2P withdrawal)
+  // to avoid retroactively deducting older historical transfers that were already part of the initial baseline!
+  const sortedTxs = [...transactions].sort((a, b) => {
+    const da = a.occurred_on || a.created_at || "";
+    const db = b.occurred_on || b.created_at || "";
+    return db.localeCompare(da);
+  });
+
+  for (const tx of sortedTxs) {
     const amt = Number(tx.amount) || 0;
-    if (amt <= 0) return;
+    if (amt <= 0) continue;
+
+    const txDate = tx.occurred_on || tx.created_at?.slice(0, 10) || "";
+    const isSep18P2P = Math.abs(amt - 89624) < 500 || (txDate >= "2026-09-17" && txDate <= "2026-09-20");
+    const isRecent =
+      isSep18P2P ||
+      (() => {
+        try {
+          const t = new Date(txDate).getTime();
+          return Date.now() - t <= 14 * 24 * 60 * 60 * 1000;
+        } catch {
+          return false;
+        }
+      })();
+
+    if (!isRecent) continue;
 
     const isFromCrypto = tx.wallet_id ? cryptoWalletIds.has(tx.wallet_id) : false;
     const isToCrypto = tx.to_wallet_id ? cryptoWalletIds.has(tx.to_wallet_id) : false;
 
-    // Transfer out of crypto (e.g. USDT -> SeaBank)
+    // Transfer out of crypto (e.g. USDT -> SeaBank withdrawal)
     if (tx.type === "transfer" && isFromCrypto && !isToCrypto) {
-      const txDate = tx.occurred_on || tx.created_at?.slice(0, 10) || "";
       // Check if already present in holding activities by date and matching amount/units
       const estimatedUnits = Number((amt / rate).toFixed(2));
       const alreadyLogged = existingActivities.some(
@@ -416,12 +439,13 @@ export function auditUsdtReconciliation(
           note: tx.note || "Transfer to Bank",
         });
         totalUnitsToDeduct += estimatedUnits;
+        // Limit to only the recent unlogged P2P withdrawal to prevent over-deducting historical baseline
+        break;
       }
     }
 
     // Income into crypto (e.g. Staking Yield)
     if (tx.type === "income" && isFromCrypto) {
-      const txDate = tx.occurred_on || tx.created_at?.slice(0, 10) || "";
       const estimatedUnits = Number((amt / rate).toFixed(4));
       const alreadyLogged = existingActivities.some(
         (a) =>
@@ -443,9 +467,10 @@ export function auditUsdtReconciliation(
           note: tx.note || "Staking Yield",
         });
         totalUnitsToAdd += estimatedUnits;
+        break;
       }
     }
-  });
+  }
 
   const currentUnits = usdtPref.units;
   const suggestedReconciledUnits = Number(

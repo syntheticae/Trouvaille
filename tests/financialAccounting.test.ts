@@ -473,7 +473,7 @@ describe("Financial Accounting Engine Test Suite", () => {
     // Filtered range txs for 2025 (only DANA)
     const range2025Txs = allTxs.filter((t) => (t.occurred_on || "") <= "2025-12-31");
 
-    // 1. Strict closing position as of 2025-12-31 without carried balances
+    // Strict closing position as of 2025-12-31 based on actual records
     const report2025 = generateFinancialReportPackage(
       customWallets,
       range2025Txs,
@@ -483,7 +483,6 @@ describe("Financial Accounting Engine Test Suite", () => {
         endDate: "2025-12-31",
         periodLabel: "Year 2025",
         allTransactions: allTxs,
-        includeCarriedBalances: false,
       },
     );
 
@@ -493,24 +492,7 @@ describe("Financial Accounting Engine Test Suite", () => {
     // BCA & SeaBank have no balance in 2025 and are flagged as uninitialized in 2025
     expect(report2025.balanceSheet.uninitializedAccounts).toContain("BCA");
     expect(report2025.balanceSheet.uninitializedAccounts).toContain("SeaBank");
-    expect(report2025.calk.reconciliation.notes).toContain("Catatan Periode Historis");
-
-    // 2. View with carried balances enabled
-    const report2025Carried = generateFinancialReportPackage(
-      customWallets,
-      range2025Txs,
-      [],
-      {
-        startDate: "2025-01-01",
-        endDate: "2025-12-31",
-        periodLabel: "Year 2025",
-        allTransactions: allTxs,
-        includeCarriedBalances: true,
-      },
-    );
-
-    // Carries all balances: DANA 50k + BCA 5M + SeaBank 3M = 8.050.000
-    expect(report2025Carried.balanceSheet.totalAssets).toBe(8050000);
+    expect(report2025.calk.reconciliation.notes).toContain("Historical Period Note");
   });
 });
 

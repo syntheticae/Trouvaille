@@ -216,6 +216,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const [editUnits, setEditUnits] = useState(String(usdtPref.units));
   const [editRate, setEditRate] = useState(String(usdtPref.rate));
   const [editCostBasis, setEditCostBasis] = useState(String(usdtPref.costBasis || recordedCryptoBalance));
+  const [dismissedReconciliation, setDismissedReconciliation] = useState(false);
 
   const { data: allTxs = [] } = useAllTransactions();
   const addTx = useAddTransaction();
@@ -233,7 +234,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setUsdtPref((prev) => ({ ...prev, units: res.updatedUnits }));
     setEditUnits(String(res.updatedUnits));
     showToast(
-      `Kuantitas USDT berhasil disinkronkan ke ${res.updatedUnits}`,
+      `USDT holding synced to ${res.updatedUnits} USDT`,
       "update",
       () => {},
     );
@@ -247,7 +248,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const handleSaveStakingYield = () => {
     const units = parseFloat(yieldAmountInput);
     if (isNaN(units) || units <= 0) {
-      showToast("Masukkan jumlah yield yang valid", "delete", () => {});
+      showToast("Please enter a valid yield amount", "delete", () => {});
       return;
     }
     const currentRate = usdtPref.rate || USD_IDR_ESTIMATE;
@@ -286,7 +287,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setEditUnits(String(nextUnits));
     setIsStakingModalOpen(false);
     triggerHaptic("medium");
-    showToast(`+${units} USDT yield staking berhasil dicatat!`, "add", () => {});
+    showToast(`+${units} USDT staking yield recorded!`, "add", () => {});
   };
 
   // Other Market Holdings & Fixed Assets
@@ -1536,7 +1537,8 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                   </div>
 
                   {/* Auto-Reconciliation Alert Banner (e.g. tgl 18 P2P withdrawal to SeaBank) */}
-                  {reconciliationAudit.hasDiscrepancy && (
+                  {/* Auto-Reconciliation Alert Banner (Specific recent P2P transfer) */}
+                  {reconciliationAudit.hasDiscrepancy && !dismissedReconciliation && (
                     <div
                       className="p-3 rounded-xl space-y-2 animate-fadeIn border"
                       style={{
@@ -1547,23 +1549,31 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                       <div className="flex items-start justify-between gap-2">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1.5">
-                            <Sparkles size={13} style={{ color: "var(--accent, #10b981)" }} />
+                            <Sparkles size={13} style={{ color: "var(--text-primary)" }} />
                             <span className="text-[11px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-                              Sinkronisasi Mutasi Dompet & Kuantitas
+                              Recent P2P Transfer Sync
                             </span>
                           </div>
                           <p className="text-[10px] leading-tight" style={{ color: "var(--text-secondary)" }}>
-                            Ditemukan {reconciliationAudit.unreconciledTxs.length} transaksi dompet (seperti transfer penarikan P2P) yang belum disesuaikan ke kuantitas kepemilikan.
+                            Recent P2P withdrawal ({reconciliationAudit.unreconciledTxs[0]?.date || "Sep 18"} · {formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) has not been deducted from holding units yet.
                           </p>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setDismissedReconciliation(true)}
+                          className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-0.5 transition-colors cursor-pointer"
+                          title="Dismiss"
+                        >
+                          <X size={12} strokeWidth={2} />
+                        </button>
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] font-mono pt-1 border-t border-[var(--glass-border)]/40">
                         <span style={{ color: "var(--text-tertiary)" }}>
-                          Saat ini: <span style={{ color: "var(--text-primary)" }}>{reconciliationAudit.currentUnits} USDT</span>
+                          Current: <span style={{ color: "var(--text-primary)" }}>{reconciliationAudit.currentUnits} USDT</span>
                         </span>
-                        <span style={{ color: "var(--accent, #10b981)" }}>
-                          → Rekonsiliasi: {reconciliationAudit.suggestedReconciledUnits} USDT
+                        <span style={{ color: "var(--text-primary)" }}>
+                          → Reconcile: {reconciliationAudit.suggestedReconciledUnits} USDT
                         </span>
                       </div>
 
@@ -1573,11 +1583,11 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                         className="w-full py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
                         style={{
                           background: "var(--text-primary)",
-                          color: "var(--bg-base)",
+                          color: "var(--bg-elevated)",
                         }}
                       >
                         <CheckCircle2 size={12} strokeWidth={2} />
-                        <span>Sesuaikan Kuantitas Sekarang ({reconciliationAudit.suggestedReconciledUnits} USDT)</span>
+                        <span>Adjust to {reconciliationAudit.suggestedReconciledUnits} USDT</span>
                       </button>
                     </div>
                   )}
@@ -1615,8 +1625,8 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                           border: "1px solid var(--glass-border)",
                         }}
                       >
-                        <Plus size={11} />
-                        <span>+ Yield Staking</span>
+                        <Plus size={11} strokeWidth={2} />
+                        <span>Staking Yield</span>
                       </button>
                     </div>
 
@@ -1962,15 +1972,15 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <Coins size={15} style={{ color: "var(--accent, #10b981)" }} />
+                <Coins size={15} style={{ color: "var(--text-primary)" }} />
                 <h3 className="text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                  Catat Staking Yield
+                  Record Staking Yield
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsStakingModalOpen(false)}
-                className="w-6 h-6 rounded-full flex items-center justify-center"
+                className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
                 style={{ background: "var(--glass-fill)", color: "var(--text-tertiary)" }}
               >
                 <X size={13} />
@@ -1978,13 +1988,13 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
             </div>
 
             <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-              Yield harian akan otomatis dicatat sebagai transaksi Income ke akun USDT dan menambah kuantitas kepemilikan koin.
+              Daily yield will be credited to your USDT wallet balance and increase your holding units.
             </p>
 
             <div className="space-y-2">
               <div>
                 <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                  Yield Diperoleh (USDT)
+                  Yield Amount (USDT)
                 </label>
                 <div className="flex items-center gap-1 px-3 py-2 rounded-xl" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
                   <input
@@ -2008,13 +2018,13 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
               <div>
                 <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                  Catatan / Keterangan
+                  Note / Source (Optional)
                 </label>
                 <input
                   type="text"
                   value={yieldNoteInput}
                   onChange={(e) => setYieldNoteInput(e.target.value)}
-                  placeholder="Staking Yield"
+                  placeholder="e.g. Binance Earn / Staking"
                   className="w-full px-3 py-2 rounded-xl text-[12px] outline-none"
                   style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
                 />
@@ -2027,10 +2037,10 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
               className="w-full py-2.5 rounded-xl text-[12px] font-semibold active:scale-98 transition-all cursor-pointer mt-1"
               style={{
                 background: "var(--text-primary)",
-                color: "var(--bg-base)",
+                color: "var(--bg-elevated)",
               }}
             >
-              Simpan Yield (+{yieldAmountInput || "0"} USDT)
+              Record Yield (+{yieldAmountInput || "0"} USDT)
             </button>
           </div>
         </div>
