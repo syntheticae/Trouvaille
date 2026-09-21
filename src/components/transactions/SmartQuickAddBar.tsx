@@ -139,19 +139,23 @@ export function SmartQuickAddBar({
     <div className="mb-3">
       {/* Input container - Apple Monochrome Glassmorphic Bar */}
       <div
-        className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl transition-all duration-300 ${
+        className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl transition-all duration-300 ${
           isListening
             ? "ring-1 ring-[var(--text-primary)]/30 bg-white/[0.08]"
             : hasMatches
-            ? "border border-white/20 bg-white/[0.04]"
+            ? isDark
+              ? "border border-white/20 bg-white/[0.04]"
+              : "border border-black/15 bg-black/[0.03]"
             : "border border-[var(--glass-border)] bg-[var(--bg-elevated)]"
         }`}
         style={{
           boxShadow: isListening
             ? isDark
-              ? "0 0 20px rgba(255, 255, 255, 0.08)"
-              : "0 0 16px rgba(0, 0, 0, 0.06)"
-            : "var(--shadow-card)",
+              ? "0 0 16px rgba(255, 255, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.06)"
+              : "0 0 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 #ffffff"
+            : isDark
+            ? "0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+            : "0 1px 4px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02), inset 0 1px 0 #ffffff",
         }}
       >
         {/* Leading Sparkle or Pulse Icon */}

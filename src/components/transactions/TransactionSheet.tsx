@@ -48,6 +48,7 @@ import { useShortcuts } from "../../hooks/useShortcuts";
 import { SmartQuickAddBar } from "./SmartQuickAddBar";
 import { evaluateMathSafe } from "../../lib/evaluateMathSafe";
 import { useSpace } from "../../contexts/SpaceContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface TransactionSheetProps {
   isOpen: boolean;
@@ -74,6 +75,8 @@ export function TransactionSheet({
   initialValues,
   onOpenScan,
 }: TransactionSheetProps) {
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const [activeTab, setActiveTab] = useState<TabType>(
     () => transaction?.type || initialValues?.type || "expense",
   );
@@ -968,9 +971,10 @@ export function TransactionSheet({
             }`}
             style={{
               background: "var(--bg-elevated)",
-              border: "1.5px solid var(--glass-border)",
-              boxShadow:
-                "0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: isDark
+                ? "0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)"
+                : "0 2px 10px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02), inset 0 1px 0 #ffffff",
             }}
           >
             <span
@@ -1103,7 +1107,9 @@ export function TransactionSheet({
                   background: "var(--bg-elevated)",
                   border: "1px solid var(--glass-border)",
                   color: "var(--text-secondary)",
-                  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)",
+                  boxShadow: isDark
+                    ? "0 1px 4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04)"
+                    : "0 1px 3px rgba(0, 0, 0, 0.03), inset 0 1px 0 #ffffff",
                 }}
               >
                 {preset.label}
@@ -1222,11 +1228,17 @@ export function TransactionSheet({
           style={{
             background: "var(--bg-elevated)",
             border: isNoteFocused
-              ? "1px solid rgba(255, 255, 255, 0.22)"
+              ? isDark
+                ? "1px solid rgba(255, 255, 255, 0.3)"
+                : "1px solid rgba(0, 0, 0, 0.25)"
               : "1px solid var(--glass-border)",
             boxShadow: isNoteFocused
-              ? "0 4px 16px rgba(0, 0, 0, 0.25)"
-              : "none",
+              ? isDark
+                ? "0 4px 14px rgba(0, 0, 0, 0.35)"
+                : "0 2px 8px rgba(0, 0, 0, 0.05), inset 0 1px 0 #ffffff"
+              : isDark
+              ? "none"
+              : "0 1px 3px rgba(0, 0, 0, 0.02), inset 0 1px 0 #ffffff",
           }}
         >
           <PenLine
@@ -1504,7 +1516,7 @@ export function TransactionSheet({
 
 
 
-        {/* Action Button Bar: Quick Input & Scan Flanking the Save Button */}
+        {/* Action Button Bar: Scan (Left), Save (Center), Quick Add (Right) */}
         <div className="flex items-center gap-2.5 mt-4 mb-2">
           {transaction ? (
             <button
@@ -1520,30 +1532,30 @@ export function TransactionSheet({
             >
               <Trash2 size={18} strokeWidth={1.75} />
             </button>
-          ) : (
+          ) : onOpenScan ? (
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
-                setShowSmartBar((prev) => !prev);
+                onOpenScan();
               }}
               className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
               style={{
-                background: showSmartBar
-                  ? "var(--accent)"
-                  : "linear-gradient(155deg, #222227 0%, #141417 100%)",
+                background: isDark
+                  ? "linear-gradient(155deg, #1f1f24 0%, #121215 100%)"
+                  : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
                 border: "1px solid var(--glass-border)",
-                color: showSmartBar
-                  ? "var(--accent-ink)"
-                  : "var(--text-secondary)",
-                boxShadow:
-                  "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+                color: "var(--text-primary)",
+                boxShadow: isDark
+                  ? "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+                  : "0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #ffffff",
               }}
-              title="Voice / Natural Language Quick Add"
+              title="Scan Receipt / Slip"
+              aria-label="Scan Receipt or Slip"
             >
-              <Sparkles size={18} strokeWidth={1.75} />
+              <ScanLine size={18} strokeWidth={1.75} />
             </button>
-          )}
+          ) : null}
 
           <button
             type="button"
@@ -1554,21 +1566,27 @@ export function TransactionSheet({
               addTx.isPending ||
               updateTx.isPending
             }
-            className="flex-1 h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border border-white/80"
+            className="flex-1 h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             style={{
-              background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
-              color: "#000000",
-              boxShadow:
-                "inset 0 1px 0 0 #ffffff, inset 0 -1px 0 0 rgba(0, 0, 0, 0.08), 0 10px 26px -6px rgba(0, 0, 0, 0.55)",
+              background: isDark
+                ? "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)"
+                : "linear-gradient(180deg, #18181b 0%, #09090b 100%)",
+              color: isDark ? "#000000" : "#ffffff",
+              border: isDark
+                ? "1px solid rgba(255, 255, 255, 0.8)"
+                : "1px solid #18181b",
+              boxShadow: isDark
+                ? "inset 0 1px 0 0 #ffffff, inset 0 -1px 0 0 rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.4)"
+                : "inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 4px 14px rgba(0, 0, 0, 0.15)",
               letterSpacing: "-0.01em",
             }}
           >
             {isSaving || addTx.isPending || updateTx.isPending ? (
-              <span className="font-semibold text-black">Saving...</span>
+              <span className="font-semibold">Saving...</span>
             ) : (
               <>
-                <Check size={16} strokeWidth={2.25} className="text-black" />
-                <span className="font-semibold text-black">
+                <Check size={16} strokeWidth={2.25} />
+                <span className="font-semibold">
                   {transaction
                     ? "Update Transaction"
                     : activeTab === "split"
@@ -1579,25 +1597,32 @@ export function TransactionSheet({
             )}
           </button>
 
-          {!transaction && onOpenScan && (
+          {!transaction && (
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
-                onOpenScan();
+                setShowSmartBar((prev) => !prev);
               }}
               className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
               style={{
-                background:
-                  "linear-gradient(155deg, #222227 0%, #141417 100%)",
+                background: showSmartBar
+                  ? "var(--accent)"
+                  : isDark
+                  ? "linear-gradient(155deg, #1f1f24 0%, #121215 100%)"
+                  : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
                 border: "1px solid var(--glass-border)",
-                color: "var(--text-secondary)",
-                boxShadow:
-                  "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+                color: showSmartBar
+                  ? "var(--accent-ink)"
+                  : "var(--text-primary)",
+                boxShadow: isDark
+                  ? "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+                  : "0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #ffffff",
               }}
-              title="Scan Receipt / Slip"
+              title="Voice / Natural Language Quick Add"
+              aria-label="Quick Add"
             >
-              <ScanLine size={18} strokeWidth={1.75} />
+              <Sparkles size={18} strokeWidth={1.75} />
             </button>
           )}
         </div>
