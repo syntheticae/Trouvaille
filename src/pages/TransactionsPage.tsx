@@ -16,7 +16,6 @@ import {
   Eye,
   EyeOff,
   Inbox,
-  FileSpreadsheet,
 } from "lucide-react";
 import {
   BarChart,
@@ -163,7 +162,7 @@ interface TransactionsPageProps {
 
 export function TransactionsPage({
   onOpenScan: _onOpenScan,
-  onOpenImport,
+  onOpenImport: _onOpenImport,
 }: TransactionsPageProps = {}) {
   const { isStealthMode, toggleStealthMode } = usePrivacy();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -802,26 +801,6 @@ export function TransactionsPage({
               {isStealthMode ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
 
-            {onOpenImport && (
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenImport();
-                  triggerHaptic("light");
-                }}
-                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-secondary)",
-                }}
-                title="Import Bank Statement"
-                aria-label="Import Bank Statement"
-              >
-                <FileSpreadsheet size={13} strokeWidth={1.75} />
-              </button>
-            )}
-
             <button
               type="button"
               onClick={() => {
@@ -1338,27 +1317,8 @@ export function TransactionsPage({
             >
               {search
                 ? "Try searching with different keywords or adjust your filters."
-                : "Start managing your finances by logging an expense or importing bank statements."}
+                : "Start managing your finances by logging your expenses and income."}
             </p>
-            {!search && onOpenImport && (
-              <div className="flex items-center gap-2 mt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("medium");
-                    onOpenImport();
-                  }}
-                  className="px-4 py-2 rounded-2xl text-[12px] font-semibold active:scale-95 transition-all cursor-pointer glass-surface"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  Import Bank Statement
-                </button>
-              </div>
-            )}
           </div>
         ) : (
           <GroupedVirtuoso

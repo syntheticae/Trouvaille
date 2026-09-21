@@ -1110,17 +1110,24 @@ export function StatisticsPage() {
               <div className="flex items-center gap-2.5">
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ background: "rgba(255,255,255,0.12)", color: "#FFFFFF" }}
+                  style={{
+                    background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
                 >
                   <ShieldCheck size={18} />
                 </div>
                 <div>
-                  <p className="text-[13px] font-semibold text-white">
+                  <p
+                    className="text-[13px] font-semibold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     Financial Health
                   </p>
                   <p
                     className="text-[11px]"
-                    style={{ color: "rgba(255,255,255,0.55)" }}
+                    style={{ color: "var(--text-tertiary)" }}
                   >
                     {rangeTitle} performance
                   </p>
@@ -1132,11 +1139,11 @@ export function StatisticsPage() {
                     setHealthDiagnosticOpen(true);
                     triggerHaptic("light");
                   }}
-                  className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                  className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
                   style={{
-                    background: "rgba(255, 255, 255, 0.15)",
-                    color: "#FFFFFF",
-                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--glass-border)",
                   }}
                   title="Executive Health Diagnostic"
                 >
@@ -1145,9 +1152,9 @@ export function StatisticsPage() {
                 <span
                   className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
                   style={{
-                    background: "rgba(255,255,255,0.12)",
-                    color: "#FFFFFF",
-                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--glass-border)",
                   }}
                 >
                   {healthScore >= 85
@@ -1163,23 +1170,28 @@ export function StatisticsPage() {
               </div>
             </div>
             <div className="flex items-end gap-3 mb-3">
-              <span className="amount text-[36px] font-bold leading-none text-white">
+              <span
+                className="amount text-[36px] font-bold leading-none"
+                style={{ color: "var(--text-primary)" }}
+              >
                 {healthScore}
               </span>
               <span
                 className="text-[12px] font-medium pb-1.5"
-                style={{ color: "rgba(255,255,255,0.55)" }}
+                style={{ color: "var(--text-tertiary)" }}
               >
                 / 100 pts
               </span>
             </div>
             <div
               className="w-full h-1.5 rounded-full overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.15)" }}
+              style={{
+                background: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)",
+              }}
             >
               <div
                 className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${healthScore}%`, background: "#FFFFFF" }}
+                style={{ width: `${healthScore}%`, background: "var(--text-primary)" }}
               />
             </div>
           </section>

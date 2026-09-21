@@ -231,7 +231,7 @@ export function CalendarPage() {
           </button>
 
           <div
-            className="flex p-1 rounded-2xl glass-surface"
+            className="flex p-0.5 rounded-full glass-surface"
             style={{ border: "1px solid var(--glass-border)" }}
           >
             <button
@@ -239,15 +239,15 @@ export function CalendarPage() {
                 setViewMode("activity");
                 triggerHaptic("light");
               }}
-              className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer select-none ${
                 viewMode === "activity"
                   ? isDark
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "bg-zinc-900 text-white shadow-sm"
+                    ? "bg-white/12 text-white shadow-sm"
+                    : "bg-black/[0.08] text-zinc-900 shadow-sm"
                   : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
               }`}
             >
-              <CalendarDays size={13} strokeWidth={1.75} />
+              <CalendarDays size={12} strokeWidth={1.75} />
               Activity
             </button>
             <button
@@ -255,15 +255,15 @@ export function CalendarPage() {
                 setViewMode("runway");
                 triggerHaptic("light");
               }}
-              className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer select-none ${
                 viewMode === "runway"
                   ? isDark
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "bg-zinc-900 text-white shadow-sm"
+                    ? "bg-white/12 text-white shadow-sm"
+                    : "bg-black/[0.08] text-zinc-900 shadow-sm"
                   : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
               }`}
             >
-              <TrendingUp size={13} strokeWidth={1.75} />
+              <TrendingUp size={12} strokeWidth={1.75} />
               Runway
             </button>
           </div>
@@ -489,30 +489,36 @@ export function CalendarPage() {
                 (forecast?.actualOutflow ?? 0) > 0 ||
                 (forecast?.scheduledBills.length ?? 0) > 0;
 
-              const isSurplus =
-                hasData && (forecast?.actualInflow ?? 0) >= (forecast?.actualOutflow ?? 0);
-              const isDeficit =
-                hasData && (forecast?.actualOutflow ?? 0) > (forecast?.actualInflow ?? 0);
-
+              // Minimalist Apple Luxury Day Appearance
               let bg = "transparent";
               let textColor = "var(--text-tertiary)";
-              let border = "none";
+              let border = "1px solid transparent";
+              let shadow = "none";
+              let isBold = false;
 
-              if (isSurplus) {
+              if (isT) {
+                // Today: Iconic Apple solid contrast pill highlight
                 bg = isDark ? "#FFFFFF" : "#18181B";
-                textColor = isDark ? "#121212" : "#FFFFFF";
-              } else if (isDeficit) {
-                bg = isDark ? "#3F3F46" : "#E4E4E7";
-                textColor = isDark ? "#FFFFFF" : "#18181B";
-              }
-
-              if (isT && !hasData) {
-                border = "1px solid var(--glass-border)";
+                textColor = isDark ? "#09090C" : "#FFFFFF";
+                shadow = isDark
+                  ? "0 2px 10px rgba(255,255,255,0.25)"
+                  : "0 2px 10px rgba(0,0,0,0.18)";
+                isBold = true;
+              } else if (isSel) {
+                // Selected Day: Frosted glass container with hairline ring
+                bg = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)";
+                border = isDark
+                  ? "1px solid rgba(255,255,255,0.3)"
+                  : "1px solid rgba(0,0,0,0.2)";
                 textColor = "var(--text-primary)";
+                isBold = true;
+              } else if (hasData) {
+                // Active ledger day: Crisp typography
+                textColor = "var(--text-primary)";
+              } else {
+                // Inactive day: Soft muted typography
+                textColor = "var(--text-tertiary)";
               }
-
-              // No-Spend Day styling (Apple frosted silver halo)
-              const isNoSpend = forecast?.isNoSpendDay;
 
               return (
                 <button
@@ -521,71 +527,53 @@ export function CalendarPage() {
                     setSelectedDay(d);
                     triggerHaptic("light");
                   }}
-                  className="flex flex-col items-center justify-center rounded-[14px] py-1.5 transition-all active:scale-95 cursor-pointer relative min-h-[46px]"
+                  className="flex flex-col items-center justify-center rounded-2xl py-1 transition-all active:scale-95 cursor-pointer relative min-h-[44px]"
                   style={{
                     background: bg,
                     border,
-                    boxShadow: isSel
-                      ? isDark
-                        ? "0 0 10px rgba(255,255,255,0.45), inset 0 0 0 1px #FFFFFF"
-                        : "0 0 10px rgba(0,0,0,0.15), inset 0 0 0 1px #18181B"
-                      : isNoSpend
-                      ? isDark
-                        ? "inset 0 0 0 1.5px rgba(255,255,255,0.3)"
-                        : "inset 0 0 0 1.5px rgba(0,0,0,0.15)"
-                      : "none",
+                    boxShadow: shadow,
                   }}
                 >
                   {/* Day Number */}
                   <span
-                    className="text-[13px] font-semibold leading-tight"
+                    className={`text-[13px] leading-tight ${
+                      isBold ? "font-bold" : "font-medium"
+                    }`}
                     style={{ color: textColor }}
                   >
                     {format(d, "d")}
                   </span>
 
-                  {/* Activity View Markers */}
+                  {/* Activity View Markers - Minimalist Micro-Dots */}
                   {viewMode === "activity" && hasData && (
-                    <div className="flex gap-1 mt-1">
+                    <div className="flex items-center gap-1 mt-1 h-1.5">
                       {(forecast?.actualInflow ?? 0) > 0 && (
                         <div
-                          className="w-[4px] h-[4px] rounded-full"
+                          className="w-1 h-1 rounded-full"
                           style={{
-                            background: isSurplus
-                              ? isDark
-                                ? "#121212"
-                                : "#FFFFFF"
-                              : isDark
-                              ? "#FFFFFF"
-                              : "#18181B",
+                            background: isT
+                              ? (isDark ? "#09090C" : "#FFFFFF")
+                              : "var(--text-primary)",
                           }}
                         />
                       )}
                       {(forecast?.actualOutflow ?? 0) > 0 && (
                         <div
-                          className="w-[4px] h-[4px] rounded-full"
+                          className="w-1 h-1 rounded-full"
                           style={{
-                            background: isSurplus
-                              ? isDark
-                                ? "#71717A"
-                                : "#D4D4D8"
-                              : isDark
-                              ? "#D4D4D8"
-                              : "#71717A",
+                            background: isT
+                              ? (isDark ? "#09090C" : "#FFFFFF")
+                              : "var(--text-tertiary)",
                           }}
                         />
                       )}
                       {(forecast?.scheduledBills.length ?? 0) > 0 && (
                         <div
-                          className="w-[4px] h-[4px] rounded-full"
+                          className="w-1 h-1 rounded-full"
                           style={{
-                            background: isSurplus
-                              ? isDark
-                                ? "#52525B"
-                                : "#A1A1AA"
-                              : isDark
-                              ? "#A1A1AA"
-                              : "#52525B",
+                            background: isT
+                              ? (isDark ? "#09090C" : "#FFFFFF")
+                              : "#f59e0b",
                           }}
                         />
                       )}
@@ -600,7 +588,7 @@ export function CalendarPage() {
                           className={`text-[9px] font-semibold tracking-tight ${
                             forecast?.isLowestDip
                               ? "text-amber-400 font-semibold"
-                              : isSurplus
+                              : isT
                               ? isDark
                                 ? "text-zinc-900"
                                 : "text-white"
@@ -619,24 +607,16 @@ export function CalendarPage() {
                     </div>
                   )}
 
-                  {/* Special Indicator Badges (Payday or Lowest Dip or Unpaid Bill) */}
+                  {/* Special Indicator Badges (Payday or Unpaid Bill) */}
                   {forecast?.isPayday && (
                     <span
                       className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400"
                       title="Expected Payday"
                     />
                   )}
-                  {hasUnpaidBills && (
+                  {hasUnpaidBills && !isT && (
                     <span
-                      className={`absolute top-1 ${forecast?.isPayday ? "left-1" : "right-1"} w-1.5 h-1.5 rounded-full`}
-                      style={{
-                        background: isSurplus
-                          ? (isDark ? "#121212" : "#FFFFFF")
-                          : (isDark ? "#FFFFFF" : "#18181B"),
-                        boxShadow: isDark
-                          ? "0 0 4px rgba(255,255,255,0.6)"
-                          : "0 0 4px rgba(0,0,0,0.3)",
-                      }}
+                      className={`absolute top-1 ${forecast?.isPayday ? "left-1" : "right-1"} w-1.5 h-1.5 rounded-full bg-amber-400`}
                       title="Unpaid Bill Due"
                     />
                   )}
@@ -678,22 +658,22 @@ export function CalendarPage() {
               .map((b) => (
                 <div
                   key={b.id}
-                  className="glass-surface flex items-center gap-3 px-4 py-3 rounded-2xl transition-all"
+                  className="glass-surface flex items-center gap-3 px-3.5 py-2.5 rounded-2xl transition-all"
                   style={{ border: "1px solid var(--glass-border)" }}
                 >
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center"
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                     style={{
-                      background: "var(--bg-elevated)",
+                      background: "var(--glass-fill)",
                       border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
+                      color: "var(--text-secondary)",
                     }}
                   >
-                    <Bell size={15} />
+                    <Bell size={14} strokeWidth={1.75} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
-                      className="text-[14px] font-semibold truncate"
+                      className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {b.title}
