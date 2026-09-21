@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import {
   RefreshCw,
   Plus,
-  Edit3,
   Coins,
   ArrowUpRight,
   ArrowDownRight,
@@ -212,10 +211,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
   // Live Rate Fetching State
   const [isFetchingRate, setIsFetchingRate] = useState(false);
-  const [isEditingUsdt, setIsEditingUsdt] = useState(false);
-  const [editUnits, setEditUnits] = useState(String(usdtPref.units));
-  const [editRate, setEditRate] = useState(String(usdtPref.rate));
-  const [editCostBasis, setEditCostBasis] = useState(String(usdtPref.costBasis || recordedCryptoBalance));
   const [dismissedReconciliation, setDismissedReconciliation] = useState(false);
 
   const { data: allTxs = [] } = useAllTransactions();
@@ -231,7 +226,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     triggerHaptic("medium");
     const res = applyUsdtReconciliation(reconciliationAudit, user?.id);
     setUsdtPref((prev) => ({ ...prev, units: res.updatedUnits }));
-    setEditUnits(String(res.updatedUnits));
     setDismissedReconciliation(true);
     showToast(
       `USDT holding synced to ${res.updatedUnits} USDT`,
@@ -418,12 +412,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     });
   }, [searchQuery, filterType]);
 
-  // Sync edit state if pref changes
-  useEffect(() => {
-    setEditUnits(String(usdtPref.units));
-    setEditRate(String(usdtPref.rate));
-    setEditCostBasis(String(usdtPref.costBasis || recordedCryptoBalance));
-  }, [usdtPref, recordedCryptoBalance]);
 
   // Calculations for USDT
   const usdtMarketValue = Math.round(usdtPref.units * usdtPref.rate);
@@ -547,29 +535,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     } finally {
       setIsFetchingRate(false);
     }
-  };
-
-  // Save USDT Edits
-  const handleSaveUsdt = () => {
-    const units = parseFloat(editUnits);
-    const rate = parseFloat(editRate);
-    const cost = parseFloat(editCostBasis);
-
-    if (isNaN(units) || units < 0 || isNaN(rate) || rate <= 0) {
-      showToast("Please enter valid numbers", "delete", () => {});
-      return;
-    }
-
-    const nextPref: UsdtValuationPref = {
-      units,
-      rate,
-      costBasis: !isNaN(cost) && cost >= 0 ? cost : recordedCryptoBalance,
-    };
-    setUsdtPref(nextPref);
-    saveUsdtPref(nextPref, user?.id);
-    setIsEditingUsdt(false);
-    triggerHaptic("medium");
-    showToast("USDT valuation saved", "update", () => {});
   };
 
   // Save New or Edited Generic Holding / Fixed Asset
@@ -1553,41 +1518,22 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
                   {/* Quick Actions & Liquid Cash Switch */}
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--glass-border)]">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic("light");
-                          setIsEditingUsdt(!isEditingUsdt);
-                        }}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
-                        style={{
-                          background: isEditingUsdt ? "var(--text-primary)" : "var(--glass-fill)",
-                          color: isEditingUsdt ? "var(--bg-base)" : "var(--text-secondary)",
-                          border: "1px solid var(--glass-border)",
-                        }}
-                      >
-                        <Edit3 size={11} />
-                        <span>{isEditingUsdt ? "Close" : "Edit"}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic("light");
-                          setIsStakingModalOpen(true);
-                        }}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
-                        style={{
-                          background: "var(--glass-fill)",
-                          color: "var(--text-primary)",
-                          border: "1px solid var(--glass-border)",
-                        }}
-                      >
-                        <Plus size={11} strokeWidth={2} />
-                        <span>Staking Yield</span>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setIsStakingModalOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold active:scale-95 cursor-pointer"
+                      style={{
+                        background: "var(--glass-fill)",
+                        color: "var(--text-primary)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <Plus size={12} strokeWidth={2} />
+                      <span>Staking Yield</span>
+                    </button>
 
                     {/* Apple Luxury Switch for Liquid Cash */}
                     <div
@@ -1608,76 +1554,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                       </div>
                     </div>
                   </div>
-
-                  {/* Inline Quick Editor for USDT */}
-                  {isEditingUsdt && (
-                    <div
-                      className="p-3 rounded-xl space-y-2.5 animate-fadeIn mt-1"
-                      style={{
-                        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
-                        border: "1px solid var(--glass-border)",
-                      }}
-                    >
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
-                            USDT Balance ($)
-                          </label>
-                          <input
-                            type="number"
-                            step="any"
-                            value={editUnits}
-                            onChange={(e) => setEditUnits(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded-lg text-[12px] font-bold outline-none"
-                            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
-                            USD Rate (IDR)
-                          </label>
-                          <input
-                            type="number"
-                            value={editRate}
-                            onChange={(e) => setEditRate(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded-lg text-[12px] font-bold outline-none"
-                            style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] font-medium block mb-0.5" style={{ color: "var(--text-tertiary)" }}>
-                          Total Cost Basis (IDR)
-                        </label>
-                        <input
-                          type="number"
-                          value={editCostBasis}
-                          onChange={(e) => setEditCostBasis(e.target.value)}
-                          className="w-full px-2 py-1.5 rounded-lg text-[12px] font-bold outline-none"
-                          style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                        />
-                      </div>
-
-                      <div className="flex justify-end gap-1.5 pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setIsEditingUsdt(false)}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-[var(--text-tertiary)] active:scale-95 cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSaveUsdt}
-                          className="px-3 py-1 rounded-lg text-[11px] font-bold active:scale-95 cursor-pointer"
-                          style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -1906,11 +1782,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
         }}
         onStartEditHolding={(h) => {
           setSelectedDetailHolding(null);
-          if (h.symbol?.toUpperCase() === "USDT") {
-            setIsEditingUsdt(true);
-          } else {
-            handleStartEditHolding(h);
-          }
+          handleStartEditHolding(h);
         }}
       />
 
