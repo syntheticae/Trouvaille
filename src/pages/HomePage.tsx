@@ -9,6 +9,7 @@ import { SplitBillSheet } from "../components/tools/SplitBillSheet";
 import { syncDailyStreakReminder } from "../lib/notifications";
 import { resolveTransactionCategory } from "../lib/categoryResolver";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../contexts/LanguageContext";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
 import { ReorderableWidgetGrid, WidgetCustomizationBar } from "../components/common";
 import type { WidgetSize } from "../lib/widgetLayoutTypes";
@@ -155,6 +156,7 @@ function formatAxisY(val: number): string {
 
 export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: HomePageProps) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -2294,7 +2296,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 <span
                   className="text-[10px] font-medium text-[var(--text-tertiary)] truncate max-w-[200px]"
                 >
-                  {HOME_PRESETS.find((p) => p.key === activePresetKey)?.description}
+                  {t(
+                    `home.presets.${activePresetKey}Desc`,
+                    HOME_PRESETS.find((p) => p.key === activePresetKey)?.description || "",
+                  )}
                 </span>
               </div>
 
@@ -2324,7 +2329,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                           : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium"
                       }`}
                     >
-                      {preset.label}
+                      {t(`home.presets.${preset.key}`, preset.label)}
                     </button>
                   );
                 })}

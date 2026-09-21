@@ -3,6 +3,7 @@ import { triggerHaptic } from "../../lib/haptics";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Home, History, Plus, PieChart, Settings } from "lucide-react";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface BottomTabBarProps {
   onOpenAdd?: () => void;
@@ -10,6 +11,7 @@ interface BottomTabBarProps {
 }
 
 export function BottomTabBar({ onOpenAdd, onOpenVoiceAdd }: BottomTabBarProps) {
+  const { t } = useLanguage();
   const location = useLocation();
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressRef = useRef(false);
@@ -44,11 +46,11 @@ export function BottomTabBar({ onOpenAdd, onOpenVoiceAdd }: BottomTabBarProps) {
   };
 
   const tabs = [
-    { path: "/", icon: Home, label: "Home" },
-    { path: "/transactions", icon: History, label: "Transactions" },
-    { action: "add", icon: Plus, label: "Add" },
-    { path: "/statistics", icon: PieChart, label: "Analytics" },
-    { path: "/settings", icon: Settings, label: "Settings" },
+    { path: "/", icon: Home, label: t("nav.home", "Home") },
+    { path: "/transactions", icon: History, label: t("nav.transactions", "Transactions") },
+    { action: "add", icon: Plus, label: t("nav.add", "Add") },
+    { path: "/statistics", icon: PieChart, label: t("nav.analytics", "Analytics") },
+    { path: "/settings", icon: Settings, label: t("nav.settings", "Settings") },
   ];
 
   return (

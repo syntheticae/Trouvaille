@@ -21,6 +21,7 @@ import { ToastProvider } from './contexts/ToastContext'
 import { PrivacyProvider } from './contexts/PrivacyContext'
 import { SpaceProvider } from './contexts/SpaceContext'
 import { CurrencyProvider } from './contexts/CurrencyContext'
+import { LanguageProvider } from './contexts/LanguageContext'
 import App from './App.tsx'
 import './index.css'
 
@@ -193,7 +194,9 @@ createRoot(document.getElementById('root')!).render(
                   <PrivacyProvider>
                     <SpaceProvider>
                       <CurrencyProvider>
-                        <App />
+                        <LanguageProvider>
+                          <App />
+                        </LanguageProvider>
                       </CurrencyProvider>
                     </SpaceProvider>
                   </PrivacyProvider>

@@ -19,6 +19,7 @@ import {
   STORAGE_KEY,
 } from "../../lib/widgetLayoutEngine";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { seedOnboardingWallets } from "../../hooks/useWallets";
 import type { OnboardingWalletChoice } from "../../hooks/useWallets";
 import {
@@ -81,6 +82,7 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
 
 export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const { user } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const [step, setStep] = useState<number>(1);
 
   // Step 1: Focus
@@ -352,32 +354,33 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               <div className="space-y-1 text-left">
                 <div className="inline-flex items-center gap-2">
                   <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    Step 01
+                    {t("onboarding.step01Badge", "Step 01")}
                   </span>
                   <span className="w-1 h-1 rounded-full bg-white/25" />
                   <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    Identity & Setup
+                    {t("onboarding.step01Category", "Identity & Setup")}
                   </span>
                 </div>
                 <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
-                  Welcome to <span className="font-semibold">Trouvaille</span>
+                  {t("onboarding.welcomeTitle", "Welcome to")}{" "}
+                  <span className="font-semibold">{t("onboarding.welcomeBrand", "Trouvaille")}</span>
                 </h1>
                 <p className="text-[13px] font-normal text-white/50 leading-relaxed">
-                  Personalize your caller identity and select your starting workspace architecture.
+                  {t("onboarding.step1Desc", "Personalize your caller identity, interface language, and starting workspace architecture.")}
                 </p>
               </div>
 
               {/* 1. Name Input: Unboxed Luxury Hairline */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
-                  Your Name / Identity
+                  {t("onboarding.nameLabel", "Your Name / Identity")}
                 </label>
                 <div className="relative flex items-center border-b border-white/15 focus-within:border-white transition-colors py-1.5">
                   <input
                     type="text"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
-                    placeholder="e.g. Alexander"
+                    placeholder={t("onboarding.namePlaceholder", "e.g. Alexander")}
                     className="w-full bg-transparent text-[17px] sm:text-[19px] font-medium text-white placeholder:text-white/25 outline-none pr-8 transition-colors"
                   />
                   {userName.trim() && (
@@ -392,14 +395,58 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 </div>
               </div>
 
-              {/* 2. Preset Selection (Default vs Custom) */}
+              {/* 2. Interface Language Customization (Default English vs Bahasa Indonesia) */}
+              <div className="space-y-1.5 pt-0.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
+                    {t("onboarding.languageLabel", "Interface Language")}
+                  </label>
+                  <span className="text-[11px] text-white/40">
+                    {language === "id" ? "Bahasa Indonesia" : "English (Default)"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setLanguage("en");
+                    }}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
+                      language === "en"
+                        ? "bg-white text-zinc-950 shadow-sm"
+                        : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    <span>English</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setLanguage("id");
+                    }}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
+                      language === "id"
+                        ? "bg-white text-zinc-950 shadow-sm"
+                        : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    <span>Bahasa Indonesia</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. Preset Selection (Default vs Custom) */}
               <div className="space-y-2.5 pt-1">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
-                    Workspace Architecture
+                    {t("onboarding.architectureLabel", "Workspace Architecture")}
                   </label>
                   <span className="text-[11px] text-white/40">
-                    {presetMode === "default" ? "Standard Curated" : "Custom Blueprint"}
+                    {presetMode === "default"
+                      ? t("onboarding.architectureStandard", "Standard Curated")
+                      : t("onboarding.architectureCustom", "Custom Blueprint")}
                   </span>
                 </div>
 
@@ -420,14 +467,14 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-[14px] font-semibold text-white tracking-tight">
-                            Default Curated Preset
+                            {t("onboarding.presetDefaultTitle", "Default Curated Preset")}
                           </span>
                           <span className="text-[9.5px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/15">
-                            Recommended
+                            {t("common.recommended", "Recommended")}
                           </span>
                         </div>
                         <p className="text-[12px] text-white/50 leading-relaxed">
-                          Instant zero-friction setup. Auto-provisions 3 liquid accounts and 8 essential categories.
+                          {t("onboarding.presetDefaultDesc", "Instant zero-friction setup. Auto-provisions 3 liquid accounts and 8 essential categories.")}
                         </p>
                       </div>
                       <div
@@ -823,7 +870,11 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
           onClick={handleNextStep}
           className="w-full py-3.5 rounded-full font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(255,255,255,0.15)] hover:bg-white/95"
         >
-          <span>{step === 5 ? "Enter Trouvaille" : "Continue"}</span>
+          <span>
+            {step === 5
+              ? t("onboarding.completeButton", "Enter Trouvaille")
+              : t("onboarding.continueButton", "Continue")}
+          </span>
           <ArrowRight size={15} strokeWidth={2} />
         </button>
 

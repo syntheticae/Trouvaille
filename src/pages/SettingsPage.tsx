@@ -30,10 +30,13 @@ import {
   Tag,
   Coins,
   Calculator,
+  Languages,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { CurrencySwitcherSheet } from "../components/currency/CurrencySwitcherSheet";
+import { LanguageSwitcherSheet } from "../components/settings/LanguageSwitcherSheet";
 import { AppleShortcutsGuideModal } from "../components/settings/AppleShortcutsGuideModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBills } from "../hooks/useBills";
@@ -105,6 +108,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   } = useSecurityLock();
   const { isPrivacyShieldEnabled, togglePrivacyShield } = usePrivacy();
   const { preferredCurrency, currencyMeta } = useCurrency();
+  const { language, t } = useLanguage();
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -196,6 +200,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const [mediaPermissionsOpen, setMediaPermissionsOpen] = useState(false);
   const [valuationOpen, setValuationOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [languageSheetOpen, setLanguageSheetOpen] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
@@ -376,6 +381,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const showGoals = matches("Financial Goals", "savings target milestone progress goals");
   const showValuation = matches("Asset Valuation", "crypto stock usdt holdings investment");
   const showCurrency = matches("Base Currency", "rates exchange valuation usd idr forex");
+  const showLanguage = matches("App Language", "language bahasa indonesia english locale localization");
   const hasArchitecture =
     showCategories ||
     showWallets ||
@@ -383,7 +389,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     showBills ||
     showGoals ||
     showValuation ||
-    showCurrency;
+    showCurrency ||
+    showLanguage;
 
   // Section 2: Preferences
   const showTheme = matches("Light Appearance", "dark light obsidian theme appearance color");
@@ -890,6 +897,49 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {preferredCurrency} ({currencyMeta.symbol})
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
+            {/* App Language Switcher Trigger */}
+            {showLanguage && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setLanguageSheetOpen(true);
+                }}
+                className="w-full flex items-center justify-between py-2.5 px-3.5 min-h-[44px] text-left active:bg-white/[0.04] transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Languages size={14} strokeWidth={1.75} />
+                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {t("settings.appLanguage", "App Language")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px] font-medium"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {language === "id" ? "Bahasa Indonesia" : "English"}
                   </span>
                   <ChevronRight
                     size={15}
@@ -1864,6 +1914,11 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
       <CurrencySwitcherSheet
         isOpen={currencySheetOpen}
         onClose={() => setCurrencySheetOpen(false)}
+      />
+
+      <LanguageSwitcherSheet
+        isOpen={languageSheetOpen}
+        onClose={() => setLanguageSheetOpen(false)}
       />
 
       <LuxuryReportExportSheet
