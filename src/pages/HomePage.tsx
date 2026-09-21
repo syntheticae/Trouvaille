@@ -3,7 +3,7 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator";
 import { useGoals } from "../hooks/useGoals";
 import { useWallets } from "../hooks/useWallets";
-import { useBills } from "../hooks/useBills";
+import { useBills, getDaysUntilDue } from "../hooks/useBills";
 import { triggerHaptic } from "../lib/haptics";
 import { SplitBillSheet } from "../components/tools/SplitBillSheet";
 import { syncDailyStreakReminder } from "../lib/notifications";
@@ -18,6 +18,7 @@ import {
   CompactCashflowPulseHalf,
   CompactAIInsightsHalf,
   CompactGoalsHalf,
+  CompactBillsHalf,
   CompactTopCategoriesHalf,
   CompactSplitBillHalf,
   SavingsRingCard,
@@ -1217,7 +1218,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 Financial Goals
               </span>
               <span className="text-[11px] font-bold" style={{ color: "var(--text-tertiary)" }}>
-                {goals.length} Target
+                {goals.length} {goals.length === 1 ? "Goal" : "Goals"}
               </span>
             </div>
 
@@ -1310,6 +1311,21 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
       case "upcoming_bills":
         if (upcomingBills.length === 0) return null;
+        if (size === "half") {
+          const nextBill: any = upcomingBills[0];
+          const days = getDaysUntilDue(nextBill.due_date);
+          return (
+            <CompactBillsHalf
+              nextBillName={nextBill.title || "Bill"}
+              nextBillAmount={Number(nextBill.amount || 0)}
+              daysLeft={days}
+              onOpenDetail={() => {
+                triggerHaptic("light");
+                setBillManagementOpen(true);
+              }}
+            />
+          );
+        }
         return (
           <section className="space-y-2">
             <div
@@ -1390,7 +1406,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                           border: "1px solid var(--glass-border)",
                           color: "var(--text-primary)",
                         }}
-                        title="Tandai Sudah Bayar"
+                        title="Mark as paid"
                       >
                         <Check size={11} />
                         <span>{isMarkingPaid ? "Saving..." : "Paid"}</span>
@@ -1400,7 +1416,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 );
               })}
 
-              {/* Total Kebutuhan Tagihan & Link to Calendar */}
+              {/* Total Recurring Bills Runway & Calendar Link */}
               <div
                 onClick={() => {
                   triggerHaptic("light");
@@ -1667,7 +1683,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 Split Bill & Receivables
               </h3>
               <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                Piutang
+                Shared Balances
               </span>
             </div>
             <div
@@ -1690,10 +1706,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 </div>
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold leading-tight truncate" style={{ color: "var(--text-primary)" }}>
-                    Shared Piutang Status
+                    Shared Settlements
                   </p>
                   <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
-                    Track friend shares from split transactions
+                    Track friend shares & pending settlements
                   </p>
                 </div>
               </div>
@@ -1709,7 +1725,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   color: "var(--bg-base)",
                 }}
               >
-                Split
+                Split Bill
               </button>
             </div>
           </section>
@@ -1785,12 +1801,12 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   delta: 0,
                   pctChange: 0,
                   displayValue: formatRupiah(total7d),
-                  title: "7-Day Outflow Velocity",
-                  subtitle: `Total outflow over the last 7 days is ${formatRupiah(total7d)} with a daily average of ${formatRupiah(Math.round(total7d / 7))}. Peak day was ${peak7d.dayLabel} (${formatRupiah(peak7d.amount)}).`,
+                  title: "7-Day Spending Velocity",
+                  subtitle: `Total outflow over the last 7 days is ${formatRupiah(total7d)} with a daily average of ${formatRupiah(Math.round(total7d / 7))}. Peak spending was on ${peak7d.dayLabel} (${formatRupiah(peak7d.amount)}).`,
                   badge: "Last 7 Days",
                   hideGrid: true,
                   items: last7DaysOutlays.map((d) => ({
-                    label: `Day ${d.dayLabel}`,
+                    label: `${d.dayLabel} Outflow`,
                     amount: d.amount,
                     pct: total7d > 0 ? (d.amount / total7d) * 100 : 0,
                     detail: d.amount > dailyAverage ? "Above daily average" : "Within pace",
@@ -1818,7 +1834,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   delta: -currentMonthStats.expense,
                   pctChange: 0,
                   displayValue: formatRupiah(currentMonthStats.expense),
-                  title: "Outflow Allocation",
+                  title: "Category Expense Allocation",
                   subtitle: `Total gross outflow this month is ${formatRupiah(currentMonthStats.expense)}. Inflow is recorded at ${formatRupiah(currentMonthStats.income)}, resulting in a net monthly balance of ${formatRupiah(currentMonthStats.income - currentMonthStats.expense)}.`,
                   badge: "Gross Outflow",
                   hideGrid: true,

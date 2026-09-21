@@ -77,10 +77,10 @@ export function HealthMeterCard({
           </div>
           <div>
             <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-              Executive Financial Health Index
+              Financial Health Score
             </h3>
             <p className="text-[10px] text-[var(--text-tertiary)]">
-              Comprehensive telemetry across liquidity, budgeting & savings
+              Composite rating based on savings pace, debt, and liquidity runway
             </p>
           </div>
         </div>

@@ -51,7 +51,7 @@ export function CalendarCard({
             <span className="truncate">{monthName}</span>
           </div>
           <span className="text-[9px] font-medium text-[var(--text-secondary)] opacity-80 shrink-0">
-            Tap to open
+            Tap to view calendar
           </span>
         </div>
       </CompactShell>

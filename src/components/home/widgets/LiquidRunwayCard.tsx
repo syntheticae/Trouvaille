@@ -72,7 +72,7 @@ export function LiquidRunwayCard({
           <div className="flex-1 flex flex-col justify-center py-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-                Survival Horizon
+                Reserve Horizon
               </span>
               <span
                 className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md truncate max-w-[90px]"
@@ -94,7 +94,7 @@ export function LiquidRunwayCard({
           </div>
 
           <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
-            <span>Monthly Burn</span>
+            <span>Monthly Burn Rate</span>
             <span className="font-semibold text-[var(--text-primary)] amount truncate max-w-[90px]">
               {formatRupiah(monthlyBurn)}/m
             </span>
@@ -166,7 +166,7 @@ export function LiquidRunwayCard({
           style={{ background: "var(--glass-fill)" }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-            Survival Runway
+            Liquidity Runway
           </span>
           <p className="text-[16px] font-semibold amount text-[var(--text-primary)] mt-0.5">
             {runwayMonths.toFixed(1)} Mos

@@ -191,7 +191,7 @@ export function MetricDrillDownSheet({
                   >
                     {data.displayValue
                       ? data.displayValue
-                      : data.delta > 0 && !data.title?.toLowerCase().includes("outflow") && !data.title?.toLowerCase().includes("expense") && !data.title?.toLowerCase().includes("pengeluaran")
+                      : data.delta > 0 && !data.title?.toLowerCase().includes("outflow") && !data.title?.toLowerCase().includes("expense") && !data.title?.toLowerCase().includes("spending")
                         ? `+${formatRupiah(data.totalCurrent)}`
                         : formatRupiah(data.totalCurrent)}
                   </h4>
@@ -203,7 +203,7 @@ export function MetricDrillDownSheet({
                     color: "var(--text-primary)",
                   }}
                 >
-                  {data.badge || (data.delta > 0 ? "SURPLUS" : data.delta < 0 ? "DEFICIT" : "RINGKASAN")}
+                  {data.badge || (data.delta > 0 ? "SURPLUS" : data.delta < 0 ? "DEFICIT" : "SUMMARY")}
                 </span>
               </div>
               {data.subtitle && (
@@ -226,8 +226,8 @@ export function MetricDrillDownSheet({
                 }}
               >
                 <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider pb-1 border-b border-black/5 dark:border-white/5">
-                  <span>Rincian Sektor / Kategori</span>
-                  <span>Nominal & Porsi</span>
+                  <span>Category Breakdown</span>
+                  <span>Amount & Share</span>
                 </div>
                 {data.items.map((item, idx) => (
                   <div key={idx} className="space-y-1">

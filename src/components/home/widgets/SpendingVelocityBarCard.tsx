@@ -90,7 +90,7 @@ export function SpendingVelocityBarCard({
           </div>
           <div>
             <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-              7-Day Outflow Velocity
+              7-Day Spending Velocity
             </h3>
             <p className="text-[10px] text-[var(--text-tertiary)]">
               Daily spending run rate vs monthly average benchmark
