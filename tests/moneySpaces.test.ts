@@ -123,12 +123,9 @@ describe("Money Spaces Architecture & Segregation Suite", () => {
     },
   ];
 
-  it("contains all core default spaces", () => {
+  it("contains single default space by default", () => {
     const ids = DEFAULT_MONEY_SPACES.map((s) => s.id);
-    expect(ids).toContain("personal");
-    expect(ids).toContain("business");
-    expect(ids).toContain("travel");
-    expect(ids).toContain("all");
+    expect(ids).toEqual(["personal"]);
   });
 
   it("filters business space transactions accurately", () => {

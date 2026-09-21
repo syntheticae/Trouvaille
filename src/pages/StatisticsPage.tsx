@@ -167,6 +167,8 @@ const GlassTooltip = ({ active, payload, label }: any) => {
 };
 
 function SavingsRing({ rate, size = 130 }: { rate: number; size?: number }) {
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const strokeWidth = 10;
   const radius = (size - strokeWidth) / 2;
   const circ = 2 * Math.PI * radius;
@@ -183,9 +185,8 @@ function SavingsRing({ rate, size = 130 }: { rate: number; size?: number }) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--glass-border)"
+          stroke={isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)"}
           strokeWidth={strokeWidth}
-          opacity={0.3}
         />
         <circle
           cx={size / 2}
@@ -2386,9 +2387,8 @@ export function StatisticsPage() {
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="var(--glass-border)"
+                stroke={isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)"}
                 vertical={false}
-                opacity={0.35}
               />
               <XAxis
                 dataKey="label"
@@ -2500,9 +2500,8 @@ export function StatisticsPage() {
               </defs>
               <CartesianGrid
                 strokeDasharray="2 2"
-                stroke="var(--glass-border)"
+                stroke={isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)"}
                 vertical={false}
-                opacity={0.25}
               />
               <XAxis
                 dataKey="label"

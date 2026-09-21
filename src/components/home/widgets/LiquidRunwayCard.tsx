@@ -37,73 +37,82 @@ export function LiquidRunwayCard({
     if (runwayMonths < 3) {
       const deficit = Math.max(0, 3 * monthlyBurn - liquidAssets);
       return {
-        label: "Tier 1: Safety Net (3 Bln)",
+        label: "Tier 1: Safety Net (3 Mos)",
         deficit,
-        desc: `Perlu ${formatRupiah(deficit)} lagi untuk mencapai jaring pengaman darurat 3 bulan.`,
+        desc: `Need ${formatRupiah(deficit)} more to reach the 3-month emergency safety net.`,
       };
     }
     if (runwayMonths < 6) {
       const deficit = Math.max(0, 6 * monthlyBurn - liquidAssets);
       return {
-        label: "Tier 2: Ideal Buffer (6 Bln)",
+        label: "Tier 2: Ideal Buffer (6 Mos)",
         deficit,
-        desc: `Perlu ${formatRupiah(deficit)} lagi untuk mencapai standar aman 6 bulan pengeluaran.`,
+        desc: `Need ${formatRupiah(deficit)} more to reach the standard 6-month buffer.`,
       };
     }
     if (runwayMonths < 12) {
       const deficit = Math.max(0, 12 * monthlyBurn - liquidAssets);
       return {
-        label: "Tier 3: Fortress Reserve (12 Bln)",
+        label: "Tier 3: Fortress Reserve (12 Mos)",
         deficit,
-        desc: `Perlu ${formatRupiah(deficit)} lagi untuk benteng ketahanan mandiri 1 tahun penuh.`,
+        desc: `Need ${formatRupiah(deficit)} more for a full 1-year fortress reserve.`,
       };
     }
     return {
-      label: "Benteng Mandiri Penuh (≥12 Bln)",
+      label: "Full Fortress Reserve (≥12 Mos)",
       deficit: 0,
-      desc: "Ketahanan kas melebihi 12 bulan pengeluaran. Likuiditas darurat dalam kondisi prima.",
+      desc: "Cash runway exceeds 12 months of expenses. Emergency liquidity is optimal.",
     };
   })();
 
   if (size === "half") {
     return (
-      <CompactShell title="Runway" onOpenDetail={onOpenDetail}>
-        <div className="flex-1 flex flex-col justify-center py-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-              Survival Horizon
-            </span>
-            <span
-              className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md truncate max-w-[90px]"
-              style={{
-                background: "var(--glass-fill)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {status}
+      <div onClick={onOpenDetail} className="cursor-pointer">
+        <CompactShell title="Cashflow Runway" onOpenDetail={onOpenDetail}>
+          <div className="flex-1 flex flex-col justify-center py-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
+                Survival Horizon
+              </span>
+              <span
+                className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md truncate max-w-[90px]"
+                style={{
+                  background: "var(--glass-fill)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                {status}
+              </span>
+            </div>
+            <p className="text-[18px] font-semibold amount text-[var(--text-primary)] leading-tight mt-0.5">
+              {runwayMonths >= 99 ? "∞" : runwayMonths.toFixed(1)}{" "}
+              <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">
+                Mos
+              </span>
+            </p>
+          </div>
+
+          <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
+            <span>Monthly Burn</span>
+            <span className="font-semibold text-[var(--text-primary)] amount truncate max-w-[90px]">
+              {formatRupiah(monthlyBurn)}/m
             </span>
           </div>
-          <p className="text-[20px] font-semibold amount text-[var(--text-primary)] leading-tight mt-0.5">
-            {runwayMonths.toFixed(1)}{" "}
-            <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">
-              Mos
-            </span>
-          </p>
-        </div>
-
-        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
-          <span>Burn Rate</span>
-          <span className="font-semibold text-[var(--text-primary)] amount">
-            {formatRupiah(monthlyBurn)}/m
-          </span>
-        </div>
-      </CompactShell>
+        </CompactShell>
+      </div>
     );
   }
 
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+    <section
+      className="glass-surface p-4 rounded-[22px] select-none space-y-3"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div
@@ -123,7 +132,7 @@ export function LiquidRunwayCard({
               <FinancialGlossaryTooltip term="solvency_runway" />
             </div>
             <p className="text-[10px] text-[var(--text-tertiary)]">
-              Ketahanan kas darurat berdasarkan rata-rata pengeluaran bulanan
+              Emergency cash runway based on monthly average expenditure
             </p>
           </div>
         </div>
@@ -190,7 +199,7 @@ export function LiquidRunwayCard({
       {/* CFP 3-Tier Emergency Fund Progress Bar */}
       <div className="pt-1 space-y-1.5">
         <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
-          <span>Benchmark Dana Darurat (CFP Standard)</span>
+          <span>Emergency Fund Benchmark (CFP Standard)</span>
           <span className="font-semibold text-[var(--text-primary)]">
             {nextTierInfo.label}
           </span>
@@ -198,7 +207,7 @@ export function LiquidRunwayCard({
 
         {/* Multi-milestone Progress Bar (Scale to 12 Mos: 25%=3m, 50%=6m, 100%=12m) */}
         <div className="relative">
-          <div className="w-full h-2 rounded-full overflow-hidden bg-white/10">
+          <div className="w-full h-2 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
             <div
               className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-700"
               style={{ width: `${overallCoveragePct}%` }}
@@ -207,32 +216,32 @@ export function LiquidRunwayCard({
 
           {/* Marker pins for 3 Mo (25%) and 6 Mo (50%) */}
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-[var(--bg-elevated)] opacity-80"
+            className="absolute top-0 bottom-0 w-0.5 bg-black/40 dark:bg-white/40"
             style={{ left: "25%" }}
-            title="Tier 1: 3 Bulan"
+            title="Tier 1: 3 Months"
           />
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-[var(--bg-elevated)] opacity-80"
+            className="absolute top-0 bottom-0 w-0.5 bg-black/40 dark:bg-white/40"
             style={{ left: "50%" }}
-            title="Tier 2: 6 Bulan"
+            title="Tier 2: 6 Months"
           />
         </div>
 
         {/* Milestone Labels */}
         <div className="flex justify-between text-[9px] text-[var(--text-tertiary)]">
-          <span>0 Bln</span>
-          <span className="text-center">3 Bln (Min)</span>
-          <span className="text-center">6 Bln (Ideal)</span>
-          <span>12 Bln (Benteng)</span>
+          <span>0 Mos</span>
+          <span className="text-center">3 Mos (Min)</span>
+          <span className="text-center">6 Mos (Ideal)</span>
+          <span>12 Mos (Fortress)</span>
         </div>
       </div>
 
-      <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+      <div className="pt-1 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
         <span className="line-clamp-1 flex-1 pr-2">
           {nextTierInfo.desc}
         </span>
         <span className="font-semibold text-[var(--text-secondary)] shrink-0 amount">
-          Cadangan: {formatRupiah(liquidAssets)}
+          Reserve: {formatRupiah(liquidAssets)}
         </span>
       </div>
     </section>

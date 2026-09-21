@@ -44,7 +44,7 @@ export function HealthMeterCard({
               {statusLabel}
             </span>
           </div>
-          <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+          <div className="w-full h-1.5 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
             <div
               className="h-full rounded-full bg-[var(--text-primary)] transition-all"
               style={{ width: `${Math.min(100, Math.max(0, healthScore))}%` }}
@@ -56,7 +56,14 @@ export function HealthMeterCard({
   }
 
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+    <section
+      className="glass-surface p-4 rounded-[22px] select-none space-y-3"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div
@@ -148,7 +155,7 @@ export function HealthMeterCard({
             </div>
           </div>
 
-          <div className="w-full h-2 rounded-full overflow-hidden bg-white/10">
+          <div className="w-full h-2 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
             <div
               className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-700"
               style={{ width: `${Math.min(100, Math.max(0, healthScore))}%` }}
@@ -157,7 +164,7 @@ export function HealthMeterCard({
         </div>
       </div>
 
-      <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+      <div className="pt-1 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
         <span>Overall health diagnostic indicates controlled cashflow.</span>
         <span className="font-semibold text-[var(--text-secondary)]">
           {healthScore >= 75 ? "High Efficiency" : "Moderate Action Needed"}

@@ -15,7 +15,19 @@ export function getDefaultWalletClassification(name: string): AccountClassificat
     n.includes("reksadana") ||
     n.includes("deposito") ||
     n.includes("stock") ||
-    n.includes("emas")
+    n.includes("emas") ||
+    n.includes("gold") ||
+    n.includes("usdt") ||
+    n.includes("tether") ||
+    n.includes("btc") ||
+    n.includes("bitcoin") ||
+    n.includes("eth") ||
+    n.includes("ethereum") ||
+    n.includes("binance") ||
+    n.includes("indodax") ||
+    n.includes("tokocrypto") ||
+    n.includes("bybit") ||
+    n.includes("okx")
   ) {
     return "investment";
   }
@@ -144,37 +156,36 @@ export function getWalletIcon(name: string): string {
   return "Wallet";
 }
 
-export const DEFAULT_WALLETS = [
+export const DEFAULT_WALLETS = ["Cash"];
+
+export const WALLET_PRESETS = [
   "Cash",
-  "BNI",
   "BCA",
-  "BRI",
   "Mandiri",
+  "BRI",
+  "BNI",
   "Dana",
   "Gopay",
   "Ovo",
-  "Link",
   "Shopeepay",
   "Jago",
   "BLU",
-  "Krom",
   "Seabank",
   "Superbank",
-  "Tapcash",
   "Crypto",
   "Saham",
-  "Piutang",
-  "Liabilities",
 ];
 
-export const FALLBACK_WALLETS: Wallet[] = DEFAULT_WALLETS.map((name, i) => ({
-  id: `fallback-${i}-${name.toLowerCase()}`,
-  user_id: "default",
-  name,
-  icon: getWalletIcon(name),
-  classification: resolveWalletClassification({ name }),
-  created_at: new Date().toISOString(),
-}));
+export const FALLBACK_WALLETS: Wallet[] = [
+  {
+    id: "fallback-0-cash",
+    user_id: "default",
+    name: "Cash",
+    icon: "Banknote",
+    classification: "liquid",
+    created_at: new Date().toISOString(),
+  },
+];
 
 export const AVAILABLE_WALLET_ICONS = [
   "Banknote",
@@ -543,7 +554,7 @@ export function useDeleteWallet() {
       if (refError) throw refError;
       if ((count || 0) > 0) {
         throw new Error(
-          "Wallet masih dipakai oleh transaksi. Pindahkan atau hapus transaksinya dulu.",
+          "Wallet is currently used by transactions. Please reassign or delete its transactions first.",
         );
       }
 

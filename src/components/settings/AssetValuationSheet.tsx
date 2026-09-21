@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { format, subMinutes } from "date-fns";
 import { BottomSheet } from "../ui/BottomSheet";
+import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { IconRenderer } from "../ui/IconRenderer";
 import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
 import { autoSuggestIcon } from "../../lib/iconRegistry";
@@ -28,18 +29,24 @@ import {
   resolveWalletClassification,
 } from "../../hooks/useWallets";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   fetchUsdtPriceInIDR,
   fetchCryptoPriceInIDR,
   fetchStockPriceInIDR,
   getSavedHoldings,
+  getSavedUsdtPref,
+  saveUsdtPref,
   upsertHolding,
   deleteHolding,
   calculateHoldingValuation,
   calculatePortfolioSummary,
   calculateAssetDepreciation,
+  fetchHoldingsFromSupabase,
+  refreshAllPortfolioPrices,
 } from "../../lib/marketPriceService";
 import type { InvestmentHolding, AssetType } from "../../lib/types";
+import type { UsdtValuationPref } from "../../lib/marketPriceService";
 
 // ─── Asset Presets ─────────────────────────────────────────────────────────────
 
@@ -82,6 +89,7 @@ const ASSET_PRESETS: AssetPreset[] = [
   // Crypto
   { symbol: "BTC", name: "Bitcoin", type: "crypto" },
   { symbol: "ETH", name: "Ethereum", type: "crypto" },
+  { symbol: "USDT", name: "Tether USD", type: "crypto" },
   { symbol: "SOL", name: "Solana", type: "crypto" },
   { symbol: "BNB", name: "BNB (Binance)", type: "crypto" },
   { symbol: "XRP", name: "Ripple XRP", type: "crypto" },
@@ -114,14 +122,6 @@ const TYPE_LABELS: Record<string, string> = {
 interface AssetValuationSheetProps {
   isOpen: boolean;
   onClose: () => void;
-}
-
-const USDT_PREFS_STORAGE_KEY = "trouvaille_usdt_valuation_v2";
-
-interface UsdtValuationPref {
-  units: number;
-  rate: number;
-  costBasis: number;
 }
 
 interface DetailHoldingItem {
@@ -171,54 +171,55 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     );
   }, [wallets]);
 
+  const { user } = useAuth();
+
   // Current recorded capital in app
   const recordedCryptoBalance = useMemo(() => {
-    if (!cryptoWallet) return 14860559;
-    return balancesByName[cryptoWallet.name.toLowerCase()] || 14860559;
+    if (!cryptoWallet) return 0;
+    return balancesByName[cryptoWallet.name.toLowerCase()] || 0;
   }, [cryptoWallet, balancesByName]);
 
-  // USDT Valuation State (Safely migrates past any old stale 15980 rates)
-  const [usdtPref, setUsdtPref] = useState<UsdtValuationPref>(() => {
-    try {
-      const savedV2 = localStorage.getItem(USDT_PREFS_STORAGE_KEY);
-      if (savedV2) {
-        const parsed = JSON.parse(savedV2);
-        if (parsed.rate && parsed.rate >= 17000) return parsed;
-      }
-      const savedV1 = localStorage.getItem("trouvaille_usdt_valuation_v1");
-      if (savedV1) {
-        const parsed = JSON.parse(savedV1);
-        return {
-          units: Number(parsed.units) || 1057,
-          rate: parsed.rate >= 17000 ? parsed.rate : 17725,
-          costBasis: Number(parsed.costBasis) || 14860559,
-        };
-      }
-    } catch {}
-    return {
-      units: 1057,
-      rate: 17725,
-      costBasis: 14860559,
-    };
-  });
+  // USDT Valuation State (Scoped to current user)
+  const [usdtPref, setUsdtPref] = useState<UsdtValuationPref>(() => getSavedUsdtPref(user?.id));
 
-  // Automatically refresh live USDT rate upon sheet open
+  // Sync state when user changes
+  useEffect(() => {
+    setUsdtPref(getSavedUsdtPref(user?.id));
+    setHoldings(getSavedHoldings(user?.id));
+    if (user?.id && user.id !== "guest_local_user") {
+      fetchHoldingsFromSupabase(user.id).then((cloudHoldings) => {
+        setHoldings(cloudHoldings);
+        setUsdtPref(getSavedUsdtPref(user.id));
+      });
+    }
+  }, [user?.id]);
+
+  // Automatically refresh live USDT rate and sync cloud holdings upon sheet open
   useEffect(() => {
     if (!isOpen) return;
     let isMounted = true;
-    fetchUsdtPriceInIDR().then((liveRate) => {
-      if (isMounted && liveRate && liveRate >= 17000) {
-        setUsdtPref((prev) => {
-          const updated = { ...prev, rate: liveRate };
-          localStorage.setItem(USDT_PREFS_STORAGE_KEY, JSON.stringify(updated));
-          return updated;
-        });
+    if (user?.id && user.id !== "guest_local_user") {
+      fetchHoldingsFromSupabase(user.id).then((cloudHoldings) => {
+        if (isMounted) {
+          setHoldings(cloudHoldings);
+          setUsdtPref(getSavedUsdtPref(user.id));
+        }
+      });
+    }
+    refreshAllPortfolioPrices(user?.id).then(({ usdtRate, updatedHoldings }) => {
+      if (isMounted) {
+        if (usdtRate > 5000 && usdtRate < 50000) {
+          setUsdtPref((prev) => ({ ...prev, rate: usdtRate }));
+        }
+        if (updatedHoldings && updatedHoldings.length > 0) {
+          setHoldings(updatedHoldings);
+        }
       }
     }).catch(() => {});
     return () => {
       isMounted = false;
     };
-  }, [isOpen]);
+  }, [isOpen, user?.id]);
 
   // Check if crypto wallet is classified as liquid cash
   const isCryptoLiquid = useMemo(() => {
@@ -235,7 +236,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const [editCostBasis, setEditCostBasis] = useState(String(usdtPref.costBasis || recordedCryptoBalance));
 
   // Other Market Holdings & Fixed Assets
-  const [holdings, setHoldings] = useState<InvestmentHolding[]>(() => getSavedHoldings());
+  const [holdings, setHoldings] = useState<InvestmentHolding[]>(() => getSavedHoldings(user?.id));
 
   // ── Add Holding: Two-Phase Flow ──────────────────────────────────────────────
   // Phase 0 = closed, Phase 1 = searchable picker, Phase 2 = confirmation form
@@ -416,14 +417,19 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
   // Calculations for USDT
   const usdtMarketValue = Math.round(usdtPref.units * usdtPref.rate);
-  const usdtCostBasis = usdtPref.costBasis || recordedCryptoBalance;
-  const usdtFloatingPnL = usdtMarketValue - usdtCostBasis;
+  const usdtCostBasis = usdtPref.units > 0 ? (usdtPref.costBasis || recordedCryptoBalance) : 0;
+  const usdtFloatingPnL = usdtPref.units > 0 ? usdtMarketValue - usdtCostBasis : 0;
   const usdtFloatingPnLPct =
     usdtCostBasis > 0 ? (usdtFloatingPnL / usdtCostBasis) * 100 : 0;
 
-  // Other Holdings Summary
+  const suggestedUsdtUnits = useMemo(() => {
+    return usdtPref.rate > 0 ? Math.round((recordedCryptoBalance / usdtPref.rate) * 100) / 100 : 0;
+  }, [recordedCryptoBalance, usdtPref.rate]);
+
+  // Other Holdings Summary (exclude USDT from generic holdings to prevent duplication)
   const otherHoldingsSummary = useMemo(() => {
-    return calculatePortfolioSummary(holdings);
+    const nonUsdtHoldings = holdings.filter((h) => h.symbol?.toUpperCase() !== "USDT");
+    return calculatePortfolioSummary(nonUsdtHoldings);
   }, [holdings]);
 
   // Total Floating Profit across all assets
@@ -459,10 +465,10 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setIsFetchingRate(true);
     try {
       const rate = await fetchUsdtPriceInIDR();
-      if (rate && rate >= 17000) {
+      if (rate && rate > 5000 && rate < 50000) {
         const nextPref = { ...usdtPref, rate };
         setUsdtPref(nextPref);
-        localStorage.setItem(USDT_PREFS_STORAGE_KEY, JSON.stringify(nextPref));
+        saveUsdtPref(nextPref, user?.id);
         showToast(`Live rate updated: ${formatRupiah(rate)}/USDT`, "add", () => {});
       } else {
         showToast("Failed to fetch live rate", "delete", () => {});
@@ -488,13 +494,10 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     const nextPref: UsdtValuationPref = {
       units,
       rate,
-      costBasis: !isNaN(cost) && cost > 0 ? cost : recordedCryptoBalance,
+      costBasis: !isNaN(cost) && cost >= 0 ? cost : recordedCryptoBalance,
     };
     setUsdtPref(nextPref);
-    localStorage.setItem(USDT_PREFS_STORAGE_KEY, JSON.stringify(nextPref));
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("trouvaille_holdings_updated"));
-    }
+    saveUsdtPref(nextPref, user?.id);
     setIsEditingUsdt(false);
     triggerHaptic("medium");
     showToast("USDT valuation saved", "update", () => {});
@@ -526,6 +529,20 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           : Math.abs(rawRate)
         : undefined;
 
+    if (symbol.toUpperCase() === "USDT") {
+      const updatedPref: UsdtValuationPref = {
+        units,
+        costBasis: buyPrice * units,
+        rate: currentPrice || usdtPref.rate,
+      };
+      setUsdtPref(updatedPref);
+      saveUsdtPref(updatedPref, user?.id);
+      closeAddFlow();
+      triggerHaptic("medium");
+      showToast("USDT holding saved successfully", "add", () => {});
+      return;
+    }
+
     const newH: InvestmentHolding = {
       id: editingHoldingId || `h_${Date.now()}`,
       symbol: symbol.toUpperCase(),
@@ -540,7 +557,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
       purchase_date: formPurchaseDate || undefined,
     };
 
-    const updated = upsertHolding(newH);
+    const updated = upsertHolding(newH, user?.id);
     setHoldings(updated);
     closeAddFlow();
     triggerHaptic("medium");
@@ -565,10 +582,10 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
       setFormAnnualRateSign(h.annual_rate >= 0 ? "+" : "-");
       setFormAnnualRate(String(Math.abs(h.annual_rate)));
     } else {
-      setFormAnnualRateSign(h.asset_type === "fixed_asset" ? "-" : "+");
+      setFormAnnualRateSign("+");
       setFormAnnualRate("");
     }
-    setFormPurchaseDate(h.purchase_date || format(new Date(), "yyyy-MM-dd"));
+    setFormPurchaseDate(h.purchase_date || "");
     setDetailHolding(null);
     setAddPhase(2);
   };
@@ -595,7 +612,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
     setIsRealizing(true);
     try {
-      // Find category: preferably 'Investasi' or 'Trading'
       const targetCategory =
         categories.find(
           (c) =>
@@ -606,7 +622,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
         categories.find((c) => c.type === realizeType) ||
         null;
 
-      // Construct ISO datetime string from date and time inputs
       const combinedDateTime = new Date(`${realizeDate}T${realizeTime}:00`);
       const isoOccurredOn = isNaN(combinedDateTime.getTime())
         ? new Date().toISOString()
@@ -623,7 +638,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           `Realized ${realizeType === "income" ? "Profit" : "Loss"}: ${detailHolding.symbol}`,
       });
 
-      // Update cost basis of holding to lock in realized profit/loss
       if (detailHolding.isUsdt) {
         const newCostBasis =
           realizeType === "income"
@@ -631,7 +645,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
             : Math.max(0, usdtCostBasis - amt);
         const nextPref = { ...usdtPref, costBasis: newCostBasis };
         setUsdtPref(nextPref);
-        localStorage.setItem(USDT_PREFS_STORAGE_KEY, JSON.stringify(nextPref));
+        saveUsdtPref(nextPref, user?.id);
       } else if (detailHolding.holding) {
         const currentTotalCost = detailHolding.costBasis;
         const newTotalCost =
@@ -644,7 +658,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           ...detailHolding.holding,
           avg_buy_price: newAvgBuy,
         };
-        const updatedList = upsertHolding(updatedHolding);
+        const updatedList = upsertHolding(updatedHolding, user?.id);
         setHoldings(updatedList);
       }
 
@@ -669,7 +683,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
   const handleDeleteHolding = (id: string, name: string) => {
     triggerHaptic("heavy");
-    const updated = deleteHolding(id);
+    const updated = deleteHolding(id, user?.id);
     setHoldings(updated);
     showToast(`${name} removed`, "delete", () => {});
   };
@@ -786,13 +800,55 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           </div>
         </div>
 
+        {/* Quick Link Banner if USDT wallet has balance but units are 0 */}
+        {usdtPref.units <= 0 && recordedCryptoBalance > 0 && (
+          <div
+            className="p-3.5 rounded-2xl flex items-center justify-between gap-3 border border-amber-500/20 bg-amber-500/[0.06]"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border border-amber-500/20 bg-amber-500/10 text-amber-500">
+                <Coins size={16} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
+                  USDT Wallet Balance Detected
+                </p>
+                <p className="text-[11px] text-[var(--text-tertiary)] truncate">
+                  {formatRupiah(recordedCryptoBalance)} (~{suggestedUsdtUnits} USDT)
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                const updated = {
+                  units: suggestedUsdtUnits,
+                  rate: usdtPref.rate,
+                  costBasis: recordedCryptoBalance,
+                };
+                setUsdtPref(updated);
+                saveUsdtPref(updated, user?.id);
+                showToast(`Linked ${suggestedUsdtUnits} USDT to portfolio`, "add", () => {});
+              }}
+              className="px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 active:scale-95 transition-all cursor-pointer shadow-sm"
+              style={{
+                background: "var(--accent)",
+                color: "var(--accent-ink)",
+              }}
+            >
+              Link Units
+            </button>
+          </div>
+        )}
+
         {/* 2. Unified Asset Deck Header & Actions */}
         <div className="flex items-center justify-between px-1 pt-1">
           <span
             className="text-[12px] font-bold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Holdings ({holdings.length + 1})
+            Holdings ({((usdtPref.units > 0 || recordedCryptoBalance > 0) ? 1 : 0) + holdings.length})
           </span>
           <div className="flex items-center gap-1.5">
             <button
@@ -1339,8 +1395,9 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
         {/* 3. Holdings List Deck */}
         <div className="space-y-2.5">
           {/* A. Core USDT Holding Row with Quick Toggle */}
-          <div
-            className="p-3.5 rounded-2xl space-y-3"
+          {(usdtPref.units > 0 || recordedCryptoBalance > 0) && (
+            <div
+              className="p-3.5 rounded-2xl space-y-3"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
@@ -1353,10 +1410,10 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                   isUsdt: true,
                   symbol: "USDT",
                   name: "Tether USD",
-                  units: usdtPref.units,
+                  units: usdtPref.units > 0 ? usdtPref.units : suggestedUsdtUnits,
                   rate: usdtPref.rate,
-                  costBasis: usdtCostBasis,
-                  marketValue: usdtMarketValue,
+                  costBasis: usdtCostBasis || recordedCryptoBalance,
+                  marketValue: usdtMarketValue || recordedCryptoBalance,
                   floatingPnL: usdtFloatingPnL,
                   floatingPnLPct: usdtFloatingPnLPct,
                   icon: "Coins",
@@ -1383,7 +1440,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                     className="text-[11px] font-medium truncate mt-1 leading-tight"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Tether USD
+                    {usdtPref.units > 0 ? "Tether USD" : `Wallet linked · ${suggestedUsdtUnits} USDT`}
                   </p>
                 </div>
               </div>
@@ -1391,15 +1448,15 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
               {/* Amount & Strictly Monochrome P&L */}
               <div className="text-right shrink-0">
                 <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
-                  {formatRupiah(usdtMarketValue)}
+                  {usdtPref.units > 0 ? formatRupiah(usdtMarketValue) : `~${formatRupiah(recordedCryptoBalance)}`}
                 </span>
                 <span
                   className="text-[10px] font-bold mt-1 inline-block whitespace-nowrap font-mono"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  {usdtFloatingPnL >= 0 ? "+" : ""}
-                  {formatRupiah(usdtFloatingPnL)} ({usdtFloatingPnLPct >= 0 ? "+" : ""}
-                  {usdtFloatingPnLPct.toFixed(1)}%)
+                  {usdtPref.units > 0
+                    ? `${usdtFloatingPnL >= 0 ? "+" : ""}${formatRupiah(usdtFloatingPnL)} (${usdtFloatingPnLPct >= 0 ? "+" : ""}${usdtFloatingPnLPct.toFixed(1)}%)`
+                    : `Tap to calibrate (${suggestedUsdtUnits} USDT)`}
                 </span>
               </div>
             </div>
@@ -1432,19 +1489,12 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>
                   {isCryptoLiquid ? "Liquid Cash: On" : "Liquid Cash: Off"}
                 </span>
-                <div
-                  className="w-8 h-4.5 rounded-full transition-colors duration-200 flex items-center p-0.5 shrink-0"
-                  style={{
-                    background: isCryptoLiquid ? "var(--text-primary)" : isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.15)",
-                  }}
-                >
-                  <div
-                    className={`w-3.5 h-3.5 rounded-full shadow transition-transform duration-200 ${
-                      isCryptoLiquid ? "translate-x-3.5" : "translate-x-0"
-                    }`}
-                    style={{
-                      background: isCryptoLiquid ? "var(--bg-base)" : isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.4)",
-                    }}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ToggleSwitch
+                    checked={isCryptoLiquid}
+                    onChange={handleToggleCryptoLiquid}
+                    size="sm"
+                    ariaLabel="Toggle USDT as liquid operating cash"
                   />
                 </div>
               </div>
@@ -1519,10 +1569,13 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 </div>
               </div>
             )}
-          </div>
+            </div>
+          )}
 
           {/* B. Generic & Fixed Assets List */}
-          {holdings.map((h) => {
+          {holdings
+            .filter((h) => h.symbol?.toUpperCase() !== "USDT")
+            .map((h) => {
             const val = calculateHoldingValuation(h);
             return (
               <div
@@ -1558,12 +1611,17 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                     <IconRenderer icon={h.icon || getDefaultAssetIconName(h.asset_type)} size="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <span
-                      className="font-semibold font-mono text-[12px] tracking-wide block leading-none"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {h.symbol}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="font-semibold font-mono text-[12px] tracking-wide block leading-none"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {h.symbol}
+                      </span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.05] text-[var(--text-tertiary)]">
+                        {TYPE_LABELS[h.asset_type] || h.asset_type}
+                      </span>
+                    </div>
                     <p
                       className="text-[11px] font-medium truncate mt-1 leading-tight"
                       style={{ color: "var(--text-tertiary)" }}
@@ -1573,25 +1631,36 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0">
-                  {/* Amount & Strictly Monochrome P&L */}
-                  <div className="text-right">
-                    <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
-                      {formatRupiah(val.marketValue)}
-                    </span>
-                    <span
-                      className="text-[10px] font-bold mt-1 inline-block whitespace-nowrap font-mono"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {val.floatingPnL >= 0 ? "+" : ""}
-                      {formatRupiah(val.floatingPnL)} ({val.floatingPnLPct >= 0 ? "+" : ""}
-                      {val.floatingPnLPct.toFixed(1)}%)
-                    </span>
-                  </div>
+                <div className="text-right shrink-0">
+                  <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+                    {formatRupiah(val.marketValue)}
+                  </span>
+                  <span
+                    className="text-[10px] font-bold mt-1 inline-block whitespace-nowrap font-mono"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {val.floatingPnL >= 0 ? "+" : ""}
+                    {formatRupiah(val.floatingPnL)} ({val.floatingPnLPct >= 0 ? "+" : ""}
+                    {val.floatingPnLPct.toFixed(1)}%)
+                  </span>
                 </div>
               </div>
             );
           })}
+
+          {usdtPref.units <= 0 && holdings.length === 0 && (
+            <div className="py-8 px-4 text-center rounded-2xl border border-dashed border-[var(--glass-border)] bg-black/[0.01] dark:bg-white/[0.01] space-y-2">
+              <div className="w-10 h-10 rounded-xl mx-auto flex items-center justify-center bg-black/[0.03] dark:bg-white/[0.05] border border-[var(--glass-border)] text-[var(--text-tertiary)]">
+                <Coins size={18} strokeWidth={1.5} />
+              </div>
+              <p className="text-[13px] font-semibold text-[var(--text-primary)]">
+                No Asset Holdings Tracked
+              </p>
+              <p className="text-[11px] text-[var(--text-tertiary)] max-w-[240px] mx-auto leading-relaxed">
+                Your portfolio is currently empty. Tap &ldquo;+ Add Asset&rdquo; above to track USDT, stocks, funds, gold, or property.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Done Button */}
@@ -1830,7 +1899,23 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                   Edit Holding
                 </button>
 
-                {!detailHolding.isUsdt && detailHolding.holding && (
+                {detailHolding.isUsdt ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("heavy");
+                      const cleared: UsdtValuationPref = { units: 0, costBasis: 0, rate: usdtPref.rate };
+                      setUsdtPref(cleared);
+                      saveUsdtPref(cleared, user?.id);
+                      setDetailHolding(null);
+                      showToast("USDT holding removed", "delete", () => {});
+                    }}
+                    className="py-2.5 px-3 rounded-xl text-[12px] font-bold active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer text-red-500 hover:bg-red-500/10 border border-[var(--glass-border)] bg-[var(--glass-fill)]"
+                    title="Remove USDT from holdings"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                ) : detailHolding.holding && (
                   <button
                     type="button"
                     onClick={() => {

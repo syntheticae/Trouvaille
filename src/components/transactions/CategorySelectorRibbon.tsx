@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { IconRenderer } from "../ui/IconRenderer";
 import { triggerHaptic } from "../../lib/haptics";
+import { useTheme } from "../../contexts/ThemeContext";
 import type { Category } from "../../lib/types";
 
 export interface CategorySelectorRibbonProps {
@@ -16,6 +17,8 @@ export function CategorySelectorRibbon({
   onSelectCategory,
   onOpenMore,
 }: CategorySelectorRibbonProps) {
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   return (
     <div className="mb-4.5">
       <div className="flex items-center justify-between mb-2 px-1">
@@ -53,16 +56,22 @@ export function CategorySelectorRibbon({
               className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
               style={{
                 background: isSelected
-                  ? "rgba(255, 255, 255, 0.14)"
+                  ? isDark
+                    ? "rgba(255, 255, 255, 0.16)"
+                    : "#18181b"
                   : "var(--bg-elevated)",
                 border: isSelected
-                  ? "1px solid rgba(255, 255, 255, 0.4)"
+                  ? isDark
+                    ? "1px solid rgba(255, 255, 255, 0.35)"
+                    : "1px solid #18181b"
                   : "1px solid var(--glass-border)",
                 color: isSelected
-                  ? "var(--text-primary)"
+                  ? "#ffffff"
                   : "var(--text-secondary)",
                 boxShadow: isSelected
-                  ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25)"
+                  ? isDark
+                    ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25)"
+                    : "0 2px 8px rgba(0, 0, 0, 0.18)"
                   : "none",
               }}
             >

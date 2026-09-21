@@ -43,7 +43,7 @@ export function CompactSpendingStabilityHalf({
             {(volatilityScore * 100).toFixed(0)}%
           </span>
         </div>
-        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+        <div className="w-full h-1.5 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
           <div
             className="h-full rounded-full bg-[var(--text-primary)] transition-all"
             style={{ width: `${Math.min(100, Math.max(10, volatilityScore * 100))}%` }}
@@ -97,7 +97,7 @@ export function CompactCashflowPulseHalf({
             {consumedPct.toFixed(0)}%
           </span>
         </div>
-        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+        <div className="w-full h-1.5 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
           <div
             className="h-full rounded-full bg-[var(--text-primary)] transition-all"
             style={{ width: `${Math.min(100, Math.max(0, consumedPct))}%` }}
@@ -125,7 +125,7 @@ export function CompactAIInsightsHalf({
         </p>
       </div>
 
-      <div className="flex items-center justify-between pt-1.5 border-t border-white/5 text-[10px] font-medium text-[var(--text-tertiary)] shrink-0">
+      <div className="flex items-center justify-between pt-1.5 border-t border-black/5 dark:border-white/5 text-[10px] font-medium text-[var(--text-tertiary)] shrink-0">
         <div className="flex items-center gap-1">
           <Zap size={11} />
           <span>Diagnostic</span>
@@ -184,7 +184,7 @@ export function CompactGoalsHalf({
       </div>
 
       <div className="shrink-0">
-        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+        <div className="w-full h-1.5 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
           <div
             className="h-full rounded-full bg-[var(--text-primary)] transition-all"
             style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
@@ -230,7 +230,7 @@ export function CompactBillsHalf({
         </p>
       </div>
 
-      <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
+      <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
         <Clock size={11} />
         <span>Upcoming cycle</span>
       </div>
@@ -273,7 +273,7 @@ export function CompactTopCategoriesHalf({
       </div>
 
       <div className="shrink-0">
-        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+        <div className="w-full h-1.5 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
           <div
             className="h-full rounded-full bg-[var(--text-primary)] transition-all"
             style={{ width: `${Math.min(100, Math.max(0, topCategoryPct))}%` }}
@@ -316,7 +316,7 @@ export function CompactSplitBillHalf({
         </p>
       </div>
 
-      <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
+      <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
         <ArrowUpRight size={11} />
         <span>Tap to settle shares</span>
       </div>

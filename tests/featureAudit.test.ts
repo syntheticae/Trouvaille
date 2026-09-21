@@ -188,12 +188,9 @@ describe("Cross-Feature Audit & Integration Suite", () => {
       expect(personal.map((t) => t.id)).toEqual(["tx-1", "tx-4"]);
     });
 
-    it("contains standard predefined default spaces with unique IDs", () => {
+    it("contains single default space with unique IDs", () => {
       const ids = DEFAULT_MONEY_SPACES.map((s) => s.id);
-      expect(ids).toContain("all");
-      expect(ids).toContain("personal");
-      expect(ids).toContain("business");
-      expect(ids).toContain("travel");
+      expect(ids).toEqual(["personal"]);
       expect(new Set(ids).size).toBe(DEFAULT_MONEY_SPACES.length);
     });
   });

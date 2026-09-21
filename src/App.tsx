@@ -22,6 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { fetchAllTransactionsFromSupabase } from "./hooks/useTransactions";
 import { supabase } from "./lib/supabase";
 import { flushPendingMutations } from "./lib/syncEngine";
+import { migrateGuestDataToCloud } from "./lib/guestMigration";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import { usePrivacy } from "./contexts/PrivacyContext";
 
@@ -217,11 +218,19 @@ function AppShell() {
       setIsInitDone(true);
     }
     if (user?.id && !isGuest) {
+      migrateGuestDataToCloud(user.id)
+        .then(({ walletsMigrated, transactionsMigrated }) => {
+          if (walletsMigrated > 0 || transactionsMigrated > 0) {
+            queryClient.invalidateQueries({ queryKey: ["wallets"] });
+            queryClient.invalidateQueries({ queryKey: ["transactions"] });
+          }
+        })
+        .catch(() => {});
       flushPendingMutations().catch((e) =>
         console.warn("[App] Background flush warning:", e),
       );
     }
-  }, [syncStorageKey, user?.id, isGuest]);
+  }, [syncStorageKey, user?.id, isGuest, queryClient]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -471,7 +480,14 @@ function AppShell() {
             <Route path="/bills" element={<CalendarPage />} />
             <Route path="/statistics" element={<StatisticsPage />} />
             <Route path="/stats" element={<StatisticsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route
+              path="/settings"
+              element={
+                <SettingsPage
+                  onOpenImport={() => setStatementImportOpen(true)}
+                />
+              }
+            />
           </Routes>
         </Suspense>
       </div>

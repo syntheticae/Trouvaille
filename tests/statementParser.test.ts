@@ -165,4 +165,40 @@ Date,Description,Amount,Type
       expect(result.items[1].selected).toBe(true);
     });
   });
+
+  describe("Print Preview & Tabular Copy-Paste Formats", () => {
+    it("parses KlikBCA print preview copy-paste containing 0000 branch code", () => {
+      const printoutSnippet = `
+TGL    KETERANGAN                                     CBG   MUTASI          SALDO
+05/09  TRSF E-BANKING CR 0509/FTSCY/WS95011 GAJI      0000  10.000.000,00   15.000.000,00
+12/09  QRIS KOPI KENANGAN                             0000  38.000,00 DB    14.962.000,00
+      `;
+
+      const result = parseStatementText(printoutSnippet, [], []);
+      expect(result.items.length).toBe(2);
+
+      // Inflow
+      expect(result.items[0].type).toBe("income");
+      expect(result.items[0].amount).toBe(10000000);
+      expect(result.items[0].cleanDescription).not.toContain("0000");
+
+      // Outflow
+      expect(result.items[1].type).toBe("expense");
+      expect(result.items[1].amount).toBe(38000);
+      expect(result.items[1].cleanDescription.toLowerCase()).toContain("kopi kenangan");
+      expect(result.items[1].cleanDescription).not.toContain("0000");
+    });
+
+    it("parses tab-separated mutasi copied from web banking table", () => {
+      const tabSnippet = "15/09/2026\tPEMBAYARAN LISTRIK PLN\t500.000,00\tDB\t10.000.000,00\n16/09/2026\tTRANSFER MASUK DARI BUDI\t2.500.000,00\tCR\t12.500.000,00";
+      const result = parseStatementText(tabSnippet, [], []);
+      expect(result.items.length).toBe(2);
+
+      expect(result.items[0].type).toBe("expense");
+      expect(result.items[0].amount).toBe(500000);
+
+      expect(result.items[1].type).toBe("income");
+      expect(result.items[1].amount).toBe(2500000);
+    });
+  });
 });

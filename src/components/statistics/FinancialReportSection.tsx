@@ -131,6 +131,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="flex items-start justify-between">
@@ -266,10 +267,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* Neraca Summary Card */}
           <section
-            className="p-4 rounded-[22px] grid grid-cols-3 gap-2 text-center"
+            className="p-4 rounded-[22px] grid grid-cols-3 gap-2 text-center glass-card"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div
@@ -329,10 +331,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* Assets Breakdown Card */}
           <div
-            className="rounded-[22px] overflow-hidden"
+            className="rounded-[22px] overflow-hidden glass-card"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <button
@@ -426,7 +429,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                         balanceSheet.liquidAssets.items.map((it) => (
                           <div
                             key={it.id}
-                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-white/[0.02] transition-colors"
+                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
                           >
                             <span
                               className="text-[12px] font-normal tracking-tight"
@@ -482,7 +485,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                         balanceSheet.investmentAssets.items.map((it) => (
                           <div
                             key={it.id}
-                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-white/[0.02] transition-colors"
+                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
                           >
                             <span
                               className="text-[12px] font-normal tracking-tight"
@@ -538,7 +541,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                         balanceSheet.receivableAssets.items.map((it) => (
                           <div
                             key={it.id}
-                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-white/[0.02] transition-colors"
+                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
                           >
                             <span
                               className="text-[12px] font-normal tracking-tight"
@@ -572,10 +575,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* Liabilities Breakdown Card */}
           <div
-            className="rounded-[22px] overflow-hidden"
+            className="rounded-[22px] overflow-hidden glass-card"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <button
@@ -670,7 +674,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                         balanceSheet.currentLiabilities.items.map((it) => (
                           <div
                             key={it.id}
-                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-white/[0.02] transition-colors"
+                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
                           >
                             <span
                               className="text-[12px] font-normal tracking-tight"
@@ -726,7 +730,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                         balanceSheet.longTermLiabilities.items.map((it) => (
                           <div
                             key={it.id}
-                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-white/[0.02] transition-colors"
+                            className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
                           >
                             <span
                               className="text-[12px] font-normal tracking-tight"
@@ -789,10 +793,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* Cash Flow 3-Pillar Hero */}
           <section
-            className="p-4 rounded-[22px] space-y-3"
+            className="p-4 rounded-[22px] space-y-3 glass-card"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div className="flex items-center justify-between">
@@ -897,10 +902,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* 1. Operating Activities Expandable Accordion */}
           <div
-            className="rounded-[22px] overflow-hidden"
+            className="rounded-[22px] overflow-hidden glass-card"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <button
@@ -965,7 +971,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     cashFlow.operatingItems.map((it) => (
                       <div
                         key={it.id}
-                        className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-white/[0.02] transition-colors"
+                        className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
                       >
                         <div>
                           <span
@@ -1000,10 +1006,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* 2. Investing Activities Expandable Accordion */}
           <div
-            className="rounded-[22px] overflow-hidden"
+            className="rounded-[22px] overflow-hidden glass-card"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <button
@@ -1069,7 +1076,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     cashFlow.investingItems.map((it) => (
                       <div
                         key={it.id}
-                        className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-white/[0.02] transition-colors"
+                        className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
                       >
                         <span
                           className="text-[12px] font-normal tracking-tight"
@@ -1094,10 +1101,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* 3. Financing Activities Expandable Accordion */}
           <div
-            className="rounded-[22px] overflow-hidden"
+            className="rounded-[22px] overflow-hidden glass-card"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <button
@@ -1163,7 +1171,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     cashFlow.financingItems.map((it) => (
                       <div
                         key={it.id}
-                        className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-white/[0.02] transition-colors"
+                        className="flex items-center justify-between py-1.5 pl-2 pr-1 border-b border-[var(--glass-border)]/35 last:border-b-0 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
                       >
                         <span
                           className="text-[12px] font-normal tracking-tight"
@@ -1219,10 +1227,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
           <div className="grid grid-cols-3 gap-2">
             {/* Note 1: Solvency Runway */}
             <div
-              className="p-3 rounded-[20px] space-y-1"
+              className="p-3 rounded-[20px] space-y-1 glass-card"
               style={{
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
+                boxShadow: "var(--shadow-card)",
               }}
             >
               <span
@@ -1252,10 +1261,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
             {/* Note 2: Debt-to-Asset Ratio */}
             <div
-              className="p-3 rounded-[20px] space-y-1"
+              className="p-3 rounded-[20px] space-y-1 glass-card"
               style={{
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
+                boxShadow: "var(--shadow-card)",
               }}
             >
               <span
@@ -1284,10 +1294,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
             {/* Note 3: Operating Free Cash Flow Rate */}
             <div
-              className="p-3 rounded-[20px] space-y-1"
+              className="p-3 rounded-[20px] space-y-1 glass-card"
               style={{
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
+                boxShadow: "var(--shadow-card)",
               }}
             >
               <span
@@ -1317,10 +1328,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* Narrative Commentary Notes */}
           <section
-            className="p-4 rounded-[22px] space-y-3"
+            className="p-4 rounded-[22px] space-y-3 glass-card"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div className="space-y-1">
@@ -1362,10 +1374,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* Note 4: Material Outlier Transactions (>15% of Period Spend) */}
           <section
-            className="p-4 rounded-[22px] space-y-3"
+            className="p-4 rounded-[22px] space-y-3 glass-card"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div>
@@ -1440,10 +1453,11 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           {/* Note 5: Standard Integrity & Reconciliation Statement */}
           <section
-            className="p-4 rounded-[22px] space-y-2"
+            className="p-4 rounded-[22px] space-y-2 glass-card"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div className="flex items-center gap-2">

@@ -72,6 +72,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const continueAsGuest = () => {
+    try {
+      supabase.auth.signOut().catch(() => {});
+      clearPersistentSession();
+      clearBiometricLoginCredentials();
+    } catch {}
+    setSession(null);
     localStorage.setItem("trouvaille_guest_mode", "true");
     setIsGuest(true);
   };
@@ -86,6 +92,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function initAuth() {
       try {
+        const storedIsGuest =
+          typeof window !== "undefined" &&
+          localStorage.getItem("trouvaille_guest_mode") === "true";
+        if (storedIsGuest) {
+          if (!isMounted) return;
+          setIsGuest(true);
+          setSession(null);
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase.auth.getSession();
         if (!isMounted) return;
 
@@ -213,7 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsGuest(false);
   };
 
-  const effectiveUser = session?.user ?? (isGuest ? GUEST_USER : null);
+  const effectiveUser = isGuest ? GUEST_USER : (session?.user ?? null);
 
   return (
     <AuthContext.Provider

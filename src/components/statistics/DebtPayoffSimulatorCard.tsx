@@ -17,34 +17,12 @@ import {
   CreditCard,
   TrendingDown,
   X,
-  RotateCcw,
 } from "lucide-react";
 import { addMonths, format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 
-const DEFAULT_DEBTS: DebtItem[] = [
-  {
-    id: "debt-cc-1",
-    name: "Credit Card Platinum",
-    balance: 12000000,
-    minPayment: 600000,
-    interestRate: 24,
-  },
-  {
-    id: "debt-pl-2",
-    name: "E-Commerce PayLater",
-    balance: 3500000,
-    minPayment: 350000,
-    interestRate: 18,
-  },
-  {
-    id: "debt-loan-3",
-    name: "Gadget Installment",
-    balance: 7000000,
-    minPayment: 500000,
-    interestRate: 12,
-  },
-];
+const DEFAULT_DEBTS: DebtItem[] = [];
+const DUMMY_DEBT_IDS = new Set(["debt-cc-1", "debt-pl-2", "debt-loan-3"]);
 
 const STORAGE_KEY = "trouvaille_debts_v1";
 
@@ -61,7 +39,9 @@ export function DebtPayoffSimulatorCard({
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter((d: DebtItem) => !DUMMY_DEBT_IDS.has(d.id));
+        }
       }
     } catch {
       // ignore
@@ -165,8 +145,9 @@ export function DebtPayoffSimulatorCard({
     triggerHaptic("light");
   };
 
-  const handleResetDefault = () => {
-    setDebts(DEFAULT_DEBTS);
+  const handleClearAllDebts = () => {
+    if (!confirm("Clear all debt records?")) return;
+    setDebts([]);
     triggerHaptic("medium");
   };
 
@@ -217,6 +198,8 @@ export function DebtPayoffSimulatorCard({
             >
               {activeResult.totalMonths > 0
                 ? `Debt-Free in ${activeResult.totalMonths} Mos (${projectedFreeDate})`
+                : debts.length === 0
+                ? "No Active Debts"
                 : "All Debts Cleared"}
             </p>
           </div>
@@ -254,7 +237,32 @@ export function DebtPayoffSimulatorCard({
               className="p-4 pt-2 space-y-4 border-t"
               style={{ borderColor: "var(--glass-border)" }}
             >
-              {/* 1. Summary Cards */}
+              {debts.length === 0 ? (
+                <div className="py-8 text-center space-y-2">
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                    No Debts Recorded
+                  </p>
+                  <p className="text-[11.5px] max-w-xs mx-auto" style={{ color: "var(--text-tertiary)" }}>
+                    You currently have no active liabilities or loans. Tap below to track credit cards, paylaters, or installments.
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={openAddDebt}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold cursor-pointer active:scale-95 transition-all"
+                      style={{
+                        background: "var(--accent)",
+                        color: "var(--accent-ink)",
+                      }}
+                    >
+                      <Plus size={13} />
+                      Add Debt Account
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* 1. Summary Cards */}
               <div
                 className="grid grid-cols-2 gap-3 p-3 rounded-2xl"
                 style={{
@@ -579,19 +587,21 @@ export function DebtPayoffSimulatorCard({
                     Your Debts ({debts.length})
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={handleResetDefault}
-                      className="px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer active:scale-95"
-                      style={{
-                        background: "var(--glass-fill)",
-                        color: "var(--text-tertiary)",
-                      }}
-                      title="Reset sample debts"
-                    >
-                      <RotateCcw size={10} />
-                      Reset
-                    </button>
+                    {debts.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllDebts}
+                        className="px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer active:scale-95"
+                        style={{
+                          background: "var(--glass-fill)",
+                          color: "var(--text-tertiary)",
+                        }}
+                        title="Clear all debts"
+                      >
+                        <Trash2 size={10} />
+                        Clear All
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={openAddDebt}
@@ -670,7 +680,9 @@ export function DebtPayoffSimulatorCard({
                   ))}
                 </div>
               </div>
-            </div>
+            </>
+          )}
+        </div>
           </motion.div>
         )}
       </AnimatePresence>

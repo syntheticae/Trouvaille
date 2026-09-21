@@ -373,6 +373,17 @@ const NON_LIQUID_WALLET_NAMES = new Set([
   "saham",
   "piutang",
   "liabilities",
+  "usdt",
+  "tether",
+  "btc",
+  "bitcoin",
+  "eth",
+  "ethereum",
+  "binance",
+  "tokocrypto",
+  "indodax",
+  "bybit",
+  "okx",
 ]);
 
 export function isOpeningBalanceTx(tx: Pick<Transaction, "note">): boolean {
@@ -400,7 +411,17 @@ export function isMarketInvestmentName(name: string): boolean {
     n.includes("bibit") ||
     n.includes("ajaib") ||
     n.includes("binance") ||
-    n.includes("indodax")
+    n.includes("indodax") ||
+    n.includes("tokocrypto") ||
+    n.includes("bybit") ||
+    n.includes("okx") ||
+    n.includes("usdt") ||
+    n.includes("tether") ||
+    n.includes("btc") ||
+    n.includes("bitcoin") ||
+    n.includes("eth") ||
+    n.includes("ethereum") ||
+    n.includes("solana")
   );
 }
 

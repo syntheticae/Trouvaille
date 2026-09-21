@@ -130,6 +130,7 @@ export function cleanBankNarration(raw: string): string {
   text = text
     .replace(/\b(TRSF|TRANSFER|E-BANKING|M-BCA|M-BANKING|QRIS|BI-FAST|LLG|RTGS|WS\d+|FTSCY|SWITCHING)\b/gi, "")
     .replace(/\b(CR|DB|D\/K|DEBET|KREDIT)\b/gi, "")
+    .replace(/\b0{4,}\b/g, "") // remove 0000 branch code from KlikBCA
     .replace(/\d{4,}\/\w+\/\w+/g, "") // remove batch/trans ID like 0509/FTSCY/WS95011
     .replace(/\s{2,}/g, " ")
     .trim();
@@ -332,8 +333,14 @@ export function parseStatementText(
         dateStr = cols[0];
         description = cols[1];
 
-        // Type column if present
-        if (cols.length >= 4) {
+        // Check Credit vs Debit across line and columns
+        const isCreditInLine = /\b(cr|kredit|pemasukan|income|money in)\b/i.test(line);
+        const isDebitInLine = /\b(db|debet|pengeluaran|expense|money out)\b/i.test(line);
+        if (isCreditInLine && !isDebitInLine) {
+          type = "income";
+        } else if (isDebitInLine && !isCreditInLine) {
+          type = "expense";
+        } else if (cols.length >= 4) {
           const typeCandidate = cols.find((c) =>
             /^(income|expense|transfer|pengeluaran|pemasukan|debet|kredit|db|cr)$/i.test(c)
           );

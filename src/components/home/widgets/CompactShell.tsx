@@ -15,7 +15,14 @@ export function CompactShell({
   children,
 }: CompactShellProps) {
   return (
-    <section className="glass-surface p-3.5 rounded-[22px] flex flex-col justify-between h-[154px] min-h-[154px] max-h-[154px] w-full relative overflow-hidden select-none box-border">
+    <section
+      className="glass-surface p-3.5 rounded-[22px] flex flex-col justify-between h-[154px] min-h-[154px] max-h-[154px] w-full relative overflow-hidden select-none box-border"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
       {/* Top Header with Title and Info Button */}
       <div className="flex items-center justify-between gap-1.5 shrink-0 mb-1">
         <span className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)] truncate flex-1 leading-snug">

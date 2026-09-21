@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Plus, Trash2, Scale, Check } from "lucide-react";
+import { Plus, Trash2, Scale, Check, ChevronRight } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
@@ -8,7 +8,7 @@ import {
   useAddWallet,
   useUpdateWallet,
   useDeleteWallet,
-  DEFAULT_WALLETS,
+  WALLET_PRESETS,
   getWalletIcon,
   resolveWalletClassification,
 } from "../../hooks/useWallets";
@@ -69,11 +69,18 @@ export function WalletManagementSheets({
 
   const availableDefaultWallets = useMemo(
     () =>
-      DEFAULT_WALLETS.filter(
+      WALLET_PRESETS.filter(
         (name) => !activeWalletNames.has(name.toLowerCase()),
       ),
     [activeWalletNames],
   );
+
+  const unusedZeroWallets = useMemo(() => {
+    return wallets.filter((w) => {
+      const bal = balancesById[w.id] ?? balancesByName[w.name.toLowerCase()] ?? 0;
+      return bal === 0;
+    });
+  }, [wallets, balancesById, balancesByName]);
 
   const handleSaveBudget = () => {
     if (!budgetName.trim()) return;
@@ -190,97 +197,70 @@ export function WalletManagementSheets({
 
           {/* Total Liquid Wealth Header */}
           <div
-            className="p-4 rounded-2xl flex items-center justify-between"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
+            className="p-3 rounded-2xl flex items-center justify-between border border-[var(--glass-border)] bg-[var(--bg-elevated)]"
           >
             <div>
               <p
-                className="text-[10px] font-semibold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
+                className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]"
               >
                 Total Liquid Assets
               </p>
               <p
-                className="amount text-[20px] font-semibold mt-0.5"
-                style={{ color: "var(--text-primary)" }}
+                className="amount text-[18px] font-semibold mt-0.5 text-[var(--text-primary)]"
               >
                 {formatRupiah(totalAssets)}
               </p>
             </div>
             <span
-              className="text-[11px] font-bold px-2.5 py-1 rounded-full"
-              style={{
-                background: "var(--glass-fill-strong)",
-                color: "var(--text-primary)",
-                border: "1px solid var(--glass-border)",
-              }}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)]"
             >
               {wallets.length} Accounts
             </span>
           </div>
 
-          {/* Clean Account Cards List */}
-          <div className="space-y-2.5 pb-8 max-h-[55vh] overflow-y-auto no-scrollbar">
-            {wallets.map((w) => {
-              const bal =
-                balancesById[w.id] ?? balancesByName[w.name.toLowerCase()] ?? 0;
-              return (
-                <div
-                  key={w.id}
-                  className="p-3.5 rounded-2xl space-y-2.5 transition-all select-none"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                >
-                  {/* Top row: Icon, Account Name & Balance */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                        style={{
-                          background: "var(--glass-fill)",
-                          border: "1px solid var(--glass-border)",
-                        }}
-                      >
-                        <IconRenderer
-                          icon={w.icon || getWalletIcon(w.name)}
-                          size="w-5 h-5"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <p
-                          className="font-semibold text-[14px] truncate"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {w.name}
-                        </p>
-                        <p
-                          className="text-[10px] font-semibold uppercase tracking-wider mt-0.5"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          Account
-                        </p>
-                      </div>
-                    </div>
+          {unusedZeroWallets.length >= 2 && wallets.length > 1 && (
+            <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-[var(--glass-border)] text-[11.5px]">
+              <span className="text-[var(--text-tertiary)] font-medium">
+                {unusedZeroWallets.length} accounts with Rp 0 balance
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    !confirm(
+                      `Delete ${unusedZeroWallets.length} accounts with Rp 0 balance? Active accounts with positive balances will not be touched.`
+                    )
+                  ) {
+                    return;
+                  }
+                  unusedZeroWallets.forEach((w) => deleteWallet.mutate(w.id));
+                  showToast(`${unusedZeroWallets.length} empty accounts removed`, "delete");
+                }}
+                className="text-red-500 hover:text-red-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer"
+              >
+                Purge Unused
+              </button>
+            </div>
+          )}
 
-                    <div className="text-right shrink-0">
-                      <p
-                        className="amount text-[15px] font-semibold"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {formatRupiah(bal)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Bottom Action Row */}
-                  <div className="flex items-center justify-between pt-2 border-t border-[var(--glass-border)]">
-                    <button
-                      type="button"
+          {/* Apple iOS-Style Grouped Table for Accounts */}
+          <div className="pb-8 max-h-[55vh] overflow-y-auto no-scrollbar">
+            {wallets.length === 0 ? (
+              <div className="py-8 text-center text-[12px] text-[var(--text-tertiary)]">
+                No accounts found
+              </div>
+            ) : (
+              <div
+                className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] divide-y divide-[var(--glass-border)] overflow-hidden"
+              >
+                {wallets.map((w) => {
+                  const bal =
+                    balancesById[w.id] ?? balancesByName[w.name.toLowerCase()] ?? 0;
+                  const isInvest =
+                    (w.classification || resolveWalletClassification(w)) === "investment";
+                  return (
+                    <div
+                      key={w.id}
                       onClick={() =>
                         setEditWallet({
                           id: w.id,
@@ -290,70 +270,100 @@ export function WalletManagementSheets({
                             w.classification || resolveWalletClassification(w),
                         })
                       }
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-full active:scale-95 transition-all cursor-pointer"
-                      style={{
-                        background: "var(--glass-fill)",
-                        color: "var(--text-secondary)",
-                        border: "1px solid var(--glass-border)",
-                      }}
+                      className="flex items-center justify-between py-2.5 px-3.5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] active:bg-black/[0.04] dark:active:bg-white/[0.04] transition-colors cursor-pointer"
                     >
-                      Edit Account
-                    </button>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border border-[var(--glass-border)] bg-[var(--glass-fill)]"
+                        >
+                          <IconRenderer
+                            icon={w.icon || getWalletIcon(w.name)}
+                            size="w-4 h-4"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p
+                              className="font-medium text-[13px] truncate"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {w.name}
+                            </p>
+                            <span
+                              className={`text-[9.5px] font-semibold px-1.5 py-0.2 rounded border ${
+                                isInvest
+                                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                                  : "bg-black/[0.04] dark:bg-white/[0.06] text-[var(--text-tertiary)] border-black/10 dark:border-white/10"
+                              }`}
+                            >
+                              {isInvest ? "Investment" : "Liquid"}
+                            </span>
+                          </div>
+                          <p
+                            className="amount text-[12px] font-semibold mt-0.5"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            {formatRupiah(bal)}
+                          </p>
+                        </div>
+                      </div>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          setTimeout(() => {
-                            setCorrectWallet({
-                              id: w.id,
-                              name: w.name,
-                              icon: w.icon || getWalletIcon(w.name),
-                              currentBalance: bal,
+                      <div
+                        className="flex items-center gap-1.5 shrink-0 ml-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            setTimeout(() => {
+                              setCorrectWallet({
+                                id: w.id,
+                                name: w.name,
+                                icon: w.icon || getWalletIcon(w.name),
+                                currentBalance: bal,
+                              });
+                              setCorrectTargetBalance(String(bal));
+                              setCorrectNote("");
+                            }, 300);
+                          }}
+                          className="h-7 px-2 flex items-center gap-1 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer"
+                          title="Adjust Balance"
+                        >
+                          <Scale size={11} strokeWidth={1.75} />
+                          <span>Adjust</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!confirm(`Delete account "${w.name}"?`)) return;
+                            deleteWallet.mutate(w.id, {
+                              onSuccess: () => {
+                                showToast("Account deleted", "delete", () => {});
+                              },
+                              onError: (error: any) => {
+                                showToast(
+                                  error?.message || "Failed to delete account",
+                                  "delete",
+                                  () => {},
+                                );
+                              },
                             });
-                            setCorrectTargetBalance(String(bal));
-                            setCorrectNote("");
-                          }, 300);
-                        }}
-                        className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full active:scale-95 transition-all cursor-pointer"
-                        style={{
-                          background: "var(--accent)",
-                          color: "var(--accent-ink)",
-                        }}
-                        title="Koreksi Saldo"
-                      >
-                        <Scale size={12} />
-                        <span>Adjust Balance</span>
-                      </button>
+                          }}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 active:scale-90 transition-all cursor-pointer"
+                          title="Delete Account"
+                        >
+                          <Trash2 size={13} strokeWidth={1.5} />
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!confirm(`Delete account "${w.name}"?`)) return;
-                          deleteWallet.mutate(w.id, {
-                            onSuccess: () => {
-                              showToast("Account deleted", "delete", () => {});
-                            },
-                            onError: (error: any) => {
-                              showToast(
-                                error?.message || "Failed to delete account",
-                                "delete",
-                                () => {},
-                              );
-                            },
-                          });
-                        }}
-                        className="w-7 h-7 flex items-center justify-center rounded-full active:scale-90 transition-transform text-red-400 hover:text-red-500 cursor-pointer"
-                        title="Delete Account"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                        <ChevronRight size={14} className="text-[var(--text-tertiary)] opacity-60" />
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </BottomSheet>
@@ -620,15 +630,11 @@ export function WalletManagementSheets({
                       );
                       triggerHaptic("light");
                     }}
-                    className="p-2.5 rounded-xl text-left transition-all active:scale-98 cursor-pointer flex items-center justify-between"
-                    style={{
-                      background: isSelected
-                        ? "var(--bg-elevated)"
-                        : "var(--glass-fill)",
-                      border: isSelected
-                        ? "1px solid var(--text-primary)"
-                        : "1px solid var(--glass-border)",
-                    }}
+                    className={`p-2.5 rounded-xl text-left transition-all active:scale-98 cursor-pointer flex items-center justify-between border ${
+                      isSelected
+                        ? "bg-black/[0.04] dark:bg-white/[0.08] border-black/30 dark:border-white/30"
+                        : "bg-[var(--glass-fill)] border-[var(--glass-border)] hover:border-black/15 dark:hover:border-white/15"
+                    }`}
                   >
                     <div>
                       <div

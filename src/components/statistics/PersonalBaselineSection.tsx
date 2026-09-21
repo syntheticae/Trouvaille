@@ -24,6 +24,7 @@ export function PersonalBaselineSection({
         style={{
           border: "1px solid var(--glass-border)",
           background: "var(--bg-elevated)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="flex items-center gap-2.5 mb-2">
@@ -74,6 +75,7 @@ export function PersonalBaselineSection({
       style={{
         border: "1px solid var(--glass-border)",
         background: "var(--bg-elevated)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       {/* Trigger */}
@@ -83,7 +85,7 @@ export function PersonalBaselineSection({
           setIsExpanded(!isExpanded);
           triggerHaptic("light");
         }}
-        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-white/5 transition-colors"
+        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-black/5 dark:active:bg-white/5 transition-colors"
       >
         <div className="flex items-center gap-2.5">
           <div

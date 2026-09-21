@@ -2,6 +2,7 @@ import { Info, PieChart } from "lucide-react";
 import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export function CategoryDonutCard({
   categories,
@@ -14,6 +15,9 @@ export function CategoryDonutCard({
   size?: WidgetSize;
   onOpenDetail?: () => void;
 }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   const topCat = categories[0] || { name: "No expenses", amount: 0, pct: 0 };
 
   const donutSvg = (
@@ -24,9 +28,8 @@ export function CategoryDonutCard({
           cy="34"
           r="26"
           fill="none"
-          stroke="var(--glass-border)"
+          stroke={isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)"}
           strokeWidth="6"
-          opacity={0.3}
         />
         <circle
           cx="34"
@@ -51,7 +54,7 @@ export function CategoryDonutCard({
     return (
       <CompactShell title="Categories" onOpenDetail={onOpenDetail}>
         <div className="flex-1 flex items-center justify-center py-0.5">{donutSvg}</div>
-        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
+        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
           <span className="truncate max-w-[70px]">{topCat.name}</span>
           <span className="font-semibold text-[var(--text-primary)] amount">
             {formatRupiah(topCat.amount)}
@@ -65,13 +68,21 @@ export function CategoryDonutCard({
   const fullRadius = 38;
   const fullStroke = 8.5;
   const fullCirc = 2 * Math.PI * fullRadius; // ~238.7
-  const segmentShades = [
-    "rgba(255, 255, 255, 0.95)",
-    "rgba(255, 255, 255, 0.68)",
-    "rgba(255, 255, 255, 0.42)",
-    "rgba(255, 255, 255, 0.24)",
-    "rgba(255, 255, 255, 0.12)",
-  ];
+  const segmentShades = isDark
+    ? [
+        "rgba(255, 255, 255, 0.95)",
+        "rgba(255, 255, 255, 0.68)",
+        "rgba(255, 255, 255, 0.42)",
+        "rgba(255, 255, 255, 0.24)",
+        "rgba(255, 255, 255, 0.12)",
+      ]
+    : [
+        "rgba(9, 9, 11, 0.95)",
+        "rgba(9, 9, 11, 0.70)",
+        "rgba(9, 9, 11, 0.48)",
+        "rgba(9, 9, 11, 0.30)",
+        "rgba(9, 9, 11, 0.15)",
+      ];
 
   let cumulativeOffset = 0;
   const donutSegments = categories.slice(0, 5).map((cat, idx) => {
@@ -87,7 +98,14 @@ export function CategoryDonutCard({
   });
 
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+    <section
+      className="glass-surface p-4 rounded-[22px] select-none space-y-3"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div
@@ -145,9 +163,8 @@ export function CategoryDonutCard({
               cy={fullRadius + fullStroke}
               r={fullRadius}
               fill="none"
-              stroke="var(--glass-border)"
+              stroke={isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)"}
               strokeWidth={fullStroke}
-              opacity={0.3}
             />
             {donutSegments.map((seg, idx) => (
               <circle
@@ -203,7 +220,7 @@ export function CategoryDonutCard({
                   </span>
                 </div>
               </div>
-              <div className="w-full h-1 rounded-full overflow-hidden bg-white/10">
+              <div className="w-full h-1 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
@@ -217,7 +234,7 @@ export function CategoryDonutCard({
         </div>
       </div>
 
-      <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+      <div className="pt-1 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
         <span>
           {topCat.name} is your largest expense category ({topCat.pct.toFixed(0)}% of total).
         </span>

@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useEffect, useState } from "react"
+import React, { createContext, useContext, useEffect, useState } from "react"
 
 type Theme = "dark" | "light"
 
@@ -19,6 +19,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark")
+      document.documentElement.classList.remove("light")
+    } else {
+      document.documentElement.classList.remove("dark")
+      document.documentElement.classList.add("light")
+    }
+    const metaTheme = document.querySelector('meta[name="theme-color"]')
+    if (metaTheme) {
+      metaTheme.setAttribute("content", theme === "dark" ? "#0A0A0B" : "#f0f0f2")
+    }
     localStorage.setItem("theme", theme)
   }, [theme])
 

@@ -76,14 +76,21 @@ export function PersonalFinancialModelCard({
         : "Scenario";
 
   return (
-    <section className="glass-surface rounded-3xl overflow-hidden transition-all mb-3 select-none">
+    <section
+      className="glass-surface rounded-3xl overflow-hidden transition-all mb-3 select-none"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
       <button
         type="button"
         onClick={() => {
           setIsExpanded(!isExpanded);
           triggerHaptic("light");
         }}
-        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-white/5 transition-colors"
+        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-black/5 dark:active:bg-white/5 transition-colors"
       >
         <div className="flex items-center gap-2.5">
           <div
@@ -141,7 +148,7 @@ export function PersonalFinancialModelCard({
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="p-4 pt-1 border-t border-(--glass-border) space-y-4">
+            <div className="p-4 pt-1 border-t border-[var(--glass-border)] space-y-4">
               <div className="grid grid-cols-3 gap-2">
                 {(["actual", "baseline", "scenario"] as ModelLayer[]).map(
                   (item) => {

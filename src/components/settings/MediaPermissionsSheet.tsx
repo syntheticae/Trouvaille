@@ -84,16 +84,14 @@ export function MediaPermissionsSheet({
     <BottomSheet isOpen={isOpen} onClose={onClose} title="Camera & Gallery Access">
       <div className="p-4 pb-8 space-y-4" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
         {/* Header Summary */}
-        <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white/[0.04] border border-white/10">
+        <div className="flex items-center gap-3 p-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)]">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border border-[var(--glass-border)] bg-[var(--glass-fill)]"
             style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
           >
-            <ShieldCheck size={20} strokeWidth={1.5} />
+            <ShieldCheck size={18} strokeWidth={1.75} />
           </div>
           <div>
             <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
@@ -107,20 +105,14 @@ export function MediaPermissionsSheet({
 
         {/* Permissions Items List */}
         <div
-          className="rounded-2xl border overflow-hidden"
-          style={{
-            background: "var(--bg-elevated)",
-            borderColor: "var(--glass-border)",
-          }}
+          className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] divide-y divide-[var(--glass-border)] overflow-hidden"
         >
           {/* Photo Library / Gallery */}
-          <div className="p-4 flex items-center justify-between gap-3">
+          <div className="p-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border border-[var(--glass-border)] bg-[var(--glass-fill)]"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
                   color: "var(--text-primary)",
                 }}
               >
@@ -138,13 +130,9 @@ export function MediaPermissionsSheet({
 
             {isPhotosGranted ? (
               <span
-                className="px-3 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 shrink-0"
-                style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
-                }}
+                className="px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold flex items-center gap-1 shrink-0 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400"
               >
-                <Check size={12} strokeWidth={2} />
+                <Check size={11} strokeWidth={2.5} />
                 Granted
               </span>
             ) : (
@@ -152,29 +140,19 @@ export function MediaPermissionsSheet({
                 type="button"
                 disabled={loading}
                 onClick={handleRequestPhotos}
-                className="px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 cursor-pointer shrink-0 border"
-                style={{
-                  background: "#ffffff",
-                  color: "#000000",
-                  borderColor: "rgba(255, 255, 255, 0.4)",
-                  boxShadow: "0 2px 8px rgba(255, 255, 255, 0.15)",
-                }}
+                className="px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 cursor-pointer shrink-0 bg-black dark:bg-white text-white dark:text-black shadow-xs"
               >
                 Request Access
               </button>
             )}
           </div>
 
-          <div className="h-[1px] w-full" style={{ background: "var(--glass-border)" }} />
-
           {/* Camera Hardware */}
-          <div className="p-4 flex items-center justify-between gap-3">
+          <div className="p-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border border-[var(--glass-border)] bg-[var(--glass-fill)]"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
                   color: "var(--text-primary)",
                 }}
               >
@@ -192,13 +170,9 @@ export function MediaPermissionsSheet({
 
             {isCameraGranted ? (
               <span
-                className="px-3 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 shrink-0"
-                style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
-                }}
+                className="px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold flex items-center gap-1 shrink-0 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400"
               >
-                <Check size={12} strokeWidth={2} />
+                <Check size={11} strokeWidth={2.5} />
                 Granted
               </span>
             ) : (
@@ -206,13 +180,7 @@ export function MediaPermissionsSheet({
                 type="button"
                 disabled={loading}
                 onClick={handleRequestCamera}
-                className="px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 cursor-pointer shrink-0 border"
-                style={{
-                  background: "#ffffff",
-                  color: "#000000",
-                  borderColor: "rgba(255, 255, 255, 0.4)",
-                  boxShadow: "0 2px 8px rgba(255, 255, 255, 0.15)",
-                }}
+                className="px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 cursor-pointer shrink-0 bg-black dark:bg-white text-white dark:text-black shadow-xs"
               >
                 Request Access
               </button>
@@ -222,11 +190,7 @@ export function MediaPermissionsSheet({
 
         {/* Guidance Note */}
         <div
-          className="p-3.5 rounded-2xl border text-[11px] leading-relaxed text-[var(--text-secondary)]"
-          style={{
-            background: "rgba(255, 255, 255, 0.02)",
-            borderColor: "var(--glass-border)",
-          }}
+          className="p-3 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11px] leading-relaxed text-[var(--text-secondary)]"
         >
           If access was previously denied, iOS requires permissions to be re-enabled under <span className="font-semibold text-[var(--text-primary)]">Settings &gt; Trouvaille &gt; Photos &amp; Camera</span>.
         </div>
@@ -237,10 +201,8 @@ export function MediaPermissionsSheet({
             triggerHaptic("light");
             onClose();
           }}
-          className="w-full py-3 rounded-2xl font-semibold text-[13px] active:scale-98 transition-all cursor-pointer text-center"
+          className="w-full py-2.5 rounded-xl font-semibold text-[13px] active:scale-98 transition-all cursor-pointer text-center border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
           style={{
-            background: "rgba(255, 255, 255, 0.06)",
-            border: "1px solid var(--glass-border)",
             color: "var(--text-primary)",
           }}
         >

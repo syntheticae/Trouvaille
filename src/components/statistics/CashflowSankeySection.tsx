@@ -200,7 +200,11 @@ export function CashflowSankeySection({
         {/* Metric 1: Capital Retention Rate */}
         <div
           className="glass-surface p-3 rounded-2xl flex flex-col justify-between min-w-0"
-          style={{ border: "1px solid var(--glass-border)" }}
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
+          }}
         >
           <div className="flex items-center justify-between mb-1.5">
             <span
@@ -232,7 +236,11 @@ export function CashflowSankeySection({
         {/* Metric 2: Needs vs Wants Ratio */}
         <div
           className="glass-surface p-3 rounded-2xl flex flex-col justify-between min-w-0"
-          style={{ border: "1px solid var(--glass-border)" }}
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
+          }}
         >
           <div className="flex items-center justify-between mb-1.5">
             <span
@@ -262,7 +270,11 @@ export function CashflowSankeySection({
         {/* Metric 3: Top Flow Sink */}
         <div
           className="glass-surface p-3 rounded-2xl flex flex-col justify-between min-w-0"
-          style={{ border: "1px solid var(--glass-border)" }}
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
+          }}
         >
           <div className="flex items-center justify-between mb-1.5">
             <span
@@ -297,6 +309,7 @@ export function CashflowSankeySection({
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div
@@ -356,6 +369,7 @@ export function CashflowSankeySection({
       <div
         className="glass-surface p-4 sm:p-6 rounded-[24px] relative overflow-hidden"
         style={{
+          background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
           boxShadow: "var(--shadow-card)",
         }}

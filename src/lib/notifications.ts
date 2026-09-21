@@ -131,8 +131,8 @@ export async function syncDailyStreakReminder(hasLoggedToday: boolean): Promise<
       notifications: [
         {
           id: DAILY_REMINDER_NOTIFICATION_ID,
-          title: 'Jaga Rekor Finansialmu',
-          body: 'Belum ada transaksi tercatat hari ini. Catat pengeluaranmu sekarang untuk menjaga streak konsistensimu tetap aktif!',
+          title: 'Maintain Your Financial Streak',
+          body: 'No transactions recorded today. Log your expenses now to keep your consistency streak active!',
           schedule: { at: scheduledTime },
           sound: 'default',
         },

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
+import { ToggleSwitch } from "../ui/ToggleSwitch";
 import type { Goal } from "../../hooks/useGoals";
 import { formatRupiah } from "../../lib/utils";
 import { Plus, Trash2, CheckCircle2, TrendingUp, Compass, Flag, Target, Wallet as WalletIcon } from "lucide-react";
@@ -719,35 +720,17 @@ export function GoalDetailModal({
                         className="text-[11px] font-semibold"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        Potong Saldo Dompet (Buku Besar)
+                        Deduct Wallet Balance (Ledger)
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setRecordInLedger(!recordInLedger)}
-                      className="cursor-pointer"
-                      title={recordInLedger ? "Catat mutasi di dompet" : "Hanya catat di target goal"}
-                    >
-                      <div
-                        className="w-9 h-5 rounded-full transition-colors flex items-center p-0.5"
-                        style={{
-                          background: recordInLedger
-                            ? "var(--text-primary)"
-                            : "var(--glass-fill-strong)",
-                        }}
-                      >
-                        <div
-                          className={`w-4 h-4 rounded-full shadow-sm transition-transform ${
-                            recordInLedger ? "translate-x-4" : "translate-x-0"
-                          }`}
-                          style={{
-                            background: recordInLedger
-                              ? "var(--bg-base)"
-                              : "var(--text-tertiary)",
-                          }}
-                        />
-                      </div>
-                    </button>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ToggleSwitch
+                        checked={recordInLedger}
+                        onChange={(val) => setRecordInLedger(val)}
+                        size="sm"
+                        ariaLabel="Deduct Wallet Balance"
+                      />
+                    </div>
                   </div>
 
                   {recordInLedger && (

@@ -29,7 +29,7 @@ import {
   EyeOff,
   Tag,
   Coins,
-  Trash2,
+  Calculator,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -40,6 +40,7 @@ import { useBills } from "../hooks/useBills";
 import { useToast } from "../contexts/ToastContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { ToggleSwitch } from "../components/ui/ToggleSwitch";
 import { useSecurityLock } from "../contexts/SecurityLockContext";
 import { useCategories, categoryKeys } from "../hooks/useCategories";
 import { useWallets, walletKeys } from "../hooks/useWallets";
@@ -53,7 +54,6 @@ import {
   fetchAllTransactionsFromSupabase,
   transactionKeys,
 } from "../hooks/useTransactions";
-import { useWalletBalances } from "../hooks/useWalletBalances";
 import { ResetTransactionsSheet } from "../components/settings/ResetTransactionsSheet";
 import { LuxuryReportExportSheet } from "../components/export/LuxuryReportExportSheet";
 import {
@@ -79,7 +79,13 @@ import { MediaPermissionsSheet } from "../components/settings/MediaPermissionsSh
 import { AssetValuationSheet } from "../components/settings/AssetValuationSheet";
 import { DeleteAccountModal } from "../components/settings/DeleteAccountModal";
 
-export function SettingsPage() {
+
+
+interface SettingsPageProps {
+  onOpenImport?: () => void;
+}
+
+export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const queryClient = useQueryClient();
   const { data: bills = [] } = useBills();
   const { data: categories = [] } = useCategories();
@@ -88,11 +94,22 @@ export function SettingsPage() {
   const { session, signOut, isGuest, exitGuestMode } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
-  const { budgetTarget, setBudgetTarget, budgetPeriodStart, setBudgetPeriodStart } = useBudgetTarget();
+  const { budgetTarget, setBudgetTarget, budgetPeriodStart, setBudgetPeriodStart } =
+    useBudgetTarget();
   const { shortcuts } = useShortcuts();
-  const { securitySettings, updateSettings: updateSecuritySettings, isBiometricSupported, enrollBiometric } = useSecurityLock();
+  const {
+    securitySettings,
+    updateSettings: updateSecuritySettings,
+    isBiometricSupported,
+    enrollBiometric,
+  } = useSecurityLock();
   const { isPrivacyShieldEnabled, togglePrivacyShield } = usePrivacy();
+  const { preferredCurrency, currencyMeta } = useCurrency();
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Transaction Tags toggle
   const [tagsEnabled, setTagsEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem("trouvaille_enable_tags");
     return saved !== null ? saved === "true" : true;
@@ -109,6 +126,7 @@ export function SettingsPage() {
     );
   };
 
+  // Save Attachments toggle
   const [saveAttachmentsEnabled, setSaveAttachmentsEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem("trouvaille_save_attachments");
     return saved !== null ? saved === "true" : false;
@@ -119,15 +137,32 @@ export function SettingsPage() {
     setSaveAttachmentsEnabled(next);
     localStorage.setItem("trouvaille_save_attachments", String(next));
     showToast(
-      next ? "Receipt attachments will be saved" : "Receipt attachments will not be stored",
+      next
+        ? "Receipt attachments will be saved"
+        : "Receipt attachments will not be stored",
       "update",
       () => {},
     );
   };
 
-  const { allTxs } = useWalletBalances();
+  // Liquid Glass Custom Keypad toggle
+  const [customKeypadEnabled, setCustomKeypadEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem("trouvaille_keypad_mode");
+    return saved !== "system";
+  });
 
-  // Profile Form state
+  const handleToggleCustomKeypad = () => {
+    const next = !customKeypadEnabled;
+    setCustomKeypadEnabled(next);
+    localStorage.setItem("trouvaille_keypad_mode", next ? "custom" : "system");
+    showToast(
+      next ? "Liquid custom keypad active" : "Default system keyboard active",
+      "update",
+      () => {},
+    );
+  };
+
+  // Profile state
   const [displayName, setDisplayName] = useState(() => {
     return (
       session?.user?.user_metadata?.display_name ||
@@ -155,35 +190,16 @@ export function SettingsPage() {
   const [backTapGuideOpen, setBackTapGuideOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
-  const [vaultDefaultTab, setVaultDefaultTab] = useState<"export" | "restore">("export");
+  const [vaultDefaultTab, setVaultDefaultTab] = useState<"export" | "restore">(
+    "export",
+  );
   const [mediaPermissionsOpen, setMediaPermissionsOpen] = useState(false);
   const [valuationOpen, setValuationOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
-  const { preferredCurrency, currencyMeta } = useCurrency();
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const handleRerunCustomization = () => {
-    triggerHaptic("medium");
-    if (
-      confirm(
-        "Reset onboarding state? Your existing transaction ledger will remain safe, and you can re-experience the customization wizard immediately."
-      )
-    ) {
-      localStorage.removeItem("trouvaille_onboarded");
-      localStorage.removeItem("trouvaille_onboarding_focus");
-      window.location.reload();
-    }
-  };
-
-  const matches = (title: string, desc?: string) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase().trim();
-    return title.toLowerCase().includes(q) || (desc ? desc.toLowerCase().includes(q) : false);
-  };
-
-  // Bill Reminders toggle state & handler
+  // Notification toggles
   const [billRemindersEnabled, setBillRemindersEnabled] = useState(() => {
     return localStorage.getItem("trouvaille_bill_reminders_enabled") !== "false";
   });
@@ -208,7 +224,6 @@ export function SettingsPage() {
     }
   };
 
-  // Daily Streak Reminder toggle state & handler
   const [dailyReminderEnabled, setDailyReminderEnabled] = useState(() => {
     return localStorage.getItem("trouvaille_daily_reminder_enabled") !== "false";
   });
@@ -256,16 +271,13 @@ export function SettingsPage() {
     triggerHaptic("light");
 
     try {
-      // 1. Flush any pending local mutations first so no new data is lost
       await flushPendingMutations();
 
       const userId = session?.user?.id;
       if (!userId) throw new Error("Not authenticated");
 
-      // 2. Fetch complete transaction dataset using multi-page chunked engine
       const freshTxs = await fetchAllTransactionsFromSupabase({ userId });
 
-      // 3. Fetch fresh wallets, categories, and bills
       const [freshWallets, freshCategories, freshBills] = await Promise.all([
         supabase
           .from("wallets")
@@ -288,7 +300,6 @@ export function SettingsPage() {
       if (freshCategories.error) throw freshCategories.error;
       if (freshBills.error) throw freshBills.error;
 
-      // 4. Refresh exact user-scoped caches without poisoning other query shapes
       queryClient.setQueryData(transactionKeys.all(userId), freshTxs);
       queryClient.setQueryData(walletKeys.all(userId), freshWallets.data ?? []);
       queryClient.setQueryData(
@@ -328,70 +339,132 @@ export function SettingsPage() {
     }
   };
 
+  const handleRerunCustomization = () => {
+    triggerHaptic("medium");
+    if (
+      confirm(
+        "Reset onboarding state? Your existing transaction ledger will remain safe, and you can re-experience the customization wizard immediately.",
+      )
+    ) {
+      localStorage.removeItem("trouvaille_onboarded");
+      localStorage.removeItem("trouvaille_onboarding_focus");
+      window.location.reload();
+    }
+  };
+
   const handleLogout = async () => {
     if (confirm("Are you sure you want to sign out?")) {
       await signOut();
     }
   };
 
-  // Search filtering checks
-  const showCategories = matches("Manage Categories", "Expense and income classifications");
-  const showWallets = matches("Account & Wallets", "Bank accounts, e-wallets, and cash");
-  const showBills = matches("Recurring Bills", "Subscriptions and scheduled commitments");
-  const showGoals = matches("Financial Goals", "Savings targets and milestone progress");
-  const showBudget = matches("Monthly Budget Target", "Target monthly spending limit");
-  const showValuation = matches("Asset Valuation", "USDT, crypto, and investment holdings");
-  const hasSection1 = showCategories || showWallets || showBills || showGoals || showBudget || showValuation;
+  // Search filtering
+  const matches = (title: string, keywords?: string) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      title.toLowerCase().includes(q) ||
+      (keywords ? keywords.toLowerCase().includes(q) : false)
+    );
+  };
 
-  const showTheme = matches("Light Appearance", "Toggle light or obsidian luxury theme");
-  const showBillReminders = matches("Bill Reminders", "Local notifications for scheduled bills");
-  const showDailyReminder = matches("Daily Streak Reminder", "Pengingat catat harian pukul 20:00 untuk menjaga streak");
-  const showShortcuts = matches("Quick-Add Shortcuts", "Fast entry shortcuts and voice input");
-  const showBackTap = matches("iPhone Back Tap", "iOS accessibility shortcuts integration");
-  const showTags = matches("Transaction Tags (#)", "Categorize with #reimburse, #work, #personal");
-  const hasSection2 = showTheme || showBillReminders || showDailyReminder || showShortcuts || showBackTap || showTags;
+  // Section 1: Financial Architecture
+  const showCategories = matches("Manage Categories", "expense income groups classifications");
+  const showWallets = matches("Account & Wallets", "bank cash balance cards accounts");
+  const showBudget = matches("Monthly Budget Target", "spending limit monthly budget");
+  const showBills = matches("Recurring Bills", "subscriptions commitments due dates bills");
+  const showGoals = matches("Financial Goals", "savings target milestone progress goals");
+  const showValuation = matches("Asset Valuation", "crypto stock usdt holdings investment");
+  const showCurrency = matches("Base Currency", "rates exchange valuation usd idr forex");
+  const hasArchitecture =
+    showCategories ||
+    showWallets ||
+    showBudget ||
+    showBills ||
+    showGoals ||
+    showValuation ||
+    showCurrency;
 
-  const showCloudSync = matches("Cloud Sync", "Safely backup data to private vault");
-  const showVault = matches("Encrypted Vault", "Local AES-256 encrypted file backup");
-  const showExport = matches("Report & Tax Export", "Editorial statement, CSV ledger & JSON vault");
-  const showReset = matches("Reset Data", "Wipe transaction ledger while keeping accounts");
-  const showRerunOnboarding = matches("Re-run Customization Wizard", "Reset onboarding state to preview initial setup");
-  const showDeleteAccount = matches("Delete Account & Reset Vault", "Permanently wipe all records and reset local app");
-  const hasSection3 = showCloudSync || showVault || showExport || showReset || showRerunOnboarding || showDeleteAccount;
+  // Section 2: Preferences
+  const showTheme = matches("Light Appearance", "dark light obsidian theme appearance color");
+  const showKeypad = matches("Liquid Numeric Keypad", "keypad keyboard input calculator custom number pad");
+  const showTags = matches("Transaction Tags (#)", "tags hashtag work reimburse personal");
+  const showSaveAttachments = matches("Save Attachment Files", "receipts camera slip images photos");
+  const hasPreferences = showTheme || showKeypad || showTags || showSaveAttachments;
 
-  const showPrivacyShield = matches("Privacy Shield", "Mask balances and monetary figures across all pages");
-  const showFaceID = matches("Require Face ID / PIN", "Protect app with biometric authentication");
-  const showTimeout = matches("Lock Timeout", "Duration before app automatically locks");
-  const showBackupPin = matches("Backup PIN Option", "Passcode fallback when biometrics fail");
-  const showMedia = matches("Camera & Photos Access", "Permissions for receipt scanning and slips");
-  const showSaveAttachments = matches("Save Attachment Files", "Turn off to read receipts without storing images");
-  const hasSection4 = showPrivacyShield || showFaceID || showTimeout || showBackupPin || showMedia || showSaveAttachments;
+  // Section 3: Automations & Siri
+  const showShortcuts = matches("Quick-Add Shortcuts", "fast entry quick voice 1-tap presets");
+  const showBackTap = matches("iPhone Back Tap", "ios accessibility double tap shortcut");
+  const hasAutomations = showShortcuts || showBackTap;
 
-  const hasAnyMatch = hasSection1 || hasSection2 || hasSection3 || hasSection4;
+  // Section 4: Notifications
+  const showDailyReminder = matches("Daily Streak Reminder", "streak 20:00 night notification alert");
+  const showBillReminders = matches("Bill Due Alerts", "bill reminders scheduled commit due");
+  const hasNotifications = showDailyReminder || showBillReminders;
+
+  // Section 5: Security & Privacy
+  const showPrivacyShield = matches("Privacy Shield", "mask hide numbers balance monetary figures");
+  const showFaceID = matches("Require Face ID / PIN", "biometrics face id touch pin lock resume");
+  const showTimeout = matches("Lock Timeout", "inactivity duration delay minutes");
+  const showBackupPin = matches("Backup PIN Option", "passcode fallback pin change");
+  const showMedia = matches("Camera & Photos Access", "permissions receipt scanner gallery");
+  const hasSecurity =
+    showPrivacyShield ||
+    showFaceID ||
+    showTimeout ||
+    showBackupPin ||
+    showMedia;
+
+  // Section 6: Data & Vault
+  const showCloudSync = matches("Cloud Sync", "backup database synchronization live");
+  const showVault = matches("Encrypted Vault", "aes-256 file backup export restore offline");
+  const showExport = matches("Report & Tax Export", "csv excel pdf statement tax ledger json");
+  const showReset = matches("Reset Ledger Data", "wipe purge transactions reset ledger");
+  const showRerunOnboarding = matches("Re-run Customization Wizard", "reset onboarding wizard setup test");
+  const hasDataVault =
+    showCloudSync ||
+    showVault ||
+    showExport ||
+    showReset ||
+    showRerunOnboarding;
+
+  const hasAnyMatch =
+    hasArchitecture ||
+    hasPreferences ||
+    hasAutomations ||
+    hasNotifications ||
+    hasSecurity ||
+    hasDataVault;
 
   return (
-    <div className="px-5 py-6 space-y-6 pb-36">
-      <h1
-        className="text-[22px] font-semibold tracking-tight mb-1"
-        style={{ color: "var(--text-primary)" }}
-      >
-        Settings
-      </h1>
+    <div className="px-5 py-6 space-y-5 pb-36 max-w-md mx-auto">
+      {/* Header */}
+      <div>
+        <h1
+          className="text-[22px] font-semibold tracking-tight"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Settings
+        </h1>
+        <p className="text-[12px] font-medium" style={{ color: "var(--text-secondary)" }}>
+          Preferences, financial architecture & security
+        </p>
+      </div>
 
-      {/* Search Settings Bar */}
+      {/* Search Bar */}
       <div
-        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl transition-all"
+        className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl transition-all"
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
         }}
       >
-        <Search size={15} style={{ color: "var(--text-tertiary)" }} />
+        <Search size={14} style={{ color: "var(--text-tertiary)" }} />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search settings, preferences & security..."
+          placeholder="Search settings, shortcuts & security..."
           className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--text-tertiary)]"
           style={{ color: "var(--text-primary)" }}
         />
@@ -404,28 +477,34 @@ export function SettingsPage() {
             }}
             className="p-1 rounded-full text-[var(--text-tertiary)] active:scale-90 cursor-pointer"
           >
-            <X size={13} />
+            <X size={12} />
           </button>
         )}
       </div>
 
       {/* ============================================================ */}
-      {/* 1. PROFILE SECTION */}
+      {/* 1. PROFILE & ACCOUNT CARD */}
       {/* ============================================================ */}
       {!searchQuery.trim() && (
-        <section className="glass-surface p-4 rounded-[24px] space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3.5">
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              setProfileOpen(true);
+            }}
+            className="w-full glass-surface p-3.5 rounded-2xl flex items-center justify-between border border-[var(--glass-border)] active:scale-[0.99] transition-all cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-3 min-w-0">
               <div
-                className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center relative shrink-0"
+                className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center relative shrink-0"
                 style={{
                   background: "var(--bg-elevated)",
                   border: "1px solid var(--glass-border)",
-                  boxShadow: "0 2px 8px var(--shadow-strength)",
                 }}
               >
                 {isGuest ? (
-                  <Zap size={20} style={{ color: "var(--text-secondary)" }} />
+                  <Zap size={18} style={{ color: "var(--text-secondary)" }} />
                 ) : avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -433,339 +512,302 @@ export function SettingsPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <UserIcon size={20} style={{ color: "var(--text-secondary)" }} />
+                  <UserIcon
+                    size={18}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
                 )}
               </div>
-              <div>
+              <div className="min-w-0">
                 <p
-                  className="font-semibold text-[15px] truncate"
+                  className="font-semibold text-[14px] truncate leading-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {isGuest ? "Local Guest" : displayName}
                 </p>
                 <p
-                  className="text-[11px] font-normal truncate"
-                  style={{ color: "var(--text-tertiary)" }}
+                  className="text-[11px] font-medium truncate mt-0.5"
+                  style={{ color: "var(--text-secondary)" }}
                 >
-                  {isGuest ? "Free · On-device storage" : session?.user?.email}
+                  {isGuest ? "Offline Device Vault" : session?.user?.email}
                 </p>
               </div>
             </div>
-            {isGuest ? (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("medium");
-                  exitGuestMode();
-                }}
-                className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer"
-                style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
-                }}
-              >
-                Sign In
-              </button>
-            ) : (
-              <button
-                onClick={() => setProfileOpen(true)}
-                className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer"
+            <div className="flex items-center gap-1 shrink-0">
+              <span
+                className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
                 style={{
                   background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
+                  borderColor: "var(--glass-border)",
+                  color: "var(--text-secondary)",
                 }}
               >
                 Edit
-              </button>
-            )}
-          </div>
+              </span>
+              <ChevronRight
+                size={16}
+                style={{ color: "var(--text-secondary)" }}
+              />
+            </div>
+          </button>
 
           {isGuest && (
             <div
-              className="p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-left"
+              className="px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-3 text-left"
               style={{
                 background: "var(--bg-elevated)",
                 borderColor: "var(--glass-border)",
               }}
             >
-              <div className="space-y-0.5">
-                <p
-                  className="text-[12px] font-semibold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  Enable Cloud Sync & Backup
-                </p>
-                <p
-                  className="text-[11px] leading-relaxed"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Sign in with Google, Apple, or Email to backup transactions.
-                </p>
-              </div>
+              <p className="text-[11px] font-medium text-[var(--text-tertiary)] truncate">
+                Ledger stored offline · Connect to backup
+              </p>
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("medium");
                   exitGuestMode();
                 }}
-                className="px-3.5 py-1.5 rounded-xl text-[11px] font-semibold shrink-0 active:scale-95 transition-transform cursor-pointer border"
+                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold shrink-0 active:scale-95 transition-transform cursor-pointer border"
                 style={{
-                  background: "var(--glass-fill)",
-                  borderColor: "var(--glass-border)",
-                  color: "var(--text-primary)",
+                  background: "var(--accent)",
+                  borderColor: "var(--accent)",
+                  color: "var(--accent-ink)",
                 }}
               >
-                Connect
+                Connect Cloud
               </button>
             </div>
           )}
-        </section>
+        </div>
       )}
 
       {/* Empty Search State */}
       {!hasAnyMatch && searchQuery.trim() && (
         <div className="py-12 text-center space-y-2">
-          <Search size={26} className="mx-auto text-[var(--text-tertiary)] opacity-50" />
-          <p className="text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
+          <Search
+            size={24}
+            className="mx-auto text-[var(--text-tertiary)] opacity-50"
+          />
+          <p
+            className="text-[13px] font-semibold"
+            style={{ color: "var(--text-primary)" }}
+          >
             No settings found
           </p>
           <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-            No settings match &ldquo;{searchQuery}&rdquo;
+            No options match &ldquo;{searchQuery}&rdquo;
           </p>
         </div>
       )}
 
       {/* ============================================================ */}
-      {/* 2. FINANCIAL SETUP SECTION */}
+      {/* 2. FINANCIAL ARCHITECTURE */}
       {/* ============================================================ */}
-      {hasSection1 && (
-        <section>
+      {hasArchitecture && (
+        <section className="space-y-1.5">
           <h2
-            className="text-[11px] font-semibold uppercase tracking-wider mb-2.5 px-1"
-            style={{ color: "var(--text-tertiary)" }}
+            className="text-[11px] font-bold uppercase tracking-wider px-1"
+            style={{ color: "var(--text-secondary)" }}
           >
-            Financial Setup
+            Financial Architecture
           </h2>
-          <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col divide-y divide-[var(--glass-border)]">
-            {/* 1. Manage Categories */}
+          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
+            {/* Manage Categories */}
             {showCategories && (
               <button
+                type="button"
                 onClick={() => setCategoriesOpen(true)}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <FolderTree size={16} strokeWidth={1.75} />
+                    <FolderTree size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Manage Categories
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Expense & income groups
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
                   <span
-                    className="text-[12px] font-medium font-mono"
-                    style={{ color: "var(--text-tertiary)" }}
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Manage Categories
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px] font-mono"
+                    style={{ color: "var(--text-secondary)" }}
                   >
                     {categories.length}
                   </span>
-                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
                 </div>
               </button>
             )}
 
-            {/* 2. Account & Wallets */}
+            {/* Account & Wallets */}
             {showWallets && (
               <button
+                type="button"
                 onClick={() => setBudgetsOpen(true)}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <CreditCard size={16} strokeWidth={1.75} />
+                    <CreditCard size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Account & Wallets
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Bank accounts, cards & cash
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
                   <span
-                    className="text-[12px] font-medium font-mono"
-                    style={{ color: "var(--text-tertiary)" }}
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Accounts & Wallets
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px] font-mono"
+                    style={{ color: "var(--text-secondary)" }}
                   >
                     {wallets.length}
                   </span>
-                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
                 </div>
               </button>
             )}
 
-            {/* 3. Recurring Bills */}
-            {showBills && (
-              <button
-                onClick={() => setBillListOpen(true)}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Receipt size={16} strokeWidth={1.75} />
-                  </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Recurring Bills
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Subscriptions & recurring bills
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className="text-[12px] font-medium font-mono"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {bills.length}
-                  </span>
-                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-                </div>
-              </button>
-            )}
-
-            {/* 4. Financial Goals */}
-            {showGoals && (
-              <button
-                onClick={() => setGoalsOpen(true)}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Target size={16} strokeWidth={1.75} />
-                  </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Financial Goals
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Milestones & savings targets
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className="text-[12px] font-medium font-mono"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {goals.length}
-                  </span>
-                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-                </div>
-              </button>
-            )}
-
-            {/* 5. Monthly Budget Target */}
+            {/* Monthly Budget Target */}
             {showBudget && (
               <button
+                type="button"
                 onClick={() => setBudgetTargetOpen(true)}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <SlidersHorizontal size={16} strokeWidth={1.75} />
+                    <Target size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Monthly Budget Target
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Monthly spending ceiling
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
                   <span
-                    className="text-[12px] font-semibold font-mono amount"
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Monthly Budget Target
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px] font-mono"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {formatRupiah(budgetTarget)} · Day {budgetPeriodStart}
+                    {budgetTarget > 0 ? formatRupiah(budgetTarget) : "Not Set"}
                   </span>
                   <ChevronRight
-                    size={18}
-                    style={{ color: "var(--text-tertiary)" }}
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
+            {/* Recurring Bills */}
+            {showBills && (
+              <button
+                type="button"
+                onClick={() => setBillListOpen(true)}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Receipt size={14} strokeWidth={1.75} />
+                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Recurring Bills
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px] font-mono"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {bills.length} active
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
+            {/* Financial Goals */}
+            {showGoals && (
+              <button
+                type="button"
+                onClick={() => setGoalsOpen(true)}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <TrendingUp size={14} strokeWidth={1.75} />
+                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Financial Goals
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px] font-mono"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {goals.length} targets
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
                   />
                 </div>
               </button>
@@ -774,36 +816,86 @@ export function SettingsPage() {
             {/* Asset Valuation */}
             {showValuation && (
               <button
-                onClick={() => setValuationOpen(true)}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setValuationOpen(true);
+                }}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <TrendingUp size={16} strokeWidth={1.75} />
+                    <Coins size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Asset Valuation
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Crypto & investments
-                    </p>
-                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Asset Valuation
+                  </span>
                 </div>
-                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px]"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Crypto & Holdings
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
+            {/* Base Currency */}
+            {showCurrency && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setCurrencySheetOpen(true);
+                }}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Coins size={14} strokeWidth={1.75} />
+                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Base Currency
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px] font-mono"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {preferredCurrency} ({currencyMeta.symbol})
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
               </button>
             )}
           </div>
@@ -811,257 +903,187 @@ export function SettingsPage() {
       )}
 
       {/* ============================================================ */}
-      {/* 3. PREFERENCES SECTION */}
+      {/* 3. PREFERENCES */}
       {/* ============================================================ */}
-      {hasSection2 && (
-        <section>
+      {hasPreferences && (
+        <section className="space-y-1.5">
           <h2
-            className="text-[11px] font-semibold uppercase tracking-wider mb-2.5 px-1"
-            style={{ color: "var(--text-tertiary)" }}
+            className="text-[11px] font-bold uppercase tracking-wider px-1"
+            style={{ color: "var(--text-secondary)" }}
           >
-            App Preferences
+            Preferences
           </h2>
-          <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col divide-y divide-[var(--glass-border)]">
-            {/* Base Currency & Exchange Rates */}
-            {matches("Base Currency", "Active valuation currency & live rates") && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setCurrencySheetOpen(true);
-                }}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Coins size={16} strokeWidth={1.75} />
-                  </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Base Currency & Rates
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Valuation currency & live quotes
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className="text-[11px] font-semibold px-2.5 py-1 rounded-full border border-[var(--glass-border)] flex items-center gap-1.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <span className="font-mono font-bold text-[10px] opacity-70">
-                      {currencyMeta.countryCode}
-                    </span>
-                    <span>{preferredCurrency} ({currencyMeta.symbol})</span>
-                  </span>
-                  <ChevronRight
-                    size={18}
-                    style={{ color: "var(--text-tertiary)" }}
-                  />
-                </div>
-              </button>
-            )}
-
-            {/* Appearance Toggle */}
+          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
+            {/* Light Appearance Toggle */}
             {showTheme && (
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Sun size={16} strokeWidth={1.75} />
+                    <Sun size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Light Appearance
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Light or obsidian luxury theme
-                    </p>
-                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Light Appearance
+                  </span>
                 </div>
-                <label className="ios-toggle cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={theme === "light"}
-                    onChange={toggleTheme}
-                  />
-                  <div className="ios-toggle-track"></div>
-                  <div className="ios-toggle-knob"></div>
-                </label>
+                <ToggleSwitch
+                  checked={theme === "light"}
+                  onChange={() => {
+                    triggerHaptic("light");
+                    toggleTheme();
+                  }}
+                  ariaLabel="Toggle light appearance"
+                />
               </div>
             )}
 
-            {/* Bill Reminders Toggle */}
-            {showBillReminders && (
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3 min-w-0">
+            {/* Liquid Custom Keypad Toggle */}
+            {showKeypad && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <BellRing size={16} strokeWidth={1.75} />
+                    <Calculator size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0 pr-3">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Bill Reminders
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Alert before & on due date
-                    </p>
-                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Liquid Numeric Keypad
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={billRemindersEnabled}
-                  onClick={handleToggleBillReminders}
-                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
-                    billRemindersEnabled
-                      ? "bg-white dark:bg-white"
-                      : "bg-zinc-300 dark:bg-zinc-700"
-                  }`}
-                >
-                  <div
-                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
-                      billRemindersEnabled
-                        ? "translate-x-4.5 bg-black dark:bg-black"
-                        : "translate-x-0 bg-white"
-                    }`}
-                  />
-                </button>
+                <ToggleSwitch
+                  checked={customKeypadEnabled}
+                  onChange={handleToggleCustomKeypad}
+                  ariaLabel="Toggle liquid numeric keypad"
+                />
               </div>
             )}
 
-            {/* Daily Streak Reminder Toggle */}
-            {showDailyReminder && (
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3 min-w-0">
+            {/* Transaction Tags Toggle */}
+            {showTags && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Clock size={16} strokeWidth={1.75} />
+                    <Tag size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0 pr-3">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Daily Streak Reminder
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Alert at 20:00 if no transactions logged today
-                    </p>
-                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Transaction Tags (#)
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={dailyReminderEnabled}
-                  onClick={handleToggleDailyReminder}
-                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
-                    dailyReminderEnabled
-                      ? "bg-white dark:bg-white"
-                      : "bg-zinc-300 dark:bg-zinc-700"
-                  }`}
-                >
-                  <div
-                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
-                      dailyReminderEnabled
-                        ? "translate-x-4.5 bg-black dark:bg-black"
-                        : "translate-x-0 bg-white"
-                    }`}
-                  />
-                </button>
+                <ToggleSwitch
+                  checked={tagsEnabled}
+                  onChange={handleToggleTags}
+                  ariaLabel="Toggle transaction tags"
+                />
               </div>
             )}
 
-            {/* Quick Shortcuts */}
+            {/* Save Attachment Files Toggle */}
+            {showSaveAttachments && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Camera size={14} strokeWidth={1.75} />
+                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Save Attachment Files
+                  </span>
+                </div>
+                <ToggleSwitch
+                  checked={saveAttachmentsEnabled}
+                  onChange={handleToggleSaveAttachments}
+                  ariaLabel="Toggle save attachments"
+                />
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ============================================================ */}
+      {/* 4. AUTOMATIONS & SIRI */}
+      {/* ============================================================ */}
+      {hasAutomations && (
+        <section className="space-y-1.5">
+          <h2
+            className="text-[11px] font-bold uppercase tracking-wider px-1"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Automations & Shortcuts
+          </h2>
+          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
+            {/* Quick-Add Shortcuts */}
             {showShortcuts && (
               <button
+                type="button"
                 onClick={() => setShortcutsOpen(true)}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Zap size={16} strokeWidth={1.75} />
+                    <Zap size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Quick-Add Shortcuts
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      1-tap quick logging presets
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
                   <span
-                    className="text-[12px] font-medium font-mono"
-                    style={{ color: "var(--text-tertiary)" }}
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
                   >
-                    {shortcuts.length}
+                    Quick-Add Shortcuts
                   </span>
-                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px] font-mono"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {shortcuts.length} presets
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
                 </div>
               </button>
             )}
@@ -1069,36 +1091,29 @@ export function SettingsPage() {
             {/* iPhone Back Tap */}
             {showBackTap && (
               <button
+                type="button"
                 onClick={() => setBackTapGuideOpen(true)}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Smartphone size={16} strokeWidth={1.75} />
+                    <Smartphone size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      iPhone Back Tap
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Double-tap back to quick record
-                    </p>
-                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    iPhone Back Tap
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <span
                     className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
                     style={{
@@ -1109,385 +1124,126 @@ export function SettingsPage() {
                   >
                     Setup
                   </span>
-                  <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-                </div>
-              </button>
-            )}
-
-            {/* Transaction Tags (#) Toggle */}
-            {showTags && (
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Tag size={16} strokeWidth={1.75} />
-                  </div>
-                  <div className="space-y-0.5 min-w-0 pr-3">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Transaction Tags (#)
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Categorize with #reimburse, #work, #personal
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={tagsEnabled}
-                  onClick={handleToggleTags}
-                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
-                    tagsEnabled
-                      ? "bg-white dark:bg-white"
-                      : "bg-zinc-300 dark:bg-zinc-700"
-                  }`}
-                >
-                  <div
-                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
-                      tagsEnabled
-                        ? "translate-x-4.5 bg-black dark:bg-black"
-                        : "translate-x-0 bg-white"
-                    }`}
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
                   />
-                </button>
-              </div>
+                </div>
+              </button>
             )}
           </div>
         </section>
       )}
 
       {/* ============================================================ */}
-      {/* 4. DATA & STORAGE SECTION */}
+      {/* 5. NOTIFICATIONS */}
       {/* ============================================================ */}
-      {hasSection3 && (
-        <section>
+      {hasNotifications && (
+        <section className="space-y-1.5">
           <h2
-            className="text-[11px] font-semibold uppercase tracking-wider mb-2.5 px-1"
-            style={{ color: "var(--text-tertiary)" }}
+            className="text-[11px] font-bold uppercase tracking-wider px-1"
+            style={{ color: "var(--text-secondary)" }}
           >
-            Data & Storage
+            Notifications
           </h2>
-          <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col divide-y divide-[var(--glass-border)]">
-            {/* Cloud Sync */}
-            {showCloudSync && (
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3 min-w-0">
+          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
+            {/* Daily Streak Reminder Toggle */}
+            {showDailyReminder && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Cloud size={16} strokeWidth={1.75} />
+                    <Clock size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0 pr-2">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Cloud Sync
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {syncStatus === "syncing"
-                        ? "Synchronizing database records..."
-                        : syncStatus === "error"
-                          ? "Sync error · Local data safe"
-                          : `${allTxs.length} records cached · Last synced ${lastSyncedTime}`}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleSafeSync}
-                  disabled={syncStatus === "syncing"}
-                  className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-60 cursor-pointer shrink-0"
-                  style={{
-                    background:
-                      syncStatus === "success"
-                        ? "var(--accent)"
-                        : "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                    color:
-                      syncStatus === "success"
-                        ? "var(--accent-ink)"
-                        : "var(--text-secondary)",
-                  }}
-                >
-                  {syncStatus === "syncing" && (
-                    <Loader2 size={12} className="animate-spin" />
-                  )}
-                  {syncStatus === "success" && <Check size={12} />}
-                  <span>
-                    {syncStatus === "syncing"
-                      ? "Syncing..."
-                      : syncStatus === "success"
-                        ? "Synced"
-                        : syncStatus === "error"
-                          ? "Retry"
-                          : "Sync Now"}
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Daily Streak Reminder (20:00)
                   </span>
-                </button>
+                </div>
+                <ToggleSwitch
+                  checked={dailyReminderEnabled}
+                  onChange={handleToggleDailyReminder}
+                  ariaLabel="Toggle daily streak reminder"
+                />
               </div>
             )}
 
-            {/* Encrypted Vault */}
-            {showVault && (
-              <button
-                type="button"
-                onClick={() => {
-                  setVaultDefaultTab("export");
-                  setVaultModalOpen(true);
-                  triggerHaptic("light");
-                }}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
+            {/* Bill Reminders Toggle */}
+            {showBillReminders && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <FileLock2 size={16} strokeWidth={1.75} />
+                    <BellRing size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Encrypted Vault
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Offline AES-256 backup & restore
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-              </button>
-            )}
-
-            {/* Report & Tax Export */}
-            {showExport && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setReportExportOpen(true);
-                }}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
                   >
-                    <FileSpreadsheet size={16} strokeWidth={1.75} />
-                  </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Report & Tax Export
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Editorial statement, CSV ledger & JSON vault
-                    </p>
-                  </div>
+                    Bill Due Alerts
+                  </span>
                 </div>
-                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-              </button>
-            )}
-
-            {/* Reset Data */}
-            {showReset && (
-              <button
-                type="button"
-                onClick={() => setResetOpen(true)}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <RotateCcw size={16} strokeWidth={1.75} />
-                  </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Reset Data
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Purge transactions or period data
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-              </button>
-            )}
-
-            {/* Re-run Customization Wizard */}
-            {showRerunOnboarding && (
-              <button
-                type="button"
-                onClick={handleRerunCustomization}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <SlidersHorizontal size={16} strokeWidth={1.75} />
-                  </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Re-run Customization Wizard
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Reset onboarding state to test setup flow
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
-              </button>
-            )}
-
-            {/* Delete Account & Reset Vault */}
-            {showDeleteAccount && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("medium");
-                  setDeleteAccountOpen(true);
-                }}
-                className="flex items-center justify-between p-4 active:bg-red-500/10 transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "rgba(239, 68, 68, 0.12)",
-                      border: "1px solid rgba(239, 68, 68, 0.25)",
-                      color: "#ef4444",
-                    }}
-                  >
-                    <Trash2 size={16} strokeWidth={1.75} />
-                  </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span className="text-[13px] font-semibold block text-red-500">
-                      Delete Account & Reset Vault
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Permanently wipe all records & session
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={18} className="text-red-400/60" />
-              </button>
+                <ToggleSwitch
+                  checked={billRemindersEnabled}
+                  onChange={handleToggleBillReminders}
+                  ariaLabel="Toggle bill reminders"
+                />
+              </div>
             )}
           </div>
         </section>
       )}
 
       {/* ============================================================ */}
-      {/* 5. SECURITY & PRIVACY */}
+      {/* 6. SECURITY & PRIVACY */}
       {/* ============================================================ */}
-      {hasSection4 && (
-        <section>
+      {hasSecurity && (
+        <section className="space-y-1.5">
           <h2
-            className="text-[11px] font-semibold uppercase tracking-wider mb-2.5 px-1"
-            style={{ color: "var(--text-tertiary)" }}
+            className="text-[11px] font-bold uppercase tracking-wider px-1"
+            style={{ color: "var(--text-secondary)" }}
           >
             Security & Privacy
           </h2>
-          <div className="glass-surface rounded-[24px] overflow-hidden flex flex-col divide-y divide-[var(--glass-border)]">
+          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
             {/* Privacy Shield Toggle */}
             {showPrivacyShield && (
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <EyeOff size={16} strokeWidth={1.75} />
+                    <EyeOff size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0 pr-3">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Privacy Shield
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Hide balances across all pages
-                    </p>
-                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Privacy Shield (Mask Balances)
+                  </span>
                 </div>
-                {/* Apple iOS Switch */}
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={isPrivacyShieldEnabled}
-                  onClick={() => {
+                <ToggleSwitch
+                  checked={isPrivacyShieldEnabled}
+                  onChange={() => {
                     togglePrivacyShield();
                     showToast(
                       isPrivacyShieldEnabled
@@ -1497,60 +1253,36 @@ export function SettingsPage() {
                       () => {},
                     );
                   }}
-                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
-                    isPrivacyShieldEnabled
-                      ? "bg-white dark:bg-white"
-                      : "bg-zinc-300 dark:bg-zinc-700"
-                  }`}
-                >
-                  <div
-                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
-                      isPrivacyShieldEnabled
-                        ? "translate-x-4.5 bg-black dark:bg-black"
-                        : "translate-x-0 bg-white"
-                    }`}
-                  />
-                </button>
+                  ariaLabel="Toggle privacy shield"
+                />
               </div>
             )}
 
-            {/* Toggle: Require Face ID / PIN */}
+            {/* Require Face ID / PIN Toggle */}
             {showFaceID && (
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <ShieldCheck size={16} strokeWidth={1.75} />
+                    <ShieldCheck size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0 pr-3">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Require Face ID / PIN
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Biometric app lock on resume
-                    </p>
-                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Require Face ID / PIN
+                  </span>
                 </div>
-                {/* Apple iOS Switch */}
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={securitySettings.enabled}
-                  onClick={async () => {
+                <ToggleSwitch
+                  checked={securitySettings.enabled}
+                  onChange={async () => {
                     if (!securitySettings.enabled) {
-                      // Require backup PIN first to guarantee user is never locked out
                       if (!securitySettings.hasPin) {
                         showToast(
                           "Please set up a backup PIN first to enable app lock",
@@ -1566,7 +1298,10 @@ export function SettingsPage() {
                         try {
                           await enrollBiometric(session?.user?.email || undefined);
                           if (session) {
-                            saveBiometricLoginCredentials(session.user?.email || "", session);
+                            saveBiometricLoginCredentials(
+                              session.user?.email || "",
+                              session,
+                            );
                           }
                           updateSecuritySettings({ enabled: true });
                           showToast(
@@ -1595,59 +1330,39 @@ export function SettingsPage() {
                       showToast("App lock disabled", "update", () => {});
                     }
                   }}
-                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
-                    securitySettings.enabled
-                      ? "bg-white dark:bg-white"
-                      : "bg-zinc-300 dark:bg-zinc-700"
-                  }`}
-                >
-                  <div
-                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
-                      securitySettings.enabled
-                        ? "translate-x-4.5 bg-black dark:bg-black"
-                        : "translate-x-0 bg-white"
-                    }`}
-                  />
-                </button>
+                  ariaLabel="Toggle Face ID or PIN lock"
+                />
               </div>
             )}
 
+            {/* Lock Timeout & PIN (shown when Face ID enabled) */}
             {securitySettings.enabled && (
               <>
-                {/* Timeout Preference */}
                 {showTimeout && (
-                  <div className="p-4 space-y-2">
-                    <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center justify-between py-2 px-3.5 min-h-[44px]">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                         style={{
                           background: "var(--bg-elevated)",
                           border: "1px solid var(--glass-border)",
                           color: "var(--text-primary)",
                         }}
                       >
-                        <Clock size={16} strokeWidth={1.75} />
+                        <Clock size={14} strokeWidth={1.75} />
                       </div>
-                      <div className="min-w-0">
-                        <span
-                          className="text-[13px] font-semibold block"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          Lock Timeout
-                        </span>
-                        <p
-                          className="text-[11px]"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          Lock after period of inactivity
-                        </p>
-                      </div>
+                      <span
+                        className="text-[13px] font-semibold truncate"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        Lock Timeout
+                      </span>
                     </div>
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex gap-1.5">
                       {[
-                        { label: "Immediately", value: 0 },
-                        { label: "1 Minute", value: 1 },
-                        { label: "5 Minutes", value: 5 },
+                        { label: "0m", value: 0 },
+                        { label: "1m", value: 1 },
+                        { label: "5m", value: 5 },
                       ].map((opt) => {
                         const isSelected =
                           securitySettings.timeoutMinutes === opt.value;
@@ -1659,7 +1374,7 @@ export function SettingsPage() {
                               updateSecuritySettings({ timeoutMinutes: opt.value });
                               triggerHaptic("light");
                             }}
-                            className="flex-1 py-2 px-2.5 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer"
+                            className="py-1 px-2 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
                             style={{
                               background: isSelected
                                 ? "var(--bg-elevated)"
@@ -1669,7 +1384,7 @@ export function SettingsPage() {
                                 : "1px solid var(--glass-border)",
                               color: isSelected
                                 ? "var(--text-primary)"
-                                : "var(--text-secondary)",
+                                : "var(--text-tertiary)",
                             }}
                           >
                             {opt.label}
@@ -1680,7 +1395,6 @@ export function SettingsPage() {
                   </div>
                 )}
 
-                {/* Security PIN Option */}
                 {showBackupPin && (
                   <button
                     type="button"
@@ -1688,154 +1402,381 @@ export function SettingsPage() {
                       setPinModalOpen(true);
                       triggerHaptic("light");
                     }}
-                    className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left"
+                    className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                         style={{
                           background: "var(--bg-elevated)",
                           border: "1px solid var(--glass-border)",
                           color: "var(--text-primary)",
                         }}
                       >
-                        <KeyRound size={16} strokeWidth={1.75} />
+                        <KeyRound size={14} strokeWidth={1.75} />
                       </div>
-                      <div className="space-y-0.5 min-w-0">
-                        <span
-                          className="text-[13px] font-semibold block"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {securitySettings.hasPin
-                            ? "Change Backup PIN"
-                            : "Setup Backup PIN"}
-                        </span>
-                        <p
-                          className="text-[11px]"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {securitySettings.hasPin
-                            ? "Backup passcode active for unlock"
-                            : "Unlock using 4-6 digit PIN"}
-                        </p>
-                      </div>
+                      <span
+                        className="text-[13px] font-semibold truncate"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {securitySettings.hasPin ? "Change Backup PIN" : "Setup Backup PIN"}
+                      </span>
                     </div>
-                    <ChevronRight
-                      size={18}
-                      style={{ color: "var(--text-tertiary)" }}
-                    />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span
+                        className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                        style={{
+                          background: "var(--bg-elevated)",
+                          borderColor: "var(--glass-border)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        {securitySettings.hasPin ? "Configured" : "Setup"}
+                      </span>
+                      <ChevronRight
+                        size={15}
+                        style={{ color: "var(--text-tertiary)" }}
+                      />
+                    </div>
                   </button>
                 )}
               </>
             )}
 
-            {/* Camera & Gallery Access (Moved to Security & Privacy!) */}
+            {/* Camera & Photos Access */}
             {showMedia && (
               <button
                 type="button"
                 onClick={() => setMediaPermissionsOpen(true)}
-                className="flex items-center justify-between p-4 active:bg-black/5 transition-colors cursor-pointer text-left w-full"
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: "var(--bg-elevated)",
                       border: "1px solid var(--glass-border)",
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Camera size={16} strokeWidth={1.75} />
+                    <Camera size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Camera & Photos Access
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Receipt scanner & photo access
-                    </p>
-                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Camera & Media Permissions
+                  </span>
                 </div>
-                <ChevronRight size={18} style={{ color: "var(--text-tertiary)" }} />
+                <ChevronRight
+                  size={15}
+                  style={{ color: "var(--text-secondary)" }}
+                />
               </button>
-            )}
-
-            {/* Save Attachment Files Toggle */}
-            {showSaveAttachments && (
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Camera size={16} strokeWidth={1.75} />
-                  </div>
-                  <div className="space-y-0.5 min-w-0 pr-3">
-                    <span
-                      className="text-[13px] font-semibold block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Save Attachment Files
-                    </span>
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Turn off to read receipts without storing images
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={saveAttachmentsEnabled}
-                  onClick={handleToggleSaveAttachments}
-                  className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 p-0.5 ${
-                    saveAttachmentsEnabled
-                      ? "bg-white dark:bg-white"
-                      : "bg-zinc-300 dark:bg-zinc-700"
-                  }`}
-                >
-                  <div
-                    className={`w-4.5 h-4.5 rounded-full shadow-md transition-transform ${
-                      saveAttachmentsEnabled
-                        ? "translate-x-4.5 bg-black dark:bg-black"
-                        : "translate-x-0 bg-white"
-                    }`}
-                  />
-                </button>
-              </div>
             )}
           </div>
         </section>
       )}
 
       {/* ============================================================ */}
-      {/* 6. LOGOUT */}
+      {/* 7. DATA & VAULT */}
+      {/* ============================================================ */}
+      {hasDataVault && (
+        <section className="space-y-1.5">
+          <h2
+            className="text-[11px] font-bold uppercase tracking-wider px-1"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Data & Vault
+          </h2>
+          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
+            {/* Cloud Sync */}
+            {showCloudSync && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Cloud size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block truncate leading-tight"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Cloud Sync
+                    </span>
+                    <span
+                      className="text-[10px] font-normal block truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {syncStatus === "syncing"
+                        ? "Syncing..."
+                        : syncStatus === "error"
+                          ? "Offline · Local preserved"
+                          : `Synced ${lastSyncedTime}`}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSafeSync}
+                  disabled={syncStatus === "syncing"}
+                  className="px-2.5 py-1 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1 disabled:opacity-60 cursor-pointer shrink-0 border"
+                  style={{
+                    background:
+                      syncStatus === "success"
+                        ? "var(--accent)"
+                        : "var(--bg-elevated)",
+                    borderColor: "var(--glass-border)",
+                    color:
+                      syncStatus === "success"
+                        ? "var(--accent-ink)"
+                        : "var(--text-secondary)",
+                  }}
+                >
+                  {syncStatus === "syncing" && (
+                    <Loader2 size={11} className="animate-spin" />
+                  )}
+                  {syncStatus === "success" && <Check size={11} />}
+                  <span>
+                    {syncStatus === "syncing"
+                      ? "Syncing"
+                      : syncStatus === "success"
+                        ? "Synced"
+                        : syncStatus === "error"
+                          ? "Retry"
+                          : "Sync Now"}
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {/* Encrypted Vault */}
+            {showVault && (
+              <button
+                type="button"
+                onClick={() => {
+                  setVaultDefaultTab("export");
+                  setVaultModalOpen(true);
+                  triggerHaptic("light");
+                }}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <FileLock2 size={14} strokeWidth={1.75} />
+                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Encrypted Vault
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    AES-256
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
+            {/* Report & Tax Export */}
+            {showExport && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setReportExportOpen(true);
+                }}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <FileSpreadsheet size={14} strokeWidth={1.75} />
+                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Report & Tax Export
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px]"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    PDF / CSV
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
+            {/* Bank Statement Ingestion */}
+            {onOpenImport && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  onOpenImport();
+                }}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <FileSpreadsheet size={14} strokeWidth={1.75} />
+                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Import Bank Statement
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[12px]"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    BCA / CSV
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
+            {/* Reset Ledger Data */}
+            {showReset && (
+              <button
+                type="button"
+                onClick={() => setResetOpen(true)}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <RotateCcw size={14} strokeWidth={1.75} />
+                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Reset Ledger Data
+                  </span>
+                </div>
+                <ChevronRight
+                  size={15}
+                  style={{ color: "var(--text-secondary)" }}
+                />
+              </button>
+            )}
+
+            {/* Re-run Customization Wizard */}
+            {showRerunOnboarding && (
+              <button
+                type="button"
+                onClick={handleRerunCustomization}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <SlidersHorizontal size={14} strokeWidth={1.75} />
+                  </div>
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Re-run Customization Wizard
+                  </span>
+                </div>
+                <ChevronRight
+                  size={15}
+                  style={{ color: "var(--text-secondary)" }}
+                />
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ============================================================ */}
+      {/* 8. SIGN OUT / EXIT GUEST */}
       {/* ============================================================ */}
       {!searchQuery.trim() && (
-        <button
-          onClick={isGuest ? exitGuestMode : handleLogout}
-          className="w-full p-4 rounded-[24px] font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-98 transition-all mb-6 cursor-pointer"
-          style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
-            color: "var(--text-primary)",
-          }}
-        >
-          <LogOut size={16} strokeWidth={1.75} />
-          <span>{isGuest ? "Exit Guest Mode" : "Log Out"}</span>
-        </button>
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={isGuest ? exitGuestMode : handleLogout}
+            className="w-full py-3 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <LogOut size={15} strokeWidth={1.75} />
+            <span>{isGuest ? "Exit Guest Mode" : "Log Out"}</span>
+          </button>
+        </div>
       )}
 
       {/* ============================================================ */}
@@ -1849,6 +1790,10 @@ export function SettingsPage() {
         avatarUrl={avatarUrl}
         setDisplayName={setDisplayName}
         setAvatarUrl={setAvatarUrl}
+        onOpenDeleteAccount={() => {
+          setProfileOpen(false);
+          setDeleteAccountOpen(true);
+        }}
       />
 
       <BillManagementSheets

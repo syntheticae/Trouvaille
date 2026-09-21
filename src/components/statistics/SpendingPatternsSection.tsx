@@ -21,6 +21,7 @@ export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionPro
       style={{
         border: "1px solid var(--glass-border)",
         background: "var(--bg-elevated)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       {/* Trigger */}
@@ -30,7 +31,7 @@ export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionPro
           setIsExpanded(!isExpanded)
           triggerHaptic("light")
         }}
-        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-white/5 transition-colors"
+        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-black/5 dark:active:bg-white/5 transition-colors"
       >
         <div className="flex items-center gap-2.5">
           <div
@@ -95,7 +96,7 @@ export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionPro
                     <span
                       className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
                       style={{
-                        background: "rgba(255, 255, 255, 0.08)",
+                        background: "var(--glass-fill)",
                         color: "var(--text-secondary)",
                         border: "1px solid var(--glass-border)",
                       }}

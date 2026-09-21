@@ -18,14 +18,11 @@ import {
   PenLine,
   AlertCircle,
   AlertTriangle,
-  Calculator,
-  Tag,
 } from "lucide-react";
 import { TransactionKeypadSheet } from "./TransactionKeypadSheet";
 import { CategorySelectorRibbon } from "./CategorySelectorRibbon";
 import { WalletSelectorRibbon } from "./WalletSelectorRibbon";
 import { SplitTransactionSection } from "./SplitTransactionSection";
-import { applyKeypadInput } from "../../lib/keypadHelper";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useCategories } from "../../hooks/useCategories";
@@ -93,14 +90,29 @@ export function TransactionSheet({
   );
   const amountInputRef = useRef<HTMLInputElement>(null);
 
+  // Keypad style preference: liquid custom keypad vs default system keyboard
+  const [useCustomKeypad] = useState<boolean>(() => {
+    const saved = localStorage.getItem("trouvaille_keypad_mode");
+    return saved !== "system";
+  });
+
   useEffect(() => {
     if (isOpen) {
-      const timer = setTimeout(() => {
-        amountInputRef.current?.focus();
-      }, 180);
-      return () => clearTimeout(timer);
+      if (useCustomKeypad) {
+        const timer = setTimeout(() => {
+          setIsKeypadOpen(true);
+        }, 120);
+        return () => clearTimeout(timer);
+      } else {
+        const timer = setTimeout(() => {
+          amountInputRef.current?.focus();
+        }, 180);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      setIsKeypadOpen(false);
     }
-  }, [isOpen]);
+  }, [isOpen, useCustomKeypad]);
 
   const [note, setNote] = useState(transaction?.note || "");
   const [date, setDate] = useState<Date>(
@@ -137,57 +149,20 @@ export function TransactionSheet({
   // Keypad & Calculator Pad State
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
 
-  // Dynamic Tags (#) State
-  const [tagsEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem("trouvaille_enable_tags");
-    return saved !== null ? saved === "true" : true;
-  });
-
   const activeTags = useMemo(() => {
     if (!note) return [];
     const matches = note.match(/#([a-zA-Z0-9_-]+)/g);
     return matches ? matches.map((m) => m.toLowerCase()) : [];
   }, [note]);
 
-  const { activeSpace, activeSpaceId, spaces } = useSpace();
+  const { activeSpace, activeSpaceId } = useSpace();
 
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string>(() => {
+  const selectedSpaceId = useMemo<string>(() => {
     if (transaction?.space_id) return transaction.space_id;
     if (transaction?.note?.toLowerCase().includes("#business") || transaction?.note?.toLowerCase().includes("#kantor")) return "business";
     if (transaction?.note?.toLowerCase().includes("#travel") || transaction?.note?.toLowerCase().includes("#liburan")) return "travel";
     return activeSpaceId !== "all" ? activeSpaceId : "personal";
-  });
-
-  const handleSelectSpace = (spaceId: string) => {
-    setSelectedSpaceId(spaceId);
-    triggerHaptic("light");
-    if (spaceId === "business") {
-      if (!note.toLowerCase().includes("#business") && !note.toLowerCase().includes("#kantor")) {
-        setNote((prev) => (prev.trim() ? `${prev.trim()} #business` : "#business"));
-      }
-    } else if (spaceId === "travel") {
-      if (!note.toLowerCase().includes("#travel") && !note.toLowerCase().includes("#liburan")) {
-        setNote((prev) => (prev.trim() ? `${prev.trim()} #travel` : "#travel"));
-      }
-    } else if (spaceId === "personal") {
-      setNote((prev) => prev.replace(/#(business|kantor|travel|liburan)\b/gi, "").trim());
-    }
-  };
-
-  const quickTagPresets = useMemo(() => {
-    const base = [
-      "#reimburse",
-      "#kantor",
-      "#liburan",
-      "#keluarga",
-      "#proyek",
-      "#split",
-    ];
-    if (activeSpace?.tag && !base.includes(activeSpace.tag.toLowerCase())) {
-      return [activeSpace.tag.toLowerCase(), ...base];
-    }
-    return base;
-  }, [activeSpace]);
+  }, [transaction, activeSpaceId]);
 
   const handleToggleTag = (tag: string) => {
     triggerHaptic("light");
@@ -868,7 +843,11 @@ export function TransactionSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="px-5 pt-3.5 pb-8">
+      <div
+        className={`px-5 pt-3.5 transition-all duration-300 ${
+          isKeypadOpen && useCustomKeypad ? "pb-[270px]" : "pb-8"
+        }`}
+      >
         {/* Header: Full-Width Segmented Tabs */}
         <div
           className="flex p-1 rounded-full mb-5 glass-surface"
@@ -975,9 +954,18 @@ export function TransactionSheet({
         <div className="text-center py-1 mb-5">
           <div
             onClick={() => {
-              amountInputRef.current?.focus();
+              if (useCustomKeypad) {
+                triggerHaptic("light");
+                setIsKeypadOpen(true);
+              } else {
+                amountInputRef.current?.focus();
+              }
             }}
-            className="w-full max-w-[320px] sm:max-w-[350px] mx-auto flex items-baseline justify-center gap-2.5 px-6 py-3.5 rounded-2xl sm:rounded-3xl transition-all cursor-text select-none active:border-white/20"
+            className={`w-full max-w-[320px] sm:max-w-[350px] mx-auto flex items-baseline justify-center gap-2.5 px-6 py-3.5 rounded-2xl sm:rounded-3xl transition-all cursor-pointer select-none ${
+              isKeypadOpen && useCustomKeypad
+                ? "border-white/35 dark:border-white/40 ring-2 ring-white/10"
+                : "active:border-white/20"
+            }`}
             style={{
               background: "var(--bg-elevated)",
               border: "1.5px solid var(--glass-border)",
@@ -987,9 +975,14 @@ export function TransactionSheet({
           >
             <span
               onClick={() => {
-                amountInputRef.current?.focus();
+                if (useCustomKeypad) {
+                  triggerHaptic("light");
+                  setIsKeypadOpen(true);
+                } else {
+                  amountInputRef.current?.focus();
+                }
               }}
-              className="text-[20px] sm:text-[22px] font-bold select-none shrink-0 cursor-text"
+              className="text-[20px] sm:text-[22px] font-bold select-none shrink-0 cursor-pointer"
               style={{
                 color: "var(--text-tertiary)",
                 fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -1000,9 +993,16 @@ export function TransactionSheet({
             <input
               ref={amountInputRef}
               type="text"
-              inputMode="numeric"
+              readOnly={useCustomKeypad}
+              inputMode={useCustomKeypad ? "none" : "numeric"}
               pattern="[0-9]*"
               value={amountInput}
+              onClick={() => {
+                if (useCustomKeypad) {
+                  triggerHaptic("light");
+                  setIsKeypadOpen(true);
+                }
+              }}
               onChange={(e) => {
                 const val = e.target.value;
                 if (/^[0-9+\-*/×÷.,\s]*$/.test(val)) {
@@ -1042,7 +1042,7 @@ export function TransactionSheet({
                 }
               }}
               placeholder="0"
-              className="text-[42px] sm:text-[46px] font-semibold amount tracking-tight leading-none bg-transparent outline-none text-left min-w-[60px] max-w-[240px]"
+              className="text-[42px] sm:text-[46px] font-semibold amount tracking-tight leading-none bg-transparent outline-none text-left min-w-[60px] max-w-[240px] cursor-pointer"
               style={{
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -1051,7 +1051,7 @@ export function TransactionSheet({
             />
           </div>
 
-          {/* Inline Math Preview Badge */}
+          {/* Inline Math Preview Badge (Only if manually typed in system mode) */}
           {/[+\-*/×÷]/.test(amountInput) && (
             <div className="mt-2.5 flex justify-center">
               <button
@@ -1080,12 +1080,13 @@ export function TransactionSheet({
             </div>
           )}
 
-          {/* Quick Increment & Math Operator Strip: Pre-Resolution Style with Elegant Dark Gradient */}
-          <div className="flex items-center justify-center gap-1.5 mt-3 px-2 flex-wrap sm:flex-nowrap">
+          {/* Quick Increment Chips: Clean, Single Minimalist Row */}
+          <div className="flex items-center justify-center gap-2 mt-3 px-2">
             {[
               { label: "+10K", add: 10000 },
               { label: "+50K", add: 50000 },
               { label: "+100K", add: 100000 },
+              { label: "+500K", add: 500000 },
             ].map((preset) => (
               <button
                 key={preset.label}
@@ -1097,90 +1098,17 @@ export function TransactionSheet({
                   setAmount(String(next));
                   setAmountInput(next.toLocaleString("id-ID"));
                 }}
-                className="px-2.5 py-1.5 rounded-xl text-[11px] font-semibold active:scale-90 transition-transform cursor-pointer select-none"
+                className="px-3 py-1.5 rounded-xl text-[11px] font-semibold active:scale-95 transition-all cursor-pointer select-none"
                 style={{
-                  background:
-                    "linear-gradient(155deg, #222227 0%, #141417 100%)",
+                  background: "var(--bg-elevated)",
                   border: "1px solid var(--glass-border)",
                   color: "var(--text-secondary)",
-                  boxShadow:
-                    "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+                  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)",
                 }}
               >
                 {preset.label}
               </button>
             ))}
-
-            <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
-
-            {/* Dedicated 000 (Triple Zero) Key */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                const res = applyKeypadInput(amountInput, "000");
-                setAmount(String(res.numericValue));
-                setAmountInput(res.expression);
-              }}
-              className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold active:scale-90 transition-transform cursor-pointer select-none"
-              style={{
-                background: "rgba(255, 255, 255, 0.08)",
-                border: "1px solid rgba(255, 255, 255, 0.16)",
-                color: "var(--text-primary)",
-                boxShadow:
-                  "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
-              }}
-              title="Add 000 (thousand)"
-            >
-              000
-            </button>
-
-            <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
-
-            {["+", "-", "×", "÷"].map((op) => (
-              <button
-                key={op}
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  const res = applyKeypadInput(amountInput, op);
-                  setAmount(String(res.numericValue));
-                  setAmountInput(res.expression);
-                }}
-                className="w-7.5 h-7.5 rounded-xl text-[12px] font-semibold flex items-center justify-center active:scale-90 transition-transform cursor-pointer select-none"
-                style={{
-                  background:
-                    "linear-gradient(155deg, #222227 0%, #141417 100%)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                  boxShadow:
-                    "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
-                }}
-              >
-                {op}
-              </button>
-            ))}
-
-            <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
-
-            {/* Custom Frosted Apple Keypad Drawer Trigger */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("medium");
-                setIsKeypadOpen(true);
-              }}
-              className="px-2.5 py-1.5 rounded-xl text-[11px] font-medium flex items-center gap-1 active:scale-90 transition-transform cursor-pointer select-none"
-              style={{
-                background: "rgba(255, 255, 255, 0.06)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-secondary)",
-              }}
-              title="Open full numpad"
-            >
-              <Calculator size={12} strokeWidth={1.75} />
-              <span>Keypad</span>
-            </button>
           </div>
 
           {/* Duplicate Transaction Warning (Monochrome Apple Luxury Alert) */}
@@ -1288,49 +1216,6 @@ export function TransactionSheet({
             setMoreWalletOpen(true);
           }}
         />
-
-        {/* Financial Domain Explicit 1-Tap Selector */}
-        <div className="flex items-center justify-between mb-2.5 px-1">
-          <span
-            className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Domain
-          </span>
-          <div
-            className="flex items-center gap-1 p-0.5 rounded-full glass-surface"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            {spaces
-              .filter((s) => s.id !== "all")
-              .map((s) => {
-                const isSelected = selectedSpaceId === s.id;
-                const displayName = s.name.replace(/^Domain\s+/i, "");
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => handleSelectSpace(s.id)}
-                    className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
-                    style={{
-                      background: isSelected
-                        ? "var(--text-primary)"
-                        : "transparent",
-                      color: isSelected
-                        ? "var(--bg-base)"
-                        : "var(--text-secondary)",
-                    }}
-                  >
-                    <span>{displayName}</span>
-                  </button>
-                );
-              })}
-          </div>
-        </div>
-
         {/* 3. Note & Date/Time Compact Island with Dynamic Focus Animation */}
         <div
           className="rounded-2xl p-3 px-4 mb-3.5 flex items-center gap-3 transition-all"
@@ -1421,30 +1306,6 @@ export function TransactionSheet({
             )}
           </AnimatePresence>
         </div>
-
-        {/* Dynamic Multi-Tag Chips (#reimburse, #kantor, #liburan, etc.) */}
-        {tagsEnabled && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 px-1 -mt-1 mb-2">
-            <Tag size={12} strokeWidth={1.5} className="text-[var(--text-tertiary)] shrink-0 mr-0.5" />
-            {quickTagPresets.map((t) => {
-              const isActive = activeTags.includes(t.toLowerCase());
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => handleToggleTag(t)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-all active:scale-95 cursor-pointer flex items-center gap-1 ${
-                    isActive
-                      ? "bg-white text-black font-semibold shadow-sm"
-                      : "bg-white/[0.04] text-[var(--text-secondary)] border border-white/[0.08] hover:bg-white/[0.08]"
-                  }`}
-                >
-                  <span>{t}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
 
         {/* Dedicated Money Space Active Notice */}
         {activeSpace?.tag && activeSpace.id !== "all" && activeSpace.id !== "personal" && (
@@ -2094,7 +1955,7 @@ export function TransactionSheet({
         </div>
       </BottomSheet>
 
-      {/* Monveo-Style Luxury On-Screen Keypad Drawer */}
+      {/* Liquid Glass On-Screen Keypad Drawer */}
       <TransactionKeypadSheet
         isOpen={isKeypadOpen}
         onClose={() => setIsKeypadOpen(false)}

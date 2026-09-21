@@ -122,16 +122,11 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
 
         {/* Live Rates Status Bar */}
         <div
-          className="p-3 rounded-2xl flex items-center justify-between text-[11px]"
-          style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
-            color: "var(--text-secondary)",
-          }}
+          className="px-3 py-2 rounded-xl flex items-center justify-between text-[11px] border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)]"
         >
           <div className="flex items-center gap-1.5">
-            <ArrowRightLeft size={13} strokeWidth={1.75} className="opacity-70" />
-            <span>Market Rates (Open Exchange API)</span>
+            <ArrowRightLeft size={12} strokeWidth={1.75} className="opacity-70" />
+            <span className="font-medium">Market Rates (Open Exchange API)</span>
           </div>
           <span className="font-mono text-[10px] opacity-70">
             Updated {formattedLastUpdated}
@@ -140,11 +135,7 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
 
         {/* Search Input */}
         <div
-          className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-          }}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--glass-border)] bg-[var(--bg-elevated)]"
         >
           <Search size={14} style={{ color: "var(--text-tertiary)" }} />
           <input
@@ -159,118 +150,98 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="p-1 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              className="p-0.5 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             >
               <X size={12} />
             </button>
           )}
         </div>
 
-        {/* Currency List */}
-        <div className="space-y-1.5">
-          {currenciesList.map((currency) => {
-            const isSelected = preferredCurrency === currency.code;
-            const foreignPerIdr = rates[currency.code] || 1;
-            const idrPerUnit = foreignPerIdr > 0 ? 1 / foreignPerIdr : 1;
+        {/* Apple iOS Grouped Currency List */}
+        <div className="pb-4">
+          {currenciesList.length === 0 ? (
+            <div className="py-8 text-center text-[12px] text-[var(--text-tertiary)]">
+              No currencies match &quot;{searchQuery}&quot;
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] divide-y divide-[var(--glass-border)] overflow-hidden">
+              {currenciesList.map((currency) => {
+                const isSelected = preferredCurrency === currency.code;
+                const foreignPerIdr = rates[currency.code] || 1;
+                const idrPerUnit = foreignPerIdr > 0 ? 1 / foreignPerIdr : 1;
 
-            return (
-              <button
-                key={currency.code}
-                type="button"
-                onClick={() => handleSelect(currency.code)}
-                className="w-full flex items-center justify-between p-3.5 rounded-2xl transition-all cursor-pointer text-left active:scale-[0.99] select-none"
-                style={{
-                  background: isSelected
-                    ? "var(--bg-elevated)"
-                    : "var(--glass-fill)",
-                  border: isSelected
-                    ? "1px solid var(--text-primary)"
-                    : "1px solid var(--glass-border)",
-                }}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {/* Monochrome ISO Country Code Badge */}
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-mono font-bold text-[11px] tracking-wider"
-                    style={{
-                      background: isSelected
-                        ? "var(--text-primary)"
-                        : "var(--bg-elevated)",
-                      color: isSelected
-                        ? "var(--bg-base)"
-                        : "var(--text-secondary)",
-                      border: "1px solid var(--glass-border)",
-                    }}
+                return (
+                  <button
+                    key={currency.code}
+                    type="button"
+                    onClick={() => handleSelect(currency.code)}
+                    className={`w-full flex items-center justify-between py-2.5 px-3.5 transition-colors cursor-pointer text-left select-none ${
+                      isSelected
+                        ? "bg-black/[0.04] dark:bg-white/[0.06]"
+                        : "hover:bg-black/[0.02] dark:hover:bg-white/[0.02] active:bg-black/[0.04] dark:active:bg-white/[0.04]"
+                    }`}
                   >
-                    {currency.countryCode}
-                  </div>
-
-                  <div className="min-w-0 pr-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="text-[13px] font-semibold"
-                        style={{ color: "var(--text-primary)" }}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-mono font-bold text-[10px] tracking-wider border border-[var(--glass-border)] bg-[var(--glass-fill)]"
+                        style={{
+                          color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
+                        }}
                       >
-                        {currency.code}
-                      </span>
-                      <span
-                        className="text-[11px] font-medium font-mono opacity-80"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        ({currency.symbol})
-                      </span>
+                        {currency.countryCode}
+                      </div>
+
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="text-[13px] font-medium"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {currency.code}
+                          </span>
+                          <span
+                            className="text-[11px] font-mono opacity-70"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            ({currency.symbol})
+                          </span>
+                        </div>
+                        <p
+                          className="text-[11px] truncate mt-0.5"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {currency.name}
+                        </p>
+                      </div>
                     </div>
-                    <p
-                      className="text-[11px] truncate mt-0.5"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {currency.name}
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-right">
-                    <span
-                      className="text-[11px] font-semibold font-mono block"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {currency.code === "IDR"
-                        ? "Base (1:1)"
-                        : `1 ${currency.code} ≈ ${formatRupiah(Math.round(idrPerUnit))}`}
-                    </span>
-                    <span
-                      className="text-[9px] font-medium opacity-60 block"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {currency.decimals} decimals
-                    </span>
-                  </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <div className="text-right">
+                        <span
+                          className="text-[11px] font-medium font-mono block"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {currency.code === "IDR"
+                            ? "Base (1:1)"
+                            : `1 ${currency.code} ≈ ${formatRupiah(Math.round(idrPerUnit))}`}
+                        </span>
+                        <span
+                          className="text-[9px] font-medium opacity-60 block"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {currency.decimals} decimals
+                        </span>
+                      </div>
 
-                  {isSelected && (
-                    <div
-                      className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-                      style={{
-                        background: "var(--text-primary)",
-                        color: "var(--bg-base)",
-                      }}
-                    >
-                      <Check size={12} strokeWidth={2.5} />
+                      {isSelected && (
+                        <div className="w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 bg-black dark:bg-white text-white dark:text-black">
+                          <Check size={11} strokeWidth={2.5} />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-
-          {currenciesList.length === 0 && (
-            <div className="text-center py-8">
-              <p
-                className="text-[13px] font-medium"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                No currency matches &quot;{searchQuery}&quot;
-              </p>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

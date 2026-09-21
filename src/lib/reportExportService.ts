@@ -1,4 +1,6 @@
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, subYears } from "date-fns";
+import { jsPDF } from "jspdf";
+import { Capacitor } from "@capacitor/core";
 import type { Transaction, Wallet, Category } from "./types";
 import { formatRupiah } from "./utils";
 
@@ -666,3 +668,251 @@ export async function shareOrDownloadFile(
   downloadExportFile(content, filename, mimeType);
   return true;
 }
+
+/**
+ * Generates an executive luxury PDF document with full typography, summary cards, and paginated ledger.
+ */
+export function generateLuxuryPdf(
+  transactions: Transaction[],
+  summary: ReportSummary,
+  wallets: Wallet[] = [],
+): jsPDF {
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "pt",
+    format: "a4",
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth(); // 595.28 pt
+  const pageHeight = doc.internal.pageSize.getHeight(); // 841.89 pt
+  const margin = 40;
+  const contentWidth = pageWidth - margin * 2; // 515.28 pt
+
+  let y = 50;
+
+  // Header: Brand & Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(18, 18, 20); // obsidian
+  doc.text("TROUVAILLE", margin, y);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(113, 113, 122); // zinc-500
+  doc.text("PRIVATE WEALTH ARCHITECTURE · EXECUTIVE STATEMENT", margin, y + 14);
+
+  // Period & Generation Date (right aligned)
+  doc.setFontSize(8.5);
+  doc.text(`Period: ${summary.periodLabel}`, pageWidth - margin, y, { align: "right" });
+  doc.text(`Generated: ${format(new Date(), "dd MMM yyyy, HH:mm")}`, pageWidth - margin, y + 14, { align: "right" });
+
+  y += 30;
+
+  // Hairline divider
+  doc.setDrawColor(228, 228, 233);
+  doc.setLineWidth(0.75);
+  doc.line(margin, y, pageWidth - margin, y);
+
+  y += 16;
+
+  // Key Financial Metrics Grid (4 columns)
+  const colW = contentWidth / 4;
+  const metrics = [
+    { label: "TOTAL INFLOW", val: formatRupiah(summary.totalIncome) },
+    { label: "TOTAL OUTFLOW", val: formatRupiah(summary.totalExpense) },
+    {
+      label: "NET CASHFLOW",
+      val: `${summary.netCashflow >= 0 ? "+" : ""}${formatRupiah(summary.netCashflow)}`,
+    },
+    { label: "SAVINGS RATE", val: `${summary.savingsRate.toFixed(1)}%` },
+  ];
+
+  metrics.forEach((m, idx) => {
+    const x = margin + idx * colW;
+    doc.setFillColor(248, 248, 250);
+    doc.roundedRect(x + 2, y, colW - 4, 44, 4, 4, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(113, 113, 122);
+    doc.text(m.label, x + 8, y + 13);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(24, 24, 27);
+    doc.text(m.val, x + 8, y + 31);
+  });
+
+  y += 56;
+
+  // Top Categories (if any)
+  if (summary.topCategories.length > 0) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(18, 18, 20);
+    doc.text("EXPENSE DISTRIBUTION", margin, y);
+
+    y += 12;
+
+    summary.topCategories.slice(0, 5).forEach((cat) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(71, 71, 78);
+      doc.text(cat.name, margin + 4, y);
+
+      const amtText = `${formatRupiah(cat.amount)} (${cat.percentage.toFixed(1)}%)`;
+      doc.text(amtText, pageWidth - margin - 4, y, { align: "right" });
+      y += 11;
+    });
+
+    y += 8;
+  }
+
+  // Section Header: Transaction Ledger
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(18, 18, 20);
+  doc.text(`LEDGER TRANSACTIONS (${transactions.length})`, margin, y);
+
+  y += 12;
+
+  // Table Header Function
+  const renderTableHeader = (currY: number) => {
+    doc.setFillColor(244, 244, 246);
+    doc.rect(margin, currY, contentWidth, 16, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(113, 113, 122);
+    doc.text("DATE", margin + 6, currY + 11);
+    doc.text("DESCRIPTION / CATEGORY", margin + 75, currY + 11);
+    doc.text("ACCOUNT", margin + 310, currY + 11);
+    doc.text("AMOUNT", pageWidth - margin - 6, currY + 11, { align: "right" });
+  };
+
+  renderTableHeader(y);
+  y += 18;
+
+  // Sort transactions by date descending
+  const sortedTxs = [...transactions].sort((a, b) => {
+    const da = a.occurred_on || a.created_at || "";
+    const db = b.occurred_on || b.created_at || "";
+    return db.localeCompare(da);
+  });
+
+  const walletMap = new Map(wallets.map((w) => [w.id, w.name]));
+
+  sortedTxs.forEach((tx) => {
+    if (y > pageHeight - 45) {
+      doc.addPage();
+      y = 40;
+      renderTableHeader(y);
+      y += 18;
+    }
+
+    const txDate = tx.occurred_on || tx.created_at?.slice(0, 10) || "";
+    const walletName = tx.wallet_id ? walletMap.get(tx.wallet_id) || "Cash" : "Cash";
+    const desc = (tx.note || (tx as any).category_name || "Transaction").slice(0, 40);
+    const isIncome = tx.type === "income";
+    const prefix = isIncome ? "+" : tx.type === "expense" ? "-" : "";
+    const amtStr = `${prefix}${formatRupiah(Number(tx.amount || 0))}`;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 71, 78);
+    doc.text(txDate, margin + 6, y + 9);
+    doc.text(desc, margin + 75, y + 9);
+    doc.text(walletName.slice(0, 16), margin + 310, y + 9);
+
+    doc.setFont("helvetica", "bold");
+    doc.text(amtStr, pageWidth - margin - 6, y + 9, { align: "right" });
+
+    doc.setDrawColor(240, 240, 244);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y + 13, pageWidth - margin, y + 13);
+
+    y += 15;
+  });
+
+  // Footer on all pages
+  const totalPages = doc.internal.pages.length - 1;
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(161, 161, 170);
+    doc.text("Trouvaille · Private Wealth Architecture · Confidential Document", margin, pageHeight - 18);
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 18, { align: "right" });
+  }
+
+  return doc;
+}
+
+/**
+ * Direct luxury PDF download: immediately triggers file saving without opening print dialog
+ */
+export async function downloadLuxuryPdf(
+  transactions: Transaction[],
+  summary: ReportSummary,
+  wallets: Wallet[] = [],
+  filename = "trouvaille_statement.pdf",
+): Promise<void> {
+  const doc = generateLuxuryPdf(transactions, summary, wallets);
+  const blob = doc.output("blob");
+
+  // In native Capacitor iOS WKWebView, <a download> is ignored; Web Share API prompts native "Save to Files"
+  if (Capacitor.isNativePlatform() && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+    try {
+      const file = new File([blob], filename, { type: "application/pdf" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "Trouvaille Financial Statement",
+          text: `Here is the financial statement export from Trouvaille (${filename}).`,
+        });
+        return;
+      }
+    } catch (e: any) {
+      if (e.name === "AbortError") return;
+    }
+  }
+
+  // Web browser / Safari / PWA direct download
+  doc.save(filename);
+}
+
+/**
+ * Direct luxury PDF share with Web Share API fallback
+ */
+export async function shareLuxuryPdf(
+  transactions: Transaction[],
+  summary: ReportSummary,
+  wallets: Wallet[] = [],
+  filename = "trouvaille_statement.pdf",
+): Promise<boolean> {
+  const doc = generateLuxuryPdf(transactions, summary, wallets);
+  const blob = doc.output("blob");
+
+  if (navigator.share && navigator.canShare) {
+    try {
+      const file = new File([blob], filename, { type: "application/pdf" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "Trouvaille Financial Statement",
+          text: `Here is the financial statement export from Trouvaille (${filename}).`,
+        });
+        return true;
+      }
+    } catch (e: any) {
+      if (e.name !== "AbortError") {
+        console.warn("[reportExportService] Web Share failed, falling back to download:", e);
+      } else {
+        return false;
+      }
+    }
+  }
+
+  doc.save(filename);
+  return true;
+}
+

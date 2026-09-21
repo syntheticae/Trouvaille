@@ -1,3 +1,9 @@
+import clsx, { type ClassValue } from "clsx";
+
+export function cn(...inputs: ClassValue[]) {
+  return clsx(inputs);
+}
+
 export function formatRupiah(amount: number): string {
   const val = Number(amount)
   if (isNaN(val) || amount === null || amount === undefined) return "Rp 0"

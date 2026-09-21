@@ -7,6 +7,7 @@ import { getDaysInMonth } from "date-fns";
 import type { Transaction } from "../../lib/types";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface MonthForecastSheetProps {
   isOpen: boolean;
@@ -32,6 +33,8 @@ export function MonthForecastSheet({
   referenceDate = new Date(),
 }: MonthForecastSheetProps) {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const chartRef = useRef<SVGSVGElement | null>(null);
 
@@ -282,8 +285,8 @@ export function MonthForecastSheet({
                 border: "1px solid var(--glass-border)",
                 color: "var(--text-secondary)",
               }}
-              title="Tutup"
-              aria-label="Tutup"
+              title="Close"
+              aria-label="Close"
             >
               <X size={15} />
             </button>
@@ -334,8 +337,8 @@ export function MonthForecastSheet({
               <defs>
                 {/* Monochrome luminous fill gradient */}
                 <linearGradient id="spentGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.18" />
-                  <stop offset="100%" stopColor="#ffffff" stopOpacity="0.01" />
+                  <stop offset="0%" stopColor={isDark ? "#ffffff" : "#18181b"} stopOpacity={isDark ? 0.18 : 0.08} />
+                  <stop offset="100%" stopColor={isDark ? "#ffffff" : "#18181b"} stopOpacity={isDark ? 0.01 : 0.00} />
                 </linearGradient>
               </defs>
 
@@ -345,7 +348,7 @@ export function MonthForecastSheet({
                 y1={padTop + plotHeight}
                 x2={padLeft + plotWidth}
                 y2={padTop + plotHeight}
-                stroke="rgba(255,255,255,0.12)"
+                stroke={isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)"}
                 strokeWidth="1"
               />
 
@@ -354,7 +357,7 @@ export function MonthForecastSheet({
                 x={padLeft - 6}
                 y={padTop + 4}
                 textAnchor="end"
-                fill="rgba(255,255,255,0.35)"
+                fill={isDark ? "rgba(255,255,255,0.4)" : "#71717a"}
                 fontSize="8.5"
                 fontFamily="monospace"
               >
@@ -364,7 +367,7 @@ export function MonthForecastSheet({
                 x={padLeft - 6}
                 y={padTop + plotHeight / 2 + 3}
                 textAnchor="end"
-                fill="rgba(255,255,255,0.35)"
+                fill={isDark ? "rgba(255,255,255,0.4)" : "#71717a"}
                 fontSize="8.5"
                 fontFamily="monospace"
               >
@@ -374,7 +377,7 @@ export function MonthForecastSheet({
                 x={padLeft - 6}
                 y={padTop + plotHeight}
                 textAnchor="end"
-                fill="rgba(255,255,255,0.35)"
+                fill={isDark ? "rgba(255,255,255,0.4)" : "#71717a"}
                 fontSize="8.5"
                 fontFamily="monospace"
               >
@@ -391,7 +394,7 @@ export function MonthForecastSheet({
                 <path
                   d={forecastPath}
                   fill="none"
-                  stroke="rgba(255,255,255,0.4)"
+                  stroke={isDark ? "rgba(255,255,255,0.45)" : "#71717a"}
                   strokeWidth="1.75"
                   strokeDasharray="4 4"
                   strokeLinecap="round"
@@ -403,7 +406,7 @@ export function MonthForecastSheet({
                 <path
                   d={actualPath}
                   fill="none"
-                  stroke="#ffffff"
+                  stroke={isDark ? "#ffffff" : "#18181b"}
                   strokeWidth="2.25"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -417,14 +420,14 @@ export function MonthForecastSheet({
                     cx={getX(daysElapsed)}
                     cy={getY(actualCumulative.get(daysElapsed) || effectiveTotalExpense)}
                     r="6"
-                    fill="rgba(255,255,255,0.15)"
+                    fill={isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)"}
                   />
                   <circle
                     cx={getX(daysElapsed)}
                     cy={getY(actualCumulative.get(daysElapsed) || effectiveTotalExpense)}
                     r="3.5"
-                    fill="#ffffff"
-                    stroke="#111114"
+                    fill={isDark ? "#ffffff" : "#18181b"}
+                    stroke={isDark ? "#111114" : "#ffffff"}
                     strokeWidth="1.5"
                   />
                 </g>
@@ -438,7 +441,7 @@ export function MonthForecastSheet({
                     y1={padTop}
                     x2={getX(hoveredDay)}
                     y2={padTop + plotHeight}
-                    stroke="#ffffff"
+                    stroke={isDark ? "#ffffff" : "#18181b"}
                     strokeWidth="1"
                     strokeDasharray="2 2"
                     opacity="0.8"
@@ -451,8 +454,8 @@ export function MonthForecastSheet({
                         : forecastCumulative.get(hoveredDay) || 0
                     )}
                     r="4"
-                    fill="#ffffff"
-                    stroke="#000000"
+                    fill={isDark ? "#ffffff" : "#18181b"}
+                    stroke={isDark ? "#000000" : "#ffffff"}
                     strokeWidth="1.5"
                   />
                 </g>
@@ -564,10 +567,10 @@ export function MonthForecastSheet({
               border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
-            title="Buka Kalender & Runway Harian"
+            title="View Calendar & Daily Runway"
           >
             <CalendarDays size={14} strokeWidth={1.75} />
-            <span>Buka Kalender & Runway Harian</span>
+            <span>View Calendar & Daily Runway</span>
           </button>
         </div>
       </motion.div>

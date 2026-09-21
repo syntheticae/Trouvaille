@@ -9,14 +9,9 @@ import {
   Smartphone,
   PiggyBank,
   TrendingUp,
-  Bell,
-  Sparkles,
-  Layers,
-  PieChart,
-  Zap,
+  X,
 } from "lucide-react";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
-import type { HomePresetKey } from "../../lib/widgetLayoutTypes";
 import { DEFAULT_HOME_WIDGETS } from "../../lib/widgetLayoutTypes";
 import {
   applyPresetToWidgets,
@@ -26,7 +21,10 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { seedOnboardingWallets } from "../../hooks/useWallets";
 import type { OnboardingWalletChoice } from "../../hooks/useWallets";
-import { formatRupiah } from "../../lib/utils";
+import {
+  ArchetypeCardSelector,
+  ARCHETYPE_ITEMS,
+} from "./ArchetypeCardSelector";
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -34,76 +32,6 @@ interface OnboardingModalProps {
 }
 
 type FocusKey = "expenses" | "budget" | "domain" | "wealth" | "complete";
-
-interface FocusOption {
-  key: FocusKey;
-  chipLabel: string;
-  title: string;
-  desc: string;
-  badge: string;
-  metric: string;
-  subMetric: string;
-  widgetPreset: HomePresetKey;
-  icon: any;
-}
-
-const FOCUS_OPTIONS: FocusOption[] = [
-  {
-    key: "expenses",
-    chipLabel: "Daily Cashflow",
-    title: "Daily Expenses & Cashflow",
-    desc: "Fast, distraction-free logging to monitor daily burn rate.",
-    badge: "Minimalist Mode",
-    metric: "Daily Burn: Rp 140.000",
-    subMetric: "Zero clutter · Sub-second voice & receipt entry",
-    widgetPreset: "minimal",
-    icon: Zap,
-  },
-  {
-    key: "budget",
-    chipLabel: "Budget & Caps",
-    title: "Budgeting & Savings Discipline",
-    desc: "Enforce category spending caps & reach target reserves.",
-    badge: "Budget Guardian",
-    metric: "Caps: 64% Utilized",
-    subMetric: "Spending limit alerts & emergency reserve tracker",
-    widgetPreset: "minimal",
-    icon: PieChart,
-  },
-  {
-    key: "domain",
-    chipLabel: "Personal & Work",
-    title: "Dual Domain Separation",
-    desc: "Strictly isolate personal spending from side-projects.",
-    badge: "Partitioned Books",
-    metric: "Personal ↔ Business",
-    subMetric: "Zero co-mingling of personal and venture funds",
-    widgetPreset: "executive",
-    icon: Layers,
-  },
-  {
-    key: "wealth",
-    chipLabel: "Net Worth",
-    title: "Net Worth & Asset Intelligence",
-    desc: "Monitor portfolio velocity, investment growth & runway.",
-    badge: "Wealth Intelligence",
-    metric: "+24.8% Portfolio Growth",
-    subMetric: "Multi-currency assets, crypto & runway telemetry",
-    widgetPreset: "executive",
-    icon: TrendingUp,
-  },
-  {
-    key: "complete",
-    chipLabel: "Full Command",
-    title: "Complete Financial Command",
-    desc: "All-in-one comprehensive telemetry with full widget suite.",
-    badge: "Executive Suite",
-    metric: "All 12 Widgets Active",
-    subMetric: "Forecasting, debt simulators, sankey & analytics",
-    widgetPreset: "executive",
-    icon: Sparkles,
-  },
-];
 
 interface AccountOption {
   id: string;
@@ -117,35 +45,35 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   {
     id: "cash",
     name: "Physical Cash",
-    sub: "Everyday wallet cash",
+    sub: "Everyday physical currency",
     icon: Banknote,
     classification: "liquid",
   },
   {
     id: "bank",
-    name: "Main Bank",
-    sub: "Payroll & checking (BCA)",
+    name: "Checking & Bank",
+    sub: "Direct deposit & checking accounts",
     icon: Landmark,
     classification: "liquid",
   },
   {
     id: "ewallet",
     name: "Digital E-Wallet",
-    sub: "Mobile QRIS & payments",
+    sub: "Mobile QR & digital payments",
     icon: Smartphone,
     classification: "liquid",
   },
   {
     id: "savings",
     name: "Savings & Reserve",
-    sub: "Emergency fund cushion",
+    sub: "Emergency buffer cushion",
     icon: PiggyBank,
     classification: "liquid",
   },
   {
     id: "invest",
     name: "Investments & Assets",
-    sub: "Stocks, funds & crypto",
+    sub: "Stocks, funds, crypto & bullion",
     icon: TrendingUp,
     classification: "investment",
   },
@@ -153,12 +81,22 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
 
 export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const { user } = useAuth();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<number>(1);
 
   // Step 1: Focus
   const [selectedFocus, setSelectedFocus] = useState<FocusKey>("expenses");
 
-  // Step 2: Accounts
+  // Step 2: Name & Preset mode
+  const [userName, setUserName] = useState<string>(() => {
+    return (
+      user?.user_metadata?.display_name ||
+      user?.email?.split("@")[0] ||
+      ""
+    );
+  });
+  const [presetMode, setPresetMode] = useState<"default" | "custom">("default");
+
+  // Step 3: Accounts
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, boolean>>({
     cash: true,
     bank: true,
@@ -167,17 +105,17 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     invest: false,
   });
 
-  // Step 3: Starting Balance
-  const [startingBalance, setStartingBalance] = useState<number>(1500000);
+  // Step 4: Starting Balance
+  const [startingBalance, setStartingBalance] = useState<number>(0);
 
-  // Step 4: Daily Reminder
+  // Step 5: Daily Reminder
   const [reminderEnabled, setReminderEnabled] = useState<boolean>(true);
   const [reminderHour, setReminderHour] = useState<number>(20); // 20:00 (8 PM)
 
   if (!isOpen) return null;
 
   const currentFocus =
-    FOCUS_OPTIONS.find((f) => f.key === selectedFocus) || FOCUS_OPTIONS[0];
+    ARCHETYPE_ITEMS.find((f) => f.key === selectedFocus) || ARCHETYPE_ITEMS[0];
 
   const handleToggleAccount = (id: string) => {
     triggerHaptic("light");
@@ -199,8 +137,25 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
 
   const handleNextStep = () => {
     triggerHaptic("medium");
-    if (step < 4) {
-      setStep((prev) => (prev + 1) as any);
+    if (step === 1) {
+      setStep(2);
+    } else if (step === 2) {
+      if (presetMode === "default") {
+        setSelectedAccounts({
+          cash: true,
+          bank: true,
+          ewallet: true,
+          savings: false,
+          invest: false,
+        });
+        setStep(4);
+      } else {
+        setStep(3);
+      }
+    } else if (step === 3) {
+      setStep(4);
+    } else if (step === 4) {
+      setStep(5);
     } else {
       handleComplete();
     }
@@ -208,8 +163,10 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
 
   const handlePrevStep = () => {
     triggerHaptic("light");
-    if (step > 1) {
-      setStep((prev) => (prev - 1) as any);
+    if (step === 4 && presetMode === "default") {
+      setStep(2);
+    } else if (step > 1) {
+      setStep((prev) => prev - 1);
     }
   };
 
@@ -264,13 +221,34 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed to write widget preset:", e);
     }
 
-    // 3. Persist reminder preferences
+    // 3. Persist reminder preferences & request notification permission if enabled
+    if (
+      reminderEnabled &&
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "default"
+    ) {
+      try {
+        await Notification.requestPermission();
+      } catch {}
+    }
+
     try {
       localStorage.setItem("trouvaille_streak_reminder_enabled", String(reminderEnabled));
       localStorage.setItem("trouvaille_streak_reminder_hour", String(reminderHour));
     } catch {}
 
-    // 4. Mark onboarded
+    // 4. Persist user name and preset mode
+    if (userName.trim()) {
+      try {
+        localStorage.setItem("trouvaille_user_name", userName.trim());
+      } catch {}
+    }
+    try {
+      localStorage.setItem("trouvaille_preset_mode", presetMode);
+    } catch {}
+
+    // 5. Mark onboarded
     try {
       localStorage.setItem("trouvaille_onboarding_focus", selectedFocus);
       localStorage.setItem("trouvaille_onboarded", "true");
@@ -322,183 +300,276 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
         )}
 
         {/* Step Progress Dots */}
-        <div className="flex items-center gap-1.5">
-          {[1, 2, 3, 4].map((s) => (
-            <div
-              key={s}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                s === step
-                  ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]"
-                  : s < step
-                  ? "w-1.5 bg-white/40"
-                  : "w-1.5 bg-white/15"
-              }`}
-            />
-          ))}
-        </div>
+        {(() => {
+          const totalSteps = presetMode === "default" ? 4 : 5;
+          const currentStepNumber =
+            presetMode === "default" && step >= 4 ? step - 1 : step;
+          return (
+            <>
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
+                  <div
+                    key={s}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      s === currentStepNumber
+                        ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]"
+                        : s < currentStepNumber
+                        ? "w-1.5 bg-white/40"
+                        : "w-1.5 bg-white/15"
+                    }`}
+                  />
+                ))}
+              </div>
 
-        <div className="w-9 text-right">
-          <span className="text-[11px] font-semibold text-white/40 amount">
-            0{step}/04
-          </span>
-        </div>
+              <div className="w-9 text-right">
+                <span className="text-[11px] font-semibold text-white/40 amount">
+                  0{currentStepNumber}/0{totalSteps}
+                </span>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* ============================================================ */}
       {/* 3. STEP CONTENT CONTAINER (AIRY, UNCLUTTERED, FLUID)         */}
       {/* ============================================================ */}
-      <div className="px-3 flex-1 overflow-y-auto no-scrollbar py-2 relative z-10 flex flex-col justify-center max-w-sm mx-auto w-full">
+      <div className="px-3 sm:px-4 flex-1 overflow-y-auto no-scrollbar py-3 relative z-10 flex flex-col justify-center max-w-md mx-auto w-full">
         <AnimatePresence mode="wait">
           {/* ======================================================== */}
-          {/* STEP 1: RESOLUSI 1 (LIVE PREVIEW CARD + SEGMENTED CHIPS) */}
+          {/* STEP 1: IDENTITY & WORKSPACE ARCHITECTURE PRESET         */}
           {/* ======================================================== */}
           {step === 1 && (
             <motion.div
               key="step-1"
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.26, ease: "easeOut" }}
-              className="space-y-4"
+              exit={{ opacity: 0, y: -14 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="space-y-5 w-full text-left"
             >
-              <div className="space-y-1 text-center">
-                <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
-                  Step 01 · Intent
-                </span>
-                <h1 className="text-[24px] sm:text-[26px] font-semibold tracking-tight text-white leading-tight">
-                  Choose your financial focus
+              {/* Editorial Header */}
+              <div className="space-y-1 text-left">
+                <div className="inline-flex items-center gap-2">
+                  <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
+                    Step 01
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-white/25" />
+                  <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
+                    Identity & Setup
+                  </span>
+                </div>
+                <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
+                  Welcome to <span className="font-semibold">Trouvaille</span>
                 </h1>
-                <p className="text-[12px] font-normal text-white/50 leading-snug max-w-xs mx-auto">
-                  Select an objective to dynamically tailor your workspace
+                <p className="text-[13px] font-normal text-white/50 leading-relaxed">
+                  Personalize your caller identity and select your starting workspace architecture.
                 </p>
               </div>
 
-              {/* 1. Live Interactive Preview Card */}
-              <motion.div
-                key={currentFocus.key}
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-                className="w-full p-4 rounded-[26px] border border-white/14 bg-white/[0.035] backdrop-blur-2xl space-y-2.5 text-left"
-                style={{
-                  boxShadow:
-                    "0 14px 32px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2)",
-                }}
-              >
+              {/* 1. Name Input: Unboxed Luxury Hairline */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
+                  Your Name / Identity
+                </label>
+                <div className="relative flex items-center border-b border-white/15 focus-within:border-white transition-colors py-1.5">
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    placeholder="e.g. Alexander"
+                    className="w-full bg-transparent text-[17px] sm:text-[19px] font-medium text-white placeholder:text-white/25 outline-none pr-8 transition-colors"
+                  />
+                  {userName.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setUserName("")}
+                      className="text-white/30 hover:text-white/70 transition-colors p-1"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Preset Selection (Default vs Custom) */}
+              <div className="space-y-2.5 pt-1">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5.5 h-5.5 rounded-full bg-white/10 flex items-center justify-center border border-white/15">
-                      <currentFocus.icon size={12} className="text-white" />
-                    </div>
-                    <span className="text-[11px] font-semibold text-white/70">
-                      Workspace Simulation
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-white/10 text-white border border-white/15">
-                    {currentFocus.badge}
+                  <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
+                    Workspace Architecture
+                  </label>
+                  <span className="text-[11px] text-white/40">
+                    {presetMode === "default" ? "Standard Curated" : "Custom Blueprint"}
                   </span>
                 </div>
 
-                <div className="p-3 rounded-[18px] bg-white/[0.04] border border-white/8 space-y-1">
-                  <div className="text-[14px] font-semibold text-white tracking-tight">
-                    {currentFocus.title}
-                  </div>
-                  <div className="text-[11px] font-semibold text-white/85">
-                    {currentFocus.metric}
-                  </div>
-                  <p className="text-[11px] text-white/45 leading-relaxed">
-                    {currentFocus.subMetric}
-                  </p>
-                </div>
-              </motion.div>
-
-              {/* 2. Segmented Minimalist Chips Grid */}
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  {FOCUS_OPTIONS.slice(0, 4).map((opt) => {
-                    const isSelected = selectedFocus === opt.key;
-                    const OptIcon = opt.icon;
-                    return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic("light");
-                          setSelectedFocus(opt.key);
-                        }}
-                        className={`py-2.5 px-2 rounded-[20px] text-[11px] font-semibold transition-all active:scale-[0.98] cursor-pointer text-center border flex items-center justify-center gap-1.5 ${
-                          isSelected
-                            ? "bg-white text-zinc-950 border-white shadow-lg"
-                            : "bg-white/[0.035] border-white/10 text-white/70 hover:text-white hover:bg-white/[0.06]"
+                <div className="space-y-2.5">
+                  {/* Option A: Preset Default */}
+                  <div
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setPresetMode("default");
+                    }}
+                    className={`group p-4 rounded-[20px] text-left transition-all duration-300 border cursor-pointer relative ${
+                      presetMode === "default"
+                        ? "bg-white/[0.06] border-white/30 shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
+                        : "bg-white/[0.02] border-white/8 opacity-55 hover:opacity-80"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[14px] font-semibold text-white tracking-tight">
+                            Default Curated Preset
+                          </span>
+                          <span className="text-[9.5px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/15">
+                            Recommended
+                          </span>
+                        </div>
+                        <p className="text-[12px] text-white/50 leading-relaxed">
+                          Instant zero-friction setup. Auto-provisions 3 liquid accounts and 8 essential categories.
+                        </p>
+                      </div>
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-all mt-0.5 ${
+                          presetMode === "default"
+                            ? "bg-white border-white text-zinc-950"
+                            : "border-white/20 bg-transparent"
                         }`}
                       >
-                        <OptIcon size={12} strokeWidth={1.75} className={isSelected ? "text-zinc-950" : "text-white/60"} />
-                        <span>{opt.chipLabel}</span>
-                      </button>
-                    );
-                  })}
+                        {presetMode === "default" && <Check size={11} strokeWidth={3} />}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-2.5 border-t border-white/[0.06]">
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
+                        Physical Cash
+                      </span>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
+                        Checking & Bank
+                      </span>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
+                        Digital E-Wallet
+                      </span>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
+                        +8 Core Categories
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Option B: Custom */}
+                  <div
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setPresetMode("custom");
+                    }}
+                    className={`group p-4 rounded-[20px] text-left transition-all duration-300 border cursor-pointer relative ${
+                      presetMode === "custom"
+                        ? "bg-white/[0.06] border-white/30 shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
+                        : "bg-white/[0.02] border-white/8 opacity-55 hover:opacity-80"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <span className="text-[14px] font-semibold text-white tracking-tight block">
+                          Custom Architecture
+                        </span>
+                        <p className="text-[12px] text-white/50 leading-relaxed">
+                          Handpick your starting channels in the next step. Custom bank accounts, credit lines, and personal categories can be tailored anytime in Settings.
+                        </p>
+                      </div>
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-all mt-0.5 ${
+                          presetMode === "custom"
+                            ? "bg-white border-white text-zinc-950"
+                            : "border-white/20 bg-transparent"
+                        }`}
+                      >
+                        {presetMode === "custom" && <Check size={11} strokeWidth={3} />}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-
-                {/* 5th Option (Full Width) */}
-                {(() => {
-                  const opt = FOCUS_OPTIONS[4];
-                  const isSelected = selectedFocus === opt.key;
-                  const OptIcon = opt.icon;
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setSelectedFocus(opt.key);
-                      }}
-                      className={`w-full py-2.5 px-3 rounded-[20px] text-[11px] font-semibold transition-all active:scale-[0.98] cursor-pointer text-center border flex items-center justify-center gap-1.5 ${
-                        isSelected
-                          ? "bg-white text-zinc-950 border-white shadow-lg"
-                          : "bg-white/[0.035] border-white/10 text-white/70 hover:text-white hover:bg-white/[0.06]"
-                      }`}
-                    >
-                      <OptIcon size={12} strokeWidth={1.75} className={isSelected ? "text-zinc-950" : "text-white/60"} />
-                      <span>{opt.chipLabel}</span>
-                    </button>
-                  );
-                })()}
               </div>
-
-              {/* Dynamic 1-sentence descriptor */}
-              <p className="text-[11px] text-center text-white/45 px-2">
-                {currentFocus.desc}
-              </p>
             </motion.div>
           )}
 
           {/* ======================================================== */}
-          {/* STEP 2: ACTIVE ACCOUNTS (COMPACT SQUIRCLE TILES GRID)     */}
+          {/* STEP 2: LUXURY ARCHETYPE TELEMETRY CARD SELECTOR         */}
           {/* ======================================================== */}
           {step === 2 && (
             <motion.div
               key="step-2"
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.26, ease: "easeOut" }}
-              className="space-y-4"
+              exit={{ opacity: 0, y: -14 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="space-y-3 w-full text-left"
             >
-              <div className="space-y-1 text-center">
-                <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
-                  Step 02 · Channels
-                </span>
-                <h1 className="text-[24px] sm:text-[26px] font-semibold tracking-tight text-white leading-tight">
-                  Select your active accounts
+              {/* Editorial Header */}
+              <div className="space-y-1.5 text-left mb-1">
+                <div className="inline-flex items-center gap-2">
+                  <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
+                    Step 02
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-white/25" />
+                  <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
+                    Financial Focus
+                  </span>
+                </div>
+                <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
+                  Choose your <span className="font-semibold">archetype</span>
                 </h1>
-                <p className="text-[12px] font-normal text-white/50 leading-snug max-w-xs mx-auto">
-                  Only include accounts you actually use for a clean, noise-free ledger
+                <p className="text-[13px] font-normal text-white/50 leading-relaxed">
+                  Calibrate your home dashboard widgets, metrics, and tracking priority.
                 </p>
               </div>
 
-              {/* 2-Column Compact Squircle Grid */}
-              <div className="grid grid-cols-2 gap-2.5 pt-1">
-                {ACCOUNT_OPTIONS.slice(0, 4).map((acc) => {
+              <ArchetypeCardSelector
+                items={ARCHETYPE_ITEMS}
+                activeIndex={Math.max(
+                  0,
+                  ARCHETYPE_ITEMS.findIndex((f) => f.key === selectedFocus),
+                )}
+                onActiveChange={(item) => setSelectedFocus(item.key as FocusKey)}
+              />
+            </motion.div>
+          )}
+
+          {/* ======================================================== */}
+          {/* STEP 3: ACTIVE ACCOUNTS (CUSTOM MODE ONLY)               */}
+          {/* ======================================================== */}
+          {step === 3 && (
+            <motion.div
+              key="step-3"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -14 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="space-y-5 w-full text-left"
+            >
+              {/* Editorial Header */}
+              <div className="space-y-1.5 text-left">
+                <div className="inline-flex items-center gap-2">
+                  <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
+                    Step 03
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-white/25" />
+                  <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
+                    Active Channels
+                  </span>
+                </div>
+                <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
+                  Select active <span className="font-semibold">accounts</span>
+                </h1>
+                <p className="text-[13px] font-normal text-white/50 leading-relaxed">
+                  Toggle the payment channels you transact with regularly for a noise-free ledger.
+                </p>
+              </div>
+
+              {/* Open, unboxed vertical list with hairline dividers */}
+              <div className="divide-y divide-white/[0.07] border-y border-white/[0.08]">
+                {ACCOUNT_OPTIONS.map((acc) => {
                   const isChecked = Boolean(selectedAccounts[acc.id]);
                   const Icon = acc.icon;
                   return (
@@ -506,218 +577,189 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                       key={acc.id}
                       type="button"
                       onClick={() => handleToggleAccount(acc.id)}
-                      className={`p-3.5 rounded-[22px] text-left transition-all active:scale-[0.98] cursor-pointer border relative overflow-hidden ${
-                        isChecked
-                          ? "bg-white/[0.08] border-white/28 shadow-lg"
-                          : "bg-white/[0.025] border-white/8 opacity-55 hover:opacity-80"
-                      }`}
+                      className="w-full py-3.5 px-1 flex items-center justify-between text-left transition-all active:scale-[0.99] cursor-pointer group"
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3.5">
                         <div
-                          className={`w-8.5 h-8.5 rounded-[13px] flex items-center justify-center border ${
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all ${
                             isChecked
-                              ? "bg-white/15 border-white/30 text-white"
-                              : "bg-white/5 border-white/10 text-white/40"
+                              ? "bg-white/10 border-white/25 text-white"
+                              : "bg-white/[0.03] border-white/10 text-white/40 group-hover:text-white/70"
                           }`}
                         >
                           <Icon size={16} strokeWidth={1.75} />
                         </div>
-                        <div
-                          className={`w-4.5 h-4.5 rounded-full flex items-center justify-center border transition-all ${
-                            isChecked
-                              ? "bg-white border-white text-zinc-950"
-                              : "border-white/20 bg-transparent"
-                          }`}
-                        >
-                          {isChecked && <Check size={10} strokeWidth={2.5} />}
+                        <div>
+                          <div
+                            className={`text-[13px] font-medium tracking-tight transition-colors ${
+                              isChecked ? "text-white" : "text-white/50"
+                            }`}
+                          >
+                            {acc.name}
+                          </div>
+                          <div className="text-[11px] text-white/40 mt-0.5">
+                            {acc.sub}
+                          </div>
                         </div>
                       </div>
-                      <div className="text-[12px] font-semibold text-white leading-tight">
-                        {acc.name}
-                      </div>
-                      <div className="text-[11px] text-white/45 mt-0.5 leading-snug">
-                        {acc.sub}
+
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
+                          isChecked
+                            ? "bg-white border-white text-zinc-950"
+                            : "border-white/20 bg-transparent group-hover:border-white/40"
+                        }`}
+                      >
+                        {isChecked && <Check size={11} strokeWidth={3} />}
                       </div>
                     </button>
                   );
                 })}
-
-                {/* 5th Option: Investments & Assets (Full Width Tile) */}
-                <div className="col-span-2">
-                  {(() => {
-                    const acc = ACCOUNT_OPTIONS[4];
-                    const isChecked = Boolean(selectedAccounts[acc.id]);
-                    const Icon = acc.icon;
-                    return (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleAccount(acc.id)}
-                        className={`w-full p-3.5 rounded-[22px] text-left transition-all active:scale-[0.98] cursor-pointer border flex items-center justify-between ${
-                          isChecked
-                            ? "bg-white/[0.08] border-white/28 shadow-lg"
-                            : "bg-white/[0.025] border-white/8 opacity-55 hover:opacity-80"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-8.5 h-8.5 rounded-[13px] flex items-center justify-center border ${
-                              isChecked
-                                ? "bg-white/15 border-white/30 text-white"
-                                : "bg-white/5 border-white/10 text-white/40"
-                            }`}
-                          >
-                            <Icon size={16} strokeWidth={1.75} />
-                          </div>
-                          <div>
-                            <div className="text-[12px] font-semibold text-white leading-tight">
-                              {acc.name}
-                            </div>
-                            <div className="text-[11px] text-white/45">
-                              {acc.sub}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div
-                          className={`w-4.5 h-4.5 rounded-full flex items-center justify-center border transition-all ${
-                            isChecked
-                              ? "bg-white border-white text-zinc-950"
-                              : "border-white/20 bg-transparent"
-                          }`}
-                        >
-                          {isChecked && <Check size={10} strokeWidth={2.5} />}
-                        </div>
-                      </button>
-                    );
-                  })()}
-                </div>
               </div>
             </motion.div>
           )}
 
           {/* ======================================================== */}
-          {/* STEP 3: STARTING BASELINE (MINIMAL LUXURY TYPOGRAPHY)     */}
-          {/* ======================================================== */}
-          {step === 3 && (
-            <motion.div
-              key="step-3"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.26, ease: "easeOut" }}
-              className="space-y-5 text-center"
-            >
-              <div className="space-y-1">
-                <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
-                  Step 03 · Starting Baseline
-                </span>
-                <h1 className="text-[24px] sm:text-[26px] font-semibold tracking-tight text-white leading-tight">
-                  Set starting cash balance
-                </h1>
-                <p className="text-[12px] font-normal text-white/50 leading-snug max-w-xs mx-auto">
-                  Seeds your baseline Net Worth so your analytics start with real figures
-                </p>
-              </div>
-
-              {/* Clean Floating Number Centerpiece (No Heavy Bounding Box) */}
-              <div className="py-3">
-                <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest block mb-1">
-                  Primary Liquid Reserve
-                </span>
-                <div className="text-[38px] sm:text-[44px] font-semibold text-white tracking-tight amount leading-none">
-                  {formatRupiah(startingBalance)}
-                </div>
-                <p className="text-[11px] text-white/40 mt-2">
-                  Can be adjusted anytime from Wallet Management
-                </p>
-              </div>
-
-              {/* Quick Preset Chips */}
-              <div className="space-y-2.5 max-w-xs mx-auto">
-                <div className="grid grid-cols-4 gap-2">
-                  {[250000, 500000, 1000000, 5000000].map((inc) => (
-                    <button
-                      key={inc}
-                      type="button"
-                      onClick={() => handleQuickAddBalance(inc)}
-                      className="py-2.5 px-1 rounded-[16px] text-[11px] font-semibold amount border active:scale-95 transition-all cursor-pointer text-white text-center hover:bg-white/10"
-                      style={{
-                        background: "rgba(255, 255, 255, 0.04)",
-                        borderColor: "rgba(255, 255, 255, 0.12)",
-                      }}
-                    >
-                      +{inc >= 1000000 ? `${inc / 1000000}M` : `${inc / 1000}K`}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex justify-center pt-1">
-                  <button
-                    type="button"
-                    onClick={handleClearBalance}
-                    className="text-[11px] font-semibold text-white/40 hover:text-white/70 transition-colors cursor-pointer"
-                  >
-                    Reset to Rp 0
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ======================================================== */}
-          {/* STEP 4: DAILY HABIT & REMINDER (COMPACT LUMINOUS DIAL)    */}
+          {/* STEP 4: STARTING BASELINE (OPEN FLUID NUMBER DISPLAY)     */}
           {/* ======================================================== */}
           {step === 4 && (
             <motion.div
               key="step-4"
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.26, ease: "easeOut" }}
-              className="space-y-4 text-center"
+              exit={{ opacity: 0, y: -14 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="space-y-6 w-full text-left"
             >
-              <div className="space-y-1">
-                <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase block">
-                  Step 04 · Habit Formation
-                </span>
-                <h1 className="text-[24px] sm:text-[26px] font-semibold tracking-tight text-white leading-tight">
-                  Daily Logging Routine
+              {/* Editorial Header */}
+              <div className="space-y-1.5 text-left">
+                <div className="inline-flex items-center gap-2">
+                  <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
+                    {presetMode === "default" ? "Step 03" : "Step 04"}
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-white/25" />
+                  <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
+                    Starting Baseline
+                  </span>
+                </div>
+                <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
+                  Initial <span className="font-semibold">cash reserve</span>
                 </h1>
-                <p className="text-[12px] font-normal text-white/50 leading-snug max-w-xs mx-auto">
-                  A subtle evening nudge to capture your day's outlays under 5 seconds
+                <p className="text-[13px] font-normal text-white/50 leading-relaxed">
+                  Input your starting liquid balance to calibrate Net Worth calculations accurately.
                 </p>
               </div>
 
-              {/* Compact Luminous Glass Pod */}
-              <div
-                className="p-5 rounded-[28px] relative overflow-hidden border flex flex-col items-center justify-center space-y-4"
-                style={{
-                  background: "rgba(255, 255, 255, 0.03)",
-                  backdropFilter: "blur(32px)",
-                  WebkitBackdropFilter: "blur(32px)",
-                  borderColor: "rgba(255, 255, 255, 0.14)",
-                  boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.2)",
-                }}
-              >
-                {/* Switch Bar */}
-                <div className="w-full flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <Bell size={15} strokeWidth={1.75} className="text-white/80" />
-                    <span className="text-[13px] font-semibold text-white">
-                      Daily Evening Nudge
+              {/* Unboxed fluid balance input */}
+              <div className="space-y-6">
+                <div className="space-y-2 border-b border-white/15 pb-3 focus-within:border-white transition-colors">
+                  <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
+                    Liquid Balance (IDR)
+                  </label>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[20px] sm:text-[22px] font-light text-white/40 select-none">
+                      Rp
                     </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={startingBalance === 0 ? "" : startingBalance.toLocaleString("id-ID")}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, "");
+                        setStartingBalance(raw ? parseInt(raw, 10) : 0);
+                      }}
+                      placeholder="0"
+                      className="w-full text-[34px] sm:text-[40px] font-light tracking-tight text-white amount leading-none bg-transparent outline-none placeholder:text-white/20"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Increment Chips */}
+                <div className="space-y-2">
+                  <span className="text-[11px] text-white/40 font-medium block">
+                    Quick additive chips
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {[250000, 500000, 1000000, 5000000].map((inc) => (
+                      <button
+                        key={inc}
+                        type="button"
+                        onClick={() => handleQuickAddBalance(inc)}
+                        className="py-1.5 px-3 rounded-full text-[12px] font-medium amount border active:scale-95 transition-all cursor-pointer text-white/80 border-white/15 hover:border-white/40 hover:text-white bg-white/[0.04]"
+                      >
+                        +{inc >= 1000000 ? `${inc / 1000000}M` : `${inc / 1000}K`}
+                      </button>
+                    ))}
+                    {startingBalance > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearBalance}
+                        className="py-1.5 px-3 rounded-full text-[12px] font-medium text-white/40 hover:text-white/80 transition-colors cursor-pointer"
+                      >
+                        Reset to 0
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ======================================================== */}
+          {/* STEP 5: DAILY LOGGING ROUTINE (HABIT FORMATION)           */}
+          {/* ======================================================== */}
+          {step === 5 && (
+            <motion.div
+              key="step-5"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -14 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="space-y-6 w-full text-left"
+            >
+              {/* Editorial Header */}
+              <div className="space-y-1.5 text-left">
+                <div className="inline-flex items-center gap-2">
+                  <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
+                    {presetMode === "default" ? "Step 04" : "Step 05"}
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-white/25" />
+                  <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
+                    Habit Rhythm
+                  </span>
+                </div>
+                <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
+                  Daily <span className="font-semibold">evening nudge</span>
+                </h1>
+                <p className="text-[13px] font-normal text-white/50 leading-relaxed">
+                  A subtle prompt to record your day's outlays under 5 seconds so streaks stay unbroken.
+                </p>
+              </div>
+
+              {/* Feature Toggle Row (Strictly adheres to GEMINI.md Rule 3) */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between py-2 border-b border-white/[0.08]">
+                  <div className="space-y-0.5 pr-4">
+                    <div className="text-[14px] font-semibold text-white">
+                      Daily Routine Reminder
+                    </div>
+                    <div className="text-[11px] text-white/45 leading-relaxed">
+                      Silent prompt each evening to capture transactions
+                    </div>
                   </div>
 
                   <button
                     type="button"
+                    role="switch"
+                    aria-checked={reminderEnabled}
                     onClick={() => {
                       triggerHaptic("medium");
                       setReminderEnabled(!reminderEnabled);
                     }}
-                    className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer border ${
+                    className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0 border ${
                       reminderEnabled
                         ? "bg-white border-white"
-                        : "bg-white/10 border-white/10"
+                        : "bg-white/10 border-white/15 opacity-60"
                     }`}
                   >
                     <motion.div
@@ -730,35 +772,41 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   </button>
                 </div>
 
-                {/* Minimal LED Time Display */}
-                <div className="py-1">
-                  <div className="text-[42px] font-semibold tracking-wider text-white amount leading-none">
-                    {reminderHour}:00
+                {/* Schedule Selector */}
+                <div className={`space-y-3 transition-opacity duration-300 ${reminderEnabled ? "opacity-100" : "opacity-30 pointer-events-none"}`}>
+                  <div className="flex items-baseline justify-between">
+                    <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
+                      Scheduled Time
+                    </label>
+                    <span className="text-[12px] font-medium text-white/60 amount">
+                      {reminderHour}:00 Local Time
+                    </span>
                   </div>
-                  <span className="text-[11px] font-medium text-white/45 tracking-wider uppercase block mt-1.5">
-                    {reminderHour === 20 ? "8:00 PM · Evening Catchup" : `${reminderHour}:00 Local Time`}
-                  </span>
-                </div>
 
-                {/* Hour Selectors */}
-                <div className="flex items-center gap-2">
-                  {[19, 20, 21, 22].map((h) => (
-                    <button
-                      key={h}
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setReminderHour(h);
-                      }}
-                      className={`px-3 py-1 rounded-full text-[11px] font-semibold amount border transition-all cursor-pointer ${
-                        reminderHour === h
-                          ? "bg-white text-zinc-950 border-white"
-                          : "bg-white/5 text-white/60 border-white/10 hover:border-white/20"
-                      }`}
-                    >
-                      {h}:00
-                    </button>
-                  ))}
+                  {/* Hour Pills */}
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                    {[18, 19, 20, 21, 22].map((h) => (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setReminderHour(h);
+                        }}
+                        className={`py-2 px-3.5 rounded-full text-[12px] font-medium amount border transition-all cursor-pointer shrink-0 ${
+                          reminderHour === h
+                            ? "bg-white text-zinc-950 border-white font-semibold shadow-md"
+                            : "bg-white/[0.04] text-white/60 border-white/10 hover:border-white/30 hover:text-white"
+                        }`}
+                      >
+                        {h}:00
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="text-[11px] text-white/40 leading-relaxed pt-1">
+                    Trouvaille runs silently in the background without disturbing your device focus mode.
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -769,30 +817,26 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       {/* ============================================================ */}
       {/* 4. BOTTOM ACTION PILL                                        */}
       {/* ============================================================ */}
-      <div className="px-3 relative z-10 pt-2 max-w-sm mx-auto w-full">
+      <div className="px-3 sm:px-4 relative z-10 pt-2 max-w-md mx-auto w-full">
         <button
           type="button"
           onClick={handleNextStep}
-          className="w-full py-3.5 rounded-[22px] font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 shadow-xl flex items-center justify-center gap-2"
-          style={{
-            boxShadow:
-              "0 10px 30px rgba(255, 255, 255, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.8)",
-          }}
+          className="w-full py-3.5 rounded-full font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(255,255,255,0.15)] hover:bg-white/95"
         >
-          <span>{step === 4 ? "Enter Trouvaille" : "Continue"}</span>
-          <ArrowRight size={16} strokeWidth={2} />
+          <span>{step === 5 ? "Enter Trouvaille" : "Continue"}</span>
+          <ArrowRight size={15} strokeWidth={2} />
         </button>
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="text-center pt-2">
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
                 setStartingBalance(0);
-                setStep(4);
+                setStep(5);
               }}
-              className="text-[11px] font-semibold text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+              className="text-[11px] font-medium text-white/40 hover:text-white/70 transition-colors cursor-pointer"
             >
               Skip baseline balance
             </button>

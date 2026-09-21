@@ -183,8 +183,8 @@ export function ClipboardTransactionBanner({
                 border: "1px solid var(--glass-border)",
                 color: "var(--text-tertiary)",
               }}
-              title="Tutup"
-              aria-label="Tutup"
+              title="Close"
+              aria-label="Close"
             >
               <X size={13} />
             </button>

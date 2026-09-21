@@ -21,11 +21,15 @@ import {
 } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import {
   getSavedHoldings,
+  getSavedUsdtPref,
   calculateHoldingValuation,
+  fetchHoldingsFromSupabase,
+  refreshAllPortfolioPrices,
 } from "../../lib/marketPriceService";
 import { IconRenderer } from "../ui/IconRenderer";
 import type { Wallet } from "../../lib/types";
@@ -62,13 +66,28 @@ export function AssetAnalyticsSection({
     balancesByName,
   } = useWalletBalances();
 
+  const { user } = useAuth();
+
   // Retrieve saved market holdings & fixed assets reactively
-  const [holdings, setHoldings] = useState(() => getSavedHoldings());
+  const [holdings, setHoldings] = useState(() => getSavedHoldings(user?.id));
   const [usdtVersion, setUsdtVersion] = useState(0);
 
   useEffect(() => {
+    setHoldings(getSavedHoldings(user?.id));
+    if (user?.id && user.id !== "guest_local_user") {
+      fetchHoldingsFromSupabase(user.id).then((cloud) => {
+        setHoldings(cloud);
+        setUsdtVersion((v) => v + 1);
+        refreshAllPortfolioPrices(user.id).catch(() => {});
+      });
+    } else {
+      refreshAllPortfolioPrices(user?.id).catch(() => {});
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
     const handleUpdate = () => {
-      setHoldings(getSavedHoldings());
+      setHoldings(getSavedHoldings(user?.id));
       setUsdtVersion((v) => v + 1);
     };
     window.addEventListener("trouvaille_holdings_updated", handleUpdate);
@@ -77,22 +96,44 @@ export function AssetAnalyticsSection({
       window.removeEventListener("trouvaille_holdings_updated", handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };
-  }, []);
+  }, [user?.id]);
 
-  // USDT holding detailed info
+  // Find all crypto & USDT wallets tracked in wallets table
+  const cryptoWallets = useMemo(() => {
+    return wallets.filter(
+      (w) =>
+        w.name.trim().toLowerCase() === "crypto" ||
+        w.name.trim().toLowerCase() === "usdt" ||
+        w.name.trim().toLowerCase().includes("usdt") ||
+        w.name.trim().toLowerCase().includes("tether") ||
+        w.name.trim().toLowerCase().includes("crypto") ||
+        w.classification === "investment",
+    );
+  }, [wallets]);
+
+  // Real recorded crypto capital in wallets/accounts
+  const recordedCryptoBalance = useMemo(() => {
+    return cryptoWallets.reduce((sum, w) => {
+      const bal =
+        balancesByName[w.name.toLowerCase()] ??
+        balancesByName[w.name.trim().toLowerCase()] ??
+        0;
+      return sum + Math.max(0, bal);
+    }, 0);
+  }, [cryptoWallets, balancesByName]);
+
+  // USDT holding detailed info scoped to user
   const usdtInfo = useMemo(() => {
-    let units = 1057;
-    let rate = 17725;
-    let costBasis = 14860559;
-    try {
-      const savedV2 = localStorage.getItem("trouvaille_usdt_valuation_v2");
-      if (savedV2) {
-        const parsed = JSON.parse(savedV2);
-        if (parsed.units) units = Number(parsed.units);
-        if (parsed.rate) rate = Number(parsed.rate);
-        if (parsed.costBasis) costBasis = Number(parsed.costBasis);
-      }
-    } catch {}
+    const pref = getSavedUsdtPref(user?.id);
+    const units = pref.units;
+    const rate = pref.rate;
+    // Robust cost basis: prioritize user-defined cost basis, fallback to wallet recorded balance
+    const costBasis =
+      pref.costBasis && pref.costBasis > 0
+        ? pref.costBasis
+        : recordedCryptoBalance > 0
+          ? recordedCryptoBalance
+          : 0;
     const marketValue = Math.round(units * rate);
     const floatingPnL = marketValue - costBasis;
     const floatingPnLPct = costBasis > 0 ? (floatingPnL / costBasis) * 100 : 0;
@@ -108,32 +149,18 @@ export function AssetAnalyticsSection({
       asset_type: "crypto" as const,
       units,
     };
-  }, [usdtVersion]);
-
-  // Find crypto wallet if user tracks one in wallets table
-  const cryptoWallet = useMemo(() => {
-    return (
-      wallets.find(
-        (w) =>
-          w.name.trim().toLowerCase() === "crypto" ||
-          w.name.trim().toLowerCase() === "usdt" ||
-          w.classification === "investment",
-      ) || null
-    );
-  }, [wallets]);
+  }, [usdtVersion, user?.id, recordedCryptoBalance]);
 
   // Determine real recorded crypto cost basis
   const cryptoCostBasis = useMemo(() => {
-    if (cryptoWallet) {
-      return balancesByName[cryptoWallet.name.toLowerCase()] ?? usdtInfo.costBasis;
-    }
-    return usdtInfo.costBasis;
-  }, [cryptoWallet, balancesByName, usdtInfo.costBasis]);
+    if (recordedCryptoBalance > 0) return recordedCryptoBalance;
+    return usdtInfo.units > 0 ? usdtInfo.costBasis : 0;
+  }, [recordedCryptoBalance, usdtInfo.costBasis, usdtInfo.units]);
 
   // Cost basis of other holdings (stocks, gold, funds, fixed assets)
   const otherHoldingsCostBasis = useMemo(() => {
     return holdings.reduce((sum, h) => {
-      if (h.asset_type === "crypto") return sum;
+      if (h.asset_type === "crypto" || h.symbol?.toUpperCase() === "USDT") return sum;
       return sum + calculateHoldingValuation(h).costBasis;
     }, 0);
   }, [holdings]);
@@ -149,22 +176,24 @@ export function AssetAnalyticsSection({
   // Combined holdings list for the simplified Holdings card
   const allHoldings = useMemo(() => {
     const list = [
-      usdtInfo,
-      ...holdings.map((h) => {
-        const val = calculateHoldingValuation(h);
-        return {
-          id: h.id,
-          symbol: h.symbol,
-          name: h.name,
-          costBasis: val.costBasis,
-          marketValue: val.marketValue,
-          floatingPnL: val.floatingPnL,
-          floatingPnLPct: val.floatingPnLPct,
-          icon: h.icon || (h.asset_type === "fixed_asset" ? "Home" : "TrendingUp"),
-          asset_type: h.asset_type,
-          units: h.units,
-        };
-      }),
+      ...(usdtInfo.units > 0 ? [usdtInfo] : []),
+      ...holdings
+        .filter((h) => h.symbol?.toUpperCase() !== "USDT")
+        .map((h) => {
+          const val = calculateHoldingValuation(h);
+          return {
+            id: h.id,
+            symbol: h.symbol,
+            name: h.name,
+            costBasis: val.costBasis,
+            marketValue: val.marketValue,
+            floatingPnL: val.floatingPnL,
+            floatingPnLPct: val.floatingPnLPct,
+            icon: h.icon || (h.asset_type === "fixed_asset" ? "Home" : "TrendingUp"),
+            asset_type: h.asset_type,
+            units: h.units,
+          };
+        }),
     ];
     return list;
   }, [usdtInfo, holdings]);
@@ -192,6 +221,7 @@ export function AssetAnalyticsSection({
     let fixedAssets = 0;
 
     holdings.forEach((h) => {
+      if (h.symbol?.toUpperCase() === "USDT") return;
       const val = calculateHoldingValuation(h);
       const chosenVal = viewMode === "net" ? val.costBasis : val.marketValue;
       if (h.asset_type === "stock") stocks += chosenVal;
@@ -304,6 +334,7 @@ export function AssetAnalyticsSection({
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="flex items-center justify-between">
@@ -548,6 +579,7 @@ export function AssetAnalyticsSection({
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="flex items-center justify-between">
@@ -680,6 +712,7 @@ export function AssetAnalyticsSection({
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="flex items-center justify-between">
@@ -769,7 +802,7 @@ export function AssetAnalyticsSection({
 
         {/* Dual Tone Segmented Bar */}
         <div className="space-y-1">
-          <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden flex">
+          <div className="w-full h-2 rounded-full bg-black/[0.06] dark:bg-white/10 overflow-hidden flex">
             <div
               className="h-full transition-all duration-500"
               style={{
@@ -829,6 +862,7 @@ export function AssetAnalyticsSection({
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="flex items-center justify-between">
@@ -945,6 +979,7 @@ export function AssetAnalyticsSection({
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="flex items-center justify-between">
@@ -1053,7 +1088,7 @@ export function AssetAnalyticsSection({
               {cushionProgress.toFixed(1)}%
             </span>
           </div>
-          <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+          <div className="w-full h-2 rounded-full bg-black/[0.06] dark:bg-white/10 overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
@@ -1095,6 +1130,7 @@ export function AssetAnalyticsSection({
           style={{
             background: "var(--bg-elevated)",
             border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
           }}
         >
           <div className="flex items-center justify-between">
@@ -1123,7 +1159,7 @@ export function AssetAnalyticsSection({
           </p>
 
           {/* Runway Progress Bar */}
-          <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden mt-2">
+          <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/10 overflow-hidden mt-2">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
@@ -1140,6 +1176,7 @@ export function AssetAnalyticsSection({
           style={{
             background: "var(--bg-elevated)",
             border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
           }}
         >
           <div className="flex items-center justify-between">
@@ -1178,6 +1215,7 @@ export function AssetAnalyticsSection({
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="flex items-center gap-1.5">

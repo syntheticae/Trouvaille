@@ -2,6 +2,7 @@ import { Info, Activity } from "lucide-react";
 import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export function SavingsRingCard({
   rate,
@@ -16,6 +17,8 @@ export function SavingsRingCard({
   size?: WidgetSize;
   onOpenDetail?: () => void;
 }) {
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const boundedRate = Math.min(100, Math.max(0, rate));
   const radius = size === "half" ? 26 : 38;
   const strokeWidth = size === "half" ? 5 : 6.5;
@@ -42,9 +45,8 @@ export function SavingsRingCard({
           cy={radius + strokeWidth}
           r={radius}
           fill="none"
-          stroke="var(--glass-border)"
+          stroke={isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)"}
           strokeWidth={strokeWidth}
-          opacity={0.3}
         />
         <circle
           cx={radius + strokeWidth}
@@ -74,7 +76,7 @@ export function SavingsRingCard({
     return (
       <CompactShell title="Savings Ring" onOpenDetail={onOpenDetail}>
         <div className="flex-1 flex items-center justify-center py-0.5">{ringSvg}</div>
-        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
+        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
           <span>{isSurplus ? "Retained" : "Deficit"}</span>
           <span
             className={`font-semibold amount ${
@@ -89,7 +91,14 @@ export function SavingsRingCard({
   }
 
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+    <section
+      className="glass-surface p-4 rounded-[22px] select-none space-y-3"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div
@@ -186,7 +195,7 @@ export function SavingsRingCard({
                 {formatRupiah(targetSavings)}
               </span>
             </div>
-            <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
+            <div className="w-full h-1.5 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
               <div
                 className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-700"
                 style={{ width: `${ruleProgress}%` }}
@@ -196,7 +205,7 @@ export function SavingsRingCard({
         </div>
       </div>
 
-      <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+      <div className="pt-1 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
         <span>
           {isSurplus
             ? `Net capital surplus of ${formatRupiah(netRetention)} preserved.`

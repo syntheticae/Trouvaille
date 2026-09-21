@@ -225,7 +225,7 @@ export function MetricDrillDownSheet({
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider pb-1 border-b border-white/5">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider pb-1 border-b border-black/5 dark:border-white/5">
                   <span>Rincian Sektor / Kategori</span>
                   <span>Nominal & Porsi</span>
                 </div>
@@ -247,7 +247,7 @@ export function MetricDrillDownSheet({
                       </div>
                     </div>
                     {item.pct !== undefined && (
-                      <div className="w-full h-1 rounded-full overflow-hidden bg-white/10">
+                      <div className="w-full h-1 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
                         <div
                           className="h-full rounded-full bg-[var(--text-primary)] transition-all"
                           style={{ width: `${Math.min(100, Math.max(0, item.pct))}%` }}

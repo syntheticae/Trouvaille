@@ -110,14 +110,14 @@ export function MilestoneBadgesSheet({
               </div>
               <div>
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-                  Rekor Pencatatan Harian
+                  Daily Logging Streak
                 </span>
                 <div className="flex items-baseline gap-1.5 mt-0.5">
                   <span className="text-[24px] font-semibold text-[var(--text-primary)] amount leading-none">
                     {streak}
                   </span>
                   <span className="text-[13px] font-medium text-[var(--text-secondary)]">
-                    Hari Berturut-turut
+                    Consecutive Days
                   </span>
                 </div>
               </div>
@@ -138,12 +138,12 @@ export function MilestoneBadgesSheet({
               {loggedToday ? (
                 <>
                   <Check size={11} strokeWidth={2} />
-                  <span>Aktif Hari Ini</span>
+                  <span>Logged Today</span>
                 </>
               ) : (
                 <>
                   <Calendar size={11} strokeWidth={1.75} />
-                  <span>Belum Catat Hari Ini</span>
+                  <span>Not Logged Today</span>
                 </>
               )}
             </div>
@@ -152,9 +152,9 @@ export function MilestoneBadgesSheet({
           {/* Micro 7-Day Consistency Tracker */}
           <div className="mt-3 pt-3 border-t border-white/5">
             <div className="flex justify-between items-center mb-1.5 text-[10px] text-[var(--text-tertiary)]">
-              <span>Konsistensi 7 Hari Terakhir</span>
+              <span>Last 7 Days Consistency</span>
               <span className="font-semibold text-[var(--text-secondary)]">
-                {last7Days.filter((d) => d.isLogged).length}/7 Hari Aktif
+                {last7Days.filter((d) => d.isLogged).length}/7 Days Active
               </span>
             </div>
             <div className="grid grid-cols-7 gap-1.5 text-center">
@@ -204,7 +204,7 @@ export function MilestoneBadgesSheet({
             <div className="flex items-center gap-1.5">
               <Sparkles size={13} strokeWidth={1.75} className="text-[var(--text-primary)]" />
               <span className="font-semibold text-[var(--text-primary)]">
-                Koleksi Prestasi Finansial
+                Financial Achievements
               </span>
             </div>
             <span className="font-semibold text-[var(--text-primary)] amount">
@@ -245,7 +245,7 @@ export function MilestoneBadgesSheet({
                     {selectedMilestone.title}
                   </h4>
                   <span className="text-[10px] font-semibold uppercase text-[var(--text-tertiary)]">
-                    Kriteria: {selectedMilestone.criteria}
+                    Criteria: {selectedMilestone.criteria}
                   </span>
                 </div>
               </div>
@@ -254,7 +254,7 @@ export function MilestoneBadgesSheet({
                 onClick={() => setSelectedMilestone(null)}
                 className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] px-2 py-0.5 rounded cursor-pointer"
               >
-                Tutup
+                Close
               </button>
             </div>
 
@@ -264,7 +264,7 @@ export function MilestoneBadgesSheet({
 
             <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
               <span className="text-[var(--text-tertiary)]">
-                Status Saat Ini:{" "}
+                Current Status:{" "}
                 <strong className="text-[var(--text-primary)] font-semibold">
                   {selectedMilestone.currentValueText}
                 </strong>
@@ -282,8 +282,8 @@ export function MilestoneBadgesSheet({
                 }}
               >
                 {selectedMilestone.isUnlocked
-                  ? "Pencapaian Terbuka"
-                  : `Progres ${selectedMilestone.progressPct}%`}
+                  ? "Unlocked"
+                  : `Progress ${selectedMilestone.progressPct}%`}
               </span>
             </div>
           </div>
@@ -337,7 +337,7 @@ export function MilestoneBadgesSheet({
                     {m.title}
                   </h5>
                   <p className="text-[9px] text-[var(--text-tertiary)] mt-0.5 line-clamp-1">
-                    {m.isUnlocked ? "Tercapai" : `${m.progressPct}% Selesai`}
+                    {m.isUnlocked ? "Unlocked" : `${m.progressPct}% Complete`}
                   </p>
                 </div>
 
@@ -357,8 +357,7 @@ export function MilestoneBadgesSheet({
 
         {/* 5. FOOTER ENCOURAGEMENT */}
         <p className="text-[10px] text-[var(--text-tertiary)] text-center leading-relaxed pt-1">
-          Setiap transaksi yang kamu catat secara rutin memperkuat akurasi ramalan kas,
-          menjaga ketahanan dana darurat, dan membangun kebiasaan finansial yang sehat.
+          Consistent transaction logging enhances forecast precision, safeguards emergency reserves, and builds durable financial habits.
         </p>
       </div>
     </BottomSheet>

@@ -15,12 +15,8 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  Briefcase,
-  Plane,
-  Layers,
-  User,
-  FileSpreadsheet,
   Inbox,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   BarChart,
@@ -41,10 +37,8 @@ import { useCategories } from "../hooks/useCategories";
 import { useToast } from "../contexts/ToastContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useSpace } from "../contexts/SpaceContext";
-import { SpaceSwitcherSheet } from "../components/spaces/SpaceSwitcherSheet";
 import { TransactionSheet } from "../components/transactions/TransactionSheet";
 import { BottomSheet } from "../components/ui/BottomSheet";
-import { LuxuryReportExportSheet } from "../components/export/LuxuryReportExportSheet";
 import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
 import { formatRupiah, getDateLabel } from "../lib/utils";
 import { IconRenderer } from "../components/ui/IconRenderer";
@@ -211,8 +205,6 @@ export function TransactionsPage({
   const batchDeleteTx = useBatchDeleteTransactions();
   const { showToast } = useToast();
   const { activeSpace, activeSpaceId, setActiveSpaceId, filterTransactionsBySpace } = useSpace();
-  const [spaceSwitcherOpen, setSpaceSwitcherOpen] = useState(false);
-  const [exportSheetOpen, setExportSheetOpen] = useState(false);
 
   // Selection Mode State for Bulk Actions
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -768,47 +760,19 @@ export function TransactionsPage({
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-start justify-between mb-3 gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-0.5">
-              <p
-                className="text-[12px] font-semibold"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {filter === "income"
-                  ? `${selectedMonthLabel} Inflow`
-                  : filter === "expense"
-                    ? `${selectedMonthLabel} Outflow`
-                    : filter === "transfer"
-                      ? `${selectedMonthLabel} Transfers`
-                      : filter === "adjustment"
-                        ? `${selectedMonthLabel} Corrections`
-                        : `${selectedMonthLabel} Activity`}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setSpaceSwitcherOpen(true);
-                }}
-                className="px-2 py-0.5 rounded-full text-[10px] font-semibold inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border border-white/10 hover:border-white/20"
-                style={{
-                  background: "var(--glass-fill)",
-                  color: "var(--text-primary)",
-                }}
-                title="Ganti Domain Finansial"
-              >
-                {activeSpace.icon === "Briefcase" ? (
-                  <Briefcase size={10} strokeWidth={1.75} />
-                ) : activeSpace.icon === "Plane" ? (
-                  <Plane size={10} strokeWidth={1.75} />
-                ) : activeSpace.icon === "Layers" ? (
-                  <Layers size={10} strokeWidth={1.75} />
-                ) : (
-                  <User size={10} strokeWidth={1.75} />
-                )}
-                <span>{activeSpace.name}</span>
-                <span className="text-[8px] opacity-60">▾</span>
-              </button>
-            </div>
+            <p
+              className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] truncate leading-none mb-1.5"
+            >
+              {filter === "income"
+                ? `${selectedMonthLabel} Inflow`
+                : filter === "expense"
+                  ? `${selectedMonthLabel} Outflow`
+                  : filter === "transfer"
+                    ? `${selectedMonthLabel} Transfers`
+                    : filter === "adjustment"
+                      ? `${selectedMonthLabel} Corrections`
+                      : `${selectedMonthLabel} Activity`}
+            </p>
             <p
               className="text-[28px] sm:text-[32px] font-bold tracking-tight leading-tight amount whitespace-nowrap"
               style={{ color: "var(--text-primary)" }}
@@ -816,15 +780,14 @@ export function TransactionsPage({
               {isStealthMode ? "Rp ••••••••" : formatRupiah(totalPeriodAmount)}
             </p>
             <p
-              className="text-[11px] font-medium mt-0.5"
-              style={{ color: "var(--text-tertiary)" }}
+              className="text-[11px] font-medium mt-1 text-[var(--text-tertiary)] truncate"
             >
               {dynamicChartData.length} data points · {selectedMonthLabel}
             </p>
           </div>
 
-          {/* Header Action Pills & Month Selector */}
-          <div className="flex items-center gap-1.5 shrink-0 mt-1">
+          {/* Header Action Pills: Stealth Mode & Month Selector */}
+          <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
             <button
               type="button"
               onClick={toggleStealthMode}
@@ -839,22 +802,25 @@ export function TransactionsPage({
               {isStealthMode ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setExportSheetOpen(true);
-                triggerHaptic("light");
-              }}
-              className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-secondary)",
-              }}
-              title="Export Financial Statement & Data"
-            >
-              <FileSpreadsheet size={14} strokeWidth={1.75} />
-            </button>
+            {onOpenImport && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenImport();
+                  triggerHaptic("light");
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+                title="Import Bank Statement"
+                aria-label="Import Bank Statement"
+              >
+                <FileSpreadsheet size={13} strokeWidth={1.75} />
+              </button>
+            )}
 
             <button
               type="button"
@@ -894,7 +860,7 @@ export function TransactionsPage({
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse" />
               <span>
-                Filtered to <strong>{activeSpace.name}</strong> space ({visibleTxs.length} txs)
+                Filtered to <strong>{activeSpace.name}</strong> ledger ({visibleTxs.length} txs)
               </span>
             </div>
             <button
@@ -1068,7 +1034,7 @@ export function TransactionsPage({
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search note, category, wallet, amount..."
+            placeholder="Search transactions..."
             className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold touch-manipulation no-pull min-w-0"
             style={{ color: "var(--text-primary)" }}
           />
@@ -1363,16 +1329,16 @@ export function TransactionsPage({
               style={{ color: "var(--text-primary)" }}
             >
               {search
-                ? "Tidak ada transaksi yang cocok"
-                : "Belum ada transaksi di periode ini"}
+                ? "No matching transactions found"
+                : "No transactions recorded in this period"}
             </p>
             <p
               className="text-[12px] mt-1 max-w-[260px] leading-relaxed"
               style={{ color: "var(--text-tertiary)" }}
             >
               {search
-                ? "Coba gunakan kata kunci lain atau periksa filter Anda."
-                : "Mulai kelola keuangan Anda dengan mencatat pengeluaran atau mengimpor mutasi."}
+                ? "Try searching with different keywords or adjust your filters."
+                : "Start managing your finances by logging an expense or importing bank statements."}
             </p>
             {!search && onOpenImport && (
               <div className="flex items-center gap-2 mt-4">
@@ -1389,7 +1355,7 @@ export function TransactionsPage({
                     color: "var(--text-primary)",
                   }}
                 >
-                  Import Rekening Koran
+                  Import Bank Statement
                 </button>
               </div>
             )}
@@ -2201,18 +2167,8 @@ export function TransactionsPage({
         </div>
       </BottomSheet>
 
-      {/* Money Space Switcher */}
-      <SpaceSwitcherSheet
-        isOpen={spaceSwitcherOpen}
-        onClose={() => setSpaceSwitcherOpen(false)}
-      />
-
-      {/* Luxury Report & Tax Export Sheet */}
-      <LuxuryReportExportSheet
-        isOpen={exportSheetOpen}
-        onClose={() => setExportSheetOpen(false)}
-        defaultSpaceId={activeSpaceId}
-      />
+      {/* Bottom padding for tabbar */}
+      <div className="h-6" />
     </div>
   );
 }

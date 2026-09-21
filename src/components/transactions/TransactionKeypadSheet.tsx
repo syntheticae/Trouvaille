@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Delete, Check } from "lucide-react";
+import { Delete, Check, RotateCcw } from "lucide-react";
 import { triggerHaptic } from "../../lib/haptics";
 import { formatRupiah } from "../../lib/utils";
 import { applyKeypadInput } from "../../lib/keypadHelper";
 import { evaluateMathSafe } from "../../lib/evaluateMathSafe";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface TransactionKeypadSheetProps {
   isOpen: boolean;
@@ -20,6 +21,9 @@ export function TransactionKeypadSheet({
   onExpressionChange,
   onDone,
 }: TransactionKeypadSheetProps) {
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+
   if (!isOpen) return null;
 
   const currentVal = evaluateMathSafe(expression);
@@ -42,118 +46,178 @@ export function TransactionKeypadSheet({
     }
   };
 
-  const handlePreset = (add: number) => {
+  const handleClear = () => {
     triggerHaptic("light");
-    const nextVal = currentVal + add;
-    const formatted = nextVal.toLocaleString("id-ID");
-    onExpressionChange(formatted, nextVal);
+    const res = applyKeypadInput(expression, "clear");
+    onExpressionChange(res.expression, res.numericValue);
   };
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end justify-center pointer-events-auto">
-        {/* Specular backdrop */}
+      <div className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-auto">
+        {/* Transparent click-outside backdrop: Leaves TransactionSheet nominal view 100% visible */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={handleDone}
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/[0.04] dark:bg-black/[0.12]"
         />
 
-        {/* Apple Luxury Keypad Drawer */}
+        {/* Compact Apple Liquid Glass Keypad Dock */}
         <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 28, stiffness: 320 }}
-          className="relative w-full max-w-[440px] rounded-t-[32px] overflow-hidden select-none border-t border-white/10 shadow-2xl"
+          initial={{ y: "100%", opacity: 0.5 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: "100%", opacity: 0 }}
+          transition={{ type: "spring", damping: 30, stiffness: 380 }}
+          className="relative w-full max-w-[440px] rounded-t-[26px] overflow-hidden select-none"
           style={{
-            background: "linear-gradient(180deg, #16161a 0%, #0d0d10 100%)",
-            boxShadow: "0 -8px 40px rgba(0,0,0,0.6)",
-            paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px)",
+            background: isDark
+              ? "rgba(18, 18, 24, 0.85)"
+              : "rgba(255, 255, 255, 0.88)",
+            backdropFilter: "blur(36px) saturate(190%) brightness(1.06)",
+            WebkitBackdropFilter: "blur(36px) saturate(190%) brightness(1.06)",
+            borderTop: isDark
+              ? "1px solid rgba(255, 255, 255, 0.16)"
+              : "1px solid rgba(0, 0, 0, 0.08)",
+            borderLeft: isDark
+              ? "1px solid rgba(255, 255, 255, 0.10)"
+              : "1px solid rgba(0, 0, 0, 0.05)",
+            borderRight: isDark
+              ? "1px solid rgba(255, 255, 255, 0.10)"
+              : "1px solid rgba(0, 0, 0, 0.05)",
+            boxShadow: isDark
+              ? "0 -12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18)"
+              : "0 -8px 30px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95)",
+            paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 8px), 12px)",
           }}
         >
           {/* Top Notch Pill */}
-          <div className="pt-3 pb-2 flex justify-center">
-            <div className="w-10 h-1 rounded-full bg-white/20" />
+          <div className="pt-2 pb-1 flex justify-center">
+            <div
+              className="w-9 h-1 rounded-full cursor-pointer hover:opacity-100 transition-opacity"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.22)"
+                  : "rgba(0, 0, 0, 0.18)",
+              }}
+              onClick={handleDone}
+            />
           </div>
 
-          {/* Current Expression & Live Evaluator Preview */}
-          <div className="px-6 py-2.5 flex items-baseline justify-between border-b border-white/[0.06] mb-2">
-            <div className="flex items-baseline gap-1.5 min-w-0">
-              <span className="text-[14px] font-semibold text-[var(--text-tertiary)]">
-                Rp
-              </span>
-              <span className="text-[26px] font-semibold text-[var(--text-primary)] truncate amount">
-                {expression || "0"}
-              </span>
-            </div>
-            {isExpression && (
-              <div className="text-right shrink-0">
-                <span className="text-[12px] text-[var(--text-tertiary)] block">
-                  Live Total
-                </span>
-                <span className="text-[14px] font-semibold text-[var(--accent)]">
-                  = {formatRupiah(currentVal)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Increment & Preset Strip */}
-          <div className="px-4 py-1.5 flex items-center justify-between gap-1.5 mb-1.5">
-            {[
-              { label: "+10K", add: 10000 },
-              { label: "+50K", add: 50000 },
-              { label: "+100K", add: 100000 },
-            ].map((p) => (
+          {/* Slim Liquid Toolbar: Live Math Indicator & Actions */}
+          <div className="px-4 py-1 flex items-center justify-between min-h-[34px]">
+            {/* Left Action / Live Math Pill */}
+            {isExpression ? (
               <button
-                key={p.label}
                 type="button"
-                onClick={() => handlePreset(p.add)}
-                className="flex-1 py-1.5 rounded-xl text-[11px] font-medium active:scale-95 transition-all text-center border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-[var(--text-secondary)]"
+                onClick={() => handleKey("=")}
+                className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.12)"
+                    : "rgba(0, 0, 0, 0.06)",
+                  color: "var(--text-primary)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.16)"
+                    : "1px solid rgba(0, 0, 0, 0.08)",
+                }}
               >
-                {p.label}
+                <span>= {formatRupiah(currentVal)}</span>
+                <span className="text-[9.5px] opacity-70">(Apply)</span>
               </button>
-            ))}
+            ) : expression && expression !== "0" ? (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="px-2.5 py-1 rounded-full text-[11px] font-medium flex items-center gap-1 active:scale-95 transition-all text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                <RotateCcw size={11} strokeWidth={1.5} />
+                <span>Clear</span>
+              </button>
+            ) : (
+              <span className="text-[11px] text-[var(--text-tertiary)] font-medium pl-1">
+                Liquid Keypad
+              </span>
+            )}
+
+            {/* Right Action: Done Button */}
             <button
               type="button"
-              onClick={() => handleKey("clear")}
-              className="px-3 py-1.5 rounded-xl text-[11px] font-medium active:scale-95 transition-all text-center border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-[var(--text-tertiary)]"
+              onClick={handleDone}
+              className="px-3.5 py-1 rounded-full text-[12px] font-semibold active:scale-95 transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.95)"
+                  : "rgba(0, 0, 0, 0.9)",
+                color: isDark ? "#000000" : "#ffffff",
+              }}
             >
-              Clear
+              <Check size={12} strokeWidth={2.5} />
+              <span>Done</span>
             </button>
           </div>
 
-          {/* Keypad Grid: 4 columns */}
-          <div className="grid grid-cols-4 gap-2 px-4 py-2">
+          {/* Keypad Grid: 4 columns x 4 rows */}
+          <div className="grid grid-cols-4 gap-1.5 px-3.5 pt-1.5 pb-1">
             {/* Row 1 */}
             <button
               type="button"
               onClick={() => handleKey("1")}
-              className="h-14 rounded-2xl text-[22px] font-medium flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.04]"
+              className="h-11 rounded-xl text-[20px] font-medium flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
               1
             </button>
             <button
               type="button"
               onClick={() => handleKey("2")}
-              className="h-14 rounded-2xl text-[22px] font-medium flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.04]"
+              className="h-11 rounded-xl text-[20px] font-medium flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
               2
             </button>
             <button
               type="button"
               onClick={() => handleKey("3")}
-              className="h-14 rounded-2xl text-[22px] font-medium flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.04]"
+              className="h-11 rounded-xl text-[20px] font-medium flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
               3
             </button>
             <button
               type="button"
               onClick={() => handleKey("÷")}
-              className="h-14 rounded-2xl text-[20px] font-medium flex items-center justify-center bg-white/[0.08] active:bg-white/[0.18] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.08]"
+              className="h-11 rounded-xl text-[18px] font-semibold flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.10)"
+                  : "rgba(0, 0, 0, 0.07)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.12)"
+                  : "1px solid rgba(0, 0, 0, 0.08)",
+              }}
             >
               ÷
             </button>
@@ -162,28 +226,60 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("4")}
-              className="h-14 rounded-2xl text-[22px] font-medium flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.04]"
+              className="h-11 rounded-xl text-[20px] font-medium flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
               4
             </button>
             <button
               type="button"
               onClick={() => handleKey("5")}
-              className="h-14 rounded-2xl text-[22px] font-medium flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.04]"
+              className="h-11 rounded-xl text-[20px] font-medium flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
               5
             </button>
             <button
               type="button"
               onClick={() => handleKey("6")}
-              className="h-14 rounded-2xl text-[22px] font-medium flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.04]"
+              className="h-11 rounded-xl text-[20px] font-medium flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
               6
             </button>
             <button
               type="button"
               onClick={() => handleKey("×")}
-              className="h-14 rounded-2xl text-[20px] font-medium flex items-center justify-center bg-white/[0.08] active:bg-white/[0.18] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.08]"
+              className="h-11 rounded-xl text-[18px] font-semibold flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.10)"
+                  : "rgba(0, 0, 0, 0.07)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.12)"
+                  : "1px solid rgba(0, 0, 0, 0.08)",
+              }}
             >
               ×
             </button>
@@ -192,72 +288,124 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("7")}
-              className="h-14 rounded-2xl text-[22px] font-medium flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.04]"
+              className="h-11 rounded-xl text-[20px] font-medium flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
               7
             </button>
             <button
               type="button"
               onClick={() => handleKey("8")}
-              className="h-14 rounded-2xl text-[22px] font-medium flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.04]"
+              className="h-11 rounded-xl text-[20px] font-medium flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
               8
             </button>
             <button
               type="button"
               onClick={() => handleKey("9")}
-              className="h-14 rounded-2xl text-[22px] font-medium flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.04]"
+              className="h-11 rounded-xl text-[20px] font-medium flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
               9
             </button>
             <button
               type="button"
               onClick={() => handleKey("-")}
-              className="h-14 rounded-2xl text-[20px] font-medium flex items-center justify-center bg-white/[0.08] active:bg-white/[0.18] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.08]"
+              className="h-11 rounded-xl text-[18px] font-semibold flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.10)"
+                  : "rgba(0, 0, 0, 0.07)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.12)"
+                  : "1px solid rgba(0, 0, 0, 0.08)",
+              }}
             >
               -
             </button>
 
-            {/* Row 4: 0, 000, ⌫, + */}
-            <button
-              type="button"
-              onClick={() => handleKey("0")}
-              className="h-14 rounded-2xl text-[22px] font-medium flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.04]"
-            >
-              0
-            </button>
+            {/* Row 4: 000, 0, ⌫, + */}
             <button
               type="button"
               onClick={() => handleKey("000")}
-              className="h-14 rounded-2xl text-[17px] font-semibold flex items-center justify-center bg-white/[0.06] active:bg-white/[0.14] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.06]"
+              className="h-11 rounded-xl text-[15px] font-semibold flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.07)"
+                  : "rgba(0, 0, 0, 0.05)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.08)"
+                  : "1px solid rgba(0, 0, 0, 0.06)",
+              }}
             >
               000
             </button>
             <button
               type="button"
-              onClick={() => handleKey("backspace")}
-              className="h-14 rounded-2xl flex items-center justify-center bg-white/[0.04] active:bg-white/[0.12] active:scale-95 transition-all text-[var(--text-secondary)] border border-white/[0.04]"
+              onClick={() => handleKey("0")}
+              className="h-11 rounded-xl text-[20px] font-medium flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
-              <Delete size={20} strokeWidth={1.5} />
+              0
+            </button>
+            <button
+              type="button"
+              onClick={() => handleKey("backspace")}
+              className="h-11 rounded-xl flex items-center justify-center active:scale-95 transition-transform text-[var(--text-secondary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
+            >
+              <Delete size={18} strokeWidth={1.5} />
             </button>
             <button
               type="button"
               onClick={() => handleKey("+")}
-              className="h-14 rounded-2xl text-[20px] font-medium flex items-center justify-center bg-white/[0.08] active:bg-white/[0.18] active:scale-95 transition-all text-[var(--text-primary)] border border-white/[0.08]"
+              className="h-11 rounded-xl text-[18px] font-semibold flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.10)"
+                  : "rgba(0, 0, 0, 0.07)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.12)"
+                  : "1px solid rgba(0, 0, 0, 0.08)",
+              }}
             >
               +
-            </button>
-          </div>
-
-          {/* Bottom Action: Done Button */}
-          <div className="px-4 pt-2">
-            <button
-              type="button"
-              onClick={handleDone}
-              className="w-full py-4 rounded-2xl font-semibold text-[15px] bg-white text-black active:scale-98 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Check size={18} strokeWidth={2} />
-              <span>Done</span>
             </button>
           </div>
         </motion.div>

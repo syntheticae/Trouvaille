@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { IconRenderer } from "../ui/IconRenderer";
 import { triggerHaptic } from "../../lib/haptics";
+import { useTheme } from "../../contexts/ThemeContext";
 import type { Wallet, TransactionType } from "../../lib/types";
 
 export interface WalletSelectorRibbonProps {
@@ -24,6 +25,28 @@ export function WalletSelectorRibbon({
   onSelectToWallet,
   onOpenMore,
 }: WalletSelectorRibbonProps) {
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+
+  const getChipStyle = (isSelected: boolean) => ({
+    background: isSelected
+      ? isDark
+        ? "rgba(255, 255, 255, 0.16)"
+        : "#18181b"
+      : "var(--bg-elevated)",
+    border: isSelected
+      ? isDark
+        ? "1px solid rgba(255, 255, 255, 0.35)"
+        : "1px solid #18181b"
+      : "1px solid var(--glass-border)",
+    color: isSelected ? "#ffffff" : "var(--text-secondary)",
+    boxShadow: isSelected
+      ? isDark
+        ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25)"
+        : "0 2px 8px rgba(0, 0, 0, 0.18)"
+      : "none",
+  });
+
   if (type === "transfer") {
     return (
       <div className="space-y-3.5 mb-4.5">
@@ -62,20 +85,7 @@ export function WalletSelectorRibbon({
                     onSelectWallet(w.id);
                   }}
                   className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
-                  style={{
-                    background: isSelected
-                      ? "rgba(255, 255, 255, 0.14)"
-                      : "var(--bg-elevated)",
-                    border: isSelected
-                      ? "1px solid rgba(255, 255, 255, 0.4)"
-                      : "1px solid var(--glass-border)",
-                    color: isSelected
-                      ? "var(--text-primary)"
-                      : "var(--text-secondary)",
-                    boxShadow: isSelected
-                      ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25)"
-                      : "none",
-                  }}
+                  style={getChipStyle(isSelected)}
                 >
                   <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
                   <span>{w.name}</span>
@@ -136,20 +146,7 @@ export function WalletSelectorRibbon({
                     onSelectToWallet(w.id);
                   }}
                   className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
-                  style={{
-                    background: isSelected
-                      ? "rgba(255, 255, 255, 0.14)"
-                      : "var(--bg-elevated)",
-                    border: isSelected
-                      ? "1px solid rgba(255, 255, 255, 0.4)"
-                      : "1px solid var(--glass-border)",
-                    color: isSelected
-                      ? "var(--text-primary)"
-                      : "var(--text-secondary)",
-                    boxShadow: isSelected
-                      ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25)"
-                      : "none",
-                  }}
+                  style={getChipStyle(isSelected)}
                 >
                   <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
                   <span>{w.name}</span>
@@ -213,20 +210,7 @@ export function WalletSelectorRibbon({
                 onSelectWallet(w.id);
               }}
               className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-[12px] font-medium flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
-              style={{
-                background: isSelected
-                  ? "rgba(255, 255, 255, 0.14)"
-                  : "var(--bg-elevated)",
-                border: isSelected
-                  ? "1px solid rgba(255, 255, 255, 0.4)"
-                  : "1px solid var(--glass-border)",
-                color: isSelected
-                  ? "var(--text-primary)"
-                  : "var(--text-secondary)",
-                boxShadow: isSelected
-                  ? "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25)"
-                  : "none",
-              }}
+              style={getChipStyle(isSelected)}
             >
               <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
               <span>{w.name}</span>

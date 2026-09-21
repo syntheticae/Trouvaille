@@ -72,7 +72,7 @@ export function BudgetTargetSheet({
         {/* Target Amount */}
         <div>
           <label
-            className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 block px-1"
+            className="text-[10px] font-semibold uppercase tracking-wider mb-1 block px-1"
             style={{ color: "var(--text-tertiary)" }}
           >
             Monthly Spending Limit
@@ -89,20 +89,18 @@ export function BudgetTargetSheet({
               setTempBudgetTarget(raw);
             }}
             placeholder="Rp 0"
-            className="w-full p-4 rounded-2xl outline-none font-semibold text-[18px] amount"
+            className="w-full px-3.5 py-2.5 rounded-xl outline-none font-semibold text-[16px] amount border border-[var(--glass-border)] bg-[var(--bg-elevated)]"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
           />
         </div>
 
         {/* Budget Period Start Selector */}
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <label
-              className="text-[11px] font-semibold uppercase tracking-wider block"
+              className="text-[10px] font-semibold uppercase tracking-wider block"
               style={{ color: "var(--text-tertiary)" }}
             >
               Budget Period Start
@@ -126,20 +124,20 @@ export function BudgetTargetSheet({
                     setTempPeriodStart(preset.day);
                     setIsCustomDay(false);
                   }}
-                  className={`py-2.5 px-2 rounded-xl text-center transition-all active:scale-95 ${
+                  className={`py-2 px-2 rounded-xl text-center transition-all active:scale-95 cursor-pointer border ${
                     active
-                      ? "bg-white/[0.08] border border-white/20 shadow-sm"
-                      : "bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04]"
+                      ? "bg-black/[0.08] dark:bg-white/[0.12] border-black/15 dark:border-white/25 shadow-xs"
+                      : "bg-black/[0.02] dark:bg-white/[0.03] border-black/6 dark:border-white/8 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
                   }`}
                 >
                   <div
-                    className={`text-[13px] font-semibold ${
+                    className={`text-[12px] font-semibold ${
                       active ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
                     }`}
                   >
                     {preset.label}
                   </div>
-                  <div className="text-[10px] text-[var(--text-tertiary)] truncate">
+                  <div className="text-[9.5px] text-[var(--text-tertiary)] truncate">
                     {preset.desc}
                   </div>
                 </button>
@@ -150,20 +148,20 @@ export function BudgetTargetSheet({
             <button
               type="button"
               onClick={() => setIsCustomDay(true)}
-              className={`py-2.5 px-2 rounded-xl text-center transition-all active:scale-95 ${
+              className={`py-2 px-2 rounded-xl text-center transition-all active:scale-95 cursor-pointer border ${
                 isCustomDay
-                  ? "bg-white/[0.08] border border-white/20 shadow-sm"
-                  : "bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04]"
+                  ? "bg-black/[0.08] dark:bg-white/[0.12] border-black/15 dark:border-white/25 shadow-xs"
+                  : "bg-black/[0.02] dark:bg-white/[0.03] border-black/6 dark:border-white/8 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
               }`}
             >
               <div
-                className={`text-[13px] font-semibold ${
+                className={`text-[12px] font-semibold ${
                   isCustomDay ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
                 }`}
               >
                 Custom
               </div>
-              <div className="text-[10px] text-[var(--text-tertiary)] truncate">
+              <div className="text-[9.5px] text-[var(--text-tertiary)] truncate">
                 Day 1–28
               </div>
             </button>
@@ -184,60 +182,43 @@ export function BudgetTargetSheet({
                       setTempPeriodStart(Math.max(1, Math.min(28, val)));
                     }
                   }}
-                  className="w-24 p-3 rounded-xl outline-none font-semibold text-center text-[14px]"
+                  className="w-20 py-1.5 px-2.5 rounded-xl outline-none font-semibold text-center text-[13px] border border-[var(--glass-border)] bg-[var(--bg-elevated)]"
                   style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
                     color: "var(--text-primary)",
                   }}
                 />
-                <span className="text-[12px] text-[var(--text-tertiary)]">
+                <span className="text-[11px] text-[var(--text-tertiary)]">
                   Day of every month (1 to 28)
                 </span>
               </div>
             </div>
           )}
 
-          {/* Active Cycle Preview Box */}
+          {/* Interval Preview Card */}
           <div
-            className="p-3.5 rounded-2xl flex items-center gap-3"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
+            className="p-3 rounded-xl flex items-center gap-2.5 border border-[var(--glass-border)] bg-[var(--glass-fill)]"
           >
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <Calendar size={15} strokeWidth={1.5} className="text-[var(--text-secondary)]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[11px] text-[var(--text-tertiary)]">Active Spend Window</div>
-              <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
-                {previewInterval.label}
+            <Calendar size={14} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase font-semibold tracking-wider text-[var(--text-tertiary)]">
+                Active Cycle Range
               </div>
-            </div>
-            <div className="text-right shrink-0">
-              <div className="text-[11px] font-medium text-[var(--text-secondary)]">
-                {previewInterval.daysRemaining} days left
+              <div className="text-[11.5px] font-medium text-[var(--text-primary)] mt-0.5">
+                {previewInterval.label}
               </div>
             </div>
           </div>
         </div>
 
+        {/* Save Button */}
         <button
           onClick={handleSave}
-          className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 transition-all shadow-md"
+          className="w-full py-2.5 rounded-xl font-semibold text-[13px] active:scale-98 transition-transform cursor-pointer"
           style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
         >
-          Save Budget & Period
+          Save Budget Settings
         </button>
       </div>
     </BottomSheet>
   );
 }
-

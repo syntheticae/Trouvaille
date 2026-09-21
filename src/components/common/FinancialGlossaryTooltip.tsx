@@ -21,51 +21,51 @@ export interface GlossaryDefinition {
 
 export const FINANCIAL_GLOSSARY: Record<GlossaryKey, GlossaryDefinition> = {
   solvency_runway: {
-    title: "Solvency Runway (Daya Tahan Dana)",
+    title: "Solvency Runway",
     simpleExplanation:
-      "Perkiraan berapa bulan tabungan cair Anda bisa membiayai gaya hidup jika Anda berhenti bekerja hari ini.",
-    tip: "Benchmark aman: minimal 3–6 bulan pengeluaran rutin.",
+      "Estimated number of months your liquid cash reserves can support your baseline lifestyle if all income ceased today.",
+    tip: "Safe benchmark: at least 3–6 months of essential living expenses.",
   },
   zero_based: {
-    title: "Zero-Based Budgeting (Anggaran Nol)",
+    title: "Zero-Based Budgeting",
     simpleExplanation:
-      "Sistem membagi setiap rupiah penghasilan ke pos belanja, tabungan, atau investasi hingga tidak ada saldo menganggur tanpa tujuan.",
-    tip: "Bukan berarti rekening kosong, tapi seluruh uang punya pos tugasnya masing-masing.",
+      "An intentional allocation method where every unit of income is assigned to spending, savings, or investment until unallocated cash equals zero.",
+    tip: "Does not mean zero in your account, but that all capital has a designated purpose.",
   },
   monte_carlo: {
-    title: "Simulasi Monte Carlo",
+    title: "Monte Carlo Simulation",
     simpleExplanation:
-      "Uji ketahanan finansial dengan mensimulasikan ribuan skenario ekonomi acak (inflasi, krisis pasar, kenaikan biaya).",
-    tip: "Skor di atas 85% menandakan rencana keuangan Anda sangat tahan banting.",
+      "Stress-tests long-term financial durability across thousands of randomized economic scenarios (inflation spikes, market downturns, expense variance).",
+    tip: "A probability score above 85% denotes high durability against unexpected shocks.",
   },
   operating_cashflow: {
-    title: "Operating Cash Flow (Arus Kas Operasional)",
+    title: "Operating Cash Flow (OCF)",
     simpleExplanation:
-      "Arus kas bersih murni dari aktivitas hidup harian (gaji dikurangi makan, transport, tagihan).",
-    tip: "Jika angka ini positif, fondasi keuangan Anda sehat tanpa perlu gali lubang tutup lubang.",
+      "Net cash generated purely from core daily life activities (recurring income minus living expenses, food, transit, bills).",
+    tip: "A consistently positive OCF indicates sound financial foundations without reliance on debt or liquidation.",
   },
   free_cashflow: {
-    title: "Free Cash Flow (Kas Bebas)",
+    title: "Free Cash Flow (FCF)",
     simpleExplanation:
-      "Uang sisa bersih setelah semua komitmen esensial dan tabungan wajib terpenuhi. Kas ini 100% aman dipakai liburan atau hobi.",
+      "Net discretionary surplus remaining after all essential living commitments and mandatory savings goals are fully funded.",
   },
   savings_rate: {
-    title: "Savings Rate (Tingkat Tabungan)",
+    title: "Savings Rate",
     simpleExplanation:
-      "Persentase pemasukan yang berhasil Anda pertahankan dan tidak habis terbelanja dalam sebulan.",
-    tip: "Standar emas finansial adalah menyisihkan minimal 20% dari total penghasilan bulanan.",
+      "The percentage of total monthly income retained and compounded rather than consumed.",
+    tip: "The golden CFP benchmark recommends retaining at least 20% of net monthly income.",
   },
   volatility_score: {
-    title: "Volatility Score (Variasi Pengeluaran)",
+    title: "Spending Volatility Score",
     simpleExplanation:
-      "Mengukur seberapa sering belanja harian Anda melonjak tiba-tiba dibandingkan pengeluaran rata-rata.",
-    tip: "Skor variasi rendah menunjukkan kebiasaan belanja yang konsisten dan mudah diprediksi.",
+      "Measures how frequently daily outlays fluctuate or spike relative to your baseline average run-rate.",
+    tip: "A lower volatility score reflects predictable, controlled spending habits.",
   },
   fire_number: {
-    title: "FIRE Number (Target Mandiri Finansial)",
+    title: "FIRE Target Number",
     simpleExplanation:
-      "Jumlah akumulasi aset yang dibutuhkan agar hasil investasinya dapat membiayai hidup Anda selamanya tanpa harus bekerja aktif.",
-    tip: "Dihitung berdasarkan 25x pengeluaran tahunan (aturan 4% Rule).",
+      "The total accumulated portfolio required to sustain your lifestyle indefinitely without active employment.",
+    tip: "Calculated based on 25x annual expenditure following the standard 4% Rule.",
   },
 };
 
@@ -95,7 +95,7 @@ export function FinancialGlossaryTooltip({
           setIsOpen(true);
         }}
         className="inline-flex items-center gap-1 cursor-pointer text-left group"
-        title="Klik untuk melihat penjelasan istilah"
+        title="Click to view term definition"
       >
         {!showIconOnly && label && (
           <span className="border-b border-dashed border-[var(--text-tertiary)] group-hover:border-[var(--text-primary)] transition-colors">
@@ -142,7 +142,7 @@ export function FinancialGlossaryTooltip({
                     <BookOpen size={12} strokeWidth={1.5} />
                   </div>
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                    Glosarium Keuangan
+                    Financial Glossary
                   </span>
                 </div>
 
@@ -173,7 +173,7 @@ export function FinancialGlossaryTooltip({
                     }}
                   >
                     <span className="font-semibold text-[var(--text-primary)]">
-                      Tips Finansial:{" "}
+                      Financial Tip:{" "}
                     </span>
                     {info.tip}
                   </div>

@@ -32,7 +32,7 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
       <div className="p-6 pb-12 space-y-6 max-w-lg mx-auto">
         {/* Header */}
         <div className="space-y-1.5 text-left">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.04] text-[11px] font-medium tracking-wide text-[var(--text-secondary)] mb-1">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.04] text-[11px] font-medium tracking-wide text-[var(--text-secondary)] mb-1">
             <Smartphone size={13} strokeWidth={1.5} />
             <span>iOS Native Automation</span>
           </div>
@@ -145,7 +145,7 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
                 className="text-[11px] leading-relaxed"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Action: <span className="font-mono">Buka URL</span> with the target scheme below.
+                Action: <span className="font-mono">Open URL</span> with the target scheme below.
               </p>
             </div>
           </div>

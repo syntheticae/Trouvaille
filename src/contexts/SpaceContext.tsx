@@ -16,32 +16,9 @@ export type MoneySpace = FinancialDomain;
 export const DEFAULT_MONEY_SPACES: FinancialDomain[] = [
   {
     id: "personal",
-    name: "Domain Pribadi",
-    description: "Keuangan harian, kebutuhan hidup, belanja & tabungan pribadi",
+    name: "Personal Ledger",
+    description: "Daily personal cashflow, necessities, shopping & personal savings",
     icon: "User",
-    isDefault: true,
-  },
-  {
-    id: "business",
-    name: "Domain Bisnis",
-    description: "Proyek klien, operasional usaha, faktur & beban bisnis",
-    tag: "#business",
-    icon: "Briefcase",
-    isDefault: true,
-  },
-  {
-    id: "travel",
-    name: "Domain Perjalanan",
-    description: "Tiket, hotel, kuliner & anggaran rencana perjalanan khusus",
-    tag: "#travel",
-    icon: "Plane",
-    isDefault: true,
-  },
-  {
-    id: "all",
-    name: "Seluruh Domain",
-    description: "Neraca konsolidasi lintas seluruh domain finansial",
-    icon: "Layers",
     isDefault: true,
   },
 ];
@@ -82,7 +59,27 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
   });
 
   const spaces = useMemo(() => {
-    return [...DEFAULT_MONEY_SPACES, ...customSpaces];
+    const cleanCustom = customSpaces.filter(
+      (s) => s.id !== "personal" && s.id !== "business" && s.id !== "travel" && s.id !== "all",
+    );
+    const list: MoneySpace[] = [...DEFAULT_MONEY_SPACES, ...cleanCustom];
+    if (cleanCustom.length > 0 && !list.some((s) => s.id === "all")) {
+      list.push({
+        id: "all",
+        name: "All Ledgers",
+        description: "Consolidated balance sheet across all financial ledgers",
+        icon: "Layers",
+        isDefault: true,
+      });
+    }
+    return list.map((s) => ({
+      ...s,
+      name: s.name
+        .replace(/^Domain\s+Pribadi$/i, "Personal Ledger")
+        .replace(/^Domain\s+Bisnis$/i, "Business Ledger")
+        .replace(/^Domain\s+Perjalanan$/i, "Travel Ledger")
+        .replace(/^Seluruh\s+Domain$/i, "All Ledgers"),
+    }));
   }, [customSpaces]);
 
   const activeSpace = useMemo(() => {

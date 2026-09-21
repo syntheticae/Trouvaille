@@ -68,4 +68,41 @@ describe("Batch 2: Guest Mode & Adaptive Onboarding System", () => {
     expect(addRes.action).toBe("transaction");
     expect(addRes.prefilledValues?.amount).toBe(50000);
   });
+
+  it("handles migrateGuestDataToCloud safely with guest or empty user IDs", async () => {
+    const { migrateGuestDataToCloud } = await import("../src/lib/guestMigration");
+    const resGuest = await migrateGuestDataToCloud("guest_local_user");
+    expect(resGuest.walletsMigrated).toBe(0);
+    expect(resGuest.transactionsMigrated).toBe(0);
+
+    const resEmpty = await migrateGuestDataToCloud("");
+    expect(resEmpty.walletsMigrated).toBe(0);
+    expect(resEmpty.transactionsMigrated).toBe(0);
+  });
+
+  it("safely transfers offline transactions into pending mutations for authenticated user", async () => {
+    const { migrateGuestDataToCloud } = await import("../src/lib/guestMigration");
+    const { getPendingMutations } = await import("../src/lib/syncEngine");
+    const { TX_BACKUP_STORAGE_KEY } = await import("../src/hooks/useTransactions");
+
+    // Seed offline transactions in local storage
+    const offlineTxs = [
+      {
+        id: "tx-guest-1",
+        amount: 45000,
+        type: "expense",
+        occurred_on: "2026-09-20",
+        note: "Coffee meeting",
+      },
+    ];
+    localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(offlineTxs));
+
+    const result = await migrateGuestDataToCloud("user-cloud-123");
+    expect(result.transactionsMigrated).toBe(1);
+
+    const pending = getPendingMutations();
+    const migrated = pending.find((m) => m.payload.id === "tx-guest-1");
+    expect(migrated).toBeDefined();
+    expect(migrated?.payload.user_id).toBe("user-cloud-123");
+  });
 });

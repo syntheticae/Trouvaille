@@ -2,6 +2,7 @@ import { Info, Calendar } from "lucide-react";
 import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export function MiniHeatmapCard({
   daysWithSpend,
@@ -26,6 +27,9 @@ export function MiniHeatmapCard({
   size?: WidgetSize;
   onOpenDetail?: () => void;
 }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   const dots = daysWithSpend.slice(0, 28);
   const totalDays = daysWithSpend.length;
   const zeroSpendDays = Math.max(0, totalDays - activeDaysCount);
@@ -49,12 +53,12 @@ export function MiniHeatmapCard({
           style={{
             background:
               d.intensity > 0.6
-                ? "#FFFFFF"
+                ? isDark ? "#FFFFFF" : "#09090b"
                 : d.intensity > 0.2
-                  ? "rgba(255,255,255,0.45)"
+                  ? isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)"
                   : d.hasSpend
-                    ? "rgba(255,255,255,0.2)"
-                    : "rgba(255,255,255,0.06)",
+                    ? isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)"
+                    : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
           }}
           title={`Day ${d.day}: ${d.hasSpend ? `Active (${formatRupiah(d.amount || 0)})` : "Quiet"}`}
         />
@@ -68,7 +72,7 @@ export function MiniHeatmapCard({
         <div className="flex-1 flex items-center justify-center py-0.5">
           {halfGrid}
         </div>
-        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-white/5 shrink-0">
+        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
           <span>Active Days</span>
           <span className="font-semibold text-[var(--text-primary)]">
             {activeDaysCount} of {totalDays}d
@@ -82,7 +86,14 @@ export function MiniHeatmapCard({
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <section className="glass-surface p-4 rounded-[22px] select-none space-y-3">
+    <section
+      className="glass-surface p-4 rounded-[22px] select-none space-y-3"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -199,13 +210,13 @@ export function MiniHeatmapCard({
                 key={i}
                 className={`flex flex-col items-center justify-between py-1.5 px-0.5 rounded-lg border transition-all cursor-pointer ${
                   d.isToday
-                    ? "ring-1 ring-white/50 border-white/30"
-                    : "border-white/5"
+                    ? "ring-1 ring-black/40 border-black/25 dark:ring-white/50 dark:border-white/30"
+                    : "border-black/5 dark:border-white/5"
                 }`}
                 style={{
                   background: hasSpend
-                    ? "rgba(255, 255, 255, 0.04)"
-                    : "rgba(255, 255, 255, 0.01)",
+                    ? isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)"
+                    : isDark ? "rgba(255, 255, 255, 0.01)" : "rgba(0, 0, 0, 0.01)",
                   minHeight: "44px",
                 }}
                 title={`Day ${d.day}: ${
@@ -229,15 +240,15 @@ export function MiniHeatmapCard({
                   style={{
                     background:
                       d.intensity > 0.6
-                        ? "#FFFFFF"
+                        ? isDark ? "#FFFFFF" : "#09090b"
                         : d.intensity > 0.25
-                          ? "rgba(255,255,255,0.65)"
+                          ? isDark ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.5)"
                           : hasSpend
-                            ? "rgba(255,255,255,0.3)"
-                            : "rgba(255,255,255,0.06)",
+                            ? isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)"
+                            : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
                     boxShadow:
                       d.intensity > 0.6
-                        ? "0 0 6px rgba(255, 255, 255, 0.4)"
+                        ? isDark ? "0 0 6px rgba(255, 255, 255, 0.4)" : "0 1px 3px rgba(0, 0, 0, 0.2)"
                         : "none",
                   }}
                 />
@@ -263,23 +274,23 @@ export function MiniHeatmapCard({
       </div>
 
       {/* Legend & Analytical Insight Footer */}
-      <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[var(--text-tertiary)]">
+      <div className="pt-2 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[var(--text-tertiary)]">
         <div className="flex items-center gap-2">
           <span>Legend:</span>
           <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+            <div className="w-1.5 h-1.5 rounded-full bg-black/10 dark:bg-white/10" />
             <span className="text-[9px]">0</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+            <div className="w-1.5 h-1.5 rounded-full bg-black/30 dark:bg-white/30" />
             <span className="text-[9px]">&lt;50k</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-white/65" />
+            <div className="w-1.5 h-1.5 rounded-full bg-black/65 dark:bg-white/65" />
             <span className="text-[9px]">Mid</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
+            <div className="w-1.5 h-1.5 rounded-full bg-black dark:bg-white shadow-sm" />
             <span className="text-[9px] font-semibold text-[var(--text-primary)]">
               Peak
             </span>

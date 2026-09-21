@@ -53,7 +53,7 @@ export function CashflowPulseCard({
   return (
     <section
       onClick={handleClick}
-      className="p-4 rounded-[24px] mb-3 cursor-pointer active:scale-[0.99] transition-transform select-none"
+      className="glass-surface p-4 rounded-[24px] mb-3 cursor-pointer active:scale-[0.99] transition-transform select-none"
       style={{
         background: "var(--bg-elevated)",
         border: "1px solid var(--glass-border)",

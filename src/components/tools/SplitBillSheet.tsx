@@ -103,21 +103,21 @@ export function SplitBillSheet({
 
     let transferInfo = "";
     if (paymentWallet) {
-      transferInfo = `\n\nTransfer ke:\n${paymentWallet.name} a/n John / Trouvaille`;
+      transferInfo = `\n\nTransfer to:\n${paymentWallet.name} a/n John / Trouvaille`;
     }
 
-    const message = `🧾 Rincian Split Bill: ${title}
+    const message = `🧾 Split Bill Breakdown: ${title}
 ------------------------------
-Subtotal: ${formatRupiah(subtotal)}${taxPct > 0 ? `\nTax (${taxPct}%): ${formatRupiah(taxAmount)}` : ""}${servicePct > 0 ? `\nService (${servicePct}%): ${formatRupiah(serviceAmount)}` : ""}${discountAmount > 0 ? `\nDiskon: -${formatRupiah(discountAmount)}` : ""}
-Total Tagihan: ${formatRupiah(grandTotal)}
+Subtotal: ${formatRupiah(subtotal)}${taxPct > 0 ? `\nTax (${taxPct}%): ${formatRupiah(taxAmount)}` : ""}${servicePct > 0 ? `\nService (${servicePct}%): ${formatRupiah(serviceAmount)}` : ""}${discountAmount > 0 ? `\nDiscount: -${formatRupiah(discountAmount)}` : ""}
+Total Bill: ${formatRupiah(grandTotal)}
 
 ${rincian}${transferInfo}
 
-Makasih ya semuanya! 🙏✨`;
+Thank you everyone! 🙏✨`;
 
     navigator.clipboard.writeText(message);
     setCopied(true);
-    showToast("Rincian bill disalin ke clipboard!", "add", () => {});
+    showToast("Bill breakdown copied to clipboard!", "add", () => {});
     setTimeout(() => setCopied(false), 2500);
   };
 
@@ -130,10 +130,10 @@ Makasih ya semuanya! 🙏✨`;
         total: grandTotal,
         myShare,
         title,
-        note: `Split Bill: ${title} (Total ${formatRupiah(grandTotal)}, bagian gue ${formatRupiah(myShare)})`,
+        note: `Split Bill: ${title} (Total ${formatRupiah(grandTotal)}, my share ${formatRupiah(myShare)})`,
       });
     }
-    showToast("Transaksi split bill dicatat!", "add", () => {});
+    showToast("Split bill transaction recorded!", "add", () => {});
     onClose();
   };
 
@@ -157,7 +157,7 @@ Makasih ya semuanya! 🙏✨`;
                 Split Bill Calculator
               </h2>
               <p className="text-[11px] text-[var(--text-tertiary)] leading-none mt-0.5">
-                Pajak, service charge & bagi rata instan
+                Taxes, service charges & instant breakdown
               </p>
             </div>
           </div>
@@ -180,13 +180,13 @@ Makasih ya semuanya! 🙏✨`;
           {/* 1. Title / Event Input */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">
-              Nama Tempat / Acara
+              Venue / Event Name
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Kopi Nako, Dinner Senopati..."
+              placeholder="e.g. Dinner, Coffee, Groceries..."
               className="w-full px-3.5 py-2.5 rounded-2xl text-[13px] font-medium outline-none transition-all"
               style={{
                 background: "var(--bg-elevated)",
@@ -199,7 +199,7 @@ Makasih ya semuanya! 🙏✨`;
           {/* 2. Subtotal Amount Input */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">
-              Subtotal Tagihan (Sebelum Pajak & Service)
+              Subtotal (Before Tax & Service)
             </label>
             <div
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl transition-all"
@@ -235,7 +235,7 @@ Makasih ya semuanya! 🙏✨`;
             >
               <div className="flex items-center justify-between text-[11px]">
                 <span className="font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                  Pajak (PB1/PPN)
+                  Tax (PB1/VAT)
                 </span>
                 <span className="font-semibold text-[var(--text-primary)]">
                   {taxPct}%
@@ -309,7 +309,7 @@ Makasih ya semuanya! 🙏✨`;
           {/* Diskon / Potongan Promo */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">
-              Diskon / Potongan Promo (Opsional)
+              Discount / Promo Voucher (Optional)
             </label>
             <div
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl transition-all"
@@ -338,7 +338,7 @@ Makasih ya semuanya! 🙏✨`;
           {wallets.length > 0 && (
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">
-                Rekening Tujuan Transfer (Untuk Pesan WhatsApp)
+                Payment Destination Wallet (For WhatsApp Message)
               </label>
               <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                 {wallets.map((w) => (
@@ -383,7 +383,7 @@ Makasih ya semuanya! 🙏✨`;
                     : "var(--text-tertiary)",
               }}
             >
-              Bagi Rata ({peopleCount} Orang)
+              Split Evenly ({peopleCount} People)
             </button>
             <button
               type="button"
@@ -401,7 +401,7 @@ Makasih ya semuanya! 🙏✨`;
                     : "var(--text-tertiary)",
               }}
             >
-              Nominal Kustom
+              Custom Share
             </button>
           </div>
 
@@ -417,7 +417,7 @@ Makasih ya semuanya! 🙏✨`;
               <div className="flex items-center gap-2">
                 <Users size={16} className="text-[var(--text-tertiary)]" />
                 <span className="text-[13px] font-semibold">
-                  Jumlah Orang
+                  Number of People
                 </span>
               </div>
 
@@ -507,7 +507,7 @@ Makasih ya semuanya! 🙏✨`;
             </div>
             {taxPct > 0 && (
               <div className="flex justify-between text-[11px] text-[var(--text-tertiary)]">
-                <span>Pajak ({taxPct}%)</span>
+                <span>Tax ({taxPct}%)</span>
                 <span className="amount font-medium">+{formatRupiah(taxAmount)}</span>
               </div>
             )}
@@ -517,9 +517,9 @@ Makasih ya semuanya! 🙏✨`;
                 <span className="amount font-medium">+{formatRupiah(serviceAmount)}</span>
               </div>
             )}
-            <div className="pt-2 border-t border-white/10 flex justify-between items-baseline">
+            <div className="pt-2 border-t border-black/5 dark:border-white/10 flex justify-between items-baseline">
               <span className="text-[12px] font-semibold">
-                Total Tagihan
+                Total Bill
               </span>
               <span className="text-[16px] font-semibold amount text-[var(--text-primary)]">
                 {formatRupiah(grandTotal)}
@@ -530,14 +530,14 @@ Makasih ya semuanya! 🙏✨`;
             <div
               className="mt-2 p-3 rounded-xl flex items-center justify-between"
               style={{
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
               }}
             >
               <div className="flex items-center gap-1.5">
                 <Sparkles size={14} className="text-[var(--text-primary)]" />
                 <span className="text-[12px] font-semibold">
-                  Bagian Per Orang
+                  Per Person Share
                 </span>
               </div>
               <span className="text-[15px] font-semibold amount text-[var(--text-primary)]">
@@ -559,7 +559,7 @@ Makasih ya semuanya! 🙏✨`;
             }}
           >
             {copied ? <Check size={16} /> : <Copy size={16} />}
-            <span>{copied ? "Tersalin ke Clipboard!" : "Salin Pesan Rincian WhatsApp"}</span>
+            <span>{copied ? "Copied to Clipboard!" : "Copy WhatsApp Breakdown"}</span>
           </button>
 
           <button
@@ -571,7 +571,7 @@ Makasih ya semuanya! 🙏✨`;
               border: "1px solid var(--glass-border)",
             }}
           >
-            Catat Pengeluaran Bagian Gue ({formatRupiah(equalPerPerson)})
+            Record My Share Expense ({formatRupiah(equalPerPerson)})
           </button>
         </div>
       </div>

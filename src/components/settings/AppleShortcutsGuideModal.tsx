@@ -47,7 +47,7 @@ export function AppleShortcutsGuideModal({
       <div className="p-6 pb-12 space-y-6 max-w-lg mx-auto">
         {/* Header */}
         <div className="space-y-1.5 text-left">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.04] text-[11px] font-medium tracking-wide text-[var(--text-secondary)] mb-1">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.04] text-[11px] font-medium tracking-wide text-[var(--text-secondary)] mb-1">
             <Smartphone size={13} strokeWidth={1.5} />
             <span>Apple iOS Ecosystem Integration</span>
           </div>
@@ -81,7 +81,7 @@ export function AppleShortcutsGuideModal({
             }}
             className={`flex-1 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
               activeTab === "ways_to_add"
-                ? "bg-white/[0.1] text-white shadow-sm border border-white/15"
+                ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             }`}
           >
@@ -95,7 +95,7 @@ export function AppleShortcutsGuideModal({
             }}
             className={`flex-1 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
               activeTab === "back_tap"
-                ? "bg-white/[0.1] text-white shadow-sm border border-white/15"
+                ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             }`}
           >
@@ -109,7 +109,7 @@ export function AppleShortcutsGuideModal({
             }}
             className={`flex-1 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
               activeTab === "automation"
-                ? "bg-white/[0.1] text-white shadow-sm border border-white/15"
+                ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             }`}
           >
@@ -201,11 +201,11 @@ export function AppleShortcutsGuideModal({
                   <button
                     type="button"
                     onClick={() => copyToClipboard(item.scheme, item.title)}
-                    className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-[var(--text-tertiary)] hover:text-white transition-colors cursor-pointer shrink-0 mt-0.5"
+                    className="p-1.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0 mt-0.5"
                     title="Copy URL Scheme"
                   >
                     {copiedKey === item.title ? (
-                      <Check size={13} className="text-emerald-400" />
+                      <Check size={13} className="text-emerald-600 dark:text-emerald-400" />
                     ) : (
                       <Copy size={13} />
                     )}
@@ -272,9 +272,9 @@ export function AppleShortcutsGuideModal({
                     <button
                       type="button"
                       onClick={() => copyToClipboard("trouvaille://voice", "Voice URL")}
-                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-white/[0.08] hover:bg-white/[0.14] text-white border border-white/10 transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] text-[var(--text-primary)] transition-colors cursor-pointer inline-flex items-center gap-1.5"
                     >
-                      {copiedKey === "Voice URL" ? <Check size={11} /> : <Copy size={11} />}
+                      {copiedKey === "Voice URL" ? <Check size={11} className="text-emerald-600 dark:text-emerald-400" /> : <Copy size={11} />}
                       <span>Copy</span>
                     </button>
                   </div>
@@ -458,9 +458,9 @@ export function AppleShortcutsGuideModal({
             <button
               type="button"
               onClick={() => copyToClipboard("trouvaille://add?text=", "URL Template")}
-              className="w-full py-3.5 px-4 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 bg-white/[0.08] hover:bg-white/[0.14] text-white border border-white/10 transition-colors cursor-pointer"
+              className="w-full py-3 px-4 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] text-[var(--text-primary)] transition-colors cursor-pointer"
             >
-              {copiedKey === "URL Template" ? <Check size={14} /> : <Copy size={14} />}
+              {copiedKey === "URL Template" ? <Check size={14} className="text-emerald-600 dark:text-emerald-400" /> : <Copy size={14} />}
               <span>Copy Automation URL Scheme</span>
             </button>
           </div>

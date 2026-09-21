@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -71,7 +71,18 @@ export function CalendarPage() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  const [viewMode, setViewMode] = useState<"activity" | "runway">("activity");
+  const [searchParams] = useSearchParams();
+  const initialView = searchParams.get("view") === "runway" ? "runway" : "activity";
+  const [viewMode, setViewMode] = useState<"activity" | "runway">(initialView);
+
+  useEffect(() => {
+    const viewParam = searchParams.get("view");
+    if (viewParam === "runway") {
+      setViewMode("runway");
+    } else if (viewParam === "activity") {
+      setViewMode("activity");
+    }
+  }, [searchParams]);
   const [slideDirection, setSlideDirection] = useState<number>(0);
 
   const { data: monthTxs = [] } = useMonthTransactions(
@@ -180,8 +191,8 @@ export function CalendarPage() {
               border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
-            title="Kembali"
-            aria-label="Kembali"
+            title="Back"
+            aria-label="Back"
           >
             <ChevronLeft size={16} />
           </button>

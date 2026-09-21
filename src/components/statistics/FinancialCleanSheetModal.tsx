@@ -234,28 +234,28 @@ export function FinancialCleanSheetModal({
     triggerHaptic("light");
     const reportText = [
       `========================================================================`,
-      `              TROUVAILLE OFFICIAL REKENING KORAN ELEKTRONIK             `,
+      `              TROUVAILLE OFFICIAL ELECTRONIC STATEMENT                  `,
       `                       PERIODE: ${periodTitle}                         `,
       `========================================================================`,
-      `Nama Nasabah      : ${userName}`,
-      `Periode Transaksi : ${periodDateRange}`,
-      `Nomor Pernyataan  : ${auditId}`,
-      `Dicetak Pada      : ${generationTimestamp}`,
-      `Mata Uang         : IDR`,
+      `Account Holder    : ${userName}`,
+      `Statement Period  : ${periodDateRange}`,
+      `Statement No      : ${auditId}`,
+      `Generated At      : ${generationTimestamp}`,
+      `Currency          : IDR`,
       ``,
-      `--- RINGKASAN REKENING (ACCOUNT SUMMARY) ---`,
-      `Saldo Awal        : ${formatRupiah(openingBalance)}`,
-      `Total Dana Masuk  : +${formatRupiah(totalIncoming)} (${incomingCount} transaksi)`,
-      `Total Dana Keluar : -${formatRupiah(totalOutgoing)} (${outgoingCount} transaksi)`,
-      `Saldo Akhir       : ${formatRupiah(closingBalance)}`,
-      `Surplus Bersih    : ${formatRupiah(netCashflow)} (Savings Rate: ${savingsRate.toFixed(1)}%)`,
+      `--- ACCOUNT SUMMARY ---`,
+      `Opening Balance   : ${formatRupiah(openingBalance)}`,
+      `Total Inflow      : +${formatRupiah(totalIncoming)} (${incomingCount} transactions)`,
+      `Total Outflow     : -${formatRupiah(totalOutgoing)} (${outgoingCount} transactions)`,
+      `Closing Balance   : ${formatRupiah(closingBalance)}`,
+      `Net Surplus       : ${formatRupiah(netCashflow)} (Savings Rate: ${savingsRate.toFixed(1)}%)`,
       ``,
-      `--- RINCIAN TRANSAKSI (TRANSACTION LEDGER) ---`,
-      `No | Tanggal    | Keterangan                  | Nominal         | Saldo`,
+      `--- TRANSACTION LEDGER ---`,
+      `No | Date       | Description                 | Amount          | Balance`,
       `------------------------------------------------------------------------`,
       ...ledgerRows.map((r) => {
         const sign = r.tx.type === "income" ? "+" : "-";
-        const cat = r.tx.categories?.name || "Umum";
+        const cat = r.tx.categories?.name || "General";
         const note = r.tx.note ? ` (${r.tx.note})` : "";
         const desc = `${cat}${note}`.slice(0, 26).padEnd(26, " ");
         const dateStr = format(parseISO(r.tx.occurred_on), "dd/MM/yyyy");
@@ -265,7 +265,7 @@ export function FinancialCleanSheetModal({
       }),
       ``,
       `========================================================================`,
-      `Dicetak secara otomatis dari Trouvaille Ledger. Sah dan terverifikasi.`,
+      `Automatically generated from Trouvaille Ledger. Official & Verified.`,
       `========================================================================`,
     ].join("\n");
 
@@ -362,7 +362,7 @@ export function FinancialCleanSheetModal({
                     : "var(--text-secondary)",
               }}
             >
-              Bulanan
+              Monthly
             </button>
             <button
               type="button"
@@ -380,7 +380,7 @@ export function FinancialCleanSheetModal({
                     : "var(--text-secondary)",
               }}
             >
-              Tahunan
+              Yearly
             </button>
           </div>
 
@@ -460,10 +460,10 @@ export function FinancialCleanSheetModal({
               borderColor: "var(--glass-border)",
               color: "var(--text-secondary)",
             }}
-            title="Salin ringkasan teks"
+            title="Copy text summary"
           >
             {copied ? <Check size={12} className="text-white" /> : <Copy size={12} />}
-            <span className="hidden sm:inline">{copied ? "Tersalin" : "Salin"}</span>
+            <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
           </button>
 
           {/* Download / Print PDF Button */}
@@ -475,7 +475,7 @@ export function FinancialCleanSheetModal({
               background: "var(--accent)",
               color: "var(--accent-ink)",
             }}
-            title="Unduh atau Cetak sebagai PDF"
+            title="Download or Print as PDF"
           >
             <Download size={13} />
             <span>Download PDF</span>
@@ -493,7 +493,7 @@ export function FinancialCleanSheetModal({
               background: "rgba(255, 255, 255, 0.12)",
               borderColor: "var(--glass-border)",
             }}
-            aria-label="Tutup E-Statement"
+            aria-label="Close E-Statement"
           >
             <X size={18} />
           </button>
@@ -540,7 +540,7 @@ export function FinancialCleanSheetModal({
                       className="text-[10px] font-bold tracking-wider uppercase block mt-0.5"
                       style={{ color: isWhite ? "#4B5563" : "#9CA3AF" }}
                     >
-                      Rekening Koran Elektronik (e-Statement)
+                      Electronic Statement (e-Statement)
                     </span>
                   </div>
                 </div>
@@ -602,7 +602,7 @@ export function FinancialCleanSheetModal({
               className="text-[11px] font-semibold tracking-wider uppercase"
               style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
             >
-              Ringkasan Rekening (Account Summary)
+              Account Summary
             </h2>
 
             <div
@@ -617,7 +617,7 @@ export function FinancialCleanSheetModal({
                   className="text-[9px] font-bold uppercase tracking-wider block"
                   style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
                 >
-                  Saldo Awal (Initial)
+                  Opening Balance
                 </span>
                 <span className="text-[15px] font-semibold block mt-0.5">
                   {formatRupiah(openingBalance)}
@@ -629,7 +629,7 @@ export function FinancialCleanSheetModal({
                   className="text-[9px] font-bold uppercase tracking-wider block"
                   style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
                 >
-                  Dana Masuk ({incomingCount} txs)
+                  Inflow ({incomingCount} txs)
                 </span>
                 <span
                   className="text-[15px] font-semibold block mt-0.5"
@@ -644,7 +644,7 @@ export function FinancialCleanSheetModal({
                   className="text-[9px] font-bold uppercase tracking-wider block"
                   style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
                 >
-                  Dana Keluar ({outgoingCount} txs)
+                  Outflow ({outgoingCount} txs)
                 </span>
                 <span
                   className="text-[15px] font-semibold block mt-0.5"
@@ -659,7 +659,7 @@ export function FinancialCleanSheetModal({
                   className="text-[9px] font-bold uppercase tracking-wider block"
                   style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
                 >
-                  Saldo Akhir (Closing)
+                  Closing Balance
                 </span>
                 <span className="text-[15px] font-semibold block mt-0.5">
                   {formatRupiah(closingBalance)}
@@ -677,7 +677,7 @@ export function FinancialCleanSheetModal({
               }}
             >
               <span>
-                Surplus Bersih Periode:{" "}
+                Period Net Surplus:{" "}
                 <strong style={{ color: isWhite ? "#111827" : "#FFFFFF" }}>
                   {formatRupiah(netCashflow)}
                 </strong>
@@ -689,9 +689,9 @@ export function FinancialCleanSheetModal({
                 </strong>
               </span>
               <span>
-                Total Mutasi:{" "}
+                Total Activity:{" "}
                 <strong style={{ color: isWhite ? "#111827" : "#FFFFFF" }}>
-                  {periodTxs.length} Transaksi
+                  {periodTxs.length} Transactions
                 </strong>
               </span>
             </div>
@@ -706,7 +706,7 @@ export function FinancialCleanSheetModal({
                 className="text-[11px] font-semibold tracking-wider uppercase"
                 style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
               >
-                Posisi Saldo per Akun & Brankas (Account Holdings)
+                Account Holdings & Portfolio Balances
               </h2>
 
               <div
@@ -723,9 +723,9 @@ export function FinancialCleanSheetModal({
                         color: isWhite ? "#4B5563" : "#9CA3AF",
                       }}
                     >
-                      <th className="text-left p-2 font-bold uppercase">Nama Akun / Dompet</th>
-                      <th className="text-right p-2 font-bold uppercase">Saldo Saat Ini</th>
-                      <th className="text-right p-2 font-bold uppercase">Porsi Portofolio</th>
+                      <th className="text-left p-2 font-bold uppercase">Account / Wallet Name</th>
+                      <th className="text-right p-2 font-bold uppercase">Current Balance</th>
+                      <th className="text-right p-2 font-bold uppercase">Portfolio Share</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -767,13 +767,13 @@ export function FinancialCleanSheetModal({
                 className="text-[11px] font-semibold tracking-wider uppercase"
                 style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
               >
-                Rincian Mutasi Transaksi (Transaction Ledger)
+                Transaction Ledger & Entries
               </h2>
               <span
                 className="text-[9px] font-bold uppercase"
                 style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
               >
-                {ledgerRows.length} Transaksi Tercatat
+                {ledgerRows.length} Recorded Transactions
               </span>
             </div>
 
@@ -786,7 +786,7 @@ export function FinancialCleanSheetModal({
                   color: isWhite ? "#6B7280" : "#9CA3AF",
                 }}
               >
-                Tidak ada mutasi transaksi yang tercatat pada periode ini.
+                No transactions recorded for this period.
               </div>
             ) : (
               <div
@@ -804,10 +804,10 @@ export function FinancialCleanSheetModal({
                       }}
                     >
                       <th className="text-center p-2 font-bold uppercase w-10">No</th>
-                      <th className="text-left p-2 font-bold uppercase w-24">Tanggal</th>
-                      <th className="text-left p-2 font-bold uppercase">Keterangan Transaksi</th>
-                      <th className="text-right p-2 font-bold uppercase w-28">Mutasi (IDR)</th>
-                      <th className="text-right p-2 font-bold uppercase w-28">Saldo (IDR)</th>
+                      <th className="text-left p-2 font-bold uppercase w-24">Date</th>
+                      <th className="text-left p-2 font-bold uppercase">Description / Note</th>
+                      <th className="text-right p-2 font-bold uppercase w-28">Amount (IDR)</th>
+                      <th className="text-right p-2 font-bold uppercase w-28">Balance (IDR)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -892,7 +892,7 @@ export function FinancialCleanSheetModal({
                 className="text-[11px] font-semibold tracking-wider uppercase"
                 style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
               >
-                Distribusi Pos Pengeluaran Teratas (Expense Drivers)
+                Top Expense Allocation (Drivers)
               </h2>
 
               <div
@@ -920,7 +920,7 @@ export function FinancialCleanSheetModal({
                       className="text-[9px] font-medium block mt-0.5"
                       style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
                     >
-                      {c.percentage.toFixed(1)}% dari total pengeluaran
+                      {c.percentage.toFixed(1)}% of total outflow
                     </span>
                   </div>
                 ))}
@@ -940,10 +940,10 @@ export function FinancialCleanSheetModal({
           >
             <div className="space-y-0.5 max-w-md leading-relaxed">
               <p className="font-bold" style={{ color: isWhite ? "#111827" : "#E5E7EB" }}>
-                PEMBERITAHUAN RESMI & KEABSAHAN DOKUMEN:
+                OFFICIAL NOTICE & DOCUMENT INTEGRITY:
               </p>
               <p>
-                Dokumen ini merupakan catatan keuangan elektronik resmi yang diterbitkan secara otomatis dari Sistem Ledger Trouvaille. Sah dan diakui tanpa tanda tangan basah.
+                This document is an electronic financial statement automatically generated by the Trouvaille Ledger System. Legally valid without physical signature.
               </p>
             </div>
 
@@ -976,7 +976,7 @@ export function FinancialCleanSheetModal({
           className="text-[11px] font-medium hidden sm:inline"
           style={{ color: "var(--text-tertiary)" }}
         >
-          {periodTitle} · {periodTxs.length} Transaksi Tercatat
+          {periodTitle} · {periodTxs.length} Recorded Transactions
         </span>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -1006,7 +1006,7 @@ export function FinancialCleanSheetModal({
               color: "var(--accent-ink)",
             }}
           >
-            Tutup
+            Close
           </button>
         </div>
       </footer>

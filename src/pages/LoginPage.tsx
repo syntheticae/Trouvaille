@@ -29,6 +29,38 @@ interface ShowcaseSlide {
   visual: "chart" | "voice" | "vault" | "domain" | "runway";
 }
 
+function formatAuthError(msg: string): string {
+  if (!msg) return "An unexpected error occurred. Please try again.";
+  const lower = msg.toLowerCase();
+  if (lower.includes("invalid login credentials")) {
+    return "Incorrect email or password. Please check your credentials.";
+  }
+  if (lower.includes("email not confirmed")) {
+    return "Please verify your email before signing in, or check your spam folder.";
+  }
+  if (lower.includes("user already registered")) {
+    return "An account with this email already exists. Please sign in instead.";
+  }
+  if (lower.includes("rate limit") || lower.includes("too many requests")) {
+    return "Too many attempts. Please wait a moment and try again.";
+  }
+  if (lower.includes("password should be at least")) {
+    return "Password must contain at least 6 characters.";
+  }
+  return msg;
+}
+
+function getPasswordStrength(pwd: string): { score: number; label: string } {
+  if (!pwd) return { score: 0, label: "" };
+  let score = 0;
+  if (pwd.length >= 6) score += 1;
+  if (pwd.length >= 8) score += 1;
+  if (/[0-9]/.test(pwd)) score += 1;
+  if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+  const labels = ["Too short", "Weak", "Fair", "Good", "Strong"];
+  return { score, label: labels[score] || "Weak" };
+}
+
 const SHOWCASE_SLIDES: ShowcaseSlide[] = [
   {
     title: "Trouvaille",
@@ -72,13 +104,14 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Auto-advance showcase slides every 6 seconds
+  // Auto-advance showcase slides every 6 seconds (paused when user opens form)
   useEffect(() => {
+    if (showEmailForm) return;
     const timer = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % SHOWCASE_SLIDES.length);
     }, 6000);
     return () => clearInterval(timer);
-  }, []);
+  }, [showEmailForm]);
 
   const handleBiometricLogin = useCallback(async () => {
     setLoading(true);
@@ -185,7 +218,7 @@ export function LoginPage() {
         password,
       });
       if (error) {
-        setError(error.message);
+        setError(formatAuthError(error.message));
       } else if (data?.session) {
         saveBiometricLoginCredentials(email.trim(), data.session, password);
         setSession(data.session);
@@ -201,7 +234,7 @@ export function LoginPage() {
         password,
       });
       if (error) {
-        setError(error.message);
+        setError(formatAuthError(error.message));
       } else if (data?.session) {
         saveBiometricLoginCredentials(email.trim(), data.session, password);
         setSession(data.session);
@@ -665,6 +698,40 @@ export function LoginPage() {
                       </button>
                     </div>
 
+                    {/* Password Strength Indicator for Registration */}
+                    {password.length > 0 && (
+                      <div className="px-1 space-y-1">
+                        <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden flex gap-1">
+                          {[1, 2, 3, 4].map((s) => {
+                            const strength = getPasswordStrength(password);
+                            const active = strength.score >= s;
+                            const barColor =
+                              strength.score <= 1
+                                ? "bg-red-400"
+                                : strength.score === 2
+                                ? "bg-amber-400"
+                                : strength.score === 3
+                                ? "bg-blue-400"
+                                : "bg-emerald-400";
+                            return (
+                              <div
+                                key={s}
+                                className={`h-full flex-1 transition-all rounded-full ${
+                                  active ? barColor : "bg-white/10"
+                                }`}
+                              />
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-white/40">
+                          <span>Password Strength</span>
+                          <span className="text-white/70 font-medium">
+                            {getPasswordStrength(password).label}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {error && (
                       <p className="text-[12px] font-medium text-red-400 px-1">{error}</p>
                     )}
@@ -798,6 +865,9 @@ export function LoginPage() {
                         className="text-white/40 group-hover:translate-x-0.5 transition-transform"
                       />
                     </button>
+                    <p className="text-[10.5px] text-white/40 text-center pt-0.5">
+                      Private & on-device only · No cloud backup
+                    </p>
                   </>
                 )}
               </div>

@@ -57,8 +57,8 @@ export function BottomTabBar({ onOpenAdd, onOpenVoiceAdd }: BottomTabBarProps) {
         className="w-full max-w-[370px] rounded-full p-1.5 flex items-center justify-between pointer-events-auto transition-all"
         style={{
           background: "var(--dock-bg)",
-          border: "1px solid var(--dock-border)",
-          boxShadow: "none",
+          border: "1.5px solid var(--dock-border)",
+          boxShadow: "var(--dock-shadow)",
           backdropFilter: "blur(28px) saturate(190%)",
           WebkitBackdropFilter: "blur(28px) saturate(190%)",
           borderRadius: "9999px",
@@ -77,13 +77,13 @@ export function BottomTabBar({ onOpenAdd, onOpenVoiceAdd }: BottomTabBarProps) {
                 onPointerCancel={clearLongPress}
                 onClick={handleAddClick}
                 onContextMenu={(e) => e.preventDefault()}
-                aria-label="Tambah Transaksi (Tahan untuk Dikte Suara)"
-                title="Klik untuk Tambah, Tahan untuk Dikte Suara"
+                aria-label="Add Transaction (Hold for Voice)"
+                title="Tap to Add, Hold for Voice Dictation"
                 className="w-10 h-10 flex items-center justify-center relative rounded-full active:scale-95 transition-transform select-none touch-manipulation cursor-pointer"
                 style={{
                   background: "var(--accent)",
                   color: "var(--accent-ink)",
-                  boxShadow: "none",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
                 }}
               >
                 <Icon size={20} strokeWidth={2.5} />
@@ -104,7 +104,10 @@ export function BottomTabBar({ onOpenAdd, onOpenVoiceAdd }: BottomTabBarProps) {
                 <motion.div
                   layoutId="tab-indicator"
                   className="absolute inset-0 rounded-full"
-                  style={{ background: "var(--dock-active-pill)" }}
+                  style={{
+                    background: "var(--dock-active-pill)",
+                    boxShadow: "var(--dock-active-shadow, 0 2px 8px rgba(0, 0, 0, 0.15))",
+                  }}
                   transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}
@@ -113,8 +116,8 @@ export function BottomTabBar({ onOpenAdd, onOpenVoiceAdd }: BottomTabBarProps) {
                 className="relative z-10 transition-colors duration-200"
                 style={{
                   color: isActive
-                    ? "var(--text-primary)"
-                    : "var(--text-tertiary)",
+                    ? "var(--dock-active-ink, #ffffff)"
+                    : "var(--dock-inactive-ink, var(--text-tertiary))",
                 }}
               />
             </NavLink>

@@ -51,7 +51,7 @@ export function BottomSheet({ isOpen, onClose, children, title }: BottomSheetPro
           <motion.div
             className="fixed bottom-0 left-0 right-0 z-[999] shadow-2xl"
             style={{
-              background: "var(--bg-elevated)",
+              background: "var(--bg-base)",
               borderTop: "1px solid var(--glass-border)",
               borderLeft: "1px solid var(--glass-border)",
               borderRight: "1px solid var(--glass-border)",

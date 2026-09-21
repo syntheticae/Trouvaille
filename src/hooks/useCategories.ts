@@ -623,7 +623,7 @@ export function useDeleteCategory() {
       if (refError) throw refError;
       if ((count || 0) > 0) {
         throw new Error(
-          "Kategori masih dipakai oleh transaksi. Pindahkan atau hapus transaksinya dulu.",
+          "Category is currently used by transactions. Please reassign or delete its transactions first.",
         );
       }
 

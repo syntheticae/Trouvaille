@@ -357,7 +357,7 @@ export function SunburstChart({
             cy={0}
             r={rTier1_in}
             fill="none"
-            stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}
+            stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}
             strokeWidth="1"
           />
           <circle
@@ -365,7 +365,7 @@ export function SunburstChart({
             cy={0}
             r={rTier1_out}
             fill="none"
-            stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}
+            stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}
             strokeWidth="1"
             strokeDasharray="3 3"
           />
@@ -374,7 +374,7 @@ export function SunburstChart({
             cy={0}
             r={rTier2_out}
             fill="none"
-            stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}
+            stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}
             strokeWidth="1"
           />
 
@@ -435,7 +435,14 @@ export function SunburstChart({
           {activeArc ? (
             <>
               {/* Active Slice Badge */}
-              <span className="text-[8px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/[0.08] text-zinc-400 border border-white/10 mb-0.5 truncate max-w-full">
+              <span
+                className="text-[8px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full mb-0.5 truncate max-w-full"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+              >
                 {activeArc.tier === "parent"
                   ? "Sector"
                   : parentOfActive?.name || "Child"}
@@ -443,7 +450,7 @@ export function SunburstChart({
 
               {/* Active Slice Name */}
               <p
-                className="text-[12px] font-semibold text-white truncate max-w-full leading-tight"
+                className="text-[12px] font-semibold truncate max-w-full leading-tight"
                 style={{ color: "var(--text-primary)" }}
                 title={activeArc.name}
               >
@@ -452,14 +459,17 @@ export function SunburstChart({
 
               {/* Active Value */}
               <p
-                className="amount text-[13px] font-bold tracking-tight text-white mt-0.5"
+                className="amount text-[13px] font-bold tracking-tight mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
                 {formatRupiah(activeArc.value)}
               </p>
 
               {/* Percentage of Total */}
-              <span className="text-[10px] font-mono text-zinc-400 mt-0.5">
+              <span
+                className="text-[10px] font-mono mt-0.5"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 {activeArc.percentage}% share
               </span>
             </>
