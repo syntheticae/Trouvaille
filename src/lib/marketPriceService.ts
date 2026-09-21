@@ -925,7 +925,7 @@ export function recordHoldingActivity(
  */
 export function generateAssetHistoryCurve(
   holding: InvestmentHolding,
-  timeframe: "1D" | "1W" | "1M" | "1Y" | "ALL",
+  timeframe: "1D" | "1W" | "1M" | "6M" | "YTD" | "1Y" | "ALL",
   currentPrice?: number,
 ): Array<{
   label: string;
@@ -941,7 +941,8 @@ export function generateAssetHistoryCurve(
   const currentTotalValue = units * livePrice;
   const totalCost = units * avgBuy;
 
-  const numPoints = timeframe === "1D" ? 12 : timeframe === "1W" ? 7 : timeframe === "1M" ? 15 : 12;
+  const numPoints =
+    timeframe === "1D" ? 12 : timeframe === "1W" ? 7 : timeframe === "1M" ? 15 : timeframe === "6M" ? 12 : 12;
   const points: Array<{
     label: string;
     date: string;
@@ -972,6 +973,10 @@ export function generateAssetHistoryCurve(
       label = d.toLocaleDateString("en-US", { weekday: "short" });
     } else if (timeframe === "1M") {
       label = `${i * 2 + 1}`;
+    } else if (timeframe === "6M") {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const mIndex = (now.getMonth() - (5 - i) + 12) % 12;
+      label = monthNames[mIndex];
     } else {
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const mIndex = (now.getMonth() - (11 - i) + 12) % 12;

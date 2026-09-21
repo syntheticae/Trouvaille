@@ -13,10 +13,14 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  CartesianGrid,
+  XAxis,
+  YAxis,
   Tooltip,
 } from "recharts";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
+import { GlassSelect, type GlassSelectOption } from "../ui/GlassSelect";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
@@ -51,6 +55,45 @@ const TYPE_BADGES: Record<AssetType, string> = {
   fixed_asset: "Fixed Asset",
 };
 
+const stockRangeLabels: Record<string, string> = {
+  "1D": "Past Day",
+  "1W": "Past Week",
+  "1M": "Past Month",
+  "6M": "Past 6 Months",
+  YTD: "Year to Date",
+  "1Y": "Past 1 Year",
+  ALL: "All Time",
+};
+
+const GlassTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        borderRadius: 12,
+        padding: "6px 10px",
+        boxShadow: "0 8px 24px var(--shadow-strength)",
+      }}
+    >
+      <p style={{ color: "var(--text-tertiary)", fontSize: 10, fontWeight: 700 }}>
+        {label}
+      </p>
+      <p style={{ color: "var(--text-primary)", fontSize: 13, fontWeight: 700 }}>
+        {formatRupiah(payload[0]?.value ?? 0)}
+      </p>
+    </div>
+  );
+};
+
+function formatAxisY(val: number): string {
+  if (Math.abs(val) >= 1000000000) return (val / 1000000000).toFixed(1) + "B";
+  if (Math.abs(val) >= 1000000) return (val / 1000000).toFixed(1) + "M";
+  if (Math.abs(val) >= 1000) return (val / 1000).toFixed(0) + "K";
+  return String(val);
+}
+
 export function AssetDetailSheet({
   isOpen,
   onClose,
@@ -66,7 +109,7 @@ export function AssetDetailSheet({
   const { data: wallets = [] } = useWallets();
   const addTx = useAddTransaction();
 
-  const [timeframe, setTimeframe] = useState<"1D" | "1W" | "1M" | "1Y" | "ALL">("1M");
+  const [timeframe, setTimeframe] = useState<"1D" | "1W" | "1M" | "6M" | "YTD" | "1Y" | "ALL">("1M");
 
   // Buy / Sell action modal states
   const [actionModal, setActionModal] = useState<"none" | "buy" | "sell">("none");
@@ -95,6 +138,17 @@ export function AssetDetailSheet({
     if (!holding) return [];
     return generateAssetHistoryCurve(holding, timeframe, holding.current_price);
   }, [holding, timeframe]);
+
+  // Wallet options for custom luxury GlassSelect
+  const walletOptions: GlassSelectOption[] = useMemo(() => {
+    return wallets.map((w) => ({
+      value: w.id,
+      label: w.name,
+      sublabel: w.classification || "wallet",
+      icon: w.icon,
+      badge: w.name.toUpperCase().includes("USDT") ? "Crypto" : undefined,
+    }));
+  }, [wallets]);
 
   if (!holding || !valuation) return null;
 
@@ -327,42 +381,76 @@ export function AssetDetailSheet({
             </div>
           </div>
 
-          {/* Performance Sparkline Chart with Quiet Timeframes */}
+          {/* Performance Chart (Net Portfolio / Apple Stock Parity) */}
           <div className="pt-2 border-t border-[var(--glass-border)] space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
-                Performance
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">
+                {stockRangeLabels[timeframe]} · {holding.currency || "IDR"}
               </span>
-              <div className="flex items-center gap-1">
-                {(["1D", "1W", "1M", "1Y", "ALL"] as const).map((tf) => (
-                  <button
-                    key={tf}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setTimeframe(tf);
-                    }}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium transition-colors cursor-pointer ${
-                      timeframe === tf
-                        ? "bg-[var(--text-primary)] text-[var(--bg-elevated)]"
-                        : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                    }`}
-                  >
-                    {tf}
-                  </button>
-                ))}
-              </div>
+              <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+                Live: {formatRupiah(currentPrice)} / unit
+              </span>
             </div>
 
-            <div className="h-28 w-full">
+            {/* Apple Stock Pill Range Selector */}
+            <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5">
+              {(["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as const).map((r) => {
+                const isActive = timeframe === r;
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => {
+                      setTimeframe(r);
+                      triggerHaptic("light");
+                    }}
+                    className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none"
+                    style={{
+                      background: isActive
+                        ? isDark
+                          ? "rgba(255,255,255,0.25)"
+                          : "#18181b"
+                        : isDark
+                          ? "transparent"
+                          : "#f4f4f7",
+                      color: isActive
+                        ? "#FFFFFF"
+                        : isDark
+                          ? "rgba(255,255,255,0.55)"
+                          : "#52525b",
+                      border: isActive
+                        ? isDark
+                          ? "1px solid rgba(255,255,255,0.35)"
+                          : "1px solid #18181b"
+                        : isDark
+                          ? "1px solid transparent"
+                          : "1px solid rgba(0,0,0,0.04)",
+                      boxShadow: isActive
+                        ? isDark
+                          ? "none"
+                          : "0 2px 6px rgba(0,0,0,0.18)"
+                        : "none",
+                    }}
+                  >
+                    {r}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Chart with Right Y-Axis & Dotted Grid */}
+            <div className="h-[125px] w-full mt-1">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+                <AreaChart
+                  data={chartData}
+                  margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
+                >
                   <defs>
-                    <linearGradient id="assetDetailGradient" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="assetHeroGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop
                         offset="0%"
                         stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                        stopOpacity={isDark ? 0.22 : 0.12}
+                        stopOpacity={isDark ? 0.25 : 0.12}
                       />
                       <stop
                         offset="100%"
@@ -371,28 +459,53 @@ export function AssetDetailSheet({
                       />
                     </linearGradient>
                   </defs>
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--glass-border)] shadow-lg text-[11px] font-mono">
-                            <p className="text-[var(--text-tertiary)] text-[9px] mb-0.5">{data.date}</p>
-                            <p className="font-bold text-[var(--text-primary)]">
-                              {formatRupiah(data.value)}
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
+                  <CartesianGrid
+                    strokeDasharray="2 3"
+                    stroke={isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.09)"}
+                    vertical={true}
+                    horizontal={true}
                   />
+                  <XAxis
+                    dataKey="label"
+                    tick={{
+                      fontSize: 9,
+                      fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
+                      fontFamily: "Urbanist",
+                      fontWeight: 600,
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    dy={3}
+                  />
+                  <YAxis
+                    orientation="right"
+                    width={34}
+                    domain={["auto", "auto"]}
+                    tick={{
+                      fontSize: 9,
+                      fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
+                      fontFamily: "Urbanist",
+                      fontWeight: 700,
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={formatAxisY}
+                    dx={-2}
+                  />
+                  <Tooltip content={<GlassTooltip />} />
                   <Area
                     type="monotone"
                     dataKey="value"
-                    stroke={isDark ? "rgba(255,255,255,0.8)" : "#18181b"}
-                    strokeWidth={1.5}
-                    fill="url(#assetDetailGradient)"
+                    stroke={isDark ? "#FFFFFF" : "#18181b"}
+                    strokeWidth={2}
+                    fill="url(#assetHeroGradient)"
+                    dot={false}
+                    activeDot={{
+                      r: 4,
+                      fill: isDark ? "#FFFFFF" : "#18181b",
+                      stroke: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.9)",
+                      strokeWidth: 1.5,
+                    }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -674,17 +787,13 @@ export function AssetDetailSheet({
                   </div>
 
                   {linkToWallet && (
-                    <select
+                    <GlassSelect
                       value={selectedWalletId}
-                      onChange={(e) => setSelectedWalletId(e.target.value)}
-                      className="w-full mt-2 px-3.5 py-2.5 rounded-xl text-[12px] bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] outline-none"
-                    >
-                      {wallets.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setSelectedWalletId}
+                      options={walletOptions}
+                      placeholder="Select wallet..."
+                      className="mt-2"
+                    />
                   )}
                 </div>
               )}

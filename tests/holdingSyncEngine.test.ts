@@ -126,6 +126,31 @@ describe("Holding Sync Engine & Crypto Reconciliation", () => {
     expect(secondAudit.hasDiscrepancy).toBe(false);
   });
 
+  it("persistently skips dismissed or already reconciled transaction IDs across app reloads", () => {
+    const p2pTx: Transaction = {
+      id: "tx-p2p-dismissed",
+      user_id: "user-1",
+      wallet_id: "w-usdt",
+      to_wallet_id: "w-seabank",
+      type: "transfer",
+      amount: 89624,
+      note: "Transfer USDT to SeaBank via P2P",
+      occurred_on: "2026-09-18",
+      created_at: "2026-09-18T10:00:00Z",
+    };
+
+    const firstAudit = auditUsdtReconciliation([p2pTx], wallets);
+    expect(firstAudit.hasDiscrepancy).toBe(true);
+
+    // User dismisses or reconciles
+    applyUsdtReconciliation(firstAudit);
+
+    // Simulate full app refresh / new audit instance
+    const auditAfterReload = auditUsdtReconciliation([p2pTx], wallets);
+    expect(auditAfterReload.hasDiscrepancy).toBe(false);
+    expect(auditAfterReload.unreconciledTxs.length).toBe(0);
+  });
+
   it("syncs transaction when recording daily staking yield (income)", () => {
     // Current units: 1057. Earn 0.2 USDT daily staking yield (~Rp 3.283)
     const yieldTx: Transaction = {

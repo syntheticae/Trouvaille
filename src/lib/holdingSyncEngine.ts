@@ -359,6 +359,40 @@ export interface UnreconciledTransactionAudit {
   suggestedReconciledUnits: number;
 }
 
+function getReconciledTxStorageKey(userId?: string): string {
+  if (userId && userId !== "guest_local_user") {
+    return `trouvaille_reconciled_tx_ids_${userId}`;
+  }
+  return "trouvaille_reconciled_tx_ids_default";
+}
+
+export function getReconciledTxIds(userId?: string): Set<string> {
+  try {
+    if (typeof localStorage === "undefined") return new Set<string>();
+    const raw = localStorage.getItem(getReconciledTxStorageKey(userId));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch {}
+  return new Set<string>();
+}
+
+export function markTxAsReconciled(txIds: string[], userId?: string): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const existing = getReconciledTxIds(userId);
+    for (const id of txIds) {
+      if (id) existing.add(id);
+    }
+    localStorage.setItem(getReconciledTxStorageKey(userId), JSON.stringify(Array.from(existing)));
+  } catch {}
+}
+
+export function dismissReconciliationTxIds(txIds: string[], userId?: string): void {
+  markTxAsReconciled(txIds, userId);
+}
+
 /**
  * Inspect transactions and check if there are transfers or incomes on USDT wallet
  * that haven't been reflected in the holding activity log or quantity.
@@ -374,10 +408,11 @@ export function auditUsdtReconciliation(
   const cryptoWallets = wallets.filter((w) => isInvestmentOrCryptoWallet(w));
   const cryptoWalletIds = new Set(cryptoWallets.map((w) => w.id));
 
-  // Retrieve existing activities
+  // Retrieve existing activities and already-reconciled transaction IDs
   const allHoldings = getSavedHoldings(userId);
   const usdtHolding = allHoldings.find((h) => h.symbol?.toUpperCase() === "USDT");
   const existingActivities: HoldingActivity[] = usdtHolding?.activities || [];
+  const reconciledIds = getReconciledTxIds(userId);
 
   const unreconciledTxs: UnreconciledTransactionAudit["unreconciledTxs"] = [];
   let totalUnitsToDeduct = 0;
@@ -393,6 +428,7 @@ export function auditUsdtReconciliation(
   });
 
   for (const tx of sortedTxs) {
+    if (tx.id && reconciledIds.has(tx.id)) continue;
     const amt = Number(tx.amount) || 0;
     if (amt <= 0) continue;
 
@@ -519,6 +555,12 @@ export function applyUsdtReconciliation(
     units: targetUnits,
   };
   saveUsdtPref(nextPref, userId);
+
+  // Mark all candidate transaction IDs as permanently reconciled
+  const txIds = audit.unreconciledTxs.map((t) => t.id).filter(Boolean);
+  if (txIds.length > 0) {
+    markTxAsReconciled(txIds, userId);
+  }
 
   return { updatedUnits: targetUnits };
 }

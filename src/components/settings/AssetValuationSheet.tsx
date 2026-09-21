@@ -20,6 +20,7 @@ import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { IconRenderer } from "../ui/IconRenderer";
 import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
 import { AssetDetailSheet } from "./AssetDetailSheet";
+import { StakingYieldModal } from "./StakingYieldModal";
 import { autoSuggestIcon } from "../../lib/iconRegistry";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
@@ -32,11 +33,11 @@ import {
 } from "../../hooks/useWallets";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useAuth } from "../../contexts/AuthContext";
-import { useAllTransactions, useAddTransaction } from "../../hooks/useTransactions";
-import { useCategories } from "../../hooks/useCategories";
+import { useAllTransactions } from "../../hooks/useTransactions";
 import {
   auditUsdtReconciliation,
   applyUsdtReconciliation,
+  dismissReconciliationTxIds,
 } from "../../lib/holdingSyncEngine";
 import {
   fetchUsdtPriceInIDR,
@@ -138,7 +139,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const isDark = theme !== "light";
   const { showToast } = useToast();
   const { data: wallets = [], refetch: refetchWallets } = useWallets();
-  const { data: categories = [] } = useCategories();
   const { balancesByName } = useWalletBalances();
   const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
 
@@ -219,7 +219,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const [dismissedReconciliation, setDismissedReconciliation] = useState(false);
 
   const { data: allTxs = [] } = useAllTransactions();
-  const addTx = useAddTransaction();
 
   // Audit discrepancy between transactions and USDT units
   const reconciliationAudit = useMemo(() => {
@@ -233,6 +232,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     const res = applyUsdtReconciliation(reconciliationAudit, user?.id);
     setUsdtPref((prev) => ({ ...prev, units: res.updatedUnits }));
     setEditUnits(String(res.updatedUnits));
+    setDismissedReconciliation(true);
     showToast(
       `USDT holding synced to ${res.updatedUnits} USDT`,
       "update",
@@ -242,53 +242,6 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
   // Staking Yield Quick Modal State
   const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
-  const [yieldAmountInput, setYieldAmountInput] = useState("0.15");
-  const [yieldNoteInput, setYieldNoteInput] = useState("Staking Yield");
-
-  const handleSaveStakingYield = () => {
-    const units = parseFloat(yieldAmountInput);
-    if (isNaN(units) || units <= 0) {
-      showToast("Please enter a valid yield amount", "delete", () => {});
-      return;
-    }
-    const currentRate = usdtPref.rate || USD_IDR_ESTIMATE;
-    const idrAmount = Math.round(units * currentRate);
-    const targetWallet = cryptoWallet || wallets[0];
-
-    const incomeCat =
-      categories.find(
-        (c) =>
-          c.type === "income" &&
-          (c.name.toLowerCase().includes("invest") ||
-            c.name.toLowerCase().includes("bunga") ||
-            c.name.toLowerCase().includes("lainnya")),
-      ) ||
-      categories.find((c) => c.type === "income") ||
-      null;
-
-    // Add income transaction
-    addTx.mutate({
-      type: "income",
-      amount: idrAmount,
-      wallet_id: targetWallet?.id || null,
-      category_id: incomeCat?.id || null,
-      occurred_on: format(new Date(), "yyyy-MM-dd"),
-      note: yieldNoteInput.trim() ? `USDT Yield: ${yieldNoteInput.trim()}` : "USDT Staking Yield",
-    });
-
-    // Record holding activity & update usdtPref
-    const nextUnits = Number((usdtPref.units + units).toFixed(4));
-    const nextPref: UsdtValuationPref = {
-      ...usdtPref,
-      units: nextUnits,
-    };
-    saveUsdtPref(nextPref, user?.id);
-    setUsdtPref(nextPref);
-    setEditUnits(String(nextUnits));
-    setIsStakingModalOpen(false);
-    triggerHaptic("medium");
-    showToast(`+${units} USDT staking yield recorded!`, "add", () => {});
-  };
 
   // Other Market Holdings & Fixed Assets
   const [holdings, setHoldings] = useState<InvestmentHolding[]>(() => getSavedHoldings(user?.id));
@@ -1560,7 +1513,13 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                         </div>
                         <button
                           type="button"
-                          onClick={() => setDismissedReconciliation(true)}
+                          onClick={() => {
+                            setDismissedReconciliation(true);
+                            const txIds = reconciliationAudit.unreconciledTxs.map((t) => t.id).filter(Boolean);
+                            if (txIds.length > 0) {
+                              dismissReconciliationTxIds(txIds, user?.id);
+                            }
+                          }}
                           className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-0.5 transition-colors cursor-pointer"
                           title="Dismiss"
                         >
@@ -1955,96 +1914,21 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
         }}
       />
 
-      {/* Quick Staking Yield Logger Modal */}
-      {isStakingModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={() => setIsStakingModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-sm p-4 rounded-2xl space-y-3"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Coins size={15} style={{ color: "var(--text-primary)" }} />
-                <h3 className="text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                  Record Staking Yield
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsStakingModalOpen(false)}
-                className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
-                style={{ background: "var(--glass-fill)", color: "var(--text-tertiary)" }}
-              >
-                <X size={13} />
-              </button>
-            </div>
-
-            <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-              Daily yield will be credited to your USDT wallet balance and increase your holding units.
-            </p>
-
-            <div className="space-y-2">
-              <div>
-                <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                  Yield Amount (USDT)
-                </label>
-                <div className="flex items-center gap-1 px-3 py-2 rounded-xl" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-                  <input
-                    type="number"
-                    step="any"
-                    value={yieldAmountInput}
-                    onChange={(e) => setYieldAmountInput(e.target.value)}
-                    placeholder="0.15"
-                    className="w-full text-[15px] font-mono font-semibold bg-transparent outline-none"
-                    style={{ color: "var(--text-primary)" }}
-                    autoFocus
-                  />
-                  <span className="text-[11px] font-bold" style={{ color: "var(--text-tertiary)" }}>
-                    USDT
-                  </span>
-                </div>
-                <div className="text-[10px] font-mono mt-1 text-right" style={{ color: "var(--text-tertiary)" }}>
-                  ≈ Rp {Math.round((parseFloat(yieldAmountInput) || 0) * (usdtPref.rate || 16300)).toLocaleString("id-ID")}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                  Note / Source (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={yieldNoteInput}
-                  onChange={(e) => setYieldNoteInput(e.target.value)}
-                  placeholder="e.g. Binance Earn / Staking"
-                  className="w-full px-3 py-2 rounded-xl text-[12px] outline-none"
-                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                />
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSaveStakingYield}
-              className="w-full py-2.5 rounded-xl text-[12px] font-semibold active:scale-98 transition-all cursor-pointer mt-1"
-              style={{
-                background: "var(--text-primary)",
-                color: "var(--bg-elevated)",
-              }}
-            >
-              Record Yield (+{yieldAmountInput || "0"} USDT)
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Rich Staking Yield Logger Modal */}
+      <StakingYieldModal
+        isOpen={isStakingModalOpen}
+        onClose={() => setIsStakingModalOpen(false)}
+        holdingSymbol="USDT"
+        holdingUnits={usdtPref.units}
+        liveRate={usdtPref.rate || USD_IDR_ESTIMATE}
+        wallets={wallets}
+        defaultWalletId={cryptoWallet?.id}
+        userId={user?.id}
+        onSuccess={() => {
+          const freshUsdt = getSavedUsdtPref(user?.id);
+          setUsdtPref(freshUsdt);
+        }}
+      />
     </BottomSheet>
   );
 }
