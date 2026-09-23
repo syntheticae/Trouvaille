@@ -276,7 +276,7 @@ export function WebDashboardLinkModal({
     triggerHaptic("medium");
     setViewMode("authorizing");
 
-    const result = await authorizeWebDashboardSession(rawScannedQr);
+    const result = await authorizeWebDashboardSession(rawScannedQr, { session });
 
     if (result.success) {
       triggerSuccessHaptic();

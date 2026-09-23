@@ -83,7 +83,7 @@ export function parseWebDashboardQr(qrContent: string): {
  */
 export async function authorizeWebDashboardSession(
   qrContent: string,
-  options?: { timeoutMs?: number; requireConfirmation?: boolean }
+  options?: { session?: any; timeoutMs?: number; requireConfirmation?: boolean }
 ): Promise<{ success: boolean; error?: string; sessionInfo?: LinkedWebSession }> {
   try {
     const parseResult = parseWebDashboardQr(qrContent);
@@ -96,21 +96,69 @@ export async function authorizeWebDashboardSession(
 
     const { sessionId, channel: channelName, origin } = parseResult.payload;
 
-    // 1. Refresh or fetch valid session from mobile Supabase client
-    let activeSession: any = null;
-    try {
-      const { data: refreshData, error: refreshErr } =
-        await supabase.auth.refreshSession();
-      if (!refreshErr && refreshData?.session) {
-        activeSession = refreshData.session;
+    // 1. Resolve active session from: passed options, refresh, getSession, or vault
+    let activeSession: any = options?.session || null;
+
+    if (!activeSession || !activeSession.refresh_token) {
+      try {
+        const { data: refreshData, error: refreshErr } =
+          await supabase.auth.refreshSession();
+        if (!refreshErr && refreshData?.session) {
+          activeSession = refreshData.session;
+        }
+      } catch {
+        // Fallback silently
       }
-    } catch {
-      // Fallback silently to cached session
     }
 
-    if (!activeSession) {
+    if (!activeSession || !activeSession.access_token) {
       const { data: sessionData } = await supabase.auth.getSession();
-      activeSession = sessionData?.session;
+      if (sessionData?.session) {
+        activeSession = {
+          ...sessionData.session,
+          refresh_token: sessionData.session.refresh_token || activeSession?.refresh_token,
+        };
+      }
+    }
+
+    // Check persistent session vault fallback for refresh_token
+    if (!activeSession?.refresh_token) {
+      try {
+        const rawVault = localStorage.getItem("trouvaille_session_vault_v1");
+        if (rawVault) {
+          const parsed = JSON.parse(rawVault);
+          if (parsed?.session) {
+            activeSession = {
+              ...parsed.session,
+              ...activeSession,
+              refresh_token: parsed.session.refresh_token || activeSession?.refresh_token,
+            };
+          }
+        }
+      } catch {}
+    }
+
+    // Check Supabase SDK localStorage token key for refresh_token
+    if (!activeSession?.refresh_token && typeof localStorage !== "undefined") {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed?.refresh_token) {
+                activeSession = {
+                  ...activeSession,
+                  refresh_token: parsed.refresh_token,
+                  access_token: activeSession?.access_token || parsed.access_token,
+                };
+                break;
+              }
+            }
+          }
+        }
+      } catch {}
     }
 
     if (!activeSession || !activeSession.access_token) {
@@ -119,6 +167,10 @@ export async function authorizeWebDashboardSession(
         error: "Anda belum login di aplikasi mobile. Silakan masuk terlebih dahulu.",
       };
     }
+
+    // Ensure tokens are non-undefined strings
+    const resolvedAccessToken = String(activeSession.access_token);
+    const resolvedRefreshToken = String(activeSession.refresh_token || "");
 
     // 2. Connect to the ephemeral Realtime broadcast channel
     const channel = supabase.channel(channelName, {
@@ -181,8 +233,8 @@ export async function authorizeWebDashboardSession(
             event: "session-granted",
             payload: {
               session: {
-                access_token: activeSession.access_token,
-                refresh_token: activeSession.refresh_token,
+                access_token: resolvedAccessToken,
+                refresh_token: resolvedRefreshToken,
               },
               user: activeSession.user,
             },
