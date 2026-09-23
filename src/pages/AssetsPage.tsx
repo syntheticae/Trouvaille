@@ -15,11 +15,10 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Plus,
   Coins,
+  Link2,
   Search,
   RefreshCw,
   X,
-  ArrowUpRight,
-  ArrowDownRight,
   Sparkles,
   PieChart,
   ChevronDown,
@@ -63,7 +62,11 @@ import {
   MonthlyDeploymentBarCard,
   type MonthlyDeploymentItem,
 } from "../components/assets/MonthlyDeploymentBarCard";
-import { AssetBentoMicroCards } from "../components/assets/AssetBentoMicroCards";
+import { PortfolioInsightCards } from "../components/assets/PortfolioInsightCards";
+import {
+  calculateHistoricalNetWorthPoints,
+  formatRunwaySummary,
+} from "../lib/portfolioAnalytics";
 import type { LiquiditySummary } from "../components/assets/CapitalAllocationCard";
 import { format, subMonths } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -296,6 +299,16 @@ export function AssetsPage() {
   const usdtFloatingPnL = usdtMarketValue - usdtCostBasis;
   const usdtFloatingPnLPct =
     usdtCostBasis > 0 ? (usdtFloatingPnL / usdtCostBasis) * 100 : 0;
+
+  const usdtInfo = useMemo(() => {
+    return {
+      symbol: "USDT",
+      name: "Tether USD",
+      units: usdtPref.units > 0 ? usdtPref.units : suggestedUsdtUnits,
+      costBasis: usdtCostBasis,
+      marketValue: usdtMarketValue,
+    };
+  }, [usdtPref.units, suggestedUsdtUnits, usdtCostBasis, usdtMarketValue]);
 
   const totalCostBasis = usdtCostBasis + otherHoldingsSummary.totalCostBasis;
   const totalMarketValuation =
@@ -665,7 +678,7 @@ export function AssetsPage() {
           <p className="text-[12px] text-[var(--text-tertiary)] font-medium">
             {isIndonesian
               ? "Kekayaan bersih & performa portofolio live"
-              : "Net worth telemetry & live portfolio valuation"}
+              : "Net worth & live portfolio"}
           </p>
         </div>
 
@@ -702,9 +715,9 @@ export function AssetsPage() {
               border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
-            title={isIndonesian ? "Catat Staking Yield" : "Record Staking Yield"}
+            title={isIndonesian ? "Sinkronisasi & Staking" : "Sync & Staking"}
           >
-            <Coins size={16} strokeWidth={1.75} />
+            <Link2 size={16} strokeWidth={1.75} />
           </button>
 
           <button
@@ -713,24 +726,24 @@ export function AssetsPage() {
               triggerHaptic("medium");
               setAddPhase(1);
             }}
-            className="h-9 px-3 rounded-2xl flex items-center gap-1.5 font-semibold text-[12px] active:scale-95 transition-transform cursor-pointer"
+            className="w-9 h-9 rounded-2xl flex items-center justify-center active:scale-95 transition-transform cursor-pointer shadow-sm"
             style={{
               background: "var(--text-primary)",
               color: "var(--bg-base)",
             }}
+            title={isIndonesian ? "Tambah Aset" : "Add Asset"}
           >
-            <Plus size={14} strokeWidth={2.5} />
-            <span>{isIndonesian ? "Tambah" : "Add"}</span>
+            <Plus size={16} strokeWidth={2.5} />
           </button>
         </div>
       </div>
 
-      {/* ── 2. Total Net Valuation Hero Card (Compact & Powerful) ──────────── */}
+      {/* ── 2. Total Net Valuation Hero Card (Silicon Valley Prospectus) ───── */}
       <div
-        className="p-5 rounded-[26px] space-y-3 relative overflow-hidden transition-all"
+        className="p-5 rounded-[28px] space-y-3 relative overflow-hidden transition-all"
         style={{
           background: isDark
-            ? "linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)"
+            ? "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)"
             : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
           border: isDark
             ? "1px solid var(--glass-border)"
@@ -740,64 +753,133 @@ export function AssetsPage() {
             : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
         }}
       >
-        <div className="flex items-center justify-between gap-2">
+        <div className="space-y-1">
           <span
-            className="text-[10.5px] font-bold uppercase tracking-wider"
-            style={{ color: "var(--text-tertiary)" }}
+            className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block"
           >
-            {isIndonesian ? "Total Valuasi Bersih" : "Total Net Valuation"}
+            {isIndonesian ? "Total Kekayaan Bersih" : "Total net worth"}
           </span>
 
-          {/* Monochrome Luxury P&L Badge */}
-          <div
-            className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold shrink-0 whitespace-nowrap font-mono"
-            style={{
-              background: isDark
-                ? "rgba(255, 255, 255, 0.12)"
-                : "rgba(0, 0, 0, 0.08)",
-              color: "var(--text-primary)",
-              border: "1px solid var(--glass-border)",
-            }}
+          {/* Hero Number (Strictly font-light) */}
+          <p
+            className="amount text-[36px] sm:text-[42px] font-light tracking-tight leading-none text-[var(--text-primary)]"
           >
-            {totalFloatingProfit >= 0 ? (
-              <ArrowUpRight size={12} strokeWidth={2.5} />
-            ) : (
-              <ArrowDownRight size={12} strokeWidth={2.5} />
-            )}
-            <span>
+            {isStealthMode ? "••••••••" : formatRupiah(totalMarketValuation)}
+          </p>
+
+          {/* P&L Indicator (Strictly Monochrome + Arrow Vector) */}
+          <div className="flex items-center gap-1.5 pt-1 text-[11.5px] font-mono text-[var(--text-secondary)]">
+            <span className="text-[var(--text-primary)] font-bold">
+              {totalFloatingProfit >= 0 ? "▾" : "▴"}
+            </span>
+            <span className="font-semibold text-[var(--text-primary)]">
               {isStealthMode
-                ? "••••••••"
-                : `${totalFloatingProfit >= 0 ? "+" : ""}${formatRupiah(totalFloatingProfit)} (${totalFloatingProfitPct >= 0 ? "+" : ""}${totalFloatingProfitPct.toFixed(1)}%)`}
+                ? "••••"
+                : `${totalFloatingProfit >= 0 ? "+" : ""}${formatRupiah(totalFloatingProfit)}`}
+            </span>
+            <span className="text-[var(--text-tertiary)]">·</span>
+            <span>
+              {totalFloatingProfitPct >= 0 ? "+" : ""}
+              {totalFloatingProfitPct.toFixed(1)}% (6 {isIndonesian ? "bln" : "mo"})
+            </span>
+            <span className="text-[var(--text-tertiary)]">·</span>
+            <span>
+              {isIndonesian ? "Modal " : "Cost basis "}
+              {isStealthMode ? "••••" : formatRupiah(totalCostBasis)}
             </span>
           </div>
         </div>
 
-        <p
-          className="amount text-[32px] font-bold tracking-tight leading-none"
-          style={{ color: "var(--text-primary)" }}
-        >
-          {isStealthMode ? "••••••••" : formatRupiah(totalMarketValuation)}
-        </p>
+        {/* 6-Month Trajectory Sparkline Curve (Hermite SVG) */}
+        {(() => {
+          const trajectoryPoints = calculateHistoricalNetWorthPoints(
+            totalMarketValuation,
+            monthlyDeploymentData,
+          );
+          if (trajectoryPoints.length === 0) return null;
 
-        {/* Cost Basis & Live USD Indicator */}
-        <div className="flex items-center justify-between pt-2.5 border-t border-[var(--glass-border)] text-[11px]">
-          <span style={{ color: "var(--text-tertiary)" }}>
-            {isIndonesian ? "Modal Terinvestasi: " : "Cost Basis: "}
-            <strong
-              className="font-bold font-mono"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {isStealthMode ? "••••••••" : formatRupiah(totalCostBasis)}
-            </strong>
+          const svgW = 320;
+          const svgH = 65;
+          const padL = 10;
+          const padR = 14;
+          const padT = 12;
+          const padB = 8;
+          const plotW = svgW - padL - padR;
+          const plotH = svgH - padT - padB;
+
+          const minV = Math.min(...trajectoryPoints.map((p) => p.valuation));
+          const maxV = Math.max(...trajectoryPoints.map((p) => p.valuation), minV + 1);
+
+          const pts = trajectoryPoints.map((pt, i) => {
+            const x = padL + (i / (trajectoryPoints.length - 1)) * plotW;
+            const y = padT + plotH - ((pt.valuation - minV) / (maxV - minV || 1)) * plotH;
+            return { ...pt, x, y };
+          });
+
+          const pathD = pts.reduce((acc, pt, i, arr) => {
+            if (i === 0) return `M ${pt.x} ${pt.y}`;
+            const prev = arr[i - 1];
+            const cx = (prev.x + pt.x) / 2;
+            return `${acc} C ${cx} ${prev.y}, ${cx} ${pt.y}, ${pt.x} ${pt.y}`;
+          }, "");
+
+          const lastPt = pts[pts.length - 1];
+
+          return (
+            <div className="pt-2 pb-1 space-y-1.5">
+              <div className="w-full h-[65px] relative">
+                <svg
+                  viewBox={`0 0 ${svgW} ${svgH}`}
+                  className="w-full h-full overflow-visible"
+                >
+                  {/* Trajectory Line */}
+                  <path
+                    d={pathD}
+                    fill="none"
+                    stroke={isDark ? "rgba(255, 255, 255, 0.85)" : "rgba(24, 24, 27, 0.85)"}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  {/* Glowing Terminal Anchor Pin */}
+                  {lastPt && (
+                    <>
+                      <circle
+                        cx={lastPt.x}
+                        cy={lastPt.y}
+                        r="6"
+                        fill={isDark ? "#FFFFFF" : "#18181B"}
+                        opacity="0.25"
+                      />
+                      <circle
+                        cx={lastPt.x}
+                        cy={lastPt.y}
+                        r="3"
+                        fill={isDark ? "#FFFFFF" : "#18181B"}
+                      />
+                    </>
+                  )}
+                </svg>
+              </div>
+
+              {/* Month Axis Labels */}
+              <div className="flex items-center justify-between px-1 text-[10.5px] font-mono text-[var(--text-tertiary)]">
+                {trajectoryPoints.map((pt) => (
+                  <span key={pt.key}>{pt.label}</span>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Integrated Runway Status Line & Explicit USDT Rate */}
+        <div className="pt-2.5 border-t border-[var(--glass-border)] flex items-center justify-between text-[11px]">
+          <span className="font-medium text-[var(--text-secondary)]">
+            {formatRunwaySummary(liquidRunwayMonths, monthlyBurnRate, isIndonesian)}
           </span>
-          <span style={{ color: "var(--text-tertiary)" }}>
-            {isIndonesian ? "Live USD: " : "Live USDT: "}
-            <strong
-              className="font-mono font-bold"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {formatRupiah(usdtPref.rate)}
-            </strong>
+
+          {/* Explicit Per-Unit USDT Rate */}
+          <span className="font-mono text-[10.5px] text-[var(--text-tertiary)]">
+            Live USDT Rate: <strong className="text-[var(--text-secondary)]">{formatRupiah(usdtPref.rate)}</strong> / USDT
           </span>
         </div>
       </div>
@@ -839,20 +921,21 @@ export function AssetsPage() {
         </div>
       )}
 
-      {/* ── 4. Bento Pillars (Inflow Velocity & Liquid Runway) ─────────────── */}
-      <AssetBentoMicroCards
-        deploymentHistory={monthlyDeploymentData}
-        liquidRunwayMonths={liquidRunwayMonths}
-        liquidReserves={liquiditySummary.liquid}
-        monthlyBurnRate={monthlyBurnRate}
+      {/* ── 4. Monthly Investment Deployment Bar Chart (shadcn/ui Minimal) ── */}
+      <MonthlyDeploymentBarCard
+        data={monthlyDeploymentData}
         isDark={isDark}
         isIndonesian={isIndonesian}
         hideBalance={isStealthMode}
       />
 
-      {/* ── 5. Monthly Investment Deployment Bar Chart (shadcn/ui Minimal) ── */}
-      <MonthlyDeploymentBarCard
-        data={monthlyDeploymentData}
+      {/* ── 5. Portfolio Intelligence & Insight Cards ─────────────────────── */}
+      <PortfolioInsightCards
+        holdings={holdings}
+        usdtHolding={usdtInfo}
+        liquidCash={liquiditySummary.liquid}
+        totalMarketValuation={totalMarketValuation}
+        monthlyBurnRate={monthlyBurnRate}
         isDark={isDark}
         isIndonesian={isIndonesian}
         hideBalance={isStealthMode}

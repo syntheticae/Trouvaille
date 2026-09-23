@@ -137,6 +137,7 @@ export function MonthlyDeploymentBarCard({
             >
               <XAxis
                 dataKey="label"
+                interval={0}
                 axisLine={false}
                 tickLine={false}
                 tick={{
@@ -155,24 +156,34 @@ export function MonthlyDeploymentBarCard({
               />
               <Bar
                 dataKey="deployed"
+                minPointSize={6}
                 maxBarSize={30}
                 radius={[6, 6, 0, 0]}
                 animationDuration={600}
+                background={{
+                  fill: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+                  radius: 6,
+                }}
               >
                 {data.map((entry, index) => {
                   const isHovered = activeIndex === index;
+                  const isZero = entry.deployed === 0;
                   const isTop = entry.deployed === maxDeployed && entry.deployed > 0;
-                  
+
                   let fill = isDark
-                    ? "rgba(255, 255, 255, 0.28)"
+                    ? "rgba(255, 255, 255, 0.32)"
                     : "rgba(24, 24, 27, 0.35)";
 
                   if (isHovered) {
                     fill = "var(--text-primary)";
+                  } else if (isZero) {
+                    fill = isDark
+                      ? "rgba(255, 255, 255, 0.12)"
+                      : "rgba(0, 0, 0, 0.08)";
                   } else if (isTop) {
                     fill = isDark
-                      ? "rgba(255, 255, 255, 0.85)"
-                      : "rgba(24, 24, 27, 0.85)";
+                      ? "rgba(255, 255, 255, 0.9)"
+                      : "rgba(24, 24, 27, 0.9)";
                   }
 
                   return <Cell key={`cell-${index}`} fill={fill} />;
