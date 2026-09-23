@@ -3,6 +3,8 @@ import { ArrowDownRight, ArrowUpRight, CalendarRange, ChevronRight } from "lucid
 import { BottomSheet } from "../ui/BottomSheet"
 import { formatRupiah } from "../../lib/utils"
 import type { CashflowFloorResult } from "../../hooks/useFinancialIntelligence"
+import { useLanguage } from "../../contexts/LanguageContext"
+import { useCurrency } from "../../contexts/CurrencyContext"
 
 interface CashflowOutlookCardProps {
   defaultForecast: CashflowFloorResult
@@ -13,6 +15,10 @@ interface CashflowOutlookCardProps {
 const HORIZONS = [7, 14, 30] as const
 
 export function CashflowOutlookCard({ defaultForecast, getCashflowHorizon, hideBalance = false }: CashflowOutlookCardProps) {
+  const { language } = useLanguage()
+  useCurrency()
+  const isIndonesian = language === "id"
+
   const [selectedHorizon, setSelectedHorizon] = useState<(typeof HORIZONS)[number]>(14)
   const [detailOpen, setDetailOpen] = useState(false)
 
@@ -29,14 +35,18 @@ export function CashflowOutlookCard({ defaultForecast, getCashflowHorizon, hideB
       <section className="p-4 rounded-[24px] glass-surface mb-3 select-none" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Cashflow Outlook</p>
-            <p className="text-[13px] font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>Projected low & upcoming commitments</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+              {isIndonesian ? "Prospek Arus Kas" : "Cashflow Outlook"}
+            </p>
+            <p className="text-[13px] font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Proyeksi titik terendah & komitmen kas" : "Projected low & upcoming commitments"}
+            </p>
           </div>
           <button
             onClick={() => setDetailOpen(true)}
             className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-transform"
             style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-            title="View full outlook"
+            title={isIndonesian ? "Lihat prospek lengkap" : "View full outlook"}
           >
             <ChevronRight size={16} />
           </button>
@@ -54,28 +64,34 @@ export function CashflowOutlookCard({ defaultForecast, getCashflowHorizon, hideB
                 border: "1px solid var(--glass-border)"
               }}
             >
-              {days}d
+              {days}{isIndonesian ? "hr" : "d"}
             </button>
           ))}
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-3">
           <div className="p-3 rounded-2xl" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-            <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Projected Low</p>
+            <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+              {isIndonesian ? "Titik Terendah" : "Projected Low"}
+            </p>
             <p className="amount text-[15px] mt-1" style={{ color: "var(--text-primary)" }}>
               {hideBalance ? "Rp ••••••••" : formatRupiah(forecast.lowestBalance)}
             </p>
             <p className="text-[10px] mt-1" style={{ color: "var(--text-secondary)" }}>
-              {forecast.daysUntilLowest === 0 ? "Today" : `${forecast.daysUntilLowest} days · ${forecast.lowestBalanceDate}`}
+              {forecast.daysUntilLowest === 0
+                ? (isIndonesian ? "Hari ini" : "Today")
+                : `${forecast.daysUntilLowest} ${isIndonesian ? "hari" : "days"} · ${forecast.lowestBalanceDate}`}
             </p>
           </div>
           <div className="p-3 rounded-2xl" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-            <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Net Change</p>
+            <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+              {isIndonesian ? "Perubahan Bersih" : "Net Change"}
+            </p>
             <p className="amount text-[15px] mt-1" style={{ color: "var(--text-primary)" }}>
               {hideBalance ? "Rp ••••••••" : `${forecast.netProjectedChange >= 0 ? "+" : ""}${formatRupiah(forecast.netProjectedChange)}`}
             </p>
             <p className="text-[10px] mt-1" style={{ color: "var(--text-secondary)" }}>
-              {eventDays.length} known event days
+              {eventDays.length} {isIndonesian ? "agenda tercatat" : "known event days"}
             </p>
           </div>
         </div>
@@ -90,19 +106,21 @@ export function CashflowOutlookCard({ defaultForecast, getCashflowHorizon, hideB
                   {point.knownOutflow > 0 && (
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                       style={{ background: "var(--glass-fill)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>
-                      <ArrowDownRight size={10} className="inline mr-1" />Out {hideBalance ? "••••" : formatRupiah(point.knownOutflow)}
+                      <ArrowDownRight size={10} className="inline mr-1" />{isIndonesian ? "Keluar" : "Out"} {hideBalance ? "••••" : formatRupiah(point.knownOutflow)}
                     </span>
                   )}
                   {point.knownInflow > 0 && (
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                       style={{ background: "var(--glass-fill-strong)", color: "var(--text-primary)", border: "1px solid var(--glass-border)" }}>
-                      <ArrowUpRight size={10} className="inline mr-1" />In {hideBalance ? "••••" : formatRupiah(point.knownInflow)}
+                      <ArrowUpRight size={10} className="inline mr-1" />{isIndonesian ? "Masuk" : "In"} {hideBalance ? "••••" : formatRupiah(point.knownInflow)}
                     </span>
                   )}
                 </div>
               </div>
               <div className="text-right shrink-0 ml-3">
-                <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Balance</p>
+                <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                  {isIndonesian ? "Saldo" : "Balance"}
+                </p>
                 <p className="amount text-[11px] mt-0.5" style={{ color: "var(--text-primary)" }}>
                   {hideBalance ? "Rp ••••••••" : formatRupiah(point.projectedBalance)}
                 </p>
@@ -111,8 +129,12 @@ export function CashflowOutlookCard({ defaultForecast, getCashflowHorizon, hideB
           )) : (
             <div className="p-4 rounded-2xl text-center" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
               <CalendarRange size={18} className="mx-auto mb-2" style={{ color: "var(--text-tertiary)" }} />
-              <p className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>No known bills or recurring inflows</p>
-              <p className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>The selected horizon has no scheduled cashflow events yet.</p>
+              <p className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                {isIndonesian ? "Belum ada tagihan atau pemasukan rutin" : "No known bills or recurring inflows"}
+              </p>
+              <p className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>
+                {isIndonesian ? "Horizon waktu yang dipilih belum memiliki jadwal agenda kas." : "The selected horizon has no scheduled cashflow events yet."}
+              </p>
             </div>
           )}
         </div>
@@ -121,27 +143,37 @@ export function CashflowOutlookCard({ defaultForecast, getCashflowHorizon, hideB
       <BottomSheet isOpen={detailOpen} onClose={() => setDetailOpen(false)}>
         <div className="px-5 pb-10 space-y-4">
           <div>
-            <h3 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>Cashflow Outlook</h3>
+            <h3 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Prospek Arus Kas" : "Cashflow Outlook"}
+            </h3>
             <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-              {selectedHorizon}-day projection from current liquid balance
+              {isIndonesian
+                ? `Proyeksi ${selectedHorizon} hari dari saldo likuid saat ini`
+                : `${selectedHorizon}-day projection from current liquid balance`}
             </p>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             <div className="p-3 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-              <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Start</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                {isIndonesian ? "Awal" : "Start"}
+              </p>
               <p className="amount text-[12px] mt-1" style={{ color: "var(--text-primary)" }}>
                 {hideBalance ? "Rp ••••••••" : formatRupiah(forecast.currentBalance)}
               </p>
             </div>
             <div className="p-3 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-              <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Low</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                {isIndonesian ? "Terendah" : "Low"}
+              </p>
               <p className="amount text-[12px] mt-1" style={{ color: "var(--text-primary)" }}>
                 {hideBalance ? "Rp ••••••••" : formatRupiah(forecast.lowestBalance)}
               </p>
             </div>
             <div className="p-3 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}>
-              <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Change</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                {isIndonesian ? "Perubahan" : "Change"}
+              </p>
               <p className="amount text-[12px] mt-1" style={{ color: "var(--text-primary)" }}>
                 {hideBalance ? "Rp ••••••••" : `${forecast.netProjectedChange >= 0 ? "+" : ""}${formatRupiah(forecast.netProjectedChange)}`}
               </p>
@@ -158,12 +190,12 @@ export function CashflowOutlookCard({ defaultForecast, getCashflowHorizon, hideB
                       {point.date === forecast.lowestBalanceDate && (
                         <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
                           style={{ background: "var(--text-primary)", color: "var(--bg-canvas)" }}>
-                          FLOOR
+                          {isIndonesian ? "TERENDAH" : "FLOOR"}
                         </span>
                       )}
                     </div>
                     <p className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>
-                      {point.knownOutflowItems.map(item => item.title).concat(point.knownInflowItems.map(item => item.title)).join(" · ") || "No scheduled events"}
+                      {point.knownOutflowItems.map(item => item.title).concat(point.knownInflowItems.map(item => item.title)).join(" · ") || (isIndonesian ? "Tidak ada agenda terjadwal" : "No scheduled events")}
                     </p>
                   </div>
                   <div className="text-right shrink-0">

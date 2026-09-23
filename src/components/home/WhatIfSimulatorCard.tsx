@@ -7,6 +7,8 @@ import {
 } from "../../lib/financialMath";
 import { motion, AnimatePresence } from "framer-motion";
 import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface WhatIfSimulatorCardProps {
   monthlyIncome: number;
@@ -14,55 +16,59 @@ interface WhatIfSimulatorCardProps {
   hideBalance?: boolean;
 }
 
-const SCENARIOS: Array<{
-  type: WhatIfScenarioType;
-  label: string;
-  inputLabel: string;
-  helper: string;
-  presets: number[];
-}> = [
-  {
-    type: "expense_cut",
-    label: "Expense ↓",
-    inputLabel: "Reduce monthly expense by",
-    helper: "Example: cut Rp500K/month",
-    presets: [250000, 500000, 1000000],
-  },
-  {
-    type: "income_boost",
-    label: "Income ↑",
-    inputLabel: "Increase monthly income by",
-    helper: "Example: add Rp2M/month",
-    presets: [500000, 1000000, 2000000],
-  },
-  {
-    type: "expense_change_pct",
-    label: "Expense %",
-    inputLabel: "Change expense by percent",
-    helper: "Positive raises expense, negative lowers it",
-    presets: [-10, 10, 20],
-  },
-  {
-    type: "saving_plan",
-    label: "Save / mo",
-    inputLabel: "Set dedicated monthly savings",
-    helper: "Example: reserve Rp1.5M every month",
-    presets: [500000, 1500000, 3000000],
-  },
-];
-
 export function WhatIfSimulatorCard({
   monthlyIncome,
   monthlyExpense,
   hideBalance = false,
 }: WhatIfSimulatorCardProps) {
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
+
+  const scenarios: Array<{
+    type: WhatIfScenarioType;
+    label: string;
+    inputLabel: string;
+    helper: string;
+    presets: number[];
+  }> = [
+    {
+      type: "expense_cut",
+      label: isIndonesian ? "Pangkas Beban ↓" : "Expense ↓",
+      inputLabel: isIndonesian ? "Kurangi pengeluaran bulanan sebesar" : "Reduce monthly expense by",
+      helper: isIndonesian ? "Contoh: pangkas Rp500 rb/bulan" : "Example: cut Rp500K/month",
+      presets: [250000, 500000, 1000000],
+    },
+    {
+      type: "income_boost",
+      label: isIndonesian ? "Tambah Masuk ↑" : "Income ↑",
+      inputLabel: isIndonesian ? "Tingkatkan pemasukan bulanan sebesar" : "Increase monthly income by",
+      helper: isIndonesian ? "Contoh: tambah Rp2 jt/bulan" : "Example: add Rp2M/month",
+      presets: [500000, 1000000, 2000000],
+    },
+    {
+      type: "expense_change_pct",
+      label: isIndonesian ? "Beban %" : "Expense %",
+      inputLabel: isIndonesian ? "Ubah pengeluaran dalam persentase" : "Change expense by percent",
+      helper: isIndonesian ? "Positif menaikkan beban, negatif menurunkan" : "Positive raises expense, negative lowers it",
+      presets: [-10, 10, 20],
+    },
+    {
+      type: "saving_plan",
+      label: isIndonesian ? "Tabung / bln" : "Save / mo",
+      inputLabel: isIndonesian ? "Tentukan target tabungan bulanan" : "Set dedicated monthly savings",
+      helper: isIndonesian ? "Contoh: sisihkan Rp1,5 jt tiap bulan" : "Example: reserve Rp1.5M every month",
+      presets: [500000, 1500000, 3000000],
+    },
+  ];
+
   const [scenarioType, setScenarioType] =
     useState<WhatIfScenarioType>("expense_cut");
   const [rawValue, setRawValue] = useState("500000");
   const [isExpanded, setIsExpanded] = useState(false);
 
   const activeScenario =
-    SCENARIOS.find((item) => item.type === scenarioType) ?? SCENARIOS[0];
+    scenarios.find((item) => item.type === scenarioType) ?? scenarios[0];
   const numericValue = Number(rawValue || 0);
 
   const result = useMemo(
@@ -109,13 +115,13 @@ export function WhatIfSimulatorCard({
               className="text-[10px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              What-if Simulator
+              {isIndonesian ? "Simulator What-If" : "What-if Simulator"}
             </span>
             <p
               className="text-[13px] font-semibold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
-              Deterministic Planning
+              {isIndonesian ? "Perencanaan Finansial Proyektif" : "Deterministic Planning"}
             </p>
           </div>
         </div>
@@ -139,7 +145,7 @@ export function WhatIfSimulatorCard({
           >
             <div className="p-4 pt-1 border-t border-[var(--glass-border)] space-y-4">
               <div className="grid grid-cols-2 gap-2">
-                {SCENARIOS.map((scenario) => {
+                {scenarios.map((scenario) => {
                   const isActive = scenario.type === scenarioType;
                   return (
                     <button
@@ -233,7 +239,7 @@ export function WhatIfSimulatorCard({
                     style={{ background: "var(--glass-fill)" }}
                   >
                     <p style={{ color: "var(--text-tertiary)" }}>
-                      Current / year
+                      {isIndonesian ? "Saat ini / tahun" : "Current / year"}
                     </p>
                     <p
                       className="amount font-semibold mt-0.5"
@@ -249,7 +255,7 @@ export function WhatIfSimulatorCard({
                     style={{ background: "var(--glass-fill)" }}
                   >
                     <p style={{ color: "var(--text-tertiary)" }}>
-                      After adjustment
+                      {isIndonesian ? "Setelah penyesuaian" : "After adjustment"}
                     </p>
                     <p
                       className="amount font-semibold mt-0.5"
@@ -265,7 +271,7 @@ export function WhatIfSimulatorCard({
                     style={{ background: "var(--glass-fill)" }}
                   >
                     <p style={{ color: "var(--text-tertiary)" }}>
-                      Difference / year
+                      {isIndonesian ? "Selisih / tahun" : "Difference / year"}
                     </p>
                     <p
                       className="amount font-semibold mt-0.5"
@@ -288,26 +294,26 @@ export function WhatIfSimulatorCard({
                   style={{ borderTop: "1px solid var(--glass-border)" }}
                 >
                   <p style={{ color: "var(--text-secondary)" }}>
-                    Adjusted income:{" "}
+                    {isIndonesian ? "Pemasukan disesuaikan: " : "Adjusted income: "}
                     {hideBalance
                       ? "Rp ••••••••"
                       : formatRupiah(result.adjustedMonthlyIncome)}{" "}
-                    / month
+                    {isIndonesian ? "/ bulan" : "/ month"}
                   </p>
                   <p style={{ color: "var(--text-secondary)" }}>
-                    Adjusted expense:{" "}
+                    {isIndonesian ? "Pengeluaran disesuaikan: " : "Adjusted expense: "}
                     {hideBalance
                       ? "Rp ••••••••"
                       : formatRupiah(result.adjustedMonthlyExpense)}{" "}
-                    / month
+                    {isIndonesian ? "/ bulan" : "/ month"}
                   </p>
                   {result.suggestedMonthlySavings > 0 && (
                     <p style={{ color: "var(--text-secondary)" }}>
-                      Dedicated savings:{" "}
+                      {isIndonesian ? "Alokasi tabungan: " : "Dedicated savings: "}
                       {hideBalance
                         ? "Rp ••••••••"
                         : formatRupiah(result.suggestedMonthlySavings)}{" "}
-                      / month
+                      {isIndonesian ? "/ bulan" : "/ month"}
                     </p>
                   )}
                   <p
@@ -319,8 +325,12 @@ export function WhatIfSimulatorCard({
                     }}
                   >
                     {result.isOvercommitted
-                      ? "This scenario overcommits monthly cashflow."
-                      : "This scenario stays within your current monthly cashflow."}
+                      ? isIndonesian
+                        ? "Skenario ini membebani arus kas melebihi kapasitas bulanan."
+                        : "This scenario overcommits monthly cashflow."
+                      : isIndonesian
+                        ? "Skenario ini aman dalam batas arus kas bulanan Anda."
+                        : "This scenario stays within your current monthly cashflow."}
                   </p>
                 </div>
               </div>

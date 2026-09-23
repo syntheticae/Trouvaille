@@ -17,7 +17,7 @@ export function CompactShell({
   children,
 }: CompactShellProps) {
   useCurrency();
-  useLanguage();
+  const { isIndonesian } = useLanguage();
   return (
     <section
       className="glass-surface p-3.5 rounded-[22px] flex flex-col justify-between h-[154px] min-h-[154px] max-h-[154px] w-full relative overflow-hidden select-none box-border"
@@ -46,7 +46,7 @@ export function CompactShell({
               background: "var(--glass-fill)",
               border: "1px solid var(--glass-border)",
             }}
-            title="View Details"
+            title={isIndonesian ? "Lihat Detail" : "View Details"}
           >
             <Info size={11} />
           </button>

@@ -5,6 +5,8 @@ import type { PersonalBaselineResult } from "../../lib/financialMath";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { IconRenderer } from "../ui/IconRenderer";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface PersonalBaselineSectionProps {
   baselines: PersonalBaselineResult;
@@ -15,6 +17,8 @@ export function PersonalBaselineSection({
   baselines,
   onCategoryClick,
 }: PersonalBaselineSectionProps) {
+  useCurrency();
+  const { isIndonesian } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (baselines.status === "insufficient") {
@@ -43,13 +47,13 @@ export function PersonalBaselineSection({
               className="text-[10px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Personal Baseline
+              {isIndonesian ? "Garis Dasar Personal" : "Personal Baseline"}
             </span>
             <p
               className="text-[13px] font-bold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
-              Awaiting Historical Cycles
+              {isIndonesian ? "Menunggu Siklus Historis" : "Awaiting Historical Cycles"}
             </p>
           </div>
         </div>
@@ -58,14 +62,16 @@ export function PersonalBaselineSection({
           style={{ color: "var(--text-secondary)" }}
         >
           {baselines.message ||
-            "Build more history across at least two full monthly cycles to establish your personal historical baseline."}
+            (isIndonesian
+              ? "Kumpulkan riwayat transaksi minimal 2 siklus bulanan penuh untuk menetapkan garis dasar historis Anda."
+              : "Build more history across at least two full monthly cycles to establish your personal historical baseline.")}
         </p>
       </section>
     );
   }
 
-  const minRangeStr = `Rp ${(baselines.typicalExpenseRange[0] / 1000000).toFixed(1)}M`;
-  const maxRangeStr = `Rp ${(baselines.typicalExpenseRange[1] / 1000000).toFixed(1)}M`;
+  const minRangeStr = formatRupiah(baselines.typicalExpenseRange[0]);
+  const maxRangeStr = formatRupiah(baselines.typicalExpenseRange[1]);
   const isAbove = baselines.currentMonthStatus === "above_range";
   const isBelow = baselines.currentMonthStatus === "below_range";
 
@@ -104,7 +110,7 @@ export function PersonalBaselineSection({
                 className="text-[10px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Personal Baseline
+                {isIndonesian ? "Garis Dasar Personal" : "Personal Baseline"}
               </span>
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
@@ -114,14 +120,14 @@ export function PersonalBaselineSection({
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                {baselines.historicalMonthsCount} Cycles Active
+                {baselines.historicalMonthsCount} {isIndonesian ? "Siklus Aktif" : "Cycles Active"}
               </span>
             </div>
             <p
               className="text-[13px] font-bold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
-              Typical Range: {minRangeStr} – {maxRangeStr}
+              {isIndonesian ? "Rentang Tipikal: " : "Typical Range: "}{minRangeStr} – {maxRangeStr}
             </p>
           </div>
         </div>
@@ -175,23 +181,18 @@ export function PersonalBaselineSection({
                     style={{ color: "var(--text-primary)" }}
                   >
                     {isAbove
-                      ? "Above your usual monthly range"
+                      ? (isIndonesian ? "Di atas rentang bulanan biasa Anda" : "Above your usual monthly range")
                       : isBelow
-                        ? "Below your typical monthly range"
-                        : "Within your historical normal band"}
+                        ? (isIndonesian ? "Di bawah rentang bulanan biasa Anda" : "Below your typical monthly range")
+                        : (isIndonesian ? "Dalam batas normal historis Anda" : "Within your historical normal band")}
                   </p>
                   <p
                     className="text-[11px]"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    Selected month outflow (
-                    {formatRupiah(baselines.currentMonthExpense)}) is{" "}
-                    {Math.abs(baselines.currentMonthDeviationPct)}%{" "}
-                    {baselines.currentMonthDeviationPct >= 0
-                      ? "above"
-                      : "below"}{" "}
-                    your historical median of{" "}
-                    {formatRupiah(baselines.medianExpense)}.
+                    {isIndonesian
+                      ? `Pengeluaran bulan terpilih (${formatRupiah(baselines.currentMonthExpense)}) adalah ${Math.abs(baselines.currentMonthDeviationPct)}% ${baselines.currentMonthDeviationPct >= 0 ? "di atas" : "di bawah"} median historis Anda (${formatRupiah(baselines.medianExpense)}).`
+                      : `Selected month outflow (${formatRupiah(baselines.currentMonthExpense)}) is ${Math.abs(baselines.currentMonthDeviationPct)}% ${baselines.currentMonthDeviationPct >= 0 ? "above" : "below"} your historical median of ${formatRupiah(baselines.medianExpense)}.`}
                   </p>
                 </div>
               </div>
@@ -206,7 +207,7 @@ export function PersonalBaselineSection({
                     className="text-[10px] font-bold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Median Outflow
+                    {isIndonesian ? "Median Pengeluaran" : "Median Outflow"}
                   </p>
                   <p
                     className="amount text-[14px] font-semibold mt-0.5"
@@ -218,7 +219,7 @@ export function PersonalBaselineSection({
                     className="text-[10px] mt-0.5"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    ~{baselines.monthlyTxFrequency} transactions / mo
+                    ~{baselines.monthlyTxFrequency} {isIndonesian ? "transaksi / bln" : "transactions / mo"}
                   </p>
                 </div>
 
@@ -230,7 +231,7 @@ export function PersonalBaselineSection({
                     className="text-[10px] font-bold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Typical Ticket Size
+                    {isIndonesian ? "Ukuran Rata-rata" : "Typical Ticket Size"}
                   </p>
                   <p
                     className="amount text-[14px] font-semibold mt-0.5"
@@ -242,7 +243,7 @@ export function PersonalBaselineSection({
                     className="text-[10px] mt-0.5"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    Median single expense
+                    {isIndonesian ? "Median transaksi tunggal" : "Median single expense"}
                   </p>
                 </div>
               </div>
@@ -254,15 +255,15 @@ export function PersonalBaselineSection({
                     className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider px-0.5"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    <span>Category Normal Bands</span>
-                    <span>Current vs Normal</span>
+                    <span>{isIndonesian ? "Rentang Normal Kategori" : "Category Normal Bands"}</span>
+                    <span>{isIndonesian ? "Aktual vs Normal" : "Current vs Normal"}</span>
                   </div>
 
                   <div className="space-y-1.5">
                     {baselines.categoryBaselines.slice(0, 4).map((cat) => {
                       const isCatAbove = cat.currentStatus === "above_range";
-                      const catMin = `Rp ${(cat.typicalMonthlyRange[0] / 1000).toFixed(0)}K`;
-                      const catMax = `Rp ${(cat.typicalMonthlyRange[1] / 1000).toFixed(0)}K`;
+                      const catMin = formatRupiah(cat.typicalMonthlyRange[0]);
+                      const catMax = formatRupiah(cat.typicalMonthlyRange[1]);
 
                       return (
                         <div
@@ -295,7 +296,7 @@ export function PersonalBaselineSection({
                                 className="text-[9px]"
                                 style={{ color: "var(--text-secondary)" }}
                               >
-                                Typical: {catMin} – {catMax}
+                                {isIndonesian ? "Tipikal: " : "Typical: "}{catMin} – {catMax}
                               </p>
                             </div>
                           </div>
@@ -315,7 +316,9 @@ export function PersonalBaselineSection({
                                   : "var(--text-tertiary)",
                               }}
                             >
-                              {isCatAbove ? "↑ Above normal" : "Within normal"}
+                              {isCatAbove
+                                ? (isIndonesian ? "↑ Di atas normal" : "↑ Above normal")
+                                : (isIndonesian ? "Dalam normal" : "Within normal")}
                             </span>
                           </div>
                         </div>

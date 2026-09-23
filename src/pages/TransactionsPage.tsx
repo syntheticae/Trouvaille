@@ -38,6 +38,7 @@ import { useToast } from "../contexts/ToastContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useSpace } from "../contexts/SpaceContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { TransactionSheet } from "../components/transactions/TransactionSheet";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
@@ -205,6 +206,7 @@ export function TransactionsPage({
   const deleteTx = useDeleteTransaction();
   const batchDeleteTx = useBatchDeleteTransactions();
   const { showToast } = useToast();
+  useCurrency();
   const { t, isIndonesian } = useLanguage();
   const { activeSpace, activeSpaceId, setActiveSpaceId, filterTransactionsBySpace } = useSpace();
 
@@ -681,21 +683,24 @@ export function TransactionsPage({
     };
   }, [filteredTxs]);
 
-  const filterTabs: { key: FilterType; label: string }[] = [
-    { key: "all", label: "All" },
-    { key: "expense", label: "Outflow" },
-    { key: "income", label: "Inflow" },
-    { key: "transfer", label: "Transfer" },
-    { key: "adjustment", label: "Correction" },
-  ];
+  const filterTabs: { key: FilterType; label: string }[] = useMemo(
+    () => [
+      { key: "all", label: isIndonesian ? "Semua" : "All" },
+      { key: "expense", label: isIndonesian ? "Pengeluaran" : "Outflow" },
+      { key: "income", label: isIndonesian ? "Pemasukan" : "Inflow" },
+      { key: "transfer", label: "Transfer" },
+      { key: "adjustment", label: isIndonesian ? "Koreksi" : "Correction" },
+    ],
+    [isIndonesian],
+  );
 
   const maxBar = Math.max(...dynamicChartData.map((d) => d.activeValue), 1);
 
   const selectedMonthLabel = useMemo(() => {
-    if (timeRange === "this_month") return "This Month";
-    if (timeRange === "last_month") return "Last Month";
-    if (timeRange === "last_30") return "Last 30 Days";
-    if (timeRange === "all") return "All Time";
+    if (timeRange === "this_month") return isIndonesian ? "Bulan Ini" : "This Month";
+    if (timeRange === "last_month") return isIndonesian ? "Bulan Lalu" : "Last Month";
+    if (timeRange === "last_30") return isIndonesian ? "30 Hari Terakhir" : "Last 30 Days";
+    if (timeRange === "all") return isIndonesian ? "Semua Waktu" : "All Time";
     if (timeRange === "custom_range") {
       if (customStartDate && customEndDate) {
         try {
@@ -703,18 +708,18 @@ export function TransactionsPage({
           const e = parseISO(customEndDate);
           return `${format(s, "d MMM")} - ${format(e, "d MMM")}`;
         } catch {
-          return "Custom Range";
+          return isIndonesian ? "Rentang Kustom" : "Custom Range";
         }
       }
-      return "Custom Range";
+      return isIndonesian ? "Rentang Kustom" : "Custom Range";
     }
     try {
       const parsed = parse(selectedCustomMonth, "yyyy-MM", new Date());
       return format(parsed, "MMMM yyyy");
     } catch {
-      return "Custom Month";
+      return isIndonesian ? "Bulan Kustom" : "Custom Month";
     }
-  }, [timeRange, selectedCustomMonth, customStartDate, customEndDate]);
+  }, [timeRange, selectedCustomMonth, customStartDate, customEndDate, isIndonesian]);
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -1016,7 +1021,7 @@ export function TransactionsPage({
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search transactions..."
+            placeholder={isIndonesian ? "Cari transaksi..." : "Search transactions..."}
             className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold touch-manipulation no-pull min-w-0"
             style={{ color: "var(--text-primary)" }}
           />
@@ -1070,7 +1075,7 @@ export function TransactionsPage({
                   title="Advanced Filters"
                 >
                   <SlidersHorizontal size={13} />
-                  <span className="text-[11px] font-semibold">Filters</span>
+                  <span className="text-[11px] font-semibold">{isIndonesian ? "Filter" : "Filters"}</span>
                   {activeFiltersCount > 0 && (
                     <span
                       className="w-4 h-4 rounded-full text-[9px] font-semibold flex items-center justify-center"
@@ -1114,7 +1119,7 @@ export function TransactionsPage({
                 >
                   <CheckSquare size={13} />
                   <span className="text-[11px] font-semibold">
-                    {isSelectMode ? "Done" : "Select"}
+                    {isSelectMode ? (isIndonesian ? "Selesai" : "Done") : (isIndonesian ? "Pilih" : "Select")}
                   </span>
                 </button>
               </motion.div>
@@ -1776,13 +1781,13 @@ export function TransactionsPage({
                 className="font-semibold text-base"
                 style={{ color: "var(--text-primary)" }}
               >
-                Filters
+                {isIndonesian ? "Filter" : "Filters"}
               </h3>
               <p
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Refine by timeframe, type, account, category & amount
+                {isIndonesian ? "Saring berdasarkan waktu, jenis, akun, kategori & nominal" : "Refine by timeframe, type, account, category & amount"}
               </p>
             </div>
             {activeFiltersCount > 0 && (
@@ -1795,7 +1800,7 @@ export function TransactionsPage({
                   color: "var(--text-secondary)",
                 }}
               >
-                Reset All
+                {isIndonesian ? "Reset Semua" : "Reset All"}
               </button>
             )}
           </div>
@@ -1806,7 +1811,7 @@ export function TransactionsPage({
               className="text-[11px] font-bold uppercase tracking-wider mb-2 block px-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Transaction Type
+              {isIndonesian ? "Jenis Transaksi" : "Transaction Type"}
             </label>
             <div
               className="flex p-1 rounded-2xl glass-surface"
@@ -1846,15 +1851,15 @@ export function TransactionsPage({
               className="text-[11px] font-bold uppercase tracking-wider mb-2 block px-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Timeframe & Date Range
+              {isIndonesian ? "Rentang Waktu & Tanggal" : "Timeframe & Date Range"}
             </label>
             <div className="grid grid-cols-3 gap-1.5 mb-2.5">
               {[
-                { key: "this_month", label: "This Month" },
-                { key: "last_month", label: "Last Month" },
-                { key: "last_30", label: "Last 30 Days" },
-                { key: "all", label: "All Time" },
-                { key: "custom_range", label: "Custom Range" },
+                { key: "this_month", label: isIndonesian ? "Bulan Ini" : "This Month" },
+                { key: "last_month", label: isIndonesian ? "Bulan Lalu" : "Last Month" },
+                { key: "last_30", label: isIndonesian ? "30 Hari Terakhir" : "Last 30 Days" },
+                { key: "all", label: isIndonesian ? "Semua Waktu" : "All Time" },
+                { key: "custom_range", label: isIndonesian ? "Rentang Kustom" : "Custom Range" },
               ].map((preset) => {
                 const isSelected = timeRange === preset.key;
                 return (
@@ -1897,7 +1902,7 @@ export function TransactionsPage({
                     className="text-[10px] font-bold uppercase tracking-wider block mb-1"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Start Date
+                    {isIndonesian ? "Tanggal Mulai" : "Start Date"}
                   </span>
                   <input
                     type="date"
@@ -1912,7 +1917,7 @@ export function TransactionsPage({
                     className="text-[10px] font-bold uppercase tracking-wider block mb-1"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    End Date
+                    {isIndonesian ? "Tanggal Selesai" : "End Date"}
                   </span>
                   <input
                     type="date"
@@ -1933,7 +1938,7 @@ export function TransactionsPage({
                 className="text-[11px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Account
+                {isIndonesian ? "Akun" : "Account"}
               </label>
               {selectedWalletName && (
                 <button
@@ -1941,7 +1946,7 @@ export function TransactionsPage({
                   onClick={() => setSelectedWalletName(null)}
                   className="text-[11px] font-bold text-[var(--accent)]"
                 >
-                  All Accounts
+                  {isIndonesian ? "Semua Akun" : "All Accounts"}
                 </button>
               )}
             </div>
@@ -1968,7 +1973,7 @@ export function TransactionsPage({
                       : "1px solid var(--glass-border)",
                 }}
               >
-                All Accounts
+                {isIndonesian ? "Semua Akun" : "All Accounts"}
               </button>
               {wallets.map((w) => {
                 const isSelected = selectedWalletName === w.name;
@@ -2008,7 +2013,7 @@ export function TransactionsPage({
                 className="text-[11px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Categories
+                {isIndonesian ? "Kategori" : "Categories"}
               </label>
               {selectedCategoryIds.length > 0 && (
                 <button
@@ -2016,7 +2021,7 @@ export function TransactionsPage({
                   onClick={() => setSelectedCategoryIds([])}
                   className="text-[11px] font-bold text-[var(--accent)]"
                 >
-                  Clear Categories
+                  {isIndonesian ? "Hapus Pilihan" : "Clear Categories"}
                 </button>
               )}
             </div>
@@ -2062,7 +2067,7 @@ export function TransactionsPage({
               className="text-[11px] font-bold uppercase tracking-wider mb-2 block px-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Amount Range (IDR)
+              {isIndonesian ? "Rentang Nominal" : "Amount Range"}
             </label>
             <div className="grid grid-cols-2 gap-2">
               <div
@@ -2076,7 +2081,7 @@ export function TransactionsPage({
                   className="text-[10px] font-bold uppercase tracking-wider block mb-1"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Min Amount
+                  {isIndonesian ? "Nominal Min" : "Min Amount"}
                 </span>
                 <input
                   type="number"
@@ -2099,12 +2104,12 @@ export function TransactionsPage({
                   className="text-[10px] font-bold uppercase tracking-wider block mb-1"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Max Amount
+                  {isIndonesian ? "Nominal Maks" : "Max Amount"}
                 </span>
                 <input
                   type="number"
                   inputMode="numeric"
-                  placeholder="Unlimited"
+                  placeholder={isIndonesian ? "Tanpa Batas" : "Unlimited"}
                   value={maxAmount}
                   onChange={(e) => setMaxAmount(e.target.value)}
                   className="w-full bg-transparent text-[13px] font-bold outline-none"
@@ -2127,7 +2132,9 @@ export function TransactionsPage({
               color: "var(--accent-ink)",
             }}
           >
-            Show {filteredTxs.length} Transactions
+            {isIndonesian
+              ? `Tampilkan ${filteredTxs.length} Transaksi`
+              : `Show ${filteredTxs.length} Transactions`}
           </button>
         </div>
       </BottomSheet>

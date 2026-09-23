@@ -1,6 +1,8 @@
 import { TrendingUp, TrendingDown, ChevronRight } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface CashflowPulseCardProps {
   netCashflow: number;
@@ -35,6 +37,10 @@ export function CashflowPulseCard({
   budgetRisk = "SAFE",
   consumedPct,
 }: CashflowPulseCardProps) {
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
+
   const isSurplus = netCashflow >= 0;
   const outflowRatio =
     totalIncome > 0
@@ -42,6 +48,14 @@ export function CashflowPulseCard({
       : totalExpense > 0
         ? 100
         : 0;
+
+  const momentumLabel = isIndonesian
+    ? momentum === "positive"
+      ? "Positif"
+      : momentum === "negative"
+        ? "Negatif"
+        : "Netral"
+    : momentum;
 
   const handleClick = () => {
     triggerHaptic("light");
@@ -66,7 +80,7 @@ export function CashflowPulseCard({
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-[13px] font-semibold tracking-tight">
-                Cashflow Pulse
+                {isIndonesian ? "Denyut Arus Kas" : "Cashflow Pulse"}
               </span>
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
@@ -76,7 +90,7 @@ export function CashflowPulseCard({
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                {momentum}
+                {momentumLabel}
               </span>
             </div>
           </div>
@@ -100,8 +114,8 @@ export function CashflowPulseCard({
               {hideBalance
                 ? "••%"
                 : isSurplus
-                  ? `${savingsRate.toFixed(0)}% saved`
-                  : "Deficit"}
+                  ? `${savingsRate.toFixed(0)}% ${isIndonesian ? "ditabung" : "saved"}`
+                  : isIndonesian ? "Defisit" : "Deficit"}
             </span>
           </span>
           <ChevronRight size={13} style={{ color: "var(--text-tertiary)" }} />
@@ -123,8 +137,10 @@ export function CashflowPulseCard({
             className="text-[11px] font-medium mt-0.5"
             style={{ color: "var(--text-tertiary)" }}
           >
-            {isSurplus ? "Surplus this month" : "Deficit this month"} ·{" "}
-            {momentumReason}
+            {isSurplus
+              ? isIndonesian ? "Surplus bulan ini" : "Surplus this month"
+              : isIndonesian ? "Defisit bulan ini" : "Deficit this month"}{" "}
+            · {momentumReason}
           </p>
         </div>
       </div>
@@ -133,10 +149,12 @@ export function CashflowPulseCard({
       <div className="my-3">
         <div className="flex justify-between items-center text-[10px] font-semibold mb-1">
           <span style={{ color: "var(--text-tertiary)" }}>
-            Cashflow utilization
+            {isIndonesian ? "Utilitasi arus kas" : "Cashflow utilization"}
           </span>
           <span style={{ color: "var(--text-secondary)" }}>
-            {hideBalance ? "••%" : `${outflowRatio}% consumed`}
+            {hideBalance
+              ? "••%"
+              : `${outflowRatio}% ${isIndonesian ? "terpakai" : "consumed"}`}
           </span>
         </div>
         <div
@@ -161,14 +179,14 @@ export function CashflowPulseCard({
               onOpenDrillDown?.("budget");
             }}
             className="mt-2.5 pt-2 border-t border-[var(--glass-border)] cursor-pointer hover:opacity-90 active:scale-[0.99] transition-all"
-            title="View Budget Details"
+            title={isIndonesian ? "Lihat Detail Anggaran" : "View Budget Details"}
           >
             <div className="flex justify-between items-center text-[10px] font-semibold mb-1">
               <span
                 className="flex items-center gap-1.5"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                <span>Budget Progress</span>
+                <span>{isIndonesian ? "Progres Anggaran" : "Budget Progress"}</span>
                 <span
                   className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full uppercase"
                   style={{
@@ -183,13 +201,15 @@ export function CashflowPulseCard({
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  {budgetRisk}
+                  {budgetRisk === "AT RISK"
+                    ? isIndonesian ? "BERISIKO" : "AT RISK"
+                    : isIndonesian ? "AMAN" : budgetRisk}
                 </span>
               </span>
               <span style={{ color: "var(--text-secondary)" }}>
                 {hideBalance
                   ? "••%"
-                  : `${consumedPct !== undefined ? consumedPct.toFixed(0) : Math.round((totalExpense / budgetTarget) * 100)}% of ${formatRupiah(budgetTarget)}`}
+                  : `${consumedPct !== undefined ? consumedPct.toFixed(0) : Math.round((totalExpense / budgetTarget) * 100)}% ${isIndonesian ? "dari" : "of"} ${formatRupiah(budgetTarget)}`}
               </span>
             </div>
             <div
@@ -218,7 +238,7 @@ export function CashflowPulseCard({
             className="text-[9px] font-semibold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Inflow
+            {isIndonesian ? "Pemasukan" : "Inflow"}
           </p>
           <p
             className="amount text-[12px] mt-0.5 truncate"
@@ -233,7 +253,7 @@ export function CashflowPulseCard({
             className="text-[9px] font-semibold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Outflow
+            {isIndonesian ? "Pengeluaran" : "Outflow"}
           </p>
           <p
             className="amount text-[12px] mt-0.5 truncate"
@@ -248,7 +268,7 @@ export function CashflowPulseCard({
             className="text-[9px] font-semibold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Daily Avg ({daysElapsed}d)
+            {isIndonesian ? `Rerata/Hari (${daysElapsed}hr)` : `Daily Avg (${daysElapsed}d)`}
           </p>
           <p
             className="amount text-[12px] mt-0.5 truncate"

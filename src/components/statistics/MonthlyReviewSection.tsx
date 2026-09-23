@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import type { MonthlyFinancialReviewData } from "../../lib/financialMath"
 import { formatRupiah } from "../../lib/utils"
 import { triggerHaptic } from "../../lib/haptics"
+import { useLanguage } from "../../contexts/LanguageContext"
+import { useCurrency } from "../../contexts/CurrencyContext"
 
 interface MonthlyReviewSectionProps {
   review: MonthlyFinancialReviewData
@@ -11,6 +13,8 @@ interface MonthlyReviewSectionProps {
 }
 
 export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewSectionProps) {
+  useCurrency()
+  const { isIndonesian } = useLanguage()
   const [isExpanded, setIsExpanded] = useState(false)
 
   return (
@@ -45,14 +49,16 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                Monthly Review
+                {isIndonesian ? "Ulasan Bulanan" : "Monthly Review"}
               </span>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "var(--glass-fill)", color: "var(--text-secondary)" }}>
                 {review.monthName} {review.year}
               </span>
             </div>
             <p className="text-[13px] font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>
-              {review.overview.netCashflow >= 0 ? "Surplus Cashflow Cycle" : "Deficit Spending Cycle"}
+              {isIndonesian
+                ? (review.overview.netCashflow >= 0 ? "Siklus Surplus Arus Kas" : "Siklus Defisit Pengeluaran")
+                : (review.overview.netCashflow >= 0 ? "Surplus Cashflow Cycle" : "Deficit Spending Cycle")}
             </p>
           </div>
         </div>
@@ -81,25 +87,29 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 rounded-2xl" style={{ background: "var(--glass-fill)" }}>
                   <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                    Net Cashflow
+                    {isIndonesian ? "Arus Kas Bersih" : "Net Cashflow"}
                   </p>
                   <p className="amount text-[15px] font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
                     {review.overview.netCashflow >= 0 ? "+" : ""}{formatRupiah(review.overview.netCashflow)}
                   </p>
                   <p className="text-[10px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                    Savings: {review.overview.savingsRate.toFixed(0)}% of Inflow
+                    {isIndonesian
+                      ? `Tabungan: ${review.overview.savingsRate.toFixed(0)}% dari Masuk`
+                      : `Savings: ${review.overview.savingsRate.toFixed(0)}% of Inflow`}
                   </p>
                 </div>
 
                 <div className="p-3 rounded-2xl" style={{ background: "var(--glass-fill)" }}>
                   <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                    Activity
+                    {isIndonesian ? "Aktivitas" : "Activity"}
                   </p>
                   <p className="amount text-[15px] font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
-                    {review.overview.txCount} transactions
+                    {review.overview.txCount} {isIndonesian ? "transaksi" : "transactions"}
                   </p>
                   <p className="text-[10px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                    Avg {formatRupiah(review.overview.avgTransaction)} / tx
+                    {isIndonesian
+                      ? `Rerata ${formatRupiah(review.overview.avgTransaction)} / trx`
+                      : `Avg ${formatRupiah(review.overview.avgTransaction)} / tx`}
                   </p>
                 </div>
               </div>
@@ -112,7 +122,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
                 >
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                      Historical Baseline
+                      {isIndonesian ? "Garis Dasar Historis" : "Historical Baseline"}
                     </p>
                     <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
                       {review.baselineComparison.statusText}
@@ -126,7 +136,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
                       border: "1px solid var(--glass-border)"
                     }}
                   >
-                    Band: {review.baselineComparison.typicalRangeText}
+                    {isIndonesian ? "Rentang: " : "Band: "}{review.baselineComparison.typicalRangeText}
                   </span>
                 </div>
               )}
@@ -135,7 +145,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
               {review.whatChanged.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-bold uppercase tracking-wider px-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    What Changed (Month-over-Month)
+                    {isIndonesian ? "Perubahan (Bulan ke Bulan)" : "What Changed (Month-over-Month)"}
                   </p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {review.whatChanged.map((item, idx) => (
@@ -161,7 +171,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
               {review.whatWentWell.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-bold uppercase tracking-wider px-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    What Went Well
+                    {isIndonesian ? "Pencapaian Positif" : "What Went Well"}
                   </p>
                   <div className="space-y-1">
                     {review.whatWentWell.map((point, idx) => (
@@ -182,7 +192,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
               {review.whatNeedsAttention.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-bold uppercase tracking-wider px-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    Points of Focus
+                    {isIndonesian ? "Fokus Perhatian" : "Points of Focus"}
                   </p>
                   <div className="space-y-1">
                     {review.whatNeedsAttention.map((point, idx) => (
@@ -202,7 +212,7 @@ export function MonthlyReviewSection({ review, onCategoryClick }: MonthlyReviewS
               {/* 5. Next Month Outlook */}
               <div className="pt-2 border-t border-[var(--glass-border)]">
                 <p className="text-[10px] font-bold uppercase tracking-wider px-0.5 mb-1" style={{ color: "var(--text-tertiary)" }}>
-                  Run-Rate Trajectory
+                  {isIndonesian ? "Prospek Laju Bulan Depan" : "Run-Rate Trajectory"}
                 </p>
                 <p className="text-[11px] leading-relaxed italic" style={{ color: "var(--text-secondary)" }}>
                   "{review.nextMonthBaseline}"

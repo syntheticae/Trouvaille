@@ -9,6 +9,7 @@ import { ChevronDown } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import { triggerHaptic } from "../../lib/haptics";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface InflowOutflowTrendCardProps {
   rangeTitle: string;
@@ -41,6 +42,8 @@ export function InflowOutflowTrendCard({
   isIndonesian,
   GlassTooltip,
 }: InflowOutflowTrendCardProps) {
+  useCurrency();
+
   return (
     <div className="p-4 rounded-[22px] glass-surface">
       <div
@@ -71,7 +74,7 @@ export function InflowOutflowTrendCard({
                 className="w-1.5 h-1.5 rounded-full"
                 style={{ background: colors.barHigh }}
               />
-              Inflow
+              {isIndonesian ? "Pemasukan" : "Inflow"}
             </div>
             <div
               className="flex items-center gap-1.5 text-[10px] font-medium"
@@ -81,7 +84,7 @@ export function InflowOutflowTrendCard({
                 className="w-1.5 h-1.5 rounded-full"
                 style={{ background: colors.barMid }}
               />
-              Outflow
+              {isIndonesian ? "Pengeluaran" : "Outflow"}
             </div>
           </div>
 

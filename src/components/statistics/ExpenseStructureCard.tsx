@@ -4,6 +4,8 @@ import { formatRupiah } from "../../lib/utils";
 import type { ExpenseStructureResult } from "../../hooks/useFinancialIntelligence";
 import { motion, AnimatePresence } from "framer-motion";
 import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface ExpenseStructureCardProps {
   expenseStructure: ExpenseStructureResult;
@@ -14,30 +16,32 @@ export function ExpenseStructureCard({
   expenseStructure,
   hideBalance = false,
 }: ExpenseStructureCardProps) {
+  useCurrency();
+  const { isIndonesian } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const rows = [
     {
       key: "fixed",
-      label: "Recurring / Fixed",
+      label: isIndonesian ? "Tetap / Rutin" : "Recurring / Fixed",
       amount: expenseStructure.fixedAmount,
       percentage: expenseStructure.fixedPercentage,
     },
     {
       key: "variable",
-      label: "Variable",
+      label: isIndonesian ? "Variabel / Pokok" : "Variable",
       amount: expenseStructure.variableAmount,
       percentage: expenseStructure.variablePercentage,
     },
     {
       key: "discretionary",
-      label: "Discretionary",
+      label: isIndonesian ? "Gaya Hidup / Fleksibel" : "Discretionary",
       amount: expenseStructure.discretionaryAmount,
       percentage: expenseStructure.discretionaryPercentage,
     },
     {
       key: "unclassified",
-      label: "Unclassified",
+      label: isIndonesian ? "Lainnya" : "Unclassified",
       amount: expenseStructure.unclassifiedAmount,
       percentage: expenseStructure.unclassifiedPercentage,
     },
@@ -77,7 +81,7 @@ export function ExpenseStructureCard({
                 className="text-[10px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Expense Structure
+                {isIndonesian ? "Struktur Pengeluaran" : "Expense Structure"}
               </span>
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
@@ -92,15 +96,15 @@ export function ExpenseStructureCard({
                 }}
               >
                 {expenseStructure.reconciliationCheck
-                  ? "RECONCILED"
-                  : "CHECK DATA"}
+                  ? (isIndonesian ? "TERREKONSILIASI" : "RECONCILED")
+                  : (isIndonesian ? "PERIKSA DATA" : "CHECK DATA")}
               </span>
             </div>
             <p
               className="text-[13px] font-bold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
-              Committed vs flexible composition
+              {isIndonesian ? "Komposisi komitmen vs fleksibel" : "Committed vs flexible composition"}
             </p>
           </div>
         </div>
@@ -159,7 +163,7 @@ export function ExpenseStructureCard({
                           style={{ color: "var(--text-primary)" }}
                         >
                           {hideBalance
-                            ? "Rp ••••••••"
+                            ? "••••••••"
                             : formatRupiah(row.amount)}
                         </p>
                         <p
@@ -180,7 +184,7 @@ export function ExpenseStructureCard({
                     className="text-[10px] font-bold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Committed vs Flexible
+                    {isIndonesian ? "Komitmen vs Fleksibel" : "Committed vs Flexible"}
                   </p>
                   <p
                     className="text-[11px] font-bold"
@@ -214,14 +218,14 @@ export function ExpenseStructureCard({
                       className="text-[9px] font-bold uppercase tracking-wider"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Committed
+                      {isIndonesian ? "Komitmen" : "Committed"}
                     </p>
                     <p
                       className="amount text-[13px] font-semibold mt-1"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {hideBalance
-                        ? "Rp ••••••••"
+                        ? "••••••••"
                         : formatRupiah(expenseStructure.committedAmount)}
                     </p>
                   </div>
@@ -236,14 +240,14 @@ export function ExpenseStructureCard({
                       className="text-[9px] font-bold uppercase tracking-wider"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Flexible
+                      {isIndonesian ? "Fleksibel" : "Flexible"}
                     </p>
                     <p
                       className="amount text-[13px] font-semibold mt-1"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {hideBalance
-                        ? "Rp ••••••••"
+                        ? "••••••••"
                         : formatRupiah(expenseStructure.flexibleAmount)}
                     </p>
                   </div>
@@ -256,7 +260,7 @@ export function ExpenseStructureCard({
                     className="text-[11px] font-bold uppercase tracking-wider mb-2"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Largest Components
+                    {isIndonesian ? "Komponen Terbesar" : "Largest Components"}
                   </p>
                   <div className="space-y-2">
                     {expenseStructure.items.slice(0, 5).map((item) => (
@@ -283,7 +287,7 @@ export function ExpenseStructureCard({
                           style={{ color: "var(--text-primary)" }}
                         >
                           {hideBalance
-                            ? "Rp ••••••••"
+                            ? "••••••••"
                             : formatRupiah(item.amount)}
                         </span>
                       </div>

@@ -23,6 +23,8 @@ import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import {
   getSavedHoldings,
@@ -56,6 +58,8 @@ export function AssetAnalyticsSection({
   hideBalance = false,
   onOpenValuation,
 }: AssetAnalyticsSectionProps) {
+  useCurrency();
+  const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
 
@@ -240,35 +244,35 @@ export function AssetAnalyticsSection({
     const rawCategories = [
       {
         id: "crypto",
-        label: "Crypto & USDT",
+        label: isIndonesian ? "Kripto & USDT" : "Crypto & USDT",
         value: crypto,
         color: isDark ? "#ffffff" : "#09090c",
         icon: Sparkles,
       },
       {
         id: "liquid",
-        label: "Liquid Cash & Bank",
+        label: isIndonesian ? "Kas Likuid & Bank" : "Liquid Cash & Bank",
         value: liquidCash,
         color: isDark ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.65)",
         icon: Coins,
       },
       {
         id: "equities",
-        label: "Stocks & Funds",
+        label: isIndonesian ? "Saham & Reksa Dana" : "Stocks & Funds",
         value: stocks + funds,
         color: isDark ? "rgba(255, 255, 255, 0.48)" : "rgba(0, 0, 0, 0.42)",
         icon: TrendingUp,
       },
       {
         id: "gold",
-        label: "Gold & Metals",
+        label: isIndonesian ? "Emas & Logam Mulia" : "Gold & Metals",
         value: gold,
         color: isDark ? "rgba(255, 255, 255, 0.32)" : "rgba(0, 0, 0, 0.28)",
         icon: ShieldCheck,
       },
       {
         id: "fixed",
-        label: "Fixed Assets (Property)",
+        label: isIndonesian ? "Aset Tetap & Properti" : "Fixed Assets (Property)",
         value: fixedAssets,
         color: isDark ? "rgba(255, 255, 255, 0.18)" : "rgba(0, 0, 0, 0.16)",
         icon: Home,
@@ -303,6 +307,7 @@ export function AssetAnalyticsSection({
     nonCryptoLiquidCash,
     netWorth,
     isDark,
+    isIndonesian,
   ]);
 
   // Selected slice for interaction
@@ -343,13 +348,13 @@ export function AssetAnalyticsSection({
               className="text-[14px] font-semibold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              Capital Allocation
+              {isIndonesian ? "Alokasi Modal" : "Capital Allocation"}
             </h3>
             <p
               className="text-[11px] font-medium mt-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Portfolio diversification across asset classes
+              {isIndonesian ? "Diversifikasi portofolio antar kelas aset" : "Portfolio diversification across asset classes"}
             </p>
           </div>
 
@@ -373,7 +378,7 @@ export function AssetAnalyticsSection({
                 border: viewMode === "net" ? "1px solid var(--glass-border)" : "1px solid transparent",
               }}
             >
-              Net Portfolio
+              {isIndonesian ? "Portofolio Bersih" : "Net Portfolio"}
             </button>
             <button
               type="button"
@@ -390,7 +395,7 @@ export function AssetAnalyticsSection({
                 border: viewMode === "market" ? "1px solid var(--glass-border)" : "1px solid transparent",
               }}
             >
-              Live Market
+              {isIndonesian ? "Nilai Pasar" : "Live Market"}
             </button>
           </div>
         </div>
@@ -459,7 +464,7 @@ export function AssetAnalyticsSection({
           ) : (
             <div className="text-center">
               <p className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                No active assets recorded
+                {isIndonesian ? "Belum ada aset aktif tercatat" : "No active assets recorded"}
               </p>
             </div>
           )}
@@ -473,15 +478,15 @@ export function AssetAnalyticsSection({
               {selectedCategory
                 ? selectedCategory.label
                 : viewMode === "net"
-                  ? "Net Portfolio"
-                  : "Gross Market Value"}
+                  ? (isIndonesian ? "Portofolio Bersih" : "Net Portfolio")
+                  : (isIndonesian ? "Nilai Pasar Bruto" : "Gross Market Value")}
             </span>
             <span
               className="text-[17px] font-semibold amount tracking-tight leading-none my-1.5"
               style={{ color: "var(--text-primary)" }}
             >
               {hideBalance
-                ? "Rp ••••••••"
+                ? "••••••••"
                 : formatRupiah(
                     selectedCategory
                       ? selectedCategory.value
@@ -493,7 +498,7 @@ export function AssetAnalyticsSection({
                 className="text-[10px] font-bold font-mono"
                 style={{ color: "var(--text-secondary)" }}
               >
-                {selectedCategory.share.toFixed(1)}% of portfolio
+                {selectedCategory.share.toFixed(1)}% {isIndonesian ? "dari portofolio" : "of portfolio"}
               </span>
             ) : viewMode === "net" ? (
               <span
@@ -507,7 +512,7 @@ export function AssetAnalyticsSection({
                 {totalFloatingPnL >= 0 ? "+" : ""}
                 {hideBalance ? "••••" : formatRupiah(totalFloatingPnL)} (
                 {totalFloatingPct >= 0 ? "+" : ""}
-                {totalFloatingPct.toFixed(1)}%) Floating
+                {totalFloatingPct.toFixed(1)}%) {isIndonesian ? "Mengambang" : "Floating"}
               </span>
             ) : (
               <span
@@ -518,7 +523,7 @@ export function AssetAnalyticsSection({
                   color: "var(--text-secondary)",
                 }}
               >
-                Marked-to-Market
+                {isIndonesian ? "Sesuai Harga Pasar" : "Marked-to-Market"}
               </span>
             )}
           </div>
@@ -588,13 +593,13 @@ export function AssetAnalyticsSection({
               className="text-[13px] font-bold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              Unrealized Performance
+              {isIndonesian ? "Performa Belum Terealisasi" : "Unrealized Performance"}
             </h3>
             <p
               className="text-[11px] font-medium mt-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Floating capital gain across market holdings
+              {isIndonesian ? "Keuntungan modal mengambang pada portofolio pasar" : "Floating capital gain across market holdings"}
             </p>
           </div>
 
@@ -611,7 +616,7 @@ export function AssetAnalyticsSection({
                 color: "var(--text-primary)",
               }}
             >
-              <span>Realize P&L</span>
+              <span>{isIndonesian ? "Realisasi P&L" : "Realize P&L"}</span>
               <ArrowUpRight size={11} />
             </button>
           )}

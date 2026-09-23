@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { getDaysInMonth, isSameMonth, subMonths, format, subDays } from "date-fns";
 import type { Transaction, Bill, Category, Goal } from "../lib/types";
+import { useLanguage } from "../contexts/LanguageContext";
+import { formatRupiah } from "../lib/utils";
 import {
   computeMonthAggregates,
   computeSpendingPace,
@@ -84,6 +86,9 @@ export function useFinancialIntelligence({
   categoryOverrides = {},
   activeMonthDate = new Date(),
 }: FinancialIntelligenceOptions) {
+  const { language } = useLanguage();
+  const isIndonesian = language === "id";
+
   return useMemo(() => {
     const now = new Date();
     const referenceDate = activeMonthDate;
@@ -173,7 +178,9 @@ export function useFinancialIntelligence({
 
     // 7. Financial Momentum
     let momentum: MomentumState = "neutral";
-    let momentumReason = "Balanced income and expense pace";
+    let momentumReason = isIndonesian
+      ? "Laju pemasukan dan pengeluaran seimbang"
+      : "Balanced income and expense pace";
 
     if (
       netCashflow > 0 &&
@@ -182,8 +189,12 @@ export function useFinancialIntelligence({
       momentum = "positive";
       momentumReason =
         savingsRate >= 30
-          ? `Strong ${savingsRate.toFixed(0)}% savings rate with healthy cashflow`
-          : `Surplus cashflow and controlled spending pace`;
+          ? (isIndonesian
+              ? `Rasio tabungan kuat ${savingsRate.toFixed(0)}% dengan arus kas sehat`
+              : `Strong ${savingsRate.toFixed(0)}% savings rate with healthy cashflow`)
+          : (isIndonesian
+              ? `Surplus arus kas dan laju pengeluaran terkendali`
+              : `Surplus cashflow and controlled spending pace`);
     } else if (
       netCashflow < 0 ||
       (budget > 0 && risk.riskLevel === "AT RISK")
@@ -191,11 +202,17 @@ export function useFinancialIntelligence({
       momentum = "negative";
       momentumReason =
         netCashflow < 0
-          ? `Outflow exceeds inflow ${isCurrentReferenceMonth ? "this month" : "in the selected month"} by ${Math.abs(netCashflow).toLocaleString("id-ID")}`
-          : `Spending pace is elevated against budget limit`;
+          ? (isIndonesian
+              ? `Pengeluaran melebihi pemasukan ${isCurrentReferenceMonth ? "bulan ini" : "di bulan terpilih"} sebesar ${formatRupiah(Math.abs(netCashflow))}`
+              : `Outflow exceeds inflow ${isCurrentReferenceMonth ? "this month" : "in the selected month"} by ${formatRupiah(Math.abs(netCashflow))}`)
+          : (isIndonesian
+              ? `Laju belanja meningkat terhadap batas anggaran`
+              : `Spending pace is elevated against budget limit`);
     } else {
       momentum = "neutral";
-      momentumReason = `Steady cashflow with ${savingsRate.toFixed(0)}% saved`;
+      momentumReason = isIndonesian
+        ? `Arus kas stabil dengan ${savingsRate.toFixed(0)}% tersimpan`
+        : `Steady cashflow with ${savingsRate.toFixed(0)}% saved`;
     }
 
     // 8. Safety Buffer
@@ -220,6 +237,7 @@ export function useFinancialIntelligence({
       categoryShifts,
       safeToSpend,
       unpaidBillsCount: unpaidUpcomingBills.length,
+      language,
     });
 
     // 10. Monthly Financial Review (for Statistics Page)
@@ -241,20 +259,21 @@ export function useFinancialIntelligence({
       categories,
       budget,
       activeMonthDate,
+      language,
     );
 
     // Enrich Monthly Review with Baseline Comparison if available
     if (personalBaselines.status !== "insufficient") {
-      const minStr = `Rp ${(personalBaselines.typicalExpenseRange[0] / 1000000).toFixed(1)}M`;
-      const maxStr = `Rp ${(personalBaselines.typicalExpenseRange[1] / 1000000).toFixed(1)}M`;
+      const minStr = formatRupiah(personalBaselines.typicalExpenseRange[0]);
+      const maxStr = formatRupiah(personalBaselines.typicalExpenseRange[1]);
       monthlyReview.baselineComparison = {
         typicalRangeText: `${minStr} – ${maxStr}`,
         statusText:
           personalBaselines.currentMonthStatus === "above_range"
-            ? "Above your typical monthly range"
+            ? (isIndonesian ? "Di atas rentang normal bulanan Anda" : "Above your typical monthly range")
             : personalBaselines.currentMonthStatus === "below_range"
-              ? "Below your typical monthly range"
-              : "Within your typical monthly range",
+              ? (isIndonesian ? "Di bawah rentang normal bulanan Anda" : "Below your typical monthly range")
+              : (isIndonesian ? "Dalam rentang normal historis Anda" : "Within your typical monthly range"),
         isAboveRange: personalBaselines.currentMonthStatus === "above_range",
       };
     }
@@ -431,5 +450,6 @@ export function useFinancialIntelligence({
     categories,
     categoryOverrides,
     activeMonthDate,
+    language,
   ]);
 }

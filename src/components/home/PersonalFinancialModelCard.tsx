@@ -3,6 +3,8 @@ import { ArrowDown, ChevronDown, Layers3 } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 export type ModelLayer = "actual" | "baseline" | "scenario";
 export interface ModelFlowValues {
@@ -48,6 +50,10 @@ export function PersonalFinancialModelCard({
   insights,
   onOpenDetails,
 }: PersonalFinancialModelCardProps) {
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
+
   const [layer, setLayer] = useState<ModelLayer>("actual");
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -58,22 +64,22 @@ export function PersonalFinancialModelCard({
   }, [actual, baseline, layer, scenario]);
 
   const rows: Array<{ key: keyof ModelFlowValues; label: string }> = [
-    { key: "income", label: "Income" },
-    { key: "committedExpenses", label: "Committed Expenses" },
-    { key: "variableExpenses", label: "Variable Expenses" },
-    { key: "retainedCash", label: "Retained Cash" },
-    { key: "savingsInvestment", label: "Savings / Investment" },
-    { key: "assets", label: "Assets" },
-    { key: "liabilities", label: "Liabilities" },
-    { key: "netWorth", label: "Net Worth" },
+    { key: "income", label: isIndonesian ? "Pemasukan" : "Income" },
+    { key: "committedExpenses", label: isIndonesian ? "Pengeluaran Rutin" : "Committed Expenses" },
+    { key: "variableExpenses", label: isIndonesian ? "Pengeluaran Fleksibel" : "Variable Expenses" },
+    { key: "retainedCash", label: isIndonesian ? "Sisa Kas Bersih" : "Retained Cash" },
+    { key: "savingsInvestment", label: isIndonesian ? "Tabungan / Investasi" : "Savings / Investment" },
+    { key: "assets", label: isIndonesian ? "Total Aset" : "Assets" },
+    { key: "liabilities", label: isIndonesian ? "Kewajiban / Utang" : "Liabilities" },
+    { key: "netWorth", label: isIndonesian ? "Kekayaan Bersih" : "Net Worth" },
   ];
 
   const layerLabel =
     layer === "actual"
-      ? "Actual"
+      ? isIndonesian ? "Aktual" : "Actual"
       : layer === "baseline"
-        ? "Baseline"
-        : "Scenario";
+        ? isIndonesian ? "Garis Dasar" : "Baseline"
+        : isIndonesian ? "Skenario" : "Scenario";
 
   return (
     <section
@@ -109,7 +115,7 @@ export function PersonalFinancialModelCard({
                 className="text-[10px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Financial Model
+                {isIndonesian ? "Model Finansial" : "Financial Model"}
               </span>
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
@@ -119,14 +125,14 @@ export function PersonalFinancialModelCard({
                   color: "var(--text-secondary)",
                 }}
               >
-                {layerLabel} Layer
+                {isIndonesian ? `Lapisan ${layerLabel}` : `${layerLabel} Layer`}
               </span>
             </div>
             <p
               className="text-[13px] font-semibold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
-              Actual · Baseline · Scenario
+              {isIndonesian ? "Aktual · Garis Dasar · Skenario" : "Actual · Baseline · Scenario"}
             </p>
           </div>
         </div>
@@ -153,6 +159,12 @@ export function PersonalFinancialModelCard({
                 {(["actual", "baseline", "scenario"] as ModelLayer[]).map(
                   (item) => {
                     const isActive = item === layer;
+                    const itemLabel =
+                      item === "actual"
+                        ? isIndonesian ? "Aktual" : "Actual"
+                        : item === "baseline"
+                          ? isIndonesian ? "Garis Dasar" : "Baseline"
+                          : isIndonesian ? "Skenario" : "Scenario";
                     return (
                       <button
                         key={item}
@@ -172,7 +184,7 @@ export function PersonalFinancialModelCard({
                           border: "1px solid var(--glass-border)",
                         }}
                       >
-                        {item.charAt(0).toUpperCase() + item.slice(1)}
+                        {itemLabel}
                       </button>
                     );
                   },
@@ -232,7 +244,7 @@ export function PersonalFinancialModelCard({
                   style={{ background: "var(--glass-fill)" }}
                 >
                   <p style={{ color: "var(--text-tertiary)" }}>
-                    Current Net Worth
+                    {isIndonesian ? "Kekayaan Bersih Saat Ini" : "Current Net Worth"}
                   </p>
                   <p
                     className="font-bold amount mt-0.5"
@@ -260,7 +272,7 @@ export function PersonalFinancialModelCard({
                   style={{ background: "var(--glass-fill)" }}
                 >
                   <p style={{ color: "var(--text-tertiary)" }}>
-                    Current Cashflow
+                    {isIndonesian ? "Arus Kas Saat Ini" : "Current Cashflow"}
                   </p>
                   <p
                     className="font-bold amount mt-0.5"
@@ -276,7 +288,7 @@ export function PersonalFinancialModelCard({
                   style={{ background: "var(--glass-fill)" }}
                 >
                   <p style={{ color: "var(--text-tertiary)" }}>
-                    Upcoming Commitments
+                    {isIndonesian ? "Komitmen Mendatang" : "Upcoming Commitments"}
                   </p>
                   <p
                     className="font-bold amount mt-0.5"
@@ -297,19 +309,19 @@ export function PersonalFinancialModelCard({
               >
                 <p>
                   <strong style={{ color: "var(--text-primary)" }}>
-                    Personal Baseline:
+                    {isIndonesian ? "Garis Dasar Personal:" : "Personal Baseline:"}
                   </strong>{" "}
                   {insights.personalBaseline}
                 </p>
                 <p>
                   <strong style={{ color: "var(--text-primary)" }}>
-                    Goal Trajectory:
+                    {isIndonesian ? "Trajektori Target:" : "Goal Trajectory:"}
                   </strong>{" "}
                   {insights.goalTrajectory}
                 </p>
                 <p>
                   <strong style={{ color: "var(--text-primary)" }}>
-                    Scenario Impact:
+                    {isIndonesian ? "Dampak Skenario:" : "Scenario Impact:"}
                   </strong>{" "}
                   {insights.scenarioImpact}
                 </p>
@@ -326,7 +338,7 @@ export function PersonalFinancialModelCard({
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  View Model Details
+                  {isIndonesian ? "Lihat Detail Model" : "View Model Details"}
                 </button>
               )}
             </div>

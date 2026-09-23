@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { IconRenderer } from "../ui/IconRenderer";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface CategoryBreakdownCardProps {
   breakdownType: "expense" | "income";
@@ -69,6 +70,8 @@ export function CategoryBreakdownCard({
   isIndonesian,
   setAllDetailsOpen,
 }: CategoryBreakdownCardProps) {
+  useCurrency();
+
   return (
     <div className="p-5 rounded-[24px] glass-surface">
       <div className="flex justify-between items-center mb-3">
@@ -134,7 +137,7 @@ export function CategoryBreakdownCard({
                     : "var(--text-secondary)",
               }}
             >
-              <ArrowDownCircle size={11} /> Out
+              <ArrowDownCircle size={11} /> {isIndonesian ? "Keluar" : "Out"}
             </button>
             <button
               type="button"
@@ -149,7 +152,7 @@ export function CategoryBreakdownCard({
                     : "var(--text-secondary)",
               }}
             >
-              <ArrowUpCircle size={11} /> In
+              <ArrowUpCircle size={11} /> {isIndonesian ? "Masuk" : "In"}
             </button>
           </div>
 
@@ -236,7 +239,7 @@ export function CategoryBreakdownCard({
                       : "var(--text-tertiary)",
                 }}
               >
-                By Category
+                {isIndonesian ? "Per Kategori" : "By Category"}
               </button>
               <button
                 onClick={() => setGroupMode("parent")}
@@ -253,7 +256,7 @@ export function CategoryBreakdownCard({
                 }}
               >
                 <Layers size={10} />
-                By Parent (Induk)
+                {isIndonesian ? "Per Induk" : "By Parent (Induk)"}
               </button>
             </div>
 
@@ -300,7 +303,9 @@ export function CategoryBreakdownCard({
                         className="text-[9px] font-semibold mt-0.5"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        {breakdownType === "expense" ? "Total Out" : "Total In"}
+                        {breakdownType === "expense"
+                          ? (isIndonesian ? "Total Keluar" : "Total Out")
+                          : (isIndonesian ? "Total Masuk" : "Total In")}
                       </p>
                     </div>
                   </div>
@@ -354,7 +359,7 @@ export function CategoryBreakdownCard({
                             >
                               {range === "month" && shift
                                 ? `${shift.isIncrease ? "↑" : "↓"}${shift.pctChange}% MoM`
-                                : `Avg ${formatRupiah(avgCat)}`}
+                                : `${isIndonesian ? "Rerata" : "Avg"} ${formatRupiah(avgCat)}`}
                             </p>
                           </div>
                         </div>
@@ -399,7 +404,7 @@ export function CategoryBreakdownCard({
                             className="text-[9px] font-semibold uppercase tracking-wider"
                             style={{ color: "var(--text-tertiary)" }}
                           >
-                            Biggest Increase
+                            {isIndonesian ? "Kenaikan Terbesar" : "Biggest Increase"}
                           </p>
                           <p
                             className="text-[12px] font-semibold truncate mt-0.5"
@@ -439,7 +444,7 @@ export function CategoryBreakdownCard({
                             className="text-[9px] font-semibold uppercase tracking-wider"
                             style={{ color: "var(--text-tertiary)" }}
                           >
-                            Biggest Decrease
+                            {isIndonesian ? "Penurunan Terbesar" : "Biggest Decrease"}
                           </p>
                           <p
                             className="text-[12px] font-semibold truncate mt-0.5"
@@ -471,7 +476,7 @@ export function CategoryBreakdownCard({
                               className="text-[9px] font-semibold uppercase tracking-wider"
                               style={{ color: "var(--text-tertiary)" }}
                             >
-                              Most Frequent
+                              {isIndonesian ? "Paling Sering" : "Most Frequent"}
                             </p>
                             <p
                               className="text-[12px] font-semibold truncate mt-0.5"
@@ -483,7 +488,7 @@ export function CategoryBreakdownCard({
                               className="text-[10px] font-medium"
                               style={{ color: "var(--text-secondary)" }}
                             >
-                              {frequencyStats.mostFrequent.count} txs · Avg{" "}
+                              {frequencyStats.mostFrequent.count} {isIndonesian ? "trx" : "txs"} · {isIndonesian ? "Rerata" : "Avg"}{" "}
                               {formatRupiah(
                                 Math.round(
                                   frequencyStats.mostFrequent.total /
@@ -509,13 +514,13 @@ export function CategoryBreakdownCard({
                           className="text-[11px] font-semibold uppercase tracking-wider"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          Category Budget Progress
+                          {isIndonesian ? "Progres Anggaran Kategori" : "Category Budget Progress"}
                         </span>
                         <span
                           className="text-[10px] font-semibold"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          Envelope Tracking
+                          {isIndonesian ? "Pelacakan Pos Anggaran" : "Envelope Tracking"}
                         </span>
                       </div>
                       {categoryStats
@@ -529,6 +534,13 @@ export function CategoryBreakdownCard({
                           let catRisk: "SAFE" | "WATCH" | "AT RISK" = "SAFE";
                           if (pct >= 95 || pct > timePct + 20) catRisk = "AT RISK";
                           else if (pct > timePct + 5) catRisk = "WATCH";
+
+                          const catRiskLabel =
+                            catRisk === "AT RISK"
+                              ? isIndonesian ? "BERISIKO" : "AT RISK"
+                              : catRisk === "WATCH"
+                                ? isIndonesian ? "PANTAU" : "WATCH"
+                                : isIndonesian ? "AMAN" : "SAFE";
 
                           return (
                             <div
@@ -562,7 +574,7 @@ export function CategoryBreakdownCard({
                                       border: "1px solid var(--glass-border)",
                                     }}
                                   >
-                                    {catRisk}
+                                    {catRiskLabel}
                                   </span>
                                 </div>
                                 <div className="text-right">
@@ -614,13 +626,15 @@ export function CategoryBreakdownCard({
                   className="text-[13px] font-semibold"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  No {breakdownType} recorded
+                  {isIndonesian
+                    ? `Belum ada ${breakdownType === "expense" ? "pengeluaran" : "pemasukan"} tercatat`
+                    : `No ${breakdownType} recorded`}
                 </p>
                 <p
                   className="text-[11px] mt-1"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Try another timeframe
+                  {isIndonesian ? "Coba rentang waktu lain" : "Try another timeframe"}
                 </p>
               </div>
             )}

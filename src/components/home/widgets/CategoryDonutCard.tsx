@@ -3,6 +3,8 @@ import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import { useCurrency } from "../../../contexts/CurrencyContext";
 
 export function CategoryDonutCard({
   categories,
@@ -16,9 +18,16 @@ export function CategoryDonutCard({
   onOpenDetail?: () => void;
 }) {
   const { theme } = useTheme();
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
   const isDark = theme === "dark";
 
-  const topCat = categories[0] || { name: "No expenses", amount: 0, pct: 0 };
+  const topCat = categories[0] || {
+    name: isIndonesian ? "Belum ada pengeluaran" : "No expenses",
+    amount: 0,
+    pct: 0,
+  };
 
   const donutSvg = (
     <div className="relative flex items-center justify-center shrink-0">
@@ -52,7 +61,7 @@ export function CategoryDonutCard({
 
   if (size === "half") {
     return (
-      <CompactShell title="Categories" onOpenDetail={onOpenDetail}>
+      <CompactShell title={isIndonesian ? "Kategori" : "Categories"} onOpenDetail={onOpenDetail}>
         <div className="flex-1 flex items-center justify-center py-0.5">{donutSvg}</div>
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
           <span className="truncate max-w-[70px]">{topCat.name}</span>
@@ -119,10 +128,10 @@ export function CategoryDonutCard({
           </div>
           <div>
             <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-              Expense Allocation Donut
+              {isIndonesian ? "Alokasi Pengeluaran" : "Expense Allocation Donut"}
             </h3>
             <p className="text-[10px] text-[var(--text-tertiary)]">
-              Sector-by-sector outflow distribution
+              {isIndonesian ? "Distribusi arus keluar per sektor pengeluaran" : "Sector-by-sector outflow distribution"}
             </p>
           </div>
         </div>
@@ -187,7 +196,7 @@ export function CategoryDonutCard({
               {categories.length}
             </span>
             <span className="text-[8px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-              Sectors
+              {isIndonesian ? "Sektor" : "Sectors"}
             </span>
           </div>
         </div>
@@ -207,7 +216,7 @@ export function CategoryDonutCard({
                   </span>
                   {c.count && (
                     <span className="text-[9px] text-[var(--text-tertiary)] font-mono">
-                      ({c.count} tx)
+                      ({c.count} {isIndonesian ? "trx" : "tx"})
                     </span>
                   )}
                 </div>
@@ -236,10 +245,12 @@ export function CategoryDonutCard({
 
       <div className="pt-1 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
         <span>
-          {topCat.name} is your largest expense category ({topCat.pct.toFixed(0)}% of total).
+          {isIndonesian
+            ? `${topCat.name} adalah kategori pengeluaran terbesar (${topCat.pct.toFixed(0)}% dari total).`
+            : `${topCat.name} is your largest expense category (${topCat.pct.toFixed(0)}% of total).`}
         </span>
         <span className="font-semibold text-[var(--text-secondary)]">
-          {categories.length} Active Categories
+          {isIndonesian ? `${categories.length} Kategori Aktif` : `${categories.length} Active Categories`}
         </span>
       </div>
     </section>

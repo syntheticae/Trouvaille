@@ -3,6 +3,8 @@ import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import { useCurrency } from "../../../contexts/CurrencyContext";
 
 export function SpendingVelocityBarCard({
   dailyOutlays,
@@ -16,6 +18,8 @@ export function SpendingVelocityBarCard({
   onOpenDetail?: () => void;
 }) {
   const { theme } = useTheme();
+  const { isIndonesian } = useLanguage();
+  useCurrency();
   const isDark = theme === "dark";
 
   const maxAmount = Math.max(1, ...dailyOutlays.map((d) => d.amount));
@@ -56,12 +60,12 @@ export function SpendingVelocityBarCard({
 
   if (size === "half") {
     return (
-      <CompactShell title="7D Velocity" onOpenDetail={onOpenDetail}>
+      <CompactShell title={isIndonesian ? "Laju 7 Hari" : "7D Velocity"} onOpenDetail={onOpenDetail}>
         <div className="flex-1 flex items-center py-0.5">{bars}</div>
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
-          <span>Avg Pace</span>
+          <span>{isIndonesian ? "Rerata Laju" : "Avg Pace"}</span>
           <span className="font-semibold text-[var(--text-primary)] amount">
-            {formatRupiah(dailyAverage)}/d
+            {formatRupiah(dailyAverage)}/{isIndonesian ? "hr" : "d"}
           </span>
         </div>
       </CompactShell>
@@ -90,10 +94,12 @@ export function SpendingVelocityBarCard({
           </div>
           <div>
             <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-              7-Day Spending Velocity
+              {isIndonesian ? "Laju Pengeluaran 7 Hari" : "7-Day Spending Velocity"}
             </h3>
             <p className="text-[10px] text-[var(--text-tertiary)]">
-              Daily spending run rate vs monthly average benchmark
+              {isIndonesian
+                ? "Laju pengeluaran harian vs tolok ukur rata-rata bulanan"
+                : "Daily spending run rate vs monthly average benchmark"}
             </p>
           </div>
         </div>
@@ -107,7 +113,7 @@ export function SpendingVelocityBarCard({
               color: "var(--text-primary)",
             }}
           >
-            Avg: {formatRupiah(dailyAverage)}/day
+            {isIndonesian ? "Rerata" : "Avg"}: {formatRupiah(dailyAverage)}/{isIndonesian ? "hari" : "day"}
           </span>
           {onOpenDetail && (
             <button
@@ -128,7 +134,7 @@ export function SpendingVelocityBarCard({
           style={{ background: "var(--glass-fill)" }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-            7-Day Total Outflow
+            {isIndonesian ? "Total Keluar 7 Hari" : "7-Day Total Outflow"}
           </span>
           <span className="text-[13px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
             {formatRupiah(total7d)}
@@ -139,10 +145,10 @@ export function SpendingVelocityBarCard({
           style={{ background: "var(--glass-fill)" }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-            7-Day Daily Run Rate
+            {isIndonesian ? "Rerata Laju Harian" : "7-Day Daily Run Rate"}
           </span>
           <span className="text-[13px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
-            {formatRupiah(Math.round(total7d / 7))}/d
+            {formatRupiah(Math.round(total7d / 7))}/{isIndonesian ? "hr" : "d"}
           </span>
         </div>
         <div
@@ -150,7 +156,7 @@ export function SpendingVelocityBarCard({
           style={{ background: "var(--glass-fill)" }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-            Peak Outlay Day
+            {isIndonesian ? "Hari Belanja Tertinggi" : "Peak Outlay Day"}
           </span>
           <span className="text-[13px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
             {peakDay.dayLabel} ({formatRupiah(peakDay.amount)})
@@ -169,7 +175,7 @@ export function SpendingVelocityBarCard({
             }}
           >
             <span className="text-[8px] font-mono text-white absolute right-0 -top-3.5 px-1 bg-zinc-800 dark:bg-zinc-800 rounded">
-              Avg: {formatRupiah(dailyAverage)}
+              {isIndonesian ? "Rerata" : "Avg"}: {formatRupiah(dailyAverage)}
             </span>
           </div>
 
@@ -218,11 +224,18 @@ export function SpendingVelocityBarCard({
       <div className="pt-1 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
         <span>
           {aboveAvgDays > 0
-            ? `${aboveAvgDays} of 7 days exceeded daily average allowance.`
-            : "All 7 days maintained below daily average allowance."}
+            ? isIndonesian
+              ? `${aboveAvgDays} dari 7 hari melampaui batas rerata harian.`
+              : `${aboveAvgDays} of 7 days exceeded daily average allowance.`
+            : isIndonesian
+              ? "Seluruh 7 hari terkendali di bawah batas rerata harian."
+              : "All 7 days maintained below daily average allowance."}
         </span>
         <span className="font-semibold text-[var(--text-secondary)]">
-          Pacing: {Math.round(total7d / 7) <= dailyAverage ? "Controlled" : "Elevated"}
+          {isIndonesian ? "Kendali:" : "Pacing:"}{" "}
+          {Math.round(total7d / 7) <= dailyAverage
+            ? isIndonesian ? "Terkendali" : "Controlled"
+            : isIndonesian ? "Tinggi" : "Elevated"}
         </span>
       </div>
     </section>

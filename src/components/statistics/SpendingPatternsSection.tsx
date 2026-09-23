@@ -3,12 +3,16 @@ import { Activity, ChevronDown, CheckCircle2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import type { BehavioralPattern } from "../../lib/financialMath"
 import { triggerHaptic } from "../../lib/haptics"
+import { useLanguage } from "../../contexts/LanguageContext"
+import { useCurrency } from "../../contexts/CurrencyContext"
 
 interface SpendingPatternsSectionProps {
   patterns: BehavioralPattern[]
 }
 
 export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionProps) {
+  useCurrency()
+  const { isIndonesian } = useLanguage()
   const [isExpanded, setIsExpanded] = useState(false)
 
   if (!patterns || patterns.length === 0) {
@@ -47,7 +51,7 @@ export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionPro
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                Spending Patterns
+                {isIndonesian ? "Pola Pengeluaran" : "Spending Patterns"}
               </span>
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
@@ -57,7 +61,7 @@ export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionPro
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                {patterns.length} Verified
+                {patterns.length} {isIndonesian ? "Terverifikasi" : "Verified"}
               </span>
             </div>
             <p className="text-[13px] font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>
@@ -104,7 +108,7 @@ export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionPro
                       {p.badge}
                     </span>
                     <span className="text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
-                      Historical Pattern
+                      {isIndonesian ? "Pola Historis" : "Historical Pattern"}
                     </span>
                   </div>
 

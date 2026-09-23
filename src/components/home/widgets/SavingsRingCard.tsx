@@ -3,6 +3,8 @@ import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import { useCurrency } from "../../../contexts/CurrencyContext";
 
 export function SavingsRingCard({
   rate,
@@ -18,6 +20,8 @@ export function SavingsRingCard({
   onOpenDetail?: () => void;
 }) {
   const { theme } = useTheme();
+  const { isIndonesian } = useLanguage();
+  useCurrency();
   const isDark = theme !== "light";
   const boundedRate = Math.min(100, Math.max(0, rate));
   const radius = size === "half" ? 26 : 38;
@@ -66,7 +70,7 @@ export function SavingsRingCard({
           {boundedRate.toFixed(0)}%
         </span>
         <span className="text-[8px] font-semibold text-[var(--text-tertiary)] mt-0.5">
-          Saved
+          {isIndonesian ? "Tersimpan" : "Saved"}
         </span>
       </div>
     </div>
@@ -74,10 +78,10 @@ export function SavingsRingCard({
 
   if (size === "half") {
     return (
-      <CompactShell title="Savings Ring" onOpenDetail={onOpenDetail}>
+      <CompactShell title={isIndonesian ? "Rasio Tabungan" : "Savings Ring"} onOpenDetail={onOpenDetail}>
         <div className="flex-1 flex items-center justify-center py-0.5">{ringSvg}</div>
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
-          <span>{isSurplus ? "Retained" : "Deficit"}</span>
+          <span>{isSurplus ? (isIndonesian ? "Sisa Kas" : "Retained") : (isIndonesian ? "Defisit" : "Deficit")}</span>
           <span
             className={`font-semibold amount ${
               isSurplus ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
@@ -112,10 +116,12 @@ export function SavingsRingCard({
           </div>
           <div>
             <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-              Savings Velocity & Retention
+              {isIndonesian ? "Laju & Retensi Tabungan" : "Savings Velocity & Retention"}
             </h3>
             <p className="text-[10px] text-[var(--text-tertiary)]">
-              Capital retention rate vs monthly turnover
+              {isIndonesian
+                ? "Tingkat simpanan modal vs perputaran bulanan"
+                : "Capital retention rate vs monthly turnover"}
             </p>
           </div>
         </div>
@@ -129,7 +135,7 @@ export function SavingsRingCard({
               color: isSurplus ? "var(--text-primary)" : "var(--text-secondary)",
             }}
           >
-            {boundedRate.toFixed(1)}% Saved
+            {boundedRate.toFixed(1)}% {isIndonesian ? "Tersimpan" : "Saved"}
           </span>
           {onOpenDetail && (
             <button
@@ -152,7 +158,7 @@ export function SavingsRingCard({
               style={{ background: "var(--glass-fill)" }}
             >
               <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-                Inflow
+                {isIndonesian ? "Pemasukan" : "Inflow"}
               </span>
               <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
                 +{formatRupiah(inflow)}
@@ -163,7 +169,7 @@ export function SavingsRingCard({
               style={{ background: "var(--glass-fill)" }}
             >
               <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-                Outflow
+                {isIndonesian ? "Pengeluaran" : "Outflow"}
               </span>
               <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
                 -{formatRupiah(outflow)}
@@ -174,7 +180,7 @@ export function SavingsRingCard({
               style={{ background: "var(--glass-fill)" }}
             >
               <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-                Net Position
+                {isIndonesian ? "Posisi Bersih" : "Net Position"}
               </span>
               <span
                 className={`text-[12px] font-semibold amount block mt-0.5 ${
@@ -190,7 +196,7 @@ export function SavingsRingCard({
           {/* 20% Target Benchmark */}
           <div className="pt-1">
             <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
-              <span>Standard 20% Savings Rule Target</span>
+              <span>{isIndonesian ? "Target Tabungan 20% Standar" : "Standard 20% Savings Rule Target"}</span>
               <span className="font-semibold text-[var(--text-primary)]">
                 {formatRupiah(targetSavings)}
               </span>
@@ -208,11 +214,17 @@ export function SavingsRingCard({
       <div className="pt-1 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
         <span>
           {isSurplus
-            ? `Net capital surplus of ${formatRupiah(netRetention)} preserved.`
-            : `Outflow exceeds inflow this month by ${formatRupiah(Math.abs(netRetention))}.`}
+            ? isIndonesian
+              ? `Surplus modal bersih ${formatRupiah(netRetention)} berhasil dipertahankan.`
+              : `Net capital surplus of ${formatRupiah(netRetention)} preserved.`
+            : isIndonesian
+              ? `Pengeluaran melampaui pemasukan bulan ini sebesar ${formatRupiah(Math.abs(netRetention))}.`
+              : `Outflow exceeds inflow this month by ${formatRupiah(Math.abs(netRetention))}.`}
         </span>
         <span className="font-semibold text-[var(--text-secondary)]">
-          {isSurplus ? "Accumulating" : "Capital Deficit"}
+          {isSurplus
+            ? isIndonesian ? "Akumulasi" : "Accumulating"
+            : isIndonesian ? "Defisit Modal" : "Capital Deficit"}
         </span>
       </div>
     </section>

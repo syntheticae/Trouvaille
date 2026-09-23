@@ -1,6 +1,8 @@
 import { Zap, Clock, ArrowUpRight } from "lucide-react";
 import { formatRupiah } from "../../../lib/utils";
 import { CompactShell } from "./CompactShell";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import { useCurrency } from "../../../contexts/CurrencyContext";
 
 export function CompactSpendingStabilityHalf({
   level,
@@ -13,12 +15,24 @@ export function CompactSpendingStabilityHalf({
   volatilityScore: number;
   onOpenDetail?: () => void;
 }) {
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
+
+  const localizedLevel = isIndonesian
+    ? level === "Low"
+      ? "Rendah"
+      : level === "Moderate"
+        ? "Moderat"
+        : "Tinggi"
+    : level;
+
   return (
-    <CompactShell title="Stability" onOpenDetail={onOpenDetail}>
+    <CompactShell title={isIndonesian ? "Stabilitas" : "Stability"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-            Daily Outlay
+            {isIndonesian ? "Rerata Harian" : "Daily Outlay"}
           </span>
           <span
             className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
@@ -28,7 +42,7 @@ export function CompactSpendingStabilityHalf({
               border: "1px solid var(--glass-border)",
             }}
           >
-            {level}
+            {localizedLevel}
           </span>
         </div>
         <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
@@ -38,7 +52,7 @@ export function CompactSpendingStabilityHalf({
 
       <div className="shrink-0">
         <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
-          <span>Variance</span>
+          <span>{isIndonesian ? "Variansi" : "Variance"}</span>
           <span className="font-semibold text-[var(--text-secondary)]">
             {(volatilityScore * 100).toFixed(0)}%
           </span>
@@ -65,13 +79,21 @@ export function CompactCashflowPulseHalf({
   isAheadOfPace: boolean;
   onOpenDetail?: () => void;
 }) {
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
   const isSurplus = netCashflow >= 0;
+
+  const paceLabel = isAheadOfPace
+    ? isIndonesian ? "Boros" : "Over Pace"
+    : isIndonesian ? "Sesuai Jalur" : "On Track";
+
   return (
-    <CompactShell title="Cashflow" onOpenDetail={onOpenDetail}>
+    <CompactShell title={isIndonesian ? "Arus Kas" : "Cashflow"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-            Net Retention
+            {isIndonesian ? "Sisa Kas" : "Net Retention"}
           </span>
           <span
             className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
@@ -81,7 +103,7 @@ export function CompactCashflowPulseHalf({
               border: "1px solid var(--glass-border)",
             }}
           >
-            {isAheadOfPace ? "Over Pace" : "On Track"}
+            {paceLabel}
           </span>
         </div>
         <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
@@ -92,7 +114,7 @@ export function CompactCashflowPulseHalf({
 
       <div className="shrink-0">
         <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
-          <span>Budget Used</span>
+          <span>{isIndonesian ? "Anggaran Terpakai" : "Budget Used"}</span>
           <span className="font-semibold text-[var(--text-secondary)]">
             {consumedPct.toFixed(0)}%
           </span>
@@ -117,8 +139,11 @@ export function CompactAIInsightsHalf({
   insightCategory?: string;
   onOpenDetail?: () => void;
 }) {
+  const { language } = useLanguage();
+  const isIndonesian = language === "id";
+
   return (
-    <CompactShell title="AI Insight" onOpenDetail={onOpenDetail}>
+    <CompactShell title={isIndonesian ? "Wawasan AI" : "AI Insight"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex items-center py-1">
         <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-snug line-clamp-3">
           {insightTitle}
@@ -128,7 +153,7 @@ export function CompactAIInsightsHalf({
       <div className="flex items-center justify-between pt-1.5 border-t border-black/5 dark:border-white/5 text-[10px] font-medium text-[var(--text-tertiary)] shrink-0">
         <div className="flex items-center gap-1">
           <Zap size={11} />
-          <span>Diagnostic</span>
+          <span>{isIndonesian ? "Diagnostik" : "Diagnostic"}</span>
         </div>
         {insightCategory && (
           <span
@@ -160,8 +185,12 @@ export function CompactGoalsHalf({
   targetAmount: number;
   onOpenDetail?: () => void;
 }) {
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
+
   return (
-    <CompactShell title="Top Goal" onOpenDetail={onOpenDetail}>
+    <CompactShell title={isIndonesian ? "Target Utama" : "Top Goal"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
@@ -206,9 +235,17 @@ export function CompactBillsHalf({
   daysLeft: number;
   onOpenDetail?: () => void;
 }) {
-  const badgeLabel = daysLeft <= 0 ? "Due Today" : `In ${daysLeft}d`;
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
+
+  const badgeLabel =
+    daysLeft <= 0
+      ? isIndonesian ? "Jatuh Tempo Hari Ini" : "Due Today"
+      : isIndonesian ? `${daysLeft} hr lagi` : `In ${daysLeft}d`;
+
   return (
-    <CompactShell title="Next Bill" onOpenDetail={onOpenDetail}>
+    <CompactShell title={isIndonesian ? "Tagihan" : "Next Bill"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
@@ -232,7 +269,7 @@ export function CompactBillsHalf({
 
       <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
         <Clock size={11} />
-        <span>Upcoming cycle</span>
+        <span>{isIndonesian ? "Siklus mendatang" : "Upcoming cycle"}</span>
       </div>
     </CompactShell>
   );
@@ -249,8 +286,12 @@ export function CompactTopCategoriesHalf({
   topCategoryPct: number;
   onOpenDetail?: () => void;
 }) {
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
+
   return (
-    <CompactShell title="Top Category" onOpenDetail={onOpenDetail}>
+    <CompactShell title={isIndonesian ? "Kategori Teratas" : "Top Category"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
@@ -293,12 +334,16 @@ export function CompactSplitBillHalf({
   pendingCount?: number;
   onOpenDetail?: () => void;
 }) {
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
+
   return (
-    <CompactShell title="Split Bills" onOpenDetail={onOpenDetail}>
+    <CompactShell title={isIndonesian ? "Bagi Tagihan" : "Split Bills"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-            Receivables
+            {isIndonesian ? "Piutang" : "Receivables"}
           </span>
           <span
             className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
@@ -308,7 +353,7 @@ export function CompactSplitBillHalf({
               border: "1px solid var(--glass-border)",
             }}
           >
-            {pendingCount} Pending
+            {pendingCount} {isIndonesian ? "Tertunda" : "Pending"}
           </span>
         </div>
         <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
@@ -318,8 +363,9 @@ export function CompactSplitBillHalf({
 
       <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
         <ArrowUpRight size={11} />
-        <span>Tap to settle shares</span>
+        <span>{isIndonesian ? "Ketuk untuk pelunasan" : "Tap to settle shares"}</span>
       </div>
     </CompactShell>
   );
 }
+

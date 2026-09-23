@@ -1,6 +1,8 @@
 import { Info, Award } from "lucide-react";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import { useCurrency } from "../../../contexts/CurrencyContext";
 
 export function HealthMeterCard({
   healthScore,
@@ -13,7 +15,11 @@ export function HealthMeterCard({
   size?: WidgetSize;
   onOpenDetail?: () => void;
 }) {
-  const statusLabel =
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
+
+  const rawGrade =
     grade ||
     (healthScore >= 80
       ? "Optimal"
@@ -23,16 +29,26 @@ export function HealthMeterCard({
           ? "Fair"
           : "Attention");
 
+  const statusLabel = isIndonesian
+    ? rawGrade === "Good"
+      ? "Baik"
+      : rawGrade === "Fair"
+        ? "Cukup"
+        : rawGrade === "Attention"
+          ? "Perhatian"
+          : "Optimal"
+    : rawGrade;
+
   if (size === "half") {
     return (
-      <CompactShell title="Health Score" onOpenDetail={onOpenDetail}>
+      <CompactShell title={isIndonesian ? "Skor Kesehatan" : "Health Score"} onOpenDetail={onOpenDetail}>
         <div className="flex-1 flex flex-col justify-center items-center py-1">
           <div className="text-center">
             <span className="text-[26px] font-semibold amount text-[var(--text-primary)] leading-none">
               {healthScore}
             </span>
             <span className="text-[10px] font-medium text-[var(--text-tertiary)] block mt-0.5">
-              / 100 Index
+              {isIndonesian ? "/ 100 Indeks" : "/ 100 Index"}
             </span>
           </div>
         </div>
@@ -77,10 +93,12 @@ export function HealthMeterCard({
           </div>
           <div>
             <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-              Financial Health Score
+              {isIndonesian ? "Skor Kesehatan Finansial" : "Financial Health Score"}
             </h3>
             <p className="text-[10px] text-[var(--text-tertiary)]">
-              Composite rating based on savings pace, debt, and liquidity runway
+              {isIndonesian
+                ? "Rating komposit berbasis laju tabungan, kewajiban, dan ketahanan likuiditas"
+                : "Composite rating based on savings pace, debt, and liquidity runway"}
             </p>
           </div>
         </div>
@@ -114,7 +132,7 @@ export function HealthMeterCard({
             {healthScore}
           </span>
           <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block mt-1">
-            Score / 100
+            {isIndonesian ? "Skor / 100" : "Score / 100"}
           </span>
         </div>
 
@@ -125,10 +143,12 @@ export function HealthMeterCard({
               style={{ background: "var(--glass-fill)" }}
             >
               <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-                Savings Pace
+                {isIndonesian ? "Laju Tabungan" : "Savings Pace"}
               </span>
               <span className="text-[11px] font-semibold text-[var(--text-primary)] block mt-0.5">
-                {healthScore >= 70 ? "Optimal" : "Attention"}
+                {healthScore >= 70
+                  ? "Optimal"
+                  : isIndonesian ? "Perhatian" : "Attention"}
               </span>
             </div>
             <div
@@ -136,10 +156,12 @@ export function HealthMeterCard({
               style={{ background: "var(--glass-fill)" }}
             >
               <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-                Budget Control
+                {isIndonesian ? "Kendali Anggaran" : "Budget Control"}
               </span>
               <span className="text-[11px] font-semibold text-[var(--text-primary)] block mt-0.5">
-                {healthScore >= 50 ? "Safe Track" : "Watch"}
+                {healthScore >= 50
+                  ? isIndonesian ? "Sesuai Jalur" : "Safe Track"
+                  : isIndonesian ? "Pantau" : "Watch"}
               </span>
             </div>
             <div
@@ -147,10 +169,12 @@ export function HealthMeterCard({
               style={{ background: "var(--glass-fill)" }}
             >
               <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-                Liquid Cushion
+                {isIndonesian ? "Bantalan Likuid" : "Liquid Cushion"}
               </span>
               <span className="text-[11px] font-semibold text-[var(--text-primary)] block mt-0.5">
-                {healthScore >= 60 ? "Resilient" : "Moderate"}
+                {healthScore >= 60
+                  ? isIndonesian ? "Tangguh" : "Resilient"
+                  : isIndonesian ? "Moderat" : "Moderate"}
               </span>
             </div>
           </div>
@@ -165,9 +189,15 @@ export function HealthMeterCard({
       </div>
 
       <div className="pt-1 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
-        <span>Overall health diagnostic indicates controlled cashflow.</span>
+        <span>
+          {isIndonesian
+            ? "Diagnostik kesehatan mengindikasikan arus kas terkendali."
+            : "Overall health diagnostic indicates controlled cashflow."}
+        </span>
         <span className="font-semibold text-[var(--text-secondary)]">
-          {healthScore >= 75 ? "High Efficiency" : "Moderate Action Needed"}
+          {healthScore >= 75
+            ? isIndonesian ? "Efisiensi Tinggi" : "High Efficiency"
+            : isIndonesian ? "Perlu Tindakan" : "Moderate Action Needed"}
         </span>
       </div>
     </section>

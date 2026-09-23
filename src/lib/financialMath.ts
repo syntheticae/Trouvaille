@@ -1134,6 +1134,7 @@ export function generateActionCenterInsight(options: {
   categoryShifts: CategoryMoMShift[];
   safeToSpend: number;
   unpaidBillsCount: number;
+  language?: "en" | "id";
 }): ActionCenterInsight {
   const {
     budget,
@@ -1146,32 +1147,40 @@ export function generateActionCenterInsight(options: {
     categoryShifts,
     safeToSpend,
     unpaidBillsCount,
+    language,
   } = options;
 
-  const formatIdr = (n: number) => {
-    if (Math.abs(n) >= 1000000)
-      return `Rp ${(Math.abs(n) / 1000000).toFixed(1)}M`;
-    if (Math.abs(n) >= 1000) return `Rp ${(Math.abs(n) / 1000).toFixed(0)}K`;
-    return `Rp ${Math.abs(n)}`;
-  };
+  const isId = language === "id";
 
   // Priority 1: Critical Budget Risk / Projected Overrun
   if (budget > 0 && budgetRisk === "AT RISK" && projectedVariance > 0) {
     return {
       type: "projected_overrun",
-      title: `Projected ${formatIdr(projectedVariance)} above monthly budget`,
-      subtitle: `At current daily run-rate, total spending will reach ${consumedPct.toFixed(0)}% of limit.`,
-      badge: "BUDGET RISK",
-      actionLabel: "Review budget",
+      title: isId
+        ? `Proyeksi ${formatRupiah(projectedVariance)} melampaui anggaran bulanan`
+        : `Projected ${formatRupiah(projectedVariance)} above monthly budget`,
+      subtitle: isId
+        ? `Pada laju harian saat ini, pengeluaran akan mencapai ${consumedPct.toFixed(0)}% dari batas.`
+        : `At current daily run-rate, total spending will reach ${consumedPct.toFixed(0)}% of limit.`,
+      badge: isId ? "RISIKO ANGGARAN" : "BUDGET RISK",
+      actionLabel: isId ? "Tinjau anggaran" : "Review budget",
       actionType: "budget",
       drillDownDetails: {
-        headline: "Projected Budget Overrun",
-        explanation: `Based on ${timePct.toFixed(0)}% of days elapsed, your average daily spending projects to exceed your monthly limit by ${formatIdr(projectedVariance)}.`,
-        bulletPoints: [
-          `Current spending: ${consumedPct.toFixed(0)}% of limit`,
-          `Month elapsed: ${timePct.toFixed(0)}%`,
-          `Projected month-end variance: +${formatIdr(projectedVariance)}`,
-        ],
+        headline: isId ? "Proyeksi Pembengkakan Anggaran" : "Projected Budget Overrun",
+        explanation: isId
+          ? `Berdasarkan ${timePct.toFixed(0)}% hari yang telah berlalu, rata-rata belanja harian diproyeksikan melebihi pagu bulanan sebesar ${formatRupiah(projectedVariance)}.`
+          : `Based on ${timePct.toFixed(0)}% of days elapsed, your average daily spending projects to exceed your monthly limit by ${formatRupiah(projectedVariance)}.`,
+        bulletPoints: isId
+          ? [
+              `Pengeluaran saat ini: ${consumedPct.toFixed(0)}% dari batas`,
+              `Bulan berjalan: ${timePct.toFixed(0)}%`,
+              `Selisih proyeksi akhir bulan: +${formatRupiah(projectedVariance)}`,
+            ]
+          : [
+              `Current spending: ${consumedPct.toFixed(0)}% of limit`,
+              `Month elapsed: ${timePct.toFixed(0)}%`,
+              `Projected month-end variance: +${formatRupiah(projectedVariance)}`,
+            ],
       },
     };
   }
@@ -1180,19 +1189,31 @@ export function generateActionCenterInsight(options: {
   if (budget > 0 && isAheadOfPace && paceDiff > 100000) {
     return {
       type: "spending_pace",
-      title: `Spending is running ${formatIdr(paceDiff)} ahead of monthly pace`,
-      subtitle: `${consumedPct.toFixed(0)}% budget consumed vs ${timePct.toFixed(0)}% days elapsed.`,
-      badge: "SPENDING PACE",
-      actionLabel: "View breakdown",
+      title: isId
+        ? `Laju pengeluaran ${formatRupiah(paceDiff)} lebih cepat dari tempo bulanan`
+        : `Spending is running ${formatRupiah(paceDiff)} ahead of monthly pace`,
+      subtitle: isId
+        ? `${consumedPct.toFixed(0)}% anggaran terpakai vs ${timePct.toFixed(0)}% hari berjalan.`
+        : `${consumedPct.toFixed(0)}% budget consumed vs ${timePct.toFixed(0)}% days elapsed.`,
+      badge: isId ? "TEMPO BELANJA" : "SPENDING PACE",
+      actionLabel: isId ? "Lihat rincian" : "View breakdown",
       actionType: "statistics",
       drillDownDetails: {
-        headline: "Spending Pace Deviation",
-        explanation: `You are currently spending faster than the proportional time elapsed in the current month.`,
-        bulletPoints: [
-          `Expected spending at this point: ${formatIdr(options.totalExpense - paceDiff)}`,
-          `Actual spending: ${formatIdr(options.totalExpense)}`,
-          `Pace variance: +${formatIdr(paceDiff)}`,
-        ],
+        headline: isId ? "Deviasi Tempo Belanja" : "Spending Pace Deviation",
+        explanation: isId
+          ? `Anda saat ini berbelanja lebih cepat dari proporsi waktu yang berjalan di bulan ini.`
+          : `You are currently spending faster than the proportional time elapsed in the current month.`,
+        bulletPoints: isId
+          ? [
+              `Ekspektasi pengeluaran saat ini: ${formatRupiah(options.totalExpense - paceDiff)}`,
+              `Pengeluaran aktual: ${formatRupiah(options.totalExpense)}`,
+              `Deviasi tempo: +${formatRupiah(paceDiff)}`,
+            ]
+          : [
+              `Expected spending at this point: ${formatRupiah(options.totalExpense - paceDiff)}`,
+              `Actual spending: ${formatRupiah(options.totalExpense)}`,
+              `Pace variance: +${formatRupiah(paceDiff)}`,
+            ],
       },
     };
   }
@@ -1204,17 +1225,23 @@ export function generateActionCenterInsight(options: {
   if (topSpike) {
     return {
       type: "category_spike",
-      title: `${topSpike.name} spending increased ${topSpike.pctChange}% vs last month`,
-      subtitle: `+${formatIdr(topSpike.deltaAmount)} higher than previous month's baseline.`,
-      badge: "CATEGORY SHIFT",
-      actionLabel: "View category",
+      title: isId
+        ? `Belanja ${topSpike.name} naik ${topSpike.pctChange}% dibanding bulan lalu`
+        : `${topSpike.name} spending increased ${topSpike.pctChange}% vs last month`,
+      subtitle: isId
+        ? `+${formatRupiah(topSpike.deltaAmount)} lebih tinggi dari garis dasar bulan lalu.`
+        : `+${formatRupiah(topSpike.deltaAmount)} higher than previous month's baseline.`,
+      badge: isId ? "PERGESERAN KATEGORI" : "CATEGORY SHIFT",
+      actionLabel: isId ? "Lihat kategori" : "View category",
       actionType: "category_detail",
       actionParam: topSpike.categoryId,
       drillDownDetails: {
-        headline: `${topSpike.name} Spending Shift`,
-        explanation: `${topSpike.name} had the largest positive expense change compared to the previous month.`,
+        headline: isId ? `Pergeseran Belanja ${topSpike.name}` : `${topSpike.name} Spending Shift`,
+        explanation: isId
+          ? `${topSpike.name} mencatatkan lonjakan beban terbesar dibanding bulan sebelumnya.`
+          : `${topSpike.name} had the largest positive expense change compared to the previous month.`,
         bulletPoints: topSpike.contributors.map(
-          (c) => `${c.note}: ${formatIdr(c.amount)} (${c.count} txs)`,
+          (c) => `${c.note}: ${formatRupiah(c.amount)} (${c.count} ${isId ? "trx" : "txs"})`,
         ),
       },
     };
@@ -1224,18 +1251,29 @@ export function generateActionCenterInsight(options: {
   if (unpaidBillsCount > 0 && safeToSpend < 300000) {
     return {
       type: "safety_buffer",
-      title: `${unpaidBillsCount} upcoming bills scheduled this cycle`,
-      subtitle: `Safe-to-spend buffer is currently ${formatIdr(safeToSpend)}.`,
-      badge: "SAFETY BUFFER",
-      actionLabel: "View upcoming bills",
+      title: isId
+        ? `${unpaidBillsCount} tagihan mendatang terjadwal di siklus ini`
+        : `${unpaidBillsCount} upcoming bills scheduled this cycle`,
+      subtitle: isId
+        ? `Bantalan belanja aman saat ini ${formatRupiah(safeToSpend)}.`
+        : `Safe-to-spend buffer is currently ${formatRupiah(safeToSpend)}.`,
+      badge: isId ? "BANTALAN AMAN" : "SAFETY BUFFER",
+      actionLabel: isId ? "Lihat tagihan" : "View upcoming bills",
       actionType: "bills",
       drillDownDetails: {
-        headline: "Committed Obligations Buffer",
-        explanation: `Upcoming recurring bills are deducted from liquid assets to determine your unencumbered spending balance.`,
-        bulletPoints: [
-          `Total upcoming commitments: ${formatIdr(options.safeToSpend)}`,
-          `Remaining safety buffer: ${formatIdr(safeToSpend)}`,
-        ],
+        headline: isId ? "Bantalan Kewajiban Komitmen" : "Committed Obligations Buffer",
+        explanation: isId
+          ? `Tagihan rutin mendatang disisihkan dari aset likuid untuk menentukan dana bebas belanja Anda.`
+          : `Upcoming recurring bills are deducted from liquid assets to determine your unencumbered spending balance.`,
+        bulletPoints: isId
+          ? [
+              `Total komitmen mendatang: ${formatRupiah(options.safeToSpend)}`,
+              `Sisa bantalan pengaman: ${formatRupiah(safeToSpend)}`,
+            ]
+          : [
+              `Total upcoming commitments: ${formatRupiah(options.safeToSpend)}`,
+              `Remaining safety buffer: ${formatRupiah(safeToSpend)}`,
+            ],
       },
     };
   }
@@ -1243,25 +1281,37 @@ export function generateActionCenterInsight(options: {
   // Priority 5: Calm on-track state
   return {
     type: "healthy",
-    title:
-      budget > 0
-        ? "You're on track for this month's budget"
-        : "Monthly spending is steady",
-    subtitle:
-      budget > 0
-        ? `${consumedPct.toFixed(0)}% consumed with ${timePct.toFixed(0)}% of the month elapsed.`
-        : "Cashflow and spending pace are within normal parameters.",
-    badge: "ON TRACK",
-    actionLabel: "View statistics",
+    title: isId
+      ? (budget > 0
+          ? "Pengeluaran Anda terkendali sesuai anggaran bulan ini"
+          : "Pengeluaran bulanan terpantau stabil")
+      : (budget > 0
+          ? "You're on track for this month's budget"
+          : "Monthly spending is steady"),
+    subtitle: isId
+      ? (budget > 0
+          ? `${consumedPct.toFixed(0)}% terpakai dengan ${timePct.toFixed(0)}% bulan telah berjalan.`
+          : "Arus kas dan tempo belanja berada dalam batas normal.")
+      : (budget > 0
+          ? `${consumedPct.toFixed(0)}% consumed with ${timePct.toFixed(0)}% of the month elapsed.`
+          : "Cashflow and spending pace are within normal parameters."),
+    badge: isId ? "SESUAI JALUR" : "ON TRACK",
+    actionLabel: isId ? "Lihat statistik" : "View statistics",
     actionType: "statistics",
     drillDownDetails: {
-      headline: "Financial Summary",
-      explanation:
-        "Current spending rate is aligned with your monthly schedule.",
-      bulletPoints: [
-        `Net cashflow: ${options.totalExpense === 0 ? "No expenses recorded" : "Controlled"}`,
-        `Spending pace: Balanced`,
-      ],
+      headline: isId ? "Ringkasan Finansial" : "Financial Summary",
+      explanation: isId
+        ? "Laju pengeluaran saat ini selaras dengan jadwal bulanan Anda."
+        : "Current spending rate is aligned with your monthly schedule.",
+      bulletPoints: isId
+        ? [
+            `Arus kas bersih: ${options.totalExpense === 0 ? "Belum ada pengeluaran" : "Terkendali"}`,
+            `Tempo pengeluaran: Seimbang`,
+          ]
+        : [
+            `Net cashflow: ${options.totalExpense === 0 ? "No expenses recorded" : "Controlled"}`,
+            `Spending pace: Balanced`,
+          ],
     },
   };
 }
@@ -1275,7 +1325,9 @@ export function generateMonthlyFinancialReview(
   categories: Category[],
   budget: number,
   monthDate: Date,
+  language?: "en" | "id",
 ): MonthlyFinancialReviewData {
+  const isId = language === "id";
   const monthName = format(monthDate, "MMMM");
   const year = monthDate.getFullYear();
   const monthNumber = monthDate.getMonth() + 1;
@@ -1299,7 +1351,7 @@ export function generateMonthlyFinancialReview(
     if (s.deltaAmount === 0 && s.pctChange === 0) return;
     whatChanged.push({
       label: s.name,
-      changeText: `${s.isIncrease ? "↑" : "↓"} ${s.pctChange}% (Rp ${(Math.abs(s.deltaAmount) / 1000).toFixed(0)}K)`,
+      changeText: `${s.isIncrease ? "↑" : "↓"} ${s.pctChange}% (${formatRupiah(Math.abs(s.deltaAmount))})`,
       isUp: s.isIncrease,
     });
   });
@@ -1310,7 +1362,7 @@ export function generateMonthlyFinancialReview(
     );
     if (Math.abs(avgDiffPct) >= 5) {
       whatChanged.push({
-        label: "Avg Transaction",
+        label: isId ? "Rata-rata Transaksi" : "Avg Transaction",
         changeText: `${avgDiffPct > 0 ? "↑" : "↓"} ${Math.abs(avgDiffPct)}%`,
         isUp: avgDiffPct > 0,
       });
@@ -1321,12 +1373,16 @@ export function generateMonthlyFinancialReview(
   const whatWentWell: string[] = [];
   if (budget > 0 && currentAgg.totalExpense <= budget) {
     whatWentWell.push(
-      `Maintained spending within your ${format(monthDate, "MMMM")} budget.`,
+      isId
+        ? `Berhasil menjaga pengeluaran dalam batas anggaran bulanan.`
+        : `Maintained spending within your ${format(monthDate, "MMMM")} budget.`,
     );
   }
   if (currentAgg.savingsRate >= 20) {
     whatWentWell.push(
-      `Achieved a ${currentAgg.savingsRate.toFixed(0)}% savings rate from total monthly inflow.`,
+      isId
+        ? `Mencapai rasio tabungan ${currentAgg.savingsRate.toFixed(0)}% dari total pemasukan bulanan.`
+        : `Achieved a ${currentAgg.savingsRate.toFixed(0)}% savings rate from total monthly inflow.`,
     );
   }
   if (
@@ -1335,12 +1391,16 @@ export function generateMonthlyFinancialReview(
   ) {
     const savedMoM = prevAgg.totalExpense - currentAgg.totalExpense;
     whatWentWell.push(
-      `Total outflow decreased by Rp ${(savedMoM / 1000).toFixed(0)}K compared to previous month.`,
+      isId
+        ? `Total pengeluaran berkurang ${formatRupiah(savedMoM)} dibandingkan bulan lalu.`
+        : `Total outflow decreased by Rp ${(savedMoM / 1000).toFixed(0)}K compared to previous month.`,
     );
   }
   if (whatWentWell.length === 0 && currentAgg.netCashflow >= 0) {
     whatWentWell.push(
-      "Maintained positive net cashflow with zero month-end deficit.",
+      isId
+        ? "Mempertahankan arus kas positif tanpa defisit di akhir bulan."
+        : "Maintained positive net cashflow with zero month-end deficit.",
     );
   }
 
@@ -1349,7 +1409,9 @@ export function generateMonthlyFinancialReview(
   if (budget > 0 && currentAgg.totalExpense > budget) {
     const over = currentAgg.totalExpense - budget;
     whatNeedsAttention.push(
-      `Outflow exceeded monthly budget by Rp ${(over / 1000).toFixed(0)}K.`,
+      isId
+        ? `Pengeluaran melampaui anggaran bulanan sebesar ${formatRupiah(over)}.`
+        : `Outflow exceeded monthly budget by Rp ${(over / 1000).toFixed(0)}K.`,
     );
   }
   const bigSpike = shifts.find(
@@ -1357,25 +1419,32 @@ export function generateMonthlyFinancialReview(
   );
   if (bigSpike) {
     whatNeedsAttention.push(
-      `${bigSpike.name} spending grew ${bigSpike.pctChange}% (+Rp ${(bigSpike.deltaAmount / 1000).toFixed(0)}K vs previous month).`,
+      isId
+        ? `Pengeluaran ${bigSpike.name} melonjak ${bigSpike.pctChange}% (+${formatRupiah(bigSpike.deltaAmount)} vs bulan lalu).`
+        : `${bigSpike.name} spending grew ${bigSpike.pctChange}% (+Rp ${(bigSpike.deltaAmount / 1000).toFixed(0)}K vs previous month).`,
     );
   }
   if (currentAgg.netCashflow < 0) {
     whatNeedsAttention.push(
-      `Net deficit of Rp ${(Math.abs(currentAgg.netCashflow) / 1000).toFixed(0)}K (outflow exceeded inflow).`,
+      isId
+        ? `Defisit kas bersih sebesar ${formatRupiah(Math.abs(currentAgg.netCashflow))} (pengeluaran melebihi pemasukan).`
+        : `Net deficit of Rp ${(Math.abs(currentAgg.netCashflow) / 1000).toFixed(0)}K (outflow exceeded inflow).`,
     );
   }
 
   // Next Month Run-Rate Baseline
-  let nextMonthBaseline =
-    "Baseline expense trajectory aligns with historical run-rate.";
+  let nextMonthBaseline = isId
+    ? "Trayektori pengeluaran garis dasar selaras dengan laju historis."
+    : "Baseline expense trajectory aligns with historical run-rate.";
   if (currentAgg.totalExpense > 0 && budget > 0) {
     if (currentAgg.totalExpense > budget) {
-      nextMonthBaseline =
-        "At the current spending pace, next cycle may risk remaining above target without category adjustments.";
+      nextMonthBaseline = isId
+        ? "Pada laju pengeluaran saat ini, siklus berikutnya berisiko melampaui target tanpa penyesuaian kategori."
+        : "At the current spending pace, next cycle may risk remaining above target without category adjustments.";
     } else {
-      nextMonthBaseline =
-        "Current discipline provides a strong foundation for next month's envelope limits.";
+      nextMonthBaseline = isId
+        ? "Kedisiplinan saat ini menjadi fondasi yang kokoh untuk batas pos anggaran bulan depan."
+        : "Current discipline provides a strong foundation for next month's envelope limits.";
     }
   }
 

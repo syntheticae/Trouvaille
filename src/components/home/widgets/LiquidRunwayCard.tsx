@@ -3,6 +3,8 @@ import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
 import { FinancialGlossaryTooltip } from "../../common/FinancialGlossaryTooltip";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import { useCurrency } from "../../../contexts/CurrencyContext";
 
 export function LiquidRunwayCard({
   runwayMonths,
@@ -17,14 +19,18 @@ export function LiquidRunwayCard({
   size?: WidgetSize;
   onOpenDetail?: () => void;
 }) {
+  const { language } = useLanguage();
+  useCurrency();
+  const isIndonesian = language === "id";
+
   const status =
     runwayMonths >= 12
-      ? "Fortress Reserve"
+      ? isIndonesian ? "Cadangan Kuat" : "Fortress Reserve"
       : runwayMonths >= 6
-        ? "Ideal Buffer"
+        ? isIndonesian ? "Buffer Ideal" : "Ideal Buffer"
         : runwayMonths >= 3
-          ? "Safety Net"
-          : "Critical";
+          ? isIndonesian ? "Jaring Pengaman" : "Safety Net"
+          : isIndonesian ? "Kritis" : "Critical";
 
   // CFP 3-Tier Emergency Fund Benchmarks (3, 6, 12 Months)
   const maxBenchmarkMonths = 12;
@@ -37,42 +43,50 @@ export function LiquidRunwayCard({
     if (runwayMonths < 3) {
       const deficit = Math.max(0, 3 * monthlyBurn - liquidAssets);
       return {
-        label: "Tier 1: Safety Net (3 Mos)",
+        label: isIndonesian ? "Tier 1: Jaring Pengaman (3 Bln)" : "Tier 1: Safety Net (3 Mos)",
         deficit,
-        desc: `Need ${formatRupiah(deficit)} more to reach the 3-month emergency safety net.`,
+        desc: isIndonesian
+          ? `Perlu ${formatRupiah(deficit)} lagi untuk mencapai jaring pengaman darurat 3 bulan.`
+          : `Need ${formatRupiah(deficit)} more to reach the 3-month emergency safety net.`,
       };
     }
     if (runwayMonths < 6) {
       const deficit = Math.max(0, 6 * monthlyBurn - liquidAssets);
       return {
-        label: "Tier 2: Ideal Buffer (6 Mos)",
+        label: isIndonesian ? "Tier 2: Buffer Ideal (6 Bln)" : "Tier 2: Ideal Buffer (6 Mos)",
         deficit,
-        desc: `Need ${formatRupiah(deficit)} more to reach the standard 6-month buffer.`,
+        desc: isIndonesian
+          ? `Perlu ${formatRupiah(deficit)} lagi untuk mencapai standar buffer 6 bulan.`
+          : `Need ${formatRupiah(deficit)} more to reach the standard 6-month buffer.`,
       };
     }
     if (runwayMonths < 12) {
       const deficit = Math.max(0, 12 * monthlyBurn - liquidAssets);
       return {
-        label: "Tier 3: Fortress Reserve (12 Mos)",
+        label: isIndonesian ? "Tier 3: Cadangan Kuat (12 Bln)" : "Tier 3: Fortress Reserve (12 Mos)",
         deficit,
-        desc: `Need ${formatRupiah(deficit)} more for a full 1-year fortress reserve.`,
+        desc: isIndonesian
+          ? `Perlu ${formatRupiah(deficit)} lagi untuk cadangan kuat 1 tahun penuh.`
+          : `Need ${formatRupiah(deficit)} more for a full 1-year fortress reserve.`,
       };
     }
     return {
-      label: "Full Fortress Reserve (≥12 Mos)",
+      label: isIndonesian ? "Cadangan Kuat Penuh (≥12 Bln)" : "Full Fortress Reserve (≥12 Mos)",
       deficit: 0,
-      desc: "Cash runway exceeds 12 months of expenses. Emergency liquidity is optimal.",
+      desc: isIndonesian
+        ? "Ketahanan kas melampaui 12 bulan pengeluaran. Likuiditas darurat optimal."
+        : "Cash runway exceeds 12 months of expenses. Emergency liquidity is optimal.",
     };
   })();
 
   if (size === "half") {
     return (
       <div onClick={onOpenDetail} className="cursor-pointer">
-        <CompactShell title="Cashflow Runway" onOpenDetail={onOpenDetail}>
+        <CompactShell title={isIndonesian ? "Ketahanan Dana" : "Cashflow Runway"} onOpenDetail={onOpenDetail}>
           <div className="flex-1 flex flex-col justify-center py-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-                Reserve Horizon
+                {isIndonesian ? "Horizon Cadangan" : "Reserve Horizon"}
               </span>
               <span
                 className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md truncate max-w-[90px]"
@@ -88,15 +102,15 @@ export function LiquidRunwayCard({
             <p className="text-[18px] font-semibold amount text-[var(--text-primary)] leading-tight mt-0.5">
               {runwayMonths >= 99 ? "∞" : runwayMonths.toFixed(1)}{" "}
               <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">
-                Mos
+                {isIndonesian ? "Bln" : "Mos"}
               </span>
             </p>
           </div>
 
           <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
-            <span>Monthly Burn Rate</span>
+            <span>{isIndonesian ? "Laju Pengeluaran" : "Monthly Burn Rate"}</span>
             <span className="font-semibold text-[var(--text-primary)] amount truncate max-w-[90px]">
-              {formatRupiah(monthlyBurn)}/m
+              {formatRupiah(monthlyBurn)}{isIndonesian ? "/bln" : "/m"}
             </span>
           </div>
         </CompactShell>
@@ -127,12 +141,14 @@ export function LiquidRunwayCard({
           <div>
             <div className="flex items-center gap-1">
               <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-                Liquid Reserve & Emergency Runway
+                {isIndonesian ? "Cadangan Likuid & Ketahanan Darurat" : "Liquid Reserve & Emergency Runway"}
               </h3>
               <FinancialGlossaryTooltip term="solvency_runway" />
             </div>
             <p className="text-[10px] text-[var(--text-tertiary)]">
-              Emergency cash runway based on monthly average expenditure
+              {isIndonesian
+                ? "Ketahanan kas darurat berbasis rata-rata pengeluaran bulanan"
+                : "Emergency cash runway based on monthly average expenditure"}
             </p>
           </div>
         </div>
@@ -146,7 +162,7 @@ export function LiquidRunwayCard({
               color: "var(--text-primary)",
             }}
           >
-            {status} ({runwayMonths.toFixed(1)} Mos)
+            {status} ({runwayMonths.toFixed(1)} {isIndonesian ? "Bln" : "Mos"})
           </span>
           {onOpenDetail && (
             <button
@@ -166,10 +182,10 @@ export function LiquidRunwayCard({
           style={{ background: "var(--glass-fill)" }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-            Liquidity Runway
+            {isIndonesian ? "Ketahanan Likuid" : "Liquidity Runway"}
           </span>
           <p className="text-[16px] font-semibold amount text-[var(--text-primary)] mt-0.5">
-            {runwayMonths.toFixed(1)} Mos
+            {runwayMonths.toFixed(1)} {isIndonesian ? "Bln" : "Mos"}
           </p>
         </div>
         <div
@@ -177,7 +193,7 @@ export function LiquidRunwayCard({
           style={{ background: "var(--glass-fill)" }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-            Liquid Assets
+            {isIndonesian ? "Aset Likuid" : "Liquid Assets"}
           </span>
           <p className="text-[13px] font-semibold amount text-[var(--text-primary)] mt-0.5 truncate">
             {formatRupiah(liquidAssets)}
@@ -188,10 +204,10 @@ export function LiquidRunwayCard({
           style={{ background: "var(--glass-fill)" }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-            Monthly Burn
+            {isIndonesian ? "Beban Bulanan" : "Monthly Burn"}
           </span>
           <p className="text-[13px] font-semibold amount text-[var(--text-primary)] mt-0.5 truncate">
-            {formatRupiah(monthlyBurn)}/m
+            {formatRupiah(monthlyBurn)}{isIndonesian ? "/bln" : "/m"}
           </p>
         </div>
       </div>
@@ -199,7 +215,7 @@ export function LiquidRunwayCard({
       {/* CFP 3-Tier Emergency Fund Progress Bar */}
       <div className="pt-1 space-y-1.5">
         <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
-          <span>Emergency Fund Benchmark (CFP Standard)</span>
+          <span>{isIndonesian ? "Tolok Ukur Dana Darurat (Standar CFP)" : "Emergency Fund Benchmark (CFP Standard)"}</span>
           <span className="font-semibold text-[var(--text-primary)]">
             {nextTierInfo.label}
           </span>
@@ -229,10 +245,10 @@ export function LiquidRunwayCard({
 
         {/* Milestone Labels */}
         <div className="flex justify-between text-[9px] text-[var(--text-tertiary)]">
-          <span>0 Mos</span>
-          <span className="text-center">3 Mos (Min)</span>
-          <span className="text-center">6 Mos (Ideal)</span>
-          <span>12 Mos (Fortress)</span>
+          <span>{isIndonesian ? "0 Bln" : "0 Mos"}</span>
+          <span className="text-center">{isIndonesian ? "3 Bln (Min)" : "3 Mos (Min)"}</span>
+          <span className="text-center">{isIndonesian ? "6 Bln (Ideal)" : "6 Mos (Ideal)"}</span>
+          <span>{isIndonesian ? "12 Bln (Kuat)" : "12 Mos (Fortress)"}</span>
         </div>
       </div>
 
@@ -241,7 +257,7 @@ export function LiquidRunwayCard({
           {nextTierInfo.desc}
         </span>
         <span className="font-semibold text-[var(--text-secondary)] shrink-0 amount">
-          Reserve: {formatRupiah(liquidAssets)}
+          {isIndonesian ? "Cadangan: " : "Reserve: "}{formatRupiah(liquidAssets)}
         </span>
       </div>
     </section>

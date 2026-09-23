@@ -8,6 +8,7 @@ import React from "react";
 import { CreditCard } from "lucide-react";
 import { IconRenderer } from "../ui/IconRenderer";
 import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface CashflowVelocityCardProps {
   savingsRate: number;
@@ -40,6 +41,8 @@ export function CashflowVelocityCard({
   isDark,
   isIndonesian,
 }: CashflowVelocityCardProps) {
+  useCurrency();
+
   return (
     <div className="space-y-4">
       {/* 2-column mini stat cards (Savings Rate & Average Expense) */}
@@ -209,7 +212,7 @@ export function CashflowVelocityCard({
                               border: "1px solid var(--glass-border)",
                             }}
                           >
-                            {w.count} txs
+                            {w.count} {isIndonesian ? "trx" : "txs"}
                           </span>
                         </div>
                         <p
@@ -217,8 +220,8 @@ export function CashflowVelocityCard({
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           {walletFilterType === "all"
-                            ? `In: ${formatRupiah(w.totalIncome)} · Out: ${formatRupiah(w.totalExpense)}`
-                            : `Total ${walletFilterType}`}
+                            ? `${isIndonesian ? "Masuk" : "In"}: ${formatRupiah(w.totalIncome)} · ${isIndonesian ? "Keluar" : "Out"}: ${formatRupiah(w.totalExpense)}`
+                            : `Total ${walletFilterType === "expense" ? (isIndonesian ? "Pengeluaran" : "Expense") : (isIndonesian ? "Pemasukan" : "Income")}`}
                         </p>
                       </div>
                     </div>
@@ -325,7 +328,7 @@ export function CashflowVelocityCard({
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {h.count} txs
+                    {h.count} {isIndonesian ? "trx" : "txs"}
                   </p>
                 </div>
                 <p
