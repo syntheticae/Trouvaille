@@ -53,15 +53,8 @@ export function PortfolioInsightCards({
   onSelectHolding,
 }: PortfolioInsightCardsProps) {
   const cardStyle = {
-    background: isDark
-      ? "var(--bg-elevated)"
-      : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
-    border: isDark
-      ? "1px solid var(--glass-border)"
-      : "1px solid rgba(15,23,42,0.06)",
-    boxShadow: isDark
-      ? "var(--shadow-card)"
-      : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+    background: "var(--bg-elevated)",
+    boxShadow: "var(--shadow-card)",
   };
 
   // Compile combined holdings list for analytics
@@ -156,7 +149,7 @@ export function PortfolioInsightCards({
       <div className="grid grid-cols-2 gap-3">
         {/* ── CARD 1: DIVERSIFICATION CONCENTRIC RING GAUGE ───────────────── */}
         <div
-          className="p-4 rounded-[26px] space-y-3 flex flex-col justify-between"
+          className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3 flex flex-col justify-between"
           style={cardStyle}
         >
           <div>
@@ -217,7 +210,7 @@ export function PortfolioInsightCards({
 
         {/* ── CARD 2: ASSET ALLOCATION (4 HORIZONTAL BARS) ────────────────── */}
         <div
-          className="p-4 rounded-[26px] space-y-2.5 flex flex-col justify-between"
+          className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-2.5 flex flex-col justify-between"
           style={cardStyle}
         >
           <div>
@@ -275,7 +268,7 @@ export function PortfolioInsightCards({
 
       {/* ── CARD 3: UNREALIZED GAIN PER ASSET (STACKED CASCADE) ───────────── */}
       <div
-        className="p-5 rounded-[26px] space-y-3 relative overflow-hidden"
+        className="p-4 sm:p-5 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3 relative overflow-hidden"
         style={cardStyle}
       >
         <div>
@@ -365,7 +358,7 @@ export function PortfolioInsightCards({
 
       {/* ── CARD 4: PRESERVED RISK & VOLATILITY PROFILE ───────────────────── */}
       <div
-        className="p-5 rounded-[26px] space-y-3.5 relative overflow-hidden"
+        className="p-4 sm:p-5 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3.5 relative overflow-hidden"
         style={cardStyle}
       >
         <div className="flex items-center justify-between">
@@ -446,7 +439,7 @@ export function PortfolioInsightCards({
 
       {/* ── CARD 5: PRESERVED WEALTH INTELLIGENCE & INSIGHTS ──────────────── */}
       <div
-        className="p-5 rounded-[26px] space-y-2.5 relative overflow-hidden"
+        className="p-4 sm:p-5 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-2.5 relative overflow-hidden"
         style={cardStyle}
       >
         <div className="flex items-center gap-2">

@@ -6,6 +6,7 @@ import {
   calculateUnrealizedGains,
   formatRunwaySummary,
   calculateHistoricalNetWorthPoints,
+  calculateHistoricalCandlesticks,
 } from "../src/lib/portfolioAnalytics";
 
 describe("Portfolio Analytics Engine", () => {
@@ -205,6 +206,34 @@ describe("Portfolio Analytics Engine", () => {
       expect(points[5].label).toBe("Sep");
       expect(points[5].valuation).toBe(18760833);
       expect(points[0].valuation).toBeLessThanOrEqual(points[5].valuation);
+    });
+  });
+
+  describe("calculateHistoricalCandlesticks", () => {
+    it("generates valid monochromatic OHLC candlesticks for each period", () => {
+      const deploymentHistory = [
+        { label: "Apr", deployed: 500000 },
+        { label: "May", deployed: 0 },
+        { label: "Jun", deployed: 1200000 },
+        { label: "Jul", deployed: 0 },
+        { label: "Aug", deployed: 800000 },
+        { label: "Sep", deployed: 0 },
+      ];
+      const candles = calculateHistoricalCandlesticks(18760833, deploymentHistory);
+
+      expect(candles).toHaveLength(6);
+      candles.forEach((c) => {
+        expect(c.high).toBeGreaterThanOrEqual(Math.max(c.open, c.close));
+        expect(c.low).toBeLessThanOrEqual(Math.min(c.open, c.close));
+        expect(c.low).toBeGreaterThanOrEqual(0);
+        expect(typeof c.isBullish).toBe("boolean");
+      });
+      expect(candles[5].label).toBe("Sep");
+      expect(candles[5].close).toBe(18760833);
+    });
+
+    it("returns empty array when deployment history is empty", () => {
+      expect(calculateHistoricalCandlesticks(18760833, [])).toEqual([]);
     });
   });
 });

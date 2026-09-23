@@ -1,20 +1,27 @@
 // ======================================================================
 // TROUVAILLE CATEGORY BUDGET ENVELOPES DECK
-// Interactive Category Envelope Cards with SVG Circular Ring Gauges
-// Shows % of budget spent, remaining buffer, and active overspend alerts
+// Unified Single Card for Top 5 Envelopes Near Spending Limit
+// Gentle Setup Notice when no category budgets are configured
 // Strictly Apple Monochrome Luxury | Zero Native Emojis | Responsive
 // ======================================================================
 
-import { useMemo } from "react";
-import { ChevronRight } from "lucide-react";
+import { useState, useMemo } from "react";
+import {
+  ChevronRight,
+  Info,
+  SlidersHorizontal,
+  Target,
+  Sparkles,
+  ShieldCheck,
+} from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useCategories } from "../../hooks/useCategories";
 import { useAllTransactions } from "../../hooks/useTransactions";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { useBudgetTarget } from "../../hooks/useBudgetTarget";
 import { IconRenderer } from "../ui/IconRenderer";
+import { BottomSheet } from "../ui/BottomSheet";
 
 interface CategoryBudgetDeckProps {
   onOpenManageCategories?: () => void;
@@ -41,7 +48,8 @@ export function CategoryBudgetDeck({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isIndonesian } = useLanguage();
-  const { budgetTarget } = useBudgetTarget();
+
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   // Current month prefix (YYYY-MM)
   const currentMonthKey = useMemo(() => {
@@ -49,9 +57,15 @@ export function CategoryBudgetDeck({
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   }, []);
 
-  // Compute category spend vs budget amount
+  // Filter explicitly configured budgets (type !== income && budget_amount > 0)
+  const userConfiguredCategories = useMemo(() => {
+    return categories.filter(
+      (c) => c.type !== "income" && Number(c.budget_amount || 0) > 0,
+    );
+  }, [categories]);
+
+  // Compute category spend vs configured budget amount
   const envelopes: EnvelopeItem[] = useMemo(() => {
-    // Current month expenses grouped by category
     const spendMap = new Map<string, number>();
 
     allTxs.forEach((t) => {
@@ -68,237 +82,351 @@ export function CategoryBudgetDeck({
       spendMap.set(catId, (spendMap.get(catId) || 0) + amt);
     });
 
-    const expenseCategories = categories.filter((c) => c.type !== "income");
-
-    const items: EnvelopeItem[] = [];
-
-    expenseCategories.forEach((cat) => {
+    const items: EnvelopeItem[] = userConfiguredCategories.map((cat) => {
       const spent = spendMap.get(cat.id) || 0;
-      // If category has explicit budget_amount, use it.
-      // If not, assign a sensible envelope derived from overall budgetTarget
-      let budgetAmount = cat.budget_amount || 0;
+      const budgetAmount = Number(cat.budget_amount || 0);
+      const percentage =
+        budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 0;
+      const remaining = budgetAmount - spent;
 
-      // Smart envelope fallback for essential categories if user hasn't set explicit limits yet
-      if (budgetAmount <= 0) {
-        const lower = cat.name.toLowerCase();
-        if (lower.includes("makan") || lower.includes("food")) {
-          budgetAmount = Math.round(budgetTarget * 0.35);
-        } else if (lower.includes("transport")) {
-          budgetAmount = Math.round(budgetTarget * 0.15);
-        } else if (lower.includes("belanja") || lower.includes("shop")) {
-          budgetAmount = Math.round(budgetTarget * 0.2);
-        } else if (lower.includes("tagihan") || lower.includes("bill")) {
-          budgetAmount = Math.round(budgetTarget * 0.2);
-        }
-      }
-
-      if (budgetAmount > 0 || spent > 0) {
-        const percentage =
-          budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 100;
-        const remaining = budgetAmount - spent;
-
-        items.push({
-          id: cat.id,
-          name: cat.name,
-          emoji: cat.emoji || "Tag",
-          budgetAmount,
-          spent,
-          percentage,
-          remaining,
-          isOverbudget: budgetAmount > 0 && spent > budgetAmount,
-        });
-      }
+      return {
+        id: cat.id,
+        name: cat.name,
+        emoji: cat.emoji || "Tag",
+        budgetAmount,
+        spent,
+        percentage,
+        remaining,
+        isOverbudget: budgetAmount > 0 && spent > budgetAmount,
+      };
     });
 
-    // Sort: Overbudget first, then highest percentage
+    // Sort: highest percentage first (closest to or exceeding limit)
     return items.sort((a, b) => b.percentage - a.percentage);
-  }, [categories, allTxs, currentMonthKey, budgetTarget]);
+  }, [userConfiguredCategories, allTxs, currentMonthKey]);
 
-  // Top 8 active envelopes
-  const displayedEnvelopes = useMemo(() => {
-    return envelopes.slice(0, 8);
+  // Top 5 envelopes closest to limit
+  const top5Envelopes = useMemo(() => {
+    return envelopes.slice(0, 5);
   }, [envelopes]);
 
-  // SVG Ring Constants
-  const radius = 20;
-  const strokeWidth = 4.2;
-  const circumference = 2 * Math.PI * radius;
-
-  if (envelopes.length === 0) return null;
+  if (categories.length === 0) return null;
 
   return (
-    <section className="space-y-3 select-none">
+    <section className="space-y-2.5 select-none">
       {/* Section Header */}
       <div className="flex items-center justify-between px-0.5">
         <div>
-          <h3 className="text-[13.5px] font-bold tracking-tight text-[var(--text-primary)]">
-            {isIndonesian ? "Budget Kategori" : "Category Budgets"}
+          <h3 className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)]">
+            {isIndonesian ? "Amplop Anggaran Kategori" : "Category Budgets"}
           </h3>
           <p className="text-[11px] text-[var(--text-tertiary)] font-medium">
-            {isIndonesian
-              ? "Amplop belanja & batas limit bulanan"
-              : "Monthly envelope tracking & spending limits"}
+            {userConfiguredCategories.length > 0
+              ? isIndonesian
+                ? "5 kategori paling mendekati batas limit"
+                : "Top 5 categories near spending limits"
+              : isIndonesian
+                ? "Batas belanja & kontrol pengeluaran"
+                : "Spending limits & envelope controls"}
           </p>
         </div>
 
-        {onOpenManageCategories && (
+        {/* Action Controls: Info Modal & Manage Categories */}
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => {
               triggerHaptic("light");
-              onOpenManageCategories();
+              setIsInfoOpen(true);
             }}
-            className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+            className="w-7 h-7 rounded-xl flex items-center justify-center hover:bg-[var(--glass-fill)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            title={isIndonesian ? "Info Detail Anggaran" : "Budget Envelope Info"}
           >
-            <span>{isIndonesian ? "Atur" : "Manage"}</span>
-            <ChevronRight size={13} />
+            <Info size={14} strokeWidth={1.75} />
           </button>
-        )}
+
+          {onOpenManageCategories && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                onOpenManageCategories();
+              }}
+              className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+            >
+              <span>{isIndonesian ? "Atur" : "Manage"}</span>
+              <ChevronRight size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* 2-Column Responsive Envelope Cards Grid */}
-      <div className="grid grid-cols-2 gap-2.5">
-        {displayedEnvelopes.map((env) => {
-          const clampedPct = Math.min(100, Math.max(0, env.percentage));
-          const strokeDashoffset =
-            circumference - (clampedPct / 100) * circumference;
-
-          return (
+      {/* Case 1: User has not configured any category budgets yet (Gentle Setup Prompt) */}
+      {userConfiguredCategories.length === 0 ? (
+        <div
+          className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3"
+          style={{
+            background: "var(--bg-elevated)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <div className="flex items-start gap-3">
             <div
-              key={env.id}
-              className="p-3.5 rounded-[22px] space-y-2.5 flex flex-col justify-between transition-all"
+              className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
               style={{
-                background: isDark
-                  ? "var(--bg-elevated)"
-                  : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
-                border: isDark
-                  ? env.isOverbudget
-                    ? "1px solid rgba(255, 255, 255, 0.3)"
-                    : "1px solid var(--glass-border)"
-                  : env.isOverbudget
-                    ? "1px solid rgba(24, 24, 27, 0.3)"
-                    : "1px solid rgba(15,23,42,0.06)",
-                boxShadow: isDark
-                  ? "var(--shadow-card)"
-                  : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 8px rgba(15,23,42,0.04)",
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
               }}
             >
-              {/* Top Row: Category Icon & Title */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    <IconRenderer icon={env.emoji} size="w-3.5 h-3.5" />
-                  </div>
-                  <span className="text-[12px] font-bold text-[var(--text-primary)] truncate">
-                    {env.name}
-                  </span>
-                </div>
-
-                {env.isOverbudget && (
-                  <span
-                    className="font-mono text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0"
-                    style={{
-                      background: isDark
-                        ? "rgba(255, 255, 255, 0.15)"
-                        : "rgba(0, 0, 0, 0.08)",
-                      color: "var(--text-primary)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    Over
-                  </span>
-                )}
-              </div>
-
-              {/* Center Row: Ring Gauge & Percent */}
-              <div className="flex items-center justify-between gap-2 py-1">
-                {/* Circular Ring Gauge */}
-                <div className="relative w-12 h-12 shrink-0 flex items-center justify-center">
-                  <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 48 48">
-                    {/* Track */}
-                    <circle
-                      cx="24"
-                      cy="24"
-                      r={radius}
-                      stroke={
-                        isDark
-                          ? "rgba(255, 255, 255, 0.08)"
-                          : "rgba(0, 0, 0, 0.06)"
-                      }
-                      strokeWidth={strokeWidth}
-                      fill="none"
-                    />
-                    {/* Filled Arc */}
-                    <circle
-                      cx="24"
-                      cy="24"
-                      r={radius}
-                      stroke={
-                        env.isOverbudget
-                          ? isDark
-                            ? "#FFFFFF"
-                            : "#18181B"
-                          : isDark
-                            ? "rgba(255, 255, 255, 0.85)"
-                            : "rgba(24, 24, 27, 0.85)"
-                      }
-                      strokeWidth={env.isOverbudget ? strokeWidth + 0.8 : strokeWidth}
-                      strokeDasharray={circumference}
-                      strokeDashoffset={strokeDashoffset}
-                      strokeLinecap="round"
-                      fill="none"
-                      className="transition-all duration-700 ease-out"
-                    />
-                  </svg>
-
-                  {/* Inner Percentage */}
-                  <span className="absolute font-mono text-[10px] font-bold text-[var(--text-primary)]">
-                    {env.percentage}%
-                  </span>
-                </div>
-
-                {/* Spent vs Limit */}
-                <div className="text-right min-w-0 pr-0.5 font-mono">
-                  <span className="text-[12.5px] font-bold text-[var(--text-primary)] block leading-tight">
-                    {hideBalance ? "••••" : formatRupiah(env.spent)}
-                  </span>
-                  <span className="text-[9.5px] text-[var(--text-tertiary)] block mt-0.5 truncate">
-                    {env.budgetAmount > 0
-                      ? `/ ${formatRupiah(env.budgetAmount)}`
-                      : isIndonesian ? "Tanpa limit" : "No limit"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Bottom Row: Remaining Status */}
-              <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between text-[10px]">
-                <span className="text-[var(--text-tertiary)] truncate">
-                  {env.isOverbudget
-                    ? isIndonesian ? "Kelebihan:" : "Over by:"
-                    : isIndonesian ? "Sisa kuota:" : "Remaining:"}
-                </span>
-                <span
-                  className={`font-mono font-semibold ${
-                    env.isOverbudget
-                      ? "text-[var(--text-primary)]"
-                      : "text-[var(--text-secondary)]"
-                  }`}
-                >
-                  {hideBalance
-                    ? "••••"
-                    : formatRupiah(Math.abs(env.remaining))}
-                </span>
-              </div>
+              <SlidersHorizontal
+                size={16}
+                strokeWidth={1.75}
+                className="text-[var(--text-primary)]"
+              />
             </div>
-          );
-        })}
-      </div>
+            <div className="space-y-1 min-w-0">
+              <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
+                {isIndonesian
+                  ? "Atur Kuota Anggaran Kategori"
+                  : "Configure Category Limits"}
+              </h4>
+              <p className="text-[11.5px] text-[var(--text-tertiary)] leading-relaxed">
+                {isIndonesian
+                  ? "Anda belum menetapkan batas limit bulanan untuk kategori pengeluaran. Tentukan kuota agar Anda dapat memantau kategori yang mendekati batas secara real-time."
+                  : "You haven't set monthly limits on your categories yet. Assign limits to monitor near-capacity envelopes in real time."}
+              </p>
+            </div>
+          </div>
+
+          {onOpenManageCategories && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                onOpenManageCategories();
+              }}
+              className="w-full py-2.5 px-4 rounded-2xl text-[12px] font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform cursor-pointer"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <span>
+                {isIndonesian
+                  ? "Atur Budget Kategori Sekarang"
+                  : "Set Category Budgets Now"}
+              </span>
+              <ChevronRight size={13} />
+            </button>
+          )}
+        </div>
+      ) : (
+        /* Case 2: Unified Single Card showing Top 5 Budgets Near Limit */
+        <div
+          className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3.5"
+          style={{
+            background: "var(--bg-elevated)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          {top5Envelopes.map((env) => {
+            const clampedPct = Math.min(100, Math.max(3, env.percentage));
+
+            return (
+              <div key={env.id} className="space-y-1.5">
+                {/* Top Row: Category Icon + Name & Quota Breakdown */}
+                <div className="flex items-center justify-between text-[12px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                      style={{
+                        background: "var(--glass-fill)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <IconRenderer icon={env.emoji} size="w-3.5 h-3.5" />
+                    </div>
+                    <span className="font-medium text-[var(--text-primary)] truncate">
+                      {env.name}
+                    </span>
+
+                    {env.isOverbudget && (
+                      <span
+                        className="font-mono text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0"
+                        style={{
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.15)"
+                            : "rgba(0, 0, 0, 0.08)",
+                          color: "var(--text-primary)",
+                          border: "1px solid var(--glass-border)",
+                        }}
+                      >
+                        Over
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
+                    <span className="font-semibold text-[var(--text-primary)]">
+                      {hideBalance ? "••••" : formatRupiah(env.spent)}
+                    </span>
+                    <span className="text-[var(--text-tertiary)]">
+                      / {hideBalance ? "••••" : formatRupiah(env.budgetAmount)}
+                    </span>
+                    <span
+                      className={`text-[10.5px] font-bold ml-0.5 ${
+                        env.isOverbudget
+                          ? "text-[var(--text-primary)]"
+                          : "text-[var(--text-secondary)]"
+                      }`}
+                    >
+                      ({env.percentage}%)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Monochromatic Progress Bar */}
+                <div
+                  className="h-1.5 w-full rounded-full overflow-hidden"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.08)"
+                      : "rgba(0, 0, 0, 0.06)",
+                  }}
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${clampedPct}%`,
+                      background: env.isOverbudget
+                        ? isDark
+                          ? "#FFFFFF"
+                          : "#18181B"
+                        : "var(--text-primary)",
+                      boxShadow:
+                        env.isOverbudget && isDark
+                          ? "0 0 6px rgba(255,255,255,0.4)"
+                          : "none",
+                    }}
+                  />
+                </div>
+
+                {/* Bottom Row: Remaining buffer or excess amount */}
+                <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] font-mono">
+                  <span>
+                    {env.isOverbudget
+                      ? isIndonesian
+                        ? "Melampaui batas kuota:"
+                        : "Exceeded by:"
+                      : isIndonesian
+                        ? "Sisa kuota belanja:"
+                        : "Remaining quota:"}
+                  </span>
+                  <span
+                    className={
+                      env.isOverbudget
+                        ? "font-bold text-[var(--text-primary)]"
+                        : "text-[var(--text-secondary)] font-medium"
+                    }
+                  >
+                    {hideBalance
+                      ? "••••"
+                      : `${env.isOverbudget ? "+" : ""}${formatRupiah(Math.abs(env.remaining))}`}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Info BottomSheet Modal */}
+      <BottomSheet
+        isOpen={isInfoOpen}
+        onClose={() => setIsInfoOpen(false)}
+        title={isIndonesian ? "Sistem Amplop Anggaran" : "Category Envelope System"}
+      >
+        <div className="p-5 space-y-4 select-none pb-10">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <Target
+                size={18}
+                strokeWidth={1.75}
+                className="text-[var(--text-primary)]"
+              />
+            </div>
+            <div>
+              <h4 className="text-[14px] font-bold text-[var(--text-primary)]">
+                {isIndonesian
+                  ? "Tentang Amplop Anggaran"
+                  : "About Category Envelopes"}
+              </h4>
+              <p className="text-[11.5px] text-[var(--text-tertiary)]">
+                {isIndonesian
+                  ? "Prinsip disiplin alokasi kas bulanan"
+                  : "Monthly cash allocation discipline"}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3 text-[12px] leading-relaxed text-[var(--text-secondary)]">
+            <div
+              className="p-3.5 rounded-2xl border border-[var(--glass-border)] space-y-1.5"
+              style={{ background: "var(--bg-elevated)" }}
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles size={14} className="text-[var(--text-primary)]" />
+                <span className="font-semibold text-[var(--text-primary)]">
+                  {isIndonesian
+                    ? "Top 5 Kategori Paling Mendekati Limit"
+                    : "Top 5 Envelopes Near Capacity"}
+                </span>
+              </div>
+              <p className="text-[11.5px] text-[var(--text-tertiary)]">
+                {isIndonesian
+                  ? "Kartu ini secara otomatis mengurutkan 5 kategori dengan persentase pemakaian kuota tertinggi. Anda dapat langsung mengidentifikasi pos pengeluaran yang berisiko overbudget sebelum bulan berakhir."
+                  : "This card automatically ranks the 5 categories consuming the highest percentage of their budget so you can prevent overspending before month-end."}
+              </p>
+            </div>
+
+            <div
+              className="p-3.5 rounded-2xl border border-[var(--glass-border)] space-y-1.5"
+              style={{ background: "var(--bg-elevated)" }}
+            >
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={14} className="text-[var(--text-primary)]" />
+                <span className="font-semibold text-[var(--text-primary)]">
+                  {isIndonesian ? "Penetapan Kuota Fleksibel" : "Configuring Limits"}
+                </span>
+              </div>
+              <p className="text-[11.5px] text-[var(--text-tertiary)]">
+                {isIndonesian
+                  ? "Batas kuota nominal dapat diatur secara mandiri pada setiap kategori melalui tombol 'Atur' di pojok kanan atas."
+                  : "Nominal spending limits can be configured individually for each category via the 'Manage' button at top right."}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsInfoOpen(false)}
+            className="w-full py-3 rounded-2xl text-[12.5px] font-semibold active:scale-[0.98] transition-transform cursor-pointer"
+            style={{
+              background: "var(--text-primary)",
+              color: "var(--bg-base)",
+            }}
+          >
+            {isIndonesian ? "Mengerti" : "Got it"}
+          </button>
+        </div>
+      </BottomSheet>
     </section>
   );
 }

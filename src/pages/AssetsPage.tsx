@@ -25,13 +25,15 @@ import {
   TrendingUp,
   Landmark,
   ShieldAlert,
+  Eye,
+  EyeOff,
+  ArrowUpRight,
 } from "lucide-react";
 import { formatRupiah } from "../lib/utils";
 import { triggerHaptic } from "../lib/haptics";
 import { useToast } from "../contexts/ToastContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useLanguage } from "../contexts/LanguageContext";
-import { useCurrency } from "../contexts/CurrencyContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useWallets } from "../hooks/useWallets";
@@ -61,8 +63,9 @@ import { StakingYieldModal } from "../components/settings/StakingYieldModal";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { PortfolioInsightCards } from "../components/assets/PortfolioInsightCards";
 import {
-  calculateHistoricalNetWorthPoints,
+  calculateHistoricalCandlesticks,
   formatRunwaySummary,
+  type CandlestickData,
 } from "../lib/portfolioAnalytics";
 import { format, subMonths } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -79,6 +82,8 @@ export type PresetCategory =
   | "gold"
   | "mutual_fund"
   | "fixed_asset";
+
+export type BalanceSheetRange = "1M" | "3M" | "6M" | "1Y" | "ALL";
 
 interface PresetAsset {
   symbol: string;
@@ -141,8 +146,9 @@ export function AssetsPage() {
   const isDark = theme !== "light";
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
-  useCurrency();
-  const { isStealthMode } = usePrivacy();
+  const { isStealthMode, toggleStealthMode } = usePrivacy();
+  const [bsRange, setBsRange] = useState<BalanceSheetRange>("6M");
+  const [hoveredCandle, setHoveredCandle] = useState<CandlestickData | null>(null);
 
   const { data: wallets = [] } = useWallets();
   const { data: allTxs = [] } = useAllTransactions();
@@ -311,13 +317,13 @@ export function AssetsPage() {
     return sum > 0 ? Math.round(sum / 3) : 3500000;
   }, [allTxs]);
 
-  // Real Monthly Deployment Data (6 Months) from Transactions (used for sparkline trajectory)
+  // Real Monthly Deployment Data (12 Months) from Transactions (used for candlestick trajectory)
   const monthlyDeploymentData = useMemo(() => {
     const now = new Date();
     const months: Array<{ key: string; label: string; deployed: number; txCount: number }> = Array.from(
-      { length: 6 },
+      { length: 12 },
       (_, i) => {
-        const d = subMonths(now, 5 - i);
+        const d = subMonths(now, 11 - i);
         const key = format(d, "yyyy-MM");
         const label = format(d, "MMM", { locale: isIndonesian ? idLocale : undefined });
         return { key, label, deployed: 0, txCount: 0 };
@@ -365,6 +371,54 @@ export function AssetsPage() {
     });
 
     return months;
+  }, [allTxs, wallets, isIndonesian]);
+
+  // Real Weekly Deployment Data for Current Month (1M Range)
+  const weeklyDeploymentData = useMemo(() => {
+    const currentMonthPrefix = format(new Date(), "yyyy-MM");
+    const weeks: Array<{ label: string; deployed: number }> = [
+      { label: isIndonesian ? "Mgg 1" : "W1", deployed: 0 },
+      { label: isIndonesian ? "Mgg 2" : "W2", deployed: 0 },
+      { label: isIndonesian ? "Mgg 3" : "W3", deployed: 0 },
+      { label: isIndonesian ? "Mgg 4" : "W4", deployed: 0 },
+    ];
+
+    allTxs.forEach((tx) => {
+      if (!tx.occurred_on || !tx.occurred_on.startsWith(currentMonthPrefix)) return;
+      const day = parseInt(tx.occurred_on.slice(8, 10), 10);
+      const wIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
+      const amt = Number(tx.amount || 0);
+      const cat = (tx.categories?.name || "").toLowerCase();
+      const note = (tx.note || "").toLowerCase();
+      const destWallet = wallets.find((w) => w.id === tx.to_wallet_id);
+      const isDestInvest =
+        destWallet?.classification === "investment" ||
+        destWallet?.name.toLowerCase().includes("crypto") ||
+        destWallet?.name.toLowerCase().includes("usdt") ||
+        destWallet?.name.toLowerCase().includes("saham") ||
+        destWallet?.name.toLowerCase().includes("bibit") ||
+        destWallet?.name.toLowerCase().includes("ajaib");
+
+      const isInvestCategory =
+        cat.includes("invest") ||
+        cat.includes("saham") ||
+        cat.includes("crypto") ||
+        cat.includes("kripto") ||
+        cat.includes("emas") ||
+        cat.includes("reksa") ||
+        note.includes("invest") ||
+        note.includes("saham") ||
+        note.includes("crypto") ||
+        note.includes("usdt") ||
+        note.includes("beli ") ||
+        note.includes("topup");
+
+      if ((tx.type === "expense" && isInvestCategory) || (tx.type === "transfer" && isDestInvest)) {
+        weeks[wIdx].deployed += amt;
+      }
+    });
+
+    return weeks;
   }, [allTxs, wallets, isIndonesian]);
 
   // ── Executive Balance Sheet & 4-Pillar Capital Breakdown ──────────
@@ -435,6 +489,39 @@ export function AssetsPage() {
     if (monthlyBurnRate <= 0) return 12;
     return Number((liquidAssetsTotal / monthlyBurnRate).toFixed(1));
   }, [liquidAssetsTotal, monthlyBurnRate]);
+
+  // Active History for Candlesticks based on bsRange
+  const activeHistoryData = useMemo(() => {
+    if (bsRange === "1M") return weeklyDeploymentData;
+    if (bsRange === "3M") return monthlyDeploymentData.slice(9);
+    if (bsRange === "6M") return monthlyDeploymentData.slice(6);
+    return monthlyDeploymentData;
+  }, [bsRange, weeklyDeploymentData, monthlyDeploymentData]);
+
+  // Real Monochromatic Candlestick Data
+  const candlesticks = useMemo(() => {
+    return calculateHistoricalCandlesticks(netWorth, activeHistoryData);
+  }, [netWorth, activeHistoryData]);
+
+  // Change stats across active period
+  const periodStats = useMemo(() => {
+    if (candlesticks.length === 0) {
+      return { change: 0, pct: 0 };
+    }
+    const first = candlesticks[0];
+    const last = candlesticks[candlesticks.length - 1];
+    const change = last.close - first.open;
+    const pct = first.open > 0 ? (change / first.open) * 100 : 0;
+    return { change, pct };
+  }, [candlesticks]);
+
+  const bsRangeLabels: Record<BalanceSheetRange, string> = {
+    "1M": isIndonesian ? "1 Bulan" : "1 Month",
+    "3M": isIndonesian ? "3 Bulan" : "3 Months",
+    "6M": isIndonesian ? "6 Bulan" : "6 Months",
+    "1Y": isIndonesian ? "1 Tahun" : "1 Year",
+    ALL: isIndonesian ? "Semua Waktu" : "All Time",
+  };
 
   // Reconciliation Audit
   const reconciliationAudit = useMemo(() => {
@@ -698,107 +785,281 @@ export function AssetsPage() {
               : "Solvency matrix & capital breakdown"}
           </p>
         </div>
-
-        {/* Quick Actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={handleRefreshPrices}
-            disabled={isRefreshing}
-            className="w-9 h-9 rounded-2xl flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-secondary)",
-            }}
-            title={isIndonesian ? "Perbarui Harga" : "Refresh Prices"}
-          >
-            <RefreshCw
-              size={15}
-              strokeWidth={2}
-              className={isRefreshing ? "animate-spin" : ""}
-            />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              setIsStakingModalOpen(true);
-            }}
-            className="w-9 h-9 rounded-2xl flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-            title={isIndonesian ? "Sinkronisasi & Staking" : "Sync & Staking"}
-          >
-            <Link2 size={16} strokeWidth={1.75} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("medium");
-              setAddPhase(1);
-            }}
-            className="w-9 h-9 rounded-2xl flex items-center justify-center active:scale-95 transition-transform cursor-pointer shadow-sm"
-            style={{
-              background: "var(--text-primary)",
-              color: "var(--bg-base)",
-            }}
-            title={isIndonesian ? "Tambah Aset" : "Add Asset"}
-          >
-            <Plus size={16} strokeWidth={2.5} />
-          </button>
-        </div>
       </div>
 
       {/* ── 2. Executive Balance Sheet & Solvency Matrix Hero Card ── */}
-      <div
-        className="p-5 rounded-[28px] space-y-4 relative overflow-hidden transition-all"
-        style={{
-          background: isDark
-            ? "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)"
-            : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
-          border: isDark
-            ? "1px solid var(--glass-border)"
-            : "1px solid rgba(15,23,42,0.06)",
-          boxShadow: isDark
-            ? "var(--shadow-card)"
-            : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
-        }}
-      >
-        {/* Top Header: Badge & Solvency Status */}
+      <div className="card-contrast-hero p-4 sm:p-5 pb-3.5 relative overflow-hidden rounded-3xl space-y-3.5">
+        {/* Top Header: Floating MTM indicator & Solvency status + Balance eye toggle */}
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-            {isIndonesian ? "Neraca Keuangan Eksekutif" : "Executive Balance Sheet"}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+              {isIndonesian
+                ? "Valuasi Pasar Berjalan (Floating MTM)"
+                : "Floating Mark-to-Market Valuation"}
+            </span>
+          </div>
 
-          <span
-            className="font-mono text-[9.5px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider"
-            style={{
-              background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
-              color: "var(--text-secondary)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            {liabilitiesTotal === 0
-              ? isIndonesian ? "100% Solven" : "100% Solvent"
-              : isIndonesian ? `Leverage: ${debtToAssetRatio.toFixed(1)}%` : `Leverage: ${debtToAssetRatio.toFixed(1)}%`}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className="font-mono text-[9.5px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider"
+              style={{
+                background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              {liabilitiesTotal === 0
+                ? isIndonesian ? "100% Solven" : "100% Solvent"
+                : `Leverage: ${debtToAssetRatio.toFixed(1)}%`}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                toggleStealthMode();
+              }}
+              className={`p-1 -mr-1 cursor-pointer active:scale-90 transition-all ${
+                isDark
+                  ? "text-white/60 hover:text-white"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              }`}
+              title={isStealthMode ? "Show Balance" : "Hide Balance"}
+            >
+              {isStealthMode ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
         </div>
 
         {/* Hero Number: Net Capital Equity (Strictly font-light) */}
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <span className="text-[11px] text-[var(--text-tertiary)] block font-medium">
-            {isIndonesian ? "Ekuitas Modal Bersih" : "Net Capital Equity"}
+            {isIndonesian ? "Total Ekuitas Modal Bersih" : "Total Net Capital Equity"}
           </span>
-          <p className="amount text-[36px] sm:text-[42px] font-light tracking-tight leading-none text-[var(--text-primary)]">
+          <p className="amount text-[32px] sm:text-[38px] font-light tracking-tight leading-none text-[var(--text-primary)]">
             {isStealthMode ? "••••••••" : formatRupiah(netWorth)}
           </p>
         </div>
+
+        {/* Change Line + Time Label Side by Side */}
+        <div className="flex items-center justify-between gap-2">
+          {hoveredCandle ? (
+            <div className="flex items-center gap-2 text-[10.5px] font-mono text-[var(--text-secondary)] truncate">
+              <span>O: <strong className="text-[var(--text-primary)]">{isStealthMode ? "••••" : formatRupiah(hoveredCandle.open)}</strong></span>
+              <span>H: <strong className="text-[var(--text-primary)]">{isStealthMode ? "••••" : formatRupiah(hoveredCandle.high)}</strong></span>
+              <span>L: <strong className="text-[var(--text-primary)]">{isStealthMode ? "••••" : formatRupiah(hoveredCandle.low)}</strong></span>
+              <span>C: <strong className="text-[var(--text-primary)]">{isStealthMode ? "••••" : formatRupiah(hoveredCandle.close)}</strong></span>
+            </div>
+          ) : (
+            <div
+              className="flex items-center gap-1 text-[12px] font-semibold"
+              style={{
+                color: isDark
+                  ? periodStats.change >= 0 ? "#FFFFFF" : "#A1A1AA"
+                  : periodStats.change >= 0 ? "#121214" : "#71717a",
+              }}
+            >
+              <ArrowUpRight
+                size={13}
+                className={periodStats.change < 0 ? "rotate-90" : ""}
+              />
+              <span>
+                {isStealthMode
+                  ? "••••"
+                  : `${periodStats.change >= 0 ? "+" : ""}${formatRupiah(periodStats.change)}`}
+              </span>
+              <span className="opacity-80">
+                ({isStealthMode ? "••••" : `${periodStats.pct >= 0 ? "+" : ""}${periodStats.pct.toFixed(2)}%`})
+              </span>
+            </div>
+          )}
+
+          <span className="text-[11px] font-semibold shrink-0 text-[var(--text-tertiary)]">
+            {bsRangeLabels[bsRange]} · MTM
+          </span>
+        </div>
+
+        {/* Range Pill Selector (1M, 3M, 6M, 1Y, ALL) */}
+        <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5">
+          {(["1M", "3M", "6M", "1Y", "ALL"] as BalanceSheetRange[]).map((r) => {
+            const isActive = bsRange === r;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => {
+                  setBsRange(r);
+                  triggerHaptic("light");
+                }}
+                className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none"
+                style={{
+                  background: isActive
+                    ? isDark
+                      ? "rgba(255,255,255,0.25)"
+                      : "#18181b"
+                    : isDark
+                      ? "transparent"
+                      : "#f4f4f7",
+                  color: isActive
+                    ? "#FFFFFF"
+                    : isDark
+                      ? "rgba(255,255,255,0.55)"
+                      : "#52525b",
+                  border: isActive
+                    ? isDark
+                      ? "1px solid rgba(255,255,255,0.35)"
+                      : "1px solid #18181b"
+                    : isDark
+                      ? "1px solid transparent"
+                      : "1px solid rgba(0,0,0,0.04)",
+                  boxShadow: isActive
+                    ? isDark
+                      ? "none"
+                      : "0 2px 6px rgba(0,0,0,0.18)"
+                    : "none",
+                }}
+              >
+                {r}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Monochromatic Candlestick Chart (SVG) */}
+        {(() => {
+          if (candlesticks.length === 0) return null;
+
+          const svgW = 320;
+          const svgH = 88;
+          const padL = 12;
+          const padR = 12;
+          const padT = 8;
+          const padB = 6;
+          const plotW = svgW - padL - padR;
+          const plotH = svgH - padT - padB;
+
+          const minPrice = Math.min(...candlesticks.map((c) => c.low));
+          const maxPrice = Math.max(...candlesticks.map((c) => c.high), minPrice + 1);
+          const rangeDiff = maxPrice - minPrice || 1;
+
+          const getY = (val: number) => {
+            return padT + plotH - ((val - minPrice) / rangeDiff) * plotH;
+          };
+
+          const slotWidth = plotW / candlesticks.length;
+          const bodyWidth = Math.max(7, Math.min(22, slotWidth * 0.52));
+
+          return (
+            <div className="space-y-1">
+              <div className="w-full h-[88px] relative">
+                <svg
+                  viewBox={`0 0 ${svgW} ${svgH}`}
+                  className="w-full h-full overflow-visible"
+                  onMouseLeave={() => setHoveredCandle(null)}
+                >
+                  {/* Dotted Grid Lines */}
+                  <line
+                    x1={padL}
+                    y1={padT + plotH * 0.25}
+                    x2={svgW - padR}
+                    y2={padT + plotH * 0.25}
+                    stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}
+                    strokeDasharray="2 3"
+                  />
+                  <line
+                    x1={padL}
+                    y1={padT + plotH * 0.5}
+                    x2={svgW - padR}
+                    y2={padT + plotH * 0.5}
+                    stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}
+                    strokeDasharray="2 3"
+                  />
+                  <line
+                    x1={padL}
+                    y1={padT + plotH * 0.75}
+                    x2={svgW - padR}
+                    y2={padT + plotH * 0.75}
+                    stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}
+                    strokeDasharray="2 3"
+                  />
+
+                  {/* Candlesticks */}
+                  {candlesticks.map((c, i) => {
+                    const cx = padL + i * slotWidth + slotWidth / 2;
+                    const yHigh = getY(c.high);
+                    const yLow = getY(c.low);
+                    const yOpen = getY(c.open);
+                    const yClose = getY(c.close);
+                    const topBody = Math.min(yOpen, yClose);
+                    const botBody = Math.max(yOpen, yClose);
+                    const bodyHeight = Math.max(2.5, botBody - topBody);
+
+                    return (
+                      <g
+                        key={c.key}
+                        className="cursor-pointer transition-opacity hover:opacity-80"
+                        onMouseEnter={() => setHoveredCandle(c)}
+                        onTouchStart={() => setHoveredCandle(c)}
+                      >
+                        {/* Vertical Wick (High to Low) */}
+                        <line
+                          x1={cx}
+                          y1={yHigh}
+                          x2={cx}
+                          y2={yLow}
+                          stroke={
+                            isDark
+                              ? "rgba(255, 255, 255, 0.45)"
+                              : "rgba(24, 24, 27, 0.45)"
+                          }
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                        />
+
+                        {/* Candle Body: Solid if Bullish, Hollow with Border if Bearish */}
+                        <rect
+                          x={cx - bodyWidth / 2}
+                          y={topBody}
+                          width={bodyWidth}
+                          height={bodyHeight}
+                          rx="1.5"
+                          fill={
+                            c.isBullish
+                              ? isDark
+                                ? "#FFFFFF"
+                                : "#18181B"
+                              : isDark
+                                ? "rgba(255, 255, 255, 0.06)"
+                                : "rgba(0, 0, 0, 0.04)"
+                          }
+                          stroke={
+                            c.isBullish
+                              ? isDark
+                                ? "#FFFFFF"
+                                : "#18181B"
+                              : isDark
+                                ? "rgba(255, 255, 255, 0.85)"
+                                : "rgba(24, 24, 27, 0.85)"
+                          }
+                          strokeWidth={c.isBullish ? "0.8" : "1.2"}
+                        />
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+
+              {/* Candlestick Period Axis Labels */}
+              <div className="flex items-center justify-between px-2 text-[9.5px] font-mono text-[var(--text-tertiary)]">
+                {candlesticks.map((c) => (
+                  <span key={c.key} className="text-center truncate">
+                    {c.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Equation Balance Strip: Gross Assets - Liabilities = Net Worth */}
         <div
@@ -836,85 +1097,6 @@ export function AssetsPage() {
           </div>
         </div>
 
-        {/* 6-Month Trajectory Sparkline Curve (Hermite SVG) */}
-        {(() => {
-          const trajectoryPoints = calculateHistoricalNetWorthPoints(
-            totalGrossAssets,
-            monthlyDeploymentData,
-          );
-          if (trajectoryPoints.length === 0) return null;
-
-          const svgW = 320;
-          const svgH = 65;
-          const padL = 10;
-          const padR = 14;
-          const padT = 12;
-          const padB = 8;
-          const plotW = svgW - padL - padR;
-          const plotH = svgH - padT - padB;
-
-          const minV = Math.min(...trajectoryPoints.map((p) => p.valuation));
-          const maxV = Math.max(...trajectoryPoints.map((p) => p.valuation), minV + 1);
-
-          const pts = trajectoryPoints.map((pt, i) => {
-            const x = padL + (i / (trajectoryPoints.length - 1)) * plotW;
-            const y = padT + plotH - ((pt.valuation - minV) / (maxV - minV || 1)) * plotH;
-            return { ...pt, x, y };
-          });
-
-          const pathD = pts.reduce((acc, pt, i, arr) => {
-            if (i === 0) return `M ${pt.x} ${pt.y}`;
-            const prev = arr[i - 1];
-            const cx = (prev.x + pt.x) / 2;
-            return `${acc} C ${cx} ${prev.y}, ${cx} ${pt.y}, ${pt.x} ${pt.y}`;
-          }, "");
-
-          const lastPt = pts[pts.length - 1];
-
-          return (
-            <div className="pt-2 pb-1 space-y-1.5">
-              <div className="w-full h-[65px] relative">
-                <svg
-                  viewBox={`0 0 ${svgW} ${svgH}`}
-                  className="w-full h-full overflow-visible"
-                >
-                  <path
-                    d={pathD}
-                    fill="none"
-                    stroke={isDark ? "rgba(255, 255, 255, 0.85)" : "rgba(24, 24, 27, 0.85)"}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                  {lastPt && (
-                    <>
-                      <circle
-                        cx={lastPt.x}
-                        cy={lastPt.y}
-                        r="6"
-                        fill={isDark ? "#FFFFFF" : "#18181B"}
-                        opacity="0.25"
-                      />
-                      <circle
-                        cx={lastPt.x}
-                        cy={lastPt.y}
-                        r="3"
-                        fill={isDark ? "#FFFFFF" : "#18181B"}
-                      />
-                    </>
-                  )}
-                </svg>
-              </div>
-
-              {/* Month Axis Labels */}
-              <div className="flex items-center justify-between px-1 text-[10.5px] font-mono text-[var(--text-tertiary)]">
-                {trajectoryPoints.map((pt) => (
-                  <span key={pt.key}>{pt.label}</span>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
-
         {/* Integrated Runway Status Line & Explicit USDT Rate */}
         <div className="pt-2.5 border-t border-[var(--glass-border)] flex items-center justify-between text-[11px]">
           <span className="font-medium text-[var(--text-secondary)]">
@@ -927,11 +1109,69 @@ export function AssetsPage() {
         </div>
       </div>
 
+      {/* ── Relocated Minimalist Quick Action Bar ──────────────────────────── */}
+      <div className="grid grid-cols-3 gap-2">
+        {/* 1. Refresh Prices */}
+        <button
+          type="button"
+          onClick={handleRefreshPrices}
+          disabled={isRefreshing}
+          className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-2xl text-[11.5px] font-semibold glass-surface border border-[var(--glass-border)] active:scale-[0.98] transition-transform cursor-pointer"
+          style={{
+            background: "var(--bg-elevated)",
+            color: "var(--text-secondary)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <RefreshCw
+            size={13}
+            strokeWidth={2}
+            className={isRefreshing ? "animate-spin" : ""}
+          />
+          <span className="truncate">{isIndonesian ? "Perbarui" : "Refresh"}</span>
+        </button>
+
+        {/* 2. Sync & Staking */}
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic("light");
+            setIsStakingModalOpen(true);
+          }}
+          className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-2xl text-[11.5px] font-semibold glass-surface border border-[var(--glass-border)] active:scale-[0.98] transition-transform cursor-pointer"
+          style={{
+            background: "var(--bg-elevated)",
+            color: "var(--text-secondary)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <Link2 size={14} strokeWidth={1.75} />
+          <span className="truncate">{isIndonesian ? "Staking" : "Staking"}</span>
+        </button>
+
+        {/* 3. Add Asset */}
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic("medium");
+            setAddPhase(1);
+          }}
+          className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-2xl text-[11.5px] font-semibold active:scale-[0.98] transition-transform cursor-pointer"
+          style={{
+            background: "var(--text-primary)",
+            color: "var(--bg-base)",
+          }}
+        >
+          <Plus size={14} strokeWidth={2.5} />
+          <span className="truncate">{isIndonesian ? "Tambah Aset" : "Add Asset"}</span>
+        </button>
+      </div>
+
       {/* ── 3. Auto-Reconciliation Alert Banner ────────────────────────────── */}
       {reconciliationAudit.hasDiscrepancy && !dismissedReconciliation && (
         <div
-          className="p-3.5 rounded-2xl flex items-center justify-between gap-3 border border-white/12 animate-in fade-in"
-          style={{ background: "rgba(255, 255, 255, 0.04)" }}
+          className="p-3.5 rounded-3xl glass-surface flex items-center justify-between gap-3 border border-[var(--glass-border)] animate-in fade-in"
+          style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
         >
           <div className="flex items-start gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-white/[0.08] flex items-center justify-center shrink-0">
@@ -978,17 +1218,10 @@ export function AssetsPage() {
         <div className="grid grid-cols-2 gap-2.5">
           {/* Pillar 1: Liquid & Current */}
           <div
-            className="p-3.5 rounded-[22px] space-y-2.5 flex flex-col justify-between"
+            className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-2.5 flex flex-col justify-between"
             style={{
-              background: isDark
-                ? "var(--bg-elevated)"
-                : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
-              border: isDark
-                ? "1px solid var(--glass-border)"
-                : "1px solid rgba(15,23,42,0.06)",
-              boxShadow: isDark
-                ? "var(--shadow-card)"
-                : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+              background: "var(--bg-elevated)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div className="flex items-center justify-between">
@@ -1023,17 +1256,10 @@ export function AssetsPage() {
               triggerHaptic("light");
               setIsHoldingsModalOpen(true);
             }}
-            className="p-3.5 rounded-[22px] space-y-2.5 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition-transform"
+            className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-2.5 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition-transform"
             style={{
-              background: isDark
-                ? "var(--bg-elevated)"
-                : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
-              border: isDark
-                ? "1px solid var(--glass-border)"
-                : "1px solid rgba(15,23,42,0.06)",
-              boxShadow: isDark
-                ? "var(--shadow-card)"
-                : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+              background: "var(--bg-elevated)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div className="flex items-center justify-between">
@@ -1069,17 +1295,10 @@ export function AssetsPage() {
               triggerHaptic("light");
               setIsHoldingsModalOpen(true);
             }}
-            className="p-3.5 rounded-[22px] space-y-2.5 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition-transform"
+            className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-2.5 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition-transform"
             style={{
-              background: isDark
-                ? "var(--bg-elevated)"
-                : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
-              border: isDark
-                ? "1px solid var(--glass-border)"
-                : "1px solid rgba(15,23,42,0.06)",
-              boxShadow: isDark
-                ? "var(--shadow-card)"
-                : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+              background: "var(--bg-elevated)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div className="flex items-center justify-between">
@@ -1111,17 +1330,10 @@ export function AssetsPage() {
 
           {/* Pillar 4: Liabilities & Debt */}
           <div
-            className="p-3.5 rounded-[22px] space-y-2.5 flex flex-col justify-between"
+            className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-2.5 flex flex-col justify-between"
             style={{
-              background: isDark
-                ? "var(--bg-elevated)"
-                : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
-              border: isDark
-                ? "1px solid var(--glass-border)"
-                : "1px solid rgba(15,23,42,0.06)",
-              boxShadow: isDark
-                ? "var(--shadow-card)"
-                : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+              background: "var(--bg-elevated)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div className="flex items-center justify-between">
