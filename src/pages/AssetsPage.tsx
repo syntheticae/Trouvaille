@@ -20,8 +20,11 @@ import {
   RefreshCw,
   X,
   Sparkles,
-  PieChart,
-  ChevronDown,
+  ChevronRight,
+  Wallet,
+  TrendingUp,
+  Landmark,
+  ShieldAlert,
 } from "lucide-react";
 import { formatRupiah } from "../lib/utils";
 import { triggerHaptic } from "../lib/haptics";
@@ -43,7 +46,6 @@ import {
   upsertHolding,
   deleteHolding,
   calculateHoldingValuation,
-  calculatePortfolioSummary,
   fetchHoldingsFromSupabase,
   refreshAllPortfolioPrices,
   type UsdtValuationPref,
@@ -56,18 +58,12 @@ import { IconRenderer } from "../components/ui/IconRenderer";
 import { MonochromeIconPickerModal } from "../components/ui/MonochromeIconPickerModal";
 import { AssetDetailSheet } from "../components/settings/AssetDetailSheet";
 import { StakingYieldModal } from "../components/settings/StakingYieldModal";
-import { AssetAnalyticsSection } from "../components/statistics/AssetAnalyticsSection";
 import { BottomSheet } from "../components/ui/BottomSheet";
-import {
-  MonthlyDeploymentBarCard,
-  type MonthlyDeploymentItem,
-} from "../components/assets/MonthlyDeploymentBarCard";
 import { PortfolioInsightCards } from "../components/assets/PortfolioInsightCards";
 import {
   calculateHistoricalNetWorthPoints,
   formatRunwaySummary,
 } from "../lib/portfolioAnalytics";
-import type { LiquiditySummary } from "../components/assets/CapitalAllocationCard";
 import { format, subMonths } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import type {
@@ -167,7 +163,7 @@ export function AssetsPage() {
   const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dismissedReconciliation, setDismissedReconciliation] = useState(false);
-  const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
+  const [isHoldingsModalOpen, setIsHoldingsModalOpen] = useState(false);
 
   // Add Holding Flow State
   // 0: closed, 1: preset picker, 2: details form
@@ -285,12 +281,6 @@ export function AssetsPage() {
     [holdings],
   );
 
-  // Computations
-  const otherHoldingsSummary = useMemo(
-    () => calculatePortfolioSummary(liquidHoldings),
-    [liquidHoldings],
-  );
-
   const usdtCostBasis = usdtPref.costBasis;
   const usdtMarketValue =
     usdtPref.units > 0
@@ -310,13 +300,6 @@ export function AssetsPage() {
     };
   }, [usdtPref.units, suggestedUsdtUnits, usdtCostBasis, usdtMarketValue]);
 
-  const totalCostBasis = usdtCostBasis + otherHoldingsSummary.totalCostBasis;
-  const totalMarketValuation =
-    usdtMarketValue + otherHoldingsSummary.totalMarketValue;
-  const totalFloatingProfit = totalMarketValuation - totalCostBasis;
-  const totalFloatingProfitPct =
-    totalCostBasis > 0 ? (totalFloatingProfit / totalCostBasis) * 100 : 0;
-
   // Dynamic Monthly Burn Rate for Emergency Runway Coverage
   const monthlyBurnRate = useMemo(() => {
     const now = new Date();
@@ -328,15 +311,18 @@ export function AssetsPage() {
     return sum > 0 ? Math.round(sum / 3) : 3500000;
   }, [allTxs]);
 
-  // Real Monthly Deployment Data (6 Months) from Transactions
-  const monthlyDeploymentData: MonthlyDeploymentItem[] = useMemo(() => {
+  // Real Monthly Deployment Data (6 Months) from Transactions (used for sparkline trajectory)
+  const monthlyDeploymentData = useMemo(() => {
     const now = new Date();
-    const months = Array.from({ length: 6 }, (_, i) => {
-      const d = subMonths(now, 5 - i);
-      const key = format(d, "yyyy-MM");
-      const label = format(d, "MMM", { locale: isIndonesian ? idLocale : undefined });
-      return { key, label, deployed: 0, txCount: 0 };
-    });
+    const months: Array<{ key: string; label: string; deployed: number; txCount: number }> = Array.from(
+      { length: 6 },
+      (_, i) => {
+        const d = subMonths(now, 5 - i);
+        const key = format(d, "yyyy-MM");
+        const label = format(d, "MMM", { locale: isIndonesian ? idLocale : undefined });
+        return { key, label, deployed: 0, txCount: 0 };
+      },
+    );
 
     const map = new Map(months.map((m) => [m.key, m]));
 
@@ -381,43 +367,74 @@ export function AssetsPage() {
     return months;
   }, [allTxs, wallets, isIndonesian]);
 
-  // Multi-tier Liquidity Summary
-  const liquiditySummary: LiquiditySummary = useMemo(() => {
-    const cashWalletTotal = wallets
-      .filter((w) => w.classification !== "investment" && w.classification !== "credit" && w.classification !== "loan")
+  // ── Executive Balance Sheet & 4-Pillar Capital Breakdown ──────────
+  // Pillar 1: Liquid & Current Assets (Operating Cash, Banks, e-Wallets, USDT Reserve)
+  const liquidWalletCash = useMemo(() => {
+    return wallets
+      .filter(
+        (w) =>
+          w.classification !== "credit" &&
+          w.classification !== "loan" &&
+          w.classification !== "investment",
+      )
       .reduce((sum, w) => sum + Math.max(0, Number(w.balance || 0)), 0);
-    const liquidTotal = cashWalletTotal + usdtMarketValue;
+  }, [wallets]);
+  const liquidAssetsTotal = liquidWalletCash + usdtMarketValue;
 
-    const growthTotal = liquidHoldings
-      .filter((h) => h.asset_type === "stock" || (h.asset_type === "crypto" && h.symbol !== "USDT"))
+  // Pillar 2: Market & Growth Assets (Equities, Growth Crypto, Mutual Funds)
+  const growthAssetsTotal = useMemo(() => {
+    return liquidHoldings
+      .filter(
+        (h) =>
+          h.asset_type === "stock" ||
+          (h.asset_type === "crypto" && h.symbol !== "USDT") ||
+          h.asset_type === "mutual_fund" ||
+          h.asset_type === "bond",
+      )
       .reduce((sum, h) => sum + h.units * (h.current_price || h.avg_buy_price), 0);
+  }, [liquidHoldings]);
 
-    const goldAndFundTotal = liquidHoldings
-      .filter((h) => h.asset_type === "gold" || h.asset_type === "mutual_fund" || h.asset_type === "bond")
-      .reduce((sum, h) => sum + h.units * (h.current_price || h.avg_buy_price), 0);
-    const fixedTotal = fixedHoldings.reduce((sum, h) => {
+  // Pillar 3: Fixed & Tangible Assets (Property, Physical Gold, Vehicles)
+  const fixedAssetsTotal = useMemo(() => {
+    const fixedTangibles = fixedHoldings.reduce((sum, h) => {
       const v = calculateHoldingValuation(h);
       return sum + v.marketValue;
     }, 0);
-    const defensiveTotal = goldAndFundTotal + fixedTotal;
+    const physicalGold = liquidHoldings
+      .filter((h) => h.asset_type === "gold")
+      .reduce((sum, h) => sum + h.units * (h.current_price || h.avg_buy_price), 0);
+    return fixedTangibles + physicalGold;
+  }, [fixedHoldings, liquidHoldings]);
 
-    const grandTotal = Math.max(1, liquidTotal + growthTotal + defensiveTotal);
+  // Pillar 4: Total Liabilities & Obligations (Credit Cards, PayLater, Loans, Overdrafts)
+  const liabilitiesTotal = useMemo(() => {
+    return wallets
+      .filter(
+        (w) =>
+          w.classification === "credit" ||
+          w.classification === "loan" ||
+          Number(w.balance || 0) < 0,
+      )
+      .reduce((sum, w) => {
+        const bal = Number(w.balance || 0);
+        return sum + Math.abs(bal < 0 ? bal : (w.classification === "credit" || w.classification === "loan" ? bal : 0));
+      }, 0);
+  }, [wallets]);
 
-    return {
-      liquid: liquidTotal,
-      liquidPct: (liquidTotal / grandTotal) * 100,
-      growth: growthTotal,
-      growthPct: (growthTotal / grandTotal) * 100,
-      defensive: defensiveTotal,
-      defensivePct: (defensiveTotal / grandTotal) * 100,
-    };
-  }, [wallets, usdtMarketValue, liquidHoldings, fixedHoldings]);
+  // Balance Sheet Totals & Solvency Metrics
+  const totalGrossAssets = liquidAssetsTotal + growthAssetsTotal + fixedAssetsTotal;
+  const netWorth = totalGrossAssets - liabilitiesTotal;
+  const debtToAssetRatio = totalGrossAssets > 0 ? (liabilitiesTotal / totalGrossAssets) * 100 : 0;
+  const solvencyScore = Math.max(0, Math.min(100, Math.round(100 - debtToAssetRatio)));
 
+  const liquidPct = totalGrossAssets > 0 ? (liquidAssetsTotal / totalGrossAssets) * 100 : 0;
+  const growthPct = totalGrossAssets > 0 ? (growthAssetsTotal / totalGrossAssets) * 100 : 0;
+  const fixedPct = totalGrossAssets > 0 ? (fixedAssetsTotal / totalGrossAssets) * 100 : 0;
 
   const liquidRunwayMonths = useMemo(() => {
     if (monthlyBurnRate <= 0) return 12;
-    return Number((liquiditySummary.liquid / monthlyBurnRate).toFixed(1));
-  }, [liquiditySummary.liquid, monthlyBurnRate]);
+    return Number((liquidAssetsTotal / monthlyBurnRate).toFixed(1));
+  }, [liquidAssetsTotal, monthlyBurnRate]);
 
   // Reconciliation Audit
   const reconciliationAudit = useMemo(() => {
@@ -673,12 +690,12 @@ export function AssetsPage() {
       <div className="flex items-center justify-between pt-1">
         <div>
           <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]">
-            {isIndonesian ? "Aset & Portofolio" : "Asset Valuation"}
+            {isIndonesian ? "Neraca Keuangan" : "Executive Balance Sheet"}
           </h1>
           <p className="text-[12px] text-[var(--text-tertiary)] font-medium">
             {isIndonesian
-              ? "Kekayaan bersih & performa portofolio live"
-              : "Net worth & live portfolio"}
+              ? "Matriks solvabilitas & struktur modal lengkap"
+              : "Solvency matrix & capital breakdown"}
           </p>
         </div>
 
@@ -738,9 +755,9 @@ export function AssetsPage() {
         </div>
       </div>
 
-      {/* ── 2. Total Net Valuation Hero Card (Silicon Valley Prospectus) ───── */}
+      {/* ── 2. Executive Balance Sheet & Solvency Matrix Hero Card ── */}
       <div
-        className="p-5 rounded-[28px] space-y-3 relative overflow-hidden transition-all"
+        className="p-5 rounded-[28px] space-y-4 relative overflow-hidden transition-all"
         style={{
           background: isDark
             ? "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)"
@@ -753,39 +770,68 @@ export function AssetsPage() {
             : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
         }}
       >
-        <div className="space-y-1">
-          <span
-            className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block"
-          >
-            {isIndonesian ? "Total Kekayaan Bersih" : "Total net worth"}
+        {/* Top Header: Badge & Solvency Status */}
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+            {isIndonesian ? "Neraca Keuangan Eksekutif" : "Executive Balance Sheet"}
           </span>
 
-          {/* Hero Number (Strictly font-light) */}
-          <p
-            className="amount text-[36px] sm:text-[42px] font-light tracking-tight leading-none text-[var(--text-primary)]"
+          <span
+            className="font-mono text-[9.5px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider"
+            style={{
+              background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--glass-border)",
+            }}
           >
-            {isStealthMode ? "••••••••" : formatRupiah(totalMarketValuation)}
-          </p>
+            {liabilitiesTotal === 0
+              ? isIndonesian ? "100% Solven" : "100% Solvent"
+              : isIndonesian ? `Leverage: ${debtToAssetRatio.toFixed(1)}%` : `Leverage: ${debtToAssetRatio.toFixed(1)}%`}
+          </span>
+        </div>
 
-          {/* P&L Indicator (Strictly Monochrome + Arrow Vector) */}
-          <div className="flex items-center gap-1.5 pt-1 text-[11.5px] font-mono text-[var(--text-secondary)]">
-            <span className="text-[var(--text-primary)] font-bold">
-              {totalFloatingProfit >= 0 ? "▾" : "▴"}
+        {/* Hero Number: Net Capital Equity (Strictly font-light) */}
+        <div className="space-y-1">
+          <span className="text-[11px] text-[var(--text-tertiary)] block font-medium">
+            {isIndonesian ? "Ekuitas Modal Bersih" : "Net Capital Equity"}
+          </span>
+          <p className="amount text-[36px] sm:text-[42px] font-light tracking-tight leading-none text-[var(--text-primary)]">
+            {isStealthMode ? "••••••••" : formatRupiah(netWorth)}
+          </p>
+        </div>
+
+        {/* Equation Balance Strip: Gross Assets - Liabilities = Net Worth */}
+        <div
+          className="grid grid-cols-3 gap-2 p-3 rounded-2xl text-center"
+          style={{
+            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <div>
+            <span className="text-[10px] text-[var(--text-tertiary)] block">
+              {isIndonesian ? "Total Aset" : "Gross Assets"}
             </span>
-            <span className="font-semibold text-[var(--text-primary)]">
-              {isStealthMode
-                ? "••••"
-                : `${totalFloatingProfit >= 0 ? "+" : ""}${formatRupiah(totalFloatingProfit)}`}
+            <span className="font-mono text-[12px] font-medium text-[var(--text-primary)] truncate block mt-0.5">
+              {isStealthMode ? "••••" : formatRupiah(totalGrossAssets)}
             </span>
-            <span className="text-[var(--text-tertiary)]">·</span>
-            <span>
-              {totalFloatingProfitPct >= 0 ? "+" : ""}
-              {totalFloatingProfitPct.toFixed(1)}% (6 {isIndonesian ? "bln" : "mo"})
+          </div>
+
+          <div className="border-x border-[var(--glass-border)]">
+            <span className="text-[10px] text-[var(--text-tertiary)] block">
+              {isIndonesian ? "Liabilitas" : "Liabilities"}
             </span>
-            <span className="text-[var(--text-tertiary)]">·</span>
-            <span>
-              {isIndonesian ? "Modal " : "Cost basis "}
-              {isStealthMode ? "••••" : formatRupiah(totalCostBasis)}
+            <span className="font-mono text-[12px] font-medium text-[var(--text-secondary)] truncate block mt-0.5">
+              {isStealthMode ? "••••" : formatRupiah(liabilitiesTotal)}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-[10px] text-[var(--text-tertiary)] block">
+              {isIndonesian ? "Solvabilitas" : "Solvency"}
+            </span>
+            <span className="font-mono text-[12px] font-medium text-[var(--text-primary)] truncate block mt-0.5">
+              {solvencyScore}%
             </span>
           </div>
         </div>
@@ -793,7 +839,7 @@ export function AssetsPage() {
         {/* 6-Month Trajectory Sparkline Curve (Hermite SVG) */}
         {(() => {
           const trajectoryPoints = calculateHistoricalNetWorthPoints(
-            totalMarketValuation,
+            totalGrossAssets,
             monthlyDeploymentData,
           );
           if (trajectoryPoints.length === 0) return null;
@@ -832,7 +878,6 @@ export function AssetsPage() {
                   viewBox={`0 0 ${svgW} ${svgH}`}
                   className="w-full h-full overflow-visible"
                 >
-                  {/* Trajectory Line */}
                   <path
                     d={pathD}
                     fill="none"
@@ -840,7 +885,6 @@ export function AssetsPage() {
                     strokeWidth="2"
                     strokeLinecap="round"
                   />
-                  {/* Glowing Terminal Anchor Pin */}
                   {lastPt && (
                     <>
                       <circle
@@ -877,9 +921,8 @@ export function AssetsPage() {
             {formatRunwaySummary(liquidRunwayMonths, monthlyBurnRate, isIndonesian)}
           </span>
 
-          {/* Explicit Per-Unit USDT Rate */}
           <span className="font-mono text-[10.5px] text-[var(--text-tertiary)]">
-            Live USDT Rate: <strong className="text-[var(--text-secondary)]">{formatRupiah(usdtPref.rate)}</strong> / USDT
+            Live USDT: <strong className="text-[var(--text-secondary)]">{formatRupiah(usdtPref.rate)}</strong> / unit
           </span>
         </div>
       </div>
@@ -921,354 +964,383 @@ export function AssetsPage() {
         </div>
       )}
 
-      {/* ── 4. Monthly Investment Deployment Bar Chart (shadcn/ui Minimal) ── */}
-      <MonthlyDeploymentBarCard
-        data={monthlyDeploymentData}
-        isDark={isDark}
-        isIndonesian={isIndonesian}
-        hideBalance={isStealthMode}
-      />
+      {/* ── 4. 4-Pillar Capital Hierarchy Matrix (2x2 Grid) ───────────────── */}
+      <div className="space-y-2.5 pt-1">
+        <div className="flex items-center justify-between px-0.5">
+          <h3 className="text-[13.5px] font-bold tracking-tight text-[var(--text-primary)]">
+            {isIndonesian ? "Struktur Neraca & Alokasi Modal" : "Balance Sheet Breakdown"}
+          </h3>
+          <span className="text-[11px] font-mono text-[var(--text-tertiary)] font-medium">
+            4 Pillars
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Pillar 1: Liquid & Current */}
+          <div
+            className="p-3.5 rounded-[22px] space-y-2.5 flex flex-col justify-between"
+            style={{
+              background: isDark
+                ? "var(--bg-elevated)"
+                : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
+              border: isDark
+                ? "1px solid var(--glass-border)"
+                : "1px solid rgba(15,23,42,0.06)",
+              boxShadow: isDark
+                ? "var(--shadow-card)"
+                : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+              >
+                <Wallet size={16} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+              </div>
+              <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold">
+                {liquidPct.toFixed(1)}%
+              </span>
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">
+                {isIndonesian ? "Aset Lancar & Kas" : "Liquid & Current"}
+              </p>
+              <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
+                {isIndonesian ? "Bank, dompet & kas" : "Cash, banks & stablecoins"}
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-[var(--glass-border)]">
+              <span className="font-mono text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+                {isStealthMode ? "••••••••" : formatRupiah(liquidAssetsTotal)}
+              </span>
+            </div>
+          </div>
+
+          {/* Pillar 2: Market & Growth */}
+          <div
+            onClick={() => {
+              triggerHaptic("light");
+              setIsHoldingsModalOpen(true);
+            }}
+            className="p-3.5 rounded-[22px] space-y-2.5 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition-transform"
+            style={{
+              background: isDark
+                ? "var(--bg-elevated)"
+                : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
+              border: isDark
+                ? "1px solid var(--glass-border)"
+                : "1px solid rgba(15,23,42,0.06)",
+              boxShadow: isDark
+                ? "var(--shadow-card)"
+                : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+              >
+                <TrendingUp size={16} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+              </div>
+              <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold">
+                {growthPct.toFixed(1)}%
+              </span>
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">
+                {isIndonesian ? "Pasar & Pertumbuhan" : "Market & Growth"}
+              </p>
+              <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
+                {isIndonesian ? "Saham, kripto & reksa dana" : "Equities, crypto & funds"}
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between">
+              <span className="font-mono text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+                {isStealthMode ? "••••••••" : formatRupiah(growthAssetsTotal)}
+              </span>
+              <ChevronRight size={13} className="text-[var(--text-tertiary)]" />
+            </div>
+          </div>
+
+          {/* Pillar 3: Fixed & Tangibles */}
+          <div
+            onClick={() => {
+              triggerHaptic("light");
+              setIsHoldingsModalOpen(true);
+            }}
+            className="p-3.5 rounded-[22px] space-y-2.5 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition-transform"
+            style={{
+              background: isDark
+                ? "var(--bg-elevated)"
+                : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
+              border: isDark
+                ? "1px solid var(--glass-border)"
+                : "1px solid rgba(15,23,42,0.06)",
+              boxShadow: isDark
+                ? "var(--shadow-card)"
+                : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+              >
+                <Landmark size={16} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+              </div>
+              <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold">
+                {fixedPct.toFixed(1)}%
+              </span>
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">
+                {isIndonesian ? "Aset Tetap & Riil" : "Fixed & Tangibles"}
+              </p>
+              <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
+                {isIndonesian ? "Properti, emas & kendaraan" : "Real estate, gold & vehicles"}
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between">
+              <span className="font-mono text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+                {isStealthMode ? "••••••••" : formatRupiah(fixedAssetsTotal)}
+              </span>
+              <ChevronRight size={13} className="text-[var(--text-tertiary)]" />
+            </div>
+          </div>
+
+          {/* Pillar 4: Liabilities & Debt */}
+          <div
+            className="p-3.5 rounded-[22px] space-y-2.5 flex flex-col justify-between"
+            style={{
+              background: isDark
+                ? "var(--bg-elevated)"
+                : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
+              border: isDark
+                ? "1px solid var(--glass-border)"
+                : "1px solid rgba(15,23,42,0.06)",
+              boxShadow: isDark
+                ? "var(--shadow-card)"
+                : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+              >
+                <ShieldAlert size={16} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+              </div>
+              <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold">
+                {debtToAssetRatio.toFixed(1)}% D/A
+              </span>
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">
+                {isIndonesian ? "Liabilitas & Utang" : "Liabilities & Debt"}
+              </p>
+              <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
+                {isIndonesian ? "Kartu kredit, paylater & utang" : "Cards, paylater & loans"}
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-[var(--glass-border)]">
+              <span className="font-mono text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+                {isStealthMode ? "••••••••" : formatRupiah(liabilitiesTotal)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* View All Holdings Pill Button */}
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic("light");
+            setIsHoldingsModalOpen(true);
+          }}
+          className="w-full py-2.5 px-4 rounded-2xl flex items-center justify-between text-[11.5px] font-semibold transition-all active:scale-[0.99] cursor-pointer"
+          style={{
+            background: "var(--glass-fill)",
+            border: "1px solid var(--glass-border)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <Coins size={14} className="text-[var(--text-primary)]" />
+            <span>
+              {isIndonesian ? "Detail Kepemilikan & Aset Riil" : "View Asset Holdings & Ledger"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 font-mono text-[11px] text-[var(--text-tertiary)]">
+            <span>
+              {holdings.length + (usdtPref.units > 0 || recordedCryptoBalance > 0 ? 1 : 0)}{" "}
+              {isIndonesian ? "aset" : "assets"}
+            </span>
+            <ChevronRight size={13} />
+          </div>
+        </button>
+      </div>
 
       {/* ── 5. Portfolio Intelligence & Insight Cards ─────────────────────── */}
       <PortfolioInsightCards
         holdings={holdings}
         usdtHolding={usdtInfo}
-        liquidCash={liquiditySummary.liquid}
-        totalMarketValuation={totalMarketValuation}
+        liquidCash={liquidAssetsTotal}
+        totalMarketValuation={totalGrossAssets}
         monthlyBurnRate={monthlyBurnRate}
         isDark={isDark}
         isIndonesian={isIndonesian}
         hideBalance={isStealthMode}
+        onSelectHolding={(symbolOrId) => {
+          triggerHaptic("light");
+          if (symbolOrId.toUpperCase() === "USDT") {
+            openUsdtDetail();
+            return;
+          }
+          const found = holdings.find(
+            (h) => h.id === symbolOrId || h.symbol.toUpperCase() === symbolOrId.toUpperCase(),
+          );
+          if (found) {
+            handleOpenHoldingDetail(found);
+          }
+        }}
       />
 
-      {/* ── 6. Section Header & Category Filter Chips ──────────────────────── */}
-      <div className="space-y-2.5 pt-1">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h3 className="text-[14px] font-bold tracking-tight text-[var(--text-primary)]">
-              {isIndonesian ? "Kepemilikan Aset" : "Asset Holdings"}
-            </h3>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.08] text-[var(--text-tertiary)] font-semibold">
-              {displayHoldings.length + ((filterType === "all" || filterType === "crypto") && (usdtPref.units > 0 || recordedCryptoBalance > 0) ? 1 : 0)}{" "}
-              {isIndonesian ? "aset" : "assets"}
-            </span>
+      {/* ── 6. Holdings Ledger Sheet (Interactive Drawer) ─────────────────── */}
+      <BottomSheet
+        isOpen={isHoldingsModalOpen}
+        onClose={() => setIsHoldingsModalOpen(false)}
+        title={isIndonesian ? "Daftar Kepemilikan Aset" : "Asset Holdings Ledger"}
+      >
+        <div className="p-5 space-y-3.5 select-none pb-12">
+          {/* Category Filter Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            {(
+              [
+                { key: "all", label: isIndonesian ? "Semua" : "All" },
+                { key: "crypto", label: "Crypto" },
+                { key: "stock", label: isIndonesian ? "Saham" : "Stocks" },
+                { key: "gold", label: isIndonesian ? "Emas" : "Gold" },
+                { key: "mutual_fund", label: isIndonesian ? "Reksa Dana" : "Mutual Funds" },
+                { key: "fixed_asset", label: isIndonesian ? "Aset Tetap" : "Fixed Assets" },
+              ] as const
+            ).map((t) => {
+              const isActive = filterType === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setFilterType(t.key);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                    isActive
+                      ? "bg-[var(--text-primary)] text-[var(--bg-base)] border-transparent shadow-sm"
+                      : "bg-[var(--glass-fill)] text-[var(--text-secondary)] border-[var(--glass-border)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
 
-          <span className="text-[11px] font-mono font-semibold text-[var(--text-tertiary)]">
-            {isStealthMode ? "••••••••" : formatRupiah(totalMarketValuation)}
-          </span>
-        </div>
-
-        {/* Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {(
-            [
-              { key: "all", label: isIndonesian ? "Semua" : "All" },
-              { key: "crypto", label: "Crypto" },
-              { key: "stock", label: isIndonesian ? "Saham" : "Stocks" },
-              { key: "gold", label: isIndonesian ? "Emas" : "Gold" },
-              { key: "mutual_fund", label: isIndonesian ? "Reksa Dana" : "Mutual Funds" },
-              { key: "fixed_asset", label: isIndonesian ? "Aset Fisik" : "Fixed Assets" },
-            ] as const
-          ).map((t) => {
-            const isActive = filterType === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setFilterType(t.key);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer border ${
-                  isActive
-                    ? "bg-[var(--text-primary)] text-[var(--bg-base)] border-transparent shadow-sm"
-                    : "bg-[var(--glass-fill)] text-[var(--text-secondary)] border-[var(--glass-border)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── 7. Enhanced Holdings Deck with Dominance Progress Bars ─────────── */}
-      <div className="space-y-2.5">
-        {/* Core USDT Row */}
-        {(filterType === "all" || filterType === "crypto") &&
-          (usdtPref.units > 0 || recordedCryptoBalance > 0) && (
+          {/* Core USDT Row */}
+          {(filterType === "all" || filterType === "crypto") &&
+            (usdtPref.units > 0 || recordedCryptoBalance > 0) && (
             <div
-              onClick={openUsdtDetail}
-              className="p-4 rounded-[24px] space-y-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
-              style={{
-                background: isDark
-                  ? "var(--bg-elevated)"
-                  : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
-                border: isDark
-                  ? "1px solid var(--glass-border)"
-                  : "1px solid rgba(15,23,42,0.06)",
-                boxShadow: isDark
-                  ? "var(--shadow-card)"
-                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+              onClick={() => {
+                setIsHoldingsModalOpen(false);
+                openUsdtDetail();
               }}
+              className="p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform border border-[var(--glass-border)]"
+              style={{ background: "var(--bg-elevated)" }}
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0">
+                  <Coins size={17} strokeWidth={1.75} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-[13px] text-[var(--text-primary)]">USDT</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
+                      CRYPTO
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
+                    {usdtPref.units > 0
+                      ? `${usdtPref.units.toLocaleString()} USDT`
+                      : `Wallet linked · ${suggestedUsdtUnits} USDT`}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right font-mono shrink-0">
+                <span className="text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+                  {isStealthMode ? "••••••••" : formatRupiah(usdtMarketValue)}
+                </span>
+                <span className="text-[10px] text-[var(--text-secondary)]">
+                  {usdtFloatingPnLPct >= 0 ? "+" : ""}{usdtFloatingPnLPct.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Other Holdings */}
+          {displayHoldings.map((h) => {
+            const val = calculateHoldingValuation(h);
+            return (
+              <div
+                key={h.id}
+                onClick={() => {
+                  setIsHoldingsModalOpen(false);
+                  handleOpenHoldingDetail(h);
+                }}
+                className="p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform border border-[var(--glass-border)]"
+                style={{ background: "var(--bg-elevated)" }}
+              >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Coins size={19} strokeWidth={1.75} />
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0">
+                    <IconRenderer icon={h.icon || "TrendingUp"} size="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold font-mono text-[13px] tracking-wide text-[var(--text-primary)]">
-                        USDT
-                      </span>
-                      <span className="text-[9.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
-                        Crypto
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
-                      {usdtPref.units > 0
-                        ? `${usdtPref.units.toLocaleString()} USDT`
-                        : `Wallet linked · ${suggestedUsdtUnits} USDT`}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0 font-mono">
-                  <span className="text-[14px] font-bold text-[var(--text-primary)] block leading-snug">
-                    {isStealthMode
-                      ? "••••••••"
-                      : formatRupiah(usdtMarketValue)}
-                  </span>
-                  <span className="text-[10.5px] font-semibold text-[var(--text-secondary)]">
-                    {isStealthMode
-                      ? "••••"
-                      : `${usdtFloatingPnL >= 0 ? "+" : ""}${formatRupiah(usdtFloatingPnL)} (${usdtFloatingPnLPct >= 0 ? "+" : ""}${usdtFloatingPnLPct.toFixed(1)}%)`}
-                  </span>
-                </div>
-              </div>
-
-              {/* Inline Dominance Progress Bar */}
-              <div className="pt-2 border-t border-[var(--glass-border)] space-y-1">
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Porsi Portofolio" : "Portfolio Share"}
-                  </span>
-                  <span className="font-mono font-semibold text-[var(--text-secondary)]">
-                    {totalMarketValuation > 0
-                      ? ((usdtMarketValue / totalMarketValuation) * 100).toFixed(1)
-                      : 0}
-                    %
-                  </span>
-                </div>
-                <div className="w-full h-1 rounded-full overflow-hidden bg-white/[0.08] dark:bg-white/[0.06]">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${Math.min(Math.max(totalMarketValuation > 0 ? (usdtMarketValue / totalMarketValuation) * 100 : 0, 3), 100)}%`,
-                      backgroundColor: isDark ? "#ffffff" : "#18181b",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-        {/* Other Active Holdings */}
-        {displayHoldings.map((h) => {
-          const val = calculateHoldingValuation(h);
-          const displayPrice = val.marketValue;
-          const dominancePct =
-            totalMarketValuation > 0 ? (val.marketValue / totalMarketValuation) * 100 : 0;
-
-          return (
-            <div
-              key={h.id}
-              onClick={() => handleOpenHoldingDetail(h)}
-              className="p-4 rounded-[24px] space-y-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
-              style={{
-                background: isDark
-                  ? "var(--bg-elevated)"
-                  : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
-                border: isDark
-                  ? "1px solid var(--glass-border)"
-                  : "1px solid rgba(15,23,42,0.06)",
-                boxShadow: isDark
-                  ? "var(--shadow-card)"
-                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
-              }}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <IconRenderer
-                      icon={h.icon || "TrendingUp"}
-                      size="w-4.5 h-4.5"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-[13px] tracking-wide text-[var(--text-primary)] truncate">
-                        {h.symbol}
-                      </span>
+                      <span className="font-bold text-[13px] text-[var(--text-primary)] truncate">{h.symbol}</span>
                       <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
                         {h.asset_type.replace("_", " ")}
                       </span>
-                      {h.notes?.startsWith("Platform:") && (
-                        <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium bg-white/[0.05] text-[var(--text-tertiary)]">
-                          {h.notes.replace("Platform:", "").trim()}
-                        </span>
-                      )}
                     </div>
                     <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
-                      {h.name} · {h.units.toLocaleString()}{" "}
-                      {isIndonesian ? "unit" : "units"}
+                      {h.name} · {h.units.toLocaleString()} {isIndonesian ? "unit" : "units"}
                     </p>
                   </div>
                 </div>
-
-                <div className="text-right shrink-0 font-mono">
-                  <span className="text-[14px] font-bold text-[var(--text-primary)] block leading-snug">
-                    {isStealthMode
-                      ? "••••••••"
-                      : formatRupiah(displayPrice)}
+                <div className="text-right font-mono shrink-0">
+                  <span className="text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+                    {isStealthMode ? "••••••••" : formatRupiah(val.marketValue)}
                   </span>
-                  <span className="text-[10.5px] font-semibold text-[var(--text-secondary)]">
-                    {isStealthMode
-                      ? "••••"
-                      : `${val.floatingPnL >= 0 ? "+" : ""}${formatRupiah(val.floatingPnL)} (${val.floatingPnLPct >= 0 ? "+" : ""}${val.floatingPnLPct.toFixed(1)}%)`}
+                  <span className="text-[10px] text-[var(--text-secondary)]">
+                    {val.floatingPnLPct >= 0 ? "+" : ""}{val.floatingPnLPct.toFixed(1)}%
                   </span>
                 </div>
               </div>
+            );
+          })}
 
-              {/* Inline Dominance Progress Bar */}
-              <div className="pt-2 border-t border-[var(--glass-border)] space-y-1">
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Porsi Portofolio" : "Portfolio Share"}
-                  </span>
-                  <span className="font-mono font-semibold text-[var(--text-secondary)]">
-                    {dominancePct.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="w-full h-1 rounded-full overflow-hidden bg-white/[0.08] dark:bg-white/[0.06]">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${Math.min(Math.max(dominancePct, 3), 100)}%`,
-                      backgroundColor: isDark
-                        ? "rgba(255, 255, 255, 0.75)"
-                        : "rgba(24, 24, 27, 0.75)",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {displayHoldings.length === 0 &&
-          (filterType !== "all" || usdtPref.units <= 0) && (
-            <div className="p-8 text-center rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] space-y-2">
-              <PieChart
-                size={28}
-                strokeWidth={1.5}
-                className="mx-auto text-[var(--text-tertiary)]"
-              />
+          {displayHoldings.length === 0 && usdtPref.units <= 0 && recordedCryptoBalance <= 0 && (
+            <div className="py-8 text-center space-y-1 text-[var(--text-tertiary)]">
               <p className="text-[13px] font-semibold text-[var(--text-primary)]">
                 {isIndonesian ? "Belum ada aset tercatat" : "No investment assets recorded"}
               </p>
-              <p className="text-[11px] text-[var(--text-tertiary)] max-w-xs mx-auto">
+              <p className="text-[11px]">
                 {isIndonesian
-                  ? "Ketuk tombol (+) di atas untuk menambahkan kripto, saham, emas, atau aset fisik."
-                  : "Tap the (+) button above to add crypto, stocks, gold, or fixed assets."}
+                  ? "Ketuk tombol (+) di atas untuk menambahkan portofolio."
+                  : "Tap the (+) button above to add investment assets."}
               </p>
             </div>
           )}
-      </div>
-
-      {/* ── 8. Collapsible Advanced Analytics Accordion ───────────────────── */}
-      <div className="pt-2">
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic("light");
-            setIsAnalyticsExpanded(!isAnalyticsExpanded);
-          }}
-          className="w-full p-4 rounded-[24px] flex items-center justify-between text-left transition-all cursor-pointer"
-          style={{
-            background: isDark
-              ? "var(--bg-elevated)"
-              : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
-            border: isDark
-              ? "1px solid var(--glass-border)"
-              : "1px solid rgba(15,23,42,0.06)",
-            boxShadow: isDark
-              ? "var(--shadow-card)"
-              : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
-          }}
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-              }}
-            >
-              <PieChart size={16} strokeWidth={1.75} />
-            </div>
-            <div className="min-w-0">
-              <h4 className="text-[13px] font-bold text-[var(--text-primary)] truncate">
-                {isIndonesian
-                  ? "Analisis Portofolio & Diagnostik Lanjutan"
-                  : "Advanced Portfolio Diagnostics & Analytics"}
-              </h4>
-              <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
-                {isIndonesian
-                  ? "Distribusi aset, target alokasi & ketahanan modal"
-                  : "Asset distribution, target allocation & liquidity"}
-              </p>
-            </div>
-          </div>
-
-          <div
-            className={`p-1.5 rounded-full transition-transform duration-300 ${
-              isAnalyticsExpanded ? "rotate-180" : ""
-            }`}
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            <ChevronDown size={18} />
-          </div>
-        </button>
-
-        {isAnalyticsExpanded && (
-          <div className="animate-in fade-in slide-in-from-top-3 duration-300 pt-3">
-            <AssetAnalyticsSection
-              wallets={wallets}
-              monthlyBurnRate={monthlyBurnRate}
-              hideBalance={isStealthMode}
-              onOpenValuation={() => setAddPhase(1)}
-            />
-          </div>
-        )}
-      </div>
+        </div>
+      </BottomSheet>
 
       {/* ── 9. Preset Picker Sheet (Standard BottomSheet) ─────────────────── */}
       <BottomSheet

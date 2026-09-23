@@ -35,6 +35,7 @@ import { BillManagementSheets } from "../components/settings/BillManagementSheet
 import { ProfileMenuModal } from "../components/home/ProfileMenuModal";
 import { ProfileSheet } from "../components/settings/ProfileSheet";
 import { WebDashboardLinkModal } from "../components/settings/WebDashboardLinkModal";
+import { CategoryBudgetDeck } from "../components/home/CategoryBudgetDeck";
 
 function formatNetAmount(net: number): string {
   const abs = Math.abs(net);
@@ -1482,6 +1483,14 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               </div>
             </div>
           </section>
+        );
+
+      case "category_budgets":
+        return (
+          <CategoryBudgetDeck
+            onOpenManageCategories={() => navigate("/categories")}
+            hideBalance={hideBalance}
+          />
         );
 
       case "recent_transactions":

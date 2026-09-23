@@ -108,6 +108,17 @@ export const DEFAULT_HOME_WIDGETS: CardWidgetConfig[] = [
     isVisible: true,
   },
   {
+    id: "category_budgets",
+    title: "Category Budgets",
+    subtitle: "Monthly category envelopes & spending limits",
+    page: "home",
+    category: "planning",
+    size: "full",
+    supportedSizes: ["full"],
+    order: 8,
+    isVisible: true,
+  },
+  {
     id: "recent_transactions",
     title: "Recent Transactions",
     subtitle: "Quick ledger feed of latest activity",
@@ -115,7 +126,7 @@ export const DEFAULT_HOME_WIDGETS: CardWidgetConfig[] = [
     category: "ledger",
     size: "full",
     supportedSizes: ["full"],
-    order: 8,
+    order: 9,
     isVisible: true,
   },
   {

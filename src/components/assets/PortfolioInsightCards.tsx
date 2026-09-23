@@ -38,6 +38,7 @@ interface PortfolioInsightCardsProps {
   isDark: boolean;
   isIndonesian: boolean;
   hideBalance?: boolean;
+  onSelectHolding?: (symbolOrId: string) => void;
 }
 
 export function PortfolioInsightCards({
@@ -49,6 +50,7 @@ export function PortfolioInsightCards({
   isDark,
   isIndonesian,
   hideBalance = false,
+  onSelectHolding,
 }: PortfolioInsightCardsProps) {
   const cardStyle = {
     background: isDark
@@ -292,7 +294,10 @@ export function PortfolioInsightCards({
           {unrealizedGains.map((item) => (
             <div
               key={item.id}
-              className="p-3.5 rounded-2xl space-y-2 transition-all"
+              onClick={() => onSelectHolding?.(item.symbol)}
+              className={`p-3.5 rounded-2xl space-y-2 transition-all ${
+                onSelectHolding ? "cursor-pointer active:scale-[0.99]" : ""
+              }`}
               style={{
                 background: isDark
                   ? "rgba(255, 255, 255, 0.03)"
