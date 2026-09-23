@@ -1,10 +1,10 @@
 // ======================================================================
-// TROUVAILLE ASSET BENTO MATRIX 2x2 (RESOLUSI 2)
-// High-Density Executive Matrix:
-// [1] Inflow Velocity Spark  | [2] Liquid Runway & Safety Buffer
-// [3] Portfolio Dominance    | [4] 3-Tier Liquidity Structure
+// TROUVAILLE ASSET BENTO PILLARS (STRICTLY MONOCHROME)
+// 2 Spacious Core Pillar Cards (1 Row x 2 Columns):
+// [1] Inflow Velocity Spark    | [2] Liquid Runway & Buffer
 // Strictly ZERO DUMMY DATA: All telemetry computed directly from real user state
 // Strictly Non-Mixed Localization (100% Consistent English / Indonesian)
+// Strictly ZERO Non-Monochrome Colors (Monochrome Apple Luxury Theme)
 // ======================================================================
 
 import {
@@ -14,41 +14,25 @@ import {
 } from "recharts";
 import {
   ShieldCheck,
-  ShieldAlert,
-  PieChart,
-  Layers,
 } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import type { MonthlyDeploymentItem } from "./MonthlyDeploymentBarCard";
-import type { LiquiditySummary } from "./CapitalAllocationCard";
-
-export interface TopHoldingItem {
-  id: string;
-  symbol: string;
-  name: string;
-  marketValue: number;
-  pct: number;
-}
 
 interface AssetBentoMicroCardsProps {
-  topHoldings: TopHoldingItem[];
   deploymentHistory: MonthlyDeploymentItem[];
   liquidRunwayMonths: number;
   liquidReserves: number;
   monthlyBurnRate: number;
-  liquiditySummary: LiquiditySummary;
   isDark: boolean;
   isIndonesian: boolean;
   hideBalance?: boolean;
 }
 
 export function AssetBentoMicroCards({
-  topHoldings,
   deploymentHistory,
   liquidRunwayMonths,
   liquidReserves,
   monthlyBurnRate,
-  liquiditySummary,
   isDark,
   isIndonesian,
   hideBalance = false,
@@ -68,12 +52,11 @@ export function AssetBentoMicroCards({
   const totalDeployed = deploymentHistory.reduce((a, b) => a + b.deployed, 0);
   const activeCount = deploymentHistory.filter((d) => d.deployed > 0).length;
   const isRunwaySafe = liquidRunwayMonths >= 6;
-  const top3 = topHoldings.slice(0, 3);
 
   return (
     <div className="grid grid-cols-2 gap-3 select-none">
       {/* ── CARD 1: INFLOW VELOCITY SPARK ─────────────────────────────────── */}
-      <div className="p-3.5 rounded-[24px] space-y-2 flex flex-col justify-between" style={cardStyle}>
+      <div className="p-4 rounded-[26px] space-y-2.5 flex flex-col justify-between" style={cardStyle}>
         <div>
           <div className="flex items-center justify-between text-[var(--text-tertiary)] mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider truncate">
@@ -83,7 +66,7 @@ export function AssetBentoMicroCards({
               {activeCount}/6 {isIndonesian ? "bln" : "mo"}
             </span>
           </div>
-          <p className="font-mono text-[15px] font-bold text-[var(--text-primary)] leading-tight">
+          <p className="font-mono text-[16px] font-bold text-[var(--text-primary)] leading-tight">
             {hideBalance ? "••••" : formatRupiah(totalDeployed)}
           </p>
           <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 truncate">
@@ -92,7 +75,7 @@ export function AssetBentoMicroCards({
         </div>
 
         {/* Micro Spark Bar Chart */}
-        <div className="h-[38px] w-full pt-1">
+        <div className="h-[44px] w-full pt-1">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={deploymentHistory} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
               <Bar
@@ -106,19 +89,32 @@ export function AssetBentoMicroCards({
       </div>
 
       {/* ── CARD 2: LIQUID RUNWAY & SAFETY BUFFER ─────────────────────────── */}
-      <div className="p-3.5 rounded-[24px] space-y-2 flex flex-col justify-between" style={cardStyle}>
+      <div className="p-4 rounded-[26px] space-y-2.5 flex flex-col justify-between" style={cardStyle}>
         <div>
           <div className="flex items-center justify-between text-[var(--text-tertiary)] mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider truncate">
               {isIndonesian ? "Daya Tahan" : "Liquid Runway"}
             </span>
-            {isRunwaySafe ? (
-              <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
-            ) : (
-              <ShieldAlert size={13} className="text-amber-500 shrink-0" />
-            )}
+
+            {/* STRICTLY MONOCHROME BADGE */}
+            <div
+              className="px-2 py-0.5 rounded-full flex items-center gap-1 font-mono text-[9.5px] font-semibold shrink-0"
+              style={{
+                background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <ShieldCheck size={11} strokeWidth={2} className="text-[var(--text-primary)]" />
+              <span>
+                {isRunwaySafe
+                  ? isIndonesian ? "Aman" : "Safe"
+                  : isIndonesian ? "Waspada" : "Low"}
+              </span>
+            </div>
           </div>
-          <p className="font-mono text-[15px] font-bold text-[var(--text-primary)] leading-tight">
+
+          <p className="font-mono text-[16px] font-bold text-[var(--text-primary)] leading-tight">
             {liquidRunwayMonths > 0
               ? `${liquidRunwayMonths.toFixed(1)} ${isIndonesian ? "bln" : "mo"}`
               : `0 ${isIndonesian ? "bln" : "mo"}`}
@@ -130,134 +126,24 @@ export function AssetBentoMicroCards({
           </p>
         </div>
 
-        <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between text-[10px]">
-          <span className="text-[var(--text-tertiary)] truncate">
-            {isIndonesian ? "Burn:" : "Burn:"}{" "}
-            <strong className="font-mono font-bold text-[var(--text-secondary)]">
-              {hideBalance ? "••••" : formatRupiah(monthlyBurnRate)}
-            </strong>
-          </span>
-          <span className="font-mono font-bold text-[var(--text-primary)]">
-            {hideBalance ? "••••" : formatRupiah(liquidReserves)}
-          </span>
-        </div>
-      </div>
-
-      {/* ── CARD 3: PORTFOLIO DOMINANCE ───────────────────────────────────── */}
-      <div className="p-3.5 rounded-[24px] space-y-2 flex flex-col justify-between" style={cardStyle}>
-        <div>
-          <div className="flex items-center justify-between text-[var(--text-tertiary)] mb-1.5">
-            <div className="flex items-center gap-1 min-w-0">
-              <PieChart size={11} className="shrink-0" />
-              <span className="text-[10px] font-bold uppercase tracking-wider truncate">
-                {isIndonesian ? "Dominasi" : "Dominance"}
-              </span>
-            </div>
-            <span className="text-[9.5px] font-mono font-semibold text-[var(--text-secondary)]">
-              Top {top3.length}
+        {/* Clean Stacked Breakdown (NO TEXT COLLISION OR TRUNCATION) */}
+        <div className="pt-2 border-t border-[var(--glass-border)] space-y-1">
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-[var(--text-tertiary)] truncate">
+              {isIndonesian ? "Kas Likuid:" : "Liquid Cash:"}
+            </span>
+            <span className="font-mono font-bold text-[var(--text-primary)]">
+              {hideBalance ? "••••" : formatRupiah(liquidReserves)}
             </span>
           </div>
-
-          {top3.length > 0 ? (
-            <div className="space-y-1.5">
-              {top3.map((h) => (
-                <div key={h.id} className="space-y-0.5">
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="font-mono font-bold text-[var(--text-primary)] truncate max-w-[65px]">
-                      {h.symbol}
-                    </span>
-                    <span className="font-mono font-semibold text-[var(--text-secondary)]">
-                      {h.pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="w-full h-1 rounded-full overflow-hidden bg-white/[0.08] dark:bg-white/[0.06]">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(Math.max(h.pct, 4), 100)}%`,
-                        backgroundColor: isDark
-                          ? "rgba(255, 255, 255, 0.75)"
-                          : "rgba(24, 24, 27, 0.75)",
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[10px] text-[var(--text-tertiary)] italic py-2">
-              {isIndonesian ? "Belum ada aset" : "No assets recorded"}
-            </p>
-          )}
-        </div>
-
-        <p className="text-[9.5px] text-[var(--text-tertiary)] pt-1 border-t border-[var(--glass-border)] truncate">
-          {isIndonesian ? "Porsi dari total aset" : "Share of net wealth"}
-        </p>
-      </div>
-
-      {/* ── CARD 4: 3-TIER LIQUIDITY STRUCTURE ────────────────────────────── */}
-      <div className="p-3.5 rounded-[24px] space-y-2 flex flex-col justify-between" style={cardStyle}>
-        <div>
-          <div className="flex items-center justify-between text-[var(--text-tertiary)] mb-1.5">
-            <div className="flex items-center gap-1 min-w-0">
-              <Layers size={11} className="shrink-0" />
-              <span className="text-[10px] font-bold uppercase tracking-wider truncate">
-                {isIndonesian ? "Likuiditas" : "Liquidity"}
-              </span>
-            </div>
-            <span className="text-[9.5px] font-mono font-semibold text-[var(--text-secondary)]">
-              3-Tier
+          <div className="flex items-center justify-between text-[9.5px]">
+            <span className="text-[var(--text-tertiary)] truncate">
+              {isIndonesian ? "Pengeluaran:" : "Burn Rate:"}
+            </span>
+            <span className="font-mono font-semibold text-[var(--text-secondary)]">
+              {hideBalance ? "••••" : formatRupiah(monthlyBurnRate)}/{isIndonesian ? "bln" : "mo"}
             </span>
           </div>
-
-          <div className="space-y-1 text-[10.5px]">
-            {/* Liquid */}
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-tertiary)]">
-                {isIndonesian ? "Likuid" : "Liquid"}
-              </span>
-              <span className="font-mono font-bold text-[var(--text-primary)]">
-                {liquiditySummary.liquidPct.toFixed(0)}%
-              </span>
-            </div>
-
-            {/* Growth */}
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-tertiary)]">
-                {isIndonesian ? "Growth" : "Growth"}
-              </span>
-              <span className="font-mono font-bold text-[var(--text-primary)]">
-                {liquiditySummary.growthPct.toFixed(0)}%
-              </span>
-            </div>
-
-            {/* Defensive */}
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-tertiary)]">
-                {isIndonesian ? "Defensif" : "Defensive"}
-              </span>
-              <span className="font-mono font-bold text-[var(--text-primary)]">
-                {liquiditySummary.defensivePct.toFixed(0)}%
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Stacked mini progress bar */}
-        <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-white/[0.08] dark:bg-white/[0.06] p-0.2 gap-0.5">
-          <div
-            style={{ width: `${Math.max(liquiditySummary.liquidPct, 5)}%` }}
-            className="h-full rounded-full bg-emerald-500/80 transition-all duration-300"
-          />
-          <div
-            style={{ width: `${Math.max(liquiditySummary.growthPct, 5)}%` }}
-            className="h-full rounded-full bg-blue-500/80 transition-all duration-300"
-          />
-          <div
-            style={{ width: `${Math.max(liquiditySummary.defensivePct, 5)}%` }}
-            className="h-full rounded-full bg-amber-500/80 transition-all duration-300"
-          />
         </div>
       </div>
     </div>

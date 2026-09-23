@@ -100,23 +100,23 @@ export function MonthlyDeploymentBarCard({
           </div>
           <div>
             <h3 className="text-[14px] font-bold tracking-tight text-[var(--text-primary)]">
-              {isIndonesian ? "Injeksi Modal Bulanan" : "Monthly Capital Deployment"}
+              {isIndonesian ? "Histori Injeksi Modal" : "Monthly Capital Inflow"}
             </h3>
             <p className="text-[11px] text-[var(--text-tertiary)] font-medium">
               {isIndonesian
-                ? "Mutasi modal ke aset investasi (6 bln)"
-                : "Real capital inflow into investments (6 mo)"}
+                ? "Arus modal masuk per bulan (6 bln)"
+                : "Real investment deployment by month (6 mo)"}
             </p>
           </div>
         </div>
 
-        {/* Total Metric Pill */}
+        {/* Monthly Average Metric (No duplication with Bento card above) */}
         <div className="text-right shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
-            {isIndonesian ? "Total Injeksi" : "Total Deployed"}
+            {isIndonesian ? "Rata-Rata / Bln" : "Monthly Avg"}
           </span>
           <span className="font-mono text-[13px] font-bold text-[var(--text-primary)]">
-            {hideBalance ? "••••••••" : formatRupiah(totalDeployed)}
+            {hideBalance ? "••••••••" : formatRupiah(avgMonthly)}
           </span>
         </div>
       </div>
@@ -190,9 +190,9 @@ export function MonthlyDeploymentBarCard({
         <div className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
           <Calendar size={12} strokeWidth={1.75} />
           <span>
-            {isIndonesian ? "Rata-rata / bln: " : "Avg / month: "}
+            {isIndonesian ? "Puncak: " : "Peak: "}
             <strong className="font-mono font-bold text-[var(--text-secondary)]">
-              {hideBalance ? "••••" : formatRupiah(avgMonthly)}
+              {hideBalance ? "••••" : formatRupiah(maxDeployed)}
             </strong>
           </span>
         </div>
@@ -200,7 +200,7 @@ export function MonthlyDeploymentBarCard({
         <div className="flex items-center gap-1 text-[var(--text-secondary)] font-semibold">
           <ArrowUpRight size={13} strokeWidth={2} />
           <span>
-            {activeMonths.length} {isIndonesian ? "bulan aktif" : "active months"}
+            {activeMonths.length}/{data.length} {isIndonesian ? "bln aktif" : "active mo"}
           </span>
         </div>
       </div>

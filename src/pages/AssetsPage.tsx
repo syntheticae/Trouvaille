@@ -63,10 +63,7 @@ import {
   MonthlyDeploymentBarCard,
   type MonthlyDeploymentItem,
 } from "../components/assets/MonthlyDeploymentBarCard";
-import {
-  AssetBentoMicroCards,
-  type TopHoldingItem,
-} from "../components/assets/AssetBentoMicroCards";
+import { AssetBentoMicroCards } from "../components/assets/AssetBentoMicroCards";
 import type { LiquiditySummary } from "../components/assets/CapitalAllocationCard";
 import { format, subMonths } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -403,35 +400,6 @@ export function AssetsPage() {
     };
   }, [wallets, usdtMarketValue, liquidHoldings, fixedHoldings]);
 
-  // Top 4 Holdings Dominance
-  const topHoldings: TopHoldingItem[] = useMemo(() => {
-    const list: TopHoldingItem[] = [];
-
-    if (usdtMarketValue > 0) {
-      list.push({
-        id: "usdt-core",
-        symbol: "USDT",
-        name: "Tether USD",
-        marketValue: usdtMarketValue,
-        pct: totalMarketValuation > 0 ? (usdtMarketValue / totalMarketValuation) * 100 : 0,
-      });
-    }
-
-    holdings.forEach((h) => {
-      const val = calculateHoldingValuation(h);
-      if (val.marketValue > 0) {
-        list.push({
-          id: h.id,
-          symbol: h.symbol,
-          name: h.name,
-          marketValue: val.marketValue,
-          pct: totalMarketValuation > 0 ? (val.marketValue / totalMarketValuation) * 100 : 0,
-        });
-      }
-    });
-
-    return list.sort((a, b) => b.marketValue - a.marketValue).slice(0, 4);
-  }, [usdtMarketValue, holdings, totalMarketValuation]);
 
   const liquidRunwayMonths = useMemo(() => {
     if (monthlyBurnRate <= 0) return 12;
@@ -871,14 +839,12 @@ export function AssetsPage() {
         </div>
       )}
 
-      {/* ── 4. Bento Matrix 2x2 (Inflow, Runway, Dominance, Liquidity) ─────── */}
+      {/* ── 4. Bento Pillars (Inflow Velocity & Liquid Runway) ─────────────── */}
       <AssetBentoMicroCards
-        topHoldings={topHoldings}
         deploymentHistory={monthlyDeploymentData}
         liquidRunwayMonths={liquidRunwayMonths}
         liquidReserves={liquiditySummary.liquid}
         monthlyBurnRate={monthlyBurnRate}
-        liquiditySummary={liquiditySummary}
         isDark={isDark}
         isIndonesian={isIndonesian}
         hideBalance={isStealthMode}

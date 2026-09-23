@@ -1955,14 +1955,14 @@ export function TransactionSheet({
               style={{
                 background: isDark
                   ? "linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.045) 100%)"
-                  : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.78) 100%)",
+                  : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.8) 100%)",
                 color: "var(--text-secondary)",
                 border: isDark
                   ? "1px solid rgba(255,255,255,0.12)"
                   : "1px solid rgba(255,255,255,0.92)",
                 boxShadow: isDark
                   ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 3px 10px rgba(0,0,0,0.18)"
-                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.06)",
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.1)",
                 backdropFilter: "blur(18px) saturate(155%)",
                 WebkitBackdropFilter: "blur(18px) saturate(155%)",
               }}
@@ -2011,12 +2011,12 @@ export function TransactionSheet({
                   : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.70) 100%)",
                 border: isDark
                   ? "1px solid rgba(255,255,255,0.10)"
-                  : "1px solid rgba(255,255,255,0.88)",
+                  : "1px solid rgba(205,205,205,0.38)",
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, sans-serif",
                 boxShadow: isDark
                   ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.12)"
-                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 12px rgba(15,23,42,0.045)",
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 12px rgba(15,23,42,0.145)",
                 backdropFilter: "blur(20px) saturate(160%)",
                 WebkitBackdropFilter: "blur(20px) saturate(160%)",
               }}
@@ -2139,14 +2139,14 @@ export function TransactionSheet({
                           : [
                               "inset 0 1px 0 rgba(255,255,255,1)",
                               "inset 0 -1px 0 rgba(15,23,42,0.025)",
-                              "0 5px 14px rgba(15,23,42,0.085)",
+                              "0 5px 14px rgba(15,23,42,0.185)",
                             ].join(", ")
                         : isDark
                           ? "inset 0 1px 0 rgba(255,255,255,0.075)"
                           : [
                               "inset 0 1px 0 rgba(255,255,255,1)",
-                              "inset 0 -1px 0 rgba(255,255,255,0.30)",
-                              "0 3px 10px rgba(15,23,42,0.045)",
+                              "inset 0 -1px 0 rgba(255,255,255,0.40)",
+                              "0 3px 10px rgba(15,23,42,0.185)",
                             ].join(", "),
 
                       backdropFilter: "blur(18px) saturate(155%)",
