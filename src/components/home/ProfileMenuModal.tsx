@@ -1,20 +1,9 @@
 // ======================================================================
-// TROUVAILLE PROFILE DYNAMIC ISLAND HORIZONTAL CAPSULE
-// Apple Luxury Frosted Glass Dynamic Island Expansion
-// Strictly compliant with GEMINI.md:
-// - Rule 1: No native colored emojis, outline vector Lucide icons only
-// - Rule 2: Monochrome luxury glassmorphism (obsidian / alabaster)
-// - Rule 3: Zero icons in settings toggles
+// TROUVAILLE PROFILE DYNAMIC ISLAND
+// Premium Floating Full-Width Glass Capsule
 // ======================================================================
 
-import {
-  Bell,
-  Layers,
-  Laptop,
-  X,
-  HardDrive,
-  CloudCheck,
-} from "lucide-react";
+import { Bell, Layers, Laptop, X, HardDrive, CloudCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSpace } from "../../contexts/SpaceContext";
@@ -48,7 +37,9 @@ export function ProfileMenuModal({
   const { activeSpace } = useSpace();
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
+
   const isDark = theme !== "light";
+
   const upcomingBills = useUpcomingBills();
   const hasNotifications = upcomingBills.length > 0;
 
@@ -57,6 +48,7 @@ export function ProfileMenuModal({
     session?.user?.user_metadata?.display_name ||
     session?.user?.email?.split("@")[0] ||
     "User";
+
   const avatarUrl =
     propAvatarUrl ||
     session?.user?.user_metadata?.avatar_url ||
@@ -67,190 +59,657 @@ export function ProfileMenuModal({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Subtle click-outside backdrop */}
+          {/* ============================================================
+              FLOATING BACKDROP
+              ============================================================ */}
+
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{
+              duration: 0.18,
+              ease: "easeOut",
+            }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px]"
+            className="fixed inset-0 z-40"
+            style={{
+              background: isDark ? "rgba(0,0,0,0.28)" : "rgba(0,0,0,0.14)",
+
+              backdropFilter: "blur(3px)",
+              WebkitBackdropFilter: "blur(3px)",
+            }}
           />
 
-          {/* Apple Dynamic Island Horizontal Expansion Capsule */}
+          {/* ============================================================
+              FLOATING CAPSULE
+
+              IMPORTANT:
+              fixed = independent from parent width
+              top/left/right = still floating
+              margin from viewport = preserved
+              ============================================================ */}
+
           <motion.div
-            initial={{ opacity: 0, scale: 0.94, x: -6 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.94, x: -6 }}
-            transition={{ type: "spring", stiffness: 480, damping: 32 }}
-            className="absolute top-0 left-0 z-50 h-11 rounded-full px-2 flex items-center gap-1.5 shadow-2xl overflow-hidden select-none max-w-[calc(100vw-36px)]"
+            initial={{
+              opacity: 0,
+              scaleX: 0.94,
+              scaleY: 0.9,
+              y: -10,
+              filter: "blur(3px)",
+            }}
+            animate={{
+              opacity: 1,
+              scaleX: 1,
+              scaleY: 1,
+              y: 0,
+              filter: "blur(0px)",
+            }}
+            exit={{
+              opacity: 0,
+              scaleX: 0.94,
+              scaleY: 0.9,
+              y: -8,
+              filter: "blur(2px)",
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 380,
+              damping: 30,
+              mass: 0.72,
+            }}
+            className="
+              fixed
+              top-[24px]
+              left-[16px]
+              right-[16px]
+              z-50
+
+              h-[48px]
+
+              rounded-full
+
+              px-[7px]
+
+              flex
+              items-center
+              gap-[5px]
+
+              overflow-hidden
+              select-none
+              box-border
+
+              max-w-none
+            "
             style={{
               background: isDark
-                ? "rgba(14, 14, 18, 0.94)"
-                : "rgba(255, 255, 255, 0.95)",
-              backdropFilter: "blur(36px) saturate(190%)",
-              WebkitBackdropFilter: "blur(36px) saturate(190%)",
+                ? `
+                  linear-gradient(
+                    180deg,
+                    rgba(43,43,48,0.94) 0%,
+                    rgba(23,23,27,0.97) 48%,
+                    rgba(13,13,16,0.985) 100%
+                  )
+                `
+                : `
+                  linear-gradient(
+                    180deg,
+                    rgba(255,255,255,0.985) 0%,
+                    rgba(248,248,250,0.975) 50%,
+                    rgba(240,240,243,0.97) 100%
+                  )
+                `,
+
+              /*
+               * Reduced blur.
+               * Still enough to create glass,
+               * but much sharper than the previous version.
+               */
+              backdropFilter: "blur(18px) saturate(150%)",
+              WebkitBackdropFilter: "blur(18px) saturate(150%)",
+
               border: isDark
-                ? "1px solid rgba(255, 255, 255, 0.14)"
-                : "1px solid rgba(0, 0, 0, 0.09)",
+                ? "1px solid rgba(255,255,255,0.15)"
+                : "1px solid rgba(0,0,0,0.095)",
+
               boxShadow: isDark
-                ? "0 18px 45px -8px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.16)"
-                : "0 16px 36px -8px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.95)",
+                ? `
+                  0 24px 60px rgba(0,0,0,0.42),
+                  0 8px 24px rgba(0,0,0,0.22),
+                  inset 0 1px 0 rgba(255,255,255,0.15),
+                  inset 0 -1px 0 rgba(0,0,0,0.40)
+                `
+                : `
+                  0 20px 50px rgba(0,0,0,0.14),
+                  0 7px 18px rgba(0,0,0,0.07),
+                  inset 0 1px 0 rgba(255,255,255,0.96)
+                `,
             }}
           >
-            {/* 1. Profile Identity Chip (Avatar + Name) */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                onClose();
-                setTimeout(() => onOpenProfileSettings(), 80);
-              }}
-              className="flex items-center gap-2 pl-0.5 pr-2 py-1 rounded-full hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer shrink-0 max-w-[140px]"
-              title={isIndonesian ? "Profil Pengguna" : "User Profile"}
-            >
-              <div
-                className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0 relative"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Avatar"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="font-semibold text-[11px] text-[var(--text-primary)]">
-                    {displayName.slice(0, 2).toUpperCase()}
-                  </span>
-                )}
-                {/* Micro sync pip */}
-                <span
-                  className={`absolute bottom-0 right-0 w-1.5 h-1.5 rounded-full border border-black/50 ${
-                    isGuest ? "bg-amber-400" : "bg-emerald-400"
-                  }`}
-                />
-              </div>
+            {/* ==========================================================
+                SUBTLE TOP REFLECTION
+                ========================================================== */}
 
-              <div className="min-w-0 text-left">
-                <p className="font-semibold text-[12px] truncate text-[var(--text-primary)] leading-none">
-                  {displayName}
-                </p>
-                <div className="flex items-center gap-0.5 mt-0.5 opacity-60">
-                  {isGuest ? (
-                    <HardDrive size={8} className="shrink-0" />
-                  ) : (
-                    <CloudCheck size={8} className="shrink-0" />
-                  )}
-                  <span className="text-[9px] font-medium leading-none">
-                    {isGuest ? "Local" : "Sync"}
-                  </span>
-                </div>
-              </div>
-            </button>
-
-            {/* Hairline Divider */}
             <div
-              className="h-4 w-[1px] shrink-0"
+              className="
+                absolute
+                left-[18px]
+                right-[18px]
+                top-[1px]
+                h-[11px]
+                rounded-full
+                pointer-events-none
+              "
               style={{
                 background: isDark
-                  ? "rgba(255, 255, 255, 0.12)"
-                  : "rgba(0, 0, 0, 0.1)",
+                  ? "linear-gradient(180deg, rgba(255,255,255,0.075), transparent)"
+                  : "linear-gradient(180deg, rgba(255,255,255,0.70), transparent)",
+
+                opacity: 0.72,
               }}
             />
 
-            {/* 2. Active Space Ledger Capsule */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                onClose();
-                setTimeout(() => onOpenManageLedgers(), 80);
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-left transition-all active:scale-95 cursor-pointer shrink-0 max-w-[130px]"
-              style={{
-                background: isDark
-                  ? "rgba(255, 255, 255, 0.06)"
-                  : "rgba(0, 0, 0, 0.04)",
-                border: "1px solid var(--glass-border)",
-              }}
-              title={isIndonesian ? "Ganti Buku / Space" : "Switch Space"}
-            >
-              <Layers size={12} strokeWidth={1.75} className="shrink-0 text-[var(--text-secondary)]" />
-              <span className="font-medium text-[11px] text-[var(--text-primary)] truncate">
-                {activeSpace.name}
-              </span>
-            </button>
+            {/* ==========================================================
+                LEFT GROUP
+                ========================================================== */}
 
-            {/* 3. Notification Button (Moved from Header) */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                onClose();
-                if (onOpenNotifications) {
-                  setTimeout(() => onOpenNotifications(), 80);
-                }
-              }}
-              className="w-7 h-7 rounded-full flex items-center justify-center relative active:scale-95 transition-transform cursor-pointer shrink-0"
-              style={{
-                background: isDark
-                  ? "rgba(255, 255, 255, 0.06)"
-                  : "rgba(0, 0, 0, 0.04)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-              }}
-              title={isIndonesian ? "Pemberitahuan" : "Notifications"}
-            >
-              <Bell size={13} strokeWidth={1.75} />
-              {hasNotifications && (
-                <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[var(--accent)] ring-1 ring-black/40" />
-              )}
-            </button>
+            <div
+              className="
+                relative
+                z-[1]
 
-            {/* 4. Web Dashboard Link Button */}
-            {onOpenWebDashboard && (
+                flex
+                items-center
+                gap-[5px]
+
+                min-w-0
+                shrink-0
+              "
+            >
+              {/* ========================================================
+                  PROFILE
+                  ======================================================== */}
+
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
                   onClose();
-                  setTimeout(() => onOpenWebDashboard(), 80);
+
+                  setTimeout(() => {
+                    onOpenProfileSettings();
+                  }, 80);
                 }}
-                className="w-7 h-7 rounded-full flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0"
+                className="
+                  group
+
+                  flex
+                  items-center
+                  gap-[9px]
+
+                  pl-[4px]
+                  pr-[14px]
+                  py-[5px]
+
+                  rounded-full
+
+                  hover:bg-white/[0.055]
+                  active:scale-[0.97]
+
+                  transition-all
+                  duration-200
+
+                  cursor-pointer
+                  shrink-0
+
+                  max-w-[180px]
+                "
+                title={isIndonesian ? "Profil Pengguna" : "User Profile"}
+              >
+                {/* Avatar */}
+
+                <div
+                  className="
+                    relative
+                    w-[32px]
+                    h-[32px]
+
+                    rounded-full
+                    overflow-hidden
+
+                    flex
+                    items-center
+                    justify-center
+
+                    shrink-0
+                  "
+                  style={{
+                    background: isDark
+                      ? "linear-gradient(145deg, #36363C, #111114)"
+                      : "linear-gradient(145deg, #FFFFFF, #E8E8EB)",
+
+                    border: isDark
+                      ? "1px solid rgba(255,255,255,0.18)"
+                      : "1px solid rgba(0,0,0,0.09)",
+
+                    boxShadow: isDark
+                      ? `
+                        inset 0 1px 0 rgba(255,255,255,0.12),
+                        0 2px 7px rgba(0,0,0,0.28)
+                      `
+                      : `
+                        inset 0 1px 0 rgba(255,255,255,0.9),
+                        0 2px 7px rgba(0,0,0,0.08)
+                      `,
+                  }}
+                >
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Avatar"
+                      className="
+                        w-full
+                        h-full
+                        object-cover
+                      "
+                    />
+                  ) : (
+                    <span
+                      className="
+                        font-semibold
+                        text-[11px]
+                        tracking-[-0.02em]
+                        text-[var(--text-primary)]
+                      "
+                    >
+                      {displayName.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+
+                  {/* Sync status */}
+
+                  <span
+                    className="
+                      absolute
+                      bottom-[1px]
+                      right-[1px]
+
+                      w-[6px]
+                      h-[6px]
+
+                      rounded-full
+                    "
+                    style={{
+                      background: isGuest
+                        ? "#8A8A8F"
+                        : isDark
+                          ? "#D9D9DD"
+                          : "#55555A",
+
+                      border: isDark ? "1px solid #111114" : "1px solid white",
+
+                      boxShadow: isDark
+                        ? "0 0 0 1px rgba(255,255,255,0.12)"
+                        : "0 0 0 1px rgba(0,0,0,0.08)",
+                    }}
+                  />
+                </div>
+
+                {/* Identity */}
+
+                <div className="min-w-0 text-left">
+                  <p
+                    className="
+                      font-semibold
+                      text-[13px]
+
+                      truncate
+
+                      leading-[14px]
+                      tracking-[-0.015em]
+
+                      text-[var(--text-primary)]
+                    "
+                  >
+                    {displayName}
+                  </p>
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-[3px]
+
+                      mt-[3px]
+
+                      opacity-55
+                    "
+                  >
+                    {isGuest ? (
+                      <HardDrive size={9} strokeWidth={1.8} />
+                    ) : (
+                      <CloudCheck size={9} strokeWidth={1.8} />
+                    )}
+
+                    <span
+                      className="
+                        text-[9px]
+                        font-medium
+                        leading-none
+                      "
+                    >
+                      {isGuest ? "Local" : "Sync"}
+                    </span>
+                  </div>
+                </div>
+              </button>
+
+              {/* ========================================================
+                  DIVIDER
+                  ======================================================== */}
+
+              <div
+                className="
+                  h-[20px]
+                  w-[1px]
+                  shrink-0
+                "
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.06)"
-                    : "rgba(0, 0, 0, 0.04)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
+                    ? "rgba(255,255,255,0.11)"
+                    : "rgba(0,0,0,0.09)",
                 }}
-                title={isIndonesian ? "Web Dashboard QR" : "Web Link"}
-              >
-                <Laptop size={13} strokeWidth={1.75} />
-              </button>
-            )}
+              />
 
-            {/* 5. Collapse / Close Button */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                onClose();
-              }}
-              className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer shrink-0 ml-0.5"
-              style={{
-                background: isDark
-                  ? "rgba(255, 255, 255, 0.04)"
-                  : "rgba(0, 0, 0, 0.03)",
-              }}
-              title={isIndonesian ? "Tutup" : "Close"}
-              aria-label="Close"
+              {/* ========================================================
+                  ACTIVE LEDGER
+                  ======================================================== */}
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  onClose();
+
+                  setTimeout(() => {
+                    onOpenManageLedgers();
+                  }, 80);
+                }}
+                className="
+                  flex
+                  items-center
+                  gap-[7px]
+
+                  px-[14px]
+                  py-[7px]
+
+                  rounded-full
+
+                  text-left
+
+                  transition-all
+                  duration-200
+
+                  active:scale-[0.97]
+                  hover:bg-white/[0.075]
+
+                  cursor-pointer
+                  shrink-0
+
+                  max-w-[210px]
+                "
+                style={{
+                  background: isDark
+                    ? "rgba(255,255,255,0.055)"
+                    : "rgba(0,0,0,0.035)",
+
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.095)"
+                    : "1px solid rgba(0,0,0,0.07)",
+
+                  boxShadow: isDark
+                    ? "inset 0 1px 0 rgba(255,255,255,0.05)"
+                    : "inset 0 1px 0 rgba(255,255,255,0.72)",
+                }}
+                title={isIndonesian ? "Ganti Buku / Space" : "Switch Space"}
+              >
+                <Layers
+                  size={12}
+                  strokeWidth={1.65}
+                  className="
+                    shrink-0
+                    opacity-65
+                  "
+                />
+
+                <span
+                  className="
+                    font-medium
+                    text-[12px]
+                    tracking-[-0.01em]
+
+                    text-[var(--text-primary)]
+
+                    truncate
+                  "
+                >
+                  {activeSpace.name}
+                </span>
+              </button>
+            </div>
+
+            {/* ==========================================================
+                FLEXIBLE SPACE
+
+                This keeps the right controls attached to the
+                right side while the entire capsule remains floating.
+                ========================================================== */}
+
+            <div className="flex-1 min-w-0" />
+
+            {/* ==========================================================
+                RIGHT GROUP
+                ========================================================== */}
+
+            <div
+              className="
+                relative
+                z-[1]
+
+                flex
+                items-center
+                gap-[5px]
+
+                shrink-0
+              "
             >
-              <X size={11} strokeWidth={2} />
-            </button>
+              {/* ========================================================
+                  NOTIFICATIONS
+                  ======================================================== */}
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  onClose();
+
+                  if (onOpenNotifications) {
+                    setTimeout(() => {
+                      onOpenNotifications();
+                    }, 80);
+                  }
+                }}
+                className="
+                  w-[32px]
+                  h-[32px]
+
+                  rounded-full
+
+                  flex
+                  items-center
+                  justify-center
+
+                  relative
+                  shrink-0
+
+                  cursor-pointer
+
+                  transition-all
+                  duration-200
+
+                  hover:scale-[1.03]
+                  hover:bg-white/[0.075]
+
+                  active:scale-[0.92]
+                "
+                style={{
+                  background: isDark
+                    ? "rgba(255,255,255,0.055)"
+                    : "rgba(0,0,0,0.035)",
+
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.10)"
+                    : "1px solid rgba(0,0,0,0.075)",
+
+                  color: "var(--text-primary)",
+
+                  boxShadow: isDark
+                    ? "inset 0 1px 0 rgba(255,255,255,0.06)"
+                    : "inset 0 1px 0 rgba(255,255,255,0.75)",
+                }}
+                title={isIndonesian ? "Pemberitahuan" : "Notifications"}
+              >
+                <Bell size={13} strokeWidth={1.65} />
+
+                {hasNotifications && (
+                  <span
+                    className="
+                      absolute
+                      top-[5px]
+                      right-[5px]
+
+                      w-[5px]
+                      h-[5px]
+
+                      rounded-full
+                    "
+                    style={{
+                      background: isDark
+                        ? "rgba(255,255,255,0.92)"
+                        : "rgba(0,0,0,0.72)",
+
+                      boxShadow: isDark
+                        ? "0 0 0 1px rgba(10,10,12,0.9)"
+                        : "0 0 0 1px rgba(255,255,255,0.9)",
+                    }}
+                  />
+                )}
+              </button>
+
+              {/* ========================================================
+                  WEB DASHBOARD
+                  ======================================================== */}
+
+              {onOpenWebDashboard && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    onClose();
+
+                    setTimeout(() => {
+                      onOpenWebDashboard();
+                    }, 80);
+                  }}
+                  className="
+                    w-[32px]
+                    h-[32px]
+
+                    rounded-full
+
+                    flex
+                    items-center
+                    justify-center
+
+                    shrink-0
+
+                    cursor-pointer
+
+                    transition-all
+                    duration-200
+
+                    hover:scale-[1.03]
+                    hover:bg-white/[0.075]
+
+                    active:scale-[0.92]
+                  "
+                  style={{
+                    background: isDark
+                      ? "rgba(255,255,255,0.055)"
+                      : "rgba(0,0,0,0.035)",
+
+                    border: isDark
+                      ? "1px solid rgba(255,255,255,0.10)"
+                      : "1px solid rgba(0,0,0,0.075)",
+
+                    color: "var(--text-primary)",
+
+                    boxShadow: isDark
+                      ? "inset 0 1px 0 rgba(255,255,255,0.06)"
+                      : "inset 0 1px 0 rgba(255,255,255,0.75)",
+                  }}
+                  title={isIndonesian ? "Web Dashboard" : "Web Dashboard"}
+                >
+                  <Laptop size={13} strokeWidth={1.65} />
+                </button>
+              )}
+
+              {/* ========================================================
+                  CLOSE
+                  ======================================================== */}
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  onClose();
+                }}
+                className="
+                  w-[30px]
+                  h-[30px]
+
+                  rounded-full
+
+                  flex
+                  items-center
+                  justify-center
+
+                  shrink-0
+                  ml-[1px]
+
+                  cursor-pointer
+
+                  transition-all
+                  duration-200
+
+                  hover:scale-[1.03]
+                  active:scale-[0.90]
+                "
+                style={{
+                  background: isDark ? "rgba(0,0,0,0.24)" : "rgba(0,0,0,0.045)",
+
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.07)"
+                    : "1px solid rgba(0,0,0,0.06)",
+
+                  color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.48)",
+                }}
+                title={isIndonesian ? "Tutup" : "Close"}
+                aria-label="Close"
+              >
+                <X size={12} strokeWidth={2} />
+              </button>
+            </div>
           </motion.div>
         </>
       )}

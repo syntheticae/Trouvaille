@@ -40,7 +40,11 @@ import {
 } from "../../lib/mediaPermissions";
 import { scanReceiptOrSlip, type OCRScanResult } from "../../lib/ocrEngine";
 import type { ParsedSlipResult } from "../../lib/slipParser";
-import { useWallets, useAddWallet, getWalletIcon } from "../../hooks/useWallets";
+import {
+  useWallets,
+  useAddWallet,
+  getWalletIcon,
+} from "../../hooks/useWallets";
 import { useCategories, useAddCategory } from "../../hooks/useCategories";
 import { useAddTransaction } from "../../hooks/useTransactions";
 import { useToast } from "../../contexts/ToastContext";
@@ -113,8 +117,12 @@ export function ReceiptScanModal({
   const [isTorchOn, setIsTorchOn] = useState(false);
 
   // Detected unmapped institution / category
-  const [unregisteredWalletName, setUnregisteredWalletName] = useState<string | null>(null);
-  const [unregisteredCategoryName, setUnregisteredCategoryName] = useState<string | null>(null);
+  const [unregisteredWalletName, setUnregisteredWalletName] = useState<
+    string | null
+  >(null);
+  const [unregisteredCategoryName, setUnregisteredCategoryName] = useState<
+    string | null
+  >(null);
 
   // Media permission dialog
   const [permissionPrompt, setPermissionPrompt] = useState<{
@@ -152,7 +160,9 @@ export function ReceiptScanModal({
     const track = streamRef.current.getVideoTracks()[0];
     if (!track) return;
     try {
-      const capabilities = (track.getCapabilities ? track.getCapabilities() : {}) as any;
+      const capabilities = (
+        track.getCapabilities ? track.getCapabilities() : {}
+      ) as any;
       if (capabilities.torch) {
         const next = !isTorchOn;
         await track.applyConstraints({
@@ -162,25 +172,38 @@ export function ReceiptScanModal({
         triggerHaptic("light");
       } else {
         showToast(
-          isIndonesian ? "Flash tidak didukung di perangkat ini" : "Flash is not supported on this device/camera",
-          "info"
+          isIndonesian
+            ? "Flash tidak didukung di perangkat ini"
+            : "Flash is not supported on this device/camera",
+          "info",
         );
       }
     } catch (err) {
       console.warn("Error toggling torch:", err);
-      showToast(isIndonesian ? "Gagal mengubah status senter" : "Could not toggle flash", "delete");
+      showToast(
+        isIndonesian
+          ? "Gagal mengubah status senter"
+          : "Could not toggle flash",
+        "delete",
+      );
     }
   };
 
   const startLiveCamera = async () => {
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return;
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices?.getUserMedia
+    )
+      return;
 
     // On native platforms (iOS/Android), ensure native camera permission is granted first
     if (Capacitor.isNativePlatform()) {
       try {
         const hasPermission = await requestCameraPermission();
         if (!hasPermission) {
-          console.warn("[ReceiptScanModal] Native camera permission not granted");
+          console.warn(
+            "[ReceiptScanModal] Native camera permission not granted",
+          );
           return;
         }
       } catch (err) {
@@ -339,7 +362,10 @@ export function ReceiptScanModal({
    * Downsamples large camera/gallery photos (e.g. 12-48MP) to max 1600px
    * on an offscreen HTML5 canvas to prevent webview OOM and speed up OCR by ~60%.
    */
-  const downsampleImageIfNeeded = async (fileOrBlob: Blob | File, maxDim = 1600): Promise<Blob> => {
+  const downsampleImageIfNeeded = async (
+    fileOrBlob: Blob | File,
+    maxDim = 1600,
+  ): Promise<Blob> => {
     return new Promise((resolve) => {
       if (fileOrBlob.type && !fileOrBlob.type.startsWith("image/")) {
         resolve(fileOrBlob);
@@ -383,7 +409,10 @@ export function ReceiptScanModal({
     });
   };
 
-  const handleProcessMedia = async (fileOrBlob: Blob | File, customPreviewUrl?: string) => {
+  const handleProcessMedia = async (
+    fileOrBlob: Blob | File,
+    customPreviewUrl?: string,
+  ) => {
     triggerHaptic("medium");
     setErrorText(null);
     setUnregisteredWalletName(null);
@@ -422,7 +451,7 @@ export function ReceiptScanModal({
           !w.name.toLowerCase().includes("piutang") &&
           !w.name.toLowerCase().includes("crypto") &&
           !w.name.toLowerCase().includes("saham") &&
-          !w.name.toLowerCase().includes("investasi")
+          !w.name.toLowerCase().includes("investasi"),
       );
       const fallbackWallet =
         spendableWallets.find((w) => /cash|tunai/i.test(w.name)) ||
@@ -430,7 +459,9 @@ export function ReceiptScanModal({
         spendableWallets[0] ||
         wallets[0];
 
-      const matchedWallet = wallets.find((w) => w.id === result.slip.sourceWalletId);
+      const matchedWallet = wallets.find(
+        (w) => w.id === result.slip.sourceWalletId,
+      );
       if (matchedWallet) {
         setWalletId(matchedWallet.id);
         setUnregisteredWalletName(null);
@@ -448,7 +479,7 @@ export function ReceiptScanModal({
           !c.name.toLowerCase().includes("fee") &&
           !c.name.toLowerCase().includes("pajak") &&
           !c.name.toLowerCase().includes("legal") &&
-          !c.name.toLowerCase().includes("kerugian")
+          !c.name.toLowerCase().includes("kerugian"),
       );
       const fallbackCat =
         cleanCats.find((c) => /makanan|kuliner|food|resto/i.test(c.name)) ||
@@ -457,7 +488,9 @@ export function ReceiptScanModal({
         cleanCats[0] ||
         categories[0];
 
-      const matchedCat = categories.find((c) => c.id === result.slip.categoryId);
+      const matchedCat = categories.find(
+        (c) => c.id === result.slip.categoryId,
+      );
       if (matchedCat) {
         setCategoryId(matchedCat.id);
         setUnregisteredCategoryName(null);
@@ -481,7 +514,10 @@ export function ReceiptScanModal({
     } catch (err: any) {
       console.error("[ReceiptScanModal] Scan failed:", err);
       triggerHaptic("heavy");
-      setErrorText(err?.message || "Failed to scan receipt. Please ensure the image is clear and well lit.");
+      setErrorText(
+        err?.message ||
+          "Failed to scan receipt. Please ensure the image is clear and well lit.",
+      );
       setStep("idle");
     }
   };
@@ -496,7 +532,8 @@ export function ReceiptScanModal({
 
   const captureLiveSnapshot = (): boolean => {
     const video = videoRef.current;
-    if (!video || video.videoWidth === 0 || video.videoHeight === 0) return false;
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0)
+      return false;
 
     triggerHaptic("heavy");
     const canvas = document.createElement("canvas");
@@ -515,7 +552,7 @@ export function ReceiptScanModal({
         }
       },
       "image/jpeg",
-      0.95
+      0.95,
     );
     return true;
   };
@@ -534,7 +571,8 @@ export function ReceiptScanModal({
           isOpen: true,
           type: "camera",
           title: "Camera Access Required",
-          description: "Trouvaille requires camera access to scan physical receipts, invoices, and payment slips directly.",
+          description:
+            "Trouvaille requires camera access to scan physical receipts, invoices, and payment slips directly.",
         });
       } else {
         console.error("[ReceiptScanModal] Camera capture error:", err);
@@ -557,7 +595,8 @@ export function ReceiptScanModal({
           isOpen: true,
           type: "photos",
           title: "Photo Library Access Required",
-          description: "Trouvaille requires photo library access to import saved receipts, invoices, and payment screenshots.",
+          description:
+            "Trouvaille requires photo library access to import saved receipts, invoices, and payment screenshots.",
         });
       } else {
         console.error("[ReceiptScanModal] Gallery pick error:", err);
@@ -582,7 +621,11 @@ export function ReceiptScanModal({
               setWalletId(createdWallet.id);
             }
             setUnregisteredWalletName(null);
-            showToast(`Account "${unregisteredWalletName}" created`, "add", () => {});
+            showToast(
+              `Account "${unregisteredWalletName}" created`,
+              "add",
+              () => {},
+            );
           },
           onError: () => {
             showToast("Failed to create account", "delete", () => {});
@@ -611,7 +654,11 @@ export function ReceiptScanModal({
               setCategoryId(createdCat.id);
             }
             setUnregisteredCategoryName(null);
-            showToast(`Category "${unregisteredCategoryName}" created`, "add", () => {});
+            showToast(
+              `Category "${unregisteredCategoryName}" created`,
+              "add",
+              () => {},
+            );
           },
           onError: () => {
             showToast("Failed to create category", "delete", () => {});
@@ -631,27 +678,59 @@ export function ReceiptScanModal({
 
     const isUUID = (id?: string | null) =>
       !!id &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id,
+      );
 
-    const effectiveWallet = wallets.find((w) => w.id === walletId) || wallets[0];
-    const effectiveToWallet = wallets.find((w) => w.id === toWalletId) || (wallets.length > 1 ? (wallets[0].id === effectiveWallet?.id ? wallets[1] : wallets[0]) : null);
-    const effectiveCategory = categories.find((c) => c.id === categoryId) || (categories.length > 0 ? categories[0] : null);
+    const effectiveWallet =
+      wallets.find((w) => w.id === walletId) || wallets[0];
+    const effectiveToWallet =
+      wallets.find((w) => w.id === toWalletId) ||
+      (wallets.length > 1
+        ? wallets[0].id === effectiveWallet?.id
+          ? wallets[1]
+          : wallets[0]
+        : null);
+    const effectiveCategory =
+      categories.find((c) => c.id === categoryId) ||
+      (categories.length > 0 ? categories[0] : null);
 
-    const effectiveWalletId = effectiveWallet?.id && isUUID(effectiveWallet.id) ? effectiveWallet.id : null;
-    const effectiveToWalletId = type === "transfer" && effectiveToWallet?.id && isUUID(effectiveToWallet.id) ? effectiveToWallet.id : null;
-    const effectiveCatId = effectiveCategory?.id && isUUID(effectiveCategory.id) ? effectiveCategory.id : null;
+    const effectiveWalletId =
+      effectiveWallet?.id && isUUID(effectiveWallet.id)
+        ? effectiveWallet.id
+        : null;
+    const effectiveToWalletId =
+      type === "transfer" &&
+      effectiveToWallet?.id &&
+      isUUID(effectiveToWallet.id)
+        ? effectiveToWallet.id
+        : null;
+    const effectiveCatId =
+      effectiveCategory?.id && isUUID(effectiveCategory.id)
+        ? effectiveCategory.id
+        : null;
 
-    if (type === "transfer" && effectiveWalletId && effectiveToWalletId && effectiveWalletId === effectiveToWalletId) {
+    if (
+      type === "transfer" &&
+      effectiveWalletId &&
+      effectiveToWalletId &&
+      effectiveWalletId === effectiveToWalletId
+    ) {
       showToast(
-        isIndonesian ? "Akun asal dan akun tujuan harus berbeda" : "Source and destination accounts must be different",
-        "delete"
+        isIndonesian
+          ? "Akun asal dan akun tujuan harus berbeda"
+          : "Source and destination accounts must be different",
+        "delete",
       );
       return;
     }
 
     const finalDescription = note.trim()
-      ? (merchant.trim() ? `${merchant.trim()} • ${note.trim()}` : note.trim())
-      : (merchant.trim() || (type === "transfer" ? "Transfer" : "Scanned Receipt"));
+      ? merchant.trim()
+        ? `${merchant.trim()} • ${note.trim()}`
+        : note.trim()
+      : merchant.trim() ||
+        (type === "transfer" ? "Transfer" : "Scanned Receipt");
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);
@@ -675,17 +754,21 @@ export function ReceiptScanModal({
       {
         onSuccess: () => {
           showToast(
-            isIndonesian ? "Transaksi berhasil disimpan" : "Transaction saved successfully",
+            isIndonesian
+              ? "Transaksi berhasil disimpan"
+              : "Transaction saved successfully",
             "add",
-            () => {}
+            () => {},
           );
           onClose();
         },
         onError: () => {
           showToast(
-            isIndonesian ? "Gagal menyimpan transaksi" : "Failed to save transaction",
+            isIndonesian
+              ? "Gagal menyimpan transaksi"
+              : "Failed to save transaction",
             "delete",
-            () => {}
+            () => {},
           );
         },
       },
@@ -695,8 +778,11 @@ export function ReceiptScanModal({
   const handleOpenInFullForm = () => {
     triggerHaptic("light");
     const finalDescription = note.trim()
-      ? (merchant.trim() ? `${merchant.trim()} • ${note.trim()}` : note.trim())
-      : (merchant.trim() || (type === "transfer" ? "Transfer" : "Scanned Receipt"));
+      ? merchant.trim()
+        ? `${merchant.trim()} • ${note.trim()}`
+        : note.trim()
+      : merchant.trim() ||
+        (type === "transfer" ? "Transfer" : "Scanned Receipt");
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);
@@ -723,22 +809,30 @@ export function ReceiptScanModal({
     <>
       <AnimatePresence>
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-auto">
-          {/* Liquid Glass Backdrop */}
+          {/* ============================================================
+          BACKDROP
+          ============================================================ */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             onClick={step === "processing" ? undefined : onClose}
-            className={`fixed inset-0 ${isDark ? "bg-black/70 backdrop-blur-2xl" : "bg-black/35 backdrop-blur-xl"}`}
+            className="fixed inset-0"
             style={{
-              backgroundImage: isDark
-                ? "radial-gradient(circle at 50% 15%, rgba(255, 255, 255, 0.05) 0%, transparent 70%)"
-                : "radial-gradient(circle at 50% 15%, rgba(0, 0, 0, 0.03) 0%, transparent 70%)",
+              background: isDark ? "rgba(0,0,0,0.76)" : "rgba(15,23,42,0.38)",
+              backdropFilter: isDark
+                ? "blur(24px) saturate(125%)"
+                : "blur(20px) saturate(120%)",
+              WebkitBackdropFilter: isDark
+                ? "blur(24px) saturate(125%)"
+                : "blur(20px) saturate(120%)",
             }}
           />
 
-          {/* Liquid Glass Modal Container */}
+          {/* ============================================================
+          MAIN MODAL
+          ============================================================ */}
           <motion.div
             initial={{ y: "100%", opacity: 0.8 }}
             animate={{ y: 0, opacity: 1 }}
@@ -747,34 +841,69 @@ export function ReceiptScanModal({
             className="w-full max-w-md rounded-t-[36px] sm:rounded-[36px] p-5 relative z-10 flex flex-col max-h-[92dvh] overflow-hidden"
             style={{
               background: isDark
-                ? "linear-gradient(165deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.55) 100%), var(--bg-canvas)"
-                : "linear-gradient(165deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(244, 244, 248, 0.98) 100%), var(--bg-canvas)",
-              backdropFilter: "blur(32px) saturate(180%)",
-              WebkitBackdropFilter: "blur(32px) saturate(180%)",
+                ? "linear-gradient(165deg, rgba(255,255,255,0.085) 0%, rgba(255,255,255,0.032) 40%, rgba(0,0,0,0.62) 100%), var(--bg-canvas)"
+                : "linear-gradient(180deg, #ffffff 0%, #fcfcfe 42%, #f7f7fa 100%)",
+              backdropFilter: "blur(34px) saturate(185%)",
+              WebkitBackdropFilter: "blur(34px) saturate(185%)",
               border: isDark
-                ? "1px solid rgba(255, 255, 255, 0.14)"
-                : "1px solid rgba(0, 0, 0, 0.08)",
+                ? "1px solid rgba(255,255,255,0.15)"
+                : "1px solid rgba(15,23,42,0.095)",
               boxShadow: isDark
-                ? "inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 32px 64px -12px rgba(0, 0, 0, 0.8)"
-                : "inset 0 1px 0 0 rgba(255, 255, 255, 0.95), 0 20px 48px -12px rgba(0, 0, 0, 0.12)",
+                ? [
+                    "inset 0 1px 0 rgba(255,255,255,0.20)",
+                    "inset 0 -1px 0 rgba(0,0,0,0.20)",
+                    "0 18px 40px -18px rgba(0,0,0,0.55)",
+                    "0 36px 90px -24px rgba(0,0,0,0.85)",
+                  ].join(", ")
+                : [
+                    "inset 0 1px 0 rgba(255,255,255,1)",
+                    "inset 0 -1px 0 rgba(15,23,42,0.035)",
+                    "0 10px 28px -16px rgba(15,23,42,0.18)",
+                    "0 34px 80px -22px rgba(15,23,42,0.28)",
+                  ].join(", "),
               fontFamily: "Urbanist, -apple-system, sans-serif",
-              paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 12px), 20px)",
-              paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px)",
+              paddingTop:
+                "max(calc(env(safe-area-inset-top, 0px) + 12px), 20px)",
+              paddingBottom:
+                "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px)",
             }}
           >
-            {/* Top Minimal Bar */}
+            {/* ============================================================
+            HEADER
+            ============================================================ */}
             <div className="flex items-center justify-between pb-3.5">
-              <div>
+              <div className="min-w-0">
                 <h3
                   className="text-[16px] font-semibold tracking-tight leading-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
                   Scan Receipt
                 </h3>
-                <p className="text-[11px] font-normal mt-0.5 flex items-center gap-1.5" style={{ color: "var(--text-tertiary)" }}>
-                  <span>Physical receipts, QRIS & bank transfer slips</span>
+
+                <p
+                  className="text-[11px] font-normal mt-0.5 flex items-center gap-1.5"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  <span className="truncate">
+                    Physical receipts, QRIS & bank transfer slips
+                  </span>
+
                   {!shouldSaveAttachments && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-white/[0.06] border border-white/10 text-[var(--text-secondary)]">
+                    <span
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-medium shrink-0"
+                      style={{
+                        background: isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : "rgba(15,23,42,0.045)",
+                        border: isDark
+                          ? "1px solid rgba(255,255,255,0.10)"
+                          : "1px solid rgba(15,23,42,0.07)",
+                        color: "var(--text-secondary)",
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                          : "inset 0 1px 0 rgba(255,255,255,0.85)",
+                      }}
+                    >
                       <Shield size={9} strokeWidth={1.5} />
                       Ephemeral
                     </span>
@@ -782,7 +911,7 @@ export function ReceiptScanModal({
                 </p>
               </div>
 
-              {/* Liquid Glass Bubble Close Button */}
+              {/* Close */}
               <button
                 type="button"
                 disabled={step === "processing"}
@@ -790,11 +919,17 @@ export function ReceiptScanModal({
                   triggerHaptic("light");
                   onClose();
                 }}
-                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/[0.1] active:scale-90 disabled:opacity-40 cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-[1.03] active:scale-90 disabled:opacity-40 cursor-pointer shrink-0 ml-3"
                 style={{
-                  background: "rgba(255, 255, 255, 0.06)",
-                  border: "1px solid rgba(255, 255, 255, 0.12)",
-                  boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.15)",
+                  background: isDark
+                    ? "linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.045))"
+                    : "linear-gradient(180deg, #ffffff 0%, #f1f1f5 100%)",
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.14)"
+                    : "1px solid rgba(15,23,42,0.085)",
+                  boxShadow: isDark
+                    ? "inset 0 1px 0 rgba(255,255,255,0.18), 0 5px 14px rgba(0,0,0,0.25)"
+                    : "inset 0 1px 0 rgba(255,255,255,1), 0 4px 12px rgba(15,23,42,0.09)",
                   color: "var(--text-secondary)",
                 }}
               >
@@ -802,47 +937,68 @@ export function ReceiptScanModal({
               </button>
             </div>
 
-            {/* Error Message */}
+            {/* ============================================================
+            ERROR
+            ============================================================ */}
             {errorText && (
               <div
                 className="p-3 rounded-2xl text-[12px] font-medium border flex items-center gap-2 mb-2"
                 style={{
-                  background: "rgba(239, 68, 68, 0.08)",
-                  borderColor: "rgba(239, 68, 68, 0.25)",
-                  color: "#ef4444",
+                  background: isDark
+                    ? "rgba(239,68,68,0.09)"
+                    : "rgba(239,68,68,0.075)",
+                  borderColor: isDark
+                    ? "rgba(239,68,68,0.25)"
+                    : "rgba(220,38,38,0.18)",
+                  color: isDark ? "#f87171" : "#dc2626",
+                  boxShadow: isDark
+                    ? "inset 0 1px 0 rgba(255,255,255,0.05)"
+                    : "inset 0 1px 0 rgba(255,255,255,0.7)",
                 }}
               >
-                <AlertCircle size={14} strokeWidth={1.75} className="shrink-0" />
+                <AlertCircle
+                  size={14}
+                  strokeWidth={1.75}
+                  className="shrink-0"
+                />
                 <span>{errorText}</span>
               </div>
             )}
 
-            {/* Step 1: Idle (Liquid Glass Viewfinder Frame) */}
+            {/* ============================================================
+            STEP 1 — IDLE
+            ============================================================ */}
             {step === "idle" && (
               <div className="flex-1 flex flex-col items-center justify-start pt-1 pb-2 space-y-3">
-                {/* Optical Glass Lens Viewfinder - Lengthened vertically for physical receipts & slips */}
+                {/* Viewfinder */}
                 <div
-                  onClick={isLiveCameraActive ? () => captureLiveSnapshot() : undefined}
+                  onClick={
+                    isLiveCameraActive ? () => captureLiveSnapshot() : undefined
+                  }
                   className={`relative w-full aspect-[3/4] max-h-[50dvh] rounded-[28px] flex flex-col items-center justify-center overflow-hidden transition-all bg-black ${
                     isLiveCameraActive ? "cursor-pointer" : ""
                   }`}
                   style={{
-                    border: "1px solid rgba(255, 255, 255, 0.14)",
-                    boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.14)",
+                    border: isDark
+                      ? "1px solid rgba(255,255,255,0.15)"
+                      : "1px solid rgba(255,255,255,0.24)",
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.4), 0 18px 40px -12px rgba(15,23,42,0.24)",
                   }}
                 >
-                  {/* Live Video Camera Stream */}
                   <video
                     ref={videoRef}
                     playsInline
                     autoPlay
                     muted
                     className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-                      isLiveCameraActive ? "opacity-100" : "opacity-0 pointer-events-none"
+                      isLiveCameraActive
+                        ? "opacity-100"
+                        : "opacity-0 pointer-events-none"
                     }`}
                   />
 
-                  {/* Live Indicator Pill */}
+                  {/* Live indicator */}
                   {isLiveCameraActive && (
                     <div className="absolute top-3.5 left-4 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -852,7 +1008,7 @@ export function ReceiptScanModal({
                     </div>
                   )}
 
-                  {/* Torch / Flash Toggle Button */}
+                  {/* Flash */}
                   {isLiveCameraActive && (
                     <button
                       type="button"
@@ -874,47 +1030,58 @@ export function ReceiptScanModal({
                     </button>
                   )}
 
-                  {/* Delicate Specular Corner Brackets */}
+                  {/* Corner brackets */}
                   <div className="absolute top-4 left-4 w-5 h-5 border-t border-l rounded-tl-lg pointer-events-none opacity-50 border-white z-10" />
                   <div className="absolute top-4 right-4 w-5 h-5 border-t border-r rounded-tr-lg pointer-events-none opacity-50 border-white z-10" />
                   <div className="absolute bottom-4 left-4 w-5 h-5 border-b border-l rounded-bl-lg pointer-events-none opacity-50 border-white z-10" />
                   <div className="absolute bottom-4 right-4 w-5 h-5 border-b border-r rounded-br-lg pointer-events-none opacity-50 border-white z-10" />
 
-                  {/* Static Placeholder when live stream is inactive */}
+                  {/* Placeholder */}
                   {!isLiveCameraActive && (
                     <div className="flex flex-col items-center justify-center text-center px-6 pointer-events-none z-10">
                       <div
                         className="w-12 h-12 rounded-2xl flex items-center justify-center mb-2.5"
                         style={{
-                          background: "rgba(255, 255, 255, 0.06)",
-                          border: "1px solid rgba(255, 255, 255, 0.14)",
-                          boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.18)",
-                          color: "var(--text-secondary)",
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.045))",
+                          border: "1px solid rgba(255,255,255,0.16)",
+                          boxShadow:
+                            "inset 0 1px 0 rgba(255,255,255,0.20), 0 8px 20px rgba(0,0,0,0.22)",
+                          color: "rgba(255,255,255,0.78)",
                         }}
                       >
                         <ScanLine size={20} strokeWidth={1.5} />
                       </div>
-                      <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+
+                      <p className="text-[13px] font-medium text-white/95">
                         Align receipt within frame
                       </p>
-                      <p className="text-[11px] font-normal mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+
+                      <p className="text-[11px] font-normal mt-0.5 text-white/55">
                         Physical receipts, QRIS & bank slips
                       </p>
                     </div>
                   )}
                 </div>
 
-                {/* Floating Controls (Direct Touch Gestures on Native Inputs) */}
+                {/* ========================================================
+                CAPTURE CONTROLS
+                ======================================================== */}
                 <div className="flex items-center justify-center gap-7 pt-2">
-                  {/* Gallery Button: Direct Touch File Input Without Capture */}
+                  {/* Gallery */}
                   <div className="flex flex-col items-center gap-1.5 cursor-pointer group relative">
                     <div
                       className="w-13 h-13 rounded-full flex items-center justify-center transition-all group-active:scale-90 relative overflow-hidden"
                       style={{
-                        background: "rgba(255, 255, 255, 0.06)",
-                        backdropFilter: "blur(20px)",
-                        border: "1px solid rgba(255, 255, 255, 0.15)",
-                        boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 8px 20px rgba(0, 0, 0, 0.35)",
+                        background: isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.085), rgba(255,255,255,0.035))"
+                          : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
+                        border: isDark
+                          ? "1px solid rgba(255,255,255,0.15)"
+                          : "1px solid rgba(15,23,42,0.085)",
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.20), 0 8px 20px rgba(0,0,0,0.35)"
+                          : "inset 0 1px 0 rgba(255,255,255,1), 0 7px 18px rgba(15,23,42,0.11)",
                         color: "var(--text-primary)",
                       }}
                     >
@@ -935,24 +1102,34 @@ export function ReceiptScanModal({
                         title="Choose from Gallery"
                       />
                     </div>
-                    <span className="text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>
+
+                    <span
+                      className="text-[11px] font-medium"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       Gallery
                     </span>
                   </div>
 
-                  {/* Take Photo Button: Live Snapshot or Direct Native Touch Capture */}
+                  {/* Take photo */}
                   <div className="flex flex-col items-center gap-1.5 cursor-pointer group relative">
                     <div
                       className="w-16 h-16 rounded-full flex items-center justify-center transition-all group-active:scale-95 relative overflow-hidden"
                       style={{
-                        background: "#ffffff",
-                        color: "#000000",
-                        boxShadow: "0 10px 28px -4px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)",
+                        background: isDark
+                          ? "linear-gradient(180deg, #ffffff 0%, #e9e9ed 100%)"
+                          : "linear-gradient(180deg, #202024 0%, #09090b 100%)",
+                        color: isDark ? "#000000" : "#ffffff",
+                        border: isDark
+                          ? "1px solid rgba(255,255,255,0.95)"
+                          : "1px solid rgba(0,0,0,0.82)",
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 #ffffff, 0 5px 12px rgba(255,255,255,0.08), 0 14px 30px -6px rgba(0,0,0,0.55)"
+                          : "inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 28px -7px rgba(15,23,42,0.40)",
                       }}
                     >
                       <Camera size={23} strokeWidth={1.75} />
 
-                      {/* Direct native touch input with capture="environment" */}
                       <input
                         type="file"
                         accept="image/*"
@@ -960,13 +1137,16 @@ export function ReceiptScanModal({
                         onChange={handleFileInputChange}
                         onClick={(e) => {
                           triggerHaptic("medium");
+
                           if (isLiveCameraActive) {
                             const snapped = captureLiveSnapshot();
+
                             if (snapped) {
                               e.preventDefault();
                               return;
                             }
                           }
+
                           if (Capacitor.isNativePlatform()) {
                             e.preventDefault();
                             handleTakePhotoNative();
@@ -977,11 +1157,16 @@ export function ReceiptScanModal({
                         title="Take Photo"
                       />
                     </div>
-                    <span className="text-[11px] font-medium" style={{ color: "var(--text-primary)" }}>
+
+                    <span
+                      className="text-[11px] font-medium"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       Take Photo
                     </span>
                   </div>
 
+                  {/* CSV */}
                   {onOpenImport && (
                     <button
                       type="button"
@@ -994,32 +1179,43 @@ export function ReceiptScanModal({
                       <div
                         className="w-13 h-13 rounded-full flex items-center justify-center transition-all group-active:scale-90"
                         style={{
-                          background: "rgba(255, 255, 255, 0.06)",
-                          backdropFilter: "blur(20px)",
-                          border: "1px solid rgba(255, 255, 255, 0.15)",
-                          boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 8px 20px rgba(0, 0, 0, 0.35)",
+                          background: isDark
+                            ? "linear-gradient(180deg, rgba(255,255,255,0.085), rgba(255,255,255,0.035))"
+                            : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
+                          border: isDark
+                            ? "1px solid rgba(255,255,255,0.15)"
+                            : "1px solid rgba(15,23,42,0.085)",
+                          boxShadow: isDark
+                            ? "inset 0 1px 0 rgba(255,255,255,0.20), 0 8px 20px rgba(0,0,0,0.35)"
+                            : "inset 0 1px 0 rgba(255,255,255,1), 0 7px 18px rgba(15,23,42,0.11)",
                           color: "var(--text-primary)",
                         }}
                       >
                         <FileSpreadsheet size={19} strokeWidth={1.5} />
                       </div>
-                      <span className="text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>
+
+                      <span
+                        className="text-[11px] font-medium"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
                         CSV / Mutasi
                       </span>
                     </button>
                   )}
                 </div>
 
-                {/* Permissions & Access Info Link */}
+                {/* Permissions */}
                 <button
                   type="button"
                   onClick={() => {
                     triggerHaptic("light");
+
                     setPermissionPrompt({
                       isOpen: true,
                       type: "photos",
                       title: "Media & Camera Permissions",
-                      description: "Trouvaille requires permission to import receipts from your photo gallery or take photos with your camera.",
+                      description:
+                        "Trouvaille requires permission to import receipts from your photo gallery or take photos with your camera.",
                     });
                   }}
                   className="text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 pt-1 hover:opacity-80 active:scale-95"
@@ -1031,15 +1227,21 @@ export function ReceiptScanModal({
               </div>
             )}
 
-            {/* Step 2: Processing (Liquid Laser Scan) */}
+            {/* ============================================================
+            STEP 2 — PROCESSING
+            ============================================================ */}
             {step === "processing" && (
               <div className="flex-1 flex flex-col items-center justify-center py-6 space-y-4 text-center">
                 {imagePreview && (
                   <div
                     className="relative w-44 h-56 rounded-2xl overflow-hidden"
                     style={{
-                      border: "1px solid rgba(255, 255, 255, 0.16)",
-                      boxShadow: "0 16px 36px -8px rgba(0, 0, 0, 0.65)",
+                      border: isDark
+                        ? "1px solid rgba(255,255,255,0.16)"
+                        : "1px solid rgba(15,23,42,0.10)",
+                      boxShadow: isDark
+                        ? "0 16px 36px -8px rgba(0,0,0,0.65)"
+                        : "0 16px 36px -10px rgba(15,23,42,0.20)",
                     }}
                   >
                     <img
@@ -1048,7 +1250,6 @@ export function ReceiptScanModal({
                       className="w-full h-full object-cover filter brightness-95 contrast-105"
                     />
 
-                    {/* Liquid Laser Line */}
                     <motion.div
                       animate={{ top: ["0%", "95%", "0%"] }}
                       transition={{
@@ -1059,7 +1260,8 @@ export function ReceiptScanModal({
                       className="absolute left-0 right-0 h-[2px] pointer-events-none z-10"
                       style={{
                         background: "var(--accent)",
-                        boxShadow: "0 0 10px var(--accent)",
+                        boxShadow:
+                          "0 0 10px var(--accent), 0 0 20px var(--accent)",
                       }}
                     />
 
@@ -1069,20 +1271,32 @@ export function ReceiptScanModal({
 
                 <div className="space-y-1.5 w-full max-w-[220px]">
                   <div className="flex items-center justify-between text-[11px] font-medium px-0.5">
-                    <span style={{ color: "var(--text-secondary)" }}>{progressStatus}</span>
-                    <span style={{ color: "var(--text-primary)" }}>{progressPct}%</span>
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      {progressStatus}
+                    </span>
+
+                    <span style={{ color: "var(--text-primary)" }}>
+                      {progressPct}%
+                    </span>
                   </div>
 
                   <div
                     className="w-full h-1.5 rounded-full overflow-hidden"
                     style={{
-                      background: "rgba(255, 255, 255, 0.08)",
-                      boxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.3)",
+                      background: isDark
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(15,23,42,0.08)",
+                      boxShadow: isDark
+                        ? "inset 0 1px 1px rgba(0,0,0,0.3)"
+                        : "inset 0 1px 1px rgba(15,23,42,0.10)",
                     }}
                   >
                     <motion.div
                       className="h-full rounded-full"
-                      style={{ background: "var(--accent)" }}
+                      style={{
+                        background: "var(--accent)",
+                        boxShadow: "0 0 8px var(--accent)",
+                      }}
                       animate={{ width: `${progressPct}%` }}
                       transition={{ duration: 0.3 }}
                     />
@@ -1091,33 +1305,62 @@ export function ReceiptScanModal({
               </div>
             )}
 
-            {/* Step 3: Result Liquid Glass Sheet */}
+            {/* ============================================================
+            STEP 3 — RESULT
+            ============================================================ */}
             {step === "result" && parsedSlip && (
               <div className="flex-1 overflow-y-auto space-y-3 pt-1 no-scrollbar">
-                {/* Contextual Suggestion / Status Capsule */}
+                {/* ========================================================
+                STATUS CAPSULE
+                ======================================================== */}
                 {unregisteredWalletName ? (
                   <div
                     className="p-2.5 px-3 rounded-2xl flex items-center justify-between gap-2"
                     style={{
-                      background: "rgba(255, 255, 255, 0.04)",
-                      border: "1px solid rgba(255, 255, 255, 0.12)",
-                      boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+                      background: isDark
+                        ? "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))"
+                        : "linear-gradient(180deg, #ffffff 0%, #f7f7fa 100%)",
+                      border: isDark
+                        ? "1px solid rgba(255,255,255,0.12)"
+                        : "1px solid rgba(15,23,42,0.075)",
+                      boxShadow: isDark
+                        ? "inset 0 1px 0 rgba(255,255,255,0.12)"
+                        : "inset 0 1px 0 rgba(255,255,255,0.95), 0 5px 14px rgba(15,23,42,0.055)",
                     }}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <Sparkles size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-secondary)" }} />
-                      <p className="text-[11px] font-normal truncate" style={{ color: "var(--text-secondary)" }}>
-                        Account <span className="font-medium text-[var(--text-primary)]">{unregisteredWalletName}</span> is not registered
+                      <Sparkles
+                        size={14}
+                        strokeWidth={1.5}
+                        className="shrink-0"
+                        style={{ color: "var(--text-secondary)" }}
+                      />
+
+                      <p
+                        className="text-[11px] font-normal truncate"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        Account{" "}
+                        <span
+                          className="font-medium"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {unregisteredWalletName}
+                        </span>{" "}
+                        is not registered
                       </p>
                     </div>
+
                     <button
                       type="button"
                       disabled={addWalletMutation.isPending}
                       onClick={handleQuickAddWallet}
-                      className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-sm"
+                      className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
                       style={{
                         background: "var(--accent)",
                         color: "var(--accent-ink)",
+                        boxShadow:
+                          "0 3px 10px color-mix(in srgb, var(--accent) 25%, transparent)",
                       }}
                     >
                       {addWalletMutation.isPending ? (
@@ -1125,6 +1368,7 @@ export function ReceiptScanModal({
                       ) : (
                         <Plus size={12} strokeWidth={2} />
                       )}
+
                       <span>Add Account</span>
                     </button>
                   </div>
@@ -1132,25 +1376,50 @@ export function ReceiptScanModal({
                   <div
                     className="p-2.5 px-3 rounded-2xl flex items-center justify-between gap-2"
                     style={{
-                      background: "rgba(255, 255, 255, 0.04)",
-                      border: "1px solid rgba(255, 255, 255, 0.12)",
-                      boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+                      background: isDark
+                        ? "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))"
+                        : "linear-gradient(180deg, #ffffff 0%, #f7f7fa 100%)",
+                      border: isDark
+                        ? "1px solid rgba(255,255,255,0.12)"
+                        : "1px solid rgba(15,23,42,0.075)",
+                      boxShadow: isDark
+                        ? "inset 0 1px 0 rgba(255,255,255,0.12)"
+                        : "inset 0 1px 0 rgba(255,255,255,0.95), 0 5px 14px rgba(15,23,42,0.055)",
                     }}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <Sparkles size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-secondary)" }} />
-                      <p className="text-[11px] font-normal truncate" style={{ color: "var(--text-secondary)" }}>
-                        Category <span className="font-medium text-[var(--text-primary)]">{unregisteredCategoryName}</span> is not registered
+                      <Sparkles
+                        size={14}
+                        strokeWidth={1.5}
+                        className="shrink-0"
+                        style={{ color: "var(--text-secondary)" }}
+                      />
+
+                      <p
+                        className="text-[11px] font-normal truncate"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        Category{" "}
+                        <span
+                          className="font-medium"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {unregisteredCategoryName}
+                        </span>{" "}
+                        is not registered
                       </p>
                     </div>
+
                     <button
                       type="button"
                       disabled={addCategoryMutation.isPending}
                       onClick={handleQuickAddCategory}
-                      className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-sm"
+                      className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
                       style={{
                         background: "var(--accent)",
                         color: "var(--accent-ink)",
+                        boxShadow:
+                          "0 3px 10px color-mix(in srgb, var(--accent) 25%, transparent)",
                       }}
                     >
                       {addCategoryMutation.isPending ? (
@@ -1158,6 +1427,7 @@ export function ReceiptScanModal({
                       ) : (
                         <Plus size={12} strokeWidth={2} />
                       )}
+
                       <span>Add Category</span>
                     </button>
                   </div>
@@ -1165,45 +1435,85 @@ export function ReceiptScanModal({
                   <div
                     className="py-1 px-3 rounded-full flex items-center justify-center gap-1.5 mx-auto w-fit"
                     style={{
-                      background: "rgba(255, 255, 255, 0.04)",
-                      border: "1px solid rgba(255, 255, 255, 0.09)",
-                      boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+                      background: isDark
+                        ? "rgba(255,255,255,0.04)"
+                        : "linear-gradient(180deg, #ffffff 0%, #f7f7fa 100%)",
+                      border: isDark
+                        ? "1px solid rgba(255,255,255,0.09)"
+                        : "1px solid rgba(15,23,42,0.065)",
+                      boxShadow: isDark
+                        ? "inset 0 1px 0 rgba(255,255,255,0.08)"
+                        : "inset 0 1px 0 rgba(255,255,255,0.95), 0 4px 12px rgba(15,23,42,0.05)",
                     }}
                   >
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
-                    <span className="text-[11px] font-normal" style={{ color: "var(--text-secondary)" }}>
-                      Receipt scanned • {Math.round(parsedSlip.confidence * 100)}% match
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{
+                        background: "var(--accent)",
+                        boxShadow: "0 0 7px var(--accent)",
+                      }}
+                    />
+
+                    <span
+                      className="text-[11px] font-normal"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      Receipt scanned •{" "}
+                      {Math.round(parsedSlip.confidence * 100)}% match
                     </span>
                   </div>
                 )}
 
-                {/* Hero Liquid Card: Merchant, Receipt Thumbnail & Seamless Amount */}
+                {/* ========================================================
+                HERO RECEIPT CARD
+                ======================================================== */}
                 <div
                   className="p-4 rounded-[26px] space-y-3"
                   style={{
-                    background: "linear-gradient(165deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%)",
+                    background: isDark
+                      ? "linear-gradient(165deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.018) 100%)"
+                      : "linear-gradient(180deg, #ffffff 0%, #fafafd 100%)",
                     backdropFilter: "blur(24px)",
-                    border: "1px solid rgba(255, 255, 255, 0.12)",
-                    boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.18), 0 14px 32px -8px rgba(0, 0, 0, 0.6)",
+                    WebkitBackdropFilter: "blur(24px)",
+                    border: isDark
+                      ? "1px solid rgba(255,255,255,0.12)"
+                      : "1px solid rgba(15,23,42,0.085)",
+                    boxShadow: isDark
+                      ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.15), 0 16px 34px -10px rgba(0,0,0,0.62)"
+                      : "inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(15,23,42,0.025), 0 14px 34px -12px rgba(15,23,42,0.16)",
                   }}
                 >
-                  {/* Top: Merchant Info & Receipt Thumbnail Preview */}
+                  {/* Merchant */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
                         className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
                         style={{
-                          background: "rgba(255, 255, 255, 0.05)",
-                          border: "1px solid rgba(255, 255, 255, 0.12)",
-                          boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.15)",
+                          background: isDark
+                            ? "linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025))"
+                            : "linear-gradient(180deg, #ffffff 0%, #f2f2f6 100%)",
+                          border: isDark
+                            ? "1px solid rgba(255,255,255,0.12)"
+                            : "1px solid rgba(15,23,42,0.075)",
+                          boxShadow: isDark
+                            ? "inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 12px rgba(0,0,0,0.16)"
+                            : "inset 0 1px 0 rgba(255,255,255,1), 0 4px 12px rgba(15,23,42,0.07)",
                         }}
                       >
                         {selectedCategory ? (
-                          <IconRenderer icon={selectedCategory.emoji} size="w-5 h-5" />
+                          <IconRenderer
+                            icon={selectedCategory.emoji}
+                            size="w-5 h-5"
+                          />
                         ) : (
-                          <Tag size={16} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+                          <Tag
+                            size={16}
+                            strokeWidth={1.5}
+                            style={{ color: "var(--text-tertiary)" }}
+                          />
                         )}
                       </div>
+
                       <div className="min-w-0 flex-1">
                         <input
                           type="text"
@@ -1216,16 +1526,19 @@ export function ReceiptScanModal({
                             fontFamily: "Urbanist, -apple-system, sans-serif",
                           }}
                         />
+
                         <p
                           className="text-[11px] font-normal mt-0.5 truncate"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          {selectedCategory ? selectedCategory.name : "Select category"}
+                          {selectedCategory
+                            ? selectedCategory.name
+                            : "Select category"}
                         </p>
                       </div>
                     </div>
 
-                    {/* Interactive Receipt Thumbnail with Subtle Corner Magnifier */}
+                    {/* Receipt thumbnail */}
                     {imagePreview && (
                       <button
                         type="button"
@@ -1233,7 +1546,15 @@ export function ReceiptScanModal({
                           triggerHaptic("light");
                           setInspectPhotoOpen(true);
                         }}
-                        className="relative w-11 h-14 rounded-xl overflow-hidden shrink-0 border border-white/18 shadow-md group cursor-pointer active:scale-95 transition-all"
+                        className="relative w-11 h-14 rounded-xl overflow-hidden shrink-0 group cursor-pointer active:scale-95 transition-all"
+                        style={{
+                          border: isDark
+                            ? "1px solid rgba(255,255,255,0.18)"
+                            : "1px solid rgba(15,23,42,0.10)",
+                          boxShadow: isDark
+                            ? "0 5px 14px rgba(0,0,0,0.30)"
+                            : "0 5px 14px rgba(15,23,42,0.10)",
+                        }}
                         title="Tap to inspect original receipt"
                       >
                         <img
@@ -1241,17 +1562,29 @@ export function ReceiptScanModal({
                           alt="Original Receipt"
                           className="w-full h-full object-cover filter brightness-95 group-hover:scale-105 transition-transform duration-300"
                         />
+
                         <div className="absolute bottom-1 right-1 w-4.5 h-4.5 rounded-full bg-black/65 backdrop-blur-md flex items-center justify-center border border-white/20">
-                          <Eye size={10} className="text-white/90" strokeWidth={2} />
+                          <Eye
+                            size={10}
+                            className="text-white/90"
+                            strokeWidth={2}
+                          />
                         </div>
                       </button>
                     )}
                   </div>
 
-                  {/* Subtle Hairline Divider */}
-                  <div className="h-[1px] bg-white/[0.06] w-full" />
+                  {/* Divider */}
+                  <div
+                    className="h-[1px] w-full"
+                    style={{
+                      background: isDark
+                        ? "rgba(255,255,255,0.06)"
+                        : "rgba(15,23,42,0.06)",
+                    }}
+                  />
 
-                  {/* Centered Apple-Style Amount Presentation (Zero Empty Gap) */}
+                  {/* Amount */}
                   <div className="py-1 flex flex-col items-center justify-center">
                     <span
                       className="text-[10px] font-medium tracking-wider uppercase mb-1 select-none"
@@ -1267,6 +1600,7 @@ export function ReceiptScanModal({
                       >
                         Rp
                       </span>
+
                       <input
                         type="text"
                         inputMode="numeric"
@@ -1280,7 +1614,15 @@ export function ReceiptScanModal({
                         style={{
                           color: "var(--text-primary)",
                           fontFamily: "Urbanist, -apple-system, sans-serif",
-                          width: `${Math.max(2, (amount ? amount.toLocaleString("id-ID") : "0").length) * 19 + 16}px`,
+                          width: `${
+                            Math.max(
+                              2,
+                              (amount ? amount.toLocaleString("id-ID") : "0")
+                                .length,
+                            ) *
+                              19 +
+                            16
+                          }px`,
                           maxWidth: "240px",
                         }}
                       />
@@ -1288,219 +1630,348 @@ export function ReceiptScanModal({
                   </div>
                 </div>
 
-                {/* iOS Segmented Type Switcher (Expense | Income | Transfer) */}
+                {/* ========================================================
+                TYPE SEGMENTED CONTROL
+                ======================================================== */}
                 <div
                   className="p-1 rounded-2xl flex items-center gap-1"
                   style={{
                     background: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(0, 0, 0, 0.04)",
+                      ? "rgba(255,255,255,0.04)"
+                      : "rgba(15,23,42,0.045)",
                     border: isDark
-                      ? "1px solid rgba(255, 255, 255, 0.08)"
-                      : "1px solid rgba(0, 0, 0, 0.06)",
+                      ? "1px solid rgba(255,255,255,0.08)"
+                      : "1px solid rgba(15,23,42,0.065)",
+                    boxShadow: isDark
+                      ? "inset 0 1px 0 rgba(255,255,255,0.07)"
+                      : "inset 0 1px 0 rgba(255,255,255,0.9)",
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => handleSetType("expense")}
-                    className={`flex-1 py-1.5 rounded-xl text-[12px] font-medium transition-all text-center cursor-pointer ${
-                      type === "expense"
-                        ? isDark
-                          ? "bg-white/14 text-white shadow-sm border border-white/15"
-                          : "bg-white text-black shadow-sm border border-black/10"
-                        : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                    }`}
-                  >
-                    {isIndonesian ? "Pengeluaran" : "Expense"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSetType("income")}
-                    className={`flex-1 py-1.5 rounded-xl text-[12px] font-medium transition-all text-center cursor-pointer ${
-                      type === "income"
-                        ? isDark
-                          ? "bg-white/14 text-white shadow-sm border border-white/15"
-                          : "bg-white text-black shadow-sm border border-black/10"
-                        : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                    }`}
-                  >
-                    {isIndonesian ? "Pemasukan" : "Income"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSetType("transfer")}
-                    className={`flex-1 py-1.5 rounded-xl text-[12px] font-medium transition-all text-center cursor-pointer ${
-                      type === "transfer"
-                        ? isDark
-                          ? "bg-white/14 text-white shadow-sm border border-white/15"
-                          : "bg-white text-black shadow-sm border border-black/10"
-                        : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                    }`}
-                  >
-                    Transfer
-                  </button>
+                  {[
+                    {
+                      id: "expense",
+                      label: isIndonesian ? "Pengeluaran" : "Expense",
+                    },
+                    {
+                      id: "income",
+                      label: isIndonesian ? "Pemasukan" : "Income",
+                    },
+                    {
+                      id: "transfer",
+                      label: "Transfer",
+                    },
+                  ].map((item) => {
+                    const active = type === item.id;
+
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() =>
+                          handleSetType(
+                            item.id as "expense" | "income" | "transfer",
+                          )
+                        }
+                        className="flex-1 py-1.5 rounded-xl text-[12px] font-medium transition-all text-center cursor-pointer active:scale-[0.98]"
+                        style={{
+                          background: active
+                            ? isDark
+                              ? "linear-gradient(180deg, rgba(255,255,255,0.17), rgba(255,255,255,0.09))"
+                              : "linear-gradient(180deg, #ffffff 0%, #f3f3f6 100%)"
+                            : "transparent",
+                          color: active
+                            ? isDark
+                              ? "#ffffff"
+                              : "#111113"
+                            : "var(--text-tertiary)",
+                          border: active
+                            ? isDark
+                              ? "1px solid rgba(255,255,255,0.15)"
+                              : "1px solid rgba(15,23,42,0.065)"
+                            : "1px solid transparent",
+                          boxShadow: active
+                            ? isDark
+                              ? "inset 0 1px 0 rgba(255,255,255,0.14), 0 3px 10px rgba(0,0,0,0.16)"
+                              : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.09)"
+                            : "none",
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                {/* Segmented Liquid Glass Vessel (Grouped Apple Style) */}
+                {/* ========================================================
+                DETAILS VESSEL
+                ======================================================== */}
                 <div
                   className="rounded-[22px] divide-y overflow-hidden"
                   style={{
                     background: isDark
-                      ? "rgba(255, 255, 255, 0.03)"
-                      : "rgba(0, 0, 0, 0.02)",
+                      ? "rgba(255,255,255,0.03)"
+                      : "rgba(255,255,255,0.80)",
                     backdropFilter: "blur(20px)",
+                    WebkitBackdropFilter: "blur(20px)",
                     border: isDark
-                      ? "1px solid rgba(255, 255, 255, 0.09)"
-                      : "1px solid rgba(0, 0, 0, 0.06)",
-                    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.08)",
-                    borderColor: isDark
-                      ? "rgba(255, 255, 255, 0.06)"
-                      : "rgba(0, 0, 0, 0.05)",
+                      ? "1px solid rgba(255,255,255,0.08)"
+                      : "1px solid rgba(15,23,42,0.07)",
+                    boxShadow: isDark
+                      ? "inset 0 1px 0 rgba(255,255,255,0.08)"
+                      : "inset 0 1px 0 rgba(255,255,255,0.95), 0 8px 22px rgba(15,23,42,0.055)",
                   }}
                 >
+                  {/* Transfer */}
                   {type === "transfer" ? (
                     <>
-                      {/* From Account Row */}
+                      {/* From */}
                       <button
                         type="button"
                         onClick={() => {
                           triggerHaptic("light");
                           setWalletSheetOpen(true);
                         }}
-                        className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
-                        style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
+                        className="w-full p-3 flex items-center justify-between transition-colors cursor-pointer text-left"
                       >
                         <div className="flex items-center gap-2.5">
-                          <CreditCard size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
-                          <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                          <CreditCard
+                            size={15}
+                            strokeWidth={1.5}
+                            style={{ color: "var(--text-tertiary)" }}
+                          />
+
+                          <span
+                            className="text-[12px] font-normal"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
                             {isIndonesian ? "Dari Akun" : "From Account"}
                           </span>
                         </div>
+
                         <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
-                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
-                            {selectedWallet ? selectedWallet.name : (isIndonesian ? "Pilih Akun" : "Select Account")}
+                          <span
+                            className="text-[12px] font-medium truncate"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {selectedWallet
+                              ? selectedWallet.name
+                              : isIndonesian
+                                ? "Pilih Akun"
+                                : "Select Account"}
                           </span>
-                          <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+
+                          <ChevronRight
+                            size={14}
+                            strokeWidth={1.5}
+                            className="shrink-0"
+                            style={{ color: "var(--text-tertiary)" }}
+                          />
                         </div>
                       </button>
 
-                      {/* To Account Row */}
+                      {/* To */}
                       <button
                         type="button"
                         onClick={() => {
                           triggerHaptic("light");
                           setToWalletSheetOpen(true);
                         }}
-                        className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
-                        style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
+                        className="w-full p-3 flex items-center justify-between transition-colors cursor-pointer text-left"
                       >
                         <div className="flex items-center gap-2.5">
-                          <ArrowRightLeft size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
-                          <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                          <ArrowRightLeft
+                            size={15}
+                            strokeWidth={1.5}
+                            style={{ color: "var(--text-tertiary)" }}
+                          />
+
+                          <span
+                            className="text-[12px] font-normal"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
                             {isIndonesian ? "Ke Akun" : "To Account"}
                           </span>
                         </div>
+
                         <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
-                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
-                            {selectedToWallet ? selectedToWallet.name : (isIndonesian ? "Pilih Akun Tujuan" : "Select Destination")}
+                          <span
+                            className="text-[12px] font-medium truncate"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {selectedToWallet
+                              ? selectedToWallet.name
+                              : isIndonesian
+                                ? "Pilih Akun Tujuan"
+                                : "Select Destination"}
                           </span>
-                          <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+
+                          <ChevronRight
+                            size={14}
+                            strokeWidth={1.5}
+                            className="shrink-0"
+                            style={{ color: "var(--text-tertiary)" }}
+                          />
                         </div>
                       </button>
                     </>
                   ) : (
                     <>
-                      {/* Category Row */}
+                      {/* Category */}
                       <button
                         type="button"
                         onClick={() => {
                           triggerHaptic("light");
                           setCategorySheetOpen(true);
                         }}
-                        className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
-                        style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
+                        className="w-full p-3 flex items-center justify-between transition-colors cursor-pointer text-left"
                       >
                         <div className="flex items-center gap-2.5">
-                          <Tag size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
-                          <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                          <Tag
+                            size={15}
+                            strokeWidth={1.5}
+                            style={{ color: "var(--text-tertiary)" }}
+                          />
+
+                          <span
+                            className="text-[12px] font-normal"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
                             {isIndonesian ? "Kategori" : "Category"}
                           </span>
                         </div>
+
                         <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
-                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
-                            {selectedCategory ? selectedCategory.name : (isIndonesian ? "Pilih Kategori" : "Select Category")}
+                          <span
+                            className="text-[12px] font-medium truncate"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {selectedCategory
+                              ? selectedCategory.name
+                              : isIndonesian
+                                ? "Pilih Kategori"
+                                : "Select Category"}
                           </span>
-                          <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+
+                          <ChevronRight
+                            size={14}
+                            strokeWidth={1.5}
+                            className="shrink-0"
+                            style={{ color: "var(--text-tertiary)" }}
+                          />
                         </div>
                       </button>
 
-                      {/* Wallet Row */}
+                      {/* Wallet */}
                       <button
                         type="button"
                         onClick={() => {
                           triggerHaptic("light");
                           setWalletSheetOpen(true);
                         }}
-                        className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
-                        style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
+                        className="w-full p-3 flex items-center justify-between transition-colors cursor-pointer text-left"
                       >
                         <div className="flex items-center gap-2.5">
-                          <CreditCard size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
-                          <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                          <CreditCard
+                            size={15}
+                            strokeWidth={1.5}
+                            style={{ color: "var(--text-tertiary)" }}
+                          />
+
+                          <span
+                            className="text-[12px] font-normal"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
                             {isIndonesian ? "Akun" : "Account"}
                           </span>
                         </div>
+
                         <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
-                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
-                            {selectedWallet ? selectedWallet.name : (isIndonesian ? "Pilih Akun" : "Select Account")}
+                          <span
+                            className="text-[12px] font-medium truncate"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {selectedWallet
+                              ? selectedWallet.name
+                              : isIndonesian
+                                ? "Pilih Akun"
+                                : "Select Account"}
                           </span>
-                          <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+
+                          <ChevronRight
+                            size={14}
+                            strokeWidth={1.5}
+                            className="shrink-0"
+                            style={{ color: "var(--text-tertiary)" }}
+                          />
                         </div>
                       </button>
                     </>
                   )}
 
-                  {/* Unified Date & Time Row */}
+                  {/* Date & Time */}
                   <button
                     type="button"
                     onClick={() => {
                       triggerHaptic("light");
                       setDateTimePickerOpen(true);
                     }}
-                    className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
-                    style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
+                    className="w-full p-3 flex items-center justify-between transition-colors cursor-pointer text-left"
                   >
                     <div className="flex items-center gap-2.5">
-                      <Calendar size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
-                      <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                      <Calendar
+                        size={15}
+                        strokeWidth={1.5}
+                        style={{ color: "var(--text-tertiary)" }}
+                      />
+
+                      <span
+                        className="text-[12px] font-normal"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
                         {isIndonesian ? "Tanggal & Waktu" : "Date & Time"}
                       </span>
                     </div>
+
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>
+                      <span
+                        className="text-[12px] font-medium"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {format(combinedDateTime, "d MMM yyyy, HH:mm")}
                       </span>
-                      <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+
+                      <ChevronRight
+                        size={14}
+                        strokeWidth={1.5}
+                        className="shrink-0"
+                        style={{ color: "var(--text-tertiary)" }}
+                      />
                     </div>
                   </button>
 
-                  {/* Note Row */}
-                  <div
-                    className="w-full p-3 flex items-center justify-between"
-                    style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
-                  >
+                  {/* Note */}
+                  <div className="w-full p-3 flex items-center justify-between">
                     <div className="flex items-center gap-2.5 shrink-0">
-                      <Pen size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
-                      <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                      <Pen
+                        size={15}
+                        strokeWidth={1.5}
+                        style={{ color: "var(--text-tertiary)" }}
+                      />
+
+                      <span
+                        className="text-[12px] font-normal"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
                         Notes
                       </span>
                     </div>
+
                     <input
                       type="text"
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       placeholder="Add a note (optional)"
-                      className="text-[11px] placeholder:text-[11px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-60 font-normal bg-transparent outline-none text-right flex-1 pl-4"
+                      className="text-[11px] placeholder:text-[11px] font-normal bg-transparent outline-none text-right flex-1 pl-4"
                       style={{
                         color: "var(--text-primary)",
                         fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -1509,41 +1980,78 @@ export function ReceiptScanModal({
                   </div>
                 </div>
 
-                {/* Primary Action Button (Elegant Apple White Gradient & Deep Contrast) */}
+                {/* ========================================================
+                ACTIONS
+                ======================================================== */}
                 <div className="pt-2 space-y-2">
+                  {/* Primary */}
                   <button
                     type="button"
                     disabled={addTx.isPending}
                     onClick={handleSaveTransaction}
-                    className="w-full h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer border border-white/80 disabled:opacity-50"
+                    className="w-full h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
                     style={{
-                      background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
-                      color: "#000000",
-                      boxShadow: "inset 0 1px 0 0 #ffffff, inset 0 -1px 0 0 rgba(0, 0, 0, 0.08), 0 10px 26px -6px rgba(0, 0, 0, 0.55)",
+                      background: isDark
+                        ? "linear-gradient(180deg,#ffffff 0%,#e7e7eb 100%)"
+                        : "linear-gradient(180deg,#1d1d20 0%,#08080a 100%)",
+                      color: isDark ? "#000000" : "#ffffff",
+                      border: isDark
+                        ? "1px solid rgba(255,255,255,0.92)"
+                        : "1px solid rgba(0,0,0,0.85)",
+                      boxShadow: isDark
+                        ? "inset 0 1px 0 #ffffff, inset 0 -1px 0 rgba(0,0,0,0.08), 0 5px 14px rgba(255,255,255,0.06), 0 14px 30px -8px rgba(0,0,0,0.60)"
+                        : "inset 0 1px 0 rgba(255,255,255,0.13), inset 0 -1px 0 rgba(0,0,0,0.18), 0 12px 28px -8px rgba(15,23,42,0.38)",
                       letterSpacing: "-0.01em",
                     }}
                   >
                     {addTx.isPending ? (
-                      <Loader2 size={16} className="animate-spin text-black" />
+                      <Loader2
+                        size={16}
+                        className="animate-spin"
+                        style={{
+                          color: isDark ? "#000000" : "#ffffff",
+                        }}
+                      />
                     ) : (
                       <>
-                        <Check size={16} strokeWidth={2.25} className="text-black" />
-                        <span className="font-semibold text-black">
-                          Save Transaction {amount > 0 ? `(${formatRupiah(amount)})` : ""}
+                        <Check
+                          size={16}
+                          strokeWidth={2.25}
+                          style={{
+                            color: isDark ? "#000000" : "#ffffff",
+                          }}
+                        />
+
+                        <span
+                          className="font-semibold"
+                          style={{
+                            color: isDark ? "#000000" : "#ffffff",
+                          }}
+                        >
+                          Save Transaction{" "}
+                          {amount > 0 ? `(${formatRupiah(amount)})` : ""}
                         </span>
                       </>
                     )}
                   </button>
 
+                  {/* Secondary */}
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={handleOpenInFullForm}
                       className="flex-1 h-9 rounded-xl font-normal text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
                       style={{
-                        background: "rgba(255, 255, 255, 0.04)",
-                        border: "1px solid rgba(255, 255, 255, 0.09)",
+                        background: isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))"
+                          : "linear-gradient(180deg, #ffffff 0%, #f5f5f8 100%)",
+                        border: isDark
+                          ? "1px solid rgba(255,255,255,0.09)"
+                          : "1px solid rgba(15,23,42,0.075)",
                         color: "var(--text-secondary)",
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                          : "inset 0 1px 0 rgba(255,255,255,1), 0 4px 12px rgba(15,23,42,0.065)",
                       }}
                     >
                       <SlidersHorizontal size={13} strokeWidth={1.5} />
@@ -1560,9 +2068,16 @@ export function ReceiptScanModal({
                       }}
                       className="flex-1 h-9 rounded-xl font-normal text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
                       style={{
-                        background: "rgba(255, 255, 255, 0.04)",
-                        border: "1px solid rgba(255, 255, 255, 0.09)",
+                        background: isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))"
+                          : "linear-gradient(180deg, #ffffff 0%, #f5f5f8 100%)",
+                        border: isDark
+                          ? "1px solid rgba(255,255,255,0.09)"
+                          : "1px solid rgba(15,23,42,0.075)",
                         color: "var(--text-secondary)",
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                          : "inset 0 1px 0 rgba(255,255,255,1), 0 4px 12px rgba(15,23,42,0.065)",
                       }}
                     >
                       <RotateCcw size={13} strokeWidth={1.5} />
@@ -1576,7 +2091,9 @@ export function ReceiptScanModal({
         </div>
       </AnimatePresence>
 
-      {/* Tap-to-Inspect Original Receipt Modal */}
+      {/* ================================================================
+      INSPECT ORIGINAL RECEIPT
+      ================================================================ */}
       <AnimatePresence>
         {inspectPhotoOpen && imagePreview && (
           <motion.div
@@ -1594,11 +2111,13 @@ export function ReceiptScanModal({
               >
                 <X size={16} strokeWidth={2} />
               </button>
+
               <img
                 src={imagePreview}
                 alt="Original Receipt"
                 className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/15"
               />
+
               <p className="text-[12px] font-normal text-white/60 mt-3">
                 Tap anywhere to close
               </p>
@@ -1607,7 +2126,9 @@ export function ReceiptScanModal({
         )}
       </AnimatePresence>
 
-      {/* Category BottomSheet Picker */}
+      {/* ================================================================
+      CATEGORY BOTTOM SHEET — APPLE LIQUID GLASS / 3-COLUMN PILLS
+      ================================================================ */}
       <BottomSheet
         isOpen={categorySheetOpen}
         onClose={() => {
@@ -1616,45 +2137,88 @@ export function ReceiptScanModal({
         }}
         title="Select Category"
       >
-        <div className="p-4 pb-10" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
-          <div className="relative mb-3.5">
+        <div
+          className="px-4 pt-1 pb-8"
+          style={{
+            fontFamily: "Urbanist, -apple-system, sans-serif",
+          }}
+        >
+          {/* Search */}
+          <div className="relative mb-4">
             <Search
-              size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2"
+              size={15}
+              strokeWidth={1.8}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
               style={{ color: "var(--text-tertiary)" }}
             />
+
             <input
               type="text"
               value={searchCatQuery}
               onChange={(e) => setSearchCatQuery(e.target.value)}
               placeholder="Search category..."
-              className="w-full pl-9 pr-8 py-2 rounded-xl text-[12px] font-normal bg-[var(--glass-fill)] border border-[var(--glass-border)] outline-none"
+              className="w-full h-11 pl-10 pr-9 rounded-[14px] text-[12px] font-medium outline-none"
               style={{
+                background: isDark
+                  ? "linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.035))"
+                  : "linear-gradient(180deg, #ffffff 0%, #f6f6f9 100%)",
+                border: isDark
+                  ? "1px solid rgba(255,255,255,0.10)"
+                  : "1px solid rgba(15,23,42,0.075)",
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, sans-serif",
+                boxShadow: isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 5px 14px rgba(15,23,42,0.055)",
               }}
             />
+
             {searchCatQuery && (
               <button
                 type="button"
                 onClick={() => setSearchCatQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                style={{
+                  background: isDark
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(15,23,42,0.055)",
+                  color: "var(--text-tertiary)",
+                }}
               >
-                <X size={13} style={{ color: "var(--text-tertiary)" }} />
+                <X size={12} strokeWidth={2} />
               </button>
             )}
           </div>
 
           {filteredCategories.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-[12px] font-normal" style={{ color: "var(--text-tertiary)" }}>
+            <div className="py-10 text-center">
+              <div
+                className="mx-auto mb-2.5 w-10 h-10 rounded-full flex items-center justify-center"
+                style={{
+                  background: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(15,23,42,0.045)",
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.08)"
+                    : "1px solid rgba(15,23,42,0.06)",
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                <Search size={16} strokeWidth={1.5} />
+              </div>
+
+              <p
+                className="text-[12px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 No categories found for "{searchCatQuery}"
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-2 max-h-[55vh] overflow-y-auto no-scrollbar pr-0.5">
+            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5 max-h-[55vh] overflow-y-auto no-scrollbar pr-0.5">
               {filteredCategories.map((cat) => {
                 const isSelected = categoryId === cat.id;
+
                 return (
                   <button
                     key={cat.id}
@@ -1665,29 +2229,62 @@ export function ReceiptScanModal({
                       setCategorySheetOpen(false);
                       setSearchCatQuery("");
                     }}
-                    className="flex flex-col items-center justify-center p-2 rounded-2xl active:scale-95 transition-all text-center cursor-pointer"
+                    className="relative min-w-0 w-full h-11 px-2.5 rounded-full flex items-center justify-start gap-1.5 cursor-pointer select-none transition-all duration-150 active:scale-[0.96]"
                     style={{
                       background: isSelected
-                        ? "rgba(255, 255, 255, 0.08)"
-                        : "var(--bg-elevated)",
-                      color: "var(--text-primary)",
+                        ? isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.09))"
+                          : "linear-gradient(180deg, #ffffff 0%, #f0f0f4 100%)"
+                        : isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))"
+                          : "linear-gradient(180deg, #ffffff 0%, #f5f5f8 100%)",
+                      color: isSelected
+                        ? "var(--text-primary)"
+                        : "var(--text-secondary)",
                       border: isSelected
-                        ? "1.5px solid var(--accent)"
-                        : "1px solid var(--glass-border)",
+                        ? isDark
+                          ? "1px solid rgba(255,255,255,0.25)"
+                          : "1px solid rgba(15,23,42,0.12)"
+                        : isDark
+                          ? "1px solid rgba(255,255,255,0.085)"
+                          : "1px solid rgba(15,23,42,0.065)",
+                      boxShadow: isSelected
+                        ? isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.20), 0 5px 14px rgba(0,0,0,0.22)"
+                          : "inset 0 1px 0 rgba(255,255,255,1), 0 5px 14px rgba(15,23,42,0.10)"
+                        : isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.07)"
+                          : "inset 0 1px 0 rgba(255,255,255,0.95), 0 3px 9px rgba(15,23,42,0.045)",
                     }}
                   >
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-1 shrink-0"
+                    {/* Icon */}
+                    <span
+                      className="w-[24px] h-[24px] rounded-full flex items-center justify-center shrink-0"
                       style={{
                         background: isSelected
-                          ? "var(--dock-active-pill)"
-                          : "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
+                          ? isDark
+                            ? "rgba(255,255,255,0.12)"
+                            : "rgba(15,23,42,0.065)"
+                          : isDark
+                            ? "rgba(255,255,255,0.055)"
+                            : "rgba(15,23,42,0.045)",
+                        border: isSelected
+                          ? isDark
+                            ? "1px solid rgba(255,255,255,0.13)"
+                            : "1px solid rgba(15,23,42,0.06)"
+                          : isDark
+                            ? "1px solid rgba(255,255,255,0.075)"
+                            : "1px solid rgba(15,23,42,0.05)",
+                        boxShadow: isSelected
+                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                          : "none",
                       }}
                     >
-                      <IconRenderer icon={cat.emoji} size="w-6 h-6" />
-                    </div>
-                    <span className="text-[11px] font-normal text-center truncate w-full px-0.5">
+                      <IconRenderer icon={cat.emoji} size="w-[15px] h-[15px]" />
+                    </span>
+
+                    {/* Name */}
+                    <span className="min-w-0 text-[10.5px] leading-none font-semibold tracking-[-0.012em] whitespace-nowrap truncate">
                       {cat.name}
                     </span>
                   </button>
@@ -1698,7 +2295,9 @@ export function ReceiptScanModal({
         </div>
       </BottomSheet>
 
-      {/* Wallet BottomSheet Picker */}
+      {/* ================================================================
+      WALLET BOTTOM SHEET — APPLE LIQUID GLASS / 3-COLUMN PILLS
+      ================================================================ */}
       <BottomSheet
         isOpen={walletSheetOpen}
         onClose={() => {
@@ -1707,45 +2306,88 @@ export function ReceiptScanModal({
         }}
         title="Select Account"
       >
-        <div className="p-4 pb-10" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
-          <div className="relative mb-3.5">
+        <div
+          className="px-4 pt-1 pb-8"
+          style={{
+            fontFamily: "Urbanist, -apple-system, sans-serif",
+          }}
+        >
+          {/* Search */}
+          <div className="relative mb-4">
             <Search
-              size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2"
+              size={15}
+              strokeWidth={1.8}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
               style={{ color: "var(--text-tertiary)" }}
             />
+
             <input
               type="text"
               value={searchWalletQuery}
               onChange={(e) => setSearchWalletQuery(e.target.value)}
               placeholder="Search account..."
-              className="w-full pl-9 pr-8 py-2 rounded-xl text-[12px] font-normal bg-[var(--glass-fill)] border border-[var(--glass-border)] outline-none"
+              className="w-full h-11 pl-10 pr-9 rounded-[14px] text-[12px] font-medium outline-none"
               style={{
+                background: isDark
+                  ? "linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.035))"
+                  : "linear-gradient(180deg, #ffffff 0%, #f6f6f9 100%)",
+                border: isDark
+                  ? "1px solid rgba(255,255,255,0.10)"
+                  : "1px solid rgba(15,23,42,0.075)",
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, sans-serif",
+                boxShadow: isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 5px 14px rgba(15,23,42,0.055)",
               }}
             />
+
             {searchWalletQuery && (
               <button
                 type="button"
                 onClick={() => setSearchWalletQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                style={{
+                  background: isDark
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(15,23,42,0.055)",
+                  color: "var(--text-tertiary)",
+                }}
               >
-                <X size={13} style={{ color: "var(--text-tertiary)" }} />
+                <X size={12} strokeWidth={2} />
               </button>
             )}
           </div>
 
           {filteredWallets.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-[12px] font-normal" style={{ color: "var(--text-tertiary)" }}>
+            <div className="py-10 text-center">
+              <div
+                className="mx-auto mb-2.5 w-10 h-10 rounded-full flex items-center justify-center"
+                style={{
+                  background: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(15,23,42,0.045)",
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.08)"
+                    : "1px solid rgba(15,23,42,0.06)",
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                <CreditCard size={16} strokeWidth={1.5} />
+              </div>
+
+              <p
+                className="text-[12px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 No accounts found for "{searchWalletQuery}"
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2.5 max-h-[55vh] overflow-y-auto no-scrollbar pr-0.5">
+            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5 max-h-[55vh] overflow-y-auto no-scrollbar pr-0.5">
               {filteredWallets.map((w) => {
                 const isSelected = walletId === w.id;
+
                 return (
                   <button
                     key={w.id}
@@ -1756,29 +2398,59 @@ export function ReceiptScanModal({
                       setWalletSheetOpen(false);
                       setSearchWalletQuery("");
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl active:scale-95 transition-all text-center cursor-pointer"
+                    className="relative min-w-0 w-full h-11 px-2.5 rounded-full flex items-center justify-start gap-1.5 cursor-pointer select-none transition-all duration-150 active:scale-[0.96]"
                     style={{
                       background: isSelected
-                        ? "rgba(255, 255, 255, 0.08)"
-                        : "var(--bg-elevated)",
-                      color: "var(--text-primary)",
+                        ? isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.09))"
+                          : "linear-gradient(180deg, #ffffff 0%, #f0f0f4 100%)"
+                        : isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))"
+                          : "linear-gradient(180deg, #ffffff 0%, #f5f5f8 100%)",
+                      color: isSelected
+                        ? "var(--text-primary)"
+                        : "var(--text-secondary)",
                       border: isSelected
-                        ? "1.5px solid var(--accent)"
-                        : "1px solid var(--glass-border)",
+                        ? isDark
+                          ? "1px solid rgba(255,255,255,0.25)"
+                          : "1px solid rgba(15,23,42,0.12)"
+                        : isDark
+                          ? "1px solid rgba(255,255,255,0.085)"
+                          : "1px solid rgba(15,23,42,0.065)",
+                      boxShadow: isSelected
+                        ? isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.20), 0 5px 14px rgba(0,0,0,0.22)"
+                          : "inset 0 1px 0 rgba(255,255,255,1), 0 5px 14px rgba(15,23,42,0.10)"
+                        : isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.07)"
+                          : "inset 0 1px 0 rgba(255,255,255,0.95), 0 3px 9px rgba(15,23,42,0.045)",
                     }}
                   >
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-1 shrink-0"
+                    {/* Account Icon */}
+                    <span
+                      className="w-[24px] h-[24px] rounded-full flex items-center justify-center shrink-0"
                       style={{
                         background: isSelected
-                          ? "var(--dock-active-pill)"
-                          : "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
+                          ? isDark
+                            ? "rgba(255,255,255,0.12)"
+                            : "rgba(15,23,42,0.065)"
+                          : isDark
+                            ? "rgba(255,255,255,0.055)"
+                            : "rgba(15,23,42,0.045)",
+                        border: isSelected
+                          ? isDark
+                            ? "1px solid rgba(255,255,255,0.13)"
+                            : "1px solid rgba(15,23,42,0.06)"
+                          : isDark
+                            ? "1px solid rgba(255,255,255,0.075)"
+                            : "1px solid rgba(15,23,42,0.05)",
                       }}
                     >
-                      <IconRenderer icon={w.icon} size="w-5 h-5" />
-                    </div>
-                    <span className="text-[11px] font-normal truncate w-full text-center">
+                      <IconRenderer icon={w.icon} size="w-[15px] h-[15px]" />
+                    </span>
+
+                    {/* Account Name */}
+                    <span className="min-w-0 text-[10.5px] leading-none font-semibold tracking-[-0.012em] whitespace-nowrap truncate">
                       {w.name}
                     </span>
                   </button>
@@ -1789,55 +2461,102 @@ export function ReceiptScanModal({
         </div>
       </BottomSheet>
 
-      {/* To Wallet BottomSheet Picker (for Transfers) */}
+      {/* ================================================================
+      TO WALLET BOTTOM SHEET — APPLE LIQUID GLASS / 3-COLUMN PILLS
+      ================================================================ */}
       <BottomSheet
         isOpen={toWalletSheetOpen}
         onClose={() => {
           setToWalletSheetOpen(false);
           setSearchToWalletQuery("");
         }}
-        title={isIndonesian ? "Pilih Akun Tujuan" : "Select Destination Account"}
+        title={
+          isIndonesian ? "Pilih Akun Tujuan" : "Select Destination Account"
+        }
       >
-        <div className="p-4 pb-10" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
-          <div className="relative mb-3.5">
+        <div
+          className="px-4 pt-1 pb-8"
+          style={{
+            fontFamily: "Urbanist, -apple-system, sans-serif",
+          }}
+        >
+          {/* Search */}
+          <div className="relative mb-4">
             <Search
-              size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2"
+              size={15}
+              strokeWidth={1.8}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
               style={{ color: "var(--text-tertiary)" }}
             />
+
             <input
               type="text"
               value={searchToWalletQuery}
               onChange={(e) => setSearchToWalletQuery(e.target.value)}
               placeholder="Search account..."
-              className="w-full pl-9 pr-8 py-2 rounded-xl text-[12px] font-normal bg-[var(--glass-fill)] border border-[var(--glass-border)] outline-none"
+              className="w-full h-11 pl-10 pr-9 rounded-[14px] text-[12px] font-medium outline-none"
               style={{
+                background: isDark
+                  ? "linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.035))"
+                  : "linear-gradient(180deg, #ffffff 0%, #f6f6f9 100%)",
+                border: isDark
+                  ? "1px solid rgba(255,255,255,0.10)"
+                  : "1px solid rgba(15,23,42,0.075)",
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, sans-serif",
+                boxShadow: isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 5px 14px rgba(15,23,42,0.055)",
               }}
             />
+
             {searchToWalletQuery && (
               <button
                 type="button"
                 onClick={() => setSearchToWalletQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                style={{
+                  background: isDark
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(15,23,42,0.055)",
+                  color: "var(--text-tertiary)",
+                }}
               >
-                <X size={13} style={{ color: "var(--text-tertiary)" }} />
+                <X size={12} strokeWidth={2} />
               </button>
             )}
           </div>
 
           {filteredToWallets.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-[12px] font-normal" style={{ color: "var(--text-tertiary)" }}>
+            <div className="py-10 text-center">
+              <div
+                className="mx-auto mb-2.5 w-10 h-10 rounded-full flex items-center justify-center"
+                style={{
+                  background: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(15,23,42,0.045)",
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.08)"
+                    : "1px solid rgba(15,23,42,0.06)",
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                <ArrowRightLeft size={16} strokeWidth={1.5} />
+              </div>
+
+              <p
+                className="text-[12px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 No accounts found
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2.5 max-h-[55vh] overflow-y-auto no-scrollbar pr-0.5">
+            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5 max-h-[55vh] overflow-y-auto no-scrollbar pr-0.5">
               {filteredToWallets.map((w) => {
                 const isSelected = toWalletId === w.id;
                 const isSource = walletId === w.id;
+
                 return (
                   <button
                     key={w.id}
@@ -1849,36 +2568,80 @@ export function ReceiptScanModal({
                       setToWalletSheetOpen(false);
                       setSearchToWalletQuery("");
                     }}
-                    className={`flex flex-col items-center justify-center p-2.5 rounded-2xl active:scale-95 transition-all text-center cursor-pointer ${
-                      isSource ? "opacity-35 cursor-not-allowed" : ""
+                    className={`relative min-w-0 w-full h-11 px-2.5 rounded-full flex items-center justify-start gap-1.5 select-none transition-all duration-150 ${
+                      isSource
+                        ? "opacity-35 cursor-not-allowed"
+                        : "cursor-pointer active:scale-[0.96]"
                     }`}
                     style={{
                       background: isSelected
-                        ? "rgba(255, 255, 255, 0.08)"
-                        : "var(--bg-elevated)",
-                      color: "var(--text-primary)",
+                        ? isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.09))"
+                          : "linear-gradient(180deg, #ffffff 0%, #f0f0f4 100%)"
+                        : isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))"
+                          : "linear-gradient(180deg, #ffffff 0%, #f5f5f8 100%)",
+                      color: isSelected
+                        ? "var(--text-primary)"
+                        : "var(--text-secondary)",
                       border: isSelected
-                        ? "1.5px solid var(--accent)"
-                        : "1px solid var(--glass-border)",
+                        ? isDark
+                          ? "1px solid rgba(255,255,255,0.25)"
+                          : "1px solid rgba(15,23,42,0.12)"
+                        : isDark
+                          ? "1px solid rgba(255,255,255,0.085)"
+                          : "1px solid rgba(15,23,42,0.065)",
+                      boxShadow: isSelected
+                        ? isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.20), 0 5px 14px rgba(0,0,0,0.22)"
+                          : "inset 0 1px 0 rgba(255,255,255,1), 0 5px 14px rgba(15,23,42,0.10)"
+                        : isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.07)"
+                          : "inset 0 1px 0 rgba(255,255,255,0.95), 0 3px 9px rgba(15,23,42,0.045)",
                     }}
                   >
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-1 shrink-0"
+                    {/* Account Icon */}
+                    <span
+                      className="w-[24px] h-[24px] rounded-full flex items-center justify-center shrink-0"
                       style={{
                         background: isSelected
-                          ? "var(--dock-active-pill)"
-                          : "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
+                          ? isDark
+                            ? "rgba(255,255,255,0.12)"
+                            : "rgba(15,23,42,0.065)"
+                          : isDark
+                            ? "rgba(255,255,255,0.055)"
+                            : "rgba(15,23,42,0.045)",
+                        border: isSelected
+                          ? isDark
+                            ? "1px solid rgba(255,255,255,0.13)"
+                            : "1px solid rgba(15,23,42,0.06)"
+                          : isDark
+                            ? "1px solid rgba(255,255,255,0.075)"
+                            : "1px solid rgba(15,23,42,0.05)",
                       }}
                     >
-                      <IconRenderer icon={w.icon} size="w-5 h-5" />
-                    </div>
-                    <span className="text-[11px] font-normal truncate w-full text-center">
+                      <IconRenderer icon={w.icon} size="w-[15px] h-[15px]" />
+                    </span>
+
+                    {/* Account Name */}
+                    <span className="min-w-0 text-[10.5px] leading-none font-semibold tracking-[-0.012em] whitespace-nowrap truncate">
                       {w.name}
                     </span>
+
                     {isSource && (
-                      <span className="text-[9px] text-[var(--text-tertiary)] opacity-70">
-                        (Source)
+                      <span
+                        className="absolute -top-1 right-2 px-1.5 py-0.5 rounded-full text-[7px] font-semibold"
+                        style={{
+                          background: isDark
+                            ? "rgba(255,255,255,0.10)"
+                            : "rgba(15,23,42,0.07)",
+                          color: "var(--text-tertiary)",
+                          border: isDark
+                            ? "1px solid rgba(255,255,255,0.08)"
+                            : "1px solid rgba(15,23,42,0.05)",
+                        }}
+                      >
+                        SOURCE
                       </span>
                     )}
                   </button>
@@ -1889,7 +2652,9 @@ export function ReceiptScanModal({
         </div>
       </BottomSheet>
 
-      {/* Unified iOS Drum Roller Date & Time Picker */}
+      {/* ================================================================
+      DATE / TIME
+      ================================================================ */}
       <GlassDateTimePickerModal
         isOpen={dateTimePickerOpen}
         onClose={() => setDateTimePickerOpen(false)}
@@ -1900,20 +2665,53 @@ export function ReceiptScanModal({
         }}
       />
 
-      {/* Media Permission BottomSheet */}
+      {/* ================================================================
+      MEDIA PERMISSION
+      ================================================================ */}
       <BottomSheet
         isOpen={permissionPrompt.isOpen}
-        onClose={() => setPermissionPrompt((prev) => ({ ...prev, isOpen: false }))}
+        onClose={() =>
+          setPermissionPrompt((prev) => ({
+            ...prev,
+            isOpen: false,
+          }))
+        }
         title={permissionPrompt.title}
       >
-        <div className="p-4 pb-8 space-y-4" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
-          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/[0.04] border border-white/10">
+        <div
+          className="p-4 pb-8 space-y-4"
+          style={{
+            fontFamily: "Urbanist, -apple-system, sans-serif",
+          }}
+        >
+          {/* Permission header */}
+          <div
+            className="flex items-center gap-3.5 p-3.5 rounded-2xl"
+            style={{
+              background: isDark
+                ? "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))"
+                : "linear-gradient(180deg, #ffffff 0%, #f7f7fa 100%)",
+              border: isDark
+                ? "1px solid rgba(255,255,255,0.10)"
+                : "1px solid rgba(15,23,42,0.075)",
+              boxShadow: isDark
+                ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                : "inset 0 1px 0 rgba(255,255,255,1), 0 5px 16px rgba(15,23,42,0.065)",
+            }}
+          >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark
+                  ? "rgba(255,255,255,0.055)"
+                  : "rgba(15,23,42,0.045)",
+                border: isDark
+                  ? "1px solid rgba(255,255,255,0.08)"
+                  : "1px solid rgba(15,23,42,0.06)",
                 color: "var(--text-primary)",
+                boxShadow: isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                  : "inset 0 1px 0 rgba(255,255,255,0.95)",
               }}
             >
               {permissionPrompt.type === "camera" ? (
@@ -1922,64 +2720,110 @@ export function ReceiptScanModal({
                 <ImageIcon size={20} strokeWidth={1.5} />
               )}
             </div>
-            <div>
+
+            <div className="min-w-0">
               <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                {permissionPrompt.type === "camera" ? "Camera Hardware" : "Photo Library"}
+                {permissionPrompt.type === "camera"
+                  ? "Camera Hardware"
+                  : "Photo Library"}
               </p>
+
               <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">
                 {permissionPrompt.description}
               </p>
             </div>
           </div>
 
+          {/* Privacy info */}
           <div
             className="p-3 rounded-2xl border"
             style={{
-              background: "rgba(255, 255, 255, 0.02)",
-              borderColor: "var(--glass-border)",
+              background: isDark
+                ? "rgba(255,255,255,0.025)"
+                : "rgba(15,23,42,0.025)",
+              borderColor: isDark
+                ? "rgba(255,255,255,0.08)"
+                : "rgba(15,23,42,0.065)",
+              boxShadow: isDark
+                ? "inset 0 1px 0 rgba(255,255,255,0.05)"
+                : "inset 0 1px 0 rgba(255,255,255,0.8)",
             }}
           >
-            <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-              Trouvaille processes all financial receipts and bank slips 100% on-device using local optical character recognition. Your private captures never leave your phone.
+            <p
+              className="text-[11px] leading-relaxed"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Trouvaille processes all financial receipts and bank slips 100%
+              on-device using local optical character recognition. Your private
+              captures never leave your phone.
             </p>
           </div>
 
+          {/* Actions */}
           <div className="pt-2 flex flex-col gap-2">
             <button
               type="button"
               onClick={async () => {
                 triggerHaptic("medium");
+
                 if (permissionPrompt.type === "photos") {
                   const granted = await requestPhotosPermission();
-                  setPermissionPrompt((prev) => ({ ...prev, isOpen: false }));
+
+                  setPermissionPrompt((prev) => ({
+                    ...prev,
+                    isOpen: false,
+                  }));
+
                   if (granted) {
                     showToast("Photo library access granted", "add", () => {});
+
                     if (Capacitor.isNativePlatform()) {
                       setTimeout(() => handlePickGalleryNative(), 250);
                     }
                   } else {
-                    showToast("Please allow Photos access in device Settings", "delete", () => {});
+                    showToast(
+                      "Please allow Photos access in device Settings",
+                      "delete",
+                      () => {},
+                    );
                   }
                 } else {
                   const granted = await requestCameraPermission();
-                  setPermissionPrompt((prev) => ({ ...prev, isOpen: false }));
+
+                  setPermissionPrompt((prev) => ({
+                    ...prev,
+                    isOpen: false,
+                  }));
+
                   if (granted) {
                     showToast("Camera access granted", "add", () => {});
+
                     if (Capacitor.isNativePlatform()) {
                       setTimeout(() => handleTakePhotoNative(), 250);
                     } else {
                       startLiveCamera();
                     }
                   } else {
-                    showToast("Please allow Camera access in device Settings", "delete", () => {});
+                    showToast(
+                      "Please allow Camera access in device Settings",
+                      "delete",
+                      () => {},
+                    );
                   }
                 }
               }}
-              className="w-full py-3 rounded-2xl font-bold text-[13px] transition-transform active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-2xl font-bold text-[13px] transition-transform active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
               style={{
-                background: "#ffffff",
-                color: "#000000",
-                boxShadow: "0 4px 16px rgba(255, 255, 255, 0.15)",
+                background: isDark
+                  ? "linear-gradient(180deg, #ffffff 0%, #e8e8ec 100%)"
+                  : "linear-gradient(180deg, #19191c 0%, #08080a 100%)",
+                color: isDark ? "#000000" : "#ffffff",
+                border: isDark
+                  ? "1px solid rgba(255,255,255,0.90)"
+                  : "1px solid rgba(0,0,0,0.85)",
+                boxShadow: isDark
+                  ? "inset 0 1px 0 #ffffff, 0 8px 22px -6px rgba(0,0,0,0.55)"
+                  : "inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 22px -6px rgba(15,23,42,0.30)",
               }}
             >
               <Check size={16} strokeWidth={2} />
@@ -1990,9 +2834,16 @@ export function ReceiptScanModal({
               type="button"
               onClick={() => {
                 triggerHaptic("light");
-                setPermissionPrompt((prev) => ({ ...prev, isOpen: false }));
+
+                setPermissionPrompt((prev) => ({
+                  ...prev,
+                  isOpen: false,
+                }));
               }}
-              className="w-full py-2.5 rounded-2xl font-semibold text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              className="w-full py-2.5 rounded-2xl font-semibold text-[12px] transition-colors cursor-pointer"
+              style={{
+                color: "var(--text-secondary)",
+              }}
             >
               Cancel
             </button>
@@ -2002,6 +2853,3 @@ export function ReceiptScanModal({
     </>
   );
 }
-
-
-

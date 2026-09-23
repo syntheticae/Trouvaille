@@ -154,11 +154,23 @@ export function TransactionSheet({
   const { data: wallets = [] } = useWallets();
 
   // Crypto Asset Units and Sync State
-  const fromWallet = useMemo(() => wallets.find((w) => w.id === walletId), [wallets, walletId]);
-  const toWallet = useMemo(() => wallets.find((w) => w.id === toWalletId), [wallets, toWalletId]);
+  const fromWallet = useMemo(
+    () => wallets.find((w) => w.id === walletId),
+    [wallets, walletId],
+  );
+  const toWallet = useMemo(
+    () => wallets.find((w) => w.id === toWalletId),
+    [wallets, toWalletId],
+  );
 
-  const isFromCrypto = useMemo(() => isInvestmentOrCryptoWallet(fromWallet), [fromWallet]);
-  const isToCrypto = useMemo(() => isInvestmentOrCryptoWallet(toWallet), [toWallet]);
+  const isFromCrypto = useMemo(
+    () => isInvestmentOrCryptoWallet(fromWallet),
+    [fromWallet],
+  );
+  const isToCrypto = useMemo(
+    () => isInvestmentOrCryptoWallet(toWallet),
+    [toWallet],
+  );
   const isCryptoInvolved = isFromCrypto || (type === "transfer" && isToCrypto);
 
   const [cryptoRate, setCryptoRate] = useState<number>(() => {
@@ -169,9 +181,11 @@ export function TransactionSheet({
 
   useEffect(() => {
     if (isCryptoInvolved) {
-      fetchUsdtPriceInIDR().then((rate) => {
-        if (rate > 5000 && rate < 50000) setCryptoRate(rate);
-      }).catch(() => {});
+      fetchUsdtPriceInIDR()
+        .then((rate) => {
+          if (rate > 5000 && rate < 50000) setCryptoRate(rate);
+        })
+        .catch(() => {});
     }
   }, [isCryptoInvolved]);
 
@@ -223,14 +237,24 @@ export function TransactionSheet({
   const selectedSpaceId = useMemo<string>(() => {
     if (transaction?.ledger_id) return transaction.ledger_id;
     if (transaction?.space_id) return transaction.space_id;
-    if (transaction?.note?.toLowerCase().includes("#business") || transaction?.note?.toLowerCase().includes("#kantor")) return "business";
-    if (transaction?.note?.toLowerCase().includes("#travel") || transaction?.note?.toLowerCase().includes("#liburan")) return "travel";
+    if (
+      transaction?.note?.toLowerCase().includes("#business") ||
+      transaction?.note?.toLowerCase().includes("#kantor")
+    )
+      return "business";
+    if (
+      transaction?.note?.toLowerCase().includes("#travel") ||
+      transaction?.note?.toLowerCase().includes("#liburan")
+    )
+      return "travel";
     return activeSpaceId !== "all" ? activeSpaceId : "personal";
   }, [transaction, activeSpaceId]);
 
   const handleToggleTag = (tag: string) => {
     triggerHaptic("light");
-    const normalized = tag.startsWith("#") ? tag.toLowerCase() : `#${tag.toLowerCase()}`;
+    const normalized = tag.startsWith("#")
+      ? tag.toLowerCase()
+      : `#${tag.toLowerCase()}`;
     if (activeTags.includes(normalized)) {
       const regex = new RegExp(`\\s*${normalized}\\b`, "gi");
       const updated = note.replace(regex, "").trim();
@@ -243,8 +267,12 @@ export function TransactionSheet({
 
   // Split Transaction & Piutang State (Innovation 2)
   const [isSplitOpen, setIsSplitOpen] = useState(false);
-  const [splitMode, setSplitMode] = useState<"friends" | "categories">("friends");
-  const [splitFriendType, setSplitFriendType] = useState<"equal" | "custom">("equal");
+  const [splitMode, setSplitMode] = useState<"friends" | "categories">(
+    "friends",
+  );
+  const [splitFriendType, setSplitFriendType] = useState<"equal" | "custom">(
+    "equal",
+  );
   const [peopleCount, setPeopleCount] = useState(2);
   const [friendNames, setFriendNames] = useState("");
   const [customMyShare, setCustomMyShare] = useState<number>(0);
@@ -342,7 +370,8 @@ export function TransactionSheet({
 
     const existingSpent = allTxs
       .filter((tx) => {
-        if (tx.type !== "expense" || tx.category_id !== categoryId) return false;
+        if (tx.type !== "expense" || tx.category_id !== categoryId)
+          return false;
         if (transaction && tx.id === transaction.id) return false;
         const txDateStr = tx.occurred_on || tx.created_at;
         return txDateStr && txDateStr.startsWith(currentMonthStr);
@@ -451,31 +480,46 @@ export function TransactionSheet({
   // Resolution 5 Ribbons: Ensure selected items are always present in the horizontal list
   const displayCategories = useMemo(() => {
     if (!categoryId) return suggestedCategories.slice(0, 10);
-    const inTop = suggestedCategories.slice(0, 10).some((c) => c.id === categoryId);
+    const inTop = suggestedCategories
+      .slice(0, 10)
+      .some((c) => c.id === categoryId);
     if (inTop) return suggestedCategories.slice(0, 10);
     const selectedCat = categories.find((c) => c.id === categoryId);
     return selectedCat
-      ? [selectedCat, ...suggestedCategories.filter((c) => c.id !== categoryId).slice(0, 9)]
+      ? [
+          selectedCat,
+          ...suggestedCategories.filter((c) => c.id !== categoryId).slice(0, 9),
+        ]
       : suggestedCategories.slice(0, 10);
   }, [suggestedCategories, categories, categoryId]);
 
   const displayFromWallets = useMemo(() => {
     if (!walletId) return suggestedFromWallets.slice(0, 8);
-    const inTop = suggestedFromWallets.slice(0, 8).some((w) => w.id === walletId);
+    const inTop = suggestedFromWallets
+      .slice(0, 8)
+      .some((w) => w.id === walletId);
     if (inTop) return suggestedFromWallets.slice(0, 8);
     const selectedW = wallets.find((w) => w.id === walletId);
     return selectedW
-      ? [selectedW, ...suggestedFromWallets.filter((w) => w.id !== walletId).slice(0, 7)]
+      ? [
+          selectedW,
+          ...suggestedFromWallets.filter((w) => w.id !== walletId).slice(0, 7),
+        ]
       : suggestedFromWallets.slice(0, 8);
   }, [suggestedFromWallets, wallets, walletId]);
 
   const displayToWallets = useMemo(() => {
     if (!toWalletId) return suggestedToWallets.slice(0, 8);
-    const inTop = suggestedToWallets.slice(0, 8).some((w) => w.id === toWalletId);
+    const inTop = suggestedToWallets
+      .slice(0, 8)
+      .some((w) => w.id === toWalletId);
     if (inTop) return suggestedToWallets.slice(0, 8);
     const selectedW = wallets.find((w) => w.id === toWalletId);
     return selectedW
-      ? [selectedW, ...suggestedToWallets.filter((w) => w.id !== toWalletId).slice(0, 7)]
+      ? [
+          selectedW,
+          ...suggestedToWallets.filter((w) => w.id !== toWalletId).slice(0, 7),
+        ]
       : suggestedToWallets.slice(0, 8);
   }, [suggestedToWallets, wallets, toWalletId]);
 
@@ -581,7 +625,9 @@ export function TransactionSheet({
             ? String(initialValues.amount)
             : "0";
         const initAmtInput =
-          initialValues?.amount !== undefined && initialValues?.amount !== null && initialValues.amount > 0
+          initialValues?.amount !== undefined &&
+          initialValues?.amount !== null &&
+          initialValues.amount > 0
             ? initialValues.amount.toLocaleString("id-ID")
             : "";
         const initNote = initialValues?.note || "";
@@ -597,18 +643,18 @@ export function TransactionSheet({
         const defaultCatId =
           initialValues?.categoryId !== undefined
             ? initialValues.categoryId
-            : (suggestedCategories[0]?.id ||
-               (categories.length > 0 ? categories[0].id : null));
+            : suggestedCategories[0]?.id ||
+              (categories.length > 0 ? categories[0].id : null);
         const defaultFromId =
           initialValues?.walletId !== undefined
             ? initialValues.walletId
-            : (suggestedFromWallets[0]?.id ||
-               (wallets.length > 0 ? wallets[0].id : null));
+            : suggestedFromWallets[0]?.id ||
+              (wallets.length > 0 ? wallets[0].id : null);
         const defaultToId =
           initialValues?.toWalletId !== undefined
             ? initialValues.toWalletId
-            : (suggestedToWallets.find((w) => w.id !== defaultFromId)?.id ||
-               (wallets.length > 1 ? wallets[1].id : null));
+            : suggestedToWallets.find((w) => w.id !== defaultFromId)?.id ||
+              (wallets.length > 1 ? wallets[1].id : null);
         setCategoryId(defaultCatId);
         setWalletId(defaultFromId);
         setToWalletId(defaultToId);
@@ -654,7 +700,9 @@ export function TransactionSheet({
   const totalAmountNum = Number(amount) || 0;
   const myShareFriends =
     splitFriendType === "equal"
-      ? (peopleCount > 0 ? Math.round(totalAmountNum / peopleCount) : totalAmountNum)
+      ? peopleCount > 0
+        ? Math.round(totalAmountNum / peopleCount)
+        : totalAmountNum
       : Math.min(totalAmountNum, Math.max(0, customMyShare));
   const friendsShare = Math.max(0, totalAmountNum - myShareFriends);
   const cat1Share = Math.min(
@@ -795,7 +843,8 @@ export function TransactionSheet({
         const cat1Amount = cat1Share;
         const cat2Amount = cat2Share;
         const effectiveCat2Id =
-          itemCatId2 || (categories.length > 1 ? categories[1].id : effectiveCatId);
+          itemCatId2 ||
+          (categories.length > 1 ? categories[1].id : effectiveCatId);
 
         if (cat2Amount > 0) {
           const tx1 = {
@@ -830,7 +879,11 @@ export function TransactionSheet({
               addTx.mutate(tx2, {
                 onSuccess: () => {
                   triggerSuccessHaptic();
-                  showToast("Multi-category transaction recorded!", "add", () => {});
+                  showToast(
+                    "Multi-category transaction recorded!",
+                    "add",
+                    () => {},
+                  );
                 },
               });
             },
@@ -953,34 +1006,32 @@ export function TransactionSheet({
             border: "1px solid var(--glass-border)",
           }}
         >
-          {(
-            [
-              {
-                key: "expense" as TabType,
-                label: "Expense",
-                icon: <ArrowDownCircle size={13.5} strokeWidth={1.75} />,
-              },
-              {
-                key: "income" as TabType,
-                label: "Income",
-                icon: <ArrowUpCircle size={13.5} strokeWidth={1.75} />,
-              },
-              {
-                key: "transfer" as TabType,
-                label: "Transfer",
-                icon: <RefreshCcw size={13.5} strokeWidth={1.75} />,
-              },
-              ...(!transaction
-                ? [
-                    {
-                      key: "split" as TabType,
-                      label: "Split",
-                      icon: <Users size={13.5} strokeWidth={1.75} />,
-                    },
-                  ]
-                : []),
-            ]
-          ).map((t) => {
+          {[
+            {
+              key: "expense" as TabType,
+              label: "Expense",
+              icon: <ArrowDownCircle size={13.5} strokeWidth={1.75} />,
+            },
+            {
+              key: "income" as TabType,
+              label: "Income",
+              icon: <ArrowUpCircle size={13.5} strokeWidth={1.75} />,
+            },
+            {
+              key: "transfer" as TabType,
+              label: "Transfer",
+              icon: <RefreshCcw size={13.5} strokeWidth={1.75} />,
+            },
+            ...(!transaction
+              ? [
+                  {
+                    key: "split" as TabType,
+                    label: "Split",
+                    icon: <Users size={13.5} strokeWidth={1.75} />,
+                  },
+                ]
+              : []),
+          ].map((t) => {
             const isSelected = activeTab === t.key;
             return (
               <button
@@ -1223,15 +1274,22 @@ export function TransactionSheet({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <Coins size={13} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
-                  <span className="text-[11px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                  <Coins
+                    size={13}
+                    strokeWidth={1.75}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                  <span
+                    className="text-[11px] font-semibold tracking-tight"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {isFromCrypto && type === "transfer"
                       ? "P2P Withdrawal / Penarikan"
                       : isToCrypto && type === "transfer"
-                      ? "P2P Purchase / Deposit"
-                      : type === "income"
-                      ? "Staking Yield / Income"
-                      : "Crypto Asset Execution"}
+                        ? "P2P Purchase / Deposit"
+                        : type === "income"
+                          ? "Staking Yield / Income"
+                          : "Crypto Asset Execution"}
                   </span>
                 </div>
                 <span
@@ -1249,7 +1307,10 @@ export function TransactionSheet({
               {/* Units Input & Live Preview */}
               <div className="flex items-center justify-between gap-3 pt-1 border-t border-[var(--glass-border)]/40">
                 <div className="flex-1">
-                  <div className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                  <div
+                    className="text-[10px] font-medium"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
                     Kuantitas Koin
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
@@ -1268,21 +1329,28 @@ export function TransactionSheet({
                         border: "1px solid var(--glass-border)",
                       }}
                     />
-                    <span className="text-[11px] font-semibold uppercase shrink-0" style={{ color: "var(--text-tertiary)" }}>
+                    <span
+                      className="text-[11px] font-semibold uppercase shrink-0"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
                       USDT
                     </span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <div className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                  <div
+                    className="text-[10px] font-medium"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
                     Dampak Kepemilikan
                   </div>
                   <div
                     className="text-[12px] font-mono font-semibold mt-1"
                     style={{
                       color:
-                        isFromCrypto && (type === "transfer" || type === "expense")
+                        isFromCrypto &&
+                        (type === "transfer" || type === "expense")
                           ? "#ef4444"
                           : "var(--accent, #10b981)",
                     }}
@@ -1309,7 +1377,9 @@ export function TransactionSheet({
               }}
             >
               <AlertCircle size={14} className="shrink-0" strokeWidth={2} />
-              <span>Possible duplicate: similar transaction recorded within 15 mins</span>
+              <span>
+                Possible duplicate: similar transaction recorded within 15 mins
+              </span>
             </motion.div>
           )}
 
@@ -1326,7 +1396,9 @@ export function TransactionSheet({
                 border: budgetImpact.isOver
                   ? "1px solid rgba(239, 68, 68, 0.35)"
                   : "1px solid var(--glass-border)",
-                color: budgetImpact.isOver ? "#fca5a5" : "var(--text-secondary)",
+                color: budgetImpact.isOver
+                  ? "#fca5a5"
+                  : "var(--text-secondary)",
               }}
             >
               <div className="flex items-center gap-1.5 truncate pr-2">
@@ -1361,7 +1433,9 @@ export function TransactionSheet({
                       background: budgetImpact.isOver
                         ? "rgba(239, 68, 68, 0.25)"
                         : "var(--bg-elevated)",
-                      color: budgetImpact.isOver ? "#fca5a5" : "var(--text-primary)",
+                      color: budgetImpact.isOver
+                        ? "#fca5a5"
+                        : "var(--text-primary)",
                       border: budgetImpact.isOver
                         ? "1px solid rgba(239, 68, 68, 0.4)"
                         : "1px solid var(--glass-border)",
@@ -1416,8 +1490,8 @@ export function TransactionSheet({
                 ? "0 4px 14px rgba(0, 0, 0, 0.35)"
                 : "0 2px 8px rgba(0, 0, 0, 0.05), inset 0 1px 0 #ffffff"
               : isDark
-              ? "none"
-              : "0 1px 3px rgba(0, 0, 0, 0.02), inset 0 1px 0 #ffffff",
+                ? "none"
+                : "0 1px 3px rgba(0, 0, 0, 0.02), inset 0 1px 0 #ffffff",
           }}
         >
           <PenLine
@@ -1499,35 +1573,45 @@ export function TransactionSheet({
         </div>
 
         {/* Dedicated Ledger Active Notice */}
-        {activeSpace && activeSpace.id !== "all" && activeSpace.id !== "personal" && (
-          <div className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              <span>
-                Ledger: <strong className="text-[var(--text-primary)]">{activeSpace.name}</strong>
-              </span>
+        {activeSpace &&
+          activeSpace.id !== "all" &&
+          activeSpace.id !== "personal" && (
+            <div className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                <span>
+                  Ledger:{" "}
+                  <strong className="text-[var(--text-primary)]">
+                    {activeSpace.name}
+                  </strong>
+                </span>
+              </div>
+              {activeSpace.tag ? (
+                <button
+                  type="button"
+                  onClick={() => handleToggleTag(activeSpace.tag!)}
+                  className="text-[10px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-white/[0.06] border border-white/10 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+                >
+                  {activeTags.includes(activeSpace.tag.toLowerCase())
+                    ? "Tagged"
+                    : `Attach ${activeSpace.tag}`}
+                </button>
+              ) : (
+                <span className="text-[10px] font-mono text-[var(--text-secondary)] bg-white/[0.06] border border-white/10 px-2 py-0.5 rounded-full">
+                  Auto-linked
+                </span>
+              )}
             </div>
-            {activeSpace.tag ? (
-              <button
-                type="button"
-                onClick={() => handleToggleTag(activeSpace.tag!)}
-                className="text-[10px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-white/[0.06] border border-white/10 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
-              >
-                {activeTags.includes(activeSpace.tag.toLowerCase()) ? "Tagged" : `Attach ${activeSpace.tag}`}
-              </button>
-            ) : (
-              <span className="text-[10px] font-mono text-[var(--text-secondary)] bg-white/[0.06] border border-white/10 px-2 py-0.5 rounded-full">
-                Auto-linked
-              </span>
-            )}
-          </div>
-        )}
+          )}
 
         {/* Reimbursable Highlight Notice */}
         {activeTags.includes("#reimburse") && (
           <div className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-            <span>Tag <strong>#reimburse</strong> active · Marked for expense reimbursement claim</span>
+            <span>
+              Tag <strong>#reimburse</strong> active · Marked for expense
+              reimbursement claim
+            </span>
           </div>
         )}
 
@@ -1555,10 +1639,7 @@ export function TransactionSheet({
                 boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
               }}
             >
-              <Sparkles
-                size={12}
-                className="text-[var(--accent)] shrink-0"
-              />
+              <Sparkles size={12} className="text-[var(--accent)] shrink-0" />
               <span>Smart match:</span>
               {predictedCategory && (
                 <span
@@ -1644,7 +1725,9 @@ export function TransactionSheet({
                         itemType === "transfer" ? null : itemCat?.id || null,
                       wallet_id: itemWallet?.id || null,
                       to_wallet_id:
-                        itemType === "transfer" ? itemToWallet?.id || null : null,
+                        itemType === "transfer"
+                          ? itemToWallet?.id || null
+                          : null,
                     };
                   });
 
@@ -1698,8 +1781,6 @@ export function TransactionSheet({
             friendsShare={friendsShare}
           />
         )}
-
-
 
         {/* Action Button Bar: Scan (Left), Save (Center), Quick Add (Right) */}
         <div className="flex items-center gap-2.5 mt-4 mb-2">
@@ -1794,8 +1875,8 @@ export function TransactionSheet({
                 background: showSmartBar
                   ? "var(--accent)"
                   : isDark
-                  ? "linear-gradient(155deg, #1f1f24 0%, #121215 100%)"
-                  : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
+                    ? "linear-gradient(155deg, #1f1f24 0%, #121215 100%)"
+                    : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
                 border: "1px solid var(--glass-border)",
                 color: showSmartBar
                   ? "var(--accent-ink)"
@@ -1813,7 +1894,9 @@ export function TransactionSheet({
         </div>
       </div>
 
-      {/* More Categories Glass Sheet */}
+      {/* ================================================================
+    MORE CATEGORIES — APPLE STYLE / 3-COLUMN PILL GRID
+    ================================================================ */}
       <BottomSheet
         isOpen={moreCatOpen}
         onClose={() => {
@@ -1821,31 +1904,55 @@ export function TransactionSheet({
           setSearchCatQuery("");
         }}
       >
-        <div className="p-5 pb-12">
-          <div className="flex items-center justify-between mb-3">
-            <div>
+        <div className="px-4 pt-1 pb-7">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="min-w-0">
               <h3
-                className="font-semibold text-[18px] leading-tight"
-                style={{ color: "var(--text-primary)" }}
+                className="
+            font-semibold
+            text-[17px]
+            leading-[1.15]
+            tracking-[-0.02em]
+          "
+                style={{
+                  color: "var(--text-primary)",
+                }}
               >
                 Select Category
               </h3>
+
               <p
-                className="text-[11px] font-semibold mt-0.5"
-                style={{ color: "var(--text-tertiary)" }}
+                className="text-[10px] font-medium mt-1"
+                style={{
+                  color: "var(--text-tertiary)",
+                }}
               >
                 {filteredMoreCategories.length} categories available
               </p>
             </div>
+
             <button
+              type="button"
               onClick={() => {
                 setMoreCatOpen(false);
                 setSearchCatQuery("");
               }}
-              className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform"
+              className="
+          shrink-0
+          h-8
+          px-3.5
+          rounded-full
+          text-[11px]
+          font-semibold
+          cursor-pointer
+          transition-all
+          duration-150
+          active:scale-[0.96]
+        "
               style={{
                 background: "var(--glass-fill)",
-                color: "var(--text-primary)",
+                color: "var(--text-secondary)",
                 border: "1px solid var(--glass-border)",
               }}
             >
@@ -1853,82 +1960,175 @@ export function TransactionSheet({
             </button>
           </div>
 
-          {/* Search bar */}
-          <div className="relative mb-3.5">
+          {/* Search */}
+          <div className="relative mb-4">
             <Search
-              size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2"
-              style={{ color: "var(--text-tertiary)" }}
+              size={15}
+              strokeWidth={1.8}
+              className="
+          absolute
+          left-3.5
+          top-1/2
+          -translate-y-1/2
+          pointer-events-none
+        "
+              style={{
+                color: "var(--text-tertiary)",
+              }}
             />
+
             <input
               type="text"
               value={searchCatQuery}
               onChange={(e) => setSearchCatQuery(e.target.value)}
               placeholder="Search category..."
-              className="w-full pl-9 pr-8 py-2 rounded-xl text-[12px] font-semibold bg-[var(--glass-fill)] border border-[var(--glass-border)] outline-none"
+              className="
+          w-full
+          h-11
+          pl-10
+          pr-9
+          rounded-[14px]
+          text-[12px]
+          font-medium
+          outline-none
+        "
               style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, sans-serif",
               }}
             />
+
             {searchCatQuery && (
               <button
+                type="button"
                 onClick={() => setSearchCatQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                className="
+            absolute
+            right-2.5
+            top-1/2
+            -translate-y-1/2
+            w-6
+            h-6
+            rounded-full
+            flex
+            items-center
+            justify-center
+            cursor-pointer
+            active:scale-90
+            transition-transform
+          "
+                style={{
+                  background: "var(--glass-fill-strong)",
+                  color: "var(--text-tertiary)",
+                }}
               >
-                <X size={13} style={{ color: "var(--text-tertiary)" }} />
+                <X size={12} strokeWidth={2} />
               </button>
             )}
           </div>
 
+          {/* Empty State */}
           {filteredMoreCategories.length === 0 ? (
-            <div className="py-8 text-center">
+            <div className="py-12 text-center">
               <p
-                className="text-[12px] font-semibold"
-                style={{ color: "var(--text-tertiary)" }}
+                className="text-[12px] font-medium"
+                style={{
+                  color: "var(--text-tertiary)",
+                }}
               >
                 No categories found matching "{searchCatQuery}"
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-x-2 gap-y-3 max-h-[60vh] overflow-y-auto no-scrollbar pr-0.5">
+            /* ============================================================
+         3-COLUMN CATEGORY PILL GRID
+         ============================================================ */
+            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5">
               {filteredMoreCategories.map((cat) => {
                 const isSelected = categoryId === cat.id;
+
                 return (
                   <button
                     key={cat.id}
+                    type="button"
                     onClick={() => {
                       setCategoryId(cat.id);
                       setMoreCatOpen(false);
                       setSearchCatQuery("");
                       triggerHaptic("light");
                     }}
-                    className="flex flex-col items-center justify-center p-2 rounded-2xl active:scale-95 transition-all text-center"
+                    className="
+                relative
+                min-w-0
+                w-full
+                h-10
+                px-2.5
+                rounded-full
+                flex
+                items-center
+                justify-start
+                gap-1.5
+                cursor-pointer
+                select-none
+                transition-all
+                duration-150
+                active:scale-[0.96]
+              "
                     style={{
                       background: isSelected
-                        ? "var(--glass-fill-strong)"
-                        : "var(--bg-elevated)",
-                      color: "var(--text-primary)",
+                        ? "var(--text-primary)"
+                        : "var(--glass-fill)",
+
+                      color: isSelected
+                        ? "var(--bg-base)"
+                        : "var(--text-secondary)",
+
                       border: isSelected
-                        ? "1.5px solid var(--accent)"
+                        ? "1px solid var(--text-primary)"
                         : "1px solid var(--glass-border)",
+
                       boxShadow: isSelected
-                        ? "0 4px 16px var(--shadow-strength)"
+                        ? "0 3px 10px var(--shadow-strength)"
                         : "none",
                     }}
                   >
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-1 shrink-0"
+                    {/* Icon */}
+                    <span
+                      className="
+                  w-[23px]
+                  h-[23px]
+                  rounded-full
+                  flex
+                  items-center
+                  justify-center
+                  shrink-0
+                "
                       style={{
                         background: isSelected
-                          ? "var(--dock-active-pill)"
-                          : "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
+                          ? "rgba(0,0,0,0.10)"
+                          : "var(--glass-fill-strong)",
+
+                        border: isSelected
+                          ? "1px solid rgba(0,0,0,0.08)"
+                          : "1px solid var(--glass-border)",
                       }}
                     >
-                      <IconRenderer icon={cat.emoji} size="w-6 h-6" />
-                    </div>
-                    <span className="text-[11px] font-bold text-center line-clamp-1 truncate w-full px-0.5">
+                      <IconRenderer icon={cat.emoji} size="w-[15px] h-[15px]" />
+                    </span>
+
+                    {/* Category name */}
+                    <span
+                      className="
+                  min-w-0
+                  text-[10.5px]
+                  leading-none
+                  font-semibold
+                  tracking-[-0.012em]
+                  whitespace-nowrap
+                "
+                    >
                       {cat.name}
                     </span>
                   </button>
@@ -1939,7 +2139,9 @@ export function TransactionSheet({
         </div>
       </BottomSheet>
 
-      {/* More Accounts Glass Sheet */}
+      {/* ================================================================
+    MORE ACCOUNTS / WALLET — APPLE STYLE / 3-COLUMN PILL GRID
+    ================================================================ */}
       <BottomSheet
         isOpen={moreWalletOpen}
         onClose={() => {
@@ -1947,18 +2149,29 @@ export function TransactionSheet({
           setSearchWalletQuery("");
         }}
       >
-        <div className="p-5 pb-12">
-          <div className="flex items-center justify-between mb-3">
-            <div>
+        <div className="px-4 pt-1 pb-7">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="min-w-0 pr-3">
               <h3
-                className="font-semibold text-[18px] leading-tight"
-                style={{ color: "var(--text-primary)" }}
+                className="
+            font-semibold
+            text-[17px]
+            leading-[1.15]
+            tracking-[-0.02em]
+          "
+                style={{
+                  color: "var(--text-primary)",
+                }}
               >
                 Select Account / Wallet
               </h3>
+
               <p
-                className="text-[11px] font-semibold mt-0.5"
-                style={{ color: "var(--text-tertiary)" }}
+                className="text-[10px] font-medium mt-1"
+                style={{
+                  color: "var(--text-tertiary)",
+                }}
               >
                 {walletTarget === "from"
                   ? "Source Account"
@@ -1966,15 +2179,28 @@ export function TransactionSheet({
                 · {filteredMoreWallets.length} accounts
               </p>
             </div>
+
             <button
+              type="button"
               onClick={() => {
                 setMoreWalletOpen(false);
                 setSearchWalletQuery("");
               }}
-              className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform"
+              className="
+          shrink-0
+          h-8
+          px-3.5
+          rounded-full
+          text-[11px]
+          font-semibold
+          cursor-pointer
+          transition-all
+          duration-150
+          active:scale-[0.96]
+        "
               style={{
                 background: "var(--glass-fill)",
-                color: "var(--text-primary)",
+                color: "var(--text-secondary)",
                 border: "1px solid var(--glass-border)",
               }}
             >
@@ -1982,84 +2208,181 @@ export function TransactionSheet({
             </button>
           </div>
 
-          {/* Search bar */}
-          <div className="relative mb-3.5">
+          {/* Search */}
+          <div className="relative mb-4">
             <Search
-              size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2"
-              style={{ color: "var(--text-tertiary)" }}
+              size={15}
+              strokeWidth={1.8}
+              className="
+          absolute
+          left-3.5
+          top-1/2
+          -translate-y-1/2
+          pointer-events-none
+        "
+              style={{
+                color: "var(--text-tertiary)",
+              }}
             />
+
             <input
               type="text"
               value={searchWalletQuery}
               onChange={(e) => setSearchWalletQuery(e.target.value)}
               placeholder="Search account..."
-              className="w-full pl-9 pr-8 py-2 rounded-xl text-[12px] font-semibold bg-[var(--glass-fill)] border border-[var(--glass-border)] outline-none"
+              className="
+          w-full
+          h-11
+          pl-10
+          pr-9
+          rounded-[14px]
+          text-[12px]
+          font-medium
+          outline-none
+        "
               style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, sans-serif",
               }}
             />
+
             {searchWalletQuery && (
               <button
+                type="button"
                 onClick={() => setSearchWalletQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                className="
+            absolute
+            right-2.5
+            top-1/2
+            -translate-y-1/2
+            w-6
+            h-6
+            rounded-full
+            flex
+            items-center
+            justify-center
+            cursor-pointer
+            active:scale-90
+            transition-transform
+          "
+                style={{
+                  background: "var(--glass-fill-strong)",
+                  color: "var(--text-tertiary)",
+                }}
               >
-                <X size={13} style={{ color: "var(--text-tertiary)" }} />
+                <X size={12} strokeWidth={2} />
               </button>
             )}
           </div>
 
+          {/* Empty State */}
           {filteredMoreWallets.length === 0 ? (
-            <div className="py-8 text-center">
+            <div className="py-12 text-center">
               <p
-                className="text-[12px] font-semibold"
-                style={{ color: "var(--text-tertiary)" }}
+                className="text-[12px] font-medium"
+                style={{
+                  color: "var(--text-tertiary)",
+                }}
               >
                 No accounts found matching "{searchWalletQuery}"
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 max-h-[60vh] overflow-y-auto no-scrollbar pr-0.5">
+            /* ============================================================
+         3-COLUMN ACCOUNT PILL GRID
+         ============================================================ */
+            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5">
               {filteredMoreWallets.map((w) => {
                 const isSelected =
                   (walletTarget === "from" ? walletId : toWalletId) === w.id;
+
                 return (
                   <button
                     key={w.id}
+                    type="button"
                     onClick={() => {
-                      if (walletTarget === "from") setWalletId(w.id);
-                      else setToWalletId(w.id);
+                      if (walletTarget === "from") {
+                        setWalletId(w.id);
+                      } else {
+                        setToWalletId(w.id);
+                      }
+
                       setMoreWalletOpen(false);
                       setSearchWalletQuery("");
                       triggerHaptic("light");
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl active:scale-95 transition-all text-center"
+                    className="
+                relative
+                min-w-0
+                w-full
+                h-10
+                px-2.5
+                rounded-full
+                flex
+                items-center
+                justify-start
+                gap-1.5
+                cursor-pointer
+                select-none
+                transition-all
+                duration-150
+                active:scale-[0.96]
+              "
                     style={{
                       background: isSelected
-                        ? "var(--glass-fill-strong)"
-                        : "var(--bg-elevated)",
-                      color: "var(--text-primary)",
+                        ? "var(--text-primary)"
+                        : "var(--glass-fill)",
+
+                      color: isSelected
+                        ? "var(--bg-base)"
+                        : "var(--text-secondary)",
+
                       border: isSelected
-                        ? "1.5px solid var(--accent)"
+                        ? "1px solid var(--text-primary)"
                         : "1px solid var(--glass-border)",
+
                       boxShadow: isSelected
-                        ? "0 4px 16px var(--shadow-strength)"
+                        ? "0 3px 10px var(--shadow-strength)"
                         : "none",
                     }}
                   >
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-1 shrink-0"
+                    {/* Account Icon */}
+                    <span
+                      className="
+                  w-[23px]
+                  h-[23px]
+                  rounded-full
+                  flex
+                  items-center
+                  justify-center
+                  shrink-0
+                "
                       style={{
                         background: isSelected
-                          ? "var(--dock-active-pill)"
-                          : "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
+                          ? "rgba(0,0,0,0.10)"
+                          : "var(--glass-fill-strong)",
+
+                        border: isSelected
+                          ? "1px solid rgba(0,0,0,0.08)"
+                          : "1px solid var(--glass-border)",
                       }}
                     >
-                      <IconRenderer icon={w.icon} size="w-5 h-5" />
-                    </div>
-                    <span className="text-[11px] font-bold truncate w-full text-center">
+                      <IconRenderer icon={w.icon} size="w-[15px] h-[15px]" />
+                    </span>
+
+                    {/* Account Name */}
+                    <span
+                      className="
+                  min-w-0
+                  text-[10.5px]
+                  leading-none
+                  font-semibold
+                  tracking-[-0.012em]
+                  whitespace-nowrap
+                "
+                    >
                       {w.name}
                     </span>
                   </button>
@@ -2157,7 +2480,8 @@ export function TransactionSheet({
             style={{
               background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
               color: "#000000",
-              boxShadow: "inset 0 1px 0 0 #ffffff, 0 8px 20px -4px rgba(0, 0, 0, 0.45)",
+              boxShadow:
+                "inset 0 1px 0 0 #ffffff, 0 8px 20px -4px rgba(0, 0, 0, 0.45)",
             }}
           >
             Done
@@ -2178,7 +2502,9 @@ export function TransactionSheet({
           setIsKeypadOpen(false);
           const evaluated = evaluateMathSafe(amountInput);
           setAmount(String(evaluated));
-          setAmountInput(evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"));
+          setAmountInput(
+            evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
+          );
         }}
       />
     </BottomSheet>
