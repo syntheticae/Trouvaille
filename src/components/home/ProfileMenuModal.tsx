@@ -4,6 +4,7 @@ import {
   HardDrive,
   CloudCheck,
   Layers,
+  Laptop,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
@@ -17,6 +18,7 @@ interface ProfileMenuModalProps {
   onClose: () => void;
   onOpenProfileSettings: () => void;
   onOpenManageLedgers: () => void;
+  onOpenWebDashboard?: () => void;
   displayName?: string;
   avatarUrl?: string;
 }
@@ -26,6 +28,7 @@ export function ProfileMenuModal({
   onClose,
   onOpenProfileSettings,
   onOpenManageLedgers,
+  onOpenWebDashboard,
   displayName: propDisplayName,
   avatarUrl: propAvatarUrl,
 }: ProfileMenuModalProps) {
@@ -170,7 +173,44 @@ export function ProfileMenuModal({
               />
             </button>
 
-            {/* 3. Floating Option 2: Settings & Preferences */}
+            {/* 3. Floating Option 2: Web Dashboard */}
+            {onOpenWebDashboard && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  onClose();
+                  setTimeout(() => onOpenWebDashboard(), 120);
+                }}
+                className="w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.06] active:bg-black/[0.06] dark:active:bg-white/[0.1] transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Laptop size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-[12.5px] text-[var(--text-primary)] leading-tight">
+                      Web Dashboard
+                    </p>
+                    <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
+                      Link desktop workstation via QR
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight
+                  size={13}
+                  className="text-[var(--text-tertiary)] opacity-40 group-hover:opacity-80 transition-opacity shrink-0"
+                />
+              </button>
+            )}
+
+            {/* 4. Floating Option 3: Settings & Preferences */}
             <button
               type="button"
               onClick={() => {

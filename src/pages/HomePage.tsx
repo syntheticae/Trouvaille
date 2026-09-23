@@ -33,6 +33,7 @@ import {
 import { BillManagementSheets } from "../components/settings/BillManagementSheets";
 import { ProfileMenuModal } from "../components/home/ProfileMenuModal";
 import { ProfileSheet } from "../components/settings/ProfileSheet";
+import { WebDashboardLinkModal } from "../components/settings/WebDashboardLinkModal";
 
 function formatNetAmount(net: number): string {
   const abs = Math.abs(net);
@@ -227,6 +228,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   const [nfcModalOpen, setNfcModalOpen] = useState(false);
   const [splitBillSheetOpen, setSplitBillSheetOpen] = useState(false);
+  const [webDashboardOpen, setWebDashboardOpen] = useState(false);
   const addTx = useAddTransaction();
 
   const {
@@ -2059,6 +2061,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               setProfileMenuOpen(false);
               setSpaceSwitcherOpen(true);
             }}
+            onOpenWebDashboard={() => {
+              setProfileMenuOpen(false);
+              setWebDashboardOpen(true);
+            }}
             displayName={displayName}
             avatarUrl={avatarUrl}
           />
@@ -2517,6 +2523,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           setProfileSheetOpen(false);
           navigate("/settings");
         }}
+      />
+
+      <WebDashboardLinkModal
+        isOpen={webDashboardOpen}
+        onClose={() => setWebDashboardOpen(false)}
       />
     </div>
   );

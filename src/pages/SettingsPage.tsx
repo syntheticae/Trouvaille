@@ -34,6 +34,8 @@ import {
   EyeOff,
   ShieldCheck,
   BookOpen,
+  Laptop,
+  QrCode,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -159,6 +161,11 @@ const DeleteAccountModal = lazy(() =>
     default: m.DeleteAccountModal,
   }))
 );
+const WebDashboardLinkModal = lazy(() =>
+  import("../components/settings/WebDashboardLinkModal").then((m) => ({
+    default: m.WebDashboardLinkModal,
+  }))
+);
 
 
 
@@ -282,6 +289,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const [languageSheetOpen, setLanguageSheetOpen] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [webDashboardModalOpen, setWebDashboardModalOpen] = useState(false);
 
   const { activeSpace } = useSpace();
 
@@ -505,12 +513,14 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
   // Section 6: Data & Vault
   const showCloudSync = matches("Cloud Sync", "backup database synchronization live");
+  const showWebDashboard = matches("Web Dashboard", "link web scan qr desktop laptop browser workstation tautkan");
   const showVault = matches("Encrypted Vault", "aes-256 file backup export restore offline");
   const showExport = matches("Report & Tax Export", "csv excel pdf statement tax ledger json");
   const showReset = matches("Reset Ledger Data", "wipe purge transactions reset ledger");
   const showRerunOnboarding = matches("Re-run Customization Wizard", "reset onboarding wizard setup test");
   const hasDataVault =
     showCloudSync ||
+    showWebDashboard ||
     showVault ||
     showExport ||
     showReset ||
@@ -1811,6 +1821,64 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
               </div>
             )}
 
+            {/* Link Web Dashboard */}
+            {showWebDashboard && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setWebDashboardModalOpen(true);
+                }}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Laptop size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block truncate leading-tight"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Tautkan Web Dashboard" : "Link Web Dashboard"}
+                    </span>
+                    <span
+                      className="text-[10px] font-normal block truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Pindai QR untuk masuk di Mac atau PC"
+                        : "Scan QR code to log in on Mac or PC"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border flex items-center gap-1"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    <QrCode size={11} strokeWidth={1.75} />
+                    <span>Scan</span>
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
             {/* Encrypted Vault */}
             {showVault && (
               <button
@@ -2139,6 +2207,11 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
         <DeleteAccountModal
           isOpen={deleteAccountOpen}
           onClose={() => setDeleteAccountOpen(false)}
+        />
+
+        <WebDashboardLinkModal
+          isOpen={webDashboardModalOpen}
+          onClose={() => setWebDashboardModalOpen(false)}
         />
       </Suspense>
     </div>
