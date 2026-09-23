@@ -1895,7 +1895,7 @@ export function TransactionSheet({
       </div>
 
       {/* ================================================================
-    MORE CATEGORIES — APPLE STYLE / 3-COLUMN PILL GRID
+    MORE CATEGORIES — MILKY LIQUID GLASS / 3-COLUMN PILL GRID
     ================================================================ */}
       <BottomSheet
         isOpen={moreCatOpen}
@@ -1932,6 +1932,7 @@ export function TransactionSheet({
               </p>
             </div>
 
+            {/* Close */}
             <button
               type="button"
               onClick={() => {
@@ -1946,14 +1947,24 @@ export function TransactionSheet({
           text-[11px]
           font-semibold
           cursor-pointer
+          select-none
           transition-all
           duration-150
           active:scale-[0.96]
         "
               style={{
-                background: "var(--glass-fill)",
+                background: isDark
+                  ? "linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.045) 100%)"
+                  : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.78) 100%)",
                 color: "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
+                border: isDark
+                  ? "1px solid rgba(255,255,255,0.12)"
+                  : "1px solid rgba(255,255,255,0.92)",
+                boxShadow: isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 3px 10px rgba(0,0,0,0.18)"
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.06)",
+                backdropFilter: "blur(18px) saturate(155%)",
+                WebkitBackdropFilter: "blur(18px) saturate(155%)",
               }}
             >
               Close
@@ -1991,12 +2002,23 @@ export function TransactionSheet({
           text-[12px]
           font-medium
           outline-none
+          transition-all
+          duration-200
         "
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark
+                  ? "linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.035) 100%)"
+                  : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.70) 100%)",
+                border: isDark
+                  ? "1px solid rgba(255,255,255,0.10)"
+                  : "1px solid rgba(255,255,255,0.88)",
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, sans-serif",
+                boxShadow: isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.12)"
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 12px rgba(15,23,42,0.045)",
+                backdropFilter: "blur(20px) saturate(160%)",
+                WebkitBackdropFilter: "blur(20px) saturate(160%)",
               }}
             />
 
@@ -2020,8 +2042,16 @@ export function TransactionSheet({
             transition-transform
           "
                 style={{
-                  background: "var(--glass-fill-strong)",
+                  background: isDark
+                    ? "rgba(255,255,255,0.09)"
+                    : "rgba(255,255,255,0.82)",
                   color: "var(--text-tertiary)",
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.10)"
+                    : "1px solid rgba(255,255,255,0.78)",
+                  boxShadow: isDark
+                    ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                    : "inset 0 1px 0 rgba(255,255,255,1)",
                 }}
               >
                 <X size={12} strokeWidth={2} />
@@ -2078,20 +2108,49 @@ export function TransactionSheet({
               "
                     style={{
                       background: isSelected
-                        ? "var(--text-primary)"
-                        : "var(--glass-fill)",
+                        ? isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.10) 100%)"
+                          : "linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.90) 48%, rgba(240,241,244,0.94) 100%)"
+                        : isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.028) 100%)"
+                          : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.84) 48%, rgba(244,245,247,0.90) 100%)",
 
                       color: isSelected
-                        ? "var(--bg-base)"
+                        ? isDark
+                          ? "rgba(255,255,255,0.96)"
+                          : "var(--text-primary)"
                         : "var(--text-secondary)",
 
                       border: isSelected
-                        ? "1px solid var(--text-primary)"
-                        : "1px solid var(--glass-border)",
+                        ? isDark
+                          ? "1px solid rgba(255,255,255,0.24)"
+                          : "1px solid rgba(255,255,255,0.96)"
+                        : isDark
+                          ? "1px solid rgba(255,255,255,0.09)"
+                          : "1px solid rgba(255,255,255,0.86)",
 
                       boxShadow: isSelected
-                        ? "0 3px 10px var(--shadow-strength)"
-                        : "none",
+                        ? isDark
+                          ? [
+                              "inset 0 1px 0 rgba(255,255,255,0.20)",
+                              "inset 0 -1px 0 rgba(255,255,255,0.04)",
+                              "0 4px 12px rgba(0,0,0,0.18)",
+                            ].join(", ")
+                          : [
+                              "inset 0 1px 0 rgba(255,255,255,1)",
+                              "inset 0 -1px 0 rgba(15,23,42,0.025)",
+                              "0 5px 14px rgba(15,23,42,0.085)",
+                            ].join(", ")
+                        : isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.075)"
+                          : [
+                              "inset 0 1px 0 rgba(255,255,255,1)",
+                              "inset 0 -1px 0 rgba(255,255,255,0.30)",
+                              "0 3px 10px rgba(15,23,42,0.045)",
+                            ].join(", "),
+
+                      backdropFilter: "blur(18px) saturate(155%)",
+                      WebkitBackdropFilter: "blur(18px) saturate(155%)",
                     }}
                   >
                     {/* Icon */}
@@ -2107,18 +2166,30 @@ export function TransactionSheet({
                 "
                       style={{
                         background: isSelected
-                          ? "rgba(0,0,0,0.10)"
-                          : "var(--glass-fill-strong)",
+                          ? isDark
+                            ? "rgba(255,255,255,0.10)"
+                            : "linear-gradient(180deg, rgba(255,255,255,0.90), rgba(235,236,240,0.82))"
+                          : isDark
+                            ? "rgba(255,255,255,0.055)"
+                            : "linear-gradient(180deg, rgba(255,255,255,0.84), rgba(238,239,243,0.72))",
 
                         border: isSelected
-                          ? "1px solid rgba(0,0,0,0.08)"
-                          : "1px solid var(--glass-border)",
+                          ? isDark
+                            ? "1px solid rgba(255,255,255,0.14)"
+                            : "1px solid rgba(255,255,255,0.92)"
+                          : isDark
+                            ? "1px solid rgba(255,255,255,0.075)"
+                            : "1px solid rgba(255,255,255,0.80)",
+
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                          : "inset 0 1px 0 rgba(255,255,255,1)",
                       }}
                     >
                       <IconRenderer icon={cat.emoji} size="w-[15px] h-[15px]" />
                     </span>
 
-                    {/* Category name */}
+                    {/* Category Name */}
                     <span
                       className="
                   min-w-0
@@ -2127,6 +2198,7 @@ export function TransactionSheet({
                   font-semibold
                   tracking-[-0.012em]
                   whitespace-nowrap
+                  truncate
                 "
                     >
                       {cat.name}
@@ -2140,7 +2212,7 @@ export function TransactionSheet({
       </BottomSheet>
 
       {/* ================================================================
-    MORE ACCOUNTS / WALLET — APPLE STYLE / 3-COLUMN PILL GRID
+    MORE ACCOUNTS / WALLET — MILKY LIQUID GLASS / 3-COLUMN PILL GRID
     ================================================================ */}
       <BottomSheet
         isOpen={moreWalletOpen}
@@ -2180,6 +2252,7 @@ export function TransactionSheet({
               </p>
             </div>
 
+            {/* Close */}
             <button
               type="button"
               onClick={() => {
@@ -2194,14 +2267,24 @@ export function TransactionSheet({
           text-[11px]
           font-semibold
           cursor-pointer
+          select-none
           transition-all
           duration-150
           active:scale-[0.96]
         "
               style={{
-                background: "var(--glass-fill)",
+                background: isDark
+                  ? "linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.045) 100%)"
+                  : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.78) 100%)",
                 color: "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
+                border: isDark
+                  ? "1px solid rgba(255,255,255,0.12)"
+                  : "1px solid rgba(255,255,255,0.92)",
+                boxShadow: isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 3px 10px rgba(0,0,0,0.18)"
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.06)",
+                backdropFilter: "blur(18px) saturate(155%)",
+                WebkitBackdropFilter: "blur(18px) saturate(155%)",
               }}
             >
               Close
@@ -2239,12 +2322,23 @@ export function TransactionSheet({
           text-[12px]
           font-medium
           outline-none
+          transition-all
+          duration-200
         "
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: isDark
+                  ? "linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.035) 100%)"
+                  : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.70) 100%)",
+                border: isDark
+                  ? "1px solid rgba(255,255,255,0.10)"
+                  : "1px solid rgba(255,255,255,0.88)",
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, sans-serif",
+                boxShadow: isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.12)"
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 12px rgba(15,23,42,0.045)",
+                backdropFilter: "blur(20px) saturate(160%)",
+                WebkitBackdropFilter: "blur(20px) saturate(160%)",
               }}
             />
 
@@ -2268,8 +2362,16 @@ export function TransactionSheet({
             transition-transform
           "
                 style={{
-                  background: "var(--glass-fill-strong)",
+                  background: isDark
+                    ? "rgba(255,255,255,0.09)"
+                    : "rgba(255,255,255,0.82)",
                   color: "var(--text-tertiary)",
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.10)"
+                    : "1px solid rgba(255,255,255,0.78)",
+                  boxShadow: isDark
+                    ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                    : "inset 0 1px 0 rgba(255,255,255,1)",
                 }}
               >
                 <X size={12} strokeWidth={2} />
@@ -2332,20 +2434,49 @@ export function TransactionSheet({
               "
                     style={{
                       background: isSelected
-                        ? "var(--text-primary)"
-                        : "var(--glass-fill)",
+                        ? isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.10) 100%)"
+                          : "linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.90) 48%, rgba(240,241,244,0.94) 100%)"
+                        : isDark
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.028) 100%)"
+                          : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.84) 48%, rgba(244,245,247,0.90) 100%)",
 
                       color: isSelected
-                        ? "var(--bg-base)"
+                        ? isDark
+                          ? "rgba(255,255,255,0.96)"
+                          : "var(--text-primary)"
                         : "var(--text-secondary)",
 
                       border: isSelected
-                        ? "1px solid var(--text-primary)"
-                        : "1px solid var(--glass-border)",
+                        ? isDark
+                          ? "1px solid rgba(255,255,255,0.24)"
+                          : "1px solid rgba(255,255,255,0.96)"
+                        : isDark
+                          ? "1px solid rgba(255,255,255,0.09)"
+                          : "1px solid rgba(255,255,255,0.86)",
 
                       boxShadow: isSelected
-                        ? "0 3px 10px var(--shadow-strength)"
-                        : "none",
+                        ? isDark
+                          ? [
+                              "inset 0 1px 0 rgba(255,255,255,0.20)",
+                              "inset 0 -1px 0 rgba(255,255,255,0.04)",
+                              "0 4px 12px rgba(0,0,0,0.18)",
+                            ].join(", ")
+                          : [
+                              "inset 0 1px 0 rgba(255,255,255,1)",
+                              "inset 0 -1px 0 rgba(15,23,42,0.025)",
+                              "0 5px 14px rgba(15,23,42,0.085)",
+                            ].join(", ")
+                        : isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.075)"
+                          : [
+                              "inset 0 1px 0 rgba(255,255,255,1)",
+                              "inset 0 -1px 0 rgba(255,255,255,0.30)",
+                              "0 3px 10px rgba(15,23,42,0.045)",
+                            ].join(", "),
+
+                      backdropFilter: "blur(18px) saturate(155%)",
+                      WebkitBackdropFilter: "blur(18px) saturate(155%)",
                     }}
                   >
                     {/* Account Icon */}
@@ -2361,12 +2492,24 @@ export function TransactionSheet({
                 "
                       style={{
                         background: isSelected
-                          ? "rgba(0,0,0,0.10)"
-                          : "var(--glass-fill-strong)",
+                          ? isDark
+                            ? "rgba(255,255,255,0.10)"
+                            : "linear-gradient(180deg, rgba(255,255,255,0.90), rgba(235,236,240,0.82))"
+                          : isDark
+                            ? "rgba(255,255,255,0.055)"
+                            : "linear-gradient(180deg, rgba(255,255,255,0.84), rgba(238,239,243,0.72))",
 
                         border: isSelected
-                          ? "1px solid rgba(0,0,0,0.08)"
-                          : "1px solid var(--glass-border)",
+                          ? isDark
+                            ? "1px solid rgba(255,255,255,0.14)"
+                            : "1px solid rgba(255,255,255,0.92)"
+                          : isDark
+                            ? "1px solid rgba(255,255,255,0.075)"
+                            : "1px solid rgba(255,255,255,0.80)",
+
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                          : "inset 0 1px 0 rgba(255,255,255,1)",
                       }}
                     >
                       <IconRenderer icon={w.icon} size="w-[15px] h-[15px]" />
@@ -2381,6 +2524,7 @@ export function TransactionSheet({
                   font-semibold
                   tracking-[-0.012em]
                   whitespace-nowrap
+                  truncate
                 "
                     >
                       {w.name}

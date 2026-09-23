@@ -1,9 +1,14 @@
 // ======================================================================
-// TROUVAILLE ASSETS & PORTFOLIO VALUATION PAGE
-// Apple Luxury Glassmorphism & Monochrome Design
-// Features: Dual Currency (IDR/USD), shadcn/ui Bar Chart, Bento Micro Cards,
-// Multi-Tier Liquidity Structure, Categorized Presets & BottomSheet Integration
-// Strictly ZERO DUMMY DATA: All telemetry computed from real user transactions
+// TROUVAILLE ASSETS & PORTFOLIO VALUATION PAGE (RESOLUSI 2)
+// The Silicon Valley Wealth Bento:
+// [1] Hero Net Valuation (Compact)
+// [2] Bento Matrix 2x2 (Inflow Velocity, Liquid Runway, Dominance, 3-Tier Liquidity)
+// [3] Monthly Capital Deployment Bar Chart (shadcn/ui minimal)
+// [4] Enhanced Holdings Deck with Inline Dominance Progress Bars
+// [5] Collapsible Advanced Portfolio Analytics Accordion
+// [6] Standard BottomSheet for Preset Picker & Asset Details
+// Strictly ZERO DUMMY DATA: All telemetry computed directly from real user state
+// Strictly Non-Mixed Localization (100% Pure English / Indonesian)
 // ======================================================================
 
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -17,6 +22,7 @@ import {
   ArrowDownRight,
   Sparkles,
   PieChart,
+  ChevronDown,
 } from "lucide-react";
 import { formatRupiah } from "../lib/utils";
 import { triggerHaptic } from "../lib/haptics";
@@ -58,14 +64,10 @@ import {
   type MonthlyDeploymentItem,
 } from "../components/assets/MonthlyDeploymentBarCard";
 import {
-  CapitalAllocationCard,
-  type AssetAllocationItem,
-  type LiquiditySummary,
-} from "../components/assets/CapitalAllocationCard";
-import {
   AssetBentoMicroCards,
   type TopHoldingItem,
 } from "../components/assets/AssetBentoMicroCards";
+import type { LiquiditySummary } from "../components/assets/CapitalAllocationCard";
 import { format, subMonths } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import type {
@@ -120,21 +122,21 @@ const PRESET_ASSETS: PresetAsset[] = [
   { symbol: "ICBP", name: "Indofood CBP", type: "stock", category: "stock_id", suggestedCurrency: "IDR", icon: "TrendingUp" },
 
   // Gold & Commodities
-  { symbol: "XAU", name: "Emas Antam (per gram)", type: "gold", category: "gold", suggestedCurrency: "IDR", icon: "Landmark" },
-  { symbol: "UBS", name: "Emas UBS (per gram)", type: "gold", category: "gold", suggestedCurrency: "IDR", icon: "Landmark" },
-  { symbol: "XAG", name: "Perak Murni (per gram)", type: "gold", category: "gold", suggestedCurrency: "IDR", icon: "Landmark" },
+  { symbol: "XAU", name: "Gold Antam (per gram)", type: "gold", category: "gold", suggestedCurrency: "IDR", icon: "Landmark" },
+  { symbol: "UBS", name: "Gold UBS (per gram)", type: "gold", category: "gold", suggestedCurrency: "IDR", icon: "Landmark" },
+  { symbol: "XAG", name: "Silver Pure (per gram)", type: "gold", category: "gold", suggestedCurrency: "IDR", icon: "Landmark" },
 
   // Mutual Funds
-  { symbol: "RD-PASAR-UANG", name: "Reksa Dana Pasar Uang", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "TrendingUp" },
-  { symbol: "RD-PENDAPATAN-TETAP", name: "Reksa Dana Pendapatan Tetap", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "FileText" },
-  { symbol: "RD-SAHAM", name: "Reksa Dana Saham", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "TrendingUp" },
-  { symbol: "RD-CAMPURAN", name: "Reksa Dana Campuran", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "TrendingUp" },
+  { symbol: "RD-PASAR-UANG", name: "Money Market Fund", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "TrendingUp" },
+  { symbol: "RD-PENDAPATAN-TETAP", name: "Fixed Income Fund", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "FileText" },
+  { symbol: "RD-SAHAM", name: "Equity Fund", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "TrendingUp" },
+  { symbol: "RD-CAMPURAN", name: "Balanced Fund", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "TrendingUp" },
 
   // Fixed Assets
-  { symbol: "RUMAH", name: "Properti / Rumah Tinggal", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Home" },
-  { symbol: "TANAH", name: "Tanah / Lahan Investasi", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Landmark" },
-  { symbol: "MOBIL", name: "Kendaraan Pribadi / Mobil", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Shield" },
-  { symbol: "LOGAM", name: "Koleksi / Logam Mulia Fisik", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Coins" },
+  { symbol: "RUMAH", name: "Residential Property", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Home" },
+  { symbol: "TANAH", name: "Land / Real Estate", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Landmark" },
+  { symbol: "MOBIL", name: "Vehicle / Automobile", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Shield" },
+  { symbol: "LOGAM", name: "Physical Precious Metals", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Coins" },
 ];
 
 export function AssetsPage() {
@@ -165,6 +167,7 @@ export function AssetsPage() {
   const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dismissedReconciliation, setDismissedReconciliation] = useState(false);
+  const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
 
   // Add Holding Flow State
   // 0: closed, 1: preset picker, 2: details form
@@ -246,7 +249,11 @@ export function AssetsPage() {
         () => {},
       );
     } catch {
-      showToast("Gagal memperbarui harga live", "delete", () => {});
+      showToast(
+        isIndonesian ? "Gagal memperbarui harga live" : "Failed to refresh live prices",
+        "delete",
+        () => {},
+      );
     } finally {
       setIsRefreshing(false);
     }
@@ -299,87 +306,6 @@ export function AssetsPage() {
   const totalFloatingProfit = totalMarketValuation - totalCostBasis;
   const totalFloatingProfitPct =
     totalCostBasis > 0 ? (totalFloatingProfit / totalCostBasis) * 100 : 0;
-
-  // Asset Class Allocation Breakdown
-  const allocationBreakdown: AssetAllocationItem[] = useMemo(() => {
-    if (totalMarketValuation <= 0) return [];
-    const classes: AssetAllocationItem[] = [];
-
-    // 1. Crypto (USDT + other cryptos)
-    const cryptoValue =
-      usdtMarketValue +
-      liquidHoldings
-        .filter((h) => h.asset_type === "crypto")
-        .reduce((sum, h) => sum + h.units * (h.current_price || h.avg_buy_price), 0);
-    if (cryptoValue > 0) {
-      classes.push({
-        type: "crypto",
-        label: "Crypto / USDT",
-        value: cryptoValue,
-        pct: (cryptoValue / totalMarketValuation) * 100,
-        color: isDark ? "#ffffff" : "#18181b",
-      });
-    }
-
-    // 2. Stocks / Saham
-    const stockValue = liquidHoldings
-      .filter((h) => h.asset_type === "stock")
-      .reduce((sum, h) => sum + h.units * (h.current_price || h.avg_buy_price), 0);
-    if (stockValue > 0) {
-      classes.push({
-        type: "stock",
-        label: isIndonesian ? "Saham" : "Stocks",
-        value: stockValue,
-        pct: (stockValue / totalMarketValuation) * 100,
-        color: isDark ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.6)",
-      });
-    }
-
-    // 3. Gold & Commodities
-    const goldValue = liquidHoldings
-      .filter((h) => h.asset_type === "gold")
-      .reduce((sum, h) => sum + h.units * (h.current_price || h.avg_buy_price), 0);
-    if (goldValue > 0) {
-      classes.push({
-        type: "gold",
-        label: isIndonesian ? "Emas" : "Gold",
-        value: goldValue,
-        pct: (goldValue / totalMarketValuation) * 100,
-        color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)",
-      });
-    }
-
-    // 4. Mutual Funds & Bonds
-    const fundValue = liquidHoldings
-      .filter((h) => h.asset_type === "mutual_fund" || h.asset_type === "bond")
-      .reduce((sum, h) => sum + h.units * (h.current_price || h.avg_buy_price), 0);
-    if (fundValue > 0) {
-      classes.push({
-        type: "fund",
-        label: isIndonesian ? "Reksa Dana" : "Funds",
-        value: fundValue,
-        pct: (fundValue / totalMarketValuation) * 100,
-        color: isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)",
-      });
-    }
-
-    // 5. Fixed Assets / Properti
-    const fixedValue = fixedHoldings.reduce((sum, h) => {
-      const val = calculateHoldingValuation(h);
-      return sum + val.marketValue;
-    }, 0);
-    if (fixedValue > 0) {
-      classes.push({
-        type: "fixed",
-        label: isIndonesian ? "Aset Fisik" : "Fixed Assets",
-        value: fixedValue,
-        pct: (fixedValue / totalMarketValuation) * 100,
-        color: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
-      });
-    }
-
-    return classes;
-  }, [totalMarketValuation, usdtMarketValue, liquidHoldings, fixedHoldings, isDark, isIndonesian]);
 
   // Dynamic Monthly Burn Rate for Emergency Runway Coverage
   const monthlyBurnRate = useMemo(() => {
@@ -683,7 +609,11 @@ export function AssetsPage() {
       saveUsdtPref(updatedPref, user?.id);
       closeAddFlow();
       triggerHaptic("medium");
-      showToast("USDT holding saved successfully", "add", () => {});
+      showToast(
+        isIndonesian ? "Holding USDT berhasil disimpan" : "USDT holding saved successfully",
+        "add",
+        () => {},
+      );
       return;
     }
 
@@ -708,7 +638,7 @@ export function AssetsPage() {
     closeAddFlow();
     triggerHaptic("medium");
     showToast(
-      `${newH.name} ${editingHoldingId ? "updated" : "added"} successfully`,
+      `${newH.name} ${editingHoldingId ? (isIndonesian ? "berhasil diperbarui" : "updated successfully") : (isIndonesian ? "berhasil disimpan" : "saved successfully")}`,
       "add",
       () => {},
     );
@@ -724,12 +654,16 @@ export function AssetsPage() {
       };
       setUsdtPref(cleared);
       saveUsdtPref(cleared, user?.id);
-      showToast("USDT holding removed", "delete", () => {});
+      showToast(
+        isIndonesian ? "Holding USDT dihapus" : "USDT holding removed",
+        "delete",
+        () => {},
+      );
       return;
     }
     const updated = deleteHolding(id, user?.id);
     setHoldings(updated);
-    showToast(`${name} removed`, "delete", () => {});
+    showToast(`${name} ${isIndonesian ? "dihapus" : "removed"}`, "delete", () => {});
   };
 
   // Filter user's active holdings list
@@ -754,7 +688,7 @@ export function AssetsPage() {
         fontFamily: "'Urbanist', sans-serif",
       }}
     >
-      {/* 1. Header Bar */}
+      {/* ── 1. Header Bar ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between pt-1">
         <div>
           <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]">
@@ -763,7 +697,7 @@ export function AssetsPage() {
           <p className="text-[12px] text-[var(--text-tertiary)] font-medium">
             {isIndonesian
               ? "Kekayaan bersih & performa portofolio live"
-              : "Net worth telemetry & live valuation"}
+              : "Net worth telemetry & live portfolio valuation"}
           </p>
         </div>
 
@@ -823,7 +757,7 @@ export function AssetsPage() {
         </div>
       </div>
 
-      {/* 2. Scalable Total Net Valuation Hero Card */}
+      {/* ── 2. Total Net Valuation Hero Card (Compact & Powerful) ──────────── */}
       <div
         className="p-5 rounded-[26px] space-y-3 relative overflow-hidden transition-all"
         style={{
@@ -889,7 +823,7 @@ export function AssetsPage() {
             </strong>
           </span>
           <span style={{ color: "var(--text-tertiary)" }}>
-            Live USD:{" "}
+            {isIndonesian ? "Live USD: " : "Live USDT: "}
             <strong
               className="font-mono font-bold"
               style={{ color: "var(--text-secondary)" }}
@@ -900,7 +834,7 @@ export function AssetsPage() {
         </div>
       </div>
 
-      {/* 3. Auto-Reconciliation Alert Banner (e.g. SeaBank P2P Transfer) */}
+      {/* ── 3. Auto-Reconciliation Alert Banner ────────────────────────────── */}
       {reconciliationAudit.hasDiscrepancy && !dismissedReconciliation && (
         <div
           className="p-3.5 rounded-2xl flex items-center justify-between gap-3 border border-white/12 animate-in fade-in"
@@ -914,7 +848,7 @@ export function AssetsPage() {
               <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
                 {isIndonesian
                   ? "Sinkronisasi Mutasi USDT Terdeteksi"
-                  : "USDT Transaction Discrepancy"}
+                  : "USDT Discrepancy Detected"}
               </p>
               <p className="text-[10.5px] text-[var(--text-secondary)] leading-tight">
                 {isIndonesian
@@ -937,29 +871,20 @@ export function AssetsPage() {
         </div>
       )}
 
-      {/* 4. Bento Micro-Cards Grid (Top Holdings, Inflow Velocity, Liquid Runway) */}
+      {/* ── 4. Bento Matrix 2x2 (Inflow, Runway, Dominance, Liquidity) ─────── */}
       <AssetBentoMicroCards
         topHoldings={topHoldings}
         deploymentHistory={monthlyDeploymentData}
         liquidRunwayMonths={liquidRunwayMonths}
         liquidReserves={liquiditySummary.liquid}
         monthlyBurnRate={monthlyBurnRate}
-        isDark={isDark}
-        isIndonesian={isIndonesian}
-        hideBalance={isStealthMode}
-      />
-
-      {/* 5. Capital Allocation & Liquidity Structure Card */}
-      <CapitalAllocationCard
-        totalMarketValuation={totalMarketValuation}
-        allocationBreakdown={allocationBreakdown}
         liquiditySummary={liquiditySummary}
         isDark={isDark}
         isIndonesian={isIndonesian}
         hideBalance={isStealthMode}
       />
 
-      {/* 6. Monthly Investment Deployment Bar Chart (Replaces NetCapitalTrajectory) */}
+      {/* ── 5. Monthly Investment Deployment Bar Chart (shadcn/ui Minimal) ── */}
       <MonthlyDeploymentBarCard
         data={monthlyDeploymentData}
         isDark={isDark}
@@ -967,8 +892,25 @@ export function AssetsPage() {
         hideBalance={isStealthMode}
       />
 
-      {/* 7. Category Filter Chips */}
-      <div className="space-y-2 pt-1">
+      {/* ── 6. Section Header & Category Filter Chips ──────────────────────── */}
+      <div className="space-y-2.5 pt-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="text-[14px] font-bold tracking-tight text-[var(--text-primary)]">
+              {isIndonesian ? "Kepemilikan Aset" : "Asset Holdings"}
+            </h3>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.08] text-[var(--text-tertiary)] font-semibold">
+              {displayHoldings.length + ((filterType === "all" || filterType === "crypto") && (usdtPref.units > 0 || recordedCryptoBalance > 0) ? 1 : 0)}{" "}
+              {isIndonesian ? "aset" : "assets"}
+            </span>
+          </div>
+
+          <span className="text-[11px] font-mono font-semibold text-[var(--text-tertiary)]">
+            {isStealthMode ? "••••••••" : formatRupiah(totalMarketValuation)}
+          </span>
+        </div>
+
+        {/* Filter Chips */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           {(
             [
@@ -989,9 +931,9 @@ export function AssetsPage() {
                   triggerHaptic("light");
                   setFilterType(t.key);
                 }}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer border ${
                   isActive
-                    ? "bg-[var(--text-primary)] text-[var(--bg-base)] border-transparent"
+                    ? "bg-[var(--text-primary)] text-[var(--bg-base)] border-transparent shadow-sm"
                     : "bg-[var(--glass-fill)] text-[var(--text-secondary)] border-[var(--glass-border)] hover:text-[var(--text-primary)]"
                 }`}
               >
@@ -1002,59 +944,91 @@ export function AssetsPage() {
         </div>
       </div>
 
-      {/* 8. Holdings Deck (Apple Stock List format) */}
-      <div className="space-y-2">
+      {/* ── 7. Enhanced Holdings Deck with Dominance Progress Bars ─────────── */}
+      <div className="space-y-2.5">
         {/* Core USDT Row */}
         {(filterType === "all" || filterType === "crypto") &&
           (usdtPref.units > 0 || recordedCryptoBalance > 0) && (
             <div
               onClick={openUsdtDetail}
-              className="p-3.5 rounded-2xl flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] transition-transform select-none"
+              className="p-4 rounded-[24px] space-y-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
               style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "var(--shadow-card)",
+                background: isDark
+                  ? "var(--bg-elevated)"
+                  : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
+                border: isDark
+                  ? "1px solid var(--glass-border)"
+                  : "1px solid rgba(15,23,42,0.06)",
+                boxShadow: isDark
+                  ? "var(--shadow-card)"
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
               }}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Coins size={19} strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold font-mono text-[13px] tracking-wide text-[var(--text-primary)]">
-                      USDT
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded font-mono font-medium bg-white/[0.08] text-[var(--text-tertiary)]">
-                      Crypto
-                    </span>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Coins size={19} strokeWidth={1.75} />
                   </div>
-                  <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
-                    {usdtPref.units > 0
-                      ? `${usdtPref.units.toLocaleString()} USDT`
-                      : `Wallet linked · ${suggestedUsdtUnits} USDT`}
-                  </p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold font-mono text-[13px] tracking-wide text-[var(--text-primary)]">
+                        USDT
+                      </span>
+                      <span className="text-[9.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
+                        Crypto
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
+                      {usdtPref.units > 0
+                        ? `${usdtPref.units.toLocaleString()} USDT`
+                        : `Wallet linked · ${suggestedUsdtUnits} USDT`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0 font-mono">
+                  <span className="text-[14px] font-bold text-[var(--text-primary)] block leading-snug">
+                    {isStealthMode
+                      ? "••••••••"
+                      : formatRupiah(usdtMarketValue)}
+                  </span>
+                  <span className="text-[10.5px] font-semibold text-[var(--text-secondary)]">
+                    {isStealthMode
+                      ? "••••"
+                      : `${usdtFloatingPnL >= 0 ? "+" : ""}${formatRupiah(usdtFloatingPnL)} (${usdtFloatingPnLPct >= 0 ? "+" : ""}${usdtFloatingPnLPct.toFixed(1)}%)`}
+                  </span>
                 </div>
               </div>
 
-              <div className="text-right shrink-0 font-mono">
-                <span className="text-[14px] font-bold text-[var(--text-primary)] block leading-snug">
-                  {isStealthMode
-                    ? "••••••••"
-                    : formatRupiah(usdtMarketValue)}
-                </span>
-                <span className="text-[10.5px] font-semibold text-[var(--text-secondary)]">
-                  {isStealthMode
-                    ? "••••"
-                    : `${usdtFloatingPnL >= 0 ? "+" : ""}${formatRupiah(usdtFloatingPnL)} (${usdtFloatingPnLPct >= 0 ? "+" : ""}${usdtFloatingPnLPct.toFixed(1)}%)`}
-                </span>
+              {/* Inline Dominance Progress Bar */}
+              <div className="pt-2 border-t border-[var(--glass-border)] space-y-1">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-[var(--text-tertiary)]">
+                    {isIndonesian ? "Porsi Portofolio" : "Portfolio Share"}
+                  </span>
+                  <span className="font-mono font-semibold text-[var(--text-secondary)]">
+                    {totalMarketValuation > 0
+                      ? ((usdtMarketValue / totalMarketValuation) * 100).toFixed(1)
+                      : 0}
+                    %
+                  </span>
+                </div>
+                <div className="w-full h-1 rounded-full overflow-hidden bg-white/[0.08] dark:bg-white/[0.06]">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(Math.max(totalMarketValuation > 0 ? (usdtMarketValue / totalMarketValuation) * 100 : 0, 3), 100)}%`,
+                      backgroundColor: isDark ? "#ffffff" : "#18181b",
+                    }}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -1063,58 +1037,97 @@ export function AssetsPage() {
         {displayHoldings.map((h) => {
           const val = calculateHoldingValuation(h);
           const displayPrice = val.marketValue;
+          const dominancePct =
+            totalMarketValuation > 0 ? (val.marketValue / totalMarketValuation) * 100 : 0;
 
           return (
             <div
               key={h.id}
               onClick={() => handleOpenHoldingDetail(h)}
-              className="p-3.5 rounded-2xl flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] transition-transform select-none"
+              className="p-4 rounded-[24px] space-y-2.5 cursor-pointer active:scale-[0.99] transition-transform select-none"
               style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "var(--shadow-card)",
+                background: isDark
+                  ? "var(--bg-elevated)"
+                  : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
+                border: isDark
+                  ? "1px solid var(--glass-border)"
+                  : "1px solid rgba(15,23,42,0.06)",
+                boxShadow: isDark
+                  ? "var(--shadow-card)"
+                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
               }}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <IconRenderer
-                    icon={h.icon || "TrendingUp"}
-                    size="w-4.5 h-4.5"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-[13px] tracking-wide text-[var(--text-primary)] truncate">
-                      {h.symbol}
-                    </span>
-                    <span className="text-[9.5px] px-1.5 py-0.2 rounded font-mono font-medium bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
-                      {h.asset_type.replace("_", " ")}
-                    </span>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <IconRenderer
+                      icon={h.icon || "TrendingUp"}
+                      size="w-4.5 h-4.5"
+                    />
                   </div>
-                  <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
-                    {h.name} · {h.units.toLocaleString()} unit
-                  </p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-[13px] tracking-wide text-[var(--text-primary)] truncate">
+                        {h.symbol}
+                      </span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
+                        {h.asset_type.replace("_", " ")}
+                      </span>
+                      {h.notes?.startsWith("Platform:") && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium bg-white/[0.05] text-[var(--text-tertiary)]">
+                          {h.notes.replace("Platform:", "").trim()}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
+                      {h.name} · {h.units.toLocaleString()}{" "}
+                      {isIndonesian ? "unit" : "units"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0 font-mono">
+                  <span className="text-[14px] font-bold text-[var(--text-primary)] block leading-snug">
+                    {isStealthMode
+                      ? "••••••••"
+                      : formatRupiah(displayPrice)}
+                  </span>
+                  <span className="text-[10.5px] font-semibold text-[var(--text-secondary)]">
+                    {isStealthMode
+                      ? "••••"
+                      : `${val.floatingPnL >= 0 ? "+" : ""}${formatRupiah(val.floatingPnL)} (${val.floatingPnLPct >= 0 ? "+" : ""}${val.floatingPnLPct.toFixed(1)}%)`}
+                  </span>
                 </div>
               </div>
 
-              <div className="text-right shrink-0 font-mono">
-                <span className="text-[14px] font-bold text-[var(--text-primary)] block leading-snug">
-                  {isStealthMode
-                    ? "••••••••"
-                    : formatRupiah(displayPrice)}
-                </span>
-                <span className="text-[10.5px] font-semibold text-[var(--text-secondary)]">
-                  {isStealthMode
-                    ? "••••"
-                    : `${val.floatingPnL >= 0 ? "+" : ""}${formatRupiah(val.floatingPnL)} (${val.floatingPnLPct >= 0 ? "+" : ""}${val.floatingPnLPct.toFixed(1)}%)`}
-                </span>
+              {/* Inline Dominance Progress Bar */}
+              <div className="pt-2 border-t border-[var(--glass-border)] space-y-1">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-[var(--text-tertiary)]">
+                    {isIndonesian ? "Porsi Portofolio" : "Portfolio Share"}
+                  </span>
+                  <span className="font-mono font-semibold text-[var(--text-secondary)]">
+                    {dominancePct.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="w-full h-1 rounded-full overflow-hidden bg-white/[0.08] dark:bg-white/[0.06]">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(Math.max(dominancePct, 3), 100)}%`,
+                      backgroundColor: isDark
+                        ? "rgba(255, 255, 255, 0.75)"
+                        : "rgba(24, 24, 27, 0.75)",
+                    }}
+                  />
+                </div>
               </div>
             </div>
           );
@@ -1129,26 +1142,86 @@ export function AssetsPage() {
                 className="mx-auto text-[var(--text-tertiary)]"
               />
               <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                {isIndonesian ? "Belum ada aset tercatat" : "No assets recorded"}
+                {isIndonesian ? "Belum ada aset tercatat" : "No investment assets recorded"}
               </p>
               <p className="text-[11px] text-[var(--text-tertiary)] max-w-xs mx-auto">
                 {isIndonesian
-                  ? "Ketuk tombol (+) di atas untuk menambahkan kripto, saham, emas, atau aset tetap."
-                  : "Tap (+) button above to add crypto, stocks, gold, or fixed assets."}
+                  ? "Ketuk tombol (+) di atas untuk menambahkan kripto, saham, emas, atau aset fisik."
+                  : "Tap the (+) button above to add crypto, stocks, gold, or fixed assets."}
               </p>
             </div>
           )}
       </div>
 
-      {/* 9. In-Depth Asset Allocation & Runway Analytics Section */}
-      <AssetAnalyticsSection
-        wallets={wallets}
-        monthlyBurnRate={monthlyBurnRate}
-        hideBalance={isStealthMode}
-        onOpenValuation={() => setAddPhase(1)}
-      />
+      {/* ── 8. Collapsible Advanced Analytics Accordion ───────────────────── */}
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic("light");
+            setIsAnalyticsExpanded(!isAnalyticsExpanded);
+          }}
+          className="w-full p-4 rounded-[24px] flex items-center justify-between text-left transition-all cursor-pointer"
+          style={{
+            background: isDark
+              ? "var(--bg-elevated)"
+              : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%)",
+            border: isDark
+              ? "1px solid var(--glass-border)"
+              : "1px solid rgba(15,23,42,0.06)",
+            boxShadow: isDark
+              ? "var(--shadow-card)"
+              : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.045)",
+          }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <PieChart size={16} strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-[13px] font-bold text-[var(--text-primary)] truncate">
+                {isIndonesian
+                  ? "Analisis Portofolio & Diagnostik Lanjutan"
+                  : "Advanced Portfolio Diagnostics & Analytics"}
+              </h4>
+              <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
+                {isIndonesian
+                  ? "Distribusi aset, target alokasi & ketahanan modal"
+                  : "Asset distribution, target allocation & liquidity"}
+              </p>
+            </div>
+          </div>
 
-      {/* ── Phase 1: Select Preset Sheet (Standard BottomSheet) ───────────── */}
+          <div
+            className={`p-1.5 rounded-full transition-transform duration-300 ${
+              isAnalyticsExpanded ? "rotate-180" : ""
+            }`}
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            <ChevronDown size={18} />
+          </div>
+        </button>
+
+        {isAnalyticsExpanded && (
+          <div className="animate-in fade-in slide-in-from-top-3 duration-300 pt-3">
+            <AssetAnalyticsSection
+              wallets={wallets}
+              monthlyBurnRate={monthlyBurnRate}
+              hideBalance={isStealthMode}
+              onOpenValuation={() => setAddPhase(1)}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ── 9. Preset Picker Sheet (Standard BottomSheet) ─────────────────── */}
       <BottomSheet
         isOpen={addPhase === 1}
         onClose={closeAddFlow}
@@ -1169,7 +1242,7 @@ export function AssetsPage() {
               placeholder={
                 isIndonesian
                   ? "Cari simbol atau nama (BTC, AAPL, BBCA, Emas)..."
-                  : "Search BTC, AAPL, BBCA, Gold..."
+                  : "Search symbol or name (BTC, AAPL, BBCA, Gold)..."
               }
               className="flex-1 bg-transparent text-[13px] outline-none font-medium"
               style={{ color: "var(--text-primary)" }}
@@ -1190,12 +1263,12 @@ export function AssetsPage() {
             {(
               [
                 { key: "all", label: isIndonesian ? "Semua" : "All" },
-                { key: "crypto", label: "Kripto" },
-                { key: "stock_us", label: "Saham AS" },
-                { key: "stock_id", label: "Saham IDX" },
+                { key: "crypto", label: "Crypto" },
+                { key: "stock_us", label: isIndonesian ? "Saham AS" : "US Stocks" },
+                { key: "stock_id", label: isIndonesian ? "Saham IDX" : "IDX Stocks" },
                 { key: "gold", label: isIndonesian ? "Emas" : "Gold" },
-                { key: "mutual_fund", label: "Reksa Dana" },
-                { key: "fixed_asset", label: "Aset Fisik" },
+                { key: "mutual_fund", label: isIndonesian ? "Reksa Dana" : "Mutual Funds" },
+                { key: "fixed_asset", label: isIndonesian ? "Aset Fisik" : "Fixed Assets" },
               ] as const
             ).map((cat) => {
               const isActive = presetCategory === cat.key;
@@ -1259,7 +1332,7 @@ export function AssetsPage() {
 
             {filteredPresets.length === 0 && (
               <p className="text-center text-[12px] text-[var(--text-tertiary)] py-6">
-                {isIndonesian ? "Tidak ada preset yang cocok" : "No presets matched"}
+                {isIndonesian ? "Tidak ada preset yang cocok" : "No presets matched your search"}
               </p>
             )}
           </div>
@@ -1275,21 +1348,21 @@ export function AssetsPage() {
                 onClick={() => handleCustomAssetEntry("fixed_asset")}
                 className="flex-1 py-2.5 px-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11.5px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer text-center"
               >
-                + {isIndonesian ? "Properti / Fisik" : "Fixed Asset"}
+                {isIndonesian ? "+ Properti / Fisik" : "+ Fixed Asset"}
               </button>
               <button
                 type="button"
                 onClick={() => handleCustomAssetEntry("stock")}
                 className="flex-1 py-2.5 px-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11.5px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer text-center"
               >
-                + {isIndonesian ? "Saham / Kripto Kustom" : "Custom Asset"}
+                {isIndonesian ? "+ Saham / Kripto Kustom" : "+ Custom Asset"}
               </button>
             </div>
           </div>
         </div>
       </BottomSheet>
 
-      {/* ── Phase 2: Asset Details Form Sheet (Standard BottomSheet) ──────── */}
+      {/* ── 10. Asset Details Form Sheet (Standard BottomSheet) ───────────── */}
       <BottomSheet
         isOpen={addPhase === 2}
         onClose={closeAddFlow}
@@ -1337,7 +1410,7 @@ export function AssetsPage() {
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="text-[10.5px] font-semibold uppercase text-[var(--text-tertiary)] block mb-1">
-                Simbol
+                {isIndonesian ? "Simbol" : "Symbol"}
               </label>
               <input
                 type="text"
@@ -1430,7 +1503,7 @@ export function AssetsPage() {
             <label className="text-[10.5px] font-semibold uppercase text-[var(--text-tertiary)] block mb-1">
               {isIndonesian
                 ? `Harga Pasar Terkini (${formCurrency})`
-                : `Current Price (${formCurrency})`}
+                : `Current Market Price (${formCurrency})`}
             </label>
             <input
               type="text"
@@ -1438,7 +1511,7 @@ export function AssetsPage() {
               onChange={(e) => setFormCurrentPrice(e.target.value.replace(/[^0-9.]/g, ""))}
               placeholder={
                 isFetchingCurrentPrice
-                  ? "Mengambil harga live..."
+                  ? (isIndonesian ? "Mengambil harga live..." : "Fetching live price...")
                   : formCurrency === "USD"
                     ? "$0.00"
                     : "Rp"
@@ -1480,7 +1553,7 @@ export function AssetsPage() {
                 color: "var(--bg-base)",
               }}
             >
-              {isIndonesian ? "Simpan Aset" : "Save Holding"}
+              {isIndonesian ? "Simpan Aset" : "Save Asset"}
             </button>
           </div>
         </div>
@@ -1529,7 +1602,7 @@ export function AssetsPage() {
         onClose={() => setIsIconPickerOpen(false)}
         selectedIcon={formIcon}
         onSelectIcon={(iconName) => setFormIcon(iconName)}
-        title="Pilih Ikon Aset"
+        title={isIndonesian ? "Pilih Ikon Aset" : "Select Asset Icon"}
       />
     </div>
   );

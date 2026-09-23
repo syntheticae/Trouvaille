@@ -30,7 +30,7 @@ interface MonthlyDeploymentBarCardProps {
   hideBalance?: boolean;
 }
 
-const CustomDeploymentTooltip = ({ active, payload, label }: any) => {
+const CustomDeploymentTooltip = ({ active, payload, label, isIndonesian }: any) => {
   if (!active || !payload?.length) return null;
   const item = payload[0]?.payload as MonthlyDeploymentItem;
   return (
@@ -50,7 +50,7 @@ const CustomDeploymentTooltip = ({ active, payload, label }: any) => {
         {formatRupiah(item?.deployed || 0)}
       </p>
       <p className="text-[10.5px] text-[var(--text-secondary)] mt-0.5">
-        {item?.txCount || 0} transaksi tercatat
+        {item?.txCount || 0} {isIndonesian ? "transaksi tercatat" : "recorded transactions"}
       </p>
     </div>
   );
@@ -147,7 +147,7 @@ export function MonthlyDeploymentBarCard({
                 }}
               />
               <Tooltip
-                content={<CustomDeploymentTooltip />}
+                content={<CustomDeploymentTooltip isIndonesian={isIndonesian} />}
                 cursor={{
                   fill: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
                   radius: 8,
