@@ -25,10 +25,20 @@ import {
   TrendingUp,
   Landmark,
   ShieldAlert,
+  ShieldCheck,
   Eye,
   EyeOff,
   ArrowUpRight,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 import { formatRupiah } from "../lib/utils";
 import { triggerHaptic } from "../lib/haptics";
 import { useToast } from "../contexts/ToastContext";
@@ -62,13 +72,9 @@ import { AssetDetailSheet } from "../components/settings/AssetDetailSheet";
 import { StakingYieldModal } from "../components/settings/StakingYieldModal";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { PortfolioInsightCards } from "../components/assets/PortfolioInsightCards";
-import {
-  calculateHistoricalCandlesticks,
-  formatRunwaySummary,
-  type CandlestickData,
-} from "../lib/portfolioAnalytics";
-import { format, subMonths } from "date-fns";
-import { id as idLocale } from "date-fns/locale";
+import { formatRunwaySummary } from "../lib/portfolioAnalytics";
+import { calculateAssetTrend } from "../lib/financialMath";
+import { subMonths } from "date-fns";
 import type {
   InvestmentHolding,
   AssetType,
@@ -83,7 +89,14 @@ export type PresetCategory =
   | "mutual_fund"
   | "fixed_asset";
 
-export type BalanceSheetRange = "1M" | "3M" | "6M" | "1Y" | "ALL";
+export type BalanceSheetRange = "1D" | "7D" | "1M" | "3M" | "6M" | "1Y" | "ALL";
+
+function formatAxisY(val: number): string {
+  if (Math.abs(val) >= 1000000000) return (val / 1000000000).toFixed(1) + "B";
+  if (Math.abs(val) >= 1000000) return (val / 1000000).toFixed(1) + "M";
+  if (Math.abs(val) >= 1000) return (val / 1000).toFixed(0) + "K";
+  return String(val);
+}
 
 interface PresetAsset {
   symbol: string;
@@ -147,8 +160,7 @@ export function AssetsPage() {
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
   const { isStealthMode, toggleStealthMode } = usePrivacy();
-  const [bsRange, setBsRange] = useState<BalanceSheetRange>("6M");
-  const [hoveredCandle, setHoveredCandle] = useState<CandlestickData | null>(null);
+  const [bsRange, setBsRange] = useState<BalanceSheetRange>("7D");
 
   const { data: wallets = [] } = useWallets();
   const { data: allTxs = [] } = useAllTransactions();
@@ -317,109 +329,7 @@ export function AssetsPage() {
     return sum > 0 ? Math.round(sum / 3) : 3500000;
   }, [allTxs]);
 
-  // Real Monthly Deployment Data (12 Months) from Transactions (used for candlestick trajectory)
-  const monthlyDeploymentData = useMemo(() => {
-    const now = new Date();
-    const months: Array<{ key: string; label: string; deployed: number; txCount: number }> = Array.from(
-      { length: 12 },
-      (_, i) => {
-        const d = subMonths(now, 11 - i);
-        const key = format(d, "yyyy-MM");
-        const label = format(d, "MMM", { locale: isIndonesian ? idLocale : undefined });
-        return { key, label, deployed: 0, txCount: 0 };
-      },
-    );
 
-    const map = new Map(months.map((m) => [m.key, m]));
-
-    allTxs.forEach((tx) => {
-      if (!tx.occurred_on) return;
-      const key = tx.occurred_on.slice(0, 7);
-      const entry = map.get(key);
-      if (!entry) return;
-
-      const amt = Number(tx.amount || 0);
-      const cat = (tx.categories?.name || "").toLowerCase();
-      const note = (tx.note || "").toLowerCase();
-      const destWallet = wallets.find((w) => w.id === tx.to_wallet_id);
-      const isDestInvest =
-        destWallet?.classification === "investment" ||
-        destWallet?.name.toLowerCase().includes("crypto") ||
-        destWallet?.name.toLowerCase().includes("usdt") ||
-        destWallet?.name.toLowerCase().includes("saham") ||
-        destWallet?.name.toLowerCase().includes("bibit") ||
-        destWallet?.name.toLowerCase().includes("ajaib");
-
-      const isInvestCategory =
-        cat.includes("invest") ||
-        cat.includes("saham") ||
-        cat.includes("crypto") ||
-        cat.includes("kripto") ||
-        cat.includes("emas") ||
-        cat.includes("reksa") ||
-        note.includes("invest") ||
-        note.includes("saham") ||
-        note.includes("crypto") ||
-        note.includes("usdt") ||
-        note.includes("beli ") ||
-        note.includes("topup");
-
-      if ((tx.type === "expense" && isInvestCategory) || (tx.type === "transfer" && isDestInvest)) {
-        entry.deployed += amt;
-        entry.txCount += 1;
-      }
-    });
-
-    return months;
-  }, [allTxs, wallets, isIndonesian]);
-
-  // Real Weekly Deployment Data for Current Month (1M Range)
-  const weeklyDeploymentData = useMemo(() => {
-    const currentMonthPrefix = format(new Date(), "yyyy-MM");
-    const weeks: Array<{ label: string; deployed: number }> = [
-      { label: isIndonesian ? "Mgg 1" : "W1", deployed: 0 },
-      { label: isIndonesian ? "Mgg 2" : "W2", deployed: 0 },
-      { label: isIndonesian ? "Mgg 3" : "W3", deployed: 0 },
-      { label: isIndonesian ? "Mgg 4" : "W4", deployed: 0 },
-    ];
-
-    allTxs.forEach((tx) => {
-      if (!tx.occurred_on || !tx.occurred_on.startsWith(currentMonthPrefix)) return;
-      const day = parseInt(tx.occurred_on.slice(8, 10), 10);
-      const wIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
-      const amt = Number(tx.amount || 0);
-      const cat = (tx.categories?.name || "").toLowerCase();
-      const note = (tx.note || "").toLowerCase();
-      const destWallet = wallets.find((w) => w.id === tx.to_wallet_id);
-      const isDestInvest =
-        destWallet?.classification === "investment" ||
-        destWallet?.name.toLowerCase().includes("crypto") ||
-        destWallet?.name.toLowerCase().includes("usdt") ||
-        destWallet?.name.toLowerCase().includes("saham") ||
-        destWallet?.name.toLowerCase().includes("bibit") ||
-        destWallet?.name.toLowerCase().includes("ajaib");
-
-      const isInvestCategory =
-        cat.includes("invest") ||
-        cat.includes("saham") ||
-        cat.includes("crypto") ||
-        cat.includes("kripto") ||
-        cat.includes("emas") ||
-        cat.includes("reksa") ||
-        note.includes("invest") ||
-        note.includes("saham") ||
-        note.includes("crypto") ||
-        note.includes("usdt") ||
-        note.includes("beli ") ||
-        note.includes("topup");
-
-      if ((tx.type === "expense" && isInvestCategory) || (tx.type === "transfer" && isDestInvest)) {
-        weeks[wIdx].deployed += amt;
-      }
-    });
-
-    return weeks;
-  }, [allTxs, wallets, isIndonesian]);
 
   // ── Executive Balance Sheet & 4-Pillar Capital Breakdown ──────────
   // Pillar 1: Liquid & Current Assets (Operating Cash, Banks, e-Wallets, USDT Reserve)
@@ -490,32 +400,13 @@ export function AssetsPage() {
     return Number((liquidAssetsTotal / monthlyBurnRate).toFixed(1));
   }, [liquidAssetsTotal, monthlyBurnRate]);
 
-  // Active History for Candlesticks based on bsRange
-  const activeHistoryData = useMemo(() => {
-    if (bsRange === "1M") return weeklyDeploymentData;
-    if (bsRange === "3M") return monthlyDeploymentData.slice(9);
-    if (bsRange === "6M") return monthlyDeploymentData.slice(6);
-    return monthlyDeploymentData;
-  }, [bsRange, weeklyDeploymentData, monthlyDeploymentData]);
-
-  // Real Monochromatic Candlestick Data
-  const candlesticks = useMemo(() => {
-    return calculateHistoricalCandlesticks(netWorth, activeHistoryData);
-  }, [netWorth, activeHistoryData]);
-
-  // Change stats across active period
-  const periodStats = useMemo(() => {
-    if (candlesticks.length === 0) {
-      return { change: 0, pct: 0 };
-    }
-    const first = candlesticks[0];
-    const last = candlesticks[candlesticks.length - 1];
-    const change = last.close - first.open;
-    const pct = first.open > 0 ? (change / first.open) * 100 : 0;
-    return { change, pct };
-  }, [candlesticks]);
+  const assetTrend = useMemo(() => {
+    return calculateAssetTrend(allTxs, netWorth, bsRange);
+  }, [allTxs, netWorth, bsRange]);
 
   const bsRangeLabels: Record<BalanceSheetRange, string> = {
+    "1D": isIndonesian ? "Hari Ini" : "Today",
+    "7D": isIndonesian ? "7 Hari" : "7 Days",
     "1M": isIndonesian ? "1 Bulan" : "1 Month",
     "3M": isIndonesian ? "3 Bulan" : "3 Months",
     "6M": isIndonesian ? "6 Bulan" : "6 Months",
@@ -764,6 +655,28 @@ export function AssetsPage() {
     });
   }, [holdings, filterType, searchQuery]);
 
+  const GlassTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--glass-border)",
+          borderRadius: 12,
+          padding: "6px 10px",
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        <p style={{ color: "var(--text-tertiary)", fontSize: 10, fontWeight: 700 }}>
+          {label}
+        </p>
+        <p style={{ color: "var(--text-primary)", fontSize: 13, fontWeight: 700 }}>
+          {isStealthMode ? "••••••••" : formatRupiah(payload[0]?.value ?? 0)}
+        </p>
+      </div>
+    );
+  };
+
   return (
     <div
       className="min-h-screen select-none pb-28 pt-[calc(env(safe-area-inset-top,0px)+12px)] px-4 max-w-lg mx-auto space-y-4"
@@ -789,7 +702,7 @@ export function AssetsPage() {
 
       {/* ── 2. Executive Balance Sheet & Solvency Matrix Hero Card ── */}
       <div className="card-contrast-hero p-4 sm:p-5 pb-3.5 relative overflow-hidden rounded-3xl space-y-3.5">
-        {/* Top Header: Floating MTM indicator & Solvency status + Balance eye toggle */}
+        {/* Top Header: Floating MTM indicator & Balance eye toggle */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
@@ -799,36 +712,21 @@ export function AssetsPage() {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span
-              className="font-mono text-[9.5px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider"
-              style={{
-                background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {liabilitiesTotal === 0
-                ? isIndonesian ? "100% Solven" : "100% Solvent"
-                : `Leverage: ${debtToAssetRatio.toFixed(1)}%`}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                toggleStealthMode();
-              }}
-              className={`p-1 -mr-1 cursor-pointer active:scale-90 transition-all ${
-                isDark
-                  ? "text-white/60 hover:text-white"
-                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-              }`}
-              title={isStealthMode ? "Show Balance" : "Hide Balance"}
-            >
-              {isStealthMode ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              toggleStealthMode();
+            }}
+            className={`p-1 -mr-1 cursor-pointer active:scale-90 transition-all ${
+              isDark
+                ? "text-white/60 hover:text-white"
+                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+            }`}
+            title={isStealthMode ? "Show Balance" : "Hide Balance"}
+          >
+            {isStealthMode ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
         </div>
 
         {/* Hero Number: Net Capital Equity (Strictly font-light) */}
@@ -843,45 +741,36 @@ export function AssetsPage() {
 
         {/* Change Line + Time Label Side by Side */}
         <div className="flex items-center justify-between gap-2">
-          {hoveredCandle ? (
-            <div className="flex items-center gap-2 text-[10.5px] font-mono text-[var(--text-secondary)] truncate">
-              <span>O: <strong className="text-[var(--text-primary)]">{isStealthMode ? "••••" : formatRupiah(hoveredCandle.open)}</strong></span>
-              <span>H: <strong className="text-[var(--text-primary)]">{isStealthMode ? "••••" : formatRupiah(hoveredCandle.high)}</strong></span>
-              <span>L: <strong className="text-[var(--text-primary)]">{isStealthMode ? "••••" : formatRupiah(hoveredCandle.low)}</strong></span>
-              <span>C: <strong className="text-[var(--text-primary)]">{isStealthMode ? "••••" : formatRupiah(hoveredCandle.close)}</strong></span>
-            </div>
-          ) : (
-            <div
-              className="flex items-center gap-1 text-[12px] font-semibold"
-              style={{
-                color: isDark
-                  ? periodStats.change >= 0 ? "#FFFFFF" : "#A1A1AA"
-                  : periodStats.change >= 0 ? "#121214" : "#71717a",
-              }}
-            >
-              <ArrowUpRight
-                size={13}
-                className={periodStats.change < 0 ? "rotate-90" : ""}
-              />
-              <span>
-                {isStealthMode
-                  ? "••••"
-                  : `${periodStats.change >= 0 ? "+" : ""}${formatRupiah(periodStats.change)}`}
-              </span>
-              <span className="opacity-80">
-                ({isStealthMode ? "••••" : `${periodStats.pct >= 0 ? "+" : ""}${periodStats.pct.toFixed(2)}%`})
-              </span>
-            </div>
-          )}
+          <div
+            className="flex items-center gap-1 text-[12px] font-semibold"
+            style={{
+              color: isDark
+                ? assetTrend.diff >= 0 ? "#FFFFFF" : "#A1A1AA"
+                : assetTrend.diff >= 0 ? "#121214" : "#71717a",
+            }}
+          >
+            <ArrowUpRight
+              size={13}
+              className={assetTrend.diff < 0 ? "rotate-90" : ""}
+            />
+            <span>
+              {isStealthMode
+                ? "••••"
+                : `${assetTrend.diff >= 0 ? "+" : ""}${formatRupiah(assetTrend.diff)}`}
+            </span>
+            <span className="opacity-80">
+              ({isStealthMode ? "••••" : `${assetTrend.percent >= 0 ? "+" : ""}${assetTrend.percent.toFixed(2)}%`})
+            </span>
+          </div>
 
           <span className="text-[11px] font-semibold shrink-0 text-[var(--text-tertiary)]">
             {bsRangeLabels[bsRange]} · MTM
           </span>
         </div>
 
-        {/* Range Pill Selector (1M, 3M, 6M, 1Y, ALL) */}
+        {/* Range Pill Selector (1D, 7D, 1M, 3M, 6M, 1Y, ALL) */}
         <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5">
-          {(["1M", "3M", "6M", "1Y", "ALL"] as BalanceSheetRange[]).map((r) => {
+          {(["1D", "7D", "1M", "3M", "6M", "1Y", "ALL"] as BalanceSheetRange[]).map((r) => {
             const isActive = bsRange === r;
             return (
               <button
@@ -925,143 +814,80 @@ export function AssetsPage() {
           })}
         </div>
 
-        {/* Monochromatic Candlestick Chart (SVG) */}
-        {(() => {
-          if (candlesticks.length === 0) return null;
-
-          const svgW = 320;
-          const svgH = 88;
-          const padL = 12;
-          const padR = 12;
-          const padT = 8;
-          const padB = 6;
-          const plotW = svgW - padL - padR;
-          const plotH = svgH - padT - padB;
-
-          const minPrice = Math.min(...candlesticks.map((c) => c.low));
-          const maxPrice = Math.max(...candlesticks.map((c) => c.high), minPrice + 1);
-          const rangeDiff = maxPrice - minPrice || 1;
-
-          const getY = (val: number) => {
-            return padT + plotH - ((val - minPrice) / rangeDiff) * plotH;
-          };
-
-          const slotWidth = plotW / candlesticks.length;
-          const bodyWidth = Math.max(7, Math.min(22, slotWidth * 0.52));
-
-          return (
-            <div className="space-y-1">
-              <div className="w-full h-[88px] relative">
-                <svg
-                  viewBox={`0 0 ${svgW} ${svgH}`}
-                  className="w-full h-full overflow-visible"
-                  onMouseLeave={() => setHoveredCandle(null)}
-                >
-                  {/* Dotted Grid Lines */}
-                  <line
-                    x1={padL}
-                    y1={padT + plotH * 0.25}
-                    x2={svgW - padR}
-                    y2={padT + plotH * 0.25}
-                    stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}
-                    strokeDasharray="2 3"
+        {/* Chart with Right Y-Axis & Dotted Grid */}
+        <div className="h-[120px] w-full mt-0.5">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={assetTrend.chartData}
+              margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="balanceSheetHeroGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={isDark ? "#FFFFFF" : "#18181b"}
+                    stopOpacity={isDark ? 0.25 : 0.12}
                   />
-                  <line
-                    x1={padL}
-                    y1={padT + plotH * 0.5}
-                    x2={svgW - padR}
-                    y2={padT + plotH * 0.5}
-                    stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}
-                    strokeDasharray="2 3"
+                  <stop
+                    offset="100%"
+                    stopColor={isDark ? "#FFFFFF" : "#18181b"}
+                    stopOpacity={0.0}
                   />
-                  <line
-                    x1={padL}
-                    y1={padT + plotH * 0.75}
-                    x2={svgW - padR}
-                    y2={padT + plotH * 0.75}
-                    stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}
-                    strokeDasharray="2 3"
-                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="2 3"
+                stroke={isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.09)"}
+                vertical={true}
+                horizontal={true}
+              />
+              <XAxis
+                dataKey="label"
+                tick={{
+                  fontSize: 9,
+                  fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
+                  fontFamily: "Urbanist",
+                  fontWeight: 600,
+                }}
+                axisLine={false}
+                tickLine={false}
+                dy={3}
+              />
+              <YAxis
+                orientation="right"
+                width={34}
+                domain={["auto", "auto"]}
+                tick={{
+                  fontSize: 9,
+                  fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
+                  fontFamily: "Urbanist",
+                  fontWeight: 700,
+                }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={formatAxisY}
+                dx={-2}
+              />
+              <Tooltip content={<GlassTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="balance"
+                stroke={isDark ? "#FFFFFF" : "#18181b"}
+                strokeWidth={2}
+                fill="url(#balanceSheetHeroGradient)"
+                dot={false}
+                activeDot={{
+                  r: 4,
+                  fill: isDark ? "#FFFFFF" : "#18181b",
+                  stroke: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.9)",
+                  strokeWidth: 1.5,
+                }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
 
-                  {/* Candlesticks */}
-                  {candlesticks.map((c, i) => {
-                    const cx = padL + i * slotWidth + slotWidth / 2;
-                    const yHigh = getY(c.high);
-                    const yLow = getY(c.low);
-                    const yOpen = getY(c.open);
-                    const yClose = getY(c.close);
-                    const topBody = Math.min(yOpen, yClose);
-                    const botBody = Math.max(yOpen, yClose);
-                    const bodyHeight = Math.max(2.5, botBody - topBody);
-
-                    return (
-                      <g
-                        key={c.key}
-                        className="cursor-pointer transition-opacity hover:opacity-80"
-                        onMouseEnter={() => setHoveredCandle(c)}
-                        onTouchStart={() => setHoveredCandle(c)}
-                      >
-                        {/* Vertical Wick (High to Low) */}
-                        <line
-                          x1={cx}
-                          y1={yHigh}
-                          x2={cx}
-                          y2={yLow}
-                          stroke={
-                            isDark
-                              ? "rgba(255, 255, 255, 0.45)"
-                              : "rgba(24, 24, 27, 0.45)"
-                          }
-                          strokeWidth="1.2"
-                          strokeLinecap="round"
-                        />
-
-                        {/* Candle Body: Solid if Bullish, Hollow with Border if Bearish */}
-                        <rect
-                          x={cx - bodyWidth / 2}
-                          y={topBody}
-                          width={bodyWidth}
-                          height={bodyHeight}
-                          rx="1.5"
-                          fill={
-                            c.isBullish
-                              ? isDark
-                                ? "#FFFFFF"
-                                : "#18181B"
-                              : isDark
-                                ? "rgba(255, 255, 255, 0.06)"
-                                : "rgba(0, 0, 0, 0.04)"
-                          }
-                          stroke={
-                            c.isBullish
-                              ? isDark
-                                ? "#FFFFFF"
-                                : "#18181B"
-                              : isDark
-                                ? "rgba(255, 255, 255, 0.85)"
-                                : "rgba(24, 24, 27, 0.85)"
-                          }
-                          strokeWidth={c.isBullish ? "0.8" : "1.2"}
-                        />
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-
-              {/* Candlestick Period Axis Labels */}
-              <div className="flex items-center justify-between px-2 text-[9.5px] font-mono text-[var(--text-tertiary)]">
-                {candlesticks.map((c) => (
-                  <span key={c.key} className="text-center truncate">
-                    {c.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Equation Balance Strip: Gross Assets - Liabilities = Net Worth */}
+        {/* Equation Balance Strip: Gross Assets - Liabilities = Solvency */}
         <div
           className="grid grid-cols-3 gap-2 p-3 rounded-2xl text-center"
           style={{
@@ -1096,17 +922,37 @@ export function AssetsPage() {
             </span>
           </div>
         </div>
+      </div>
 
-        {/* Integrated Runway Status Line & Explicit USDT Rate */}
-        <div className="pt-2.5 border-t border-[var(--glass-border)] flex items-center justify-between text-[11px]">
-          <span className="font-medium text-[var(--text-secondary)]">
+      {/* ── Liquid Glass Safe Runway Notification Bar ──────────────────────── */}
+      <div
+        className="p-3 px-3.5 rounded-2xl flex items-center justify-between gap-2.5 border border-[var(--glass-border)] backdrop-blur-xl shadow-sm"
+        style={{
+          background: isDark
+            ? "linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%)"
+            : "linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(244, 244, 247, 0.65) 100%)",
+          boxShadow: isDark
+            ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--shadow-card)"
+            : "inset 0 1px 0 rgba(255, 255, 255, 1), 0 2px 8px rgba(15, 23, 42, 0.04)",
+        }}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div
+            className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <ShieldCheck size={13} strokeWidth={2} className="text-[var(--text-primary)]" />
+          </div>
+          <span className="text-[11.5px] font-medium text-[var(--text-secondary)] truncate">
             {formatRunwaySummary(liquidRunwayMonths, monthlyBurnRate, isIndonesian)}
           </span>
-
-          <span className="font-mono text-[10.5px] text-[var(--text-tertiary)]">
-            Live USDT: <strong className="text-[var(--text-secondary)]">{formatRupiah(usdtPref.rate)}</strong> / unit
-          </span>
         </div>
+        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full shrink-0 border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-tertiary)]">
+          {liquidRunwayMonths >= 6 ? (isIndonesian ? "Aman" : "Safe") : (isIndonesian ? "Buffer" : "Buffer")}
+        </span>
       </div>
 
       {/* ── Relocated Minimalist Quick Action Bar ──────────────────────────── */}

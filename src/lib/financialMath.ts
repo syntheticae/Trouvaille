@@ -848,10 +848,16 @@ export function calculateAssetTrend(
     chartData.push({ label: "Now", balance: currentBalance });
     diff = currentBalance - startBalance;
     percent = startBalance === 0 ? 0 : (diff / Math.abs(startBalance)) * 100;
-  } else if (stockRange === "1W") {
+  } else if (stockRange === "1W" || stockRange === "7D") {
     buildDailyRange(7, "d");
   } else if (stockRange === "1M") {
     buildDailyRange(30, "d MMM");
+  } else if (stockRange === "3M") {
+    buildMonthlyRange(
+      new Date(now.getFullYear(), now.getMonth() - 2, 1),
+      now,
+      "MMM",
+    );
   } else if (stockRange === "6M") {
     buildMonthlyRange(
       new Date(now.getFullYear(), now.getMonth() - 5, 1),
