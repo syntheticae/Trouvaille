@@ -180,22 +180,6 @@ export function CustomizeStatisticsModal({
         <div className="space-y-3.5 overflow-y-auto no-scrollbar pr-0.5 flex-1 min-h-0">
           {[
             {
-              title: isIndonesian ? "Kecerdasan Finansial" : "Financial Intelligence",
-              ids: [
-                "health_score",
-                "cashflow_outlook",
-                "liquidity_horizon",
-                "monte_carlo",
-                "fire_planner",
-                "spending_patterns",
-                "spending_density_heatmap",
-                "zero_based_envelopes",
-                "debt_payoff",
-                "what_if_simulator",
-                "personal_financial_model",
-              ],
-            },
-            {
               title: isIndonesian ? "Laporan & Evaluasi" : "Report & Diagnostics",
               ids: [
                 "financial_report",
@@ -205,15 +189,34 @@ export function CustomizeStatisticsModal({
               ],
             },
             {
-              title: isIndonesian ? "Arus Kas & Aset" : "Cashflow & Net Worth",
+              title: isIndonesian ? "Kecerdasan Finansial" : "Financial Intelligence",
+              ids: [
+                "health_score",
+                "spending_patterns",
+                "spending_density_heatmap",
+                "zero_based_envelopes",
+              ],
+            },
+            {
+              title: isIndonesian ? "Arus Kas & Tren" : "Cashflow & Trend",
               ids: [
                 "cashflow_summary",
                 "category_breakdown",
                 "cashflow_sankey",
-                "net_capital_trajectory",
                 "inflow_outflow_trend",
                 "cashflow_velocity",
-                "asset_analytics",
+              ],
+            },
+            {
+              title: isIndonesian ? "Simulasi & Proyeksi" : "Simulation & Planning",
+              ids: [
+                "what_if_simulator",
+                "monte_carlo",
+                "fire_planner",
+                "personal_financial_model",
+                "debt_payoff",
+                "cashflow_outlook",
+                "liquidity_horizon",
               ],
             },
           ].map((group) => {

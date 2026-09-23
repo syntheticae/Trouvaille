@@ -63,6 +63,7 @@ import {
   Target,
   Moon,
   Sun,
+  Settings,
 } from "lucide-react";
 import { useSpace } from "../contexts/SpaceContext";
 import { SpaceSwitcherSheet } from "../components/spaces/SpaceSwitcherSheet";
@@ -2051,7 +2052,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             </div>
           </button>
 
-          {/* Liquid Glass Profile Menu Popover */}
+          {/* Apple Luxury Dynamic Island Profile Capsule */}
           <ProfileMenuModal
             isOpen={profileMenuOpen}
             onClose={() => setProfileMenuOpen(false)}
@@ -2066,6 +2067,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             onOpenWebDashboard={() => {
               setProfileMenuOpen(false);
               setWebDashboardOpen(true);
+            }}
+            onOpenNotifications={() => {
+              setProfileMenuOpen(false);
+              setNotifOpen(true);
             }}
             displayName={displayName}
             avatarUrl={avatarUrl}
@@ -2103,11 +2108,15 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             />
           </button>
           <button
-            onClick={() => setNotifOpen(true)}
+            onClick={() => {
+              triggerHaptic("light");
+              navigate("/settings");
+            }}
             className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer"
-            title="Notifications"
+            title={t("settings.title", "Settings")}
+            aria-label="Settings"
           >
-            <Bell size={14} strokeWidth={1.75} style={{ color: "var(--text-primary)" }} />
+            <Settings size={14} strokeWidth={1.75} style={{ color: "var(--text-primary)" }} />
           </button>
         </div>
       </header>

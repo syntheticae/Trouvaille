@@ -506,6 +506,7 @@ function AppShell() {
             setAddSheetOpen(true);
           }}
           onOpenVoiceAdd={() => setVoiceModalOpen(true)}
+          onOpenScan={() => setReceiptScanOpen(true)}
         />
       )}
 

@@ -43,10 +43,39 @@ import { IconRenderer } from "../components/ui/IconRenderer";
 import { MonochromeIconPickerModal } from "../components/ui/MonochromeIconPickerModal";
 import { AssetDetailSheet } from "../components/settings/AssetDetailSheet";
 import { StakingYieldModal } from "../components/settings/StakingYieldModal";
+import { NetCapitalTrajectoryCard } from "../components/statistics/NetCapitalTrajectoryCard";
+import { AssetAnalyticsSection } from "../components/statistics/AssetAnalyticsSection";
+import { format, subMonths } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import type {
   InvestmentHolding,
   AssetType,
 } from "../lib/types";
+
+const GlassTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        borderRadius: 12,
+        padding: "8px 12px",
+        boxShadow: "0 8px 24px var(--shadow-strength)",
+        fontFamily: "Urbanist, sans-serif",
+      }}
+    >
+      <p style={{ color: "var(--text-tertiary)", fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
+        {label}
+      </p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: "var(--text-primary)", fontSize: 13, fontWeight: 600, marginBottom: 2 }}>
+          {formatRupiah(p.value)}
+        </p>
+      ))}
+    </div>
+  );
+};
 
 interface PresetAsset {
   symbol: string;
@@ -110,6 +139,7 @@ export function AssetsPage() {
   const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dismissedReconciliation, setDismissedReconciliation] = useState(false);
+  const [netTrajectoryExpanded, setNetTrajectoryExpanded] = useState(true);
 
   // Add Holding Flow State
   // 0: closed, 1: preset picker, 2: details form
@@ -328,6 +358,53 @@ export function AssetsPage() {
 
     return classes;
   }, [totalMarketValuation, usdtMarketValue, liquidHoldings, fixedHoldings, isDark, isIndonesian]);
+
+  // Longitudinal Net Capital Trajectory Data (6 Months)
+  const netWorthData = useMemo(() => {
+    const now = new Date();
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = subMonths(now, 5 - i);
+      const key = format(d, "yyyy-MM");
+      const label = format(d, "MMM", { locale: isIndonesian ? idLocale : undefined });
+      return { key, label };
+    });
+
+    const monthlyNet = new Map<string, number>();
+    allTxs.forEach((tx) => {
+      if (!tx.occurred_on) return;
+      const key = tx.occurred_on.slice(0, 7);
+      const amt = Number(tx.amount || 0);
+      const current = monthlyNet.get(key) || 0;
+      if (tx.type === "income") {
+        monthlyNet.set(key, current + amt);
+      } else if (tx.type === "expense") {
+        monthlyNet.set(key, current - amt);
+      }
+    });
+
+    const netChanges = months.map((m) => monthlyNet.get(m.key) || 0);
+    const totalChangeInWindow = netChanges.reduce((a, b) => a + b, 0);
+    let runningVal = Math.max(0, totalMarketValuation - totalChangeInWindow);
+
+    return months.map((m, idx) => {
+      runningVal += netChanges[idx];
+      return {
+        label: m.label,
+        net: Math.max(0, runningVal),
+      };
+    });
+  }, [allTxs, totalMarketValuation, isIndonesian]);
+
+  // Dynamic Monthly Burn Rate for Emergency Runway Coverage
+  const monthlyBurnRate = useMemo(() => {
+    const now = new Date();
+    const threeMonthsAgo = subMonths(now, 3);
+    const recentExpenses = allTxs.filter(
+      (tx) => tx.type === "expense" && tx.occurred_on && new Date(tx.occurred_on) >= threeMonthsAgo
+    );
+    const sum = recentExpenses.reduce((s, tx) => s + Number(tx.amount || 0), 0);
+    return sum > 0 ? Math.round(sum / 3) : 3500000;
+  }, [allTxs]);
 
   // Reconciliation Audit
   const reconciliationAudit = useMemo(() => {
@@ -944,6 +1021,28 @@ export function AssetsPage() {
             </div>
           )}
       </div>
+
+      {/* 6. Net Capital Trajectory Growth Section */}
+      <NetCapitalTrajectoryCard
+        netWorth={totalMarketValuation}
+        hideBalance={isStealthMode}
+        rangeTitle={isIndonesian ? "6 Bulan Terakhir" : "Last 6 Months"}
+        netWorthData={netWorthData}
+        netTrajectoryExpanded={netTrajectoryExpanded}
+        setNetTrajectoryExpanded={setNetTrajectoryExpanded}
+        colors={{ lineStroke: isDark ? "#ffffff" : "#111827" }}
+        isDark={isDark}
+        isIndonesian={isIndonesian}
+        GlassTooltip={GlassTooltip}
+      />
+
+      {/* 7. In-Depth Asset Allocation & Runway Analytics */}
+      <AssetAnalyticsSection
+        wallets={wallets}
+        monthlyBurnRate={monthlyBurnRate}
+        hideBalance={isStealthMode}
+        onOpenValuation={() => setAddPhase(1)}
+      />
 
       {/* ── Two-Phase Add Holding Modal ────────────────────────────────────── */}
       {addPhase === 1 && (

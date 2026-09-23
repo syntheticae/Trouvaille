@@ -121,7 +121,7 @@ import { id as idLocale } from "date-fns/locale";
 type Range = "week" | "month" | "year" | "all";
 type BreakdownType = "expense" | "income";
 type GroupMode = "category" | "parent";
-type AnalyticsSubTab = "report" | "intelligence" | "cashflow" | "assets";
+type AnalyticsSubTab = "report" | "intelligence" | "cashflow" | "simulation";
 
 const isTxCorrection = isCorrectionTx;
 
@@ -362,16 +362,9 @@ export function StatisticsPage() {
   const visibleIntelligenceCards = useMemo(() => {
     const intelligenceIds = new Set([
       "health_score",
-      "cashflow_outlook",
-      "liquidity_horizon",
-      "monte_carlo",
-      "fire_planner",
       "spending_patterns",
       "spending_density_heatmap",
       "zero_based_envelopes",
-      "debt_payoff",
-      "what_if_simulator",
-      "personal_financial_model",
     ]);
     return visibleStatsCards.filter((c) => intelligenceIds.has(c.id));
   }, [visibleStatsCards]);
@@ -381,16 +374,23 @@ export function StatisticsPage() {
       "cashflow_summary",
       "category_breakdown",
       "cashflow_sankey",
-      "net_capital_trajectory",
       "inflow_outflow_trend",
       "cashflow_velocity",
     ]);
     return visibleStatsCards.filter((c) => cashflowIds.has(c.id));
   }, [visibleStatsCards]);
 
-  const visibleAssetCards = useMemo(() => {
-    const assetIds = new Set(["asset_analytics"]);
-    return visibleStatsCards.filter((c) => assetIds.has(c.id));
+  const visibleSimulationCards = useMemo(() => {
+    const simulationIds = new Set([
+      "what_if_simulator",
+      "monte_carlo",
+      "fire_planner",
+      "personal_financial_model",
+      "debt_payoff",
+      "cashflow_outlook",
+      "liquidity_horizon",
+    ]);
+    return visibleStatsCards.filter((c) => simulationIds.has(c.id));
   }, [visibleStatsCards]);
 
   const analyticsTabs = useMemo<{ key: AnalyticsSubTab; label: string }[]>(
@@ -399,11 +399,11 @@ export function StatisticsPage() {
         { key: "report" as AnalyticsSubTab, label: isIndonesian ? "Laporan" : "Report", count: visibleReportCards.length },
         { key: "intelligence" as AnalyticsSubTab, label: isIndonesian ? "Kecerdasan" : "Intelligence", count: visibleIntelligenceCards.length },
         { key: "cashflow" as AnalyticsSubTab, label: isIndonesian ? "Arus Kas" : "Cashflow", count: visibleCashflowCards.length },
-        { key: "assets" as AnalyticsSubTab, label: isIndonesian ? "Aset & Kekayaan" : "Net Worth", count: visibleAssetCards.length },
+        { key: "simulation" as AnalyticsSubTab, label: isIndonesian ? "Simulasi" : "Simulation", count: visibleSimulationCards.length },
       ];
       return all.filter((tab) => tab.count > 0);
     },
-    [isIndonesian, visibleReportCards.length, visibleIntelligenceCards.length, visibleCashflowCards.length, visibleAssetCards.length],
+    [isIndonesian, visibleReportCards.length, visibleIntelligenceCards.length, visibleCashflowCards.length, visibleSimulationCards.length],
   );
 
   // Auto-switch to first available tab if current active tab is collapsed
@@ -2321,10 +2321,10 @@ export function StatisticsPage() {
         />
       )}
 
-      {/* TAB 4: NET WORTH (ASSETS) */}
-      {analyticsSubTab === "assets" && (
+      {/* TAB 4: SIMULATION */}
+      {analyticsSubTab === "simulation" && (
         <ReorderableWidgetGrid
-          cards={visibleAssetCards}
+          cards={visibleSimulationCards}
           isEditMode={isStatsEditMode}
           onReorder={reorderStatsCards}
           onEnterEditMode={() => setIsStatsEditMode(true)}
