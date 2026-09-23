@@ -86,42 +86,40 @@ export function CalendarCard({
   }
 
   return (
-    <div onClick={onOpenDetail} className="cursor-pointer">
-      <CompactShell title={t("calendar.title", "Calendar")} onOpenDetail={onOpenDetail}>
-        <div className="flex-1 flex flex-col justify-center py-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-medium text-[var(--text-tertiary)] truncate">
-              {dayStr}
-            </span>
-            <span
-              className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md truncate max-w-[85px]"
-              style={{
-                background: "var(--glass-fill)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {activeDaysCount}d {t("calendar.activeDays", "Active")}
-            </span>
-          </div>
-          <p className="text-[18px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight mt-0.5 truncate">
-            {monthTransactionsCount}{" "}
-            <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
-              {t("calendar.entries", "Entries")}
-            </span>
-          </p>
-        </div>
-
-        <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
-          <div className="flex items-center gap-1.5 truncate">
-            <CalendarDays size={11} strokeWidth={1.75} className="text-[var(--text-secondary)] shrink-0" />
-            <span className="truncate">{monthName}</span>
-          </div>
-          <span className="text-[9px] font-medium text-[var(--text-secondary)] opacity-80 shrink-0">
-            {t("calendar.tapToView", "Tap to view calendar")}
+    <CompactShell title={t("calendar.title", "Calendar")} onOpenDetail={onOpenDetail}>
+      <div className="flex-1 flex flex-col justify-center py-1">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-medium text-[var(--text-tertiary)] truncate">
+            {dayStr}
+          </span>
+          <span
+            className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md truncate max-w-[85px]"
+            style={{
+              background: "var(--glass-fill)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            {activeDaysCount}d {t("calendar.activeDays", "Active")}
           </span>
         </div>
-      </CompactShell>
-    </div>
+        <p className="text-[18px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight mt-0.5 truncate">
+          {monthTransactionsCount}{" "}
+          <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
+            {t("calendar.entries", "Entries")}
+          </span>
+        </p>
+      </div>
+
+      <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
+        <div className="flex items-center gap-1.5 truncate">
+          <CalendarDays size={11} strokeWidth={1.75} className="text-[var(--text-secondary)] shrink-0" />
+          <span className="truncate">{monthName}</span>
+        </div>
+        <span className="text-[9px] font-medium text-[var(--text-secondary)] opacity-80 shrink-0">
+          {t("calendar.tapToView", "Overview")}
+        </span>
+      </div>
+    </CompactShell>
   );
 }

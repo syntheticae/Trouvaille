@@ -51,6 +51,11 @@ const SettingsPage = lazy(() =>
     default: module.SettingsPage,
   })),
 );
+const AssetsPage = lazy(() =>
+  import("./pages/AssetsPage").then((module) => ({
+    default: module.AssetsPage,
+  })),
+);
 const LoginPage = lazy(() =>
   import("./pages/LoginPage").then((module) => ({
     default: module.LoginPage,
@@ -480,6 +485,8 @@ function AppShell() {
             <Route path="/bills" element={<CalendarPage />} />
             <Route path="/statistics" element={<StatisticsPage />} />
             <Route path="/stats" element={<StatisticsPage />} />
+            <Route path="/assets" element={<AssetsPage />} />
+            <Route path="/investments" element={<AssetsPage />} />
             <Route
               path="/settings"
               element={

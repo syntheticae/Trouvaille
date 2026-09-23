@@ -825,6 +825,13 @@ export function getHoldingActivities(holding: InvestmentHolding): HoldingActivit
 }
 
 /**
+ * Retrieve the standard uniform holding ID for USDT.
+ */
+export function getStandardUsdtHoldingId(userId?: string): string {
+  return `usdt-${userId || "local"}`;
+}
+
+/**
  * Record a new DCA Buy or partial/full Sell position on a holding.
  * Automatically recalculates weighted average buy price on buys and updates units.
  */
@@ -841,11 +848,19 @@ export function recordHoldingActivity(
   userId?: string,
 ): { updatedHolding: InvestmentHolding; realizedPnL: number } {
   const allHoldings = getSavedHoldings(userId);
-  let target = allHoldings.find((h) => h.id === holdingId);
-  if (!target && (holdingId.startsWith("usdt-") || holdingId === "usdt-core-holding" || holdingId === "usdt")) {
+  const isUsdtRef =
+    holdingId.startsWith("usdt-") ||
+    holdingId === "usdt-core-holding" ||
+    holdingId === "usdt";
+
+  let target =
+    allHoldings.find((h) => h.id === holdingId) ||
+    (isUsdtRef ? allHoldings.find((h) => h.symbol?.toUpperCase() === "USDT") : undefined);
+
+  if (!target && isUsdtRef) {
     const usdtPref = getSavedUsdtPref(userId);
     target = {
-      id: holdingId,
+      id: getStandardUsdtHoldingId(userId),
       user_id: userId,
       symbol: "USDT",
       name: "Tether USD",
@@ -855,6 +870,7 @@ export function recordHoldingActivity(
       current_price: usdtPref.rate,
       currency: "IDR",
       icon: "Coins",
+      activities: [],
     };
   }
   if (!target) {

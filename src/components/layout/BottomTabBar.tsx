@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { triggerHaptic } from "../../lib/haptics";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, History, Plus, PieChart, Settings } from "lucide-react";
+import { Home, History, Plus, PieChart, Landmark } from "lucide-react";
 import { useLanguage } from "../../contexts/LanguageContext";
 
 interface BottomTabBarProps {
@@ -50,7 +50,7 @@ export function BottomTabBar({ onOpenAdd, onOpenVoiceAdd }: BottomTabBarProps) {
     { path: "/transactions", icon: History, label: t("nav.transactions", "Transactions") },
     { action: "add", icon: Plus, label: t("nav.add", "Add") },
     { path: "/statistics", icon: PieChart, label: t("nav.analytics", "Analytics") },
-    { path: "/settings", icon: Settings, label: t("nav.settings", "Settings") },
+    { path: "/assets", icon: Landmark, label: t("nav.assets", "Assets") },
   ];
 
   return (

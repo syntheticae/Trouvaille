@@ -44,6 +44,7 @@ import {
   fetchStockPriceInIDR,
   getSavedHoldings,
   getSavedUsdtPref,
+  getStandardUsdtHoldingId,
   saveUsdtPref,
   upsertHolding,
   deleteHolding,
@@ -475,16 +476,23 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   // Open USDT in AssetDetailSheet
   const openUsdtDetail = () => {
     triggerHaptic("light");
+    const existingUsdt = holdings.find(
+      (h) => h.symbol?.toUpperCase() === "USDT" || h.id.startsWith("usdt-"),
+    );
     const usdtHolding: InvestmentHolding = {
-      id: `usdt-${user?.id || "guest"}`,
+      id: existingUsdt?.id || getStandardUsdtHoldingId(user?.id),
       symbol: "USDT",
       name: "Tether USD",
       asset_type: "crypto",
-      units: usdtPref.units > 0 ? usdtPref.units : suggestedUsdtUnits,
-      avg_buy_price: usdtPref.units > 0 ? Math.round(usdtCostBasis / usdtPref.units) : usdtPref.rate,
+      units: usdtPref.units > 0 ? usdtPref.units : (existingUsdt?.units || suggestedUsdtUnits),
+      avg_buy_price:
+        usdtPref.units > 0
+          ? Math.round(usdtCostBasis / usdtPref.units)
+          : (existingUsdt?.avg_buy_price || usdtPref.rate),
       current_price: usdtPref.rate,
       currency: "IDR",
       icon: "Coins",
+      activities: existingUsdt?.activities && existingUsdt.activities.length > 0 ? existingUsdt.activities : undefined,
     };
     setSelectedDetailHolding(usdtHolding);
   };
@@ -1761,6 +1769,9 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           }
           if (selectedDetailHolding) {
             if (selectedDetailHolding.symbol?.toUpperCase() === "USDT") {
+              const freshMatchingUsdt = freshHoldings.find(
+                (h) => h.symbol?.toUpperCase() === "USDT" || h.id.startsWith("usdt-"),
+              );
               setSelectedDetailHolding({
                 ...selectedDetailHolding,
                 units: freshUsdt.units,
@@ -1769,6 +1780,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                     ? Math.round(freshUsdt.costBasis / freshUsdt.units)
                     : freshUsdt.rate,
                 current_price: freshUsdt.rate,
+                activities: freshMatchingUsdt?.activities || selectedDetailHolding.activities,
               });
             } else {
               const refreshed = freshHoldings.find((x) => x.id === selectedDetailHolding.id);

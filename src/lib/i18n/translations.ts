@@ -62,6 +62,7 @@ export const translations = {
       transactions: "Transactions",
       add: "Add",
       analytics: "Analytics",
+      assets: "Assets",
       settings: "Settings",
     },
     onboarding: {
@@ -357,6 +358,7 @@ export const translations = {
       transactions: "Transaksi",
       add: "Tambah",
       analytics: "Statistik",
+      assets: "Aset",
       settings: "Pengaturan",
     },
     onboarding: {

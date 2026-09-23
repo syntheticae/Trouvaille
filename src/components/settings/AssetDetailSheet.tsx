@@ -27,7 +27,8 @@ import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useWallets } from "../../hooks/useWallets";
-import { useAddTransaction } from "../../hooks/useTransactions";
+import { useAddTransaction, useAllTransactions } from "../../hooks/useTransactions";
+import { isInvestmentOrCryptoWallet } from "../../lib/holdingSyncEngine";
 import {
   recordHoldingActivity,
   getHoldingActivities,
@@ -127,11 +128,93 @@ export function AssetDetailSheet({
     return calculateHoldingValuation(holding);
   }, [holding]);
 
-  // Position history activities
+  const { data: allTxs = [] } = useAllTransactions();
+
+  // Position history activities with smart transaction bridge
   const activities: HoldingActivity[] = useMemo(() => {
     if (!holding) return [];
-    return getHoldingActivities(holding);
-  }, [holding]);
+    const directActivities = getHoldingActivities(holding);
+    const isUsdt =
+      holding.symbol?.toUpperCase() === "USDT" ||
+      holding.id.startsWith("usdt-");
+
+    const cryptoWallets = wallets.filter(isInvestmentOrCryptoWallet);
+    const cryptoWalletIds = new Set(cryptoWallets.map((w) => w.id));
+
+    const linkedTxActivities: HoldingActivity[] = [];
+    allTxs.forEach((tx) => {
+      let isMatch = false;
+      let actType: "buy" | "sell" = "buy";
+      let note = tx.note || "";
+
+      if (isUsdt) {
+        if (tx.wallet_id && cryptoWalletIds.has(tx.wallet_id)) {
+          // Outgoing from crypto wallet (transfer out to bank or expense)
+          isMatch = true;
+          actType = "sell";
+          const toW = wallets.find((w) => w.id === tx.to_wallet_id);
+          note = tx.note || (toW ? `Transfer ke ${toW.name}` : "P2P Withdrawal / Penarikan");
+        } else if (tx.to_wallet_id && cryptoWalletIds.has(tx.to_wallet_id)) {
+          // Incoming to crypto wallet (transfer in or deposit)
+          isMatch = true;
+          actType = "buy";
+          const fromW = wallets.find((w) => w.id === tx.wallet_id);
+          note = tx.note || (fromW ? `Deposit dari ${fromW.name}` : "P2P Purchase / Deposit");
+        } else if (tx.type === "income" && tx.wallet_id && cryptoWalletIds.has(tx.wallet_id)) {
+          isMatch = true;
+          actType = "buy";
+          note = tx.note || "Staking Yield / Bunga";
+        }
+      } else if (holding.symbol) {
+        const sym = holding.symbol.toUpperCase();
+        if (tx.note && tx.note.toUpperCase().includes(sym)) {
+          isMatch = true;
+          actType = tx.type === "expense" ? "sell" : "buy";
+        }
+      }
+
+      if (isMatch) {
+        const rate =
+          (tx as any).customPrice ||
+          holding.current_price ||
+          holding.avg_buy_price ||
+          16400;
+        const units =
+          (tx as any).customUnits ||
+          (rate > 0 ? Number((tx.amount / rate).toFixed(4)) : 0);
+
+        linkedTxActivities.push({
+          id: `tx-bridge-${tx.id}`,
+          holding_id: holding.id,
+          type: actType,
+          date: tx.occurred_on,
+          units: Math.abs(units),
+          price_per_unit: rate,
+          total_amount: tx.amount,
+          note,
+          created_at: tx.created_at || new Date().toISOString(),
+        });
+      }
+    });
+
+    // Merge and deduplicate by date & amount or ID
+    const merged = [...directActivities];
+    linkedTxActivities.forEach((linked) => {
+      const alreadyHas = merged.some(
+        (m) =>
+          m.id === linked.id ||
+          (m.date === linked.date && Math.abs(m.total_amount - linked.total_amount) < 100),
+      );
+      if (!alreadyHas) {
+        merged.push(linked);
+      }
+    });
+
+    // Remove synthetic initial if there are real activities
+    const nonInitial = merged.filter((a) => !a.id.startsWith("act-initial-"));
+    const finalActivities = nonInitial.length > 0 ? nonInitial : merged;
+    return finalActivities.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  }, [holding, allTxs, wallets]);
 
   // Chart data points
   const chartData = useMemo(() => {

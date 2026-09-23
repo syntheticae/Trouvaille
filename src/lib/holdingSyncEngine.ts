@@ -4,6 +4,7 @@ import {
   getSavedUsdtPref,
   saveUsdtPref,
   recordHoldingActivity,
+  getStandardUsdtHoldingId,
   USD_IDR_ESTIMATE,
   type UsdtValuationPref,
 } from "./marketPriceService";
@@ -112,7 +113,7 @@ export function syncTransactionWithHolding(
         ? tx.customUnits
         : Number((amount / rate).toFixed(4));
 
-    const holdingId = `usdt-${userId || "default"}`;
+    const holdingId = getStandardUsdtHoldingId(userId);
     const previousUnits = usdtPref.units;
     const { updatedHolding } = recordHoldingActivity(
       holdingId,
@@ -145,7 +146,7 @@ export function syncTransactionWithHolding(
         ? tx.customUnits
         : Number((amount / rate).toFixed(4));
 
-    const holdingId = `usdt-${userId || "default"}`;
+    const holdingId = getStandardUsdtHoldingId(userId);
     const previousUnits = usdtPref.units;
     const { updatedHolding } = recordHoldingActivity(
       holdingId,
@@ -178,7 +179,7 @@ export function syncTransactionWithHolding(
         ? tx.customUnits
         : Number((amount / rate).toFixed(4));
 
-    const holdingId = `usdt-${userId || "default"}`;
+    const holdingId = getStandardUsdtHoldingId(userId);
     const previousUnits = usdtPref.units;
     const { updatedHolding } = recordHoldingActivity(
       holdingId,
@@ -211,7 +212,7 @@ export function syncTransactionWithHolding(
         ? tx.customUnits
         : Number((amount / rate).toFixed(4));
 
-    const holdingId = `usdt-${userId || "default"}`;
+    const holdingId = getStandardUsdtHoldingId(userId);
     const previousUnits = usdtPref.units;
     const { updatedHolding } = recordHoldingActivity(
       holdingId,

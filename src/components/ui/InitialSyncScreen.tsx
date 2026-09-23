@@ -87,7 +87,7 @@ export function InitialSyncScreen({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center select-none px-6 relative overflow-hidden"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center select-none px-6 relative overflow-hidden pt-[env(safe-area-inset-top,0px)] pb-[calc(env(safe-area-inset-bottom,0px)+24px)]"
       style={{
         background: "var(--bg-canvas, #08080a)",
         fontFamily: "'Urbanist', sans-serif",
@@ -218,7 +218,7 @@ export function InitialSyncScreen({
       </motion.div>
 
       {/* Floating Trust Badge */}
-      <div className="absolute bottom-8 flex items-center gap-1.5 text-[11px] font-medium text-white/35">
+      <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+16px)] flex items-center gap-1.5 text-[11px] font-medium text-white/35">
         <ShieldCheck size={12} strokeWidth={1.5} />
         <span>End-to-End Client Encryption</span>
       </div>
