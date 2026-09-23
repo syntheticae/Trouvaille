@@ -842,12 +842,12 @@ export function ReceiptScanModal({
             style={{
               background: isDark
                 ? "linear-gradient(165deg, rgba(255,255,255,0.085) 0%, rgba(255,255,255,0.032) 40%, rgba(0,0,0,0.62) 100%), var(--bg-canvas)"
-                : "linear-gradient(180deg, #ffffff 0%, #fcfcfe 42%, #f7f7fa 100%)",
-              backdropFilter: "blur(34px) saturate(185%)",
-              WebkitBackdropFilter: "blur(34px) saturate(185%)",
+                : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(248,248,252,0.88) 100%)",
+              backdropFilter: "blur(36px) saturate(180%)",
+              WebkitBackdropFilter: "blur(36px) saturate(180%)",
               border: isDark
                 ? "1px solid rgba(255,255,255,0.15)"
-                : "1px solid rgba(15,23,42,0.095)",
+                : "1px solid rgba(205,205,205,0.45)",
               boxShadow: isDark
                 ? [
                     "inset 0 1px 0 rgba(255,255,255,0.20)",
@@ -857,9 +857,9 @@ export function ReceiptScanModal({
                   ].join(", ")
                 : [
                     "inset 0 1px 0 rgba(255,255,255,1)",
-                    "inset 0 -1px 0 rgba(15,23,42,0.035)",
-                    "0 10px 28px -16px rgba(15,23,42,0.18)",
-                    "0 34px 80px -22px rgba(15,23,42,0.28)",
+                    "inset 0 -1px 0 rgba(255,255,255,0.40)",
+                    "0 14px 34px -10px rgba(15,23,42,0.12)",
+                    "0 36px 90px -20px rgba(15,23,42,0.20)",
                   ].join(", "),
               fontFamily: "Urbanist, -apple-system, sans-serif",
               paddingTop:
@@ -874,14 +874,14 @@ export function ReceiptScanModal({
             <div className="flex items-center justify-between pb-3.5">
               <div className="min-w-0">
                 <h3
-                  className="text-[16px] font-semibold tracking-tight leading-tight"
+                  className="text-[17px] font-bold tracking-tight leading-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
                   Scan Receipt
                 </h3>
 
                 <p
-                  className="text-[11px] font-normal mt-0.5 flex items-center gap-1.5"
+                  className="text-[11.5px] font-medium mt-0.5 flex items-center gap-1.5"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   <span className="truncate">
@@ -890,21 +890,21 @@ export function ReceiptScanModal({
 
                   {!shouldSaveAttachments && (
                     <span
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-medium shrink-0"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-semibold shrink-0"
                       style={{
                         background: isDark
                           ? "rgba(255,255,255,0.06)"
-                          : "rgba(15,23,42,0.045)",
+                          : "rgba(255,255,255,0.9)",
                         border: isDark
                           ? "1px solid rgba(255,255,255,0.10)"
-                          : "1px solid rgba(15,23,42,0.07)",
+                          : "1px solid rgba(205,205,205,0.38)",
                         color: "var(--text-secondary)",
                         boxShadow: isDark
                           ? "inset 0 1px 0 rgba(255,255,255,0.10)"
-                          : "inset 0 1px 0 rgba(255,255,255,0.85)",
+                          : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 6px rgba(15,23,42,0.04)",
                       }}
                     >
-                      <Shield size={9} strokeWidth={1.5} />
+                      <Shield size={9.5} strokeWidth={1.75} />
                       Ephemeral
                     </span>
                   )}
@@ -919,21 +919,21 @@ export function ReceiptScanModal({
                   triggerHaptic("light");
                   onClose();
                 }}
-                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-[1.03] active:scale-90 disabled:opacity-40 cursor-pointer shrink-0 ml-3"
+                className="w-8.5 h-8.5 rounded-full flex items-center justify-center transition-all hover:scale-[1.03] active:scale-90 disabled:opacity-40 cursor-pointer shrink-0 ml-3"
                 style={{
                   background: isDark
                     ? "linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.045))"
-                    : "linear-gradient(180deg, #ffffff 0%, #f1f1f5 100%)",
+                    : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(244,244,248,0.85) 100%)",
                   border: isDark
                     ? "1px solid rgba(255,255,255,0.14)"
-                    : "1px solid rgba(15,23,42,0.085)",
+                    : "1px solid rgba(205,205,205,0.45)",
                   boxShadow: isDark
                     ? "inset 0 1px 0 rgba(255,255,255,0.18), 0 5px 14px rgba(0,0,0,0.25)"
-                    : "inset 0 1px 0 rgba(255,255,255,1), 0 4px 12px rgba(15,23,42,0.09)",
-                  color: "var(--text-secondary)",
+                    : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.08)",
+                  color: "var(--text-primary)",
                 }}
               >
-                <X size={15} strokeWidth={1.75} />
+                <X size={15} strokeWidth={2} />
               </button>
             </div>
 
@@ -1001,7 +1001,7 @@ export function ReceiptScanModal({
                   {/* Live indicator */}
                   {isLiveCameraActive && (
                     <div className="absolute top-3.5 left-4 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                       <span className="text-[10px] font-semibold text-white/90 tracking-wide uppercase">
                         Live Camera
                       </span>
@@ -1018,7 +1018,7 @@ export function ReceiptScanModal({
                       }}
                       className={`absolute top-3.5 right-4 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-md border transition-all active:scale-90 cursor-pointer ${
                         isTorchOn
-                          ? "bg-amber-400 text-black border-amber-300 shadow-md shadow-amber-400/25"
+                          ? "bg-white text-zinc-950 border-white shadow-md shadow-white/20"
                           : "bg-black/60 text-white/90 border-white/15 hover:bg-black/80"
                       }`}
                       title={isTorchOn ? "Turn Flash Off" : "Turn Flash On"}
@@ -1433,29 +1433,31 @@ export function ReceiptScanModal({
                   </div>
                 ) : (
                   <div
-                    className="py-1 px-3 rounded-full flex items-center justify-center gap-1.5 mx-auto w-fit"
+                    className="py-1 px-3.5 rounded-full flex items-center justify-center gap-1.5 mx-auto w-fit"
                     style={{
                       background: isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : "linear-gradient(180deg, #ffffff 0%, #f7f7fa 100%)",
+                        ? "rgba(255,255,255,0.06)"
+                        : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(246,246,250,0.85) 100%)",
                       border: isDark
-                        ? "1px solid rgba(255,255,255,0.09)"
-                        : "1px solid rgba(15,23,42,0.065)",
+                        ? "1px solid rgba(255,255,255,0.12)"
+                        : "1px solid rgba(205,205,205,0.42)",
                       boxShadow: isDark
                         ? "inset 0 1px 0 rgba(255,255,255,0.08)"
-                        : "inset 0 1px 0 rgba(255,255,255,0.95), 0 4px 12px rgba(15,23,42,0.05)",
+                        : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 8px rgba(15,23,42,0.05)",
                     }}
                   >
                     <div
                       className="w-1.5 h-1.5 rounded-full"
                       style={{
-                        background: "var(--accent)",
-                        boxShadow: "0 0 7px var(--accent)",
+                        background: isDark ? "rgba(255,255,255,0.85)" : "rgba(24,24,27,0.85)",
+                        boxShadow: isDark
+                          ? "0 0 6px rgba(255,255,255,0.5)"
+                          : "0 0 6px rgba(0,0,0,0.25)",
                       }}
                     />
 
                     <span
-                      className="text-[11px] font-normal"
+                      className="text-[11px] font-semibold"
                       style={{ color: "var(--text-secondary)" }}
                     >
                       Receipt scanned •{" "}
@@ -1465,22 +1467,22 @@ export function ReceiptScanModal({
                 )}
 
                 {/* ========================================================
-                HERO RECEIPT CARD
+                HERO RECEIPT CARD (MILKY GLASS)
                 ======================================================== */}
                 <div
-                  className="p-4 rounded-[26px] space-y-3"
+                  className="p-4.5 rounded-[26px] space-y-3.5"
                   style={{
                     background: isDark
-                      ? "linear-gradient(165deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.018) 100%)"
-                      : "linear-gradient(180deg, #ffffff 0%, #fafafd 100%)",
-                    backdropFilter: "blur(24px)",
-                    WebkitBackdropFilter: "blur(24px)",
+                      ? "linear-gradient(165deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)"
+                      : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.70) 100%)",
+                    backdropFilter: "blur(20px) saturate(160%)",
+                    WebkitBackdropFilter: "blur(20px) saturate(160%)",
                     border: isDark
                       ? "1px solid rgba(255,255,255,0.12)"
-                      : "1px solid rgba(15,23,42,0.085)",
+                      : "1px solid rgba(205,205,205,0.38)",
                     boxShadow: isDark
                       ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.15), 0 16px 34px -10px rgba(0,0,0,0.62)"
-                      : "inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(15,23,42,0.025), 0 14px 34px -12px rgba(15,23,42,0.16)",
+                      : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 12px rgba(15,23,42,0.145)",
                   }}
                 >
                   {/* Merchant */}
@@ -1490,14 +1492,15 @@ export function ReceiptScanModal({
                         className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
                         style={{
                           background: isDark
-                            ? "linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025))"
-                            : "linear-gradient(180deg, #ffffff 0%, #f2f2f6 100%)",
+                            ? "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))"
+                            : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(244,244,248,0.85) 100%)",
                           border: isDark
-                            ? "1px solid rgba(255,255,255,0.12)"
-                            : "1px solid rgba(15,23,42,0.075)",
+                            ? "1px solid rgba(255,255,255,0.14)"
+                            : "1px solid rgba(205,205,205,0.40)",
                           boxShadow: isDark
-                            ? "inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 12px rgba(0,0,0,0.16)"
-                            : "inset 0 1px 0 rgba(255,255,255,1), 0 4px 12px rgba(15,23,42,0.07)",
+                            ? "inset 0 1px 0 rgba(255,255,255,0.15), 0 3px 10px rgba(0,0,0,0.18)"
+                            : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.08)",
+                          color: "var(--text-primary)",
                         }}
                       >
                         {selectedCategory ? (
@@ -1507,9 +1510,9 @@ export function ReceiptScanModal({
                           />
                         ) : (
                           <Tag
-                            size={16}
-                            strokeWidth={1.5}
-                            style={{ color: "var(--text-tertiary)" }}
+                            size={18}
+                            strokeWidth={1.75}
+                            style={{ color: "var(--text-secondary)" }}
                           />
                         )}
                       </div>
@@ -1520,7 +1523,7 @@ export function ReceiptScanModal({
                           value={merchant}
                           onChange={(e) => setMerchant(e.target.value)}
                           placeholder="Merchant / Recipient"
-                          className="w-full text-[15px] font-semibold bg-transparent outline-none truncate leading-tight p-0"
+                          className="w-full text-[15.5px] font-bold bg-transparent outline-none truncate leading-tight p-0"
                           style={{
                             color: "var(--text-primary)",
                             fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -1528,8 +1531,8 @@ export function ReceiptScanModal({
                         />
 
                         <p
-                          className="text-[11px] font-normal mt-0.5 truncate"
-                          style={{ color: "var(--text-tertiary)" }}
+                          className="text-[11.5px] font-medium mt-0.5 truncate"
+                          style={{ color: "var(--text-secondary)" }}
                         >
                           {selectedCategory
                             ? selectedCategory.name
@@ -1550,10 +1553,10 @@ export function ReceiptScanModal({
                         style={{
                           border: isDark
                             ? "1px solid rgba(255,255,255,0.18)"
-                            : "1px solid rgba(15,23,42,0.10)",
+                            : "1px solid rgba(205,205,205,0.45)",
                           boxShadow: isDark
                             ? "0 5px 14px rgba(0,0,0,0.30)"
-                            : "0 5px 14px rgba(15,23,42,0.10)",
+                            : "inset 0 1px 0 rgba(255,255,255,0.8), 0 3px 10px rgba(15,23,42,0.10)",
                         }}
                         title="Tap to inspect original receipt"
                       >
@@ -1579,15 +1582,15 @@ export function ReceiptScanModal({
                     className="h-[1px] w-full"
                     style={{
                       background: isDark
-                        ? "rgba(255,255,255,0.06)"
-                        : "rgba(15,23,42,0.06)",
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(205,205,205,0.35)",
                     }}
                   />
 
                   {/* Amount */}
                   <div className="py-1 flex flex-col items-center justify-center">
                     <span
-                      className="text-[10px] font-medium tracking-wider uppercase mb-1 select-none"
+                      className="text-[10px] font-bold tracking-widest uppercase mb-1 select-none"
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       Total Amount
@@ -1595,8 +1598,8 @@ export function ReceiptScanModal({
 
                     <div className="flex items-baseline justify-center gap-1.5">
                       <span
-                        className="text-[17px] font-light select-none"
-                        style={{ color: "var(--text-tertiary)" }}
+                        className="text-[19px] font-semibold select-none"
+                        style={{ color: "var(--text-secondary)" }}
                       >
                         Rp
                       </span>
@@ -1610,7 +1613,7 @@ export function ReceiptScanModal({
                           setAmount(raw ? Number(raw) : 0);
                         }}
                         placeholder="0"
-                        className="text-[32px] font-semibold text-center bg-transparent outline-none tracking-tight p-0"
+                        className="text-[34px] font-bold text-center bg-transparent outline-none tracking-tight p-0"
                         style={{
                           color: "var(--text-primary)",
                           fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -1620,10 +1623,10 @@ export function ReceiptScanModal({
                               (amount ? amount.toLocaleString("id-ID") : "0")
                                 .length,
                             ) *
-                              19 +
+                              20 +
                             16
                           }px`,
-                          maxWidth: "240px",
+                          maxWidth: "250px",
                         }}
                       />
                     </div>
@@ -1631,20 +1634,22 @@ export function ReceiptScanModal({
                 </div>
 
                 {/* ========================================================
-                TYPE SEGMENTED CONTROL
+                TYPE SEGMENTED CONTROL (MILKY GLASS)
                 ======================================================== */}
                 <div
                   className="p-1 rounded-2xl flex items-center gap-1"
                   style={{
                     background: isDark
                       ? "rgba(255,255,255,0.04)"
-                      : "rgba(15,23,42,0.045)",
+                      : "linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(245,245,248,0.70) 100%)",
                     border: isDark
                       ? "1px solid rgba(255,255,255,0.08)"
-                      : "1px solid rgba(15,23,42,0.065)",
+                      : "1px solid rgba(205,205,205,0.38)",
                     boxShadow: isDark
                       ? "inset 0 1px 0 rgba(255,255,255,0.07)"
-                      : "inset 0 1px 0 rgba(255,255,255,0.9)",
+                      : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 8px rgba(15,23,42,0.04)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
                   }}
                 >
                   {[
@@ -1672,27 +1677,27 @@ export function ReceiptScanModal({
                             item.id as "expense" | "income" | "transfer",
                           )
                         }
-                        className="flex-1 py-1.5 rounded-xl text-[12px] font-medium transition-all text-center cursor-pointer active:scale-[0.98]"
+                        className="flex-1 py-1.5 rounded-xl text-[12px] font-semibold transition-all text-center cursor-pointer active:scale-[0.98]"
                         style={{
                           background: active
                             ? isDark
-                              ? "linear-gradient(180deg, rgba(255,255,255,0.17), rgba(255,255,255,0.09))"
-                              : "linear-gradient(180deg, #ffffff 0%, #f3f3f6 100%)"
+                              ? "linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.09))"
+                              : "linear-gradient(180deg, #ffffff 0%, #fcfcfe 100%)"
                             : "transparent",
                           color: active
                             ? isDark
                               ? "#ffffff"
-                              : "#111113"
+                              : "var(--text-primary)"
                             : "var(--text-tertiary)",
                           border: active
                             ? isDark
-                              ? "1px solid rgba(255,255,255,0.15)"
-                              : "1px solid rgba(15,23,42,0.065)"
+                              ? "1px solid rgba(255,255,255,0.18)"
+                              : "1px solid rgba(205,205,205,0.48)"
                             : "1px solid transparent",
                           boxShadow: active
                             ? isDark
-                              ? "inset 0 1px 0 rgba(255,255,255,0.14), 0 3px 10px rgba(0,0,0,0.16)"
-                              : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.09)"
+                              ? "inset 0 1px 0 rgba(255,255,255,0.15), 0 3px 10px rgba(0,0,0,0.16)"
+                              : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.08)"
                             : "none",
                         }}
                       >
@@ -1706,19 +1711,19 @@ export function ReceiptScanModal({
                 DETAILS VESSEL
                 ======================================================== */}
                 <div
-                  className="rounded-[22px] divide-y overflow-hidden"
+                  className="rounded-[24px] overflow-hidden"
                   style={{
                     background: isDark
-                      ? "rgba(255,255,255,0.03)"
-                      : "rgba(255,255,255,0.80)",
-                    backdropFilter: "blur(20px)",
-                    WebkitBackdropFilter: "blur(20px)",
+                      ? "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)"
+                      : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.70) 100%)",
+                    backdropFilter: "blur(20px) saturate(160%)",
+                    WebkitBackdropFilter: "blur(20px) saturate(160%)",
                     border: isDark
-                      ? "1px solid rgba(255,255,255,0.08)"
-                      : "1px solid rgba(15,23,42,0.07)",
+                      ? "1px solid rgba(255,255,255,0.10)"
+                      : "1px solid rgba(205,205,205,0.38)",
                     boxShadow: isDark
-                      ? "inset 0 1px 0 rgba(255,255,255,0.08)"
-                      : "inset 0 1px 0 rgba(255,255,255,0.95), 0 8px 22px rgba(15,23,42,0.055)",
+                      ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.12)"
+                      : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 12px rgba(15,23,42,0.145)",
                   }}
                 >
                   {/* Transfer */}
@@ -1731,17 +1736,29 @@ export function ReceiptScanModal({
                           triggerHaptic("light");
                           setWalletSheetOpen(true);
                         }}
-                        className="w-full p-3 flex items-center justify-between transition-colors cursor-pointer text-left"
+                        className="w-full px-3.5 py-3 flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.06] hover:bg-black/[0.015] dark:hover:bg-white/[0.025] transition-colors cursor-pointer text-left"
                       >
                         <div className="flex items-center gap-2.5">
-                          <CreditCard
-                            size={15}
-                            strokeWidth={1.5}
-                            style={{ color: "var(--text-tertiary)" }}
-                          />
+                          <div
+                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                            style={{
+                              background: isDark
+                                ? "rgba(255,255,255,0.06)"
+                                : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240,240,245,0.75) 100%)",
+                              border: isDark
+                                ? "1px solid rgba(255,255,255,0.10)"
+                                : "1px solid rgba(205,205,205,0.38)",
+                              boxShadow: isDark
+                                ? "inset 0 1px 0 rgba(255,255,255,0.1)"
+                                : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 6px rgba(15,23,42,0.04)",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            <CreditCard size={15} strokeWidth={1.75} />
+                          </div>
 
                           <span
-                            className="text-[12px] font-normal"
+                            className="text-[12.5px] font-semibold"
                             style={{ color: "var(--text-secondary)" }}
                           >
                             {isIndonesian ? "Dari Akun" : "From Account"}
@@ -1750,7 +1767,7 @@ export function ReceiptScanModal({
 
                         <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
                           <span
-                            className="text-[12px] font-medium truncate"
+                            className="text-[12.5px] font-bold truncate"
                             style={{ color: "var(--text-primary)" }}
                           >
                             {selectedWallet
@@ -1762,7 +1779,7 @@ export function ReceiptScanModal({
 
                           <ChevronRight
                             size={14}
-                            strokeWidth={1.5}
+                            strokeWidth={2}
                             className="shrink-0"
                             style={{ color: "var(--text-tertiary)" }}
                           />
@@ -1776,17 +1793,29 @@ export function ReceiptScanModal({
                           triggerHaptic("light");
                           setToWalletSheetOpen(true);
                         }}
-                        className="w-full p-3 flex items-center justify-between transition-colors cursor-pointer text-left"
+                        className="w-full px-3.5 py-3 flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.06] hover:bg-black/[0.015] dark:hover:bg-white/[0.025] transition-colors cursor-pointer text-left"
                       >
                         <div className="flex items-center gap-2.5">
-                          <ArrowRightLeft
-                            size={15}
-                            strokeWidth={1.5}
-                            style={{ color: "var(--text-tertiary)" }}
-                          />
+                          <div
+                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                            style={{
+                              background: isDark
+                                ? "rgba(255,255,255,0.06)"
+                                : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240,240,245,0.75) 100%)",
+                              border: isDark
+                                ? "1px solid rgba(255,255,255,0.10)"
+                                : "1px solid rgba(205,205,205,0.38)",
+                              boxShadow: isDark
+                                ? "inset 0 1px 0 rgba(255,255,255,0.1)"
+                                : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 6px rgba(15,23,42,0.04)",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            <ArrowRightLeft size={15} strokeWidth={1.75} />
+                          </div>
 
                           <span
-                            className="text-[12px] font-normal"
+                            className="text-[12.5px] font-semibold"
                             style={{ color: "var(--text-secondary)" }}
                           >
                             {isIndonesian ? "Ke Akun" : "To Account"}
@@ -1795,7 +1824,7 @@ export function ReceiptScanModal({
 
                         <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
                           <span
-                            className="text-[12px] font-medium truncate"
+                            className="text-[12.5px] font-bold truncate"
                             style={{ color: "var(--text-primary)" }}
                           >
                             {selectedToWallet
@@ -1807,7 +1836,7 @@ export function ReceiptScanModal({
 
                           <ChevronRight
                             size={14}
-                            strokeWidth={1.5}
+                            strokeWidth={2}
                             className="shrink-0"
                             style={{ color: "var(--text-tertiary)" }}
                           />
@@ -1823,17 +1852,29 @@ export function ReceiptScanModal({
                           triggerHaptic("light");
                           setCategorySheetOpen(true);
                         }}
-                        className="w-full p-3 flex items-center justify-between transition-colors cursor-pointer text-left"
+                        className="w-full px-3.5 py-3 flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.06] hover:bg-black/[0.015] dark:hover:bg-white/[0.025] transition-colors cursor-pointer text-left"
                       >
                         <div className="flex items-center gap-2.5">
-                          <Tag
-                            size={15}
-                            strokeWidth={1.5}
-                            style={{ color: "var(--text-tertiary)" }}
-                          />
+                          <div
+                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                            style={{
+                              background: isDark
+                                ? "rgba(255,255,255,0.06)"
+                                : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240,240,245,0.75) 100%)",
+                              border: isDark
+                                ? "1px solid rgba(255,255,255,0.10)"
+                                : "1px solid rgba(205,205,205,0.38)",
+                              boxShadow: isDark
+                                ? "inset 0 1px 0 rgba(255,255,255,0.1)"
+                                : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 6px rgba(15,23,42,0.04)",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            <Tag size={15} strokeWidth={1.75} />
+                          </div>
 
                           <span
-                            className="text-[12px] font-normal"
+                            className="text-[12.5px] font-semibold"
                             style={{ color: "var(--text-secondary)" }}
                           >
                             {isIndonesian ? "Kategori" : "Category"}
@@ -1842,7 +1883,7 @@ export function ReceiptScanModal({
 
                         <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
                           <span
-                            className="text-[12px] font-medium truncate"
+                            className="text-[12.5px] font-bold truncate"
                             style={{ color: "var(--text-primary)" }}
                           >
                             {selectedCategory
@@ -1854,7 +1895,7 @@ export function ReceiptScanModal({
 
                           <ChevronRight
                             size={14}
-                            strokeWidth={1.5}
+                            strokeWidth={2}
                             className="shrink-0"
                             style={{ color: "var(--text-tertiary)" }}
                           />
@@ -1868,17 +1909,29 @@ export function ReceiptScanModal({
                           triggerHaptic("light");
                           setWalletSheetOpen(true);
                         }}
-                        className="w-full p-3 flex items-center justify-between transition-colors cursor-pointer text-left"
+                        className="w-full px-3.5 py-3 flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.06] hover:bg-black/[0.015] dark:hover:bg-white/[0.025] transition-colors cursor-pointer text-left"
                       >
                         <div className="flex items-center gap-2.5">
-                          <CreditCard
-                            size={15}
-                            strokeWidth={1.5}
-                            style={{ color: "var(--text-tertiary)" }}
-                          />
+                          <div
+                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                            style={{
+                              background: isDark
+                                ? "rgba(255,255,255,0.06)"
+                                : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240,240,245,0.75) 100%)",
+                              border: isDark
+                                ? "1px solid rgba(255,255,255,0.10)"
+                                : "1px solid rgba(205,205,205,0.38)",
+                              boxShadow: isDark
+                                ? "inset 0 1px 0 rgba(255,255,255,0.1)"
+                                : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 6px rgba(15,23,42,0.04)",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            <CreditCard size={15} strokeWidth={1.75} />
+                          </div>
 
                           <span
-                            className="text-[12px] font-normal"
+                            className="text-[12.5px] font-semibold"
                             style={{ color: "var(--text-secondary)" }}
                           >
                             {isIndonesian ? "Akun" : "Account"}
@@ -1887,7 +1940,7 @@ export function ReceiptScanModal({
 
                         <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
                           <span
-                            className="text-[12px] font-medium truncate"
+                            className="text-[12.5px] font-bold truncate"
                             style={{ color: "var(--text-primary)" }}
                           >
                             {selectedWallet
@@ -1899,7 +1952,7 @@ export function ReceiptScanModal({
 
                           <ChevronRight
                             size={14}
-                            strokeWidth={1.5}
+                            strokeWidth={2}
                             className="shrink-0"
                             style={{ color: "var(--text-tertiary)" }}
                           />
@@ -1915,17 +1968,29 @@ export function ReceiptScanModal({
                       triggerHaptic("light");
                       setDateTimePickerOpen(true);
                     }}
-                    className="w-full p-3 flex items-center justify-between transition-colors cursor-pointer text-left"
+                    className="w-full px-3.5 py-3 flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.06] hover:bg-black/[0.015] dark:hover:bg-white/[0.025] transition-colors cursor-pointer text-left"
                   >
                     <div className="flex items-center gap-2.5">
-                      <Calendar
-                        size={15}
-                        strokeWidth={1.5}
-                        style={{ color: "var(--text-tertiary)" }}
-                      />
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: isDark
+                            ? "rgba(255,255,255,0.06)"
+                            : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240,240,245,0.75) 100%)",
+                          border: isDark
+                            ? "1px solid rgba(255,255,255,0.10)"
+                            : "1px solid rgba(205,205,205,0.38)",
+                          boxShadow: isDark
+                            ? "inset 0 1px 0 rgba(255,255,255,0.1)"
+                            : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 6px rgba(15,23,42,0.04)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        <Calendar size={15} strokeWidth={1.75} />
+                      </div>
 
                       <span
-                        className="text-[12px] font-normal"
+                        className="text-[12.5px] font-semibold"
                         style={{ color: "var(--text-secondary)" }}
                       >
                         {isIndonesian ? "Tanggal & Waktu" : "Date & Time"}
@@ -1934,7 +1999,7 @@ export function ReceiptScanModal({
 
                     <div className="flex items-center gap-1.5">
                       <span
-                        className="text-[12px] font-medium"
+                        className="text-[12.5px] font-bold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {format(combinedDateTime, "d MMM yyyy, HH:mm")}
@@ -1942,7 +2007,7 @@ export function ReceiptScanModal({
 
                       <ChevronRight
                         size={14}
-                        strokeWidth={1.5}
+                        strokeWidth={2}
                         className="shrink-0"
                         style={{ color: "var(--text-tertiary)" }}
                       />
@@ -1950,16 +2015,28 @@ export function ReceiptScanModal({
                   </button>
 
                   {/* Note */}
-                  <div className="w-full p-3 flex items-center justify-between">
+                  <div className="w-full px-3.5 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2.5 shrink-0">
-                      <Pen
-                        size={15}
-                        strokeWidth={1.5}
-                        style={{ color: "var(--text-tertiary)" }}
-                      />
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: isDark
+                            ? "rgba(255,255,255,0.06)"
+                            : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240,240,245,0.75) 100%)",
+                          border: isDark
+                            ? "1px solid rgba(255,255,255,0.10)"
+                            : "1px solid rgba(205,205,205,0.38)",
+                          boxShadow: isDark
+                            ? "inset 0 1px 0 rgba(255,255,255,0.1)"
+                            : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 6px rgba(15,23,42,0.04)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        <Pen size={15} strokeWidth={1.75} />
+                      </div>
 
                       <span
-                        className="text-[12px] font-normal"
+                        className="text-[12.5px] font-semibold"
                         style={{ color: "var(--text-secondary)" }}
                       >
                         Notes
@@ -1971,7 +2048,7 @@ export function ReceiptScanModal({
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       placeholder="Add a note (optional)"
-                      className="text-[11px] placeholder:text-[11px] font-normal bg-transparent outline-none text-right flex-1 pl-4"
+                      className="text-[12px] placeholder:text-[12px] font-medium bg-transparent outline-none text-right flex-1 pl-4"
                       style={{
                         color: "var(--text-primary)",
                         fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -2040,21 +2117,21 @@ export function ReceiptScanModal({
                     <button
                       type="button"
                       onClick={handleOpenInFullForm}
-                      className="flex-1 h-9 rounded-xl font-normal text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                      className="flex-1 h-10 rounded-xl font-semibold text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
                       style={{
                         background: isDark
-                          ? "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))"
-                          : "linear-gradient(180deg, #ffffff 0%, #f5f5f8 100%)",
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035))"
+                          : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(245,245,250,0.80) 100%)",
                         border: isDark
-                          ? "1px solid rgba(255,255,255,0.09)"
-                          : "1px solid rgba(15,23,42,0.075)",
-                        color: "var(--text-secondary)",
+                          ? "1px solid rgba(255,255,255,0.12)"
+                          : "1px solid rgba(205,205,205,0.38)",
+                        color: "var(--text-primary)",
                         boxShadow: isDark
-                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
-                          : "inset 0 1px 0 rgba(255,255,255,1), 0 4px 12px rgba(15,23,42,0.065)",
+                          ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 8px rgba(0,0,0,0.15)"
+                          : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.08)",
                       }}
                     >
-                      <SlidersHorizontal size={13} strokeWidth={1.5} />
+                      <SlidersHorizontal size={13} strokeWidth={1.75} />
                       <span>Customize Form</span>
                     </button>
 
@@ -2066,21 +2143,21 @@ export function ReceiptScanModal({
                         setImagePreview(null);
                         setParsedSlip(null);
                       }}
-                      className="flex-1 h-9 rounded-xl font-normal text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                      className="flex-1 h-10 rounded-xl font-semibold text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
                       style={{
                         background: isDark
-                          ? "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))"
-                          : "linear-gradient(180deg, #ffffff 0%, #f5f5f8 100%)",
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035))"
+                          : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(245,245,250,0.80) 100%)",
                         border: isDark
-                          ? "1px solid rgba(255,255,255,0.09)"
-                          : "1px solid rgba(15,23,42,0.075)",
-                        color: "var(--text-secondary)",
+                          ? "1px solid rgba(255,255,255,0.12)"
+                          : "1px solid rgba(205,205,205,0.38)",
+                        color: "var(--text-primary)",
                         boxShadow: isDark
-                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
-                          : "inset 0 1px 0 rgba(255,255,255,1), 0 4px 12px rgba(15,23,42,0.065)",
+                          ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 8px rgba(0,0,0,0.15)"
+                          : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.08)",
                       }}
                     >
-                      <RotateCcw size={13} strokeWidth={1.5} />
+                      <RotateCcw size={13} strokeWidth={1.75} />
                       <span>Scan Again</span>
                     </button>
                   </div>
