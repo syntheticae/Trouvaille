@@ -115,11 +115,13 @@ export function BottomSheet({
               shadow-2xl
             "
             style={{
-              background: "var(--bg-base)",
+              background: "var(--sheet-bg, var(--bg-base))",
 
-              borderTop: "1px solid var(--glass-border)",
-              borderLeft: "1px solid var(--glass-border)",
-              borderRight: "1px solid var(--glass-border)",
+              borderTop: "var(--sheet-border, 1px solid var(--glass-border))",
+              borderLeft: "var(--sheet-border, 1px solid var(--glass-border))",
+              borderRight: "var(--sheet-border, 1px solid var(--glass-border))",
+
+              boxShadow: "var(--sheet-shadow, none)",
 
               borderRadius: "28px 28px 0 0",
 

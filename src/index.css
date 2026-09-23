@@ -54,6 +54,13 @@
   --card-gradient-hero: linear-gradient(155deg, #1c1c20 0%, #121214 100%);
   --card-gradient-subtle: linear-gradient(145deg, #1a1a1e 0%, #121214 100%);
 
+  --sheet-bg: var(--bg-base);
+  --sheet-border: 1px solid var(--glass-border);
+  --sheet-shadow: 0 -12px 40px rgba(0, 0, 0, 0.6);
+  --glass-milky: var(--glass-fill);
+  --glass-milky-border: 1px solid var(--glass-border);
+  --glass-milky-shadow: var(--shadow-card);
+
   --shadow-strength: rgba(0, 0, 0, 0.35);
   --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.15);
 
@@ -124,11 +131,18 @@
   --dock-shadow: 0 16px 44px -6px rgba(0, 0, 0, 0.11), 0 4px 14px -2px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04), inset 0 1.5px 0 #ffffff;
   --dock-active-shadow: 0 3px 10px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 
-  --card-gradient-hero: linear-gradient(180deg, #ffffff 0%, #f6f6fa 100%);
-  --card-gradient-subtle: linear-gradient(180deg, #ffffff 0%, #f9f9fc 100%);
+  --sheet-bg: linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%);
+  --sheet-border: 1px solid rgba(15, 23, 42, 0.06);
+  --sheet-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), 0 -8px 30px rgba(15, 23, 42, 0.06);
+  --glass-milky: linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%);
+  --glass-milky-border: 1px solid rgba(15, 23, 42, 0.06);
+  --glass-milky-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), 0 3px 10px rgba(15, 23, 42, 0.045);
 
-  --shadow-strength: rgba(0, 0, 0, 0.08);
-  --shadow-card: 0 14px 34px -4px rgba(0, 0, 0, 0.075), 0 4px 12px -2px rgba(0, 0, 0, 0.045), 0 1px 2px rgba(0, 0, 0, 0.035), inset 0 1px 0 #ffffff;
+  --card-gradient-hero: linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%);
+  --card-gradient-subtle: linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%);
+
+  --shadow-strength: rgba(15, 23, 42, 0.045);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 1), 0 3px 10px rgba(15, 23, 42, 0.045);
 
   /* Chart color tokens — light theme */
   --chart-bar-high: #18181b;
@@ -285,13 +299,11 @@ body,
   :root[data-theme="light"] .glass-surface,
   :root[data-theme="light"] .glass-card,
   :root[data-theme="light"] .glass {
-    background: linear-gradient(180deg, #ffffff 0%, #fafafc 100%) !important;
-    border: 1.5px solid #ffffff !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%) !important;
+    border: 1px solid rgba(15, 23, 42, 0.06) !important;
     box-shadow:
-      0 14px 34px -4px rgba(0, 0, 0, 0.075),
-      0 4px 12px -2px rgba(0, 0, 0, 0.045),
-      0 1px 2px rgba(0, 0, 0, 0.035),
-      inset 0 1px 0 #ffffff !important;
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 3px 10px rgba(15, 23, 42, 0.045) !important;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -301,6 +313,12 @@ body,
   :root[data-theme="light"] .glass-surface::before,
   :root[data-theme="light"] .glass-card::before {
     display: none;
+  }
+
+  .milky-glass {
+    background: var(--glass-milky);
+    border: var(--glass-milky-border);
+    box-shadow: var(--glass-milky-shadow);
   }
 
   .card-contrast-hero {
@@ -318,13 +336,11 @@ body,
 
   .light .card-contrast-hero,
   :root[data-theme="light"] .card-contrast-hero {
-    background: linear-gradient(180deg, #ffffff 0%, #f6f6fa 100%) !important;
-    border: 1.5px solid #ffffff !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 45%, #f5f5f7 100%) !important;
+    border: 1px solid rgba(15, 23, 42, 0.06) !important;
     box-shadow:
-      0 16px 40px -6px rgba(0, 0, 0, 0.085),
-      0 4px 14px -2px rgba(0, 0, 0, 0.05),
-      0 1px 2px rgba(0, 0, 0, 0.04),
-      inset 0 1px 0 #ffffff !important;
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 3px 10px rgba(15, 23, 42, 0.045) !important;
   }
 
   .card-contrast-hero::before {
