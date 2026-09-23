@@ -83,7 +83,7 @@ export function parseWebDashboardQr(qrContent: string): {
  */
 export async function authorizeWebDashboardSession(
   qrContent: string,
-  options?: { timeoutMs?: number }
+  options?: { timeoutMs?: number; requireConfirmation?: boolean }
 ): Promise<{ success: boolean; error?: string; sessionInfo?: LinkedWebSession }> {
   try {
     const parseResult = parseWebDashboardQr(qrContent);
@@ -96,12 +96,24 @@ export async function authorizeWebDashboardSession(
 
     const { sessionId, channel: channelName, origin } = parseResult.payload;
 
-    // 1. Check if user is authenticated in mobile app
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // 1. Refresh or fetch valid session from mobile Supabase client
+    let activeSession: any = null;
+    try {
+      const { data: refreshData, error: refreshErr } =
+        await supabase.auth.refreshSession();
+      if (!refreshErr && refreshData?.session) {
+        activeSession = refreshData.session;
+      }
+    } catch {
+      // Fallback silently to cached session
+    }
 
-    if (!session || !session.access_token) {
+    if (!activeSession) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      activeSession = sessionData?.session;
+    }
+
+    if (!activeSession || !activeSession.access_token) {
       return {
         success: false,
         error: "Anda belum login di aplikasi mobile. Silakan masuk terlebih dahulu.",
@@ -113,59 +125,100 @@ export async function authorizeWebDashboardSession(
       config: { broadcast: { self: false } },
     });
 
-    const timeoutLimit = options?.timeoutMs || 12000;
+    const timeoutLimit = options?.timeoutMs || 10000;
+    const requireConfirmation = options?.requireConfirmation ?? true;
 
     await new Promise<void>((resolve, reject) => {
       let isSettled = false;
+      let isConfirmed = false;
+      let pulseTimer: any = null;
 
       const timeoutTimer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
+          if (pulseTimer) clearInterval(pulseTimer);
           try {
             supabase.removeChannel(channel);
           } catch {}
           reject(
             new Error(
-              "Koneksi sinkronisasi ke Web Dashboard timeout. Pastikan koneksi internet stabil dan Web Dashboard masih aktif."
+              "Web Dashboard tidak merespons konfirmasi. Pastikan layar QR Web Dashboard tetap aktif dan tidak kedaluwarsa."
             )
           );
         }
       }, timeoutLimit);
 
+      // Listen for Web Dashboard confirmation (Handshake ACK)
+      channel.on("broadcast", { event: "session-confirmed" }, () => {
+        if (!isSettled) {
+          isConfirmed = true;
+          isSettled = true;
+          if (pulseTimer) clearInterval(pulseTimer);
+          clearTimeout(timeoutTimer);
+          resolve();
+        }
+      });
+
+      // Listen for Web Dashboard rejection
+      channel.on("broadcast", { event: "session-rejected" }, ({ payload }) => {
+        if (!isSettled) {
+          isSettled = true;
+          if (pulseTimer) clearInterval(pulseTimer);
+          clearTimeout(timeoutTimer);
+          reject(
+            new Error(
+              payload?.error || "Otorisasi sesi ditolak oleh Web Dashboard"
+            )
+          );
+        }
+      });
+
+      const sendBroadcastPulse = async () => {
+        if (isConfirmed || isSettled) return;
+        try {
+          const sendStatus = await channel.send({
+            type: "broadcast",
+            event: "session-granted",
+            payload: {
+              session: {
+                access_token: activeSession.access_token,
+                refresh_token: activeSession.refresh_token,
+              },
+              user: activeSession.user,
+            },
+          });
+
+          // If confirmation is explicitly disabled, settle on successful send
+          if (!requireConfirmation && sendStatus === "ok" && !isSettled) {
+            isSettled = true;
+            if (pulseTimer) clearInterval(pulseTimer);
+            clearTimeout(timeoutTimer);
+            resolve();
+          }
+        } catch (sendErr: any) {
+          console.warn("[webAuthSync] Pulse send error:", sendErr);
+        }
+      };
+
       channel.subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          try {
-            await channel.send({
-              type: "broadcast",
-              event: "session-granted",
-              payload: {
-                session: {
-                  access_token: session.access_token,
-                  refresh_token: session.refresh_token,
-                },
-                user: session.user,
-              },
-            });
+          // Send first pulse immediately
+          await sendBroadcastPulse();
 
-            if (!isSettled) {
-              isSettled = true;
-              clearTimeout(timeoutTimer);
-              resolve();
+          // Send up to 3 follow-up pulses spaced by 450ms to prevent packet drops
+          let pulsesCount = 1;
+          pulseTimer = setInterval(async () => {
+            if (isConfirmed || isSettled || pulsesCount >= 4) {
+              if (pulseTimer) clearInterval(pulseTimer);
+              return;
             }
-          } catch (sendErr: any) {
-            if (!isSettled) {
-              isSettled = true;
-              clearTimeout(timeoutTimer);
-              reject(
-                new Error(
-                  sendErr?.message || "Gagal memancarkan sesi ke Web Dashboard"
-                )
-              );
-            }
-          }
+            pulsesCount++;
+            await sendBroadcastPulse();
+          }, 450);
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           if (!isSettled) {
             isSettled = true;
+            if (pulseTimer) clearInterval(pulseTimer);
             clearTimeout(timeoutTimer);
             reject(
               new Error(
@@ -177,20 +230,20 @@ export async function authorizeWebDashboardSession(
       });
     });
 
-    // 3. Clean up the Realtime channel after broadcast
+    // 3. Clean up the Realtime channel after handshake completes
     setTimeout(() => {
       try {
         supabase.removeChannel(channel);
       } catch {}
-    }, 1500);
+    }, 2000);
 
-    // 4. Record linked session history locally
+    // 4. Record linked session history locally ONLY after successful verification
     const linkedSession: LinkedWebSession = {
       sessionId,
       origin: origin || "Trouvaille Web Dashboard",
       channel: channelName,
       linkedAt: Date.now(),
-      userEmail: session.user?.email || "Unknown User",
+      userEmail: activeSession.user?.email || "Unknown User",
     };
     saveLinkedWebSession(linkedSession);
 

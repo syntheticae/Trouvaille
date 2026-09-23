@@ -44,6 +44,7 @@ vi.mock("../src/lib/supabase", () => {
     supabase: {
       auth: {
         getSession: vi.fn(),
+        refreshSession: vi.fn().mockResolvedValue({ data: { session: null } }),
       },
       channel: vi.fn(),
       removeChannel: vi.fn(),
@@ -176,7 +177,7 @@ describe("webAuthSync - Web Dashboard Handshake Suite", () => {
       expect(res.error).toContain("belum login di aplikasi mobile");
     });
 
-    it("successfully broadcasts session tokens when subscribed", async () => {
+    it("successfully broadcasts session tokens and resolves upon session-confirmed", async () => {
       (supabase.auth.getSession as any).mockResolvedValueOnce({
         data: {
           session: {
@@ -187,10 +188,24 @@ describe("webAuthSync - Web Dashboard Handshake Suite", () => {
         },
       });
 
-      const mockSend = vi.fn().mockResolvedValue({});
+      const mockSend = vi.fn().mockResolvedValue("ok");
+      let confirmedCb: any = null;
+
       const mockChannel = {
+        on: vi.fn((_type: string, filter: any, callback: any) => {
+          if (filter?.event === "session-confirmed") {
+            confirmedCb = callback;
+          }
+          return mockChannel;
+        }),
         subscribe: vi.fn((callback: (status: string) => void) => {
-          setTimeout(() => callback("SUBSCRIBED"), 10);
+          setTimeout(() => {
+            callback("SUBSCRIBED");
+            // Simulate Web Dashboard ACK
+            setTimeout(() => {
+              if (confirmedCb) confirmedCb({ payload: { email: "test@trouvaille.com" } });
+            }, 10);
+          }, 10);
           return mockChannel;
         }),
         send: mockSend,
@@ -229,6 +244,55 @@ describe("webAuthSync - Web Dashboard Handshake Suite", () => {
       expect(sessions[0].sessionId).toBe("sess-valid-123");
     });
 
+    it("rejects gracefully when web dashboard rejects session", async () => {
+      (supabase.auth.getSession as any).mockResolvedValueOnce({
+        data: {
+          session: {
+            access_token: "mock-access-token",
+            refresh_token: "mock-refresh-token",
+            user: { email: "test@trouvaille.com" },
+          },
+        },
+      });
+
+      let rejectedCb: any = null;
+      const mockChannel = {
+        on: vi.fn((_type: string, filter: any, callback: any) => {
+          if (filter?.event === "session-rejected") {
+            rejectedCb = callback;
+          }
+          return mockChannel;
+        }),
+        subscribe: vi.fn((callback: (status: string) => void) => {
+          setTimeout(() => {
+            callback("SUBSCRIBED");
+            setTimeout(() => {
+              if (rejectedCb) rejectedCb({ payload: { error: "Token expired" } });
+            }, 10);
+          }, 10);
+          return mockChannel;
+        }),
+        send: vi.fn().mockResolvedValue("ok"),
+      };
+
+      (supabase.channel as any).mockReturnValue(mockChannel);
+
+      const qr = JSON.stringify({
+        app: "trouvaille",
+        version: "1.0",
+        action: "login",
+        sessionId: "sess-rej-123",
+        channel: "trouvaille-qr-sess-rej-123",
+        createdAt: Date.now(),
+      });
+
+      const res = await authorizeWebDashboardSession(qr, { timeoutMs: 3000 });
+      expect(res.success).toBe(false);
+      expect(res.error).toBe("Token expired");
+      // Must not be saved to local storage
+      expect(getLinkedWebSessions()).toEqual([]);
+    });
+
     it("rejects gracefully when channel connection fails", async () => {
       (supabase.auth.getSession as any).mockResolvedValueOnce({
         data: {
@@ -241,6 +305,7 @@ describe("webAuthSync - Web Dashboard Handshake Suite", () => {
       });
 
       const mockChannel = {
+        on: vi.fn().mockReturnThis(),
         subscribe: vi.fn((callback: (status: string) => void) => {
           setTimeout(() => callback("CHANNEL_ERROR"), 10);
           return mockChannel;
