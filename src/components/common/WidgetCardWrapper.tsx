@@ -36,6 +36,13 @@ export function WidgetCardWrapper({
       if (isEditMode) return;
       // Ignore right click
       if (e.button !== 0 && e.pointerType === "mouse") return;
+      
+      // Do not trigger edit mode long-press when tapping buttons, inputs or links inside the widget
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("button, a, input, select, textarea, [role='button']")) {
+        return;
+      }
+
       startPosRef.current = { x: e.clientX, y: e.clientY };
 
       if (holdTimerRef.current) {
@@ -46,7 +53,7 @@ export function WidgetCardWrapper({
         triggerHaptic("heavy");
         onEnterEditMode?.();
         holdTimerRef.current = null;
-      }, 420);
+      }, 650);
     },
     [isEditMode, onEnterEditMode],
   );
@@ -57,8 +64,8 @@ export function WidgetCardWrapper({
       e.clientX - startPosRef.current.x,
       e.clientY - startPosRef.current.y,
     );
-    // If movement exceeds 10px, treat as scroll or drag and cancel long-press
-    if (dist > 10) {
+    // If movement exceeds 8px, treat as scroll or drag and cancel long-press
+    if (dist > 8) {
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
     }

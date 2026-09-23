@@ -417,7 +417,7 @@ const CATEGORY_ALIASES: Record<string, string[]> = {
     "gereja",
     "kitabisa",
   ],
-  gaji: ["gaji", "salary", "payroll", "upah"],
+  gaji: ["gaji", "gajian", "salary", "payroll", "upah", "fee", "uang lembur"],
   bonus: [
     "bonus",
     "thr",
@@ -428,6 +428,24 @@ const CATEGORY_ALIASES: Record<string, string[]> = {
     "dividen",
     "bunga",
     "hadiah",
+    "angpao",
+    "uang saku",
+    "dapet duit",
+    "dapat duit",
+    "dapet uang",
+    "dapat uang",
+    "dikasih",
+    "refund",
+    "pengembalian",
+  ],
+  penjualan: [
+    "hasil jualan",
+    "jualan",
+    "penjualan",
+    "omzet",
+    "omset",
+    "dagang",
+    "laba",
   ],
 };
 
@@ -579,11 +597,96 @@ export function parseNaturalTransaction(
   let toWalletId: string | null = null;
   let toWalletName: string | null = null;
 
-  // Check transfer or e-wallet top-up keywords
-  const isTransferKeyword = /\b(transfer|pindah|kirim|tf)\b/i.test(text);
-  const isTopUpKeyword = /\b(top\s*up|topup|isi\s*saldo|isi)\b/i.test(text);
+  // Helper to locate cash/tunai wallet
+  const findCashWallet = () => {
+    return (
+      wallets.find((w) => {
+        const n = w.name.toLowerCase();
+        return (
+          n === "cash" ||
+          n === "tunai" ||
+          n === "dompet" ||
+          n === "kas" ||
+          n.includes("cash") ||
+          n.includes("tunai")
+        );
+      }) ||
+      wallets.find((w) => !w.name.toLowerCase().includes("bank")) ||
+      wallets[0]
+    );
+  };
 
-  if (isTransferKeyword || isTopUpKeyword) {
+  // Helper to locate specific bank or non-cash wallet mentioned in text
+  const findMentionedBankWallet = () => {
+    return wallets.find((w) => {
+      const n = w.name.toLowerCase();
+      if (n.includes("cash") || n.includes("tunai") || n === "dompet" || n === "kas") {
+        return false;
+      }
+      return text.includes(n);
+    });
+  };
+
+  // A. Tarik Tunai (Bank -> Cash withdrawal)
+  const withdrawalMatch = text.match(
+    /\b(?:tarik\s+tunai|penarikan\s+tunai|tarik\s+kas|tarik\s+uang|ambil\s+uang(?:\s+di\s+atm|\s+dari\s+atm)?|tarik\s+cash|ambil\s+cash)\b/i,
+  );
+
+  // B. Setor Tunai (Cash -> Bank deposit)
+  const depositMatch = text.match(
+    /\b(?:setor\s+tunai|setor\s+uang|nabung\s+cash|setor\s+cash|deposit\s+tunai)\b/i,
+  );
+
+  // C. Transfer or E-Wallet Top-up keywords
+  const isTransferKeyword = /\b(transfer|pindah|kirim|tf)\b/i.test(text);
+  const isNotFuelOrCommodityRefill = !/\bisi\s+(?:bensin|solar|pertamax|pertalite|bbm|angin|gas|lpg|air|pulsa|paket|kuota)\b/i.test(text);
+  const isTopUpKeyword =
+    /\b(top\s*up|topup|isi\s*saldo)\b/i.test(text) ||
+    (/\bisi\b/i.test(text) &&
+      isNotFuelOrCommodityRefill &&
+      /(?:top\s*up|topup|isi\s*(?:saldo)?)\s+(\w+)(?:.*?)(?:dari|pake|pakai|lewat)\s+(\w+)/i.test(text));
+
+  if (withdrawalMatch) {
+    detectedType = "transfer";
+    confidence += 0.35;
+
+    const bankWallet = findMentionedBankWallet();
+    const cashWallet = findCashWallet();
+
+    if (bankWallet) {
+      fromWalletId = bankWallet.id;
+      fromWalletName = bankWallet.name;
+      matchedTokens.walletToken = bankWallet.name;
+      text = text.replace(new RegExp(`\\b${bankWallet.name}\\b`, "i"), " ");
+    }
+    if (cashWallet) {
+      toWalletId = cashWallet.id;
+      toWalletName = cashWallet.name;
+      matchedTokens.toWalletToken = cashWallet.name;
+      text = text.replace(new RegExp(`\\b${cashWallet.name}\\b`, "i"), " ");
+    }
+    text = text.replace(withdrawalMatch[0], " ").trim();
+  } else if (depositMatch) {
+    detectedType = "transfer";
+    confidence += 0.35;
+
+    const cashWallet = findCashWallet();
+    const bankWallet = findMentionedBankWallet();
+
+    if (cashWallet) {
+      fromWalletId = cashWallet.id;
+      fromWalletName = cashWallet.name;
+      matchedTokens.walletToken = cashWallet.name;
+      text = text.replace(new RegExp(`\\b${cashWallet.name}\\b`, "i"), " ");
+    }
+    if (bankWallet) {
+      toWalletId = bankWallet.id;
+      toWalletName = bankWallet.name;
+      matchedTokens.toWalletToken = bankWallet.name;
+      text = text.replace(new RegExp(`\\b${bankWallet.name}\\b`, "i"), " ");
+    }
+    text = text.replace(depositMatch[0], " ").trim();
+  } else if (isTransferKeyword || isTopUpKeyword) {
     detectedType = "transfer";
     confidence += 0.3;
 
@@ -644,9 +747,13 @@ export function parseNaturalTransaction(
     text = text
       .replace(/\b(transfer|pindah|kirim|tf|top\s*up|topup|isi\s*saldo|isi)\b/gi, " ")
       .trim();
-  } else if (/\b(gaji|salary|income|bonus|komisi|terima|cair|dividen|hadiah)\b/i.test(text)) {
+  } else if (
+    /\b(?:gaji|gajian|salary|income|bonus|komisi|terima(?:\s+transferan)?|dapat\s+transferan|dapet\s+transferan|cair(?:\s+dividen)?|dividen|hadiah|angpao|thr|uang\s+saku|dapat\s+duit|dapet\s+duit|dapat\s+uang|dapet\s+uang|dikasih(?:\s+uang)?|hasil\s+jualan|penjualan|omzet|omset|cashback|refund|pengembalian|upah|fee|royalti)\b/i.test(
+      text,
+    )
+  ) {
     detectedType = "income";
-    confidence += 0.2;
+    confidence += 0.25;
   }
 
   // 2. Amount Extraction
@@ -901,8 +1008,28 @@ export function parseNaturalTransaction(
     .replace(/\s+/g, " ")
     .trim();
 
-  // If cleanNote is empty or just punctuation, default to category name or raw title
-  if ((!cleanNote || /^[.\s,;:-]+$/.test(cleanNote)) && detectedCategoryName) {
+  // If transaction is transfer, category shouldn't be assigned
+  if (detectedType === "transfer") {
+    detectedCategoryId = null;
+    detectedCategoryName = null;
+    detectedCategoryEmoji = undefined;
+    matchedTokens.categoryToken = undefined;
+    const isCleanNoteWalletName =
+      (fromWalletName && cleanNote.toLowerCase() === fromWalletName.toLowerCase()) ||
+      (toWalletName && cleanNote.toLowerCase() === toWalletName.toLowerCase());
+
+    if (!cleanNote || /^[.\s,;:-]+$/.test(cleanNote) || isCleanNoteWalletName) {
+      if (withdrawalMatch) {
+        cleanNote = "Tarik Tunai";
+      } else if (depositMatch) {
+        cleanNote = "Setor Tunai";
+      } else {
+        cleanNote = "Transfer";
+      }
+    } else {
+      cleanNote = cleanNote.charAt(0).toUpperCase() + cleanNote.slice(1);
+    }
+  } else if ((!cleanNote || /^[.\s,;:-]+$/.test(cleanNote)) && detectedCategoryName) {
     cleanNote = detectedCategoryName;
   } else if (cleanNote) {
     // Capitalize first letter

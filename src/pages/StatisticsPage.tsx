@@ -10,14 +10,10 @@ import {
   getCategoryParent,
   getParentIcon,
 } from "../hooks/useCategories";
-import { CreditCard, Layers, Calendar } from "lucide-react";
-import { useState, useMemo, useCallback, lazy, Suspense } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
+  Layers,
+  Calendar,
   ShieldCheck,
-  ArrowDownCircle,
-  ArrowUpCircle,
-  TrendingUp,
   ChevronRight,
   ChevronLeft,
   ChevronDown,
@@ -26,20 +22,8 @@ import {
   Sparkles,
   SlidersHorizontal,
 } from "lucide-react";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-} from "recharts";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAllTransactions } from "../hooks/useTransactions";
 import { formatRupiah } from "../lib/utils";
 import { BottomSheet } from "../components/ui/BottomSheet";
@@ -47,6 +31,7 @@ import { IconRenderer } from "../components/ui/IconRenderer";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useBills } from "../hooks/useBills";
 import { useGoals } from "../hooks/useGoals";
@@ -67,6 +52,10 @@ import { AssetAnalyticsSection } from "../components/statistics/AssetAnalyticsSe
 import { CashflowSankeySection } from "../components/statistics/CashflowSankeySection";
 import { MonteCarloCard } from "../components/statistics/MonteCarloCard";
 import { FirePlannerCard } from "../components/statistics/FirePlannerCard";
+import { CategoryBreakdownCard } from "../components/statistics/CategoryBreakdownCard";
+import { NetCapitalTrajectoryCard } from "../components/statistics/NetCapitalTrajectoryCard";
+import { InflowOutflowTrendCard } from "../components/statistics/InflowOutflowTrendCard";
+import { CashflowVelocityCard } from "../components/statistics/CashflowVelocityCard";
 
 // Code-split heavy analytics modals and simulators
 const CategoryDrillDownSheet = lazy(() =>
@@ -281,6 +270,7 @@ function useChartColors() {
 export function StatisticsPage() {
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
+  useCurrency();
   const isDark = theme !== "light";
   const [range, setRange] = useState<Range>("month");
   const [breakdownType, setBreakdownType] = useState<BreakdownType>("expense");
@@ -289,16 +279,6 @@ export function StatisticsPage() {
   const [timeframeMenuOpen, setTimeframeMenuOpen] = useState(false);
   const [analyticsSubTab, setAnalyticsSubTab] =
     useState<AnalyticsSubTab>("report");
-
-  const analyticsTabs = useMemo<{ key: AnalyticsSubTab; label: string }[]>(
-    () => [
-      { key: "report", label: isIndonesian ? "Laporan" : "Report" },
-      { key: "intelligence", label: isIndonesian ? "Kecerdasan" : "Intelligence" },
-      { key: "cashflow", label: isIndonesian ? "Arus Kas" : "Cashflow" },
-      { key: "assets", label: isIndonesian ? "Aset & Kekayaan" : "Net Worth" },
-    ],
-    [isIndonesian],
-  );
   const now = useMemo(() => new Date(), []);
   const { data: allTxs = [] } = useAllTransactions();
   const { data: wallets = [] } = useWallets();
@@ -369,10 +349,15 @@ export function StatisticsPage() {
   const [customizeStatsOpen, setCustomizeStatsOpen] = useState(false);
   const [activeStatsPresetKey, setActiveStatsPresetKey] = useState<StatisticsPresetKey | null>("executive");
 
-  const isSectionVisible = useCallback(
-    (id: string) => statsWidgets.find((w) => w.id === id)?.isVisible ?? true,
-    [statsWidgets],
-  );
+  const visibleReportCards = useMemo(() => {
+    const reportIds = new Set([
+      "financial_report",
+      "monthly_review",
+      "personal_baseline",
+      "expense_structure",
+    ]);
+    return visibleStatsCards.filter((c) => reportIds.has(c.id));
+  }, [visibleStatsCards]);
 
   const visibleIntelligenceCards = useMemo(() => {
     const intelligenceIds = new Set([
@@ -390,6 +375,43 @@ export function StatisticsPage() {
     ]);
     return visibleStatsCards.filter((c) => intelligenceIds.has(c.id));
   }, [visibleStatsCards]);
+
+  const visibleCashflowCards = useMemo(() => {
+    const cashflowIds = new Set([
+      "cashflow_summary",
+      "category_breakdown",
+      "cashflow_sankey",
+      "net_capital_trajectory",
+      "inflow_outflow_trend",
+      "cashflow_velocity",
+    ]);
+    return visibleStatsCards.filter((c) => cashflowIds.has(c.id));
+  }, [visibleStatsCards]);
+
+  const visibleAssetCards = useMemo(() => {
+    const assetIds = new Set(["asset_analytics"]);
+    return visibleStatsCards.filter((c) => assetIds.has(c.id));
+  }, [visibleStatsCards]);
+
+  const analyticsTabs = useMemo<{ key: AnalyticsSubTab; label: string }[]>(
+    () => {
+      const all = [
+        { key: "report" as AnalyticsSubTab, label: isIndonesian ? "Laporan" : "Report", count: visibleReportCards.length },
+        { key: "intelligence" as AnalyticsSubTab, label: isIndonesian ? "Kecerdasan" : "Intelligence", count: visibleIntelligenceCards.length },
+        { key: "cashflow" as AnalyticsSubTab, label: isIndonesian ? "Arus Kas" : "Cashflow", count: visibleCashflowCards.length },
+        { key: "assets" as AnalyticsSubTab, label: isIndonesian ? "Aset & Kekayaan" : "Net Worth", count: visibleAssetCards.length },
+      ];
+      return all.filter((tab) => tab.count > 0);
+    },
+    [isIndonesian, visibleReportCards.length, visibleIntelligenceCards.length, visibleCashflowCards.length, visibleAssetCards.length],
+  );
+
+  // Auto-switch to first available tab if current active tab is collapsed
+  useEffect(() => {
+    if (analyticsTabs.length > 0 && !analyticsTabs.some((t) => t.key === analyticsSubTab)) {
+      setAnalyticsSubTab(analyticsTabs[0].key);
+    }
+  }, [analyticsTabs, analyticsSubTab]);
 
   const activeMonthDate = useMemo(
     () => subMonths(now, monthOffset),
@@ -1201,7 +1223,7 @@ export function StatisticsPage() {
     return isIndonesian ? "Semua Waktu" : "All Time";
   }, [range, monthOffset, selectedYear, now, isIndonesian]);
 
-  const renderIntelligenceCard = (cardId: string, _size: WidgetSize) => {
+  const renderStatisticsCard = (cardId: string, _size: WidgetSize) => {
     switch (cardId) {
       case "health_score":
         return (
@@ -1534,6 +1556,260 @@ export function StatisticsPage() {
               setPersonalModelOpen(true);
               triggerHaptic("light");
             }}
+          />
+        );
+
+      // --- REPORT TAB CARDS ---
+      case "financial_report":
+        return (
+          <FinancialReportSection
+            wallets={wallets}
+            transactions={rangeTxs}
+            allTransactions={allTxs}
+            categories={categories}
+            startDate={currentPeriodBounds.start}
+            endDate={currentPeriodBounds.end}
+            periodLabel={currentPeriodLabel}
+          />
+        );
+
+      case "monthly_review":
+        if (range !== "month" || !intel.monthlyReview) return null;
+        return (
+          <MonthlyReviewSection
+            review={intel.monthlyReview}
+            onCategoryClick={(catName) => {
+              const found = intel.categoryShifts.find(
+                (s) => s.name.toLowerCase() === catName.toLowerCase(),
+              );
+              if (found) {
+                setSelectedCategoryShift(found);
+                triggerHaptic("light");
+              }
+            }}
+          />
+        );
+
+      case "personal_baseline":
+        return (
+          <PersonalBaselineSection
+            baselines={intel.personalBaselines}
+            onCategoryClick={(catName) => {
+              const found = intel.categoryShifts.find(
+                (s) => s.name.toLowerCase() === catName.toLowerCase(),
+              );
+              if (found) {
+                setSelectedCategoryShift(found);
+                triggerHaptic("light");
+              }
+            }}
+          />
+        );
+
+      case "expense_structure":
+        if (range !== "month") return null;
+        return (
+          <ExpenseStructureCard expenseStructure={intel.expenseStructure} />
+        );
+
+      // --- CASHFLOW TAB CARDS ---
+      case "cashflow_summary":
+        return (
+          <div
+            className="p-5 rounded-[24px]"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
+            }}
+          >
+            <div className="flex justify-between items-center mb-3">
+              <p
+                className="text-[11px] font-semibold uppercase tracking-wider"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian ? "Ringkasan Periode" : "Period Summary"} · {rangeTitle}
+              </p>
+              {range === "month" && (
+                <span
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{
+                    background: "var(--glass-fill)",
+                    color: "var(--text-tertiary)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  {isIndonesian ? "vs bln lalu" : "vs prev month"}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                {
+                  label: isIndonesian ? "Total Masuk" : "Total In",
+                  value: totalIncome,
+                  delta: range === "month" ? incomeDelta : null,
+                  isExpense: false,
+                },
+                {
+                  label: isIndonesian ? "Total Keluar" : "Total Out",
+                  value: totalExpense,
+                  delta: range === "month" ? expenseDelta : null,
+                  isExpense: true,
+                },
+                {
+                  label: isIndonesian ? "Bersih" : "Net",
+                  value: totalIncome - totalExpense,
+                  delta: range === "month" ? netDelta : null,
+                  isNet: true,
+                },
+              ].map(({ label, value, delta, isNet }) => {
+                const abs = Math.abs(value);
+                let formatted = "0";
+                if (abs >= 1000000) {
+                  formatted = (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+                } else if (abs >= 1000) {
+                  formatted = (abs / 1000).toFixed(0) + "K";
+                } else {
+                  formatted = abs.toLocaleString("id-ID");
+                }
+                const sign = isNet ? (value < 0 ? "-" : value > 0 ? "+" : "") : "";
+                return (
+                  <div
+                    key={label}
+                    className="text-center p-2 rounded-2xl flex flex-col justify-between"
+                    style={{ background: "var(--glass-fill)" }}
+                  >
+                    <div>
+                      <p
+                        className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {label}
+                      </p>
+                      <p
+                        className="amount text-[14px] leading-tight"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {sign}
+                        {formatted}
+                      </p>
+                    </div>
+                    {delta && (
+                      <div className="mt-1.5 pt-1 border-t border-[var(--glass-border)] flex items-center justify-center gap-0.5">
+                        <span
+                          className="text-[10px] font-medium flex items-center"
+                          style={{
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {delta.isUp ? "↑" : "↓"} {delta.pct}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+      case "category_breakdown":
+        return (
+          <CategoryBreakdownCard
+            breakdownType={breakdownType}
+            setBreakdownType={setBreakdownType}
+            categoryStats={categoryStats}
+            activeBreakdownData={activeBreakdownData}
+            groupMode={groupMode}
+            setGroupMode={setGroupMode}
+            rangeTitle={rangeTitle}
+            categoryBreakdownExpanded={categoryBreakdownExpanded}
+            setCategoryBreakdownExpanded={setCategoryBreakdownExpanded}
+            totalBreakdownAmount={totalBreakdownAmount}
+            colors={colors}
+            renderCustomizedLabel={renderCustomizedLabel}
+            GlassTooltip={GlassTooltip}
+            range={range}
+            intel={intel}
+            setSelectedCategoryShift={setSelectedCategoryShift}
+            categoryMoMShifts={categoryMoMShifts}
+            frequencyStats={frequencyStats}
+            isDark={isDark}
+            isIndonesian={isIndonesian}
+            setAllDetailsOpen={setAllDetailsOpen}
+          />
+        );
+
+      case "cashflow_sankey":
+        return (
+          <CashflowSankeySection
+            transactions={rangeTxs}
+            categories={categories}
+            wallets={wallets}
+            periodLabel={rangeTitle}
+          />
+        );
+
+      case "net_capital_trajectory":
+        return (
+          <NetCapitalTrajectoryCard
+            netWorth={netWorth}
+            hideBalance={hideBalance}
+            rangeTitle={rangeTitle}
+            netWorthData={netWorthData}
+            netTrajectoryExpanded={netTrajectoryExpanded}
+            setNetTrajectoryExpanded={setNetTrajectoryExpanded}
+            colors={colors}
+            isDark={isDark}
+            isIndonesian={isIndonesian}
+            GlassTooltip={GlassTooltip}
+          />
+        );
+
+      case "inflow_outflow_trend":
+        return (
+          <InflowOutflowTrendCard
+            rangeTitle={rangeTitle}
+            trendData={trendData}
+            range={range}
+            longitudinal={longitudinal}
+            inflowOutflowExpanded={inflowOutflowExpanded}
+            setInflowOutflowExpanded={setInflowOutflowExpanded}
+            colors={colors}
+            isDark={isDark}
+            isIndonesian={isIndonesian}
+            GlassTooltip={GlassTooltip}
+          />
+        );
+
+      case "cashflow_velocity":
+        return (
+          <CashflowVelocityCard
+            savingsRate={savingsRate}
+            SavingsRing={SavingsRing}
+            avgTransactionStats={avgTransactionStats}
+            range={range}
+            totalExpense={totalExpense}
+            walletUsageStats={walletUsageStats}
+            rangeTitle={rangeTitle}
+            walletFilterType={walletFilterType}
+            setWalletFilterType={setWalletFilterType}
+            maxWalletVolume={maxWalletVolume}
+            hashtagStats={hashtagStats}
+            isDark={isDark}
+            isIndonesian={isIndonesian}
+          />
+        );
+
+      // --- ASSETS TAB CARDS ---
+      case "asset_analytics":
+        return (
+          <AssetAnalyticsSection
+            wallets={wallets}
+            monthlyBurnRate={intel.totalExpense || 3500000}
+            hideBalance={hideBalance}
+            onOpenValuation={() => setAssetValuationOpen(true)}
           />
         );
 
@@ -1895,6 +2171,45 @@ export function StatisticsPage() {
         })}
       </div>
 
+      {/* Fallback Empty State when all cards/tabs are hidden */}
+      {analyticsTabs.length === 0 && (
+        <div
+          className="p-8 rounded-[28px] text-center space-y-3"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <div
+            className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <SlidersHorizontal size={20} style={{ color: "var(--text-tertiary)" }} />
+          </div>
+          <div>
+            <h3 className="text-[15px] font-semibold text-[var(--text-primary)]">
+              {isIndonesian ? "Semua Kartu Dinonaktifkan" : "All Analytics Cards Hidden"}
+            </h3>
+            <p className="text-[12px] text-[var(--text-tertiary)] max-w-xs mx-auto mt-1">
+              {isIndonesian
+                ? "Aktifkan kembali kartu analitik melalui menu kustomisasi untuk melihat data finansial Anda."
+                : "Re-enable analytics cards from the customization menu to view your financial telemetry."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCustomizeStatsOpen(true)}
+            className="px-4 py-2 rounded-xl text-[12px] font-semibold text-[var(--bg-base)] bg-[var(--text-primary)] cursor-pointer active:scale-95 transition-transform"
+          >
+            {isIndonesian ? "Buka Kustomisasi" : "Customize Analytics"}
+          </button>
+        </div>
+      )}
+
       {/* TAB 1: REPORT */}
       {analyticsSubTab === "report" && (
         <>
@@ -1968,54 +2283,15 @@ export function StatisticsPage() {
             </section>
           )}
 
-          {isSectionVisible("financial_report") && (
-            <FinancialReportSection
-              wallets={wallets}
-              transactions={rangeTxs}
-              allTransactions={allTxs}
-              categories={categories}
-              startDate={currentPeriodBounds.start}
-              endDate={currentPeriodBounds.end}
-              periodLabel={currentPeriodLabel}
-            />
-          )}
-
-          {/* Monthly Financial Review (when Month view is active - Below CALK Notes) */}
-          {isSectionVisible("monthly_review") && range === "month" && intel.monthlyReview && (
-            <MonthlyReviewSection
-              review={intel.monthlyReview}
-              onCategoryClick={(catName) => {
-                const found = intel.categoryShifts.find(
-                  (s) => s.name.toLowerCase() === catName.toLowerCase(),
-                );
-                if (found) {
-                  setSelectedCategoryShift(found);
-                  triggerHaptic("light");
-                }
-              }}
-            />
-          )}
-
-          {/* Personal Baseline (Phase II - Below CALK Notes) */}
-          {isSectionVisible("personal_baseline") && (
-            <PersonalBaselineSection
-              baselines={intel.personalBaselines}
-              onCategoryClick={(catName) => {
-                const found = intel.categoryShifts.find(
-                  (s) => s.name.toLowerCase() === catName.toLowerCase(),
-                );
-                if (found) {
-                  setSelectedCategoryShift(found);
-                  triggerHaptic("light");
-                }
-              }}
-            />
-          )}
-
-          {/* Expense Structure (Below CALK Notes) */}
-          {isSectionVisible("expense_structure") && range === "month" && (
-            <ExpenseStructureCard expenseStructure={intel.expenseStructure} />
-          )}
+          <ReorderableWidgetGrid
+            cards={visibleReportCards}
+            isEditMode={isStatsEditMode}
+            onReorder={reorderStatsCards}
+            onEnterEditMode={() => setIsStatsEditMode(true)}
+            onCycleSize={cycleStatsCardSize}
+            onHide={toggleStatsCardVisibility}
+            renderCard={(card) => renderStatisticsCard(card.id, card.size)}
+          />
         </>
       )}
 
@@ -2028,1281 +2304,35 @@ export function StatisticsPage() {
           onEnterEditMode={() => setIsStatsEditMode(true)}
           onCycleSize={cycleStatsCardSize}
           onHide={toggleStatsCardVisibility}
-          renderCard={(card) => renderIntelligenceCard(card.id, card.size)}
+          renderCard={(card) => renderStatisticsCard(card.id, card.size)}
         />
       )}
 
       {/* TAB 3: CASHFLOW */}
       {analyticsSubTab === "cashflow" && (
-        <>
-          {/* Net Income Summary Row with MoM Delta */}
-          {isSectionVisible("cashflow_summary") && (
-            <div
-              className="p-5 rounded-[24px]"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <div className="flex justify-between items-center mb-3">
-                <p
-                  className="text-[11px] font-semibold uppercase tracking-wider"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Ringkasan Periode" : "Period Summary"} · {rangeTitle}
-                </p>
-                {range === "month" && (
-                  <span
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                    style={{
-                      background: "var(--glass-fill)",
-                      color: "var(--text-tertiary)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    {isIndonesian ? "vs bln lalu" : "vs prev month"}
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  {
-                    label: isIndonesian ? "Total Masuk" : "Total In",
-                    value: totalIncome,
-                    delta: range === "month" ? incomeDelta : null,
-                    isExpense: false,
-                  },
-                  {
-                    label: isIndonesian ? "Total Keluar" : "Total Out",
-                    value: totalExpense,
-                    delta: range === "month" ? expenseDelta : null,
-                    isExpense: true,
-                  },
-                  {
-                    label: isIndonesian ? "Bersih" : "Net",
-                    value: totalIncome - totalExpense,
-                    delta: range === "month" ? netDelta : null,
-                    isNet: true,
-                  },
-                ].map(({ label, value, delta, isNet }) => {
-                  const abs = Math.abs(value);
-                  let formatted = "0";
-                  if (abs >= 1000000) {
-                    formatted = (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
-                  } else if (abs >= 1000) {
-                    formatted = (abs / 1000).toFixed(0) + "K";
-                  } else {
-                    formatted = abs.toLocaleString("id-ID");
-                  }
-                  const sign = isNet ? (value < 0 ? "-" : value > 0 ? "+" : "") : "";
-                  return (
-                    <div
-                      key={label}
-                      className="text-center p-2 rounded-2xl flex flex-col justify-between"
-                      style={{ background: "var(--glass-fill)" }}
-                    >
-                      <div>
-                        <p
-                          className="text-[10px] font-semibold uppercase tracking-wider mb-1"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {label}
-                        </p>
-                        <p
-                          className="amount text-[14px] leading-tight"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {sign}
-                          {formatted}
-                        </p>
-                      </div>
-                      {delta && (
-                        <div className="mt-1.5 pt-1 border-t border-[var(--glass-border)] flex items-center justify-center gap-0.5">
-                          <span
-                            className="text-[10px] font-medium flex items-center"
-                            style={{
-                              color: "var(--text-secondary)",
-                            }}
-                          >
-                            {delta.isUp ? "↑" : "↓"} {delta.pct}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-      {/* Category Breakdown (Collapsible, Default: Folded) */}
-      <div className="p-5 rounded-[24px] glass-surface">
-        <div className="flex justify-between items-center mb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2
-                className="text-[13px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {breakdownType === "expense"
-                  ? "Expense Breakdown"
-                  : "Income Breakdown"}
-              </h2>
-              {categoryStats.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAllDetailsOpen(true);
-                    triggerHaptic("light");
-                  }}
-                  className="w-5 h-5 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-secondary)",
-                  }}
-                  aria-label={isIndonesian ? "Detail Rincian" : "All Details"}
-                  title={isIndonesian ? "Detail Rincian" : "All Details"}
-                >
-                  <Info size={11} strokeWidth={1.75} />
-                </button>
-              )}
-            </div>
-            <p
-              className="text-[11px]"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {activeBreakdownData.length}{" "}
-              {groupMode === "parent" ? "parent groups" : "categories"} ·{" "}
-              {rangeTitle}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div
-              className="flex p-1 rounded-full"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setBreakdownType("expense")}
-                className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer"
-                style={{
-                  background:
-                    breakdownType === "expense" ? "var(--accent)" : "transparent",
-                  color:
-                    breakdownType === "expense"
-                      ? "var(--accent-ink)"
-                      : "var(--text-secondary)",
-                }}
-              >
-                <ArrowDownCircle size={11} /> Out
-              </button>
-              <button
-                type="button"
-                onClick={() => setBreakdownType("income")}
-                className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer"
-                style={{
-                  background:
-                    breakdownType === "income" ? "var(--accent)" : "transparent",
-                  color:
-                    breakdownType === "income"
-                      ? "var(--accent-ink)"
-                      : "var(--text-secondary)",
-                }}
-              >
-                <ArrowUpCircle size={11} /> In
-              </button>
-            </div>
-
-            {/* Fold/Unfold Toggle Button (>) */}
-            <button
-              type="button"
-              onClick={() => {
-                setCategoryBreakdownExpanded((v) => !v);
-                triggerHaptic("light");
-              }}
-              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform shrink-0"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-secondary)",
-              }}
-              aria-label={categoryBreakdownExpanded ? "Lipat" : "Bentangkan"}
-              title={categoryBreakdownExpanded ? (isIndonesian ? "Lipat" : "Collapse") : (isIndonesian ? "Bentangkan" : "Expand")}
-            >
-              <motion.div
-                animate={{ rotate: categoryBreakdownExpanded ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center justify-center"
-              >
-                <ChevronDown size={14} strokeWidth={1.75} />
-              </motion.div>
-            </button>
-          </div>
-        </div>
-
-        {/* When folded: Sleek minimal summary row */}
-        {!categoryBreakdownExpanded && (
-          <div
-            onClick={() => {
-              setCategoryBreakdownExpanded(true);
-              triggerHaptic("light");
-            }}
-            className="flex items-center justify-between pt-2.5 mt-2 border-t border-[var(--glass-border)] cursor-pointer text-[12px] select-none active:opacity-75 transition-opacity"
-          >
-            <span style={{ color: "var(--text-tertiary)" }}>
-              {breakdownType === "expense"
-                ? (isIndonesian ? "Total Pengeluaran" : "Total Outflow")
-                : (isIndonesian ? "Total Pemasukan" : "Total Inflow")}
-            </span>
-            <div className="flex items-center gap-2 font-semibold" style={{ color: "var(--text-primary)" }}>
-              <span className="amount">{formatRupiah(totalBreakdownAmount)}</span>
-              <span className="text-[10px] font-normal" style={{ color: "var(--text-tertiary)" }}>
-                ({activeBreakdownData.length} {groupMode === "parent" ? (isIndonesian ? "grup" : "groups") : (isIndonesian ? "kategori" : "categories")})
-              </span>
-              <ChevronRight size={13} style={{ color: "var(--text-tertiary)" }} />
-            </div>
-          </div>
-        )}
-
-        {/* When expanded: Full Breakdown Details */}
-        <AnimatePresence initial={false}>
-          {categoryBreakdownExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="overflow-hidden space-y-4 pt-1"
-            >
-              {/* Sub-toggle: By Category vs By Parent (Induk) */}
-              <div
-                className="flex items-center gap-1.5 mb-4 p-1 rounded-xl w-fit"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <button
-                  onClick={() => setGroupMode("category")}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all"
-                  style={{
-                    background:
-                      groupMode === "category"
-                        ? "var(--glass-fill-strong)"
-                        : "transparent",
-                    color:
-                      groupMode === "category"
-                        ? "var(--text-primary)"
-                        : "var(--text-tertiary)",
-                  }}
-                >
-                  By Category
-                </button>
-                <button
-                  onClick={() => setGroupMode("parent")}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1"
-                  style={{
-                    background:
-                      groupMode === "parent"
-                        ? "var(--glass-fill-strong)"
-                        : "transparent",
-                    color:
-                      groupMode === "parent"
-                  ? "var(--text-primary)"
-                  : "var(--text-tertiary)",
-            }}
-          >
-            <Layers size={10} />
-            By Parent (Induk)
-          </button>
-        </div>
-
-        {activeBreakdownData.length > 0 ? (
-          <>
-            <div className="flex justify-center mb-5">
-              <div className="relative w-[200px] h-[200px] flex items-center justify-center">
-                <PieChart width={200} height={200}>
-                  <Pie
-                    data={activeBreakdownData.map((c, i) => ({
-                      name: c.name,
-                      value: c.total,
-                      fill: colors.donut[i % colors.donut.length],
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={62}
-                    outerRadius={92}
-                    dataKey="value"
-                    paddingAngle={3}
-                    stroke="none"
-                    labelLine={false}
-                    label={renderCustomizedLabel}
-                  >
-                    {activeBreakdownData.map((_, i) => (
-                      <Cell
-                        key={i}
-                        fill={colors.donut[i % colors.donut.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<GlassTooltip />} />
-                </PieChart>
-                <div className="absolute text-center pointer-events-none">
-                  <p
-                    className="amount text-[18px]"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {totalBreakdownAmount >= 1000000
-                      ? (totalBreakdownAmount / 1000000).toFixed(1) + "M"
-                      : (totalBreakdownAmount / 1000).toFixed(0) + "K"}
-                  </p>
-                  <p
-                    className="text-[9px] font-semibold mt-0.5"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {breakdownType === "expense" ? "Total Out" : "Total In"}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {activeBreakdownData.slice(0, 6).map((cat, i) => {
-                const pct =
-                  totalBreakdownAmount > 0
-                    ? Math.round((cat.total / totalBreakdownAmount) * 100)
-                    : 0;
-                const avgCat =
-                  cat.count > 0 ? Math.round(cat.total / cat.count) : 0;
-                const shift =
-                  range === "month"
-                    ? intel.categoryShifts.find(
-                        (s) => s.name.toLowerCase() === cat.name.toLowerCase(),
-                      )
-                    : null;
-                return (
-                  <div
-                    key={cat.name}
-                    onClick={() => {
-                      if (range === "month" && shift) {
-                        setSelectedCategoryShift(shift);
-                        triggerHaptic("light");
-                      }
-                    }}
-                    className="flex items-center justify-between px-2.5 py-2 rounded-xl cursor-pointer active:scale-95 transition-transform select-none"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <div
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{
-                          background: colors.donut[i % colors.donut.length],
-                        }}
-                      />
-                      <div className="min-w-0">
-                        <p
-                          className="text-[11px] font-semibold truncate max-w-[65px]"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {cat.name}
-                        </p>
-                        <p
-                          className="text-[9px] font-medium"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {range === "month" && shift
-                            ? `${shift.isIncrease ? "↑" : "↓"}${shift.pctChange}% MoM`
-                            : `Avg ${formatRupiah(avgCat)}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span
-                        className="amount text-[11px]"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {pct}%
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Largest Category Change (Priority 4 — Strict Monochrome) & Frequency Insights (Priority 5) */}
-            {range === "month" &&
-              (categoryMoMShifts.biggestIncrease ||
-                categoryMoMShifts.biggestDecrease) && (
-                <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[var(--glass-border)]">
-                  {categoryMoMShifts.biggestIncrease && (
-                    <div
-                      onClick={() => {
-                        const shift = intel.categoryShifts.find(
-                          (s) =>
-                            s.name.toLowerCase() ===
-                            categoryMoMShifts.biggestIncrease?.name.toLowerCase(),
-                        );
-                        if (shift) {
-                          setSelectedCategoryShift(shift);
-                          triggerHaptic("light");
-                        }
-                      }}
-                      className="p-2.5 rounded-xl cursor-pointer active:scale-95 transition-transform select-none"
-                      style={{
-                        background: "var(--bg-elevated)",
-                        border: "1px solid var(--glass-border)",
-                      }}
-                    >
-                      <p
-                        className="text-[9px] font-semibold uppercase tracking-wider"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        Biggest Increase
-                      </p>
-                      <p
-                        className="text-[12px] font-semibold truncate mt-0.5"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {categoryMoMShifts.biggestIncrease.name}
-                      </p>
-                      <p
-                        className="text-[10px] font-medium mt-0.5"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        ↑ {categoryMoMShifts.biggestIncrease.pct}% (+
-                        {formatRupiah(categoryMoMShifts.biggestIncrease.diff)})
-                      </p>
-                    </div>
-                  )}
-                  {categoryMoMShifts.biggestDecrease ? (
-                    <div
-                      onClick={() => {
-                        const shift = intel.categoryShifts.find(
-                          (s) =>
-                            s.name.toLowerCase() ===
-                            categoryMoMShifts.biggestDecrease?.name.toLowerCase(),
-                        );
-                        if (shift) {
-                          setSelectedCategoryShift(shift);
-                          triggerHaptic("light");
-                        }
-                      }}
-                      className="p-2.5 rounded-xl cursor-pointer active:scale-95 transition-transform select-none"
-                      style={{
-                        background: "var(--bg-elevated)",
-                        border: "1px solid var(--glass-border)",
-                      }}
-                    >
-                      <p
-                        className="text-[9px] font-semibold uppercase tracking-wider"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        Biggest Decrease
-                      </p>
-                      <p
-                        className="text-[12px] font-semibold truncate mt-0.5"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {categoryMoMShifts.biggestDecrease.name}
-                      </p>
-                      <p
-                        className="text-[10px] font-medium mt-0.5"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        ↓ {Math.abs(categoryMoMShifts.biggestDecrease.pct)}% (-
-                        {formatRupiah(
-                          Math.abs(categoryMoMShifts.biggestDecrease.diff),
-                        )}
-                        )
-                      </p>
-                    </div>
-                  ) : (
-                    frequencyStats?.mostFrequent && (
-                      <div
-                        className="p-2.5 rounded-xl"
-                        style={{
-                          background: "var(--bg-elevated)",
-                          border: "1px solid var(--glass-border)",
-                        }}
-                      >
-                        <p
-                          className="text-[9px] font-semibold uppercase tracking-wider"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          Most Frequent
-                        </p>
-                        <p
-                          className="text-[12px] font-semibold truncate mt-0.5"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {frequencyStats.mostFrequent.name}
-                        </p>
-                        <p
-                          className="text-[10px] font-medium"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          {frequencyStats.mostFrequent.count} txs · Avg{" "}
-                          {formatRupiah(
-                            Math.round(
-                              frequencyStats.mostFrequent.total /
-                                frequencyStats.mostFrequent.count,
-                            ),
-                          )}
-                        </p>
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
-
-            {/* Category Envelope Budgets Progress with Budget Risk Badges (Strict Monochrome) */}
-            {range === "month" &&
-              breakdownType === "expense" &&
-              categoryStats.some(
-                (c) => c.budget_amount && c.budget_amount > 0,
-              ) && (
-                <div className="mt-4 pt-3 border-t border-[var(--glass-border)] space-y-2.5">
-                  <div className="flex justify-between items-center px-1">
-                    <span
-                      className="text-[11px] font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Category Budget Progress
-                    </span>
-                    <span
-                      className="text-[10px] font-semibold"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      Envelope Tracking
-                    </span>
-                  </div>
-                  {categoryStats
-                    .filter((c) => c.budget_amount && c.budget_amount > 0)
-                    .map((cat) => {
-                      const budget = cat.budget_amount!;
-                      const spent = cat.total;
-                      const pct = Math.round((spent / budget) * 100);
-                      const timePct =
-                        (intel.daysElapsed / intel.totalDays) * 100;
-                      let catRisk: "SAFE" | "WATCH" | "AT RISK" = "SAFE";
-                      if (pct >= 95 || pct > timePct + 20) catRisk = "AT RISK";
-                      else if (pct > timePct + 5) catRisk = "WATCH";
-
-                      return (
-                        <div
-                          key={cat.name}
-                          className="p-3 rounded-2xl"
-                          style={{
-                            background: "var(--bg-elevated)",
-                            border: "1px solid var(--glass-border)",
-                          }}
-                        >
-                          <div className="flex justify-between items-center mb-1.5">
-                            <div className="flex items-center gap-2">
-                              <IconRenderer icon={cat.emoji} size="w-4 h-4" />
-                              <span
-                                className="text-[12px] font-semibold"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {cat.name}
-                              </span>
-                              <span
-                                className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full"
-                                style={{
-                                  background:
-                                    catRisk === "AT RISK"
-                                       ? "var(--text-primary)"
-                                      : "var(--glass-fill-strong)",
-                                  color:
-                                    catRisk === "AT RISK"
-                                      ? "var(--bg-canvas)"
-                                      : "var(--text-primary)",
-                                  border: "1px solid var(--glass-border)",
-                                }}
-                              >
-                                {catRisk}
-                              </span>
-                            </div>
-                            <div className="text-right">
-                              <span
-                                className="amount text-[12px]"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {formatRupiah(spent)} / {formatRupiah(budget)}
-                              </span>
-                              <span
-                                className="text-[11px] font-semibold ml-1.5"
-                                style={{ color: "var(--text-secondary)" }}
-                              >
-                                {pct}%
-                              </span>
-                            </div>
-                          </div>
-                          <div
-                            className="w-full h-1 rounded-full overflow-hidden"
-                            style={{
-                              background: isDark
-                                ? "rgba(255,255,255,0.06)"
-                                : "rgba(0,0,0,0.05)",
-                            }}
-                          >
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{
-                                width: `${Math.min(100, pct)}%`,
-                                background: isDark ? "rgba(255,255,255,0.85)" : "rgba(18,18,18,0.85)",
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-          </>
-        ) : (
-          <div
-            className="py-10 text-center rounded-2xl"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <p
-              className="text-[13px] font-semibold"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              No {breakdownType} recorded
-            </p>
-            <p
-              className="text-[11px] mt-1"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Try another timeframe
-            </p>
-          </div>
-        )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-          {isSectionVisible("cashflow_sankey") && (
-            <CashflowSankeySection
-              transactions={rangeTxs}
-              categories={categories}
-              wallets={wallets}
-              periodLabel={rangeTitle}
-            />
-          )}
-
-      {/* Cumulative Net Worth Line Chart (Collapsible, Default: Folded) */}
-      <div className="p-5 rounded-[24px] glass-surface">
-        <div
-          className="flex items-center justify-between cursor-pointer select-none"
-          onClick={() => {
-            setNetTrajectoryExpanded((v) => !v);
-            triggerHaptic("light");
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <TrendingUp size={16} style={{ color: "var(--text-tertiary)" }} />
-            <div>
-              <h2
-                className="text-[13px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Net Capital Trajectory
-              </h2>
-              <p
-                className="text-[11px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Cumulative net worth change ({rangeTitle})
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {!netTrajectoryExpanded && (
-              <span className="amount text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                {hideBalance ? "••••••" : formatRupiah(netWorth)}
-              </span>
-            )}
-            <button
-              type="button"
-              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer active:scale-90 shrink-0"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-secondary)",
-              }}
-              aria-label={netTrajectoryExpanded ? "Lipat" : "Bentangkan"}
-              title={netTrajectoryExpanded ? (isIndonesian ? "Lipat" : "Collapse") : (isIndonesian ? "Bentangkan" : "Expand")}
-            >
-              <motion.div
-                animate={{ rotate: netTrajectoryExpanded ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center justify-center"
-              >
-                <ChevronDown size={14} strokeWidth={1.75} />
-              </motion.div>
-            </button>
-          </div>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {netTrajectoryExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="overflow-hidden pt-4"
-            >
-              <div className="h-[160px] -mx-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={netWorthData}
-                    margin={{ top: 5, right: 0, left: 0, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient id="netG" x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                          offset="5%"
-                          stopColor={colors.lineStroke}
-                          stopOpacity={0.2}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor={colors.lineStroke}
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke={isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)"}
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tick={{
-                        fontSize: 10,
-                        fill: "var(--text-tertiary)",
-                        fontWeight: 600,
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                      dy={6}
-                    />
-                    <YAxis hide />
-                    <Tooltip
-                      content={<GlassTooltip />}
-                      cursor={{
-                        stroke: colors.lineStroke,
-                        strokeWidth: 1,
-                        strokeDasharray: "4 4",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="net"
-                      name="net"
-                      stroke={colors.lineStroke}
-                      strokeWidth={2.5}
-                      fill="url(#netG)"
-                      fillOpacity={1}
-                      dot={false}
-                      activeDot={{ r: 4, fill: colors.lineStroke }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Inflow vs Outflow Bar Chart (Collapsible, Default: Folded) */}
-      <div className="p-4 rounded-[22px] glass-surface">
-        <div
-          className="flex items-center justify-between cursor-pointer select-none"
-          onClick={() => {
-            setInflowOutflowExpanded((v) => !v);
-            triggerHaptic("light");
-          }}
-        >
-          <div>
-            <h2
-              className="text-[13px] font-semibold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Inflow vs Outflow Trend
-            </h2>
-            <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-              {rangeTitle} comparison
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3">
-              <div
-                className="flex items-center gap-1.5 text-[10px] font-medium"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                <div
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: colors.barHigh }}
-                />
-                Inflow
-              </div>
-              <div
-                className="flex items-center gap-1.5 text-[10px] font-medium"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                <div
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: colors.barMid }}
-                />
-                Outflow
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer active:scale-90 shrink-0"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-secondary)",
-              }}
-              aria-label={inflowOutflowExpanded ? "Lipat" : "Bentangkan"}
-              title={inflowOutflowExpanded ? (isIndonesian ? "Lipat" : "Collapse") : (isIndonesian ? "Bentangkan" : "Expand")}
-            >
-              <motion.div
-                animate={{ rotate: inflowOutflowExpanded ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center justify-center"
-              >
-                <ChevronDown size={14} strokeWidth={1.75} />
-              </motion.div>
-            </button>
-          </div>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {inflowOutflowExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="overflow-hidden pt-3"
-            >
-              <div className="h-[145px] -mx-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={trendData}
-                    margin={{ top: 2, right: 0, left: 0, bottom: 0 }}
-                    barSize={range === "year" || range === "all" ? 5 : 6}
-                    barGap={2}
-                  >
-                    <defs>
-                      <linearGradient id="inflowG" x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                          offset="0%"
-                          stopColor={colors.barHigh}
-                          stopOpacity={0.95}
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor={colors.barMid}
-                          stopOpacity={0.7}
-                        />
-                      </linearGradient>
-                      <linearGradient id="outflowG" x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                          offset="0%"
-                          stopColor={colors.barMid}
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor={colors.barLow}
-                          stopOpacity={0.5}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="2 2"
-                      stroke={isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)"}
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tick={{
-                        fontSize: 9.5,
-                        fill: "var(--text-tertiary)",
-                        fontWeight: 500,
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                      dy={4}
-                    />
-                    <YAxis hide />
-                    <Tooltip
-                      content={<GlassTooltip />}
-                      cursor={{ fill: colors.cursorFill, radius: 4 }}
-                    />
-                    <Bar
-                      dataKey="income"
-                      name="income"
-                      fill="url(#inflowG)"
-                      radius={[3, 3, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="expense"
-                      name="expense"
-                      fill="url(#outflowG)"
-                      radius={[3, 3, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Phase II: Longitudinal Trajectory Factual Interpretation */}
-              {(range === "year" || range === "all") && (
-                <div className="mt-3.5 pt-3 border-t border-[var(--glass-border)] text-center">
-                  <p
-                    className="text-[11px] leading-relaxed"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {longitudinal.trajectoryInterpretation}
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-          {/* 2-column mini stat cards (Savings Rate & Average Expense) */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Savings Ring card */}
-        <div className="p-4 rounded-[22px] glass-surface flex flex-col items-center">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-wider mb-2"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Savings Rate
-          </p>
-          <SavingsRing rate={savingsRate} size={110} />
-        </div>
-        {/* Average Transaction Size & Count Card (Priority 6) */}
-        <div className="p-4 rounded-[22px] glass-surface flex flex-col justify-between">
-          <div>
-            <p
-              className="text-[11px] font-semibold uppercase tracking-wider mb-1"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Avg Expense
-            </p>
-            <div className="flex items-baseline gap-1.5 mb-1.5">
-              <p
-                className="amount text-[17px]"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {formatRupiah(avgTransactionStats.avgExpense)}
-              </p>
-              {avgTransactionStats.avgDelta && range === "month" && (
-                <span
-                  className="text-[10px] font-medium"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {avgTransactionStats.avgDelta.isUp ? "↑" : "↓"}{" "}
-                  {avgTransactionStats.avgDelta.pct}%
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="pt-2 border-t border-[var(--glass-border)]">
-            <div className="flex justify-between items-center text-[10px]">
-              <span style={{ color: "var(--text-tertiary)" }}>Activity:</span>
-              <span
-                className="font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {avgTransactionStats.count} txs
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-[10px] mt-1">
-              <span style={{ color: "var(--text-tertiary)" }}>Total Out:</span>
-              <span
-                className="amount"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {formatRupiah(totalExpense)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-          {/* 🍎 Apple macOS Style: Most Active Accounts & Volume Distribution */}
-          <div className="p-5 rounded-[24px] glass-surface">
-            <div className="flex justify-between items-center mb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <CreditCard size={16} style={{ color: "var(--text-tertiary)" }} />
-              <h2
-                className="text-[13px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Most Active Accounts
-              </h2>
-            </div>
-            <p
-              className="text-[11px]"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {walletUsageStats.length} accounts · {rangeTitle}
-            </p>
-          </div>
-          <div
-            className="flex p-1 rounded-full"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            {(["all", "expense", "income"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setWalletFilterType(t)}
-                className="px-2.5 py-1 rounded-full text-[10px] font-semibold capitalize transition-all"
-                style={{
-                  background:
-                    walletFilterType === t ? "var(--accent)" : "transparent",
-                  color:
-                    walletFilterType === t
-                      ? "var(--accent-ink)"
-                      : "var(--text-secondary)",
-                }}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {walletUsageStats.length > 0 ? (
-          <div className="space-y-2.5">
-            {walletUsageStats.slice(0, 6).map((w, idx) => {
-              const activeVal =
-                walletFilterType === "expense"
-                  ? w.totalExpense
-                  : walletFilterType === "income"
-                    ? w.totalIncome
-                    : w.totalExpense + w.totalIncome;
-              const pct =
-                maxWalletVolume > 0
-                  ? Math.min(
-                      100,
-                      Math.max(8, (activeVal / maxWalletVolume) * 100),
-                    )
-                  : 0;
-
-              return (
-                <div
-                  key={w.name}
-                  className="p-3.5 rounded-2xl transition-all"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                    boxShadow: "var(--shadow-card)",
-                  }}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                        style={{
-                          background: "var(--glass-fill)",
-                          border: "1px solid var(--glass-border)",
-                        }}
-                      >
-                        <IconRenderer icon={w.icon} size="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p
-                            className="font-semibold text-[13px] truncate"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {w.name}
-                          </p>
-                          <span
-                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                            style={{
-                              background: "var(--glass-fill-strong)",
-                              color: "var(--text-tertiary)",
-                              border: "1px solid var(--glass-border)",
-                            }}
-                          >
-                            {w.count} txs
-                          </span>
-                        </div>
-                        <p
-                          className="text-[10px] font-medium mt-0.5"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {walletFilterType === "all"
-                            ? `In: ${formatRupiah(w.totalIncome)} · Out: ${formatRupiah(w.totalExpense)}`
-                            : `Total ${walletFilterType}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span
-                        className="amount text-[14px]"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {formatRupiah(activeVal)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* macOS Sleek Progress Gauge */}
-                  <div
-                    className="w-full h-1.5 rounded-full overflow-hidden"
-                    style={{
-                      background: isDark
-                        ? "rgba(255,255,255,0.06)"
-                        : "rgba(0,0,0,0.06)",
-                    }}
-                  >
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${pct}%`,
-                        background:
-                          idx === 0
-                            ? "var(--accent)"
-                            : idx === 1
-                              ? "var(--text-primary)"
-                              : "var(--text-secondary)",
-                        opacity: idx === 0 ? 1 : idx === 1 ? 0.75 : 0.45,
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div
-            className="py-8 text-center rounded-2xl"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <p
-              className="text-[12px] font-semibold"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              No account activity recorded
-            </p>
-            <p
-              className="text-[10px] mt-1"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Try selecting another timeframe
-            </p>
-          </div>
-        )}
-      </div>
-
-          {/* Hashtag Summary */}
-      {hashtagStats.length > 0 && (
-        <div
-          className="p-5 rounded-[24px]"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <div className="flex justify-between items-center mb-3">
-            <h2
-              className="text-[13px] font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Event & Hashtag Tracking
-            </h2>
-            <span
-              className="text-[10px] font-semibold uppercase tracking-wider"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {rangeTitle}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {hashtagStats.slice(0, 5).map((h) => (
-              <div
-                key={h.tag}
-                className="flex justify-between items-center p-2 rounded-xl"
-                style={{ background: "var(--glass-fill)" }}
-              >
-                <div>
-                  <p
-                    className="text-[12px] font-semibold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {h.tag}
-                  </p>
-                  <p
-                    className="text-[10px]"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {h.count} txs
-                  </p>
-                </div>
-                <p
-                  className="text-[13px] amount"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {formatRupiah(h.total)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-        </>
+        <ReorderableWidgetGrid
+          cards={visibleCashflowCards}
+          isEditMode={isStatsEditMode}
+          onReorder={reorderStatsCards}
+          onEnterEditMode={() => setIsStatsEditMode(true)}
+          onCycleSize={cycleStatsCardSize}
+          onHide={toggleStatsCardVisibility}
+          renderCard={(card) => renderStatisticsCard(card.id, card.size)}
+        />
       )}
 
       {/* TAB 4: NET WORTH (ASSETS) */}
       {analyticsSubTab === "assets" && (
-        <>
-          {isSectionVisible("asset_analytics") && (
-            <AssetAnalyticsSection
-              wallets={wallets}
-              monthlyBurnRate={intel.totalExpense || 3500000}
-              hideBalance={hideBalance}
-              onOpenValuation={() => setAssetValuationOpen(true)}
-            />
-          )}
-        </>
+        <ReorderableWidgetGrid
+          cards={visibleAssetCards}
+          isEditMode={isStatsEditMode}
+          onReorder={reorderStatsCards}
+          onEnterEditMode={() => setIsStatsEditMode(true)}
+          onCycleSize={cycleStatsCardSize}
+          onHide={toggleStatsCardVisibility}
+          renderCard={(card) => renderStatisticsCard(card.id, card.size)}
+        />
       )}
-
-      
 
       {/* Comprehensive Category & Parent Breakdown BottomSheet (Phase II Relayout) */}
       <BottomSheet
@@ -3627,7 +2657,7 @@ export function StatisticsPage() {
       </Suspense>
 
       {/* Floating iOS Springboard Customization Pill for Intelligence Tab */}
-      {analyticsSubTab === "intelligence" && (
+      {isStatsEditMode && (
         <WidgetCustomizationBar
           isEditMode={isStatsEditMode}
           onDone={() => setIsStatsEditMode(false)}

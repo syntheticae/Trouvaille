@@ -1,17 +1,48 @@
 import clsx, { type ClassValue } from "clsx";
+import {
+  convertCurrency,
+  formatCurrencyAmount,
+  type SupportedCurrency,
+  CURRENCY_METADATA,
+} from "./currency";
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
 
-export function formatRupiah(amount: number): string {
-  const val = Number(amount)
-  if (isNaN(val) || amount === null || amount === undefined) return "Rp 0"
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency", currency: "IDR",
-    minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(val)
+export function getActivePreferredCurrency(): SupportedCurrency {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const saved = localStorage.getItem("trouvaille_preferred_currency") as SupportedCurrency;
+      if (saved && CURRENCY_METADATA[saved]) {
+        return saved;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return "IDR";
 }
+
+export function formatRupiah(amount: number, forceCurrency?: SupportedCurrency): string {
+  const val = Number(amount);
+  const curr = forceCurrency || getActivePreferredCurrency();
+  if (isNaN(val) || amount === null || amount === undefined) {
+    return formatCurrencyAmount(0, curr);
+  }
+  if (curr === "IDR") {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(val);
+  }
+  const converted = convertCurrency(val, "IDR", curr);
+  return formatCurrencyAmount(converted, curr);
+}
+
+export const formatCurrency = formatRupiah;
 
 export function parseRupiah(value: string): number {
   return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0

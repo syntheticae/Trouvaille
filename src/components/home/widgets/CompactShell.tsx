@@ -1,6 +1,8 @@
 import React from "react";
 import { Info } from "lucide-react";
 import { triggerHaptic } from "../../../lib/haptics";
+import { useCurrency } from "../../../contexts/CurrencyContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 export interface CompactShellProps {
   title: string;
@@ -14,6 +16,8 @@ export function CompactShell({
   onOpenDetail,
   children,
 }: CompactShellProps) {
+  useCurrency();
+  useLanguage();
   return (
     <section
       className="glass-surface p-3.5 rounded-[22px] flex flex-col justify-between h-[154px] min-h-[154px] max-h-[154px] w-full relative overflow-hidden select-none box-border"

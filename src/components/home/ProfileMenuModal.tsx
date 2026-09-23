@@ -1,15 +1,23 @@
+// ======================================================================
+// TROUVAILLE PROFILE BENTO IDENTITY CAPSULE
+// Apple Luxury Frosted Glass Bento Popover
+// Zero generic list chevrons, luxury squircle geometry, obsidian/alabaster
+// Strictly compliant with GEMINI.md
+// ======================================================================
+
 import {
   Settings,
-  ChevronRight,
   HardDrive,
   CloudCheck,
   Layers,
   Laptop,
+  ExternalLink,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSpace } from "../../contexts/SpaceContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { triggerHaptic } from "../../lib/haptics";
 import { useNavigate } from "react-router-dom";
 
@@ -35,6 +43,7 @@ export function ProfileMenuModal({
   const { session, isGuest } = useAuth();
   const { activeSpace } = useSpace();
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme !== "light";
   const navigate = useNavigate();
 
@@ -59,43 +68,51 @@ export function ProfileMenuModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-xs"
+            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-xs"
           />
 
-          {/* Unified Liquid Glass Floating Popover (Single Surface, No Double Card) */}
+          {/* Apple Luxury Bento Capsule Popover */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: -8 }}
+            initial={{ opacity: 0, scale: 0.93, y: -6 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.94, y: -8 }}
-            transition={{ type: "spring", stiffness: 440, damping: 30 }}
-            className="absolute top-full left-0 mt-2 z-50 w-[275px] sm:w-[290px] rounded-[22px] p-1.5 shadow-2xl overflow-hidden"
+            exit={{ opacity: 0, scale: 0.93, y: -6 }}
+            transition={{ type: "spring", stiffness: 460, damping: 32 }}
+            className="absolute top-full left-0 mt-2.5 z-50 w-[290px] sm:w-[316px] rounded-[24px] p-3 shadow-2xl overflow-hidden select-none"
             style={{
               background: isDark
-                ? "rgba(18, 18, 22, 0.82)"
-                : "rgba(255, 255, 255, 0.85)",
-              backdropFilter: "blur(36px) saturate(190%) brightness(1.05)",
-              WebkitBackdropFilter: "blur(36px) saturate(190%) brightness(1.05)",
+                ? "rgba(14, 14, 18, 0.88)"
+                : "rgba(255, 255, 255, 0.92)",
+              backdropFilter: "blur(36px) saturate(190%)",
+              WebkitBackdropFilter: "blur(36px) saturate(190%)",
               border: isDark
                 ? "1px solid rgba(255, 255, 255, 0.12)"
                 : "1px solid rgba(0, 0, 0, 0.08)",
               boxShadow: isDark
-                ? "0 20px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.4)"
-                : "0 16px 36px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(0, 0, 0, 0.04)",
+                ? "0 24px 50px -8px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.16)"
+                : "0 20px 40px -8px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95)",
             }}
           >
-            {/* 1. Profile Identity Header (Interactive, no inner card border) */}
+            {/* 1. Identity Pill Card */}
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
                 onClose();
-                setTimeout(() => onOpenProfileSettings(), 120);
+                setTimeout(() => onOpenProfileSettings(), 100);
               }}
-              className="w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.06] active:bg-black/[0.06] dark:active:bg-white/[0.1] transition-all cursor-pointer group"
+              className="w-full p-2.5 rounded-[18px] text-left transition-all active:scale-[0.98] cursor-pointer group relative overflow-hidden"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.04)"
+                  : "rgba(0, 0, 0, 0.03)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.08)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+              }}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center gap-3">
                 <div
-                  className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-[14px] overflow-hidden flex items-center justify-center shrink-0 relative"
                   style={{
                     background: "var(--bg-elevated)",
                     border: "1px solid var(--glass-border)",
@@ -108,142 +125,210 @@ export function ProfileMenuModal({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="font-semibold text-[11px] text-[var(--text-primary)]">
+                    <span className="font-semibold text-[13px] text-[var(--text-primary)]">
                       {displayName.slice(0, 2).toUpperCase()}
                     </span>
                   )}
+                  {/* Micro sync pip */}
+                  <span
+                    className={`absolute bottom-1 right-1 w-2 h-2 rounded-full border border-black/40 ${
+                      isGuest ? "bg-amber-400" : "bg-emerald-400"
+                    }`}
+                  />
                 </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-[13px] truncate text-[var(--text-primary)] leading-tight">
-                    {displayName}
-                  </p>
-                  <span className="text-[10px] text-[var(--text-tertiary)] flex items-center gap-1 font-medium mt-0.5">
-                    {isGuest ? (
-                      <>
-                        <HardDrive size={9.5} /> Local Vault
-                      </>
-                    ) : (
-                      <>
-                        <CloudCheck size={9.5} /> Cloud Synced
-                      </>
-                    )}
-                  </span>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="font-semibold text-[13.5px] truncate text-[var(--text-primary)] leading-snug">
+                      {displayName}
+                    </p>
+                    <span className="text-[10px] font-medium text-[var(--text-tertiary)] opacity-60 group-hover:opacity-100 transition-opacity">
+                      {t("profile.edit", "Edit")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                      style={{
+                        background: isGuest
+                          ? "rgba(245, 158, 11, 0.12)"
+                          : "rgba(16, 185, 129, 0.12)",
+                        color: isGuest
+                          ? isDark
+                            ? "#fbbf24"
+                            : "#d97706"
+                          : isDark
+                          ? "#34d399"
+                          : "#059669",
+                        border: isGuest
+                          ? "1px solid rgba(245, 158, 11, 0.2)"
+                          : "1px solid rgba(16, 185, 129, 0.2)",
+                      }}
+                    >
+                      {isGuest ? (
+                        <>
+                          <HardDrive size={9} strokeWidth={2} />
+                          <span>Local Vault</span>
+                        </>
+                      ) : (
+                        <>
+                          <CloudCheck size={9} strokeWidth={2} />
+                          <span>Cloud Synced</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <span className="text-[10.5px] font-semibold text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors px-1.5 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10">
-                Edit
-              </span>
             </button>
 
-            {/* Hairline Separator */}
-            <div className="h-[1px] bg-black/[0.06] dark:bg-white/[0.08] my-1 mx-1" />
-
-            {/* 2. Floating Option 1: Manage Ledger */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                onClose();
-                setTimeout(() => onOpenManageLedgers(), 120);
-              }}
-              className="w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.06] active:bg-black/[0.06] dark:active:bg-white/[0.1] transition-all cursor-pointer group"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                  style={{
-                    background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Layers size={14} strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-medium text-[12.5px] text-[var(--text-primary)] leading-tight">
-                    Manage Ledger
-                  </p>
-                  <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
-                    {activeSpace.name}
-                  </p>
-                </div>
-              </div>
-              <ChevronRight
-                size={13}
-                className="text-[var(--text-tertiary)] opacity-40 group-hover:opacity-80 transition-opacity shrink-0"
-              />
-            </button>
-
-            {/* 3. Floating Option 2: Web Dashboard */}
-            {onOpenWebDashboard && (
+            {/* 2. Bento Quick Tiles */}
+            <div className="mt-2.5 flex flex-col gap-2">
+              {/* Tile A: Active Ledger Space (Full width capsule) */}
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
                   onClose();
-                  setTimeout(() => onOpenWebDashboard(), 120);
+                  setTimeout(() => onOpenManageLedgers(), 100);
                 }}
-                className="w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.06] active:bg-black/[0.06] dark:active:bg-white/[0.1] transition-all cursor-pointer group"
+                className="w-full p-2.5 rounded-[16px] flex items-center justify-between text-left transition-all active:scale-[0.98] cursor-pointer group"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.04)"
+                    : "rgba(0, 0, 0, 0.03)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.08)"
+                    : "1px solid rgba(0, 0, 0, 0.05)",
+                }}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    className="w-8 h-8 rounded-[11px] flex items-center justify-center shrink-0"
                     style={{
-                      background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(0, 0, 0, 0.06)",
                       color: "var(--text-primary)",
+                      border: "1px solid var(--glass-border)",
                     }}
                   >
-                    <Laptop size={14} strokeWidth={1.75} />
+                    <Layers size={14} strokeWidth={1.75} />
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-[12.5px] text-[var(--text-primary)] leading-tight">
-                      Web Dashboard
-                    </p>
-                    <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
-                      Link desktop workstation via QR
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-tertiary)] block">
+                      {t("profile.activeLedger", "Active Ledger")}
+                    </span>
+                    <p className="font-medium text-[12.5px] text-[var(--text-primary)] truncate leading-tight mt-0.5">
+                      {activeSpace.name}
                     </p>
                   </div>
                 </div>
-                <ChevronRight
-                  size={13}
-                  className="text-[var(--text-tertiary)] opacity-40 group-hover:opacity-80 transition-opacity shrink-0"
-                />
-              </button>
-            )}
-
-            {/* 4. Floating Option 3: Settings & Preferences */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                onClose();
-                navigate("/settings");
-              }}
-              className="w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.06] active:bg-black/[0.06] dark:active:bg-white/[0.1] transition-all cursor-pointer group"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                <span
+                  className="text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0"
                   style={{
-                    background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
-                    color: "var(--text-primary)",
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-secondary)",
                   }}
                 >
-                  <Settings size={14} strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-medium text-[12.5px] text-[var(--text-primary)] leading-tight">
-                    Settings & Preferences
-                  </p>
-                  <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
-                    Security, vault & backup
-                  </p>
-                </div>
+                  {t("profile.switch", "Switch")}
+                </span>
+              </button>
+
+              {/* Bento Row: 2 Companion Tiles (Web Workstation + Settings) */}
+              <div className="grid grid-cols-2 gap-2">
+                {/* Tile B: Web Dashboard */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    onClose();
+                    if (onOpenWebDashboard) {
+                      setTimeout(() => onOpenWebDashboard(), 100);
+                    }
+                  }}
+                  className="p-2.5 rounded-[16px] flex flex-col justify-between text-left transition-all active:scale-[0.97] cursor-pointer group"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.03)",
+                    border: isDark
+                      ? "1px solid rgba(255, 255, 255, 0.08)"
+                      : "1px solid rgba(0, 0, 0, 0.05)",
+                  }}
+                >
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div
+                      className="w-7 h-7 rounded-[10px] flex items-center justify-center shrink-0"
+                      style={{
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.06)",
+                        color: "var(--text-primary)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <Laptop size={13} strokeWidth={1.75} />
+                    </div>
+                    <ExternalLink
+                      size={11}
+                      className="text-[var(--text-tertiary)] opacity-40 group-hover:opacity-80 transition-opacity"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-medium text-[12px] text-[var(--text-primary)] leading-tight">
+                      {t("profile.webDashboard", "Web Link")}
+                    </p>
+                    <p className="text-[10px] text-[var(--text-tertiary)] leading-tight mt-0.5">
+                      {t("profile.scanQr", "Connect via QR")}
+                    </p>
+                  </div>
+                </button>
+
+                {/* Tile C: Settings & Preferences */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    onClose();
+                    navigate("/settings");
+                  }}
+                  className="p-2.5 rounded-[16px] flex flex-col justify-between text-left transition-all active:scale-[0.97] cursor-pointer group"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.03)",
+                    border: isDark
+                      ? "1px solid rgba(255, 255, 255, 0.08)"
+                      : "1px solid rgba(0, 0, 0, 0.05)",
+                  }}
+                >
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div
+                      className="w-7 h-7 rounded-[10px] flex items-center justify-center shrink-0"
+                      style={{
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.06)",
+                        color: "var(--text-primary)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <Settings size={13} strokeWidth={1.75} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-medium text-[12px] text-[var(--text-primary)] leading-tight">
+                      {t("profile.settings", "Settings")}
+                    </p>
+                    <p className="text-[10px] text-[var(--text-tertiary)] leading-tight mt-0.5">
+                      {t("profile.preferences", "Preferences")}
+                    </p>
+                  </div>
+                </button>
               </div>
-              <ChevronRight
-                size={13}
-                className="text-[var(--text-tertiary)] opacity-40 group-hover:opacity-80 transition-opacity shrink-0"
-              />
-            </button>
+            </div>
           </motion.div>
         </>
       )}

@@ -143,6 +143,10 @@ export function ReorderableWidgetGrid({
     [cards, onReorder],
   );
 
+  if (renderedItems.length === 0) {
+    return null;
+  }
+
   return (
     <div ref={containerRef} className={className}>
       {renderedItems.map(({ card, content }, index) => {
@@ -169,10 +173,12 @@ export function ReorderableWidgetGrid({
           <motion.div
             key={card.id}
             data-widget-card-id={card.id}
-            layout="position"
-            transition={{
-              layout: { type: "spring", stiffness: 350, damping: 28 },
-            }}
+            layout={isEditMode ? "position" : false}
+            transition={
+              isEditMode
+                ? { layout: { type: "spring", stiffness: 350, damping: 28 } }
+                : undefined
+            }
             className={`w-full max-w-full select-none ${
               isHalf ? "col-span-1 h-[154px]" : "col-span-2"
             }`}

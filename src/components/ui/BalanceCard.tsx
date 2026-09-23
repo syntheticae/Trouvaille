@@ -6,6 +6,7 @@ import { formatRupiah } from "../../lib/utils";
 import { BottomSheet } from "./BottomSheet";
 import { IconRenderer } from "./IconRenderer";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { AssetValuationSheet } from "../settings/AssetValuationSheet";
 
 const SEGMENT_COLORS_DARK = [
@@ -40,6 +41,7 @@ interface BalanceCardProps {
 export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [valuationSheetOpen, setValuationSheetOpen] = useState(false);
+  useCurrency();
   const {
     allAccounts,
     positiveAccounts: posAccs,

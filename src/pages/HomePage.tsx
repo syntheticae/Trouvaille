@@ -10,6 +10,7 @@ import { syncDailyStreakReminder } from "../lib/notifications";
 import { resolveTransactionCategory } from "../lib/categoryResolver";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
 import { ReorderableWidgetGrid, WidgetCustomizationBar } from "../components/common";
 import type { WidgetSize } from "../lib/widgetLayoutTypes";
@@ -161,6 +162,7 @@ function formatAxisY(val: number): string {
 export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: HomePageProps) {
   const navigate = useNavigate();
   const { t, isIndonesian } = useLanguage();
+  useCurrency();
   const [todayDate, setTodayDate] = useState(() => startOfDay(new Date()));
   const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
 
@@ -2003,15 +2005,15 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         threshold={threshold}
       />
       {/* HEADER */}
-      <header className="flex justify-between items-center relative z-40">
-        <div className="relative">
+      <header className="flex justify-between items-center relative z-40 gap-3">
+        <div className="relative flex-1 min-w-0 mr-2">
           <button
             type="button"
             onClick={() => {
               triggerHaptic("light");
               setProfileMenuOpen((prev) => !prev);
             }}
-            className="flex items-center gap-3 group text-left cursor-pointer select-none transition-transform active:scale-[0.98]"
+            className="flex items-center gap-3 group text-left cursor-pointer select-none transition-transform active:scale-[0.98] min-w-0 max-w-full"
           >
             <div
               className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center relative shrink-0 transition-shadow group-hover:shadow-md"
@@ -2036,8 +2038,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 </span>
               )}
             </div>
-            <div className="min-w-0 text-left">
-              <div className="flex items-center gap-1.5">
+            <div className="min-w-0 flex-1 text-left">
+              <div className="flex items-center gap-1.5 min-w-0 max-w-full">
                 <h1 className="text-[15px] font-semibold text-[var(--text-primary)] leading-tight truncate">
                   {greetingTitle}
                 </h1>
@@ -2070,7 +2072,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => {
               triggerHaptic("light");

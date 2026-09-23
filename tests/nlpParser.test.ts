@@ -158,4 +158,73 @@ describe("Natural Language Transaction Parser Test Suite", () => {
     expect(result.amount).toBe(150000);
     expect(result.walletId).toBe("w-bca");
   });
+
+  it("parses ATM cash withdrawal: 'Tarik tunai 500 ribu dari BCA'", () => {
+    const result = parseNaturalTransaction(
+      "Tarik tunai 500 ribu dari BCA",
+      mockCategories,
+      mockWallets,
+      referenceDate,
+    );
+
+    expect(result.type).toBe("transfer");
+    expect(result.amount).toBe(500000);
+    expect(result.walletId).toBe("w-bca");
+    expect(result.walletName).toBe("BCA");
+    expect(result.toWalletId).toBe("w-cash");
+    expect(result.toWalletName).toBe("Cash");
+    expect(result.categoryId).toBeNull();
+    expect(result.note).toBe("Tarik Tunai");
+  });
+
+  it("parses cash deposit: 'Setor tunai 1 juta ke BCA'", () => {
+    const result = parseNaturalTransaction(
+      "Setor tunai 1 juta ke BCA",
+      mockCategories,
+      mockWallets,
+      referenceDate,
+    );
+
+    expect(result.type).toBe("transfer");
+    expect(result.amount).toBe(1000000);
+    expect(result.walletId).toBe("w-cash");
+    expect(result.walletName).toBe("Cash");
+    expect(result.toWalletId).toBe("w-bca");
+    expect(result.toWalletName).toBe("BCA");
+    expect(result.categoryId).toBeNull();
+    expect(result.note).toBe("Setor Tunai");
+  });
+
+  it("parses expanded colloquial income: 'Dapet duit 200rb'", () => {
+    const result = parseNaturalTransaction(
+      "Dapet duit 200rb",
+      mockCategories,
+      mockWallets,
+      referenceDate,
+    );
+
+    expect(result.type).toBe("income");
+    expect(result.amount).toBe(200000);
+  });
+
+  it("parses angpao and cashback as income: 'Angpao 500k' and 'Cashback 25rb'", () => {
+    const angpaoResult = parseNaturalTransaction(
+      "Angpao 500k",
+      mockCategories,
+      mockWallets,
+      referenceDate,
+    );
+    expect(angpaoResult.type).toBe("income");
+    expect(angpaoResult.amount).toBe(500000);
+
+    const cashbackResult = parseNaturalTransaction(
+      "Cashback 25rb",
+      mockCategories,
+      mockWallets,
+      referenceDate,
+    );
+    expect(cashbackResult.type).toBe("income");
+    expect(cashbackResult.amount).toBe(25000);
+  });
 });
+

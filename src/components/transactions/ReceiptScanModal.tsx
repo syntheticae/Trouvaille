@@ -15,7 +15,6 @@ import {
   CreditCard,
   Tag,
   Calendar,
-  Clock,
   Pen,
   Check,
   RotateCcw,
@@ -29,6 +28,8 @@ import {
   Eye,
   FileSpreadsheet,
   Shield,
+  Flashlight,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import {
@@ -43,13 +44,15 @@ import { useWallets, useAddWallet, getWalletIcon } from "../../hooks/useWallets"
 import { useCategories, useAddCategory } from "../../hooks/useCategories";
 import { useAddTransaction } from "../../hooks/useTransactions";
 import { useToast } from "../../contexts/ToastContext";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { format } from "date-fns";
 import type { TransactionType } from "../../lib/types";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
-import { GlassDatePicker } from "../ui/GlassDatePicker";
+import { GlassDateTimePickerModal } from "../ui/GlassDateTimePickerModal";
 
 interface ReceiptScanModalProps {
   isOpen: boolean;
@@ -76,6 +79,10 @@ export function ReceiptScanModal({
   const streamRef = useRef<MediaStream | null>(null);
   const [isLiveCameraActive, setIsLiveCameraActive] = useState(false);
 
+  const { theme } = useTheme();
+  const { isIndonesian } = useLanguage();
+  const isDark = theme !== "light";
+
   const { data: wallets = [] } = useWallets();
   const { data: categories = [] } = useCategories();
   const addWalletMutation = useAddWallet();
@@ -94,12 +101,16 @@ export function ReceiptScanModal({
   const [parsedSlip, setParsedSlip] = useState<ParsedSlipResult | null>(null);
   const [amount, setAmount] = useState<number>(0);
   const [walletId, setWalletId] = useState<string | null>(null);
+  const [toWalletId, setToWalletId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
   const [time, setTime] = useState<string>(format(new Date(), "HH:mm"));
   const [merchant, setMerchant] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [type, setType] = useState<TransactionType>("expense");
+
+  // Torch / Flash State
+  const [isTorchOn, setIsTorchOn] = useState(false);
 
   // Detected unmapped institution / category
   const [unregisteredWalletName, setUnregisteredWalletName] = useState<string | null>(null);
@@ -121,10 +132,11 @@ export function ReceiptScanModal({
   // BottomSheet Drawers
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [walletSheetOpen, setWalletSheetOpen] = useState(false);
-  const [dateSheetOpen, setDateSheetOpen] = useState(false);
-  const [timeSheetOpen, setTimeSheetOpen] = useState(false);
+  const [toWalletSheetOpen, setToWalletSheetOpen] = useState(false);
+  const [dateTimePickerOpen, setDateTimePickerOpen] = useState(false);
   const [searchCatQuery, setSearchCatQuery] = useState("");
   const [searchWalletQuery, setSearchWalletQuery] = useState("");
+  const [searchToWalletQuery, setSearchToWalletQuery] = useState("");
 
   const stopLiveCamera = () => {
     if (streamRef.current) {
@@ -132,6 +144,32 @@ export function ReceiptScanModal({
       streamRef.current = null;
     }
     setIsLiveCameraActive(false);
+    setIsTorchOn(false);
+  };
+
+  const toggleTorch = async () => {
+    if (!streamRef.current) return;
+    const track = streamRef.current.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      const capabilities = (track.getCapabilities ? track.getCapabilities() : {}) as any;
+      if (capabilities.torch) {
+        const next = !isTorchOn;
+        await track.applyConstraints({
+          advanced: [{ torch: next } as any],
+        });
+        setIsTorchOn(next);
+        triggerHaptic("light");
+      } else {
+        showToast(
+          isIndonesian ? "Flash tidak didukung di perangkat ini" : "Flash is not supported on this device/camera",
+          "info"
+        );
+      }
+    } catch (err) {
+      console.warn("Error toggling torch:", err);
+      showToast(isIndonesian ? "Gagal mengubah status senter" : "Could not toggle flash", "delete");
+    }
   };
 
   const startLiveCamera = async () => {
@@ -209,10 +247,12 @@ export function ReceiptScanModal({
       setUnregisteredCategoryName(null);
       setCategorySheetOpen(false);
       setWalletSheetOpen(false);
-      setDateSheetOpen(false);
-      setTimeSheetOpen(false);
+      setToWalletSheetOpen(false);
+      setDateTimePickerOpen(false);
       setSearchCatQuery("");
       setSearchWalletQuery("");
+      setSearchToWalletQuery("");
+      setToWalletId(null);
       setPermissionPrompt({
         isOpen: false,
         type: "photos",
@@ -233,18 +273,67 @@ export function ReceiptScanModal({
     [wallets, walletId],
   );
 
+  const selectedToWallet = useMemo(
+    () => wallets.find((w) => w.id === toWalletId),
+    [wallets, toWalletId],
+  );
+
+  // Combined Date and Time reference
+  const combinedDateTime = useMemo(() => {
+    const [h, m] = time.split(":").map(Number);
+    const d = new Date(date);
+    if (!isNaN(h) && !isNaN(m)) {
+      d.setHours(h, m, 0, 0);
+    }
+    return d;
+  }, [date, time]);
+
+  // Handle switching transaction type with smart category syncing
+  const handleSetType = (newType: TransactionType) => {
+    triggerHaptic("light");
+    setType(newType);
+    if (newType === "income") {
+      const incomeCats = categories.filter((c) => c.type === "income");
+      const currentCat = categories.find((c) => c.id === categoryId);
+      if (!currentCat || currentCat.type !== "income") {
+        setCategoryId(incomeCats.length > 0 ? incomeCats[0].id : null);
+      }
+    } else if (newType === "expense") {
+      const expenseCats = categories.filter((c) => c.type !== "income");
+      const currentCat = categories.find((c) => c.id === categoryId);
+      if (!currentCat || currentCat.type === "income") {
+        setCategoryId(expenseCats.length > 0 ? expenseCats[0].id : null);
+      }
+    } else if (newType === "transfer") {
+      if (!toWalletId || toWalletId === walletId) {
+        const otherWallet = wallets.find((w) => w.id !== walletId);
+        if (otherWallet) setToWalletId(otherWallet.id);
+      }
+    }
+  };
+
   // Filtered lists for sheets
   const filteredCategories = useMemo(() => {
     const q = searchCatQuery.trim().toLowerCase();
-    if (!q) return categories;
-    return categories.filter((c) => c.name.toLowerCase().includes(q));
-  }, [categories, searchCatQuery]);
+    const typeCats = categories.filter((c) =>
+      type === "income" ? c.type === "income" : c.type !== "income",
+    );
+    const pool = typeCats.length > 0 ? typeCats : categories;
+    if (!q) return pool;
+    return pool.filter((c) => c.name.toLowerCase().includes(q));
+  }, [categories, searchCatQuery, type]);
 
   const filteredWallets = useMemo(() => {
     const q = searchWalletQuery.trim().toLowerCase();
     if (!q) return wallets;
     return wallets.filter((w) => w.name.toLowerCase().includes(q));
   }, [wallets, searchWalletQuery]);
+
+  const filteredToWallets = useMemo(() => {
+    const q = searchToWalletQuery.trim().toLowerCase();
+    if (!q) return wallets;
+    return wallets.filter((w) => w.name.toLowerCase().includes(q));
+  }, [wallets, searchToWalletQuery]);
 
   /**
    * Downsamples large camera/gallery photos (e.g. 12-48MP) to max 1600px
@@ -545,14 +634,24 @@ export function ReceiptScanModal({
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
     const effectiveWallet = wallets.find((w) => w.id === walletId) || wallets[0];
+    const effectiveToWallet = wallets.find((w) => w.id === toWalletId) || (wallets.length > 1 ? (wallets[0].id === effectiveWallet?.id ? wallets[1] : wallets[0]) : null);
     const effectiveCategory = categories.find((c) => c.id === categoryId) || (categories.length > 0 ? categories[0] : null);
 
     const effectiveWalletId = effectiveWallet?.id && isUUID(effectiveWallet.id) ? effectiveWallet.id : null;
+    const effectiveToWalletId = type === "transfer" && effectiveToWallet?.id && isUUID(effectiveToWallet.id) ? effectiveToWallet.id : null;
     const effectiveCatId = effectiveCategory?.id && isUUID(effectiveCategory.id) ? effectiveCategory.id : null;
+
+    if (type === "transfer" && effectiveWalletId && effectiveToWalletId && effectiveWalletId === effectiveToWalletId) {
+      showToast(
+        isIndonesian ? "Akun asal dan akun tujuan harus berbeda" : "Source and destination accounts must be different",
+        "delete"
+      );
+      return;
+    }
 
     const finalDescription = note.trim()
       ? (merchant.trim() ? `${merchant.trim()} • ${note.trim()}` : note.trim())
-      : (merchant.trim() || "Scanned Receipt");
+      : (merchant.trim() || (type === "transfer" ? "Transfer" : "Scanned Receipt"));
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);
@@ -567,6 +666,7 @@ export function ReceiptScanModal({
         type,
         amount,
         wallet_id: effectiveWalletId,
+        to_wallet_id: type === "transfer" ? effectiveToWalletId : null,
         category_id: type === "transfer" ? null : effectiveCatId,
         note: finalDescription || null,
         occurred_on: format(date, "yyyy-MM-dd"),
@@ -574,11 +674,19 @@ export function ReceiptScanModal({
       },
       {
         onSuccess: () => {
-          showToast("Transaction saved successfully", "add", () => {});
+          showToast(
+            isIndonesian ? "Transaksi berhasil disimpan" : "Transaction saved successfully",
+            "add",
+            () => {}
+          );
           onClose();
         },
         onError: () => {
-          showToast("Failed to save transaction", "delete", () => {});
+          showToast(
+            isIndonesian ? "Gagal menyimpan transaksi" : "Failed to save transaction",
+            "delete",
+            () => {}
+          );
         },
       },
     );
@@ -588,7 +696,7 @@ export function ReceiptScanModal({
     triggerHaptic("light");
     const finalDescription = note.trim()
       ? (merchant.trim() ? `${merchant.trim()} • ${note.trim()}` : note.trim())
-      : (merchant.trim() || "Scanned Receipt");
+      : (merchant.trim() || (type === "transfer" ? "Transfer" : "Scanned Receipt"));
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);
@@ -601,8 +709,8 @@ export function ReceiptScanModal({
       type,
       amount,
       walletId,
-      categoryId,
-      toWalletId: null,
+      categoryId: type === "transfer" ? null : categoryId,
+      toWalletId: type === "transfer" ? toWalletId : null,
       date: combinedDate,
       note: finalDescription,
     });
@@ -615,16 +723,18 @@ export function ReceiptScanModal({
     <>
       <AnimatePresence>
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-auto">
-          {/* Liquid Glass Backdrop with Soft Dark Ambient Bleed */}
+          {/* Liquid Glass Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             onClick={step === "processing" ? undefined : onClose}
-            className="fixed inset-0 bg-black/70 backdrop-blur-2xl"
+            className={`fixed inset-0 ${isDark ? "bg-black/70 backdrop-blur-2xl" : "bg-black/35 backdrop-blur-xl"}`}
             style={{
-              backgroundImage: "radial-gradient(circle at 50% 15%, rgba(255, 255, 255, 0.05) 0%, transparent 70%)",
+              backgroundImage: isDark
+                ? "radial-gradient(circle at 50% 15%, rgba(255, 255, 255, 0.05) 0%, transparent 70%)"
+                : "radial-gradient(circle at 50% 15%, rgba(0, 0, 0, 0.03) 0%, transparent 70%)",
             }}
           />
 
@@ -636,11 +746,17 @@ export function ReceiptScanModal({
             transition={{ type: "spring", stiffness: 360, damping: 35 }}
             className="w-full max-w-md rounded-t-[36px] sm:rounded-[36px] p-5 relative z-10 flex flex-col max-h-[92dvh] overflow-hidden"
             style={{
-              background: "linear-gradient(165deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.5) 100%), var(--bg-canvas)",
+              background: isDark
+                ? "linear-gradient(165deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.55) 100%), var(--bg-canvas)"
+                : "linear-gradient(165deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(244, 244, 248, 0.98) 100%), var(--bg-canvas)",
               backdropFilter: "blur(32px) saturate(180%)",
               WebkitBackdropFilter: "blur(32px) saturate(180%)",
-              border: "1px solid rgba(255, 255, 255, 0.14)",
-              boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 32px 64px -12px rgba(0, 0, 0, 0.8)",
+              border: isDark
+                ? "1px solid rgba(255, 255, 255, 0.14)"
+                : "1px solid rgba(0, 0, 0, 0.08)",
+              boxShadow: isDark
+                ? "inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 32px 64px -12px rgba(0, 0, 0, 0.8)"
+                : "inset 0 1px 0 0 rgba(255, 255, 255, 0.95), 0 20px 48px -12px rgba(0, 0, 0, 0.12)",
               fontFamily: "Urbanist, -apple-system, sans-serif",
               paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 12px), 20px)",
               paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px)",
@@ -734,6 +850,28 @@ export function ReceiptScanModal({
                         Live Camera
                       </span>
                     </div>
+                  )}
+
+                  {/* Torch / Flash Toggle Button */}
+                  {isLiveCameraActive && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTorch();
+                      }}
+                      className={`absolute top-3.5 right-4 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-md border transition-all active:scale-90 cursor-pointer ${
+                        isTorchOn
+                          ? "bg-amber-400 text-black border-amber-300 shadow-md shadow-amber-400/25"
+                          : "bg-black/60 text-white/90 border-white/15 hover:bg-black/80"
+                      }`}
+                      title={isTorchOn ? "Turn Flash Off" : "Turn Flash On"}
+                    >
+                      <Flashlight size={11} strokeWidth={2} />
+                      <span className="text-[10px] font-semibold tracking-wide">
+                        {isTorchOn ? "Flash On" : "Flash"}
+                      </span>
+                    </button>
                   )}
 
                   {/* Delicate Specular Corner Brackets */}
@@ -1150,41 +1288,56 @@ export function ReceiptScanModal({
                   </div>
                 </div>
 
-                {/* iOS Segmented Type Switcher */}
+                {/* iOS Segmented Type Switcher (Expense | Income | Transfer) */}
                 <div
                   className="p-1 rounded-2xl flex items-center gap-1"
                   style={{
-                    background: "rgba(255, 255, 255, 0.03)",
-                    border: "1px solid rgba(255, 255, 255, 0.07)",
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.04)",
+                    border: isDark
+                      ? "1px solid rgba(255, 255, 255, 0.08)"
+                      : "1px solid rgba(0, 0, 0, 0.06)",
                   }}
                 >
                   <button
                     type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setType("expense");
-                    }}
+                    onClick={() => handleSetType("expense")}
                     className={`flex-1 py-1.5 rounded-xl text-[12px] font-medium transition-all text-center cursor-pointer ${
                       type === "expense"
-                        ? "bg-white/12 text-white shadow-sm border border-white/15"
+                        ? isDark
+                          ? "bg-white/14 text-white shadow-sm border border-white/15"
+                          : "bg-white text-black shadow-sm border border-black/10"
                         : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                     }`}
                   >
-                    Expense
+                    {isIndonesian ? "Pengeluaran" : "Expense"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setType("income");
-                    }}
+                    onClick={() => handleSetType("income")}
                     className={`flex-1 py-1.5 rounded-xl text-[12px] font-medium transition-all text-center cursor-pointer ${
                       type === "income"
-                        ? "bg-white/12 text-white shadow-sm border border-white/15"
+                        ? isDark
+                          ? "bg-white/14 text-white shadow-sm border border-white/15"
+                          : "bg-white text-black shadow-sm border border-black/10"
                         : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                     }`}
                   >
-                    Income
+                    {isIndonesian ? "Pemasukan" : "Income"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetType("transfer")}
+                    className={`flex-1 py-1.5 rounded-xl text-[12px] font-medium transition-all text-center cursor-pointer ${
+                      type === "transfer"
+                        ? isDark
+                          ? "bg-white/14 text-white shadow-sm border border-white/15"
+                          : "bg-white text-black shadow-sm border border-black/10"
+                        : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    Transfer
                   </button>
                 </div>
 
@@ -1192,67 +1345,127 @@ export function ReceiptScanModal({
                 <div
                   className="rounded-[22px] divide-y overflow-hidden"
                   style={{
-                    background: "rgba(255, 255, 255, 0.03)",
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.03)"
+                      : "rgba(0, 0, 0, 0.02)",
                     backdropFilter: "blur(20px)",
-                    border: "1px solid rgba(255, 255, 255, 0.09)",
+                    border: isDark
+                      ? "1px solid rgba(255, 255, 255, 0.09)"
+                      : "1px solid rgba(0, 0, 0, 0.06)",
                     boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.08)",
-                    borderColor: "rgba(255, 255, 255, 0.06)",
+                    borderColor: isDark
+                      ? "rgba(255, 255, 255, 0.06)"
+                      : "rgba(0, 0, 0, 0.05)",
                   }}
                 >
-                  {/* Category Row */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setCategorySheetOpen(true);
-                    }}
-                    className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
-                    style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Tag size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
-                      <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
-                        Category
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
-                      <span className="text-[12px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
-                        {selectedCategory ? selectedCategory.name : "Select Category"}
-                      </span>
-                      <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
-                    </div>
-                  </button>
+                  {type === "transfer" ? (
+                    <>
+                      {/* From Account Row */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setWalletSheetOpen(true);
+                        }}
+                        className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
+                        style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <CreditCard size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+                          <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                            {isIndonesian ? "Dari Akun" : "From Account"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
+                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                            {selectedWallet ? selectedWallet.name : (isIndonesian ? "Pilih Akun" : "Select Account")}
+                          </span>
+                          <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+                        </div>
+                      </button>
 
-                  {/* Wallet Row */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setWalletSheetOpen(true);
-                    }}
-                    className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
-                    style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <CreditCard size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
-                      <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
-                        Account
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
-                      <span className="text-[12px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
-                        {selectedWallet ? selectedWallet.name : "Select Account"}
-                      </span>
-                      <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
-                    </div>
-                  </button>
+                      {/* To Account Row */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setToWalletSheetOpen(true);
+                        }}
+                        className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
+                        style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <ArrowRightLeft size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+                          <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                            {isIndonesian ? "Ke Akun" : "To Account"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
+                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                            {selectedToWallet ? selectedToWallet.name : (isIndonesian ? "Pilih Akun Tujuan" : "Select Destination")}
+                          </span>
+                          <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+                        </div>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {/* Category Row */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setCategorySheetOpen(true);
+                        }}
+                        className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
+                        style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Tag size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+                          <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                            {isIndonesian ? "Kategori" : "Category"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
+                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                            {selectedCategory ? selectedCategory.name : (isIndonesian ? "Pilih Kategori" : "Select Category")}
+                          </span>
+                          <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+                        </div>
+                      </button>
 
-                  {/* Date Row */}
+                      {/* Wallet Row */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setWalletSheetOpen(true);
+                        }}
+                        className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
+                        style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <CreditCard size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+                          <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
+                            {isIndonesian ? "Akun" : "Account"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] justify-end">
+                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                            {selectedWallet ? selectedWallet.name : (isIndonesian ? "Pilih Akun" : "Select Account")}
+                          </span>
+                          <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+                        </div>
+                      </button>
+                    </>
+                  )}
+
+                  {/* Unified Date & Time Row */}
                   <button
                     type="button"
                     onClick={() => {
                       triggerHaptic("light");
-                      setDateSheetOpen(true);
+                      setDateTimePickerOpen(true);
                     }}
                     className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
                     style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
@@ -1260,36 +1473,12 @@ export function ReceiptScanModal({
                     <div className="flex items-center gap-2.5">
                       <Calendar size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
                       <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
-                        Date
+                        {isIndonesian ? "Tanggal & Waktu" : "Date & Time"}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>
-                        {format(date, "d MMM yyyy")}
-                      </span>
-                      <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
-                    </div>
-                  </button>
-
-                  {/* Time Row */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setTimeSheetOpen(true);
-                    }}
-                    className="w-full p-3 flex items-center justify-between transition-colors active:bg-white/[0.04] cursor-pointer text-left"
-                    style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Clock size={15} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
-                      <span className="text-[12px] font-normal" style={{ color: "var(--text-secondary)" }}>
-                        Time
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>
-                        {time}
+                        {format(combinedDateTime, "d MMM yyyy, HH:mm")}
                       </span>
                       <ChevronRight size={14} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
                     </div>
@@ -1600,109 +1789,116 @@ export function ReceiptScanModal({
         </div>
       </BottomSheet>
 
-      {/* Date Picker BottomSheet */}
+      {/* To Wallet BottomSheet Picker (for Transfers) */}
       <BottomSheet
-        isOpen={dateSheetOpen}
-        onClose={() => setDateSheetOpen(false)}
+        isOpen={toWalletSheetOpen}
+        onClose={() => {
+          setToWalletSheetOpen(false);
+          setSearchToWalletQuery("");
+        }}
+        title={isIndonesian ? "Pilih Akun Tujuan" : "Select Destination Account"}
       >
-        <div className="p-5 pb-10 flex flex-col items-center">
-          <h3
-            className="font-semibold text-lg mb-4"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Select Date
-          </h3>
-          <GlassDatePicker
-            date={date}
-            onChange={(d) => {
-              triggerHaptic("light");
-              setDate(d);
-              setDateSheetOpen(false);
-            }}
-          />
-        </div>
-      </BottomSheet>
-
-      {/* Glass Time Picker Sheet (Identical to TransactionSheet) */}
-      <BottomSheet isOpen={timeSheetOpen} onClose={() => setTimeSheetOpen(false)}>
-        <div className="p-5 pb-12 flex flex-col items-center">
-          <h3
-            className="font-semibold text-lg mb-1"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Select Time
-          </h3>
-          <p
-            className="text-[12px] font-medium mb-5"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Transaction timestamp
-          </p>
-
-          <div
-            className="p-4 rounded-3xl w-full max-w-[280px] flex items-center justify-center gap-3 glass-surface"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="bg-transparent text-3xl font-semibold amount text-center outline-none cursor-pointer"
-              style={{ color: "var(--text-primary)", colorScheme: "dark" }}
+        <div className="p-4 pb-10" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
+          <div className="relative mb-3.5">
+            <Search
+              size={14}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2"
+              style={{ color: "var(--text-tertiary)" }}
             />
+            <input
+              type="text"
+              value={searchToWalletQuery}
+              onChange={(e) => setSearchToWalletQuery(e.target.value)}
+              placeholder="Search account..."
+              className="w-full pl-9 pr-8 py-2 rounded-xl text-[12px] font-normal bg-[var(--glass-fill)] border border-[var(--glass-border)] outline-none"
+              style={{
+                color: "var(--text-primary)",
+                fontFamily: "Urbanist, sans-serif",
+              }}
+            />
+            {searchToWalletQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchToWalletQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2"
+              >
+                <X size={13} style={{ color: "var(--text-tertiary)" }} />
+              </button>
+            )}
           </div>
 
-          {/* Quick preset buttons */}
-          <div className="flex gap-2 mt-5">
-            {[
-              "Morning (08:00)",
-              "Noon (12:30)",
-              "Evening (17:00)",
-              "Night (20:00)",
-            ].map((preset) => {
-              const t = preset.match(/\((.*?)\)/)?.[1] || "12:00";
-              return (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setTime(t);
-                    setTimeSheetOpen(false);
-                  }}
-                  className="px-2.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all cursor-pointer"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  {preset.split(" ")[0]}
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              setTimeSheetOpen(false);
-            }}
-            className="w-full max-w-[280px] h-11 mt-6 rounded-2xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer border border-white/80"
-            style={{
-              background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
-              color: "#000000",
-              boxShadow: "inset 0 1px 0 0 #ffffff, 0 8px 20px -4px rgba(0, 0, 0, 0.45)",
-            }}
-          >
-            Done
-          </button>
+          {filteredToWallets.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-[12px] font-normal" style={{ color: "var(--text-tertiary)" }}>
+                No accounts found
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2.5 max-h-[55vh] overflow-y-auto no-scrollbar pr-0.5">
+              {filteredToWallets.map((w) => {
+                const isSelected = toWalletId === w.id;
+                const isSource = walletId === w.id;
+                return (
+                  <button
+                    key={w.id}
+                    type="button"
+                    disabled={isSource}
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setToWalletId(w.id);
+                      setToWalletSheetOpen(false);
+                      setSearchToWalletQuery("");
+                    }}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-2xl active:scale-95 transition-all text-center cursor-pointer ${
+                      isSource ? "opacity-35 cursor-not-allowed" : ""
+                    }`}
+                    style={{
+                      background: isSelected
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "var(--bg-elevated)",
+                      color: "var(--text-primary)",
+                      border: isSelected
+                        ? "1.5px solid var(--accent)"
+                        : "1px solid var(--glass-border)",
+                    }}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-1 shrink-0"
+                      style={{
+                        background: isSelected
+                          ? "var(--dock-active-pill)"
+                          : "var(--glass-fill)",
+                        border: "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <IconRenderer icon={w.icon} size="w-5 h-5" />
+                    </div>
+                    <span className="text-[11px] font-normal truncate w-full text-center">
+                      {w.name}
+                    </span>
+                    {isSource && (
+                      <span className="text-[9px] text-[var(--text-tertiary)] opacity-70">
+                        (Source)
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </BottomSheet>
+
+      {/* Unified iOS Drum Roller Date & Time Picker */}
+      <GlassDateTimePickerModal
+        isOpen={dateTimePickerOpen}
+        onClose={() => setDateTimePickerOpen(false)}
+        value={combinedDateTime}
+        onChange={(newDate) => {
+          setDate(newDate);
+          setTime(format(newDate, "HH:mm"));
+        }}
+      />
 
       {/* Media Permission BottomSheet */}
       <BottomSheet

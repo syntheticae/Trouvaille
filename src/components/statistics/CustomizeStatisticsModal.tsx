@@ -208,7 +208,11 @@ export function CustomizeStatisticsModal({
               title: isIndonesian ? "Arus Kas & Aset" : "Cashflow & Net Worth",
               ids: [
                 "cashflow_summary",
+                "category_breakdown",
                 "cashflow_sankey",
+                "net_capital_trajectory",
+                "inflow_outflow_trend",
+                "cashflow_velocity",
                 "asset_analytics",
               ],
             },
