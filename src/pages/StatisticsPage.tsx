@@ -98,7 +98,7 @@ import { CustomizeStatisticsModal } from "../components/statistics/CustomizeStat
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
 import { STATS_STORAGE_KEY } from "../lib/widgetLayoutEngine";
 import { DEFAULT_STATISTICS_WIDGETS } from "../lib/widgetLayoutTypes";
-import type { WidgetSize, StatisticsPresetKey } from "../lib/widgetLayoutTypes";
+import type { WidgetSize } from "../lib/widgetLayoutTypes";
 import {
   calculateAssetTrend,
   calculateWhatIfScenario,
@@ -341,13 +341,15 @@ export function StatisticsPage() {
     toggleCardVisibility: toggleStatsCardVisibility,
     resetLayout: resetStatsLayout,
     applyPreset: applyStatsPreset,
+    activePresetKey: activeStatsPresetKey,
+    setActivePresetKey: setActiveStatsPresetKey,
   } = useWidgetLayout({
     storageKey: STATS_STORAGE_KEY,
     defaultWidgets: DEFAULT_STATISTICS_WIDGETS,
+    page: "statistics",
   });
 
   const [customizeStatsOpen, setCustomizeStatsOpen] = useState(false);
-  const [activeStatsPresetKey, setActiveStatsPresetKey] = useState<StatisticsPresetKey | null>("executive");
 
   const visibleReportCards = useMemo(() => {
     const reportIds = new Set([

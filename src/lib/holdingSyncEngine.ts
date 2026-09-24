@@ -5,6 +5,8 @@ import {
   saveUsdtPref,
   recordHoldingActivity,
   getStandardUsdtHoldingId,
+  getReconciledTxIds,
+  markTxAsReconciled,
   USD_IDR_ESTIMATE,
   type UsdtValuationPref,
 } from "./marketPriceService";
@@ -360,35 +362,7 @@ export interface UnreconciledTransactionAudit {
   suggestedReconciledUnits: number;
 }
 
-function getReconciledTxStorageKey(userId?: string): string {
-  if (userId && userId !== "guest_local_user") {
-    return `trouvaille_reconciled_tx_ids_${userId}`;
-  }
-  return "trouvaille_reconciled_tx_ids_default";
-}
-
-export function getReconciledTxIds(userId?: string): Set<string> {
-  try {
-    if (typeof localStorage === "undefined") return new Set<string>();
-    const raw = localStorage.getItem(getReconciledTxStorageKey(userId));
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return new Set(parsed);
-    }
-  } catch {}
-  return new Set<string>();
-}
-
-export function markTxAsReconciled(txIds: string[], userId?: string): void {
-  try {
-    if (typeof localStorage === "undefined") return;
-    const existing = getReconciledTxIds(userId);
-    for (const id of txIds) {
-      if (id) existing.add(id);
-    }
-    localStorage.setItem(getReconciledTxStorageKey(userId), JSON.stringify(Array.from(existing)));
-  } catch {}
-}
+export { getReconciledTxIds, markTxAsReconciled };
 
 export function dismissReconciliationTxIds(txIds: string[], userId?: string): void {
   markTxAsReconciled(txIds, userId);
@@ -551,17 +525,17 @@ export function applyUsdtReconciliation(
     );
   }
 
+  // Mark all candidate transaction IDs as permanently reconciled first so cloud notes include them
+  const txIds = audit.unreconciledTxs.map((t) => t.id).filter(Boolean);
+  if (txIds.length > 0) {
+    markTxAsReconciled(txIds, userId);
+  }
+
   const nextPref: UsdtValuationPref = {
     ...currentPref,
     units: targetUnits,
   };
   saveUsdtPref(nextPref, userId);
-
-  // Mark all candidate transaction IDs as permanently reconciled
-  const txIds = audit.unreconciledTxs.map((t) => t.id).filter(Boolean);
-  if (txIds.length > 0) {
-    markTxAsReconciled(txIds, userId);
-  }
 
   return { updatedUnits: targetUnits };
 }

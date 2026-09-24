@@ -237,6 +237,98 @@ export function generateUUID(): string {
   });
 }
 
+export interface HoldingNotesMetadata {
+  userNotes?: string;
+  activities?: HoldingActivity[];
+  reconciledTxIds?: string[];
+  isCustomPrice?: boolean;
+  customPrice?: number;
+}
+
+export function serializeHoldingNotes(
+  userNotesOrMeta?: string | HoldingNotesMetadata,
+  activities?: HoldingActivity[],
+  reconciledTxIds?: string[],
+  isCustomPrice?: boolean,
+  customPrice?: number,
+): string {
+  if (typeof userNotesOrMeta === "object" && userNotesOrMeta !== null) {
+    const meta: HoldingNotesMetadata = {};
+    if (userNotesOrMeta.userNotes && userNotesOrMeta.userNotes.trim()) {
+      meta.userNotes = userNotesOrMeta.userNotes.trim();
+    }
+    if (userNotesOrMeta.activities && userNotesOrMeta.activities.length > 0) {
+      meta.activities = userNotesOrMeta.activities;
+    }
+    if (userNotesOrMeta.reconciledTxIds && userNotesOrMeta.reconciledTxIds.length > 0) {
+      meta.reconciledTxIds = userNotesOrMeta.reconciledTxIds;
+    }
+    if (userNotesOrMeta.isCustomPrice) meta.isCustomPrice = true;
+    if (userNotesOrMeta.customPrice && userNotesOrMeta.customPrice > 0) {
+      meta.customPrice = userNotesOrMeta.customPrice;
+    }
+    if (!meta.activities && !meta.reconciledTxIds && !meta.isCustomPrice && !meta.customPrice) {
+      return meta.userNotes || "";
+    }
+    return JSON.stringify(meta);
+  }
+
+  const userNotes = userNotesOrMeta;
+  const meta: HoldingNotesMetadata = {};
+  if (userNotes && typeof userNotes === "string" && userNotes.trim()) meta.userNotes = userNotes.trim();
+  if (activities && activities.length > 0) meta.activities = activities;
+  if (reconciledTxIds && reconciledTxIds.length > 0) meta.reconciledTxIds = reconciledTxIds;
+  if (isCustomPrice) meta.isCustomPrice = true;
+  if (customPrice && customPrice > 0) meta.customPrice = customPrice;
+
+  if (!meta.activities && !meta.reconciledTxIds && !meta.isCustomPrice && !meta.customPrice) {
+    return userNotes || "";
+  }
+  return JSON.stringify(meta);
+}
+
+export function parseHoldingNotes(rawNotes?: string | null): HoldingNotesMetadata {
+  if (!rawNotes) return {};
+  try {
+    const trimmed = rawNotes.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed === "object" && parsed !== null) {
+        return parsed as HoldingNotesMetadata;
+      }
+    }
+  } catch {}
+  return { userNotes: rawNotes };
+}
+
+export function getReconciledTxStorageKey(userId?: string): string {
+  if (userId && userId !== "guest_local_user") {
+    return `trouvaille_reconciled_tx_ids_${userId}`;
+  }
+  return "trouvaille_reconciled_tx_ids_default";
+}
+
+export function getReconciledTxIds(userId?: string): Set<string> {
+  try {
+    const raw = safeGetItem(getReconciledTxStorageKey(userId));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch {}
+  return new Set<string>();
+}
+
+export function markTxAsReconciled(txIds: string[], userId?: string): void {
+  try {
+    const existing = getReconciledTxIds(userId);
+    for (const id of txIds) {
+      if (id) existing.add(id);
+    }
+    safeSetItem(getReconciledTxStorageKey(userId), JSON.stringify(Array.from(existing)));
+  } catch {}
+}
+
 /**
  * Asynchronously synchronizes a holding row with Supabase cloud table `public.holdings`.
  */
@@ -264,6 +356,15 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
     }
 
     const validWalletId = holding.wallet_id && isValidUUID(holding.wallet_id) ? holding.wallet_id : null;
+    const isUsdt = holding.symbol?.toUpperCase() === "USDT";
+    const existingMeta = parseHoldingNotes(holding.notes);
+    const serializedNotes = serializeHoldingNotes(
+      existingMeta.userNotes || (typeof holding.notes === "string" && !holding.notes.startsWith("{") ? holding.notes : undefined),
+      holding.activities,
+      isUsdt ? Array.from(getReconciledTxIds(userId)) : existingMeta.reconciledTxIds,
+      holding.is_custom_price,
+      holding.custom_price,
+    );
 
     await supabase.from("holdings").upsert({
       id: holdingId,
@@ -275,7 +376,7 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
       avg_buy_price: holding.avg_buy_price,
       current_price: holding.current_price,
       currency: holding.currency || "IDR",
-      notes: holding.notes || null,
+      notes: serializedNotes || null,
       icon: holding.icon || "TrendingUp",
       annual_rate: holding.annual_rate || null,
       purchase_date: holding.purchase_date || null,
@@ -315,51 +416,65 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
 
     if (!error && Array.isArray(data)) {
       const nonUsdtHoldings: InvestmentHolding[] = [];
-      let foundUsdt: any = null;
+      let foundUsdtRow: any = null;
+      let usdtHolding: InvestmentHolding | null = null;
 
       for (const row of data) {
+        const meta = parseHoldingNotes(row.notes);
+        if (meta.reconciledTxIds && meta.reconciledTxIds.length > 0) {
+          markTxAsReconciled(meta.reconciledTxIds, userId);
+        }
+
+        const holdingItem: InvestmentHolding = {
+          id: row.id,
+          wallet_id: row.wallet_id || undefined,
+          symbol: row.symbol,
+          name: row.name,
+          asset_type: row.asset_type,
+          units: Number(row.units) || 0,
+          avg_buy_price: Number(row.avg_buy_price) || 0,
+          current_price: Number(row.current_price) || 0,
+          currency: row.currency || "IDR",
+          notes: meta.userNotes || undefined,
+          icon: row.icon || "TrendingUp",
+          annual_rate: row.annual_rate ? Number(row.annual_rate) : undefined,
+          purchase_date: row.purchase_date || undefined,
+          last_price_updated_at: row.last_price_updated_at || undefined,
+          activities: meta.activities || [],
+          is_custom_price: meta.isCustomPrice,
+          custom_price: meta.customPrice,
+        };
+
         if (row.symbol === "USDT") {
-          foundUsdt = row;
+          foundUsdtRow = row;
+          usdtHolding = holdingItem;
         } else {
-          nonUsdtHoldings.push({
-            id: row.id,
-            wallet_id: row.wallet_id || undefined,
-            symbol: row.symbol,
-            name: row.name,
-            asset_type: row.asset_type,
-            units: Number(row.units) || 0,
-            avg_buy_price: Number(row.avg_buy_price) || 0,
-            current_price: Number(row.current_price) || 0,
-            currency: row.currency || "IDR",
-            notes: row.notes || undefined,
-            icon: row.icon || "TrendingUp",
-            annual_rate: row.annual_rate ? Number(row.annual_rate) : undefined,
-            purchase_date: row.purchase_date || undefined,
-            last_price_updated_at: row.last_price_updated_at || undefined,
-          });
+          nonUsdtHoldings.push(holdingItem);
         }
       }
 
-      // Update local holdings cache
-      saveHoldings(nonUsdtHoldings, userId);
-
-      // If USDT was found in cloud, restore USDT preference if local is empty
-      if (foundUsdt) {
+      // If USDT was found in cloud, align local preference and store in holdings
+      if (foundUsdtRow && usdtHolding) {
+        const cloudUnits = Number(foundUsdtRow.units) || 0;
         const currentUsdt = getSavedUsdtPref(userId);
-        if (currentUsdt.units <= 0 && Number(foundUsdt.units) > 0) {
+        if (cloudUnits > 0 || currentUsdt.units <= 0) {
           const restoredUsdt: UsdtValuationPref = {
-            units: Number(foundUsdt.units) || 0,
-            rate: Number(foundUsdt.current_price) || USD_IDR_ESTIMATE,
-            costBasis: Math.round((Number(foundUsdt.units) || 0) * (Number(foundUsdt.avg_buy_price) || USD_IDR_ESTIMATE)),
+            units: cloudUnits,
+            rate: Number(foundUsdtRow.current_price) || currentUsdt.rate || USD_IDR_ESTIMATE,
+            costBasis: Math.round(cloudUnits * (Number(foundUsdtRow.avg_buy_price) || currentUsdt.rate || USD_IDR_ESTIMATE)),
           };
           const key = getUsdtStorageKey(userId);
           localStorage.setItem(key, JSON.stringify(restoredUsdt));
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("trouvaille_holdings_updated"));
-          }
         }
+        const allHoldings = [usdtHolding, ...nonUsdtHoldings];
+        saveHoldings(allHoldings, userId, false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("trouvaille_holdings_updated"));
+        }
+        return allHoldings;
       }
 
+      saveHoldings(nonUsdtHoldings, userId, false);
       return nonUsdtHoldings;
     }
   } catch (e) {
@@ -411,15 +526,15 @@ export function getSavedHoldings(userId?: string): InvestmentHolding[] {
 /**
  * Save investment holdings to localStorage scoped to user, and syncs to Supabase.
  */
-export function saveHoldings(holdings: InvestmentHolding[], userId?: string): void {
+export function saveHoldings(holdings: InvestmentHolding[], userId?: string, syncToCloud: boolean = true): void {
   try {
     const key = getHoldingsStorageKey(userId);
     safeSetItem(key, JSON.stringify(holdings));
     // Clear un-scoped legacy key to prevent leaks into guest mode
     safeRemoveItem(HOLDINGS_STORAGE_KEY);
 
-    // Sync to Supabase if authenticated
-    if (userId && userId !== "guest_local_user") {
+    // Sync to Supabase if authenticated and requested
+    if (syncToCloud && userId && userId !== "guest_local_user") {
       for (const h of holdings) {
         syncHoldingToSupabase(h, userId).catch(() => {});
       }
@@ -438,7 +553,7 @@ export function saveHoldings(holdings: InvestmentHolding[], userId?: string): vo
  */
 export function upsertHolding(holding: InvestmentHolding, userId?: string): InvestmentHolding[] {
   const current = getSavedHoldings(userId);
-  const index = current.findIndex((h) => h.id === holding.id);
+  const index = current.findIndex((h) => h.id === holding.id || (h.symbol && h.symbol === holding.symbol));
   const targetId = isValidUUID(holding.id) ? holding.id : generateUUID();
   let updated: InvestmentHolding[];
   if (index >= 0) {
@@ -454,35 +569,50 @@ export function upsertHolding(holding: InvestmentHolding, userId?: string): Inve
       },
     ];
   }
-  saveHoldings(updated, userId);
+  saveHoldings(updated, userId, true);
   return updated;
 }
 
 /**
  * Automatically refreshes live market quotes for USDT and all active investment holdings.
  * Updates current_price, saves to storage, syncs to Supabase, and dispatches change event.
+ * Strictly respects custom broker prices (does not overwrite user-defined broker prices).
  */
 export async function refreshAllPortfolioPrices(userId?: string): Promise<{
   usdtRate: number;
   updatedHoldings: InvestmentHolding[];
 }> {
+  const holdings = getSavedHoldings(userId);
+  const currentPref = getSavedUsdtPref(userId);
+  const usdtHolding = holdings.find((h) => h.symbol?.toUpperCase() === "USDT");
+  const isCustomUsdt = usdtHolding?.is_custom_price && (usdtHolding.custom_price || 0) > 0;
+
   // 1. Refresh USDT live rate
   let liveUsdtRate = await fetchUsdtPriceInIDR();
-  if (liveUsdtRate && liveUsdtRate > 5000 && liveUsdtRate < 50000) {
-    const currentPref = getSavedUsdtPref(userId);
+  if (isCustomUsdt) {
+    liveUsdtRate = usdtHolding!.custom_price!;
+  } else if (liveUsdtRate && liveUsdtRate > 5000 && liveUsdtRate < 50000) {
     if (currentPref.rate !== liveUsdtRate) {
       saveUsdtPref({ ...currentPref, rate: liveUsdtRate }, userId);
     }
   } else {
-    liveUsdtRate = USD_IDR_ESTIMATE;
+    liveUsdtRate = currentPref.rate || USD_IDR_ESTIMATE;
   }
 
   // 2. Refresh active market holdings (crypto & stock)
-  const holdings = getSavedHoldings(userId);
   let hasChanges = false;
   const updatedHoldings: InvestmentHolding[] = [];
 
   for (const h of holdings) {
+    // If holding uses custom broker price, preserve it
+    if (h.is_custom_price && h.custom_price && h.custom_price > 0) {
+      updatedHoldings.push({
+        ...h,
+        current_price: h.custom_price,
+      });
+      continue;
+    }
+
     let newPrice: number | null = null;
     try {
       if (h.asset_type === "crypto") {
@@ -507,7 +637,7 @@ export async function refreshAllPortfolioPrices(userId?: string): Promise<{
   }
 
   if (hasChanges) {
-    saveHoldings(updatedHoldings, userId);
+    saveHoldings(updatedHoldings, userId, true);
   }
 
   return {
@@ -935,6 +1065,188 @@ export function recordHoldingActivity(
   }
   return { updatedHolding, realizedPnL };
 }
+
+/**
+ * Undo/revert a previously recorded holding activity.
+ * Restores units and cost basis according to the reverted action (buy vs sell).
+ */
+export function undoHoldingActivity(
+  holdingId: string,
+  activityId: string,
+  userId?: string,
+  fallbackActivity?: HoldingActivity,
+): { updatedHolding: InvestmentHolding; revertedActivity: HoldingActivity } {
+  const allHoldings = getSavedHoldings(userId);
+  const isUsdtRef =
+    holdingId.startsWith("usdt-") ||
+    holdingId === "usdt-core-holding" ||
+    holdingId === "usdt";
+
+  let target =
+    allHoldings.find((h) => h.id === holdingId) ||
+    (isUsdtRef ? allHoldings.find((h) => h.symbol?.toUpperCase() === "USDT") : undefined);
+
+  if (!target && isUsdtRef) {
+    const usdtPref = getSavedUsdtPref(userId);
+    target = {
+      id: getStandardUsdtHoldingId(userId),
+      user_id: userId,
+      symbol: "USDT",
+      name: "Tether USD",
+      asset_type: "crypto",
+      units: usdtPref.units,
+      avg_buy_price: usdtPref.units > 0 ? Math.round(usdtPref.costBasis / usdtPref.units) : usdtPref.rate,
+      current_price: usdtPref.rate,
+      currency: "IDR",
+      icon: "Coins",
+      activities: [],
+    };
+  }
+
+  if (!target) {
+    throw new Error(`Holding with id ${holdingId} not found`);
+  }
+
+  const existingActivities = target.activities || [];
+  const actIndex = existingActivities.findIndex((a) => a.id === activityId);
+
+  let act: HoldingActivity;
+  if (actIndex >= 0) {
+    act = existingActivities[actIndex];
+  } else if (fallbackActivity) {
+    act = fallbackActivity;
+  } else {
+    throw new Error(`Activity ${activityId} not found`);
+  }
+
+  let newUnits = target.units;
+
+  if (act.type === "sell") {
+    // Undoing a sell restores the deducted units
+    newUnits = Number((target.units + act.units).toFixed(4));
+  } else if (act.type === "buy") {
+    // Undoing a buy removes the added units
+    newUnits = Math.max(0, Number((target.units - act.units).toFixed(4)));
+  }
+
+  // If this was a bridged transaction, also un-reconcile it from reconciledTxIds
+  if (activityId.startsWith("tx-bridge-")) {
+    const rawTxId = activityId.replace("tx-bridge-", "");
+    try {
+      const currentReconciled = getReconciledTxIds(userId);
+      currentReconciled.delete(rawTxId);
+      const key = getReconciledTxStorageKey(userId);
+      safeSetItem(key, JSON.stringify(Array.from(currentReconciled)));
+    } catch {}
+  }
+
+  const remainingActivities = existingActivities.filter((a) => a.id !== activityId);
+
+  const updatedHolding: InvestmentHolding = {
+    ...target,
+    units: newUnits,
+    activities: remainingActivities,
+    last_price_updated_at: new Date().toISOString(),
+  };
+
+  upsertHolding(updatedHolding, userId);
+
+  if (updatedHolding.symbol?.toUpperCase() === "USDT") {
+    saveUsdtPref(
+      {
+        units: newUnits,
+        rate: updatedHolding.current_price || USD_IDR_ESTIMATE,
+        costBasis: Math.round(newUnits * (updatedHolding.avg_buy_price || USD_IDR_ESTIMATE)),
+      },
+      userId,
+    );
+  }
+
+  return { updatedHolding, revertedActivity: act };
+}
+
+/**
+ * Direct balance correction for a holding.
+ * Directly sets the total units owned, updates usdtPref (if USDT), and records a balancing activity.
+ */
+export function setHoldingDirectUnits(
+  holdingId: string,
+  newUnits: number,
+  userId?: string,
+  note: string = "Manual balance correction",
+): InvestmentHolding {
+  const allHoldings = getSavedHoldings(userId);
+  const isUsdtRef =
+    holdingId.startsWith("usdt-") ||
+    holdingId === "usdt-core-holding" ||
+    holdingId === "usdt";
+
+  let target =
+    allHoldings.find((h) => h.id === holdingId) ||
+    (isUsdtRef ? allHoldings.find((h) => h.symbol?.toUpperCase() === "USDT") : undefined);
+
+  if (!target && isUsdtRef) {
+    const usdtPref = getSavedUsdtPref(userId);
+    target = {
+      id: getStandardUsdtHoldingId(userId),
+      user_id: userId,
+      symbol: "USDT",
+      name: "Tether USD",
+      asset_type: "crypto",
+      units: usdtPref.units,
+      avg_buy_price: usdtPref.units > 0 ? Math.round(usdtPref.costBasis / usdtPref.units) : usdtPref.rate,
+      current_price: usdtPref.rate,
+      currency: "IDR",
+      icon: "Coins",
+      activities: [],
+    };
+  }
+
+  if (!target) {
+    throw new Error(`Holding with id ${holdingId} not found`);
+  }
+
+  const prevUnits = target.units;
+  const deltaUnits = Number((newUnits - prevUnits).toFixed(4));
+  const existingActivities = target.activities || [];
+
+  const correctionActivity: HoldingActivity = {
+    id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    holding_id: target.id,
+    type: deltaUnits >= 0 ? "buy" : "sell",
+    date: new Date().toISOString().split("T")[0],
+    units: Math.abs(deltaUnits),
+    price_per_unit: target.current_price || target.avg_buy_price || USD_IDR_ESTIMATE,
+    total_amount: Math.abs(deltaUnits) * (target.current_price || target.avg_buy_price || USD_IDR_ESTIMATE),
+    note,
+    created_at: new Date().toISOString(),
+  };
+
+  const updatedActivities = deltaUnits !== 0 ? [correctionActivity, ...existingActivities] : existingActivities;
+
+  const updatedHolding: InvestmentHolding = {
+    ...target,
+    units: Math.max(0, newUnits),
+    activities: updatedActivities,
+    last_price_updated_at: new Date().toISOString(),
+  };
+
+  upsertHolding(updatedHolding, userId);
+
+  if (updatedHolding.symbol?.toUpperCase() === "USDT") {
+    saveUsdtPref(
+      {
+        units: Math.max(0, newUnits),
+        rate: updatedHolding.current_price || USD_IDR_ESTIMATE,
+        costBasis: Math.round(Math.max(0, newUnits) * (updatedHolding.avg_buy_price || USD_IDR_ESTIMATE)),
+      },
+      userId,
+    );
+  }
+
+  return updatedHolding;
+}
+
 
 /**
  * Generate smooth historical chart points for Value (nominal) and Return (PnL) curves.

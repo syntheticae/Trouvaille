@@ -28,8 +28,9 @@ export function InvestmentPulseCard() {
     let valSum = 0;
     let costSum = 0;
 
-    // USDT holding value if configured
-    if (usdtPref.units > 0) {
+    // USDT holding value if configured (avoid double counting if USDT is also in holdings)
+    const hasUsdtInHoldings = holdings.some((h) => h.symbol?.toUpperCase() === "USDT");
+    if (usdtPref.units > 0 && !hasUsdtInHoldings) {
       const usdtVal = usdtPref.units * (usdtPref.rate > 0 ? usdtPref.rate : 16300);
       valSum += usdtVal;
       costSum += usdtPref.costBasis > 0 ? usdtPref.costBasis : usdtVal;

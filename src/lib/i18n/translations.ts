@@ -149,7 +149,7 @@ export const translations = {
       customizeLayout: "Customize Layout",
       presets: {
         minimal: "Minimal",
-        minimalDesc: "Distraction-free balances, cashflow & upcoming bills",
+        minimalDesc: "Distraction-free balances, savings ring, activity dots & recent ledger",
         pulse: "Balanced",
         pulseDesc: "Daily spending velocity, category allocation & activity",
         horizon: "Horizon",
@@ -445,7 +445,7 @@ export const translations = {
       customizeLayout: "Kustomisasi Tampilan",
       presets: {
         minimal: "Minimal",
-        minimalDesc: "Fokus bebas distraksi, saldo, arus kas & tagihan",
+        minimalDesc: "Fokus bebas distraksi, saldo, savings ring, activity dots & transaksi",
         pulse: "Seimbang",
         pulseDesc: "Kecepatan pengeluaran harian, alokasi kategori & aktivitas",
         horizon: "Cakrawala",

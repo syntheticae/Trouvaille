@@ -20,6 +20,9 @@ export const HOME_STORAGE_KEY = "trouvaille_home_widget_layout_v1";
 export const STATS_STORAGE_KEY = "trouvaille_statistics_widget_layout_v1";
 export const STORAGE_KEY = HOME_STORAGE_KEY;
 
+export const HOME_PRESET_STORAGE_KEY = "trouvaille_home_active_preset_key";
+export const STATS_PRESET_STORAGE_KEY = "trouvaille_stats_active_preset_key";
+
 export function loadStoredWidgets(
   storedJson: string | null,
   defaultWidgets: CardWidgetConfig[] = DEFAULT_HOME_WIDGETS,
@@ -33,11 +36,18 @@ export function loadStoredWidgets(
     const merged = defaultWidgets.map((def) => {
       const found = parsed.find((p) => p.id === def.id);
       if (!found) return def;
+
+      let isVisible = typeof found.isVisible === "boolean" ? found.isVisible : def.isVisible;
+      // Retire legacy investment_pulse from Home screen for existing cached users
+      if (def.id === "investment_pulse" && (found.order === 2 || found.order === undefined)) {
+        isVisible = false;
+      }
+
       return {
         ...def,
         size: (found.size && def.supportedSizes.includes(found.size) ? found.size : def.size),
-        order: typeof found.order === "number" ? found.order : def.order,
-        isVisible: typeof found.isVisible === "boolean" ? found.isVisible : def.isVisible,
+        order: typeof found.order === "number" ? (def.id === "investment_pulse" && found.order === 2 ? def.order : found.order) : def.order,
+        isVisible,
       };
     });
 
@@ -176,6 +186,40 @@ export function applyPresetToWidgets(
       };
     })
     .sort((a, b) => a.order - b.order);
+}
+
+/**
+ * Detects if the current widget visibility configuration matches any defined Home preset.
+ */
+export function detectMatchingHomePreset(
+  widgets: CardWidgetConfig[]
+): HomePresetKey | null {
+  for (const preset of HOME_PRESETS) {
+    const isMatch = preset.cardConfigs.every((cfg) => {
+      const w = widgets.find((item) => item.id === cfg.id);
+      if (!w) return false;
+      return w.isVisible === cfg.isVisible;
+    });
+    if (isMatch) return preset.key;
+  }
+  return null;
+}
+
+/**
+ * Detects if the current widget visibility configuration matches any defined Statistics preset.
+ */
+export function detectMatchingStatsPreset(
+  widgets: CardWidgetConfig[]
+): StatisticsPresetKey | null {
+  for (const preset of STATISTICS_PRESETS) {
+    const isMatch = preset.cardConfigs.every((cfg) => {
+      const w = widgets.find((item) => item.id === cfg.id);
+      if (!w) return false;
+      return w.isVisible === cfg.isVisible;
+    });
+    if (isMatch) return preset.key;
+  }
+  return null;
 }
 
 /**

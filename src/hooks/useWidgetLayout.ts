@@ -14,6 +14,9 @@ import type {
 import { DEFAULT_HOME_WIDGETS } from "../lib/widgetLayoutTypes";
 import {
   STORAGE_KEY,
+  STATS_STORAGE_KEY,
+  HOME_PRESET_STORAGE_KEY,
+  STATS_PRESET_STORAGE_KEY,
   loadStoredWidgets,
   reorderWidgets,
   cycleWidgetSize,
@@ -22,17 +25,25 @@ import {
   filterVisibleWidgets,
   applyPresetToWidgets,
   swapWidgetPosition,
+  detectMatchingHomePreset,
+  detectMatchingStatsPreset,
 } from "../lib/widgetLayoutEngine";
 import { triggerHaptic } from "../lib/haptics";
 
 interface UseWidgetLayoutOptions {
   storageKey?: string;
   defaultWidgets?: CardWidgetConfig[];
+  presetStorageKey?: string;
+  page?: "home" | "statistics";
 }
 
 export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
   const storageKey = options?.storageKey || STORAGE_KEY;
   const defaultWidgets = options?.defaultWidgets || DEFAULT_HOME_WIDGETS;
+  const page = options?.page || (storageKey === STATS_STORAGE_KEY ? "statistics" : "home");
+  const presetStorageKey =
+    options?.presetStorageKey ||
+    (page === "statistics" ? STATS_PRESET_STORAGE_KEY : HOME_PRESET_STORAGE_KEY);
 
   const [isEditMode, setIsEditModeState] = useState(false);
   const [widgets, setWidgets] = useState<CardWidgetConfig[]>(() => {
@@ -42,6 +53,43 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
     );
   });
 
+  const [activePresetKey, setActivePresetKeyState] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(presetStorageKey);
+      if (saved) return saved;
+      const initialWidgets = loadStoredWidgets(
+        localStorage.getItem(storageKey),
+        defaultWidgets
+      );
+      if (page === "home") {
+        const detected = detectMatchingHomePreset(initialWidgets);
+        if (detected) return detected;
+      } else {
+        const detected = detectMatchingStatsPreset(initialWidgets);
+        if (detected) return detected;
+      }
+    }
+    return page === "home" ? "minimal" : "executive";
+  });
+
+  const setActivePresetKey = useCallback(
+    (key: any) => {
+      setActivePresetKeyState(key);
+      if (typeof window !== "undefined") {
+        try {
+          if (key) {
+            localStorage.setItem(presetStorageKey, key);
+          } else {
+            localStorage.removeItem(presetStorageKey);
+          }
+        } catch (e) {
+          console.warn("[useWidgetLayout] Failed to save preset key:", e);
+        }
+      }
+    },
+    [presetStorageKey]
+  );
+
   // Save changes to localStorage
   useEffect(() => {
     try {
@@ -50,6 +98,31 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
       console.warn("[useWidgetLayout] Failed to write layout to storage:", e);
     }
   }, [storageKey, widgets]);
+
+  // Sync active preset key if widgets match a specific preset
+  useEffect(() => {
+    if (page === "home") {
+      const matched = detectMatchingHomePreset(widgets);
+      if (matched && matched !== activePresetKey) {
+        setActivePresetKeyState(matched);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(presetStorageKey, matched);
+          } catch {}
+        }
+      }
+    } else {
+      const matched = detectMatchingStatsPreset(widgets);
+      if (matched && matched !== activePresetKey) {
+        setActivePresetKeyState(matched);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(presetStorageKey, matched);
+          } catch {}
+        }
+      }
+    }
+  }, [widgets, page, activePresetKey, presetStorageKey]);
 
   const setIsEditMode = useCallback((active: boolean) => {
     triggerHaptic("medium");
@@ -77,13 +150,18 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
 
   const resetLayout = useCallback(() => {
     triggerHaptic("heavy");
+    setActivePresetKey(page === "home" ? "minimal" : "executive");
     setWidgets(defaultWidgets);
-  }, [defaultWidgets]);
+  }, [defaultWidgets, setActivePresetKey, page]);
 
-  const applyPreset = useCallback((presetKey: HomePresetKey | StatisticsPresetKey) => {
-    triggerHaptic("medium");
-    setWidgets((prev) => applyPresetToWidgets(prev, presetKey));
-  }, []);
+  const applyPreset = useCallback(
+    (presetKey: HomePresetKey | StatisticsPresetKey) => {
+      triggerHaptic("medium");
+      setActivePresetKey(presetKey);
+      setWidgets((prev) => applyPresetToWidgets(prev, presetKey, page));
+    },
+    [page, setActivePresetKey]
+  );
 
   const swapCardPositionHandler = useCallback(
     (cardId: string, direction: "left" | "right" | "toggle" = "toggle") => {
@@ -114,5 +192,7 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
     toggleCardVisibility: toggleCardVisibilityHandler,
     resetLayout,
     applyPreset,
+    activePresetKey,
+    setActivePresetKey,
   };
 }

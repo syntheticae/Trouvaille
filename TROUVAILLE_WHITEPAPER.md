@@ -45,7 +45,7 @@ This document serves as the definitive architectural whitepaper, technical speci
 9. [Personal Financial Modeling, Budget Decks & Cashflow Intelligence](#9-personal-financial-modeling-budget-decks--cashflow-intelligence)
 10. [Cinematic Financial Wrapped & Visualization Paradigms](#10-cinematic-financial-wrapped--visualization-paradigms)
 11. [Security, Cryptography, Multi-Currency & Offline Sync](#11-security-cryptography-multi-currency--offline-sync)
-12. [Verification, Invariants & Test Coverage (41 Suites, 361 Tests)](#12-verification-invariants--test-coverage-41-suites-361-tests)
+12. [Verification, Invariants & Test Coverage (41 Suites, 368 Tests)](#12-verification-invariants--test-coverage-41-suites-368-tests)
 13. [Repository Architecture & Codebase Map](#13-repository-architecture--codebase-map)
 14. [Strategic Roadmap & Evolution](#14-strategic-roadmap--evolution)
 
@@ -117,7 +117,7 @@ The visual hierarchy eliminates arbitrary rainbow category coloring in favor of 
   $$\text{Top Inset} = \max(\text{env}(\text{safe-area-inset-top}, 0\text{px}) + 12\text{px}, 24\text{px})$$
   Ensuring seamless compatibility with the iOS Dynamic Island, camera notches, and home indicator bars.
 - **4 Modular Dashboard Layout Presets**:
-  - `minimal` (Minimal / True Simple): Distraction-free essential flow: Liquid Position $\to$ Liquidity Sources $\to$ Investment Pulse $\to$ Cashflow Pulse $\to$ Upcoming Bills $\to$ Recent Ledger.
+  - `minimal` (Minimal / True Simple): Distraction-free essential flow: Liquid Position $\to$ Liquidity Sources $\to$ Savings Ring + Activity Dot Matrix (Paired 2-column Bento) $\to$ Cashflow Pulse $\to$ Upcoming Bills $\to$ Recent Ledger.
   - `pulse` (Balanced / Daily Rhythm): Everyday financial tracking: Capital Overview $\to$ Action Required $\to$ Weekly Velocity Bar + Category Donut (Bento 1) $\to$ Cashflow Pulse $\to$ Upcoming Bills $\to$ Recent Transactions.
   - `horizon` (Horizon / Wealth Planning): Long-term survival buffer & wealth retention: Capital Overview $\to$ Runway + Health Meter (Bento 1) $\to$ Cashflow Pulse $\to$ Spending Stability $\to$ Goals $\to$ Commitments $\to$ Recent Transactions.
   - `executive` (Executive / Full Telemetry): Complete command center with 3 cleanly paired 2-column bentos (Velocity + Savings Ring, Runway + Health Gauge, Donut + Activity Heatmap) plus all macro telemetry.
@@ -675,6 +675,22 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
 - Range Pill Selectors: `1D`, `7D`, `1M`, `3M`, `6M`, `1Y`, `ALL`.
 - Interactive Recharts AreaChart with monochrome gradient fill, Cartesian grid, and custom `GlassTooltip`.
 
+##### 8. Consolidated Balance Sheet Drawer (`BottomSheet`):
+- Accessible via the "Open Consolidated Balance Sheet" trigger button below the Holdings Deck or via the 3-Tier Allocation info button.
+- Comprehensive 360-degree audit of all user capital:
+  - **Executive Net Worth Banner**: Instant real-time readout of Consolidated Net Worth, Total Gross Assets, and Active Debt Liabilities.
+  - **Search & Live Filter Engine**: Instant multi-tier search across assets and liabilities.
+  - **Tier Filter Tabs**: Soft ambient frosted glass pills (`All Tiers`, `Tier 1: Liquid`, `Tier 2: Growth`, `Tier 3: Fixed`, `Liabilities`) adhering strictly to Rule 3.
+  - **Tier 1 (Liquid & Current)**: USDT stablecoin reserves with real-time exchange rates, operational cash, and bank accounts.
+  - **Tier 2 (Market & Growth)**: US & IDX equities, cryptocurrencies, mutual funds, and bonds with individual floating PnL and portfolio dominance weights.
+  - **Tier 3 (Fixed & Tangibles)**: Physical precious metals (Antam gold), real estate, property, and vehicles.
+  - **Liabilities & Solvency Status**: Itemized active debts with verification (`debtAmt > 0`). When liabilities are zero, renders an elegant reassuring status card: *"Zero Debt Obligations / Bebas Kewajiban Utang"* (100% Solvency).
+  - **Luxury Frosted Dismissal**: Secondary frosted glass action button respecting iOS home indicator safe area insets.
+
+##### 9. Interactive Metric Telemetry Drill-Down Sheets:
+- Direct interactive drill-down on all 6 Bento Half-Cards (Liquid, Growth, Fixed, Liabilities, Capital Deployment, Top Exposure).
+- Each sheet slides up a contextual executive narrative, constituent asset/wallet items with 1-tap navigation to deep asset sheets, and solvency telemetry.
+
 ---
 
 ### 8.5 Page 5: Cashflow Calendar & Runway Forecaster (`CalendarPage.tsx`) - 10 Core Cards & Views
@@ -1148,14 +1164,14 @@ Trouvaille delivers a dedicated **9-Slide Financial Wrapped** engine (`Financial
 
 ---
 
-## 12. Verification, Invariants & Test Coverage (41 Suites, 361 Tests)
+## 12. Verification, Invariants & Test Coverage (41 Suites, 368 Tests)
 
-Trouvaille enforces strict automated testing powered by **Vitest** (`vitest run`). All **41 test suites (361 tests)** pass unconditionally:
+Trouvaille enforces strict automated testing powered by **Vitest** (`vitest run`). All **41 test suites (368 tests)** pass unconditionally:
 
 ```
 Test Files  41 passed (41 total)
-Tests       361 passed (361 total)
-Duration    ~23.8 seconds
+Tests       368 passed (368 total)
+Duration    ~20.3 seconds
 ```
 
 ### Complete Test Suite Matrix
@@ -1169,10 +1185,10 @@ Duration    ~23.8 seconds
 | 5 | `tests/featureAudit.test.ts` | Comprehensive end-to-end integration audit across all modules | 15 | PASS |
 | 6 | `tests/nlpStemmingAndVoice.test.ts` | Indonesian morphology stemming, colloquial audio tokens | 14 | PASS |
 | 7 | `tests/slipParser.test.ts` | Receipt line item extraction, tax (PPN) & total heuristics | 14 | PASS |
-| 8 | `tests/widgetLayout.test.ts` | 4 modular layout presets (`executive`, `minimal`, `tactical`, `visual`) | 14 | PASS |
+| 8 | `tests/widgetLayout.test.ts` | 4 modular layout presets (`executive`, `minimal`, `tactical`, `visual`), custom sizing, reordering | 16 | PASS |
 | 9 | `tests/syncIntegrity.test.ts` | Offline mutation queueing & optimistic reconciliation | 13 | PASS |
 | 10 | `tests/statementParser.test.ts` | Bank statement parsing (BCA, Mandiri, Jenius, BNI, CSV/PDF) | 13 | PASS |
-| 11 | `tests/marketPortfolio.test.ts` | Crypto & stock live market price service, holding valuations | 12 | PASS |
+| 11 | `tests/marketPortfolio.test.ts` | Crypto & stock live market price service, holding valuations, DCA average buy price | 17 | PASS |
 | 12 | `tests/mediaPermissions.test.ts` | iOS camera & audio microphone permission lifecycle | 12 | PASS |
 | 13 | `tests/biometricAuth.test.ts` | Apple Face ID / Touch ID hardware fallback & auth gating | 11 | PASS |
 | 14 | `tests/monochromeIconSystem.test.ts` | Strict monochrome icon system, zero-colored-emoji validation | 11 | PASS |
@@ -1203,7 +1219,7 @@ Duration    ~23.8 seconds
 | 39 | `tests/splitBillAndGamification.test.ts` | Proportional split bill math & tax/discount distribution | 4 | PASS |
 | 40 | `tests/merchantMemory.test.ts` | Adaptive merchant memory learning & confidence scoring | 3 | PASS |
 | 41 | `tests/emoneyNfc.test.ts` | Contactless E-Money NFC card presets & transit validation | 3 | PASS |
-| **TOTAL** | **41 Test Suites** | **Complete Codebase Domain Verification** | **361** | **100%** |
+| **TOTAL** | **41 Test Suites** | **Complete Codebase Domain Verification** | **368** | **100%** |
 
 ---
 

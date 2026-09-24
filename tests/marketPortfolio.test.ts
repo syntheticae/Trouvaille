@@ -355,3 +355,208 @@ describe("DCA Position Management & History Curves", () => {
   });
 });
 
+describe("Holding Notes Metadata, Undo Activity, and Custom Price", () => {
+  it("serializes and parses notes metadata accurately including activities, custom price, and reconciled tx IDs", async () => {
+    const { serializeHoldingNotes, parseHoldingNotes } = await import(
+      "../src/lib/marketPriceService"
+    );
+
+    const testMetadata = {
+      userNotes: "My test personal note",
+      activities: [
+        {
+          id: "act-1",
+          type: "buy" as const,
+          units: 100,
+          price_per_unit: 16_000,
+          total_amount: 1_600_000,
+          date: "2026-09-24",
+          note: "Initial deposit",
+        },
+      ],
+      reconciledTxIds: ["tx-101", "tx-102"],
+      isCustomPrice: true,
+      customPrice: 16_250,
+    };
+
+    const serialized = serializeHoldingNotes(testMetadata);
+    expect(serialized).toContain("My test personal note");
+    expect(serialized).toContain("reconciledTxIds");
+
+    const parsed = parseHoldingNotes(serialized);
+    expect(parsed.userNotes).toBe("My test personal note");
+    expect(parsed.activities?.length).toBe(1);
+    expect(parsed.activities?.[0].units).toBe(100);
+    expect(parsed.reconciledTxIds).toEqual(["tx-101", "tx-102"]);
+    expect(parsed.isCustomPrice).toBe(true);
+    expect(parsed.customPrice).toBe(16_250);
+  });
+
+  it("undos sell activity correctly by restoring deducted units and removing the activity", async () => {
+    const { upsertHolding, recordHoldingActivity, undoHoldingActivity } = await import(
+      "../src/lib/marketPriceService"
+    );
+
+    const testUser = "test-undo-sell-user";
+    const initialHolding: InvestmentHolding = {
+      id: "h-usdt-undo",
+      symbol: "USDT",
+      name: "Tether USD",
+      asset_type: "crypto",
+      units: 1002.41,
+      avg_buy_price: 16000,
+      current_price: 16300,
+      currency: "IDR",
+    };
+
+    const saved = upsertHolding(initialHolding, testUser);
+    const holdingId = saved[0].id;
+
+    // Perform sell of 49.54 units (user scenario)
+    const { updatedHolding } = recordHoldingActivity(
+      holdingId,
+      {
+        type: "sell",
+        units: 49.54,
+        price_per_unit: 16300,
+        total_amount: 49.54 * 16300,
+        date: "2026-09-24",
+        note: "Auto-reconciled: P2P ShopeePay",
+      },
+      testUser,
+    );
+
+    expect(updatedHolding.units).toBeCloseTo(952.87, 2);
+    expect(updatedHolding.activities?.length).toBe(1);
+    const sellActivityId = updatedHolding.activities![0].id;
+
+    // Undo the accidental sell activity
+    const { updatedHolding: undoneHolding } = undoHoldingActivity(holdingId, sellActivityId, testUser);
+
+    expect(undoneHolding).toBeDefined();
+    // Units should be restored back to 1002.41
+    expect(undoneHolding.units).toBeCloseTo(1002.41, 2);
+    expect(undoneHolding.activities?.length).toBe(0);
+  });
+
+  it("undos buy activity correctly by deducting units", async () => {
+    const { upsertHolding, recordHoldingActivity, undoHoldingActivity } = await import(
+      "../src/lib/marketPriceService"
+    );
+
+    const testUser = "test-undo-buy-user";
+    const initialHolding: InvestmentHolding = {
+      id: "h-stock-undo",
+      symbol: "BBCA",
+      name: "Bank BCA",
+      asset_type: "stock",
+      units: 1000,
+      avg_buy_price: 9000,
+      current_price: 9500,
+      currency: "IDR",
+    };
+
+    const saved = upsertHolding(initialHolding, testUser);
+    const holdingId = saved[0].id;
+
+    const { updatedHolding } = recordHoldingActivity(
+      holdingId,
+      {
+        type: "buy",
+        units: 500,
+        price_per_unit: 9500,
+        total_amount: 500 * 9500,
+        date: "2026-09-24",
+        note: "Additional buy",
+      },
+      testUser,
+    );
+
+    expect(updatedHolding.units).toBe(1500);
+    const buyActivityId = updatedHolding.activities![0].id;
+
+    const { updatedHolding: undoneHolding } = undoHoldingActivity(holdingId, buyActivityId, testUser);
+    expect(undoneHolding).toBeDefined();
+    expect(undoneHolding.units).toBe(1000);
+  });
+
+  it("undos activity using fallbackActivity even if activity was a bridged transaction", async () => {
+    const { upsertHolding, undoHoldingActivity, markTxAsReconciled, getReconciledTxIds } = await import(
+      "../src/lib/marketPriceService"
+    );
+
+    const testUser = "test-fallback-undo-user";
+    const initialHolding: InvestmentHolding = {
+      id: "h-usdt-bridge",
+      symbol: "USDT",
+      name: "Tether USD",
+      asset_type: "crypto",
+      units: 952.87,
+      avg_buy_price: 16000,
+      current_price: 16300,
+      currency: "IDR",
+      activities: [],
+    };
+
+    const saved = upsertHolding(initialHolding, testUser);
+    const holdingId = saved[0].id;
+
+    // Simulate reconciled transaction
+    markTxAsReconciled(["tx-shopeepay-123"], testUser);
+    expect(getReconciledTxIds(testUser).has("tx-shopeepay-123")).toBe(true);
+
+    // Bridged activity (not in target.activities)
+    const bridgedActivity = {
+      id: "tx-bridge-tx-shopeepay-123",
+      holding_id: holdingId,
+      type: "sell" as const,
+      date: "2026-09-24",
+      units: 49.54,
+      price_per_unit: 16300,
+      total_amount: 49.54 * 16300,
+      note: "P2P ShopeePay",
+    };
+
+    // Undo with fallbackActivity
+    const { updatedHolding: restoredHolding } = undoHoldingActivity(
+      holdingId,
+      bridgedActivity.id,
+      testUser,
+      bridgedActivity,
+    );
+
+    expect(restoredHolding.units).toBeCloseTo(1002.41, 2);
+    // Bridged tx should be un-reconciled
+    expect(getReconciledTxIds(testUser).has("tx-shopeepay-123")).toBe(false);
+  });
+
+  it("sets direct units accurately using setHoldingDirectUnits and updates usdt balance", async () => {
+    const { upsertHolding, setHoldingDirectUnits, getSavedUsdtPref } = await import(
+      "../src/lib/marketPriceService"
+    );
+
+    const testUser = "test-direct-units-user";
+    const initialHolding: InvestmentHolding = {
+      id: "h-usdt-direct",
+      symbol: "USDT",
+      name: "Tether USD",
+      asset_type: "crypto",
+      units: 952.87,
+      avg_buy_price: 16000,
+      current_price: 16300,
+      currency: "IDR",
+    };
+
+    const saved = upsertHolding(initialHolding, testUser);
+    const holdingId = saved[0].id;
+
+    const updated = setHoldingDirectUnits(holdingId, 1002.41, testUser, "Manual correction");
+    expect(updated.units).toBe(1002.41);
+    expect(updated.activities?.length).toBeGreaterThan(0);
+
+    const pref = getSavedUsdtPref(testUser);
+    expect(pref.units).toBe(1002.41);
+  });
+});
+
+

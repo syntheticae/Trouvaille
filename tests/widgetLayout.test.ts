@@ -8,6 +8,7 @@ import {
   filterVisibleWidgets,
   swapWidgetPosition,
   applyPresetToWidgets,
+  detectMatchingHomePreset,
 } from "../src/lib/widgetLayoutEngine";
 import {
   DEFAULT_HOME_WIDGETS,
@@ -84,13 +85,14 @@ describe("Widget Layout Engine", () => {
 
   it("toggles widget visibility and filters visible list", () => {
     const widgets = [...DEFAULT_HOME_WIDGETS];
+    const initialVisible = filterVisibleWidgets(widgets).length;
     const cardId = "activity_heatmap";
     
     const toggled = toggleWidgetVisibility(widgets, cardId);
     expect(toggled.find((w) => w.id === cardId)?.isVisible).toBe(false);
 
     const visible = filterVisibleWidgets(toggled);
-    expect(visible.length).toBe(DEFAULT_HOME_WIDGETS.length - 1);
+    expect(visible.length).toBe(initialVisible - 1);
     expect(visible.some((w) => w.id === cardId)).toBe(false);
   });
 
@@ -257,6 +259,55 @@ describe("Widget Layout Engine", () => {
         expect(hasCashflow, `Preset ${presetKey} must have at least one cashflow card`).toBe(true);
         expect(hasAsset, `Preset ${presetKey} must have at least one asset card`).toBe(true);
       }
+    });
+  });
+
+  describe("Home Presets & Layout Engine", () => {
+    it("applies 'minimal' home preset and includes savings_ring and mini_heatmap as half cards", () => {
+      const updated = applyPresetToWidgets(DEFAULT_HOME_WIDGETS, "minimal", "home");
+      const visible = filterVisibleWidgets(updated);
+
+      expect(visible.some((w) => w.id === "net_portfolio")).toBe(true);
+      expect(visible.some((w) => w.id === "portfolio_account")).toBe(true);
+      expect(visible.some((w) => w.id === "cashflow_pulse")).toBe(true);
+      expect(visible.some((w) => w.id === "upcoming_bills")).toBe(true);
+      expect(visible.some((w) => w.id === "recent_transactions")).toBe(true);
+
+      // Newly added half-cards in minimal preset positioned under portfolio_account (Liquidity Sources)
+      const savingsRing = visible.find((w) => w.id === "savings_ring");
+      expect(savingsRing).toBeDefined();
+      expect(savingsRing?.size).toBe("half");
+
+      const miniHeatmap = visible.find((w) => w.id === "mini_heatmap");
+      expect(miniHeatmap).toBeDefined();
+      expect(miniHeatmap?.size).toBe("half");
+
+      // Verify sequence: net_portfolio -> portfolio_account -> savings_ring / mini_heatmap -> cashflow_pulse
+      const visibleIds = visible.map((w) => w.id);
+      const portAccountIdx = visibleIds.indexOf("portfolio_account");
+      const savingsRingIdx = visibleIds.indexOf("savings_ring");
+      const miniHeatmapIdx = visibleIds.indexOf("mini_heatmap");
+      const cashflowIdx = visibleIds.indexOf("cashflow_pulse");
+
+      expect(savingsRingIdx).toBe(portAccountIdx + 1);
+      expect(miniHeatmapIdx).toBe(portAccountIdx + 2);
+      expect(cashflowIdx).toBe(miniHeatmapIdx + 1);
+
+      // Verify other full/heavy widgets are hidden in minimal
+      expect(visible.some((w) => w.id === "ai_insights")).toBe(false);
+      expect(visible.some((w) => w.id === "spending_stability")).toBe(false);
+      expect(visible.some((w) => w.id === "financial_goals")).toBe(false);
+    });
+
+    it("detects matching home preset correctly", () => {
+      const minimalWidgets = applyPresetToWidgets(DEFAULT_HOME_WIDGETS, "minimal", "home");
+      expect(detectMatchingHomePreset(minimalWidgets)).toBe("minimal");
+
+      const pulseWidgets = applyPresetToWidgets(DEFAULT_HOME_WIDGETS, "pulse", "home");
+      expect(detectMatchingHomePreset(pulseWidgets)).toBe("pulse");
+
+      const executiveWidgets = applyPresetToWidgets(DEFAULT_HOME_WIDGETS, "executive", "home");
+      expect(detectMatchingHomePreset(executiveWidgets)).toBe("executive");
     });
   });
 });

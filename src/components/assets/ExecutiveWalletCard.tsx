@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
@@ -15,10 +15,10 @@ interface ExecutiveWalletCardProps {
   isDark: boolean;
   wallets?: WalletType[];
   holdings?: InvestmentHolding[];
-  onAddAsset?: () => void;
-  onDetailAsset?: (assetId?: string) => void;
+  onDetailAsset?: (holdingOrId?: InvestmentHolding | string) => void;
   userName?: string;
   usdtRate?: number;
+  usdtUnits?: number;
 }
 
 export function ExecutiveWalletCard({
@@ -32,106 +32,178 @@ export function ExecutiveWalletCard({
   isDark,
   wallets = [],
   holdings = [],
-  onAddAsset,
   onDetailAsset,
   usdtRate = 15850,
+  usdtUnits = 0,
 }: ExecutiveWalletCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
 
-  // Derive top accounts & holdings from real state
-  const primaryWallet = wallets[0];
-  const primaryBalance = primaryWallet?.balance ?? netWorth;
-  const primaryAllocation =
-    totalGrossAssets > 0
-      ? Math.min(100, Math.round((primaryBalance / totalGrossAssets) * 100))
-      : 100;
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
-  const topHolding = holdings[0];
-  const holdingValuation = topHolding ? topHolding.units * topHolding.current_price : 0;
-  const holdingAllocation =
-    totalGrossAssets > 0
-      ? Math.min(100, Math.round((holdingValuation / totalGrossAssets) * 100))
-      : 0;
+  // ── DYNAMIC ZERO-DUMMY REAL ASSET CARDS ─────────────────────────────
+  // Only display real assets actually owned by the user (USDT, real holdings, real cash wallets, and consolidated equity)
+  const rawCards = useMemo(() => {
+    const list: Array<{
+      id: string;
+      holdingRef?: InvestmentHolding;
+      walletRef?: WalletType;
+      name: string;
+      category: string;
+      balance: number;
+      allocation: number;
+      metadata: string;
+      trendText: string;
+      livePrice: string;
+      sparklinePoints: string;
+      sparklineArea: string;
+      sparklinePeakY: number;
+    }> = [];
 
-  // 100% Strict Monochrome Cards Styling (Apple Card White & Space Black Titanium)
-  // Di tema terang: SEMUA kartu bernuansa putih / milky alabaster luxury (tidak ada kartu hitam kaku)
-  // Di tema gelap: Card 1 putih Apple Card (kontras tinggi), Card 2 space gray, Card 3 obsidian
-  const cards = [
-    {
-      id: "card-cash",
-      name: primaryWallet?.name || (isIndonesian ? "BCA Priority Vault" : "Primary Cash Vault"),
-      category: isIndonesian ? "KAS & BANK" : "CASH & BANK",
-      balance: primaryBalance,
-      allocation: primaryAllocation,
-      metadata: isIndonesian ? "1 Rekening Kas Aktif" : "1 Active Cash Ledger",
-      trendText: "▲ +4.8%",
-      livePrice: isIndonesian ? "Rp 1.000 / IDR" : "$ 1.00 / USD",
-      // Naikkan posisi dasar (+14px) agar teks judul tidak terpotong oleh bibir saku dompet
-      baseBottom: "54px",
-      tilt: "-rotate-[3deg]",
-      hoverTilt: "-rotate-[5deg]",
-      expandedYOffset: "-translate-y-[90px]",
-      // Di tema terang: putih Apple Card. Di tema gelap: ikut menghitam (slate charcoal titanium)
-      isWhiteSurface: !isDark,
-      sparklinePoints: "M 0 24 Q 25 28 45 16 T 80 12 T 100 4",
-      sparklineArea: "M 0 24 Q 25 28 45 16 T 80 12 T 100 4 L 100 32 L 0 32 Z",
-      sparklinePeakY: 4,
-    },
-    {
-      id: "card-invest",
-      name:
-        topHolding?.name ||
-        (isIndonesian ? "Bitcoin & Pasar Kripto" : "Digital Asset Reserve"),
-      category: isIndonesian ? "PASAR AKTIF" : "INVESTMENT",
-      balance: holdingValuation,
-      allocation: holdingAllocation,
-      metadata: topHolding
-        ? `${topHolding.units.toLocaleString()} ${topHolding.symbol} • Aktif`
-        : isIndonesian
-          ? "USDT & Equities • Siap"
-          : "USDT & Equities • Ready",
-      trendText: "▲ +2.4%",
-      livePrice: topHolding
-        ? `${formatRupiah(topHolding.current_price)} / ${topHolding.symbol}`
-        : `Rp ${usdtRate.toLocaleString()} / USDT`,
-      baseBottom: "46px",
-      tilt: "rotate-[2.5deg]",
-      hoverTilt: "rotate-[4.5deg]",
-      expandedYOffset: "-translate-y-[102px]",
-      // Di tema terang: putih susu / frosted alabaster. Di tema gelap: space gray titanium
-      isWhiteSurface: !isDark,
-      sparklinePoints: "M 0 20 Q 25 8 50 22 T 80 6 T 100 10",
-      sparklineArea: "M 0 20 Q 25 8 50 22 T 80 6 T 100 10 L 100 32 L 0 32 Z",
-      sparklinePeakY: 10,
-    },
-    {
-      id: "card-equity",
-      name: isIndonesian ? "Ekuitas Bersih Konsolidasi" : "Consolidated Equity Vault",
-      category: isIndonesian ? "EKUITAS MODAL" : "CAPITAL VAULT",
-      balance: netWorth,
-      allocation: 100,
-      metadata:
-        solvencyScore >= 100
-          ? isIndonesian
-            ? "100% Bebas Utang • Unencumbered"
-            : "100% Debt-Free • Unencumbered"
-          : isIndonesian
-            ? `Solvabilitas: ${solvencyScore}%`
-            : `Solvency: ${solvencyScore}%`,
-      trendText: "▲ Solven",
-      livePrice: formatRupiah(netWorth),
-      baseBottom: "38px",
-      tilt: "rotate-0",
-      hoverTilt: "-rotate-[1deg]",
-      expandedYOffset: "-translate-y-[80px]",
-      // Di tema terang: putih milky alabaster. Di tema gelap: deep matte obsidian
-      isWhiteSurface: !isDark,
-      sparklinePoints: "M 0 26 Q 30 24 60 14 T 100 4",
-      sparklineArea: "M 0 26 Q 30 24 60 14 T 100 4 L 100 32 L 0 32 Z",
-      sparklinePeakY: 4,
-    },
-  ];
+    // 1. USDT Holding Card (If user owns USDT)
+    const effectiveUsdtUnits = usdtUnits;
+    const usdtHolding = holdings.find((h) => h.symbol?.toUpperCase() === "USDT");
+    const finalUsdtUnits = effectiveUsdtUnits > 0 ? effectiveUsdtUnits : (usdtHolding?.units ?? 0);
+
+    if (finalUsdtUnits > 0) {
+      const usdtBalance = finalUsdtUnits * usdtRate;
+      const alloc = totalGrossAssets > 0 ? Math.min(100, Math.round((usdtBalance / totalGrossAssets) * 100)) : 100;
+      const usdtObj: InvestmentHolding = usdtHolding || {
+        id: "usdt-card",
+        symbol: "USDT",
+        name: "Tether USD",
+        asset_type: "crypto",
+        units: finalUsdtUnits,
+        avg_buy_price: usdtRate,
+        current_price: usdtRate,
+        currency: "IDR",
+        icon: "Coins",
+      };
+
+      list.push({
+        id: "card-usdt",
+        holdingRef: usdtObj,
+        name: "Tether USD (USDT)",
+        category: "CRYPTO · STABLECOIN",
+        balance: usdtBalance,
+        allocation: alloc,
+        metadata: `${finalUsdtUnits.toLocaleString()} USDT • ${isIndonesian ? "Aktif" : "Active"}`,
+        trendText: "▲ 0.0%",
+        livePrice: `${formatRupiah(usdtRate)} / USDT`,
+        sparklinePoints: "M 0 16 Q 25 14 50 16 T 80 15 T 100 16",
+        sparklineArea: "M 0 16 Q 25 14 50 16 T 80 15 T 100 16 L 100 32 L 0 32 Z",
+        sparklinePeakY: 16,
+      });
+    }
+
+    // 2. Real Non-USDT Holdings (BTC, Equities, Gold, etc. with positive units)
+    const realHoldings = holdings.filter(
+      (h) => h.symbol?.toUpperCase() !== "USDT" && Number(h.units || 0) > 0,
+    );
+    realHoldings.forEach((h) => {
+      const val = h.units * (h.current_price || h.avg_buy_price);
+      const alloc = totalGrossAssets > 0 ? Math.min(100, Math.round((val / totalGrossAssets) * 100)) : 0;
+      list.push({
+        id: `card-${h.id}`,
+        holdingRef: h,
+        name: `${h.name} (${h.symbol})`,
+        category: h.asset_type.toUpperCase().replace("_", " "),
+        balance: val,
+        allocation: alloc,
+        metadata: `${h.units.toLocaleString()} ${h.symbol} • ${isIndonesian ? "Aktif" : "Active"}`,
+        trendText: h.annual_rate ? `${h.annual_rate >= 0 ? "▲" : "▼"} ${Math.abs(h.annual_rate)}%` : "▲ Aktif",
+        livePrice: `${formatRupiah(h.current_price || h.avg_buy_price)} / ${h.symbol}`,
+        sparklinePoints: "M 0 20 Q 25 8 50 22 T 80 6 T 100 10",
+        sparklineArea: "M 0 20 Q 25 8 50 22 T 80 6 T 100 10 L 100 32 L 0 32 Z",
+        sparklinePeakY: 10,
+      });
+    });
+
+    // 3. User's Real Cash Wallets (Wallets with positive balance, not investment/crypto)
+    const realCashWallets = wallets.filter(
+      (w) =>
+        Number(w.balance || 0) > 0 &&
+        w.classification !== "credit" &&
+        w.classification !== "loan" &&
+        w.classification !== "investment" &&
+        !w.name.toLowerCase().includes("crypto") &&
+        !w.name.toLowerCase().includes("usdt"),
+    );
+    realCashWallets.forEach((w) => {
+      const bal = Number(w.balance || 0);
+      const alloc = totalGrossAssets > 0 ? Math.min(100, Math.round((bal / totalGrossAssets) * 100)) : 0;
+      list.push({
+        id: `card-${w.id}`,
+        walletRef: w,
+        name: w.name,
+        category: isIndonesian ? "KAS & BANK" : "CASH & BANK",
+        balance: bal,
+        allocation: alloc,
+        metadata: isIndonesian ? "Rekening Kas Aktif" : "Active Cash Ledger",
+        trendText: "▲ Kas",
+        livePrice: formatRupiah(bal),
+        sparklinePoints: "M 0 24 Q 25 28 45 16 T 80 12 T 100 4",
+        sparklineArea: "M 0 24 Q 25 28 45 16 T 80 12 T 100 4 L 100 32 L 0 32 Z",
+        sparklinePeakY: 4,
+      });
+    });
+
+    // 4. Consolidated Equity Vault Card (Only shown if user has multiple diverse assets, or as single fallback)
+    if (list.length > 1 || list.length === 0) {
+      list.push({
+        id: "card-equity",
+        name: isIndonesian ? "Ekuitas Bersih Konsolidasi" : "Consolidated Equity Vault",
+        category: isIndonesian ? "EKUITAS MODAL" : "CAPITAL VAULT",
+        balance: netWorth,
+        allocation: 100,
+        metadata:
+          solvencyScore >= 100
+            ? isIndonesian
+              ? "100% Bebas Utang • Unencumbered"
+              : "100% Debt-Free • Unencumbered"
+            : isIndonesian
+              ? `Solvabilitas: ${solvencyScore}%`
+              : `Solvency: ${solvencyScore}%`,
+        trendText: "▲ Solven",
+        livePrice: formatRupiah(netWorth),
+        sparklinePoints: "M 0 26 Q 30 24 60 14 T 100 4",
+        sparklineArea: "M 0 26 Q 30 24 60 14 T 100 4 L 100 32 L 0 32 Z",
+        sparklinePeakY: 4,
+      });
+    }
+
+    return list;
+  }, [holdings, wallets, usdtUnits, usdtRate, netWorth, totalGrossAssets, solvencyScore, isIndonesian]);
+
+  const cardCount = rawCards.length;
+  const safeActiveIndex = cardCount > 0 ? activeCardIndex % cardCount : 0;
+
+  // Swipe navigation touch handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - (touchStartY.current || 0);
+
+    if (Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      triggerHaptic("light");
+      if (deltaX < 0) {
+        // Swiped left -> next card
+        setActiveCardIndex((prev) => (prev + 1) % cardCount);
+      } else {
+        // Swiped right -> previous card
+        setActiveCardIndex((prev) => (prev - 1 + cardCount) % cardCount);
+      }
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
 
   return (
     <div
@@ -145,6 +217,8 @@ export function ExecutiveWalletCard({
         triggerHaptic("light");
         setIsExpanded((prev) => !prev);
       }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* ── Outer Artisanal Wallet Holder Body (Backplate) ── */}
       <div
@@ -187,30 +261,75 @@ export function ExecutiveWalletCard({
 
       {/* ── Cards Stacking Slot (Terselip Di Balik Saku Depan) ── */}
       {/* Kartu ditaruh di slot absolute dengan z-20 di belakang saku depan (z-30) */}
-      <div className="absolute inset-x-2 bottom-3 z-20 flex justify-center items-end pointer-events-auto">
-        {cards.map((card, index) => {
-          const isHovered = hoveredCardIndex === index;
-          const currentTransform = isExpanded
-            ? `${card.expandedYOffset} ${isHovered ? "-translate-y-[115px] scale-[1.02]" : card.hoverTilt}`
-            : `translate-y-0 ${card.tilt}`;
 
-          const isWhite = card.isWhiteSurface;
+      {/* ── Cards Stacking Slot (Terselip Di Balik Saku Depan) ── */}
+      {/* Kartu ditaruh di slot absolute dengan z-20 di belakang saku depan (z-30) */}
+      <div className="absolute inset-x-2 bottom-3 z-20 flex justify-center items-end pointer-events-auto">
+        {rawCards.map((card, index) => {
+          const isHovered = hoveredCardIndex === index;
+          const offset = (index - safeActiveIndex + cardCount) % cardCount;
+          const isFront = offset === 0;
+
+          // Dynamic bottom, tilt & depth based on cyclic distance from the front card
+          let baseBottom = "54px";
+          let tilt = "-rotate-[1.5deg]";
+          let hoverTilt = "-rotate-[3deg]";
+          let expandedYOffset = "-translate-y-[92px]";
+          let zIndex = 22;
+
+          if (offset === 0) {
+            baseBottom = "54px";
+            tilt = "-rotate-[1.5deg]";
+            hoverTilt = "-rotate-[3deg]";
+            expandedYOffset = "-translate-y-[92px]";
+            zIndex = isHovered ? 35 : 24;
+          } else if (offset === 1) {
+            baseBottom = "45px";
+            tilt = "rotate-[2.5deg]";
+            hoverTilt = "rotate-[4deg]";
+            expandedYOffset = "-translate-y-[104px]";
+            zIndex = isHovered ? 35 : 18;
+          } else if (offset === 2) {
+            baseBottom = "38px";
+            tilt = "-rotate-[3deg]";
+            hoverTilt = "-rotate-[5deg]";
+            expandedYOffset = "-translate-y-[116px]";
+            zIndex = isHovered ? 35 : 14;
+          } else {
+            baseBottom = "32px";
+            tilt = "rotate-0";
+            hoverTilt = "rotate-0";
+            expandedYOffset = "-translate-y-[124px]";
+            zIndex = isHovered ? 35 : 10;
+          }
+
+          const currentTransform = isExpanded
+            ? `${expandedYOffset} ${isHovered ? "-translate-y-[115px] scale-[1.02]" : hoverTilt}`
+            : `translate-y-0 ${tilt}`;
+
+          const isWhite = !isDark;
 
           return (
             <div
               key={card.id}
               onMouseEnter={() => setHoveredCardIndex(index)}
               onMouseLeave={() => setHoveredCardIndex(null)}
+              onClick={(e) => {
+                if (!isFront) {
+                  e.stopPropagation();
+                  triggerHaptic("light");
+                  setActiveCardIndex(index);
+                }
+              }}
               className={`absolute w-[92%] h-[126px] rounded-xl p-3 transition-all duration-480 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none ${currentTransform}`}
               style={{
-                bottom: card.baseBottom,
-                // Card 1 (Cash/White) diangkat sedikit agar terlihat kontras Apple Card-nya
-                zIndex: isHovered ? 35 : index === 0 ? 12 : index === 1 ? 16 : 20,
+                bottom: baseBottom,
+                zIndex,
                 background: isWhite
                   ? "linear-gradient(155deg, #ffffff 0%, #f6f6f9 55%, #eaeaf0 100%)"
-                  : index === 0
+                  : isFront
                     ? "linear-gradient(155deg, #2e2f38 0%, #1e1f26 60%, #131418 100%)"
-                    : index === 1
+                    : offset === 1
                       ? "linear-gradient(155deg, #25262e 0%, #18191e 60%, #0e0f12 100%)"
                       : "linear-gradient(155deg, #1c1c22 0%, #121215 70%, #0a0a0c 100%)",
                 border: isWhite
@@ -355,7 +474,7 @@ export function ExecutiveWalletCard({
                   </div>
                 </div>
 
-                {/* Bottom Row: 3 Action Pills & Live Market Price */}
+                {/* Bottom Row: Detail Action Pill & Live Market Price */}
                 <div
                   className="flex items-center justify-between pt-1 border-t"
                   style={{
@@ -364,59 +483,26 @@ export function ExecutiveWalletCard({
                       : "rgba(255, 255, 255, 0.12)",
                   }}
                 >
-                  {/* 3 Monochrome Action Pills */}
-                  <div className="flex items-center gap-1">
+                  {/* Single High-Contrast Monochrome Detail Action Button */}
+                  <div>
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         triggerHaptic("light");
-                        onDetailAsset?.(card.id);
+                        if (card.holdingRef) {
+                          onDetailAsset?.(card.holdingRef);
+                        } else {
+                          onDetailAsset?.(card.id);
+                        }
                       }}
-                      className="px-2 py-0.5 rounded text-[8.5px] font-bold transition-all"
-                      style={{
-                        background: isWhite
-                          ? "rgba(0, 0, 0, 0.07)"
-                          : "rgba(255, 255, 255, 0.12)",
-                        color: isWhite ? "#18181b" : "#f4f4f5",
-                      }}
-                    >
-                      Detail
-                    </button>
-
-                    {/* Primary Action Button (High-Contrast Solid Invert) */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        triggerHaptic("medium");
-                        onAddAsset?.();
-                      }}
-                      className="px-2 py-0.5 rounded text-[8.5px] font-bold transition-all shadow-sm"
+                      className="px-3 py-1 rounded-md text-[9px] font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
                       style={{
                         background: isWhite ? "#09090b" : "#ffffff",
                         color: isWhite ? "#ffffff" : "#09090b",
                       }}
                     >
-                      + Unit
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        triggerHaptic("light");
-                        onDetailAsset?.(card.id);
-                      }}
-                      className="px-2 py-0.5 rounded text-[8.5px] font-bold transition-all"
-                      style={{
-                        background: isWhite
-                          ? "rgba(0, 0, 0, 0.07)"
-                          : "rgba(255, 255, 255, 0.12)",
-                        color: isWhite ? "#27272a" : "#d4d4d8",
-                      }}
-                    >
-                      − Unit
+                      Detail
                     </button>
                   </div>
 
@@ -480,10 +566,6 @@ export function ExecutiveWalletCard({
               >
                 {isIndonesian ? "TOTAL SALDO & EKUITAS" : "TOTAL BALANCE"}
               </span>
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: isDark ? "#ffffff" : "#09090b" }}
-              />
             </div>
 
             {/* Stealth Eye Button */}

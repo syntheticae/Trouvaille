@@ -8,6 +8,7 @@ import {
   X,
   ArrowUpRight,
   ArrowDownRight,
+  RotateCcw,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -21,16 +22,19 @@ import {
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import { GlassSelect, type GlassSelectOption } from "../ui/GlassSelect";
-import { formatRupiah } from "../../lib/utils";
+import { formatRupiah, formatHoldingUnits } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { useWallets } from "../../hooks/useWallets";
 import { useAddTransaction, useAllTransactions } from "../../hooks/useTransactions";
 import { isInvestmentOrCryptoWallet } from "../../lib/holdingSyncEngine";
 import {
   recordHoldingActivity,
+  undoHoldingActivity,
+  setHoldingDirectUnits,
   getHoldingActivities,
   generateAssetHistoryCurve,
   calculateHoldingValuation,
@@ -103,6 +107,7 @@ export function AssetDetailSheet({
   onDeleteHolding,
   onStartEditHolding,
 }: AssetDetailSheetProps) {
+  const { user } = useAuth();
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { showToast } = useToast();
@@ -114,6 +119,7 @@ export function AssetDetailSheet({
 
   // Buy / Sell action modal states
   const [actionModal, setActionModal] = useState<"none" | "buy" | "sell">("none");
+  const [modalPriceMode, setModalPriceMode] = useState<"auto" | "custom">("auto");
   const [inputNominal, setInputNominal] = useState<string>("");
   const [inputUnits, setInputUnits] = useState<string>("");
   const [inputPrice, setInputPrice] = useState<string>("");
@@ -121,6 +127,10 @@ export function AssetDetailSheet({
   const [inputNote, setInputNote] = useState<string>("");
   const [linkToWallet, setLinkToWallet] = useState<boolean>(false);
   const [selectedWalletId, setSelectedWalletId] = useState<string>("");
+
+  // Direct Unit Balance Correction modal states
+  const [isEditingDirectUnits, setIsEditingDirectUnits] = useState<boolean>(false);
+  const [directUnitsInput, setDirectUnitsInput] = useState<string>("");
 
   // Valuation computations
   const valuation = useMemo(() => {
@@ -174,11 +184,36 @@ export function AssetDetailSheet({
       }
 
       if (isMatch) {
-        const rate =
-          (tx as any).customPrice ||
-          holding.current_price ||
-          holding.avg_buy_price ||
-          16400;
+        // Try extracting specific execution rate from note first (e.g. "@ 16300", "Rate 16.350", "Kurs 16400")
+        let rate: number | undefined = (tx as any).customPrice;
+        if (!rate && tx.note) {
+          const match = tx.note.match(/(?:rate|kurs|@)\s*[:=]?\s*([0-9.,]+)/i);
+          if (match && match[1]) {
+            const parsed = parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+            if (!isNaN(parsed) && parsed > 1000) {
+              rate = parsed;
+            }
+          }
+        }
+        // If not found in note, check if directActivities has an activity recorded for this transaction
+        if (!rate) {
+          const matchingDirect = directActivities.find(
+            (d) => d.date === tx.occurred_on && Math.abs((d.total_amount || 0) - tx.amount) < 100,
+          );
+          if (matchingDirect && matchingDirect.price_per_unit > 0) {
+            rate = matchingDirect.price_per_unit;
+          }
+        }
+        // If still not found: for transactions from today, use holding.current_price;
+        // for past historical transactions, use holding.avg_buy_price or baseline rate (16200 for USDT)
+        // so that historical activities DO NOT change whenever today's market price fluctuates!
+        if (!rate) {
+          const isToday = tx.occurred_on === format(new Date(), "yyyy-MM-dd");
+          rate = isToday
+            ? holding.current_price || holding.avg_buy_price || 16400
+            : holding.avg_buy_price || 16200;
+        }
+
         const units =
           (tx as any).customUnits ||
           (rate > 0 ? Number((tx.amount / rate).toFixed(4)) : 0);
@@ -244,6 +279,7 @@ export function AssetDetailSheet({
     setInputNominal("");
     setInputUnits("");
     setInputPrice(String(currentPrice));
+    setModalPriceMode("auto");
     setInputDate(format(new Date(), "yyyy-MM-dd"));
     setInputNote("DCA Purchase");
     setLinkToWallet(false);
@@ -257,6 +293,7 @@ export function AssetDetailSheet({
     setInputNominal("");
     setInputUnits("");
     setInputPrice(String(currentPrice));
+    setModalPriceMode("auto");
     setInputDate(format(new Date(), "yyyy-MM-dd"));
     setInputNote("Position Sell");
     setLinkToWallet(false);
@@ -321,8 +358,8 @@ export function AssetDetailSheet({
     if (actionModal === "sell" && units > holding.units) {
       showToast(
         isIndonesian
-          ? `Unit melebihi kepemilikan (${holding.units.toLocaleString()} ${holding.symbol})`
-          : `Units exceed current holding (${holding.units.toLocaleString()} ${holding.symbol})`,
+          ? `Unit melebihi kepemilikan (${formatHoldingUnits(holding.units)} ${holding.symbol})`
+          : `Units exceed current holding (${formatHoldingUnits(holding.units)} ${holding.symbol})`,
         "delete",
         () => {},
       );
@@ -358,8 +395,8 @@ export function AssetDetailSheet({
     if (actionModal === "buy") {
       showToast(
         isIndonesian
-          ? `Berhasil membeli ${units} ${holding.symbol}`
-          : `Successfully bought ${units} ${holding.symbol}`,
+          ? `Berhasil membeli ${formatHoldingUnits(units)} ${holding.symbol}`
+          : `Successfully bought ${formatHoldingUnits(units)} ${holding.symbol}`,
         "add",
         () => {},
       );
@@ -369,11 +406,58 @@ export function AssetDetailSheet({
         : `-${formatRupiah(Math.abs(result.realizedPnL))}`;
       showToast(
         isIndonesian
-          ? `Berhasil menjual ${units} ${holding.symbol} (Realized P&L: ${pnlMsg})`
-          : `Successfully sold ${units} ${holding.symbol} (Realized P&L: ${pnlMsg})`,
+          ? `Berhasil menjual ${formatHoldingUnits(units)} ${holding.symbol} (Realized P&L: ${pnlMsg})`
+          : `Successfully sold ${formatHoldingUnits(units)} ${holding.symbol} (Realized P&L: ${pnlMsg})`,
         "update",
         () => {},
       );
+    }
+  };
+
+  // Directly correct/set holding unit balance
+  const handleSaveDirectUnits = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!holding) return;
+    const parsed = parseFloat(directUnitsInput.replace(/,/g, "."));
+    if (isNaN(parsed) || parsed < 0) {
+      showToast(
+        isIndonesian ? "Jumlah unit tidak valid" : "Invalid unit amount",
+        "delete",
+        () => {},
+      );
+      return;
+    }
+    triggerHaptic("medium");
+    try {
+      setHoldingDirectUnits(holding.id, parsed, user?.id, "Koreksi Saldo Manual");
+      setIsEditingDirectUnits(false);
+      onHoldingUpdated();
+      showToast(
+        isIndonesian
+          ? `Saldo unit berhasil dipulihkan menjadi ${formatHoldingUnits(parsed)} ${holding.symbol}`
+          : `Unit balance restored to ${formatHoldingUnits(parsed)} ${holding.symbol}`,
+        "update",
+        () => {},
+      );
+    } catch (err: any) {
+      showToast(err?.message || "Failed to update units", "delete", () => {});
+    }
+  };
+
+  // Revert / Undo a recorded holding activity
+  const handleUndoActivity = (act: HoldingActivity) => {
+    if (!holding) return;
+    triggerHaptic("medium");
+    try {
+      undoHoldingActivity(holding.id, act.id, user?.id, act);
+      onHoldingUpdated();
+      showToast(
+        isIndonesian ? "Aktivitas berhasil dibatalkan. Saldo unit dipulihkan." : "Activity reverted. Unit balance restored.",
+        "update",
+        () => {},
+      );
+    } catch (err: any) {
+      showToast(err?.message || "Failed to revert activity", "delete", () => {});
     }
   };
 
@@ -602,10 +686,24 @@ export function AssetDetailSheet({
         <div className="rounded-2xl bg-[var(--glass-fill)] border border-[var(--glass-border)] shadow-[var(--shadow-card)] overflow-hidden divide-y divide-[var(--glass-border)]">
           {/* Row 1: Units Owned */}
           <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-[12px] text-[var(--text-tertiary)]">Units Owned</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[12px] text-[var(--text-tertiary)]">Units Owned</span>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setDirectUnitsInput(String(holding.units));
+                  setIsEditingDirectUnits(true);
+                }}
+                className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] transition-colors cursor-pointer"
+                title={isIndonesian ? "Koreksi / Pulihkan Saldo Unit" : "Correct / Restore Unit Balance"}
+              >
+                <Edit3 size={11} strokeWidth={1.75} />
+              </button>
+            </div>
             <div className="text-right font-mono">
               <span className="text-[13px] font-bold text-[var(--text-primary)]">
-                {holding.units.toLocaleString()} {holding.symbol}
+                {formatHoldingUnits(holding.units)} {holding.symbol}
               </span>
               <p className="text-[10px] text-[var(--text-tertiary)]">
                 Cost basis: {formatRupiah(valuation.costBasis)}
@@ -621,12 +719,19 @@ export function AssetDetailSheet({
             </span>
           </div>
 
-          {/* Row 3: Current Market Price */}
+          {/* Row 3: Current Market Price (Clean & Non-Cluttered) */}
           <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-[12px] text-[var(--text-tertiary)]">Market Price</span>
-            <span className="text-[13px] font-bold text-[var(--text-primary)] font-mono">
-              {formatRupiah(currentPrice)}
+            <span className="text-[12px] text-[var(--text-tertiary)]">
+              {isIndonesian ? "Harga Pasar" : "Market Price"}
             </span>
+            <div className="text-right font-mono">
+              <span className="text-[13px] font-bold text-[var(--text-primary)] block">
+                {formatRupiah(currentPrice)}
+              </span>
+              <span className="text-[9.5px] font-mono text-[var(--text-tertiary)]">
+                Live Market API
+              </span>
+            </div>
           </div>
 
           {/* Row 4: Unrealized Profit / Loss */}
@@ -723,14 +828,30 @@ export function AssetDetailSheet({
                       </div>
                     </div>
 
-                    <div className="text-right shrink-0 font-mono">
-                      <p className="text-[12px] font-semibold text-[var(--text-primary)]">
-                        {formatRupiah(act.total_amount)}
-                      </p>
-                      <p className="text-[10px] text-[var(--text-secondary)]">
-                        {isBuy ? "+" : "—"}
-                        {act.units.toLocaleString()} {holding.symbol}
-                      </p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-right font-mono">
+                        <p className="text-[12px] font-semibold text-[var(--text-primary)]">
+                          {formatRupiah(act.total_amount)}
+                        </p>
+                        <p className="text-[10px] text-[var(--text-secondary)]">
+                          {isBuy ? "+" : "—"}
+                          {act.units.toLocaleString()} {holding.symbol}
+                        </p>
+                      </div>
+
+                      {act.type !== "initial" && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUndoActivity(act);
+                          }}
+                          className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.08] active:scale-90 transition-all cursor-pointer"
+                          title={isIndonesian ? "Batalkan aktivitas (Undo)" : "Revert activity (Undo)"}
+                        >
+                          <RotateCcw size={12.5} strokeWidth={1.75} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -816,20 +937,76 @@ export function AssetDetailSheet({
                 />
               </div>
 
-              {/* Input 3: Price Per Unit (Auto-filled with Market Price) */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] px-0.5">
-                  Execution Price per Unit (IDR)
-                </label>
-                <input
-                  type="text"
-                  value={inputPrice}
-                  onChange={(e) => handlePriceChange(e.target.value)}
-                  placeholder="Market price"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-[13px] font-mono bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
-                />
+              {/* Input 3: Price Per Unit with Auto (API) vs Custom Broker Toggle */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between px-0.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                    {isIndonesian ? "Harga Eksekusi per Unit" : "Execution Price per Unit"}
+                  </label>
+                  {/* Option: Auto (API) vs Broker Kustom */}
+                  <div className="flex items-center gap-1 p-0.5 rounded-lg bg-black/20 border border-[var(--glass-border)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setModalPriceMode("auto");
+                        handlePriceChange(String(currentPrice));
+                      }}
+                      className={`px-2 py-0.5 rounded-md text-[9.5px] font-semibold transition-all cursor-pointer ${
+                        modalPriceMode === "auto"
+                          ? isDark
+                            ? "bg-white text-black shadow-xs font-bold"
+                            : "bg-black text-white shadow-xs font-bold"
+                          : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                      }`}
+                    >
+                      Auto (API)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setModalPriceMode("custom");
+                      }}
+                      className={`px-2 py-0.5 rounded-md text-[9.5px] font-semibold transition-all cursor-pointer ${
+                        modalPriceMode === "custom"
+                          ? isDark
+                            ? "bg-white text-black shadow-xs font-bold"
+                            : "bg-black text-white shadow-xs font-bold"
+                          : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                      }`}
+                    >
+                      {isIndonesian ? "Broker Kustom" : "Custom Broker"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={inputPrice}
+                    onChange={(e) => {
+                      setModalPriceMode("custom");
+                      handlePriceChange(e.target.value);
+                    }}
+                    placeholder={modalPriceMode === "auto" ? "Market price" : "e.g. 16350"}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-[13px] font-mono bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
+                  />
+                  {modalPriceMode === "auto" && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-mono px-2 py-0.5 rounded-md bg-white/[0.08] text-[var(--text-secondary)] border border-[var(--glass-border)] pointer-events-none">
+                      Live Spot
+                    </span>
+                  )}
+                </div>
+
                 <p className="text-[10px] text-[var(--text-tertiary)] px-0.5 mt-0.5">
-                  Calculated automatically based on the latest market price. You can customize this field.
+                  {modalPriceMode === "auto"
+                    ? (isIndonesian
+                        ? "Dihitung otomatis berdasarkan harga pasar terkini (API)."
+                        : "Calculated automatically based on latest market price (API).")
+                    : (isIndonesian
+                        ? "Harga disesuaikan dengan kurs broker atau transaksi riil Anda."
+                        : "Customized according to your broker or P2P execution rate.")}
                 </p>
               </div>
 
@@ -895,6 +1072,81 @@ export function AssetDetailSheet({
                   className="flex-1 py-2.5 px-4 rounded-xl text-[13px] font-bold bg-[var(--text-primary)] text-[var(--bg-elevated)] hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
                 >
                   {actionModal === "buy" ? "Confirm Add" : "Confirm Reduce"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* 7. MODAL: DIRECT UNIT BALANCE CORRECTION / RESTORE */}
+        {/* ============================================================ */}
+        {isEditingDirectUnits && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <form
+              onSubmit={handleSaveDirectUnits}
+              className="w-full sm:max-w-md bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-t-3xl sm:rounded-2xl p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom-5 duration-200"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[var(--bg-elevated)] border border-[var(--glass-border)] flex items-center justify-center shrink-0">
+                    <Edit3 size={15} className="text-[var(--text-primary)]" />
+                  </div>
+                  <div>
+                    <h3 className="text-[14px] font-bold text-[var(--text-primary)]">
+                      {isIndonesian ? `Koreksi Saldo ${holding.symbol}` : `Correct ${holding.symbol} Balance`}
+                    </h3>
+                    <p className="text-[11px] text-[var(--text-tertiary)]">
+                      {isIndonesian ? "Sesuaikan total unit ke saldo riil portofolio" : "Align total units to your actual portfolio balance"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingDirectUnits(false)}
+                  className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] transition-colors"
+                >
+                  <X size={16} strokeWidth={1.75} />
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between px-0.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                    {isIndonesian ? "Total Unit Riil Baru" : "New Total Units"}
+                  </label>
+                  <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+                    Saat ini: {holding.units.toLocaleString()} {holding.symbol}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={directUnitsInput}
+                  onChange={(e) => setDirectUnitsInput(e.target.value)}
+                  placeholder="e.g. 1002.41"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-[14px] font-mono font-bold bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
+                  autoFocus
+                />
+                <p className="text-[10px] text-[var(--text-tertiary)] px-0.5">
+                  {isIndonesian
+                    ? "Saldo unit akan langsung diperbarui dan disinkronkan ke cloud Supabase."
+                    : "The unit balance will be immediately updated and synchronized to Supabase."}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingDirectUnits(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)] font-semibold text-[13px] hover:bg-white/[0.06] transition-colors cursor-pointer"
+                >
+                  {isIndonesian ? "Batal" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-[var(--text-primary)] text-[var(--bg-elevated)] font-semibold text-[13px] hover:opacity-90 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
+                >
+                  {isIndonesian ? "Simpan Saldo" : "Save Balance"}
                 </button>
               </div>
             </form>

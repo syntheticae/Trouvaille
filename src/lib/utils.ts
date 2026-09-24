@@ -70,3 +70,17 @@ export function getDateLabel(dateStr: string): string {
   if (isYesterday(dateStr)) return "Yesterday"
   return formatDate(dateStr)
 }
+
+/**
+ * Format asset holding units cleanly:
+ * - If units >= 1: rounds to integer (no awkward decimals like 1,002.316)
+ * - If 0 < units < 1: preserves significant fractional digits up to 4 places (e.g. 0.045 BTC)
+ */
+export function formatHoldingUnits(units: number | string | null | undefined): string {
+  const val = Number(units);
+  if (isNaN(val) || val === 0) return "0";
+  if (Math.abs(val) >= 1) {
+    return Math.round(val).toLocaleString();
+  }
+  return parseFloat(val.toFixed(4)).toString();
+}

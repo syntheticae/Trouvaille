@@ -51,6 +51,8 @@ export interface InvestmentHolding {
   annual_rate?: number; // Estimated annual appreciation (+) or depreciation (-) rate in percent
   purchase_date?: string; // YYYY-MM-DD
   activities?: HoldingActivity[];
+  is_custom_price?: boolean;
+  custom_price?: number;
 }
 
 export type CashflowNature = "operating" | "investing" | "financing";

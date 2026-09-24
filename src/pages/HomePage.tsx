@@ -14,7 +14,7 @@ import { useCurrency } from "../contexts/CurrencyContext";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
 import { ReorderableWidgetGrid, WidgetCustomizationBar } from "../components/common";
 import type { WidgetSize } from "../lib/widgetLayoutTypes";
-import { HOME_PRESETS, type HomePresetKey } from "../lib/widgetLayoutTypes";
+import { HOME_PRESETS } from "../lib/widgetLayoutTypes";
 import {
   CompactSpendingStabilityHalf,
   CompactCashflowPulseHalf,
@@ -247,10 +247,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     toggleCardVisibility,
     resetLayout,
     applyPreset,
+    activePresetKey,
+    setActivePresetKey,
   } = useWidgetLayout();
 
   const [customizeHomeOpen, setCustomizeHomeOpen] = useState(false);
-  const [activePresetKey, setActivePresetKey] = useState<HomePresetKey>("executive");
 
   const intel = useFinancialIntelligence({
     transactions: allTxs,
