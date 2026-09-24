@@ -61,39 +61,44 @@ import { CashflowVelocityCard } from "../components/statistics/CashflowVelocityC
 const CategoryDrillDownSheet = lazy(() =>
   import("../components/statistics/CategoryDrillDownSheet").then((m) => ({
     default: m.CategoryDrillDownSheet,
-  }))
+  })),
 );
 const FinancialHealthDiagnosticModal = lazy(() =>
-  import("../components/statistics/FinancialHealthDiagnosticModal").then((m) => ({
-    default: m.FinancialHealthDiagnosticModal,
-  }))
+  import("../components/statistics/FinancialHealthDiagnosticModal").then(
+    (m) => ({
+      default: m.FinancialHealthDiagnosticModal,
+    }),
+  ),
 );
 const FinancialWrappedModal = lazy(() =>
   import("../components/statistics/FinancialWrappedModal").then((m) => ({
     default: m.FinancialWrappedModal,
-  }))
+  })),
 );
 const PersonalFinancialModelSheet = lazy(() =>
   import("../components/home/PersonalFinancialModelSheet").then((m) => ({
     default: m.PersonalFinancialModelSheet,
-  }))
+  })),
 );
 const AssetValuationSheet = lazy(() =>
   import("../components/settings/AssetValuationSheet").then((m) => ({
     default: m.AssetValuationSheet,
-  }))
+  })),
 );
 const MonteCarloSimulatorSheet = lazy(() =>
   import("../components/statistics/MonteCarloSimulatorSheet").then((m) => ({
     default: m.MonteCarloSimulatorSheet,
-  }))
+  })),
 );
 const FirePlannerSheet = lazy(() =>
   import("../components/statistics/FirePlannerSheet").then((m) => ({
     default: m.FirePlannerSheet,
-  }))
+  })),
 );
-import { ReorderableWidgetGrid, WidgetCustomizationBar } from "../components/common";
+import {
+  ReorderableWidgetGrid,
+  WidgetCustomizationBar,
+} from "../components/common";
 import { CustomizeStatisticsModal } from "../components/statistics/CustomizeStatisticsModal";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
 import { STATS_STORAGE_KEY } from "../lib/widgetLayoutEngine";
@@ -186,7 +191,8 @@ function SavingsRing({ rate, size = 130 }: { rate: number; size?: number }) {
   const strokeWidth = 10;
   const radius = (size - strokeWidth) / 2;
   const circ = 2 * Math.PI * radius;
-  const strokeDashoffset = circ - (Math.min(100, Math.max(0, rate)) / 100) * circ;
+  const strokeDashoffset =
+    circ - (Math.min(100, Math.max(0, rate)) / 100) * circ;
 
   return (
     <div
@@ -292,7 +298,9 @@ export function StatisticsPage() {
     "all" | "expense" | "income"
   >("all");
   const [monthOffset, setMonthOffset] = useState(0);
-  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState<number>(() =>
+    new Date().getFullYear(),
+  );
   const [selectedCategoryShift, setSelectedCategoryShift] = useState<
     any | null
   >(null);
@@ -303,7 +311,8 @@ export function StatisticsPage() {
   const [monteCarloOpen, setMonteCarloOpen] = useState(false);
   const [firePlannerOpen, setFirePlannerOpen] = useState(false);
   // Collapsible card states (Default: false / folded to keep page clean & compact)
-  const [categoryBreakdownExpanded, setCategoryBreakdownExpanded] = useState(false);
+  const [categoryBreakdownExpanded, setCategoryBreakdownExpanded] =
+    useState(false);
   const [netTrajectoryExpanded, setNetTrajectoryExpanded] = useState(false);
   const [inflowOutflowExpanded, setInflowOutflowExpanded] = useState(false);
   const [heatmapExpanded, setHeatmapExpanded] = useState(false);
@@ -397,22 +406,46 @@ export function StatisticsPage() {
     return visibleStatsCards.filter((c) => simulationIds.has(c.id));
   }, [visibleStatsCards]);
 
-  const analyticsTabs = useMemo<{ key: AnalyticsSubTab; label: string }[]>(
-    () => {
-      const all = [
-        { key: "report" as AnalyticsSubTab, label: isIndonesian ? "Laporan" : "Report", count: visibleReportCards.length },
-        { key: "intelligence" as AnalyticsSubTab, label: isIndonesian ? "Kecerdasan" : "Intelligence", count: visibleIntelligenceCards.length },
-        { key: "cashflow" as AnalyticsSubTab, label: isIndonesian ? "Arus Kas" : "Cashflow", count: visibleCashflowCards.length },
-        { key: "simulation" as AnalyticsSubTab, label: isIndonesian ? "Simulasi" : "Simulation", count: visibleSimulationCards.length },
-      ];
-      return all.filter((tab) => tab.count > 0);
-    },
-    [isIndonesian, visibleReportCards.length, visibleIntelligenceCards.length, visibleCashflowCards.length, visibleSimulationCards.length],
-  );
+  const analyticsTabs = useMemo<
+    { key: AnalyticsSubTab; label: string }[]
+  >(() => {
+    const all = [
+      {
+        key: "report" as AnalyticsSubTab,
+        label: isIndonesian ? "Laporan" : "Report",
+        count: visibleReportCards.length,
+      },
+      {
+        key: "intelligence" as AnalyticsSubTab,
+        label: isIndonesian ? "Kecerdasan" : "Intelligence",
+        count: visibleIntelligenceCards.length,
+      },
+      {
+        key: "cashflow" as AnalyticsSubTab,
+        label: isIndonesian ? "Arus Kas" : "Cashflow",
+        count: visibleCashflowCards.length,
+      },
+      {
+        key: "simulation" as AnalyticsSubTab,
+        label: isIndonesian ? "Simulasi" : "Simulation",
+        count: visibleSimulationCards.length,
+      },
+    ];
+    return all.filter((tab) => tab.count > 0);
+  }, [
+    isIndonesian,
+    visibleReportCards.length,
+    visibleIntelligenceCards.length,
+    visibleCashflowCards.length,
+    visibleSimulationCards.length,
+  ]);
 
   // Auto-switch to first available tab if current active tab is collapsed
   useEffect(() => {
-    if (analyticsTabs.length > 0 && !analyticsTabs.some((t) => t.key === analyticsSubTab)) {
+    if (
+      analyticsTabs.length > 0 &&
+      !analyticsTabs.some((t) => t.key === analyticsSubTab)
+    ) {
       setAnalyticsSubTab(analyticsTabs[0].key);
     }
   }, [analyticsTabs, analyticsSubTab]);
@@ -464,7 +497,8 @@ export function StatisticsPage() {
   }, [allTxs, range, monthOffset, selectedYear, now]);
 
   const currentPeriodLabel = useMemo(() => {
-    if (range === "week") return isIndonesian ? "7 Hari Terakhir" : "Last 7 Days";
+    if (range === "week")
+      return isIndonesian ? "7 Hari Terakhir" : "Last 7 Days";
     if (range === "month")
       return format(subMonths(now, monthOffset), "MMMM yyyy", {
         locale: isIndonesian ? idLocale : undefined,
@@ -551,7 +585,13 @@ export function StatisticsPage() {
   );
 
   const modelRange =
-    range === "week" ? "1W" : range === "month" ? "1M" : range === "year" ? "1Y" : "ALL";
+    range === "week"
+      ? "1W"
+      : range === "month"
+        ? "1M"
+        : range === "year"
+          ? "1Y"
+          : "ALL";
 
   const assetTrend = useMemo(
     () => calculateAssetTrend(allTxs, totalAssets, modelRange),
@@ -765,7 +805,9 @@ export function StatisticsPage() {
         const key = format(d, "yyyy-MM");
         const agg = monthlyAggregates.get(key) || { income: 0, expense: 0 };
         return {
-          label: format(d, "MMM", { locale: isIndonesian ? idLocale : undefined }),
+          label: format(d, "MMM", {
+            locale: isIndonesian ? idLocale : undefined,
+          }),
           income: agg.income,
           expense: agg.expense,
         };
@@ -799,7 +841,15 @@ export function StatisticsPage() {
         };
       });
     }
-  }, [allTxs, range, monthOffset, selectedYear, monthlyAggregates, now, isIndonesian]);
+  }, [
+    allTxs,
+    range,
+    monthOffset,
+    selectedYear,
+    monthlyAggregates,
+    now,
+    isIndonesian,
+  ]);
 
   // 3. Cumulative Net Worth trend
   const netWorthData = useMemo(() => {
@@ -964,7 +1014,8 @@ export function StatisticsPage() {
       .filter((t) => t.type === "expense" && !isTxCorrection(t))
       .forEach((t) => {
         if (t.category_id) {
-          map[t.category_id] = (map[t.category_id] || 0) + Number(t.amount || 0);
+          map[t.category_id] =
+            (map[t.category_id] || 0) + Number(t.amount || 0);
         }
       });
     return map;
@@ -1129,7 +1180,15 @@ export function StatisticsPage() {
       biggestIncrease: sortedByIncrease[0] || null,
       biggestDecrease: sortedByDecrease[0] || null,
     };
-  }, [allTxs, now, monthOffset, breakdownType, groupMode, activeBreakdownData, categories]);
+  }, [
+    allTxs,
+    now,
+    monthOffset,
+    breakdownType,
+    groupMode,
+    activeBreakdownData,
+    categories,
+  ]);
 
   // Priority 5: Expense Frequency vs Volume Insights
   const frequencyStats = useMemo(() => {
@@ -1237,7 +1296,9 @@ export function StatisticsPage() {
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center"
                   style={{
-                    background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)",
+                    background: isDark
+                      ? "rgba(255,255,255,0.12)"
+                      : "rgba(0,0,0,0.06)",
                     border: "1px solid var(--glass-border)",
                     color: "var(--text-primary)",
                   }}
@@ -1267,7 +1328,9 @@ export function StatisticsPage() {
                   }}
                   className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
                   style={{
-                    background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)",
+                    background: isDark
+                      ? "rgba(255,255,255,0.12)"
+                      : "rgba(0,0,0,0.06)",
                     color: "var(--text-primary)",
                     border: "1px solid var(--glass-border)",
                   }}
@@ -1278,7 +1341,9 @@ export function StatisticsPage() {
                 <span
                   className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
                   style={{
-                    background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)",
+                    background: isDark
+                      ? "rgba(255,255,255,0.12)"
+                      : "rgba(0,0,0,0.06)",
                     color: "var(--text-primary)",
                     border: "1px solid var(--glass-border)",
                   }}
@@ -1312,12 +1377,17 @@ export function StatisticsPage() {
             <div
               className="w-full h-1.5 rounded-full overflow-hidden"
               style={{
-                background: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)",
+                background: isDark
+                  ? "rgba(255,255,255,0.15)"
+                  : "rgba(0,0,0,0.08)",
               }}
             >
               <div
                 className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${healthScore}%`, background: "var(--text-primary)" }}
+                style={{
+                  width: `${healthScore}%`,
+                  background: "var(--text-primary)",
+                }}
               />
             </div>
           </section>
@@ -1395,7 +1465,10 @@ export function StatisticsPage() {
             >
               <div>
                 <div className="flex items-center gap-2">
-                  <Calendar size={16} style={{ color: "var(--text-tertiary)" }} />
+                  <Calendar
+                    size={16}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
                   <h2
                     className="text-[13px] font-semibold"
                     style={{ color: "var(--text-primary)" }}
@@ -1459,9 +1532,11 @@ export function StatisticsPage() {
                       ))}
                     </div>
                     <div className="grid grid-cols-7 gap-1">
-                      {Array.from({ length: calendarSpendingHeatmap.pad }).map((_, i) => (
-                        <div key={`pad-${i}`} />
-                      ))}
+                      {Array.from({ length: calendarSpendingHeatmap.pad }).map(
+                        (_, i) => (
+                          <div key={`pad-${i}`} />
+                        ),
+                      )}
                       {calendarSpendingHeatmap.days.map((d) => {
                         const dStr = format(d, "yyyy-MM-dd");
                         const spent =
@@ -1472,7 +1547,9 @@ export function StatisticsPage() {
                             : 0;
                         const isT = isToday(d);
 
-                        let bg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
+                        let bg = isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(0,0,0,0.04)";
                         let textColor = "var(--text-tertiary)";
                         if (spent > 0) {
                           if (isDark) {
@@ -1632,7 +1709,8 @@ export function StatisticsPage() {
                 className="text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {isIndonesian ? "Ringkasan Periode" : "Period Summary"} · {rangeTitle}
+                {isIndonesian ? "Ringkasan Periode" : "Period Summary"} ·{" "}
+                {rangeTitle}
               </p>
               {range === "month" && (
                 <span
@@ -1671,13 +1749,20 @@ export function StatisticsPage() {
                 const abs = Math.abs(value);
                 let formatted = "0";
                 if (abs >= 1000000) {
-                  formatted = (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+                  formatted =
+                    (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
                 } else if (abs >= 1000) {
                   formatted = (abs / 1000).toFixed(0) + "K";
                 } else {
                   formatted = abs.toLocaleString("id-ID");
                 }
-                const sign = isNet ? (value < 0 ? "-" : value > 0 ? "+" : "") : "";
+                const sign = isNet
+                  ? value < 0
+                    ? "-"
+                    : value > 0
+                      ? "+"
+                      : ""
+                  : "";
                 return (
                   <div
                     key={label}
@@ -1823,7 +1908,10 @@ export function StatisticsPage() {
   };
 
   return (
-    <div className="px-5 py-6 space-y-5 pb-36 max-w-full overflow-x-clip" style={{ minHeight: "100dvh" }}>
+    <div
+      className="px-5 py-6 space-y-5 pb-36 max-w-full overflow-x-clip"
+      style={{ minHeight: "100dvh" }}
+    >
       {/* Header with Compact Timeframe Selector */}
       <div className="relative z-20 flex justify-between items-center">
         <div>
@@ -1837,7 +1925,9 @@ export function StatisticsPage() {
             className="text-[11px] font-semibold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
-            {isIndonesian ? "Kinerja & Distribusi" : "Performance & Distribution"}
+            {isIndonesian
+              ? "Kinerja & Distribusi"
+              : "Performance & Distribution"}
           </p>
         </div>
 
@@ -1856,8 +1946,12 @@ export function StatisticsPage() {
               color: "var(--text-primary)",
               boxShadow: "var(--shadow-card)",
             }}
-            aria-label={isIndonesian ? "Kustomisasi Analitik" : "Customize Analytics"}
-            title={isIndonesian ? "Kustomisasi Analitik" : "Customize Analytics"}
+            aria-label={
+              isIndonesian ? "Kustomisasi Analitik" : "Customize Analytics"
+            }
+            title={
+              isIndonesian ? "Kustomisasi Analitik" : "Customize Analytics"
+            }
           >
             <SlidersHorizontal size={14} strokeWidth={1.75} />
           </button>
@@ -1871,273 +1965,326 @@ export function StatisticsPage() {
                 triggerHaptic("light");
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-tight active:scale-95 transition-all select-none"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-              boxShadow: "var(--shadow-card)",
-            }}
-          >
-            <span className="truncate max-w-[120px]">{rangeTitle}</span>
-            <ChevronDown
-              size={13}
-              className={`transition-transform duration-200 ${timeframeMenuOpen ? "rotate-180" : ""}`}
-              style={{ color: "var(--text-tertiary)" }}
-            />
-          </button>
-
-          {/* Luxury Apple Glass Timeframe Popover Menu */}
-          {timeframeMenuOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px]"
-                onClick={() => setTimeframeMenuOpen(false)}
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+                boxShadow: "var(--shadow-card)",
+              }}
+            >
+              <span className="truncate max-w-[120px]">{rangeTitle}</span>
+              <ChevronDown
+                size={13}
+                className={`transition-transform duration-200 ${timeframeMenuOpen ? "rotate-180" : ""}`}
+                style={{ color: "var(--text-tertiary)" }}
               />
-              <div
-                className="absolute right-0 top-full mt-2 w-60 p-2 rounded-2xl z-50 overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150"
-                style={{
-                  background: isDark ? "#121214" : "#FFFFFF",
-                  border: "1px solid var(--glass-border)",
-                  boxShadow: "0 12px 36px rgba(0,0,0,0.4)",
-                }}
-              >
-                <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] border-b border-[var(--glass-border)] mb-1">
-                  {isIndonesian ? "Rentang Waktu" : "Timeframe"}
-                </div>
+            </button>
 
-                <div className="space-y-0.5">
-                  <button
-                    onClick={() => {
-                      setRange("week");
-                      setTimeframeMenuOpen(false);
-                      triggerHaptic("light");
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
-                    style={{
-                      color: range === "week" ? "var(--accent)" : "var(--text-primary)",
-                      background: range === "week" ? "var(--glass-fill)" : "transparent",
-                    }}
-                  >
-                    <span>{isIndonesian ? "Minggu Ini" : "This Week"}</span>
-                    {range === "week" && <Check size={14} />}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setRange("month");
-                      setMonthOffset(0);
-                      setTimeframeMenuOpen(false);
-                      triggerHaptic("light");
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
-                    style={{
-                      color: range === "month" && monthOffset === 0 ? "var(--accent)" : "var(--text-primary)",
-                      background: range === "month" && monthOffset === 0 ? "var(--glass-fill)" : "transparent",
-                    }}
-                  >
-                    <span>{isIndonesian ? "Bulan Ini" : "This Month"}</span>
-                    {range === "month" && monthOffset === 0 && <Check size={14} />}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setRange("year");
-                      setSelectedYear(now.getFullYear());
-                      setTimeframeMenuOpen(false);
-                      triggerHaptic("light");
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
-                    style={{
-                      color: range === "year" && selectedYear === now.getFullYear() ? "var(--accent)" : "var(--text-primary)",
-                      background: range === "year" && selectedYear === now.getFullYear() ? "var(--glass-fill)" : "transparent",
-                    }}
-                  >
-                    <span>{isIndonesian ? "Tahun Ini" : "This Year"}</span>
-                    {range === "year" && selectedYear === now.getFullYear() && <Check size={14} />}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setRange("all");
-                      setTimeframeMenuOpen(false);
-                      triggerHaptic("light");
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
-                    style={{
-                      color: range === "all" ? "var(--accent)" : "var(--text-primary)",
-                      background: range === "all" ? "var(--glass-fill)" : "transparent",
-                    }}
-                  >
-                    <span>{isIndonesian ? "Semua Waktu" : "All Time"}</span>
-                    {range === "all" && <Check size={14} />}
-                  </button>
-                </div>
-
-                {/* Specific Month Stepper */}
-                <div className="mt-1 pt-1.5 border-t border-[var(--glass-border)]">
-                  <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center justify-between">
-                    <span>{isIndonesian ? "Bulan Tertentu" : "Specific Month"}</span>
-                    {range === "month" && monthOffset > 0 && (
-                      <span className="text-[9px] font-medium text-[var(--accent)]">
-                        {isIndonesian ? "Aktif" : "Active"}
-                      </span>
-                    )}
+            {/* Luxury Apple Glass Timeframe Popover Menu */}
+            {timeframeMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px]"
+                  onClick={() => setTimeframeMenuOpen(false)}
+                />
+                <div
+                  className="absolute right-0 top-full mt-2 w-60 p-2 rounded-2xl z-50 overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+                  style={{
+                    background: isDark ? "#121214" : "#FFFFFF",
+                    border: "1px solid var(--glass-border)",
+                    boxShadow: "0 12px 36px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] border-b border-[var(--glass-border)] mb-1">
+                    {isIndonesian ? "Rentang Waktu" : "Timeframe"}
                   </div>
-                  <div
-                    className="flex items-center justify-between p-1 rounded-xl mt-1"
-                    style={{ background: "var(--glass-fill)" }}
-                  >
+
+                  <div className="space-y-0.5">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRange("month");
-                        setMonthOffset((o) => o + 1);
-                        triggerHaptic("light");
-                      }}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-                      style={{ color: "var(--text-secondary)" }}
-                      title="Previous Month"
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-                    <span
                       onClick={() => {
-                        setRange("month");
+                        setRange("week");
                         setTimeframeMenuOpen(false);
                         triggerHaptic("light");
                       }}
-                      className="text-[11px] font-semibold cursor-pointer hover:underline text-center"
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
                       style={{
-                        color: range === "month" ? "var(--accent)" : "var(--text-primary)",
+                        color:
+                          range === "week"
+                            ? "var(--accent)"
+                            : "var(--text-primary)",
+                        background:
+                          range === "week"
+                            ? "var(--glass-fill)"
+                            : "transparent",
                       }}
                     >
-                      {format(subMonths(now, monthOffset), "MMM yyyy", {
-                        locale: isIndonesian ? idLocale : undefined,
-                      })}
-                    </span>
-                    <button
-                      disabled={monthOffset === 0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRange("month");
-                        setMonthOffset((o) => Math.max(0, o - 1));
-                        triggerHaptic("light");
-                      }}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer"
-                      style={{ color: "var(--text-secondary)" }}
-                      title="Next Month"
-                    >
-                      <ChevronRight size={14} />
+                      <span>{isIndonesian ? "Minggu Ini" : "This Week"}</span>
+                      {range === "week" && <Check size={14} />}
                     </button>
-                  </div>
-                </div>
 
-                {/* Specific Year Stepper & Available Years */}
-                <div className="mt-1 pt-1.5 border-t border-[var(--glass-border)]">
-                  <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center justify-between">
-                    <span>{isIndonesian ? "Pilih Tahun" : "Select Year"}</span>
-                    {range === "year" && selectedYear !== now.getFullYear() && (
-                      <span className="text-[9px] font-medium text-[var(--accent)]">
-                        {isIndonesian ? "Aktif" : "Active"}
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className="flex items-center justify-between p-1 rounded-xl mt-1"
-                    style={{ background: "var(--glass-fill)" }}
-                  >
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRange("year");
-                        setSelectedYear((y) => {
-                          const prevYears = availableYears.filter((ay) => ay < y);
-                          return prevYears.length > 0 ? Math.max(...prevYears) : y - 1;
-                        });
-                        triggerHaptic("light");
-                      }}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-                      style={{ color: "var(--text-secondary)" }}
-                      title={isIndonesian ? "Tahun Sebelumnya" : "Previous Year"}
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-                    <span
                       onClick={() => {
-                        setRange("year");
+                        setRange("month");
+                        setMonthOffset(0);
                         setTimeframeMenuOpen(false);
                         triggerHaptic("light");
                       }}
-                      className="text-[11px] font-semibold cursor-pointer hover:underline text-center"
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
                       style={{
-                        color: range === "year" ? "var(--accent)" : "var(--text-primary)",
+                        color:
+                          range === "month" && monthOffset === 0
+                            ? "var(--accent)"
+                            : "var(--text-primary)",
+                        background:
+                          range === "month" && monthOffset === 0
+                            ? "var(--glass-fill)"
+                            : "transparent",
                       }}
                     >
-                      {isIndonesian ? `Tahun ${selectedYear}` : `Year ${selectedYear}`}
-                    </span>
+                      <span>{isIndonesian ? "Bulan Ini" : "This Month"}</span>
+                      {range === "month" && monthOffset === 0 && (
+                        <Check size={14} />
+                      )}
+                    </button>
+
                     <button
-                      disabled={selectedYear >= now.getFullYear()}
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={() => {
                         setRange("year");
-                        setSelectedYear((y) => {
-                          const nextYears = availableYears.filter((ay) => ay > y);
-                          return nextYears.length > 0 ? Math.min(...nextYears) : Math.min(now.getFullYear(), y + 1);
-                        });
+                        setSelectedYear(now.getFullYear());
+                        setTimeframeMenuOpen(false);
                         triggerHaptic("light");
                       }}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer"
-                      style={{ color: "var(--text-secondary)" }}
-                      title={isIndonesian ? "Tahun Berikutnya" : "Next Year"}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
+                      style={{
+                        color:
+                          range === "year" && selectedYear === now.getFullYear()
+                            ? "var(--accent)"
+                            : "var(--text-primary)",
+                        background:
+                          range === "year" && selectedYear === now.getFullYear()
+                            ? "var(--glass-fill)"
+                            : "transparent",
+                      }}
                     >
-                      <ChevronRight size={14} />
+                      <span>{isIndonesian ? "Tahun Ini" : "This Year"}</span>
+                      {range === "year" &&
+                        selectedYear === now.getFullYear() && (
+                          <Check size={14} />
+                        )}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setRange("all");
+                        setTimeframeMenuOpen(false);
+                        triggerHaptic("light");
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
+                      style={{
+                        color:
+                          range === "all"
+                            ? "var(--accent)"
+                            : "var(--text-primary)",
+                        background:
+                          range === "all" ? "var(--glass-fill)" : "transparent",
+                      }}
+                    >
+                      <span>{isIndonesian ? "Semua Waktu" : "All Time"}</span>
+                      {range === "all" && <Check size={14} />}
                     </button>
                   </div>
 
-                  {/* Available Year Chips */}
-                  {availableYears.length > 1 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5 px-0.5">
-                      {availableYears.map((yr) => {
-                        const isSelected = range === "year" && selectedYear === yr;
-                        return (
-                          <button
-                            key={yr}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRange("year");
-                              setSelectedYear(yr);
-                              setTimeframeMenuOpen(false);
-                              triggerHaptic("light");
-                            }}
-                            className="flex-1 min-w-[50px] py-1 px-2 rounded-lg text-[10.5px] font-semibold text-center transition-all cursor-pointer select-none"
-                            style={{
-                              background: isSelected
-                                ? "var(--text-primary)"
-                                : "var(--glass-fill)",
-                              color: isSelected
-                                ? (isDark ? "#000000" : "#FFFFFF")
-                                : "var(--text-secondary)",
-                              border: isSelected
-                                ? "1px solid transparent"
-                                : "1px solid var(--glass-border)",
-                              boxShadow: isSelected
-                                ? "0 1px 4px var(--shadow-strength)"
-                                : "none",
-                            }}
-                          >
-                            {yr}
-                          </button>
-                        );
-                      })}
+                  {/* Specific Month Stepper */}
+                  <div className="mt-1 pt-1.5 border-t border-[var(--glass-border)]">
+                    <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center justify-between">
+                      <span>
+                        {isIndonesian ? "Bulan Tertentu" : "Specific Month"}
+                      </span>
+                      {range === "month" && monthOffset > 0 && (
+                        <span className="text-[9px] font-medium text-[var(--accent)]">
+                          {isIndonesian ? "Aktif" : "Active"}
+                        </span>
+                      )}
                     </div>
-                  )}
+                    <div
+                      className="flex items-center justify-between p-1 rounded-xl mt-1"
+                      style={{ background: "var(--glass-fill)" }}
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRange("month");
+                          setMonthOffset((o) => o + 1);
+                          triggerHaptic("light");
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+                        style={{ color: "var(--text-secondary)" }}
+                        title="Previous Month"
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      <span
+                        onClick={() => {
+                          setRange("month");
+                          setTimeframeMenuOpen(false);
+                          triggerHaptic("light");
+                        }}
+                        className="text-[11px] font-semibold cursor-pointer hover:underline text-center"
+                        style={{
+                          color:
+                            range === "month"
+                              ? "var(--accent)"
+                              : "var(--text-primary)",
+                        }}
+                      >
+                        {format(subMonths(now, monthOffset), "MMM yyyy", {
+                          locale: isIndonesian ? idLocale : undefined,
+                        })}
+                      </span>
+                      <button
+                        disabled={monthOffset === 0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRange("month");
+                          setMonthOffset((o) => Math.max(0, o - 1));
+                          triggerHaptic("light");
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer"
+                        style={{ color: "var(--text-secondary)" }}
+                        title="Next Month"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Specific Year Stepper & Available Years */}
+                  <div className="mt-1 pt-1.5 border-t border-[var(--glass-border)]">
+                    <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center justify-between">
+                      <span>
+                        {isIndonesian ? "Pilih Tahun" : "Select Year"}
+                      </span>
+                      {range === "year" &&
+                        selectedYear !== now.getFullYear() && (
+                          <span className="text-[9px] font-medium text-[var(--accent)]">
+                            {isIndonesian ? "Aktif" : "Active"}
+                          </span>
+                        )}
+                    </div>
+                    <div
+                      className="flex items-center justify-between p-1 rounded-xl mt-1"
+                      style={{ background: "var(--glass-fill)" }}
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRange("year");
+                          setSelectedYear((y) => {
+                            const prevYears = availableYears.filter(
+                              (ay) => ay < y,
+                            );
+                            return prevYears.length > 0
+                              ? Math.max(...prevYears)
+                              : y - 1;
+                          });
+                          triggerHaptic("light");
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+                        style={{ color: "var(--text-secondary)" }}
+                        title={
+                          isIndonesian ? "Tahun Sebelumnya" : "Previous Year"
+                        }
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      <span
+                        onClick={() => {
+                          setRange("year");
+                          setTimeframeMenuOpen(false);
+                          triggerHaptic("light");
+                        }}
+                        className="text-[11px] font-semibold cursor-pointer hover:underline text-center"
+                        style={{
+                          color:
+                            range === "year"
+                              ? "var(--accent)"
+                              : "var(--text-primary)",
+                        }}
+                      >
+                        {isIndonesian
+                          ? `Tahun ${selectedYear}`
+                          : `Year ${selectedYear}`}
+                      </span>
+                      <button
+                        disabled={selectedYear >= now.getFullYear()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRange("year");
+                          setSelectedYear((y) => {
+                            const nextYears = availableYears.filter(
+                              (ay) => ay > y,
+                            );
+                            return nextYears.length > 0
+                              ? Math.min(...nextYears)
+                              : Math.min(now.getFullYear(), y + 1);
+                          });
+                          triggerHaptic("light");
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer"
+                        style={{ color: "var(--text-secondary)" }}
+                        title={isIndonesian ? "Tahun Berikutnya" : "Next Year"}
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+
+                    {/* Available Year Chips */}
+                    {availableYears.length > 1 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5 px-0.5">
+                        {availableYears.map((yr) => {
+                          const isSelected =
+                            range === "year" && selectedYear === yr;
+                          return (
+                            <button
+                              key={yr}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRange("year");
+                                setSelectedYear(yr);
+                                setTimeframeMenuOpen(false);
+                                triggerHaptic("light");
+                              }}
+                              className="flex-1 min-w-[50px] py-1 px-2 rounded-lg text-[10.5px] font-semibold text-center transition-all cursor-pointer select-none"
+                              style={{
+                                background: isSelected
+                                  ? "var(--text-primary)"
+                                  : "var(--glass-fill)",
+                                color: isSelected
+                                  ? isDark
+                                    ? "#000000"
+                                    : "#FFFFFF"
+                                  : "var(--text-secondary)",
+                                border: isSelected
+                                  ? "1px solid transparent"
+                                  : "1px solid var(--glass-border)",
+                                boxShadow: isSelected
+                                  ? "0 1px 4px var(--shadow-strength)"
+                                  : "none",
+                              }}
+                            >
+                              {yr}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
 
       {/* ── Financial Wrapped: Flagship Hero Feature Entry (Persistent across Analytics) ── */}
       <section
@@ -2187,7 +2334,9 @@ export function StatisticsPage() {
                     : selectedYear === now.getFullYear()
                       ? "Year in Review"
                       : `${selectedYear} Wrapped`
-                  : isIndonesian ? "Rekap Bulanan" : "Monthly Recap"}
+                  : isIndonesian
+                    ? "Rekap Bulanan"
+                    : "Monthly Recap"}
               </span>
               <span className="text-[9px] font-mono text-[var(--text-tertiary)] hidden sm:inline">
                 9 chapters
@@ -2205,7 +2354,9 @@ export function StatisticsPage() {
         </div>
         <div className="flex items-center gap-1 shrink-0 text-[var(--text-tertiary)] pl-2">
           <span className="text-[11px] font-mono font-medium hidden sm:inline">
-            {range === "year" ? selectedYear : format(activeMonthDate, "MMM yyyy")}
+            {range === "year"
+              ? selectedYear
+              : format(activeMonthDate, "MMM yyyy")}
           </span>
           <ChevronRight size={16} />
         </div>
@@ -2264,11 +2415,16 @@ export function StatisticsPage() {
               border: "1px solid var(--glass-border)",
             }}
           >
-            <SlidersHorizontal size={20} style={{ color: "var(--text-tertiary)" }} />
+            <SlidersHorizontal
+              size={20}
+              style={{ color: "var(--text-tertiary)" }}
+            />
           </div>
           <div>
             <h3 className="text-[15px] font-semibold text-[var(--text-primary)]">
-              {isIndonesian ? "Semua Kartu Dinonaktifkan" : "All Analytics Cards Hidden"}
+              {isIndonesian
+                ? "Semua Kartu Dinonaktifkan"
+                : "All Analytics Cards Hidden"}
             </h3>
             <p className="text-[12px] text-[var(--text-tertiary)] max-w-xs mx-auto mt-1">
               {isIndonesian
@@ -2633,7 +2789,9 @@ export function StatisticsPage() {
           transactions={allTxs}
           categories={categories}
           mode={range === "year" ? "year" : "month"}
-          targetDate={range === "year" ? new Date(selectedYear, 0, 1) : activeMonthDate}
+          targetDate={
+            range === "year" ? new Date(selectedYear, 0, 1) : activeMonthDate
+          }
         />
 
         <AssetValuationSheet

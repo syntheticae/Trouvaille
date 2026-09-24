@@ -12,7 +12,10 @@ import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
-import { ReorderableWidgetGrid, WidgetCustomizationBar } from "../components/common";
+import {
+  ReorderableWidgetGrid,
+  WidgetCustomizationBar,
+} from "../components/common";
 import type { WidgetSize } from "../lib/widgetLayoutTypes";
 import { HOME_PRESETS } from "../lib/widgetLayoutTypes";
 import {
@@ -79,7 +82,10 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { useAllTransactions, useAddTransaction } from "../hooks/useTransactions";
+import {
+  useAllTransactions,
+  useAddTransaction,
+} from "../hooks/useTransactions";
 import {
   useUpcomingBills,
   useMarkBillPaid,
@@ -161,8 +167,10 @@ function formatAxisY(val: number): string {
   return String(val);
 }
 
-
-export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: HomePageProps) {
+export function HomePage({
+  onOpenAdd: _onOpenAdd,
+  onOpenScan: _onOpenScan,
+}: HomePageProps) {
   const navigate = useNavigate();
   const { t, isIndonesian } = useLanguage();
   useCurrency();
@@ -176,7 +184,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       setCurrentHour((prev) => (prev !== h ? h : prev));
 
       const dayMidnight = startOfDay(current);
-      setTodayDate((prev) => (prev.getTime() !== dayMidnight.getTime() ? dayMidnight : prev));
+      setTodayDate((prev) =>
+        prev.getTime() !== dayMidnight.getTime() ? dayMidnight : prev,
+      );
     };
 
     const timer = setInterval(checkDateAndHour, 60000);
@@ -199,24 +209,30 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   const [calendarExpanded, setCalendarExpanded] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [stockRange, setStockRange] = useState<StockRange>("1W");
-  const { isStealthMode: hideBalance, toggleStealthMode: toggleHideBalance } = usePrivacy();
+  const { isStealthMode: hideBalance, toggleStealthMode: toggleHideBalance } =
+    usePrivacy();
 
   const { showToast } = useToast();
   const markBillPaid = useMarkBillPaid();
   const upcomingBills = useUpcomingBills();
   const { budgetTarget, budgetPeriodStart } = useBudgetTarget();
-  const { data: rawAllTxs = [], refetch: refetchAllTxs, isLoading: isTxsLoading } = useAllTransactions();
+  const {
+    data: rawAllTxs = [],
+    refetch: refetchAllTxs,
+    isLoading: isTxsLoading,
+  } = useAllTransactions();
   const { data: categories = [], refetch: refetchCategories } = useCategories();
-  const { data: _walletsData = [], refetch: refetchWallets, isLoading: isWalletsLoading } = useWallets();
+  const {
+    data: _walletsData = [],
+    refetch: refetchWallets,
+    isLoading: isWalletsLoading,
+  } = useWallets();
   const { data: allBills = [], refetch: refetchBills } = useBills();
-  const isColdLoading = (isTxsLoading || isWalletsLoading) && rawAllTxs.length === 0;
+  const isColdLoading =
+    (isTxsLoading || isWalletsLoading) && rawAllTxs.length === 0;
   const { goals, depositToGoal, updateGoal, deleteGoal } = useGoals();
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null);
-  const {
-    netWorth,
-    liquidAssets,
-    liquidAccounts,
-  } = useWalletBalances();
+  const { netWorth, liquidAssets, liquidAccounts } = useWalletBalances();
 
   const [metricDrillDown, setMetricDrillDown] = useState<{
     type: "expense" | "income" | "budget_risk" | "snapshot";
@@ -224,7 +240,12 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   } | null>(null);
 
   const [billManagementOpen, setBillManagementOpen] = useState(false);
-  const { activeSpace, activeSpaceId, setActiveSpaceId, filterTransactionsBySpace } = useSpace();
+  const {
+    activeSpace,
+    activeSpaceId,
+    setActiveSpaceId,
+    filterTransactionsBySpace,
+  } = useSpace();
   const allTxs = useMemo(() => {
     return filterTransactionsBySpace(rawAllTxs, activeSpaceId);
   }, [rawAllTxs, activeSpaceId, filterTransactionsBySpace]);
@@ -282,7 +303,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       (t: any) =>
         !t.wallet_id ||
         liquidAccountIds.has(t.wallet_id) ||
-        (t.destination_wallet_id && liquidAccountIds.has(t.destination_wallet_id)),
+        (t.destination_wallet_id &&
+          liquidAccountIds.has(t.destination_wallet_id)),
     );
     return calculateAssetTrend(liquidTxs, liquidAssets, stockRange);
   }, [allTxs, liquidAssets, liquidAccounts, stockRange]);
@@ -372,10 +394,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
   const currentMonthKey = format(now, "yyyy-MM");
   const monthTxs = useMemo(() => {
-    return allTxs.filter((t) => t.occurred_on && t.occurred_on.startsWith(currentMonthKey));
+    return allTxs.filter(
+      (t) => t.occurred_on && t.occurred_on.startsWith(currentMonthKey),
+    );
   }, [allTxs, currentMonthKey]);
-
-
 
   useEffect(() => {
     syncDailyStreakReminder(intel.loggedToday);
@@ -427,7 +449,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     return days.map((d) => {
       const dStr = format(d, "yyyy-MM-dd");
       const dayTxs = allTxs.filter(
-        (t) => t.occurred_on === dStr && t.type === "expense" && !isCorrectionTx(t),
+        (t) =>
+          t.occurred_on === dStr && t.type === "expense" && !isCorrectionTx(t),
       );
       const amount = dayTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
       return { dayLabel: format(d, "EEE"), amount };
@@ -651,13 +674,13 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     if (session?.user) {
       setDisplayName(
         session.user.user_metadata?.display_name ||
-        session.user.email?.split("@")[0] ||
-        "User"
+          session.user.email?.split("@")[0] ||
+          "User",
       );
       setAvatarUrl(
         session.user.user_metadata?.avatar_url ||
-        localStorage.getItem("trouvaille_avatar") ||
-        ""
+          localStorage.getItem("trouvaille_avatar") ||
+          "",
       );
     }
   }, [session]);
@@ -667,17 +690,17 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     ? hour >= 4 && hour < 12
       ? "Selamat Pagi"
       : hour >= 12 && hour < 15
-      ? "Selamat Siang"
-      : hour >= 15 && hour < 19
-      ? "Selamat Sore"
-      : "Selamat Malam"
+        ? "Selamat Siang"
+        : hour >= 15 && hour < 19
+          ? "Selamat Sore"
+          : "Selamat Malam"
     : hour >= 4 && hour < 12
-    ? "Good Morning"
-    : hour >= 12 && hour < 17
-    ? "Good Afternoon"
-    : hour >= 17 && hour < 21
-    ? "Good Evening"
-    : "Good Night";
+      ? "Good Morning"
+      : hour >= 12 && hour < 17
+        ? "Good Afternoon"
+        : hour >= 17 && hour < 21
+          ? "Good Evening"
+          : "Good Night";
 
   const greetingTitle = `${greetingPrefix}, ${displayName}`;
 
@@ -789,49 +812,49 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
             {/* Range Pill Selector (1D, 1W, 1M, 6M, YTD, 1Y, ALL) */}
             <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 mb-1.5">
-              {(["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as StockRange[]).map(
-                (r) => {
-                  const isActive = stockRange === r;
-                  return (
-                    <button
-                      key={r}
-                      onClick={() => {
-                        setStockRange(r);
-                        triggerHaptic("light");
-                      }}
-                      className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none"
-                      style={{
-                        background: isActive
-                          ? isDark
-                            ? "rgba(255,255,255,0.25)"
-                            : "#18181b"
-                          : isDark
-                            ? "transparent"
-                            : "#f4f4f7",
-                        color: isActive
-                          ? "#FFFFFF"
-                          : isDark
-                            ? "rgba(255,255,255,0.55)"
-                            : "#52525b",
-                        border: isActive
-                          ? isDark
-                            ? "1px solid rgba(255,255,255,0.35)"
-                            : "1px solid #18181b"
-                          : isDark
-                            ? "1px solid transparent"
-                            : "1px solid rgba(0,0,0,0.04)",
-                        boxShadow: isActive
-                          ? isDark
-                            ? "none"
-                            : "0 2px 6px rgba(0,0,0,0.18)"
-                          : "none",
-                      }}
-                    >
-                      {r}
-                    </button>
-                  );
-                },
-              )}
+              {(
+                ["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as StockRange[]
+              ).map((r) => {
+                const isActive = stockRange === r;
+                return (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      setStockRange(r);
+                      triggerHaptic("light");
+                    }}
+                    className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none"
+                    style={{
+                      background: isActive
+                        ? isDark
+                          ? "rgba(255,255,255,0.25)"
+                          : "#18181b"
+                        : isDark
+                          ? "transparent"
+                          : "#f4f4f7",
+                      color: isActive
+                        ? "#FFFFFF"
+                        : isDark
+                          ? "rgba(255,255,255,0.55)"
+                          : "#52525b",
+                      border: isActive
+                        ? isDark
+                          ? "1px solid rgba(255,255,255,0.35)"
+                          : "1px solid #18181b"
+                        : isDark
+                          ? "1px solid transparent"
+                          : "1px solid rgba(0,0,0,0.04)",
+                      boxShadow: isActive
+                        ? isDark
+                          ? "none"
+                          : "0 2px 6px rgba(0,0,0,0.18)"
+                        : "none",
+                    }}
+                  >
+                    {r}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Chart with Right Y-Axis & Dotted Grid */}
@@ -844,74 +867,84 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={assetData.chartData}
-                  margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="heroGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="0%"
-                        stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                        stopOpacity={isDark ? 0.25 : 0.12}
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                        stopOpacity={0.0}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    strokeDasharray="2 3"
-                    stroke={isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.09)"}
-                    vertical={true}
-                    horizontal={true}
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tick={{
-                      fontSize: 9,
-                      fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
-                      fontFamily: "Urbanist",
-                      fontWeight: 600,
-                    }}
-                    axisLine={false}
-                    tickLine={false}
-                    dy={3}
-                  />
-                  <YAxis
-                    orientation="right"
-                    width={34}
-                    domain={["auto", "auto"]}
-                    tick={{
-                      fontSize: 9,
-                      fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
-                      fontFamily: "Urbanist",
-                      fontWeight: 700,
-                    }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={formatAxisY}
-                    dx={-2}
-                  />
-                  <Tooltip content={<GlassTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="balance"
-                    stroke={isDark ? "#FFFFFF" : "#18181b"}
-                    strokeWidth={2}
-                    fill="url(#heroGradient)"
-                    dot={false}
-                    activeDot={{
-                      r: 4,
-                      fill: isDark ? "#FFFFFF" : "#18181b",
-                      stroke: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.9)",
-                      strokeWidth: 1.5,
-                    }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+                  <AreaChart
+                    data={assetData.chartData}
+                    margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="heroGradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor={isDark ? "#FFFFFF" : "#18181b"}
+                          stopOpacity={isDark ? 0.25 : 0.12}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor={isDark ? "#FFFFFF" : "#18181b"}
+                          stopOpacity={0.0}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="2 3"
+                      stroke={
+                        isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.09)"
+                      }
+                      vertical={true}
+                      horizontal={true}
+                    />
+                    <XAxis
+                      dataKey="label"
+                      tick={{
+                        fontSize: 9,
+                        fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
+                        fontFamily: "Urbanist",
+                        fontWeight: 600,
+                      }}
+                      axisLine={false}
+                      tickLine={false}
+                      dy={3}
+                    />
+                    <YAxis
+                      orientation="right"
+                      width={34}
+                      domain={["auto", "auto"]}
+                      tick={{
+                        fontSize: 9,
+                        fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
+                        fontFamily: "Urbanist",
+                        fontWeight: 700,
+                      }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={formatAxisY}
+                      dx={-2}
+                    />
+                    <Tooltip content={<GlassTooltip />} />
+                    <Area
+                      type="monotone"
+                      dataKey="balance"
+                      stroke={isDark ? "#FFFFFF" : "#18181b"}
+                      strokeWidth={2}
+                      fill="url(#heroGradient)"
+                      dot={false}
+                      activeDot={{
+                        r: 4,
+                        fill: isDark ? "#FFFFFF" : "#18181b",
+                        stroke: isDark
+                          ? "rgba(0,0,0,0.5)"
+                          : "rgba(255,255,255,0.9)",
+                        strokeWidth: 1.5,
+                      }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               )}
             </div>
 
@@ -1016,7 +1049,13 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         if (size === "half") {
           return (
             <CompactSpendingStabilityHalf
-              level={intel.expenseVolatility.stability === "VOLATILE" ? "High" : intel.expenseVolatility.stability === "MODERATE" ? "Moderate" : "Low"}
+              level={
+                intel.expenseVolatility.stability === "VOLATILE"
+                  ? "High"
+                  : intel.expenseVolatility.stability === "MODERATE"
+                    ? "Moderate"
+                    : "Low"
+              }
               dailyAvg={dailyAverage}
               volatilityScore={(intel.expenseVolatility.score ?? 80) / 100}
               onOpenDetail={() => {
@@ -1150,10 +1189,15 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     totalPrevious: 0,
                     delta: 0,
                     pctChange: 0,
-                    title: intel.actionCenterInsight?.title || "Financial Alert",
-                    subtitle: intel.actionCenterInsight?.subtitle || "Anomalous spending detected",
+                    title:
+                      intel.actionCenterInsight?.title || "Financial Alert",
+                    subtitle:
+                      intel.actionCenterInsight?.subtitle ||
+                      "Anomalous spending detected",
                     badge: intel.actionCenterInsight?.badge || "Insight",
-                    ctaLabel: intel.actionCenterInsight?.actionLabel || "Open Action Center",
+                    ctaLabel:
+                      intel.actionCenterInsight?.actionLabel ||
+                      "Open Action Center",
                   },
                 });
               }}
@@ -1176,7 +1220,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         return (
           <section className="space-y-2">
             <div className="flex justify-between items-center px-1">
-              <span className="text-[11px] font-bold tracking-wider block" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="text-[11px] font-bold tracking-wider block"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 {calendarExpanded ? "Monthly Activity" : "Past 7 Days Activity"}
               </span>
               <button
@@ -1208,7 +1255,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               {calendarExpanded ? (
                 <div className="grid grid-cols-7 gap-y-1 gap-x-1 text-center">
                   {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
-                    <div key={i} className="text-[9px] font-bold mb-0.5" style={{ color: "var(--text-tertiary)" }}>
+                    <div
+                      key={i}
+                      className="text-[9px] font-bold mb-0.5"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
                       {w}
                     </div>
                   ))}
@@ -1224,7 +1275,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                       key={`h-${d.toISOString()}`}
                       className="text-[9px] font-bold mb-0.5"
                       style={{
-                        color: isToday(d) ? "var(--text-primary)" : "var(--text-tertiary)",
+                        color: isToday(d)
+                          ? "var(--text-primary)"
+                          : "var(--text-tertiary)",
                       }}
                     >
                       {format(d, "EEE")}
@@ -1257,17 +1310,26 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         return (
           <section className="space-y-2">
             <div className="flex justify-between items-center px-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="text-[11px] font-bold uppercase tracking-wider"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 Financial Goals
               </span>
-              <span className="text-[11px] font-bold" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="text-[11px] font-bold"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 {goals.length} {goals.length === 1 ? "Goal" : "Goals"}
               </span>
             </div>
 
             <div className="space-y-2.5">
               {goals.slice(0, 3).map((g: any) => {
-                const pct = Math.min(100, Math.round((g.currentAmount / (g.targetAmount || 1)) * 100));
+                const pct = Math.min(
+                  100,
+                  Math.round((g.currentAmount / (g.targetAmount || 1)) * 100),
+                );
                 return (
                   <div
                     key={g.id}
@@ -1291,14 +1353,24 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                             border: "1px solid var(--glass-border)",
                           }}
                         >
-                          <Target size={16} style={{ color: "var(--text-primary)" }} />
+                          <Target
+                            size={16}
+                            style={{ color: "var(--text-primary)" }}
+                          />
                         </div>
                         <div>
-                          <p className="text-[13px] font-bold leading-tight" style={{ color: "var(--text-primary)" }}>
+                          <p
+                            className="text-[13px] font-bold leading-tight"
+                            style={{ color: "var(--text-primary)" }}
+                          >
                             {g.title}
                           </p>
-                          <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                            {formatRupiah(g.currentAmount)} of {formatRupiah(g.targetAmount)}
+                          <p
+                            className="text-[11px] font-medium"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            {formatRupiah(g.currentAmount)} of{" "}
+                            {formatRupiah(g.targetAmount)}
                           </p>
                         </div>
                       </div>
@@ -1334,7 +1406,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     <div
                       className="h-2 w-full rounded-full overflow-hidden mt-2"
                       style={{
-                        background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                        background: isDark
+                          ? "rgba(255,255,255,0.08)"
+                          : "rgba(0,0,0,0.06)",
                       }}
                     >
                       <div
@@ -1378,17 +1452,25 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 setBillManagementOpen(true);
               }}
             >
-              <span className="text-[11px] font-semibold uppercase tracking-wider block" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="text-[11px] font-semibold uppercase tracking-wider block"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 Upcoming Bills
               </span>
-              <span className="text-[11px] font-medium hover:underline flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="text-[11px] font-medium hover:underline flex items-center gap-1"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 Manage Bills
               </span>
             </div>
             <div className="space-y-2">
               {upcomingBills.slice(0, 3).map((bill: any) => {
                 const dueStatusLabel = getBillDueStatusLabel(bill.due_date);
-                const isMarkingPaid = markBillPaid.isPending && markBillPaid.variables?.bill.id === bill.id;
+                const isMarkingPaid =
+                  markBillPaid.isPending &&
+                  markBillPaid.variables?.bill.id === bill.id;
                 return (
                   <div
                     key={bill.id}
@@ -1414,15 +1496,24 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                       <Bell size={16} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                      <p
+                        className="text-[13px] font-semibold truncate"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {bill.title}
                       </p>
-                      <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                      <p
+                        className="text-[11px]"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
                         {dueStatusLabel}
                       </p>
                     </div>
                     <div className="flex items-center gap-2.5 shrink-0">
-                      <p className="amount text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                      <p
+                        className="amount text-[14px] font-semibold"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {formatRupiah(Number(bill.amount))}
                       </p>
                       <button
@@ -1433,10 +1524,19 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                             { bill, paid: true },
                             {
                               onSuccess: () => {
-                                showToast(`${bill.title} marked as paid`, "add", () => {});
+                                showToast(
+                                  `${bill.title} marked as paid`,
+                                  "add",
+                                  () => {},
+                                );
                               },
                               onError: (error: any) => {
-                                showToast(error?.message || `Failed to mark ${bill.title} as paid`, "delete", () => {});
+                                showToast(
+                                  error?.message ||
+                                    `Failed to mark ${bill.title} as paid`,
+                                  "delete",
+                                  () => {},
+                                );
                               },
                             },
                           );
@@ -1483,13 +1583,22 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   >
                     <CalendarDays size={13} />
                   </div>
-                  <span className="text-[12px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                  <span
+                    className="text-[12px] font-medium"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
                     Total Upcoming Bills · View Calendar
                   </span>
                 </div>
-                <span className="amount text-[14px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                <span
+                  className="amount text-[14px] font-semibold"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   {formatRupiah(
-                    upcomingBills.reduce((s: number, b: any) => s + Number(b.amount || 0), 0),
+                    upcomingBills.reduce(
+                      (s: number, b: any) => s + Number(b.amount || 0),
+                      0,
+                    ),
                   )}
                 </span>
               </div>
@@ -1510,10 +1619,16 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         return (
           <section className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              <h3
+                className="text-[13px] font-semibold tracking-tight"
+                style={{ color: "var(--text-primary)" }}
+              >
                 Recent Transactions
               </h3>
-              <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 Latest {size === "half" ? "3" : "5"}
               </span>
             </div>
@@ -1559,7 +1674,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                               : "var(--text-primary)",
                       }}
                     >
-                      {tx.type === "income" ? "+" : tx.type === "expense" ? "-" : ""}
+                      {tx.type === "income"
+                        ? "+"
+                        : tx.type === "expense"
+                          ? "-"
+                          : ""}
                       {formatRupiah(Number(tx.amount))}
                     </span>
                   </div>
@@ -1570,10 +1689,17 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         );
 
       case "top_categories":
-        if (!currentMonthStats.topExpenseCategories || currentMonthStats.topExpenseCategories.length === 0) return null;
+        if (
+          !currentMonthStats.topExpenseCategories ||
+          currentMonthStats.topExpenseCategories.length === 0
+        )
+          return null;
         if (size === "half") {
           const topCat = currentMonthStats.topExpenseCategories[0];
-          const pct = currentMonthStats.expense > 0 ? Math.round((topCat.total / currentMonthStats.expense) * 100) : 0;
+          const pct =
+            currentMonthStats.expense > 0
+              ? Math.round((topCat.total / currentMonthStats.expense) * 100)
+              : 0;
           return (
             <CompactTopCategoriesHalf
               topCategoryName={topCat.name}
@@ -1601,10 +1727,16 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         return (
           <section className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              <h3
+                className="text-[13px] font-semibold tracking-tight"
+                style={{ color: "var(--text-primary)" }}
+              >
                 Top Spending Categories
               </h3>
-              <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 This Month
               </span>
             </div>
@@ -1616,21 +1748,33 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               }}
             >
               {currentMonthStats.topExpenseCategories.slice(0, 3).map((cat) => {
-                const pct = currentMonthStats.expense > 0 ? Math.round((cat.total / currentMonthStats.expense) * 100) : 0;
+                const pct =
+                  currentMonthStats.expense > 0
+                    ? Math.round((cat.total / currentMonthStats.expense) * 100)
+                    : 0;
                 return (
                   <div key={cat.name} className="space-y-1.5">
                     <div className="flex items-center justify-between text-[12px]">
                       <div className="flex items-center gap-2 min-w-0">
                         <IconRenderer icon={cat.emoji} size="w-4 h-4" />
-                        <span className="font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                        <span
+                          className="font-medium truncate"
+                          style={{ color: "var(--text-primary)" }}
+                        >
                           {cat.name}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-semibold amount" style={{ color: "var(--text-primary)" }}>
+                        <span
+                          className="font-semibold amount"
+                          style={{ color: "var(--text-primary)" }}
+                        >
                           {formatRupiah(cat.total)}
                         </span>
-                        <span className="text-[10px] font-mono" style={{ color: "var(--text-tertiary)" }}>
+                        <span
+                          className="text-[10px] font-mono"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
                           ({pct}%)
                         </span>
                       </div>
@@ -1638,7 +1782,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     <div
                       className="h-1.5 w-full rounded-full overflow-hidden"
                       style={{
-                        background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                        background: isDark
+                          ? "rgba(255,255,255,0.08)"
+                          : "rgba(0,0,0,0.06)",
                       }}
                     >
                       <div
@@ -1660,10 +1806,16 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         return (
           <section className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              <h3
+                className="text-[13px] font-semibold tracking-tight"
+                style={{ color: "var(--text-primary)" }}
+              >
                 Savings Rate & Velocity
               </h3>
-              <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 Telemetry
               </span>
             </div>
@@ -1681,15 +1833,24 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   Savings Rate
                 </p>
-                <p className="text-[20px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                <p
+                  className="text-[20px] font-semibold tracking-tight"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   {currentMonthStats.income > 0
                     ? `${Math.max(0, Math.round(((currentMonthStats.income - currentMonthStats.expense) / currentMonthStats.income) * 100))}%`
                     : "0%"}
                 </p>
-                <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                <p
+                  className="text-[10px]"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   Net capital retained
                 </p>
               </div>
@@ -1700,15 +1861,24 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   Runway
                 </p>
-                <p className="text-[20px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                <p
+                  className="text-[20px] font-semibold tracking-tight"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   {currentMonthStats.expense > 0
                     ? `${(liquidAssets / currentMonthStats.expense).toFixed(1)} mo`
                     : "∞"}
                 </p>
-                <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                <p
+                  className="text-[10px]"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   Liquid reserves buffer
                 </p>
               </div>
@@ -1730,10 +1900,16 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
         return (
           <section className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <h3 className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              <h3
+                className="text-[13px] font-semibold tracking-tight"
+                style={{ color: "var(--text-primary)" }}
+              >
                 Split Bill & Receivables
               </h3>
-              <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 Shared Balances
               </span>
             </div>
@@ -1756,10 +1932,16 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   <Users size={16} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-semibold leading-tight truncate" style={{ color: "var(--text-primary)" }}>
+                  <p
+                    className="text-[13px] font-semibold leading-tight truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     Shared Settlements
                   </p>
-                  <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
+                  <p
+                    className="text-[11px] mt-0.5 truncate"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
                     Track friend shares & pending settlements
                   </p>
                 </div>
@@ -1790,7 +1972,8 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             inflow={currentMonthStats.income}
             outflow={currentMonthStats.expense}
             onOpenDetail={() => {
-              const netRetention = currentMonthStats.income - currentMonthStats.expense;
+              const netRetention =
+                currentMonthStats.income - currentMonthStats.expense;
               const isSurplus = netRetention >= 0;
               setMetricDrillDown({
                 type: "snapshot",
@@ -1804,7 +1987,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   subtitle: isSurplus
                     ? `Net capital retention is ${intel.savingsRate.toFixed(1)}% of total monthly inflow (${formatRupiah(currentMonthStats.income)}). Retained capital: ${formatRupiah(netRetention)}.`
                     : `Outflow (${formatRupiah(currentMonthStats.expense)}) exceeds inflow (${formatRupiah(currentMonthStats.income)}) this month by a deficit of ${formatRupiah(Math.abs(netRetention))}.`,
-                  badge: isSurplus ? `${intel.savingsRate.toFixed(0)}% Saved` : "Cash Deficit",
+                  badge: isSurplus
+                    ? `${intel.savingsRate.toFixed(0)}% Saved`
+                    : "Cash Deficit",
                   hideGrid: true,
                   items: [
                     {
@@ -1818,10 +2003,14 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                       detail: "All spending and asset allocations",
                     },
                     {
-                      label: isSurplus ? "Net Capital Retained" : "Net Cash Deficit",
+                      label: isSurplus
+                        ? "Net Capital Retained"
+                        : "Net Cash Deficit",
                       amount: Math.abs(netRetention),
                       valueText: `${isSurplus ? "+" : "-"}${formatRupiah(Math.abs(netRetention))}`,
-                      detail: isSurplus ? "Capital retained in period" : "Additional capital required",
+                      detail: isSurplus
+                        ? "Capital retained in period"
+                        : "Additional capital required",
                     },
                   ],
                   ctaLabel: "View Financial Report",
@@ -1839,7 +2028,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             dailyOutlays={last7DaysOutlays}
             dailyAverage={dailyAverage}
             onOpenDetail={() => {
-              const total7d = last7DaysOutlays.reduce((sum, d) => sum + d.amount, 0);
+              const total7d = last7DaysOutlays.reduce(
+                (sum, d) => sum + d.amount,
+                0,
+              );
               const peak7d = last7DaysOutlays.reduce(
                 (max, d) => (d.amount > max.amount ? d : max),
                 last7DaysOutlays[0] || { dayLabel: "-", amount: 0 },
@@ -1860,7 +2052,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     label: `${d.dayLabel} Outflow`,
                     amount: d.amount,
                     pct: total7d > 0 ? (d.amount / total7d) * 100 : 0,
-                    detail: d.amount > dailyAverage ? "Above daily average" : "Within pace",
+                    detail:
+                      d.amount > dailyAverage
+                        ? "Above daily average"
+                        : "Within pace",
                   })),
                   ctaLabel: "View All Transactions",
                   onCta: () => navigate("/transactions"),
@@ -1943,7 +2138,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                       label: "Active Day Average",
                       amount:
                         activeSpendDaysCount > 0
-                          ? Math.round(currentMonthStats.expense / activeSpendDaysCount)
+                          ? Math.round(
+                              currentMonthStats.expense / activeSpendDaysCount,
+                            )
                           : 0,
                       detail: "Average spending on active transaction days",
                     },
@@ -2065,7 +2262,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 <h1 className="text-[15px] font-semibold text-[var(--text-primary)] leading-tight truncate">
                   {greetingTitle}
                 </h1>
-                <span className="text-[10px] text-[var(--text-tertiary)] opacity-60 shrink-0">▾</span>
+                <span className="text-[10px] text-[var(--text-tertiary)] opacity-60 shrink-0">
+                  ▾
+                </span>
               </div>
               <p className="text-[11px] font-normal text-[var(--text-tertiary)] leading-none mt-1 truncate">
                 {t("home.financialOverview", "Financial Overview")}
@@ -2105,13 +2304,23 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               toggleTheme();
             }}
             className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer select-none"
-            title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+            title={
+              theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"
+            }
             aria-label="Toggle Theme"
           >
             {theme === "light" ? (
-              <Moon size={14} strokeWidth={1.75} style={{ color: "var(--text-primary)" }} />
+              <Moon
+                size={14}
+                strokeWidth={1.75}
+                style={{ color: "var(--text-primary)" }}
+              />
             ) : (
-              <Sun size={14} strokeWidth={1.75} style={{ color: "var(--text-primary)" }} />
+              <Sun
+                size={14}
+                strokeWidth={1.75}
+                style={{ color: "var(--text-primary)" }}
+              />
             )}
           </button>
           <button
@@ -2137,7 +2346,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             title={t("settings.title", "Settings")}
             aria-label="Settings"
           >
-            <Settings size={14} strokeWidth={1.75} style={{ color: "var(--text-primary)" }} />
+            <Settings
+              size={14}
+              strokeWidth={1.75}
+              style={{ color: "var(--text-primary)" }}
+            />
           </button>
         </div>
       </header>
@@ -2155,7 +2368,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
             <span>
-              Active Ledger: <strong className="text-[var(--text-primary)]">{activeSpace.name}</strong> ({activeSpace.tag})
+              Active Ledger:{" "}
+              <strong className="text-[var(--text-primary)]">
+                {activeSpace.name}
+              </strong>{" "}
+              ({activeSpace.tag})
             </span>
           </div>
           <button
@@ -2369,12 +2586,11 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                 >
                   Dashboard Presets
                 </span>
-                <span
-                  className="text-[10px] font-medium text-[var(--text-tertiary)] truncate max-w-[200px]"
-                >
+                <span className="text-[10px] font-medium text-[var(--text-tertiary)] truncate max-w-[200px]">
                   {t(
                     `home.presets.${activePresetKey}Desc`,
-                    HOME_PRESETS.find((p) => p.key === activePresetKey)?.description || "",
+                    HOME_PRESETS.find((p) => p.key === activePresetKey)
+                      ?.description || "",
                   )}
                 </span>
               </div>
@@ -2382,7 +2598,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
               <div
                 className="flex items-center p-1 rounded-full w-full"
                 style={{
-                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.04)",
                   border: "1px solid var(--glass-border)",
                 }}
               >
@@ -2466,7 +2684,10 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                         {w.subtitle}
                       </p>
                     </div>
-                    <div className="shrink-0 ml-3" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="shrink-0 ml-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <ToggleSwitch
                         checked={isEnabled}
                         onChange={() => toggleCardVisibility(w.id)}
@@ -2540,8 +2761,6 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
           });
         }}
       />
-
-
 
       {/* Profile Sheet */}
       <ProfileSheet

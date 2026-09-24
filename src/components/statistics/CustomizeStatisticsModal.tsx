@@ -1,17 +1,25 @@
 // ======================================================================
 // TROUVAILLE CUSTOMIZE STATISTICS MODAL
-// Apple Luxury Glassmorphism Customization Sheet for Analytics Bento Cards
-// Strictly compliant with GEMINI.md:
-// - Rule 1: No native colored system emojis, outline vector Lucide icons only
-// - Rule 2: Monochrome luxury aesthetic with frosted glassmorphism
-// - Rule 3: Zero icons/symbols in settings toggles, Apple iOS toggle switches
+// Apple Minimal / Luxury Glass Statistics Customization Sheet
+//
+// Design rules:
+// - Monochrome luxury aesthetic
+// - Frosted / translucent glass surfaces
+// - No native colored emojis
+// - Lucide icons only
+// - Zero icons/symbols inside settings toggles
+// - Theme is inherited entirely from existing CSS variables
+// - Simulation / widget logic remains untouched
 // ======================================================================
 
 import { X, SlidersHorizontal } from "lucide-react";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
-import type { CardWidgetConfig, StatisticsPresetKey } from "../../lib/widgetLayoutTypes";
+import type {
+  CardWidgetConfig,
+  StatisticsPresetKey,
+} from "../../lib/widgetLayoutTypes";
 import { STATISTICS_PRESETS } from "../../lib/widgetLayoutTypes";
 
 export interface CustomizeStatisticsModalProps {
@@ -42,7 +50,9 @@ export function CustomizeStatisticsModal({
 
   if (!isOpen) return null;
 
-  const currentPresetDef = STATISTICS_PRESETS.find((p) => p.key === activePresetKey);
+  const currentPresetDef = STATISTICS_PRESETS.find(
+    (preset) => preset.key === activePresetKey,
+  );
 
   const getPresetDescription = () => {
     if (!activePresetKey || !currentPresetDef) {
@@ -50,280 +60,549 @@ export function CustomizeStatisticsModal({
         ? "Konfigurasi kustom sesuai preferensi Anda"
         : "Custom configuration tailored to your preference";
     }
+
     return t(
       `statistics.presets.${activePresetKey}Desc`,
       currentPresetDef.description,
     );
   };
 
+  const groups = [
+    {
+      title: isIndonesian ? "Laporan & Evaluasi" : "Report & Diagnostics",
+      ids: [
+        "financial_report",
+        "monthly_review",
+        "personal_baseline",
+        "expense_structure",
+      ],
+    },
+    {
+      title: isIndonesian ? "Kecerdasan Finansial" : "Financial Intelligence",
+      ids: [
+        "health_score",
+        "spending_patterns",
+        "spending_density_heatmap",
+        "zero_based_envelopes",
+      ],
+    },
+    {
+      title: isIndonesian ? "Arus Kas & Tren" : "Cashflow & Trend",
+      ids: [
+        "cashflow_summary",
+        "category_breakdown",
+        "cashflow_sankey",
+        "inflow_outflow_trend",
+        "cashflow_velocity",
+      ],
+    },
+    {
+      title: isIndonesian ? "Simulasi & Proyeksi" : "Simulation & Planning",
+      ids: [
+        "what_if_simulator",
+        "monte_carlo",
+        "fire_planner",
+        "personal_financial_model",
+        "debt_payoff",
+        "cashflow_outlook",
+        "liquidity_horizon",
+      ],
+    },
+  ];
+
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-3 sm:p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),16px)] sm:pb-4 bg-black/70 backdrop-blur-md animate-fade-in"
+      className="
+        fixed inset-0 z-[100]
+        flex items-end sm:items-center justify-center
+        bg-black/65
+        backdrop-blur-[18px]
+        animate-fade-in
+      "
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="customize-statistics-title"
     >
+      {/* ================================================================
+          SHEET
+          Full width on mobile, contained on desktop.
+          The page/sheet is full bleed; feature groups remain inset.
+      ================================================================= */}
       <div
-        className="w-full max-w-md rounded-[28px] sm:rounded-3xl p-5 space-y-3.5 shadow-2xl animate-scale-up max-h-[82vh] sm:max-h-[80vh] flex flex-col"
+        className="
+          relative
+          w-full
+          max-w-md
+          max-h-[90vh]
+          sm:max-h-[82vh]
+          flex
+          flex-col
+          overflow-hidden
+          rounded-t-[30px]
+          sm:rounded-[30px]
+          animate-scale-up
+        "
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
+          boxShadow:
+            "0 -8px 40px rgba(0,0,0,0.12), 0 24px 70px rgba(0,0,0,0.38)",
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Header: Title + Close Button */}
-        <div className="flex items-center justify-between shrink-0">
-          <div>
-            <h3
-              id="customize-statistics-title"
-              className="text-[15px] font-semibold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
+        {/* ================================================================
+            HEADER
+        ================================================================= */}
+        <div
+          className="
+            shrink-0
+            px-5
+            pt-5
+            pb-3.5
+          "
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h3
+                id="customize-statistics-title"
+                className="
+                  text-[15px]
+                  font-semibold
+                  tracking-[-0.01em]
+                  leading-tight
+                "
+                style={{
+                  color: "var(--text-primary)",
+                }}
+              >
+                {t("statistics.customizeCards", "Customize Analytics")}
+              </h3>
+
+              <p
+                className="
+                  mt-1
+                  text-[11px]
+                  font-medium
+                  leading-relaxed
+                "
+                style={{
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                {t(
+                  "statistics.customizeCardsDesc",
+                  "Personalize analytics cards and dashboard sections",
+                )}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                onClose();
+              }}
+              className="
+                shrink-0
+                w-8
+                h-8
+                rounded-full
+                flex
+                items-center
+                justify-center
+                cursor-pointer
+                transition-all
+                duration-200
+                active:scale-90
+              "
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-tertiary)",
+              }}
+              aria-label="Close"
             >
-              {t("statistics.customizeCards", "Customize Analytics")}
-            </h3>
-            <p
-              className="text-[11px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {t(
-                "statistics.customizeCardsDesc",
-                "Personalize analytics cards and dashboard sections",
-              )}
-            </p>
+              <X size={14} strokeWidth={1.8} />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              onClose();
-            }}
-            className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors active:scale-95 shrink-0"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-tertiary)",
-            }}
-            aria-label="Close"
-          >
-            <X size={14} strokeWidth={1.75} />
-          </button>
         </div>
 
-        {/* Minimal 4-Preset Capsule Bar */}
-        <div className="space-y-1.5 shrink-0">
-          <div className="flex items-center justify-between px-1">
-            <span
-              className="text-[10px] font-semibold uppercase tracking-wider"
-              style={{ color: "var(--text-tertiary)" }}
+        {/* ================================================================
+            SCROLLABLE CONTENT
+        ================================================================= */}
+        <div
+          className="
+            flex-1
+            min-h-0
+            overflow-y-auto
+            no-scrollbar
+          "
+        >
+          {/* ==============================================================
+              PRESETS
+          =============================================================== */}
+          <div className="px-5 pb-3.5">
+            <div className="flex items-center justify-between px-1 mb-1.5">
+              <span
+                className="
+                  text-[10px]
+                  font-semibold
+                  uppercase
+                  tracking-[0.11em]
+                "
+                style={{
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                {t("statistics.presetsLabel", "Presets")}
+              </span>
+            </div>
+
+            <div
+              className="
+                flex
+                items-center
+                w-full
+                p-1
+                rounded-full
+              "
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
             >
-              {t("statistics.presetsLabel", "Presets")}
-            </span>
+              {STATISTICS_PRESETS.map((preset) => {
+                const isActive = activePresetKey === preset.key;
+
+                return (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("medium");
+                      onSelectPresetKey?.(preset.key);
+                      onApplyPreset(preset.key);
+                    }}
+                    className={`
+                      flex-1
+                      min-w-0
+                      py-[7px]
+                      px-1
+                      rounded-full
+                      text-[11px]
+                      text-center
+                      truncate
+                      select-none
+                      cursor-pointer
+                      transition-all
+                      duration-200
+                      ${isActive ? "font-semibold shadow-sm" : "font-medium"}
+                    `}
+                    style={
+                      isActive
+                        ? {
+                            background: "var(--text-primary)",
+                            color: "var(--bg-base)",
+                          }
+                        : {
+                            color: "var(--text-secondary)",
+                          }
+                    }
+                  >
+                    {t(`statistics.presets.${preset.key}`, preset.label)}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p
+              className="
+                mt-2
+                px-1
+                text-[10.5px]
+                text-center
+                leading-relaxed
+                line-clamp-1
+              "
+              style={{
+                color: "var(--text-tertiary)",
+              }}
+            >
+              {getPresetDescription()}
+            </p>
           </div>
 
-          <div
-            className="flex items-center p-1 rounded-full w-full"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            {STATISTICS_PRESETS.map((preset) => {
-              const isActive = activePresetKey === preset.key;
+          {/* ==============================================================
+              REARRANGE BUTTON
+          =============================================================== */}
+          <div className="px-5 pb-4">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                onClose();
+                onEnterGridEdit();
+              }}
+              className="
+                w-full
+                flex
+                items-center
+                justify-center
+                gap-1.5
+                py-2
+                px-3
+                rounded-xl
+                text-[11px]
+                font-semibold
+                cursor-pointer
+                active:scale-[0.985]
+                transition-all
+                duration-200
+              "
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <SlidersHorizontal size={12} strokeWidth={1.8} />
+
+              <span>
+                {t("statistics.rearrangeGrid", "Rearrange & Resize on Grid")}
+              </span>
+            </button>
+          </div>
+
+          {/* ==============================================================
+              FEATURE GROUPS
+
+              IMPORTANT:
+              The sheet itself is full width.
+              These groups intentionally stay inset with mx-5.
+          =============================================================== */}
+          <div className="space-y-4 pb-5">
+            {groups.map((group) => {
+              const groupWidgets = widgets.filter((widget) =>
+                group.ids.includes(widget.id),
+              );
+
+              if (groupWidgets.length === 0) {
+                return null;
+              }
+
               return (
-                <button
-                  key={preset.key}
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("medium");
-                    onSelectPresetKey?.(preset.key);
-                    onApplyPreset(preset.key);
-                  }}
-                  className={`flex-1 py-1.5 px-1 text-center rounded-full text-[11px] transition-all duration-200 cursor-pointer select-none truncate ${
-                    isActive
-                      ? "bg-[var(--text-primary)] text-[var(--bg-base)] font-semibold shadow-sm"
-                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium"
-                  }`}
-                >
-                  {t(`statistics.presets.${preset.key}`, preset.label)}
-                </button>
+                <section key={group.title} className="mx-5">
+                  {/* Group title */}
+                  <div className="px-1 mb-1.5">
+                    <span
+                      className="
+                        text-[10px]
+                        font-semibold
+                        uppercase
+                        tracking-[0.11em]
+                      "
+                      style={{
+                        color: "var(--text-tertiary)",
+                      }}
+                    >
+                      {group.title}
+                    </span>
+                  </div>
+
+                  {/* Group container */}
+                  <div
+                    className="
+                      overflow-hidden
+                      rounded-[17px]
+                    "
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {groupWidgets.map((widget, index) => {
+                      const isEnabled = widget.isVisible;
+
+                      return (
+                        <div
+                          key={widget.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            onSelectPresetKey?.(null);
+                            onToggleVisibility(widget.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+
+                              onSelectPresetKey?.(null);
+
+                              onToggleVisibility(widget.id);
+                            }
+                          }}
+                          className="
+                              flex
+                              items-center
+                              justify-between
+                              gap-3
+                              min-h-[58px]
+                              px-3.5
+                              py-2.5
+                              cursor-pointer
+                              select-none
+                              transition-all
+                              duration-200
+                              active:bg-black/[0.03]
+                            "
+                          style={{
+                            background: isEnabled
+                              ? "rgba(255,255,255,0.035)"
+                              : "transparent",
+                            opacity: isEnabled ? 1 : 0.58,
+                            borderTop:
+                              index === 0
+                                ? "none"
+                                : "1px solid var(--glass-border)",
+                          }}
+                        >
+                          {/* Text */}
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="
+                                  text-[12.5px]
+                                  font-semibold
+                                  leading-snug
+                                  truncate
+                                "
+                              style={{
+                                color: "var(--text-primary)",
+                              }}
+                            >
+                              {widget.title}
+                            </p>
+
+                            <p
+                              className="
+                                  mt-0.5
+                                  text-[10.5px]
+                                  leading-relaxed
+                                  line-clamp-1
+                                "
+                              style={{
+                                color: "var(--text-tertiary)",
+                              }}
+                            >
+                              {widget.subtitle}
+                            </p>
+                          </div>
+
+                          {/* Toggle */}
+                          <div
+                            className="
+                                shrink-0
+                                ml-2
+                              "
+                            onClick={(event) => {
+                              event.stopPropagation();
+                            }}
+                          >
+                            <ToggleSwitch
+                              checked={isEnabled}
+                              onChange={() => {
+                                onSelectPresetKey?.(null);
+                                onToggleVisibility(widget.id);
+                              }}
+                              size="sm"
+                              ariaLabel={`Toggle ${widget.title}`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
               );
             })}
           </div>
-
-          <p className="text-[10.5px] text-[var(--text-tertiary)] text-center line-clamp-1 px-1 transition-opacity">
-            {getPresetDescription()}
-          </p>
         </div>
 
-        {/* Mode Switch: Rearrange on Grid */}
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic("medium");
-            onClose();
-            onEnterGridEdit();
-          }}
-          className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl text-[11px] font-semibold cursor-pointer active:scale-[0.99] transition-all shrink-0"
+        {/* ================================================================
+            FOOTER
+        ================================================================= */}
+        <div
+          className="
+            shrink-0
+            px-5
+            pt-3
+            pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),16px)]
+          "
           style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
-            color: "var(--text-secondary)",
+            background: "var(--bg-elevated)",
+            borderTop: "1px solid var(--glass-border)",
           }}
         >
-          <SlidersHorizontal size={12} strokeWidth={1.75} />
-          <span>{t("statistics.rearrangeGrid", "Rearrange & Resize on Grid")}</span>
-        </button>
+          <div className="flex gap-2.5">
+            {/* Reset */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                onSelectPresetKey?.("executive");
+                onReset();
+              }}
+              className="
+                flex-1
+                h-10
+                rounded-xl
+                text-[12px]
+                font-semibold
+                cursor-pointer
+                active:scale-[0.97]
+                transition-transform
+                flex
+                items-center
+                justify-center
+              "
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
+              }}
+            >
+              {t("statistics.resetDefaults", "Reset Defaults")}
+            </button>
 
-        {/* Grouped Feature Rows for All Analytics Sections (Strictly Rule 3: Zero Icons in Toggles) */}
-        <div className="space-y-3.5 overflow-y-auto no-scrollbar pr-0.5 flex-1 min-h-0">
-          {[
-            {
-              title: isIndonesian ? "Laporan & Evaluasi" : "Report & Diagnostics",
-              ids: [
-                "financial_report",
-                "monthly_review",
-                "personal_baseline",
-                "expense_structure",
-              ],
-            },
-            {
-              title: isIndonesian ? "Kecerdasan Finansial" : "Financial Intelligence",
-              ids: [
-                "health_score",
-                "spending_patterns",
-                "spending_density_heatmap",
-                "zero_based_envelopes",
-              ],
-            },
-            {
-              title: isIndonesian ? "Arus Kas & Tren" : "Cashflow & Trend",
-              ids: [
-                "cashflow_summary",
-                "category_breakdown",
-                "cashflow_sankey",
-                "inflow_outflow_trend",
-                "cashflow_velocity",
-              ],
-            },
-            {
-              title: isIndonesian ? "Simulasi & Proyeksi" : "Simulation & Planning",
-              ids: [
-                "what_if_simulator",
-                "monte_carlo",
-                "fire_planner",
-                "personal_financial_model",
-                "debt_payoff",
-                "cashflow_outlook",
-                "liquidity_horizon",
-              ],
-            },
-          ].map((group) => {
-            const groupWidgets = widgets.filter((w) => group.ids.includes(w.id));
-            if (groupWidgets.length === 0) return null;
-
-            return (
-              <div key={group.title} className="space-y-1.5">
-                <div className="px-1">
-                  <span
-                    className="text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {group.title}
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {groupWidgets.map((w) => {
-                    const isEnabled = w.isVisible;
-                    return (
-                      <div
-                        key={w.id}
-                        onClick={() => {
-                          onSelectPresetKey?.(null);
-                          onToggleVisibility(w.id);
-                        }}
-                        className="flex items-center justify-between py-2.5 px-3.5 rounded-xl cursor-pointer active:scale-[0.99] transition-all duration-200 select-none"
-                        style={{
-                          background: isEnabled
-                            ? "rgba(255, 255, 255, 0.05)"
-                            : "var(--glass-fill)",
-                          border: isEnabled
-                            ? "1px solid rgba(255, 255, 255, 0.12)"
-                            : "1px solid var(--glass-border)",
-                          boxShadow: isEnabled
-                            ? "0 4px 20px -2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
-                            : "none",
-                          opacity: isEnabled ? 1 : 0.55,
-                        }}
-                      >
-                        <div className="min-w-0 pr-3 text-left">
-                          <p
-                            className="text-[12.5px] font-semibold leading-snug truncate"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {w.title}
-                          </p>
-                          <p
-                            className="text-[10.5px] leading-relaxed mt-0.5 line-clamp-1"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            {w.subtitle}
-                          </p>
-                        </div>
-                        <div className="shrink-0 ml-3" onClick={(e) => e.stopPropagation()}>
-                          <ToggleSwitch
-                            checked={isEnabled}
-                            onChange={() => {
-                              onSelectPresetKey?.(null);
-                              onToggleVisibility(w.id);
-                            }}
-                            size="sm"
-                            ariaLabel={`Toggle ${w.title}`}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Footer Actions: Reset Defaults & Done */}
-        <div className="flex gap-2.5 pt-3 border-t border-[var(--glass-border)] shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("medium");
-              onSelectPresetKey?.("executive");
-              onReset();
-            }}
-            className="flex-1 h-10 rounded-xl text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer text-center flex items-center justify-center"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            {t("statistics.resetDefaults", "Reset Defaults")}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              onClose();
-            }}
-            className="flex-1 h-10 rounded-xl text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer text-center flex items-center justify-center"
-            style={{
-              background: "var(--text-primary)",
-              color: "var(--bg-base)",
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.25)",
-            }}
-          >
-            {t("common.done", "Done")}
-          </button>
+            {/* Done */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                onClose();
+              }}
+              className="
+                flex-1
+                h-10
+                rounded-xl
+                text-[12px]
+                font-semibold
+                cursor-pointer
+                active:scale-[0.97]
+                transition-transform
+                flex
+                items-center
+                justify-center
+              "
+              style={{
+                background: "var(--text-primary)",
+                color: "var(--bg-base)",
+                boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+              }}
+            >
+              {t("common.done", "Done")}
+            </button>
+          </div>
         </div>
       </div>
     </div>

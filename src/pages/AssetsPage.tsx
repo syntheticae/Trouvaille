@@ -74,10 +74,7 @@ import { BottomSheet } from "../components/ui/BottomSheet";
 import { ExecutiveWalletCard } from "../components/assets/ExecutiveWalletCard";
 import { calculateAssetTrend } from "../lib/financialMath";
 import { startOfMonth } from "date-fns";
-import type {
-  InvestmentHolding,
-  AssetType,
-} from "../lib/types";
+import type { InvestmentHolding, AssetType } from "../lib/types";
 
 export type PresetCategory =
   | "all"
@@ -108,48 +105,272 @@ interface PresetAsset {
 
 const PRESET_ASSETS: PresetAsset[] = [
   // Crypto
-  { symbol: "BTC", name: "Bitcoin", type: "crypto", category: "crypto", suggestedCurrency: "USD", icon: "Coins" },
-  { symbol: "ETH", name: "Ethereum", type: "crypto", category: "crypto", suggestedCurrency: "USD", icon: "Coins" },
-  { symbol: "SOL", name: "Solana", type: "crypto", category: "crypto", suggestedCurrency: "USD", icon: "Coins" },
-  { symbol: "BNB", name: "Binance Coin", type: "crypto", category: "crypto", suggestedCurrency: "USD", icon: "Coins" },
-  { symbol: "XRP", name: "Ripple", type: "crypto", category: "crypto", suggestedCurrency: "USD", icon: "Coins" },
-  { symbol: "ADA", name: "Cardano", type: "crypto", category: "crypto", suggestedCurrency: "USD", icon: "Coins" },
-  { symbol: "DOGE", name: "Dogecoin", type: "crypto", category: "crypto", suggestedCurrency: "USD", icon: "Coins" },
+  {
+    symbol: "BTC",
+    name: "Bitcoin",
+    type: "crypto",
+    category: "crypto",
+    suggestedCurrency: "USD",
+    icon: "Coins",
+  },
+  {
+    symbol: "ETH",
+    name: "Ethereum",
+    type: "crypto",
+    category: "crypto",
+    suggestedCurrency: "USD",
+    icon: "Coins",
+  },
+  {
+    symbol: "SOL",
+    name: "Solana",
+    type: "crypto",
+    category: "crypto",
+    suggestedCurrency: "USD",
+    icon: "Coins",
+  },
+  {
+    symbol: "BNB",
+    name: "Binance Coin",
+    type: "crypto",
+    category: "crypto",
+    suggestedCurrency: "USD",
+    icon: "Coins",
+  },
+  {
+    symbol: "XRP",
+    name: "Ripple",
+    type: "crypto",
+    category: "crypto",
+    suggestedCurrency: "USD",
+    icon: "Coins",
+  },
+  {
+    symbol: "ADA",
+    name: "Cardano",
+    type: "crypto",
+    category: "crypto",
+    suggestedCurrency: "USD",
+    icon: "Coins",
+  },
+  {
+    symbol: "DOGE",
+    name: "Dogecoin",
+    type: "crypto",
+    category: "crypto",
+    suggestedCurrency: "USD",
+    icon: "Coins",
+  },
 
   // US Equities
-  { symbol: "AAPL", name: "Apple Inc.", type: "stock", category: "stock_us", suggestedCurrency: "USD", icon: "TrendingUp" },
-  { symbol: "NVDA", name: "NVIDIA Corp.", type: "stock", category: "stock_us", suggestedCurrency: "USD", icon: "TrendingUp" },
-  { symbol: "TSLA", name: "Tesla Inc.", type: "stock", category: "stock_us", suggestedCurrency: "USD", icon: "TrendingUp" },
-  { symbol: "MSFT", name: "Microsoft Corp.", type: "stock", category: "stock_us", suggestedCurrency: "USD", icon: "TrendingUp" },
-  { symbol: "GOOGL", name: "Alphabet Inc.", type: "stock", category: "stock_us", suggestedCurrency: "USD", icon: "TrendingUp" },
-  { symbol: "AMZN", name: "Amazon.com Inc.", type: "stock", category: "stock_us", suggestedCurrency: "USD", icon: "TrendingUp" },
-  { symbol: "META", name: "Meta Platforms", type: "stock", category: "stock_us", suggestedCurrency: "USD", icon: "TrendingUp" },
+  {
+    symbol: "AAPL",
+    name: "Apple Inc.",
+    type: "stock",
+    category: "stock_us",
+    suggestedCurrency: "USD",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "NVDA",
+    name: "NVIDIA Corp.",
+    type: "stock",
+    category: "stock_us",
+    suggestedCurrency: "USD",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "TSLA",
+    name: "Tesla Inc.",
+    type: "stock",
+    category: "stock_us",
+    suggestedCurrency: "USD",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "MSFT",
+    name: "Microsoft Corp.",
+    type: "stock",
+    category: "stock_us",
+    suggestedCurrency: "USD",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "GOOGL",
+    name: "Alphabet Inc.",
+    type: "stock",
+    category: "stock_us",
+    suggestedCurrency: "USD",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "AMZN",
+    name: "Amazon.com Inc.",
+    type: "stock",
+    category: "stock_us",
+    suggestedCurrency: "USD",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "META",
+    name: "Meta Platforms",
+    type: "stock",
+    category: "stock_us",
+    suggestedCurrency: "USD",
+    icon: "TrendingUp",
+  },
 
   // IDX Equities
-  { symbol: "BBCA", name: "Bank Central Asia", type: "stock", category: "stock_id", suggestedCurrency: "IDR", icon: "TrendingUp" },
-  { symbol: "BBRI", name: "Bank Rakyat Indonesia", type: "stock", category: "stock_id", suggestedCurrency: "IDR", icon: "TrendingUp" },
-  { symbol: "BMRI", name: "Bank Mandiri", type: "stock", category: "stock_id", suggestedCurrency: "IDR", icon: "TrendingUp" },
-  { symbol: "BBNI", name: "Bank Negara Indonesia", type: "stock", category: "stock_id", suggestedCurrency: "IDR", icon: "TrendingUp" },
-  { symbol: "TLKM", name: "Telkom Indonesia", type: "stock", category: "stock_id", suggestedCurrency: "IDR", icon: "TrendingUp" },
-  { symbol: "ASII", name: "Astra International", type: "stock", category: "stock_id", suggestedCurrency: "IDR", icon: "TrendingUp" },
-  { symbol: "ICBP", name: "Indofood CBP", type: "stock", category: "stock_id", suggestedCurrency: "IDR", icon: "TrendingUp" },
+  {
+    symbol: "BBCA",
+    name: "Bank Central Asia",
+    type: "stock",
+    category: "stock_id",
+    suggestedCurrency: "IDR",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "BBRI",
+    name: "Bank Rakyat Indonesia",
+    type: "stock",
+    category: "stock_id",
+    suggestedCurrency: "IDR",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "BMRI",
+    name: "Bank Mandiri",
+    type: "stock",
+    category: "stock_id",
+    suggestedCurrency: "IDR",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "BBNI",
+    name: "Bank Negara Indonesia",
+    type: "stock",
+    category: "stock_id",
+    suggestedCurrency: "IDR",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "TLKM",
+    name: "Telkom Indonesia",
+    type: "stock",
+    category: "stock_id",
+    suggestedCurrency: "IDR",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "ASII",
+    name: "Astra International",
+    type: "stock",
+    category: "stock_id",
+    suggestedCurrency: "IDR",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "ICBP",
+    name: "Indofood CBP",
+    type: "stock",
+    category: "stock_id",
+    suggestedCurrency: "IDR",
+    icon: "TrendingUp",
+  },
 
   // Gold & Commodities
-  { symbol: "XAU", name: "Gold Antam (per gram)", type: "gold", category: "gold", suggestedCurrency: "IDR", icon: "Landmark" },
-  { symbol: "UBS", name: "Gold UBS (per gram)", type: "gold", category: "gold", suggestedCurrency: "IDR", icon: "Landmark" },
-  { symbol: "XAG", name: "Silver Pure (per gram)", type: "gold", category: "gold", suggestedCurrency: "IDR", icon: "Landmark" },
+  {
+    symbol: "XAU",
+    name: "Gold Antam (per gram)",
+    type: "gold",
+    category: "gold",
+    suggestedCurrency: "IDR",
+    icon: "Landmark",
+  },
+  {
+    symbol: "UBS",
+    name: "Gold UBS (per gram)",
+    type: "gold",
+    category: "gold",
+    suggestedCurrency: "IDR",
+    icon: "Landmark",
+  },
+  {
+    symbol: "XAG",
+    name: "Silver Pure (per gram)",
+    type: "gold",
+    category: "gold",
+    suggestedCurrency: "IDR",
+    icon: "Landmark",
+  },
 
   // Mutual Funds
-  { symbol: "RD-PASAR-UANG", name: "Money Market Fund", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "TrendingUp" },
-  { symbol: "RD-PENDAPATAN-TETAP", name: "Fixed Income Fund", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "FileText" },
-  { symbol: "RD-SAHAM", name: "Equity Fund", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "TrendingUp" },
-  { symbol: "RD-CAMPURAN", name: "Balanced Fund", type: "mutual_fund", category: "mutual_fund", suggestedCurrency: "IDR", icon: "TrendingUp" },
+  {
+    symbol: "RD-PASAR-UANG",
+    name: "Money Market Fund",
+    type: "mutual_fund",
+    category: "mutual_fund",
+    suggestedCurrency: "IDR",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "RD-PENDAPATAN-TETAP",
+    name: "Fixed Income Fund",
+    type: "mutual_fund",
+    category: "mutual_fund",
+    suggestedCurrency: "IDR",
+    icon: "FileText",
+  },
+  {
+    symbol: "RD-SAHAM",
+    name: "Equity Fund",
+    type: "mutual_fund",
+    category: "mutual_fund",
+    suggestedCurrency: "IDR",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "RD-CAMPURAN",
+    name: "Balanced Fund",
+    type: "mutual_fund",
+    category: "mutual_fund",
+    suggestedCurrency: "IDR",
+    icon: "TrendingUp",
+  },
 
   // Fixed Assets
-  { symbol: "RUMAH", name: "Residential Property", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Home" },
-  { symbol: "TANAH", name: "Land / Real Estate", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Landmark" },
-  { symbol: "MOBIL", name: "Vehicle / Automobile", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Shield" },
-  { symbol: "LOGAM", name: "Physical Precious Metals", type: "fixed_asset", category: "fixed_asset", suggestedCurrency: "IDR", icon: "Coins" },
+  {
+    symbol: "RUMAH",
+    name: "Residential Property",
+    type: "fixed_asset",
+    category: "fixed_asset",
+    suggestedCurrency: "IDR",
+    icon: "Home",
+  },
+  {
+    symbol: "TANAH",
+    name: "Land / Real Estate",
+    type: "fixed_asset",
+    category: "fixed_asset",
+    suggestedCurrency: "IDR",
+    icon: "Landmark",
+  },
+  {
+    symbol: "MOBIL",
+    name: "Vehicle / Automobile",
+    type: "fixed_asset",
+    category: "fixed_asset",
+    suggestedCurrency: "IDR",
+    icon: "Shield",
+  },
+  {
+    symbol: "LOGAM",
+    name: "Physical Precious Metals",
+    type: "fixed_asset",
+    category: "fixed_asset",
+    suggestedCurrency: "IDR",
+    icon: "Coins",
+  },
 ];
 
 export function AssetsPage() {
@@ -182,7 +403,8 @@ export function AssetsPage() {
   const [dismissedReconciliation, setDismissedReconciliation] = useState(false);
 
   // Consolidated Balance Sheet Drawer & Metric Drill Down State
-  const [isConsolidatedDrawerOpen, setIsConsolidatedDrawerOpen] = useState(false);
+  const [isConsolidatedDrawerOpen, setIsConsolidatedDrawerOpen] =
+    useState(false);
   const [consolidatedSearch, setConsolidatedSearch] = useState("");
   const [consolidatedTierFilter, setConsolidatedTierFilter] = useState<
     "all" | "tier1" | "tier2" | "tier3" | "liabilities"
@@ -251,7 +473,10 @@ export function AssetsPage() {
       .then(({ usdtRate, updatedHoldings }) => {
         if (isMounted) {
           if (usdtRate > 5000 && usdtRate < 50000) {
-            setUsdtPref((prev: UsdtValuationPref) => ({ ...prev, rate: usdtRate }));
+            setUsdtPref((prev: UsdtValuationPref) => ({
+              ...prev,
+              rate: usdtRate,
+            }));
           }
           if (updatedHoldings && updatedHoldings.length > 0) {
             setHoldings(updatedHoldings);
@@ -271,7 +496,10 @@ export function AssetsPage() {
     try {
       const res = await refreshAllPortfolioPrices(user?.id);
       if (res.usdtRate > 0) {
-        setUsdtPref((prev: UsdtValuationPref) => ({ ...prev, rate: res.usdtRate }));
+        setUsdtPref((prev: UsdtValuationPref) => ({
+          ...prev,
+          rate: res.usdtRate,
+        }));
       }
       if (res.updatedHoldings && res.updatedHoldings.length > 0) {
         setHoldings(res.updatedHoldings);
@@ -285,7 +513,9 @@ export function AssetsPage() {
       );
     } catch {
       showToast(
-        isIndonesian ? "Gagal memperbarui harga live" : "Failed to refresh live prices",
+        isIndonesian
+          ? "Gagal memperbarui harga live"
+          : "Failed to refresh live prices",
         "delete",
         () => {},
       );
@@ -322,16 +552,10 @@ export function AssetsPage() {
 
   const usdtCostBasis = usdtPref.costBasis;
   const usdtMarketValue =
-    usdtPref.units > 0
-      ? usdtPref.units * usdtPref.rate
-      : recordedCryptoBalance;
+    usdtPref.units > 0 ? usdtPref.units * usdtPref.rate : recordedCryptoBalance;
   const usdtFloatingPnL = usdtMarketValue - usdtCostBasis;
   const usdtFloatingPnLPct =
     usdtCostBasis > 0 ? (usdtFloatingPnL / usdtCostBasis) * 100 : 0;
-
-
-
-
 
   // ── Executive Balance Sheet & 4-Pillar Capital Breakdown ──────────
   // Pillar 1: Liquid & Current Assets (Operating Cash, Banks, e-Wallets, USDT Reserve)
@@ -358,7 +582,10 @@ export function AssetsPage() {
           h.asset_type === "mutual_fund" ||
           h.asset_type === "bond",
       )
-      .reduce((sum, h) => sum + h.units * (h.current_price || h.avg_buy_price), 0);
+      .reduce(
+        (sum, h) => sum + h.units * (h.current_price || h.avg_buy_price),
+        0,
+      );
   }, [liquidHoldings]);
 
   // Pillar 3: Fixed & Tangible Assets (Property, Physical Gold, Vehicles)
@@ -369,7 +596,10 @@ export function AssetsPage() {
     }, 0);
     const physicalGold = liquidHoldings
       .filter((h) => h.asset_type === "gold")
-      .reduce((sum, h) => sum + h.units * (h.current_price || h.avg_buy_price), 0);
+      .reduce(
+        (sum, h) => sum + h.units * (h.current_price || h.avg_buy_price),
+        0,
+      );
     return fixedTangibles + physicalGold;
   }, [fixedHoldings, liquidHoldings]);
 
@@ -384,19 +614,36 @@ export function AssetsPage() {
       )
       .reduce((sum, w) => {
         const bal = Number(w.balance || 0);
-        return sum + Math.abs(bal < 0 ? bal : (w.classification === "credit" || w.classification === "loan" ? bal : 0));
+        return (
+          sum +
+          Math.abs(
+            bal < 0
+              ? bal
+              : w.classification === "credit" || w.classification === "loan"
+                ? bal
+                : 0,
+          )
+        );
       }, 0);
   }, [wallets]);
 
   // Balance Sheet Totals & Solvency Metrics
-  const totalGrossAssets = liquidAssetsTotal + growthAssetsTotal + fixedAssetsTotal;
+  const totalGrossAssets =
+    liquidAssetsTotal + growthAssetsTotal + fixedAssetsTotal;
   const netWorth = totalGrossAssets - liabilitiesTotal;
-  const debtToAssetRatio = totalGrossAssets > 0 ? (liabilitiesTotal / totalGrossAssets) * 100 : 0;
-  const solvencyScore = Math.max(0, Math.min(100, Math.round(100 - debtToAssetRatio)));
+  const debtToAssetRatio =
+    totalGrossAssets > 0 ? (liabilitiesTotal / totalGrossAssets) * 100 : 0;
+  const solvencyScore = Math.max(
+    0,
+    Math.min(100, Math.round(100 - debtToAssetRatio)),
+  );
 
-  const liquidPct = totalGrossAssets > 0 ? (liquidAssetsTotal / totalGrossAssets) * 100 : 0;
-  const growthPct = totalGrossAssets > 0 ? (growthAssetsTotal / totalGrossAssets) * 100 : 0;
-  const fixedPct = totalGrossAssets > 0 ? (fixedAssetsTotal / totalGrossAssets) * 100 : 0;
+  const liquidPct =
+    totalGrossAssets > 0 ? (liquidAssetsTotal / totalGrossAssets) * 100 : 0;
+  const growthPct =
+    totalGrossAssets > 0 ? (growthAssetsTotal / totalGrossAssets) * 100 : 0;
+  const fixedPct =
+    totalGrossAssets > 0 ? (fixedAssetsTotal / totalGrossAssets) * 100 : 0;
 
   // Top Exposure & Capital Deployment Memos
   const topExposure = useMemo(() => {
@@ -437,12 +684,14 @@ export function AssetsPage() {
   }, [allTxs, netWorth, bsRange]);
 
   const chartPeak = useMemo(() => {
-    if (!assetTrend.chartData || assetTrend.chartData.length === 0) return netWorth;
+    if (!assetTrend.chartData || assetTrend.chartData.length === 0)
+      return netWorth;
     return Math.max(...assetTrend.chartData.map((d) => d.balance));
   }, [assetTrend.chartData, netWorth]);
 
   const chartTrough = useMemo(() => {
-    if (!assetTrend.chartData || assetTrend.chartData.length === 0) return netWorth;
+    if (!assetTrend.chartData || assetTrend.chartData.length === 0)
+      return netWorth;
     return Math.min(...assetTrend.chartData.map((d) => d.balance));
   }, [assetTrend.chartData, netWorth]);
 
@@ -465,7 +714,10 @@ export function AssetsPage() {
     if (!reconciliationAudit.hasDiscrepancy) return;
     triggerHaptic("medium");
     const res = applyUsdtReconciliation(reconciliationAudit, user?.id);
-    setUsdtPref((prev: UsdtValuationPref) => ({ ...prev, units: res.updatedUnits }));
+    setUsdtPref((prev: UsdtValuationPref) => ({
+      ...prev,
+      units: res.updatedUnits,
+    }));
     setDismissedReconciliation(true);
     showToast(
       isIndonesian
@@ -487,14 +739,18 @@ export function AssetsPage() {
       symbol: "USDT",
       name: "Tether USD",
       asset_type: "crypto",
-      units: usdtPref.units > 0 ? usdtPref.units : (existingUsdt?.units || suggestedUsdtUnits),
+      units:
+        usdtPref.units > 0
+          ? usdtPref.units
+          : existingUsdt?.units || suggestedUsdtUnits,
       avg_buy_price:
         usdtPref.units > 0
           ? Math.round(usdtCostBasis / usdtPref.units)
-          : (existingUsdt?.avg_buy_price || usdtPref.rate),
-      current_price: existingUsdt?.is_custom_price && existingUsdt.custom_price
-        ? existingUsdt.custom_price
-        : usdtPref.rate,
+          : existingUsdt?.avg_buy_price || usdtPref.rate,
+      current_price:
+        existingUsdt?.is_custom_price && existingUsdt.custom_price
+          ? existingUsdt.custom_price
+          : usdtPref.rate,
       currency: "IDR",
       icon: "Coins",
       activities:
@@ -522,7 +778,9 @@ export function AssetsPage() {
         label: "Tether USD (USDT)",
         sublabel: `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`,
         amount: usdtMarketValue,
-        detail: isIndonesian ? "Stablecoin cadangan di wallet" : "Stablecoin reserve",
+        detail: isIndonesian
+          ? "Stablecoin cadangan di wallet"
+          : "Stablecoin reserve",
         onClick: () => {
           setSelectedMetricDrillDown(null);
           openUsdtDetail();
@@ -542,14 +800,18 @@ export function AssetsPage() {
       .forEach((w) => {
         items.push({
           label: w.name,
-          sublabel: isIndonesian ? "Kas & Rekening Operasional" : "Cash & Bank Account",
+          sublabel: isIndonesian
+            ? "Kas & Rekening Operasional"
+            : "Cash & Bank Account",
           amount: Number(w.balance || 0),
           detail: "IDR",
         });
       });
 
     setSelectedMetricDrillDown({
-      title: isIndonesian ? "Aset Lancar & Kas (Tier 1)" : "Liquid & Current Assets (Tier 1)",
+      title: isIndonesian
+        ? "Aset Lancar & Kas (Tier 1)"
+        : "Liquid & Current Assets (Tier 1)",
       badge: `${liquidPct.toFixed(1)}% ${isIndonesian ? "Alokasi" : "Allocation"}`,
       icon: "Wallet",
       amount: liquidAssetsTotal,
@@ -557,7 +819,9 @@ export function AssetsPage() {
         ? "Aset likuid adalah modal yang dapat dicairkan seketika dalam < 24 jam tanpa penalti pasar. Cadangan ini menjaga stabilitas arus kas dan ketahanan dana darurat."
         : "Liquid assets can be accessed immediately within 24h without capital loss penalty, maintaining operational liquidity.",
       items,
-      ctaLabel: isIndonesian ? "Buka Neraca Lengkap" : "View Full Balance Sheet",
+      ctaLabel: isIndonesian
+        ? "Buka Neraca Lengkap"
+        : "View Full Balance Sheet",
       onCta: () => {
         setSelectedMetricDrillDown(null);
         setIsConsolidatedDrawerOpen(true);
@@ -589,7 +853,9 @@ export function AssetsPage() {
     });
 
     setSelectedMetricDrillDown({
-      title: isIndonesian ? "Pasar & Pertumbuhan (Tier 2)" : "Market & Growth Assets (Tier 2)",
+      title: isIndonesian
+        ? "Pasar & Pertumbuhan (Tier 2)"
+        : "Market & Growth Assets (Tier 2)",
       badge: `${growthPct.toFixed(1)}% ${isIndonesian ? "Alokasi" : "Allocation"}`,
       icon: "TrendingUp",
       amount: growthAssetsTotal,
@@ -640,7 +906,9 @@ export function AssetsPage() {
     });
 
     setSelectedMetricDrillDown({
-      title: isIndonesian ? "Aset Tetap & Riil (Tier 3)" : "Fixed & Tangibles (Tier 3)",
+      title: isIndonesian
+        ? "Aset Tetap & Riil (Tier 3)"
+        : "Fixed & Tangibles (Tier 3)",
       badge: `${fixedPct.toFixed(1)}% ${isIndonesian ? "Alokasi" : "Allocation"}`,
       icon: "Landmark",
       amount: fixedAssetsTotal,
@@ -669,7 +937,11 @@ export function AssetsPage() {
     const items = debtWallets.map((w) => {
       const bal = Number(w.balance || 0);
       const debtAmt = Math.abs(
-        bal < 0 ? bal : w.classification === "credit" || w.classification === "loan" ? bal : 0,
+        bal < 0
+          ? bal
+          : w.classification === "credit" || w.classification === "loan"
+            ? bal
+            : 0,
       );
       return {
         label: w.name,
@@ -680,7 +952,9 @@ export function AssetsPage() {
     });
 
     setSelectedMetricDrillDown({
-      title: isIndonesian ? "Liabilitas & Kewajiban Utang" : "Liabilities & Debt Obligations",
+      title: isIndonesian
+        ? "Liabilitas & Kewajiban Utang"
+        : "Liabilities & Debt Obligations",
       badge: `${debtToAssetRatio.toFixed(1)}% Debt-to-Asset`,
       icon: "ShieldAlert",
       amount: liabilitiesTotal,
@@ -701,7 +975,9 @@ export function AssetsPage() {
   const openDeployedDetail = () => {
     triggerHaptic("light");
     setSelectedMetricDrillDown({
-      title: isIndonesian ? "Alokasi Modal Bulan Berjalan (MTD)" : "Capital Deployed (MTD)",
+      title: isIndonesian
+        ? "Alokasi Modal Bulan Berjalan (MTD)"
+        : "Capital Deployed (MTD)",
       badge: "MTD",
       icon: "ArrowUpRight",
       amount: capitalDeployment,
@@ -712,9 +988,13 @@ export function AssetsPage() {
         : "Capital injected into investment holdings or asset purchases this month.",
       items: [
         {
-          label: isIndonesian ? "Injeksi Portofolio MTD" : "MTD Inflow Injection",
+          label: isIndonesian
+            ? "Injeksi Portofolio MTD"
+            : "MTD Inflow Injection",
           amount: capitalDeployment,
-          detail: isIndonesian ? "Transfer & pembelian aset" : "Investments & transfers",
+          detail: isIndonesian
+            ? "Transfer & pembelian aset"
+            : "Investments & transfers",
         },
       ],
       ctaLabel: isIndonesian ? "Buka Neraca Lengkap" : "View Full Portfolio",
@@ -729,7 +1009,8 @@ export function AssetsPage() {
     triggerHaptic("light");
     const ranked: any[] = [];
     if (usdtMarketValue > 0) {
-      const pct = totalGrossAssets > 0 ? (usdtMarketValue / totalGrossAssets) * 100 : 0;
+      const pct =
+        totalGrossAssets > 0 ? (usdtMarketValue / totalGrossAssets) * 100 : 0;
       ranked.push({
         label: "Tether USD (USDT)",
         sublabel: `${pct.toFixed(1)}% ${isIndonesian ? "dari seluruh aset" : "of gross assets"}`,
@@ -743,7 +1024,8 @@ export function AssetsPage() {
     }
     holdings.forEach((h) => {
       const val = calculateHoldingValuation(h);
-      const pct = totalGrossAssets > 0 ? (val.marketValue / totalGrossAssets) * 100 : 0;
+      const pct =
+        totalGrossAssets > 0 ? (val.marketValue / totalGrossAssets) * 100 : 0;
       ranked.push({
         label: `${h.name} (${h.symbol})`,
         sublabel: `${pct.toFixed(1)}% ${isIndonesian ? "dari seluruh aset" : "of gross assets"}`,
@@ -758,7 +1040,9 @@ export function AssetsPage() {
     ranked.sort((a, b) => (b.amount || 0) - (a.amount || 0));
 
     setSelectedMetricDrillDown({
-      title: isIndonesian ? "Konsentrasi Eksposur Portofolio" : "Portfolio Concentration",
+      title: isIndonesian
+        ? "Konsentrasi Eksposur Portofolio"
+        : "Portfolio Concentration",
       badge: `${topExposure.pct.toFixed(1)}% ${isIndonesian ? "Bobot Puncak" : "Peak Weight"}`,
       icon: "Coins",
       amount: topExposure.value,
@@ -782,7 +1066,8 @@ export function AssetsPage() {
   const filteredPresets = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return PRESET_ASSETS.filter((p) => {
-      const matchCategory = presetCategory === "all" || p.category === presetCategory;
+      const matchCategory =
+        presetCategory === "all" || p.category === presetCategory;
       const matchQuery =
         !q ||
         p.symbol.toLowerCase().includes(q) ||
@@ -861,22 +1146,35 @@ export function AssetsPage() {
     const rawCurrent = parseFloat(formCurrentPrice) || rawBuy;
 
     if (!formName.trim()) {
-      showToast(isIndonesian ? "Masukkan nama aset" : "Please enter asset name", "delete", () => {});
+      showToast(
+        isIndonesian ? "Masukkan nama aset" : "Please enter asset name",
+        "delete",
+        () => {},
+      );
       return;
     }
 
     if (isNaN(units) || units <= 0 || isNaN(rawBuy) || rawBuy <= 0) {
-      showToast(isIndonesian ? "Masukkan nominal yang valid" : "Please enter valid numbers", "delete", () => {});
+      showToast(
+        isIndonesian
+          ? "Masukkan nominal yang valid"
+          : "Please enter valid numbers",
+        "delete",
+        () => {},
+      );
       return;
     }
 
     const liveRate = usdtPref.rate > 0 ? usdtPref.rate : 16000;
     const buyPrice = formCurrency === "USD" ? rawBuy * liveRate : rawBuy;
-    const currentPrice = formCurrency === "USD" ? rawCurrent * liveRate : rawCurrent;
+    const currentPrice =
+      formCurrency === "USD" ? rawCurrent * liveRate : rawCurrent;
 
     const symbol =
       formSymbol.trim() ||
-      (formType === "fixed_asset" ? "ASSET" : formName.slice(0, 5).toUpperCase());
+      (formType === "fixed_asset"
+        ? "ASSET"
+        : formName.slice(0, 5).toUpperCase());
 
     const rawRate = parseFloat(formAnnualRate);
     const signedRate =
@@ -897,7 +1195,9 @@ export function AssetsPage() {
       closeAddFlow();
       triggerHaptic("medium");
       showToast(
-        isIndonesian ? "Holding USDT berhasil disimpan" : "USDT holding saved successfully",
+        isIndonesian
+          ? "Holding USDT berhasil disimpan"
+          : "USDT holding saved successfully",
         "add",
         () => {},
       );
@@ -925,7 +1225,7 @@ export function AssetsPage() {
     closeAddFlow();
     triggerHaptic("medium");
     showToast(
-      `${newH.name} ${editingHoldingId ? (isIndonesian ? "berhasil diperbarui" : "updated successfully") : (isIndonesian ? "berhasil disimpan" : "saved successfully")}`,
+      `${newH.name} ${editingHoldingId ? (isIndonesian ? "berhasil diperbarui" : "updated successfully") : isIndonesian ? "berhasil disimpan" : "saved successfully"}`,
       "add",
       () => {},
     );
@@ -950,7 +1250,11 @@ export function AssetsPage() {
     }
     const updated = deleteHolding(id, user?.id);
     setHoldings(updated);
-    showToast(`${name} ${isIndonesian ? "dihapus" : "removed"}`, "delete", () => {});
+    showToast(
+      `${name} ${isIndonesian ? "dihapus" : "removed"}`,
+      "delete",
+      () => {},
+    );
   };
 
   // User's active holdings list (excluding USDT since Core USDT has its own primary hero row), sorted by market value
@@ -976,10 +1280,22 @@ export function AssetsPage() {
           boxShadow: "var(--shadow-card)",
         }}
       >
-        <p style={{ color: "var(--text-tertiary)", fontSize: 10, fontWeight: 700 }}>
+        <p
+          style={{
+            color: "var(--text-tertiary)",
+            fontSize: 10,
+            fontWeight: 700,
+          }}
+        >
           {label}
         </p>
-        <p style={{ color: "var(--text-primary)", fontSize: 13, fontWeight: 700 }}>
+        <p
+          style={{
+            color: "var(--text-primary)",
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
           {isStealthMode ? "••••••••" : formatRupiah(payload[0]?.value ?? 0)}
         </p>
       </div>
@@ -1027,10 +1343,15 @@ export function AssetsPage() {
           triggerHaptic("light");
           if (typeof item === "object" && item !== null) {
             setSelectedDetailHolding(item as InvestmentHolding);
-          } else if (item === "card-usdt" || (typeof item === "string" && item.includes("usdt"))) {
+          } else if (
+            item === "card-usdt" ||
+            (typeof item === "string" && item.includes("usdt"))
+          ) {
             openUsdtDetail();
           } else {
-            const found = holdings.find((h) => h.id === item || `card-${h.id}` === item);
+            const found = holdings.find(
+              (h) => h.id === item || `card-${h.id}` === item,
+            );
             if (found) {
               setSelectedDetailHolding(found);
             } else {
@@ -1065,7 +1386,9 @@ export function AssetsPage() {
             strokeWidth={2}
             className={isRefreshing ? "animate-spin" : ""}
           />
-          <span className="truncate">{isIndonesian ? "Perbarui" : "Refresh"}</span>
+          <span className="truncate">
+            {isIndonesian ? "Perbarui" : "Refresh"}
+          </span>
         </button>
 
         {/* 2. Sync & Staking */}
@@ -1083,7 +1406,9 @@ export function AssetsPage() {
           }}
         >
           <Link2 size={12} strokeWidth={1.75} />
-          <span className="truncate">{isIndonesian ? "Staking" : "Staking"}</span>
+          <span className="truncate">
+            {isIndonesian ? "Staking" : "Staking"}
+          </span>
         </button>
 
         {/* 3. Add Asset */}
@@ -1100,7 +1425,9 @@ export function AssetsPage() {
           }}
         >
           <Plus size={12} strokeWidth={2.5} />
-          <span className="truncate">{isIndonesian ? "Tambah Aset" : "Add Asset"}</span>
+          <span className="truncate">
+            {isIndonesian ? "Tambah Aset" : "Add Asset"}
+          </span>
         </button>
       </div>
 
@@ -1108,7 +1435,10 @@ export function AssetsPage() {
       {reconciliationAudit.hasDiscrepancy && !dismissedReconciliation && (
         <div
           className="p-3.5 rounded-3xl glass-surface flex items-center justify-between gap-3 border border-[var(--glass-border)] animate-in fade-in"
-          style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
+          style={{
+            background: "var(--bg-elevated)",
+            boxShadow: "var(--shadow-card)",
+          }}
         >
           <div className="flex items-start gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-white/[0.08] flex items-center justify-center shrink-0">
@@ -1145,7 +1475,9 @@ export function AssetsPage() {
       <div className="space-y-2.5 pt-1">
         <div className="flex items-center justify-between px-0.5">
           <h3 className="text-[13.5px] font-bold tracking-tight text-[var(--text-primary)]">
-            {isIndonesian ? "Struktur Neraca & Alokasi Modal" : "Balance Sheet Breakdown"}
+            {isIndonesian
+              ? "Struktur Neraca & Alokasi Modal"
+              : "Balance Sheet Breakdown"}
           </h3>
           <span className="text-[11px] font-mono text-[var(--text-tertiary)] font-medium">
             4 Pillars
@@ -1155,12 +1487,17 @@ export function AssetsPage() {
         {/* 3-Tier Capital Allocation Summary Strip */}
         <div
           className="p-3 rounded-2xl border border-[var(--glass-border)] space-y-2"
-          style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
+          style={{
+            background: "var(--bg-elevated)",
+            boxShadow: "var(--shadow-card)",
+          }}
         >
           <div className="flex items-center justify-between text-[11px]">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-[var(--text-secondary)]">
-                {isIndonesian ? "Alokasi Modal 3-Tier" : "3-Tier Capital Allocation"}
+                {isIndonesian
+                  ? "Alokasi Modal 3-Tier"
+                  : "3-Tier Capital Allocation"}
               </span>
               <button
                 type="button"
@@ -1169,7 +1506,11 @@ export function AssetsPage() {
                   setIsConsolidatedDrawerOpen(true);
                 }}
                 className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[var(--glass-fill)] hover:bg-[var(--glass-fill-strong)] text-[var(--text-primary)] border border-[var(--glass-border)] text-[10px] font-semibold transition-all cursor-pointer active:scale-95 shadow-sm"
-                title={isIndonesian ? "Buka seluruh aset & liabilitas" : "View all assets & debt"}
+                title={
+                  isIndonesian
+                    ? "Buka seluruh aset & liabilitas"
+                    : "View all assets & debt"
+                }
               >
                 <Layers size={11} strokeWidth={2} />
                 <span>{isIndonesian ? "Lihat Semua" : "View All"}</span>
@@ -1267,9 +1608,16 @@ export function AssetsPage() {
             <div className="flex items-center justify-between">
               <div
                 className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
               >
-                <Wallet size={16} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+                <Wallet
+                  size={16}
+                  strokeWidth={1.75}
+                  className="text-[var(--text-primary)]"
+                />
               </div>
               <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
                 {liquidPct.toFixed(1)}% &gt;
@@ -1282,7 +1630,9 @@ export function AssetsPage() {
                 </p>
               </div>
               <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
-                {isIndonesian ? "Kas, bank & cadangan USDT" : "Cash, banks & stablecoin reserve"}
+                {isIndonesian
+                  ? "Kas, bank & cadangan USDT"
+                  : "Cash, banks & stablecoin reserve"}
               </p>
             </div>
             <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between">
@@ -1305,9 +1655,16 @@ export function AssetsPage() {
             <div className="flex items-center justify-between">
               <div
                 className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
               >
-                <TrendingUp size={16} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+                <TrendingUp
+                  size={16}
+                  strokeWidth={1.75}
+                  className="text-[var(--text-primary)]"
+                />
               </div>
               <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
                 {growthPct.toFixed(1)}% &gt;
@@ -1318,7 +1675,9 @@ export function AssetsPage() {
                 {isIndonesian ? "Pasar & Pertumbuhan" : "Market & Growth"}
               </p>
               <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
-                {isIndonesian ? "Saham, kripto & reksa dana" : "Equities, crypto & funds"}
+                {isIndonesian
+                  ? "Saham, kripto & reksa dana"
+                  : "Equities, crypto & funds"}
               </p>
             </div>
             <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between">
@@ -1341,9 +1700,16 @@ export function AssetsPage() {
             <div className="flex items-center justify-between">
               <div
                 className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
               >
-                <Landmark size={16} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+                <Landmark
+                  size={16}
+                  strokeWidth={1.75}
+                  className="text-[var(--text-primary)]"
+                />
               </div>
               <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
                 {fixedPct.toFixed(1)}% &gt;
@@ -1354,7 +1720,9 @@ export function AssetsPage() {
                 {isIndonesian ? "Aset Tetap & Riil" : "Fixed & Tangibles"}
               </p>
               <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
-                {isIndonesian ? "Properti, emas & kendaraan" : "Real estate, gold & vehicles"}
+                {isIndonesian
+                  ? "Properti, emas & kendaraan"
+                  : "Real estate, gold & vehicles"}
               </p>
             </div>
             <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between">
@@ -1377,9 +1745,16 @@ export function AssetsPage() {
             <div className="flex items-center justify-between">
               <div
                 className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
               >
-                <ShieldAlert size={16} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+                <ShieldAlert
+                  size={16}
+                  strokeWidth={1.75}
+                  className="text-[var(--text-primary)]"
+                />
               </div>
               <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
                 {debtToAssetRatio.toFixed(1)}% D/A &gt;
@@ -1390,7 +1765,9 @@ export function AssetsPage() {
                 {isIndonesian ? "Liabilitas & Utang" : "Liabilities & Debt"}
               </p>
               <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
-                {isIndonesian ? "Kartu kredit, paylater & utang" : "Cards, paylater & loans"}
+                {isIndonesian
+                  ? "Kartu kredit, paylater & utang"
+                  : "Cards, paylater & loans"}
               </p>
             </div>
             <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between">
@@ -1408,7 +1785,10 @@ export function AssetsPage() {
         <div
           onClick={openDeployedDetail}
           className="p-3.5 rounded-2xl glass-surface border border-[var(--glass-border)] space-y-1.5 cursor-pointer active:scale-[0.99] hover:border-white/20 transition-all group"
-          style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
+          style={{
+            background: "var(--bg-elevated)",
+            boxShadow: "var(--shadow-card)",
+          }}
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
@@ -1422,14 +1802,19 @@ export function AssetsPage() {
             {isStealthMode ? "••••••••" : formatRupiah(capitalDeployment)}
           </p>
           <p className="text-[10px] text-[var(--text-tertiary)] truncate">
-            {isIndonesian ? "Injeksi modal ke portofolio" : "Capital injected into assets"}
+            {isIndonesian
+              ? "Injeksi modal ke portofolio"
+              : "Capital injected into assets"}
           </p>
         </div>
 
         <div
           onClick={openExposureDetail}
           className="p-3.5 rounded-2xl glass-surface border border-[var(--glass-border)] space-y-1.5 cursor-pointer active:scale-[0.99] hover:border-white/20 transition-all group"
-          style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
+          style={{
+            background: "var(--bg-elevated)",
+            boxShadow: "var(--shadow-card)",
+          }}
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
@@ -1443,7 +1828,9 @@ export function AssetsPage() {
             {topExposure.name || (isIndonesian ? "Belum ada aset" : "No asset")}
           </p>
           <p className="text-[10px] text-[var(--text-tertiary)] truncate">
-            {isIndonesian ? "Konsentrasi portofolio tertinggi" : "Highest single asset weight"}
+            {isIndonesian
+              ? "Konsentrasi portofolio tertinggi"
+              : "Highest single asset weight"}
           </p>
         </div>
       </div>
@@ -1452,7 +1839,10 @@ export function AssetsPage() {
       <section
         id="holdings-deck"
         className="p-4 sm:p-5 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3.5 select-none"
-        style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
+        style={{
+          background: "var(--bg-elevated)",
+          boxShadow: "var(--shadow-card)",
+        }}
       >
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -1464,23 +1854,30 @@ export function AssetsPage() {
                 border: "1px solid var(--glass-border)",
               }}
             >
-              <Layers size={15} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+              <Layers
+                size={15}
+                strokeWidth={1.75}
+                className="text-[var(--text-primary)]"
+              />
             </div>
             <div>
               <h4 className="text-[13px] font-bold tracking-tight text-[var(--text-primary)]">
-                {isIndonesian ? "Daftar Kepemilikan Portofolio" : "Portfolio Holdings"}
+                {isIndonesian
+                  ? "Daftar Kepemilikan Portofolio"
+                  : "Portfolio Holdings"}
               </h4>
               <p className="text-[10.5px] text-[var(--text-tertiary)]">
                 {isIndonesian
                   ? "Valuasi pasar real-time & alokasi aset"
-                  : "Live market valuation & asset allocation"}
+                  : "Valuation & asset allocation"}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-[10.5px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-secondary)]">
-              {holdings.length + (usdtPref.units > 0 || recordedCryptoBalance > 0 ? 1 : 0)}{" "}
+              {holdings.length +
+                (usdtPref.units > 0 || recordedCryptoBalance > 0 ? 1 : 0)}{" "}
               {isIndonesian ? "aset" : "assets"}
             </span>
             <button
@@ -1512,7 +1909,9 @@ export function AssetsPage() {
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-bold text-[13px] text-[var(--text-primary)]">USDT</span>
+                    <span className="font-bold text-[13px] text-[var(--text-primary)]">
+                      USDT
+                    </span>
                     <span className="text-[8.5px] px-1.5 py-0.5 rounded font-mono font-semibold bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
                       STABLECOIN
                     </span>
@@ -1529,12 +1928,26 @@ export function AssetsPage() {
                   {isStealthMode ? "••••••••" : formatRupiah(usdtMarketValue)}
                 </span>
                 <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5">
-                  <span style={{ color: usdtFloatingPnLPct >= 0 ? "var(--accent)" : "var(--text-tertiary)" }}>
-                    {usdtFloatingPnLPct >= 0 ? "+" : ""}{usdtFloatingPnLPct.toFixed(1)}%
+                  <span
+                    style={{
+                      color:
+                        usdtFloatingPnLPct >= 0
+                          ? "var(--accent)"
+                          : "var(--text-tertiary)",
+                    }}
+                  >
+                    {usdtFloatingPnLPct >= 0 ? "+" : ""}
+                    {usdtFloatingPnLPct.toFixed(1)}%
                   </span>
-                  <span className="text-[var(--text-tertiary)] opacity-60">·</span>
+                  <span className="text-[var(--text-tertiary)] opacity-60">
+                    ·
+                  </span>
                   <span className="text-[var(--text-tertiary)]">
-                    {((usdtMarketValue / (totalGrossAssets || 1)) * 100).toFixed(1)}%
+                    {(
+                      (usdtMarketValue / (totalGrossAssets || 1)) *
+                      100
+                    ).toFixed(1)}
+                    %
                   </span>
                 </div>
               </div>
@@ -1544,7 +1957,10 @@ export function AssetsPage() {
           {/* Other Holdings (Top 3 in inline view) */}
           {displayHoldings.slice(0, 3).map((h) => {
             const val = h.valuation;
-            const weight = totalGrossAssets > 0 ? (val.marketValue / totalGrossAssets) * 100 : 0;
+            const weight =
+              totalGrossAssets > 0
+                ? (val.marketValue / totalGrossAssets) * 100
+                : 0;
             return (
               <div
                 key={h.id}
@@ -1554,7 +1970,10 @@ export function AssetsPage() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0">
-                    <IconRenderer icon={h.icon || "TrendingUp"} size="w-4 h-4" />
+                    <IconRenderer
+                      icon={h.icon || "TrendingUp"}
+                      size="w-4 h-4"
+                    />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -1566,7 +1985,8 @@ export function AssetsPage() {
                       </span>
                     </div>
                     <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
-                      {h.name} · {formatHoldingUnits(h.units)} {isIndonesian ? "unit" : "units"}
+                      {h.name} · {formatHoldingUnits(h.units)}{" "}
+                      {isIndonesian ? "unit" : "units"}
                     </p>
                   </div>
                 </div>
@@ -1575,10 +1995,20 @@ export function AssetsPage() {
                     {isStealthMode ? "••••••••" : formatRupiah(val.marketValue)}
                   </span>
                   <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5">
-                    <span style={{ color: val.floatingPnLPct >= 0 ? "var(--accent)" : "var(--text-tertiary)" }}>
-                      {val.floatingPnLPct >= 0 ? "+" : ""}{val.floatingPnLPct.toFixed(1)}%
+                    <span
+                      style={{
+                        color:
+                          val.floatingPnLPct >= 0
+                            ? "var(--accent)"
+                            : "var(--text-tertiary)",
+                      }}
+                    >
+                      {val.floatingPnLPct >= 0 ? "+" : ""}
+                      {val.floatingPnLPct.toFixed(1)}%
                     </span>
-                    <span className="text-[var(--text-tertiary)] opacity-60">·</span>
+                    <span className="text-[var(--text-tertiary)] opacity-60">
+                      ·
+                    </span>
                     <span className="text-[var(--text-tertiary)]">
                       {weight.toFixed(1)}%
                     </span>
@@ -1589,7 +2019,9 @@ export function AssetsPage() {
           })}
 
           {/* Button to Open Consolidated Balance Sheet Drawer */}
-          {(displayHoldings.length > 0 || usdtPref.units > 0 || recordedCryptoBalance > 0) && (
+          {(displayHoldings.length > 0 ||
+            usdtPref.units > 0 ||
+            recordedCryptoBalance > 0) && (
             <button
               type="button"
               onClick={() => {
@@ -1608,18 +2040,22 @@ export function AssetsPage() {
             </button>
           )}
 
-          {displayHoldings.length === 0 && usdtPref.units <= 0 && recordedCryptoBalance <= 0 && (
-            <div className="py-6 text-center space-y-1 text-[var(--text-tertiary)]">
-              <p className="text-[12.5px] font-semibold text-[var(--text-primary)]">
-                {isIndonesian ? "Belum ada aset terdaftar" : "No registered assets"}
-              </p>
-              <p className="text-[10.5px]">
-                {isIndonesian
-                  ? "Ketuk tombol (+) di atas untuk menambahkan portofolio."
-                  : "Tap the (+) button above to add investment assets."}
-              </p>
-            </div>
-          )}
+          {displayHoldings.length === 0 &&
+            usdtPref.units <= 0 &&
+            recordedCryptoBalance <= 0 && (
+              <div className="py-6 text-center space-y-1 text-[var(--text-tertiary)]">
+                <p className="text-[12.5px] font-semibold text-[var(--text-primary)]">
+                  {isIndonesian
+                    ? "Belum ada aset terdaftar"
+                    : "No registered assets"}
+                </p>
+                <p className="text-[10.5px]">
+                  {isIndonesian
+                    ? "Ketuk tombol (+) di atas untuk menambahkan portofolio."
+                    : "Tap the (+) button above to add investment assets."}
+                </p>
+              </div>
+            )}
         </div>
       </section>
 
@@ -1700,50 +2136,50 @@ export function AssetsPage() {
 
         {/* Range Pill Selector (1D, 7D, 1M, 3M, 6M, 1Y, ALL) */}
         <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 mb-1.5">
-          {(["1D", "7D", "1M", "3M", "6M", "1Y", "ALL"] as BalanceSheetRange[]).map(
-            (r) => {
-              const isActive = bsRange === r;
-              return (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => {
-                    setBsRange(r);
-                    triggerHaptic("light");
-                  }}
-                  className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none"
-                  style={{
-                    background: isActive
-                      ? isDark
-                        ? "rgba(255,255,255,0.25)"
-                        : "#18181b"
-                      : isDark
-                        ? "transparent"
-                        : "#f4f4f7",
-                    color: isActive
-                      ? "#FFFFFF"
-                      : isDark
-                        ? "rgba(255,255,255,0.55)"
-                        : "#52525b",
-                    border: isActive
-                      ? isDark
-                        ? "1px solid rgba(255,255,255,0.35)"
-                        : "1px solid #18181b"
-                      : isDark
-                        ? "1px solid transparent"
-                        : "1px solid rgba(0,0,0,0.04)",
-                    boxShadow: isActive
-                      ? isDark
-                        ? "none"
-                        : "0 2px 6px rgba(0,0,0,0.18)"
-                      : "none",
-                  }}
-                >
-                  {r}
-                </button>
-              );
-            },
-          )}
+          {(
+            ["1D", "7D", "1M", "3M", "6M", "1Y", "ALL"] as BalanceSheetRange[]
+          ).map((r) => {
+            const isActive = bsRange === r;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => {
+                  setBsRange(r);
+                  triggerHaptic("light");
+                }}
+                className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none"
+                style={{
+                  background: isActive
+                    ? isDark
+                      ? "rgba(255,255,255,0.25)"
+                      : "#18181b"
+                    : isDark
+                      ? "transparent"
+                      : "#f4f4f7",
+                  color: isActive
+                    ? "#FFFFFF"
+                    : isDark
+                      ? "rgba(255,255,255,0.55)"
+                      : "#52525b",
+                  border: isActive
+                    ? isDark
+                      ? "1px solid rgba(255,255,255,0.35)"
+                      : "1px solid #18181b"
+                    : isDark
+                      ? "1px solid transparent"
+                      : "1px solid rgba(0,0,0,0.04)",
+                  boxShadow: isActive
+                    ? isDark
+                      ? "none"
+                      : "0 2px 6px rgba(0,0,0,0.18)"
+                    : "none",
+                }}
+              >
+                {r}
+              </button>
+            );
+          })}
         </div>
 
         {/* Chart with Right Y-Axis & Dotted Grid */}
@@ -1754,7 +2190,13 @@ export function AssetsPage() {
               margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
             >
               <defs>
-                <linearGradient id="wealthHeroGradient" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient
+                  id="wealthHeroGradient"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
                   <stop
                     offset="0%"
                     stopColor={isDark ? "#FFFFFF" : "#18181b"}
@@ -1906,13 +2348,13 @@ export function AssetsPage() {
         </div>
       </section>
 
-
-
       {/* ── 9. Preset Picker Sheet (Standard BottomSheet) ─────────────────── */}
       <BottomSheet
         isOpen={addPhase === 1}
         onClose={closeAddFlow}
-        title={isIndonesian ? "Pilih Aset Investasi" : "Select Investment Asset"}
+        title={
+          isIndonesian ? "Pilih Aset Investasi" : "Select Investment Asset"
+        }
       >
         <div className="p-5 space-y-4 select-none">
           {/* Search Bar */}
@@ -1920,7 +2362,10 @@ export function AssetsPage() {
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border border-[var(--glass-border)]"
             style={{ background: "var(--glass-fill)" }}
           >
-            <Search size={15} className="text-[var(--text-tertiary)] shrink-0" />
+            <Search
+              size={15}
+              className="text-[var(--text-tertiary)] shrink-0"
+            />
             <input
               ref={searchInputRef}
               type="text"
@@ -1951,11 +2396,23 @@ export function AssetsPage() {
               [
                 { key: "all", label: isIndonesian ? "Semua" : "All" },
                 { key: "crypto", label: "Crypto" },
-                { key: "stock_us", label: isIndonesian ? "Saham AS" : "US Stocks" },
-                { key: "stock_id", label: isIndonesian ? "Saham IDX" : "IDX Stocks" },
+                {
+                  key: "stock_us",
+                  label: isIndonesian ? "Saham AS" : "US Stocks",
+                },
+                {
+                  key: "stock_id",
+                  label: isIndonesian ? "Saham IDX" : "IDX Stocks",
+                },
                 { key: "gold", label: isIndonesian ? "Emas" : "Gold" },
-                { key: "mutual_fund", label: isIndonesian ? "Reksa Dana" : "Mutual Funds" },
-                { key: "fixed_asset", label: isIndonesian ? "Aset Fisik" : "Fixed Assets" },
+                {
+                  key: "mutual_fund",
+                  label: isIndonesian ? "Reksa Dana" : "Mutual Funds",
+                },
+                {
+                  key: "fixed_asset",
+                  label: isIndonesian ? "Aset Fisik" : "Fixed Assets",
+                },
               ] as const
             ).map((cat) => {
               const isActive = presetCategory === cat.key;
@@ -1970,8 +2427,12 @@ export function AssetsPage() {
                   style={
                     isActive
                       ? {
-                          background: isDark ? "rgba(255, 255, 255, 0.10)" : "rgba(0, 0, 0, 0.08)",
-                          borderColor: isDark ? "rgba(255, 255, 255, 0.18)" : "rgba(0, 0, 0, 0.14)",
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.10)"
+                            : "rgba(0, 0, 0, 0.08)",
+                          borderColor: isDark
+                            ? "rgba(255, 255, 255, 0.18)"
+                            : "rgba(0, 0, 0, 0.14)",
                           boxShadow: isDark
                             ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25)"
                             : "0 1px 2px rgba(0, 0, 0, 0.05)",
@@ -2032,7 +2493,9 @@ export function AssetsPage() {
 
             {filteredPresets.length === 0 && (
               <p className="text-center text-[12px] text-[var(--text-tertiary)] py-6">
-                {isIndonesian ? "Tidak ada preset yang cocok" : "No presets matched your search"}
+                {isIndonesian
+                  ? "Tidak ada preset yang cocok"
+                  : "No presets matched your search"}
               </p>
             )}
           </div>
@@ -2084,9 +2547,15 @@ export function AssetsPage() {
                 style={
                   formCurrency === "IDR"
                     ? {
-                        background: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)",
-                        borderColor: isDark ? "rgba(255, 255, 255, 0.20)" : "rgba(0, 0, 0, 0.14)",
-                        boxShadow: isDark ? "inset 0 1px 0 rgba(255, 255, 255, 0.10)" : "0 1px 2px rgba(0,0,0,0.05)",
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.12)"
+                          : "rgba(0, 0, 0, 0.08)",
+                        borderColor: isDark
+                          ? "rgba(255, 255, 255, 0.20)"
+                          : "rgba(0, 0, 0, 0.14)",
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 rgba(255, 255, 255, 0.10)"
+                          : "0 1px 2px rgba(0,0,0,0.05)",
                         color: "var(--text-primary)",
                       }
                     : {
@@ -2106,9 +2575,15 @@ export function AssetsPage() {
                 style={
                   formCurrency === "USD"
                     ? {
-                        background: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)",
-                        borderColor: isDark ? "rgba(255, 255, 255, 0.20)" : "rgba(0, 0, 0, 0.14)",
-                        boxShadow: isDark ? "inset 0 1px 0 rgba(255, 255, 255, 0.10)" : "0 1px 2px rgba(0,0,0,0.05)",
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.12)"
+                          : "rgba(0, 0, 0, 0.08)",
+                        borderColor: isDark
+                          ? "rgba(255, 255, 255, 0.20)"
+                          : "rgba(0, 0, 0, 0.14)",
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 rgba(255, 255, 255, 0.10)"
+                          : "0 1px 2px rgba(0,0,0,0.05)",
                         color: "var(--text-primary)",
                       }
                     : {
@@ -2156,7 +2631,15 @@ export function AssetsPage() {
               {isIndonesian ? "Platform / Kustodian" : "Platform / Custodian"}
             </label>
             <div className="flex items-center gap-1.5 flex-wrap">
-              {["Binance", "Indodax", "Ajaib", "Stockbit", "Bibit", "Bank", "Fisik/Brankas"].map((plat) => {
+              {[
+                "Binance",
+                "Indodax",
+                "Ajaib",
+                "Stockbit",
+                "Bibit",
+                "Bank",
+                "Fisik/Brankas",
+              ].map((plat) => {
                 const isSelected = formPlatform === plat;
                 return (
                   <button
@@ -2169,8 +2652,12 @@ export function AssetsPage() {
                     style={
                       isSelected
                         ? {
-                            background: isDark ? "rgba(255, 255, 255, 0.10)" : "rgba(0, 0, 0, 0.08)",
-                            borderColor: isDark ? "rgba(255, 255, 255, 0.18)" : "rgba(0, 0, 0, 0.14)",
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.10)"
+                              : "rgba(0, 0, 0, 0.08)",
+                            borderColor: isDark
+                              ? "rgba(255, 255, 255, 0.18)"
+                              : "rgba(0, 0, 0, 0.14)",
                             boxShadow: isDark
                               ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25)"
                               : "0 1px 2px rgba(0, 0, 0, 0.05)",
@@ -2201,7 +2688,9 @@ export function AssetsPage() {
               <input
                 type="text"
                 value={formUnits}
-                onChange={(e) => setFormUnits(e.target.value.replace(/[^0-9.]/g, ""))}
+                onChange={(e) =>
+                  setFormUnits(e.target.value.replace(/[^0-9.]/g, ""))
+                }
                 placeholder="100"
                 className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-mono font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
               />
@@ -2215,13 +2704,18 @@ export function AssetsPage() {
               <input
                 type="text"
                 value={formBuyPrice}
-                onChange={(e) => setFormBuyPrice(e.target.value.replace(/[^0-9.]/g, ""))}
+                onChange={(e) =>
+                  setFormBuyPrice(e.target.value.replace(/[^0-9.]/g, ""))
+                }
                 placeholder={formCurrency === "USD" ? "$0.00" : "Rp"}
                 className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-mono font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
               />
               {formCurrency === "USD" && formBuyPrice && (
                 <p className="text-[10px] text-[var(--text-tertiary)] font-mono mt-1">
-                  ≈ {formatRupiah(parseFloat(formBuyPrice || "0") * usdtPref.rate)}
+                  ≈{" "}
+                  {formatRupiah(
+                    parseFloat(formBuyPrice || "0") * usdtPref.rate,
+                  )}
                 </p>
               )}
             </div>
@@ -2237,10 +2731,14 @@ export function AssetsPage() {
             <input
               type="text"
               value={formCurrentPrice}
-              onChange={(e) => setFormCurrentPrice(e.target.value.replace(/[^0-9.]/g, ""))}
+              onChange={(e) =>
+                setFormCurrentPrice(e.target.value.replace(/[^0-9.]/g, ""))
+              }
               placeholder={
                 isFetchingCurrentPrice
-                  ? (isIndonesian ? "Mengambil harga live..." : "Fetching live price...")
+                  ? isIndonesian
+                    ? "Mengambil harga live..."
+                    : "Fetching live price..."
                   : formCurrency === "USD"
                     ? "$0.00"
                     : "Rp"
@@ -2249,7 +2747,10 @@ export function AssetsPage() {
             />
             {formCurrency === "USD" && formCurrentPrice && (
               <p className="text-[10px] text-[var(--text-tertiary)] font-mono mt-1">
-                ≈ {formatRupiah(parseFloat(formCurrentPrice || "0") * usdtPref.rate)}
+                ≈{" "}
+                {formatRupiah(
+                  parseFloat(formCurrentPrice || "0") * usdtPref.rate,
+                )}
               </p>
             )}
           </div>
@@ -2342,7 +2843,11 @@ export function AssetsPage() {
           setConsolidatedSearch("");
           setConsolidatedTierFilter("all");
         }}
-        title={isIndonesian ? "Neraca Aset & Liabilitas Lengkap" : "Consolidated Balance Sheet"}
+        title={
+          isIndonesian
+            ? "Neraca Aset & Liabilitas Lengkap"
+            : "Consolidated Balance Sheet"
+        }
       >
         <div className="p-4 sm:p-5 space-y-4 select-none">
           {/* Executive Net Worth Summary Banner */}
@@ -2357,7 +2862,9 @@ export function AssetsPage() {
           >
             <div>
               <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
-                {isIndonesian ? "Kekayaan Bersih Konsolidasi" : "Consolidated Net Worth"}
+                {isIndonesian
+                  ? "Kekayaan Bersih Konsolidasi"
+                  : "Consolidated Net Worth"}
               </span>
               <p className="font-mono text-xl sm:text-2xl font-semibold text-[var(--text-primary)] mt-0.5 tracking-tight">
                 {isStealthMode ? "••••••••" : formatRupiah(netWorth)}
@@ -2384,10 +2891,15 @@ export function AssetsPage() {
             className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border border-[var(--glass-border)] transition-colors"
             style={{
               background: "var(--glass-fill)",
-              boxShadow: isDark ? "inset 0 1px 0 rgba(255, 255, 255, 0.03)" : undefined,
+              boxShadow: isDark
+                ? "inset 0 1px 0 rgba(255, 255, 255, 0.03)"
+                : undefined,
             }}
           >
-            <Search size={15} className="text-[var(--text-tertiary)] shrink-0" />
+            <Search
+              size={15}
+              className="text-[var(--text-tertiary)] shrink-0"
+            />
             <input
               type="text"
               value={consolidatedSearch}
@@ -2414,10 +2926,22 @@ export function AssetsPage() {
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
             {[
               { key: "all", label: isIndonesian ? "Semua Tier" : "All Tiers" },
-              { key: "tier1", label: isIndonesian ? "Tier 1: Likuid" : "Tier 1: Liquid" },
-              { key: "tier2", label: isIndonesian ? "Tier 2: Pasar" : "Tier 2: Growth" },
-              { key: "tier3", label: isIndonesian ? "Tier 3: Riil" : "Tier 3: Fixed" },
-              { key: "liabilities", label: isIndonesian ? "Liabilitas" : "Liabilities" },
+              {
+                key: "tier1",
+                label: isIndonesian ? "Tier 1: Likuid" : "Tier 1: Liquid",
+              },
+              {
+                key: "tier2",
+                label: isIndonesian ? "Tier 2: Pasar" : "Tier 2: Growth",
+              },
+              {
+                key: "tier3",
+                label: isIndonesian ? "Tier 3: Riil" : "Tier 3: Fixed",
+              },
+              {
+                key: "liabilities",
+                label: isIndonesian ? "Liabilitas" : "Liabilities",
+              },
             ].map((t) => {
               const isActive = consolidatedTierFilter === t.key;
               return (
@@ -2431,8 +2955,12 @@ export function AssetsPage() {
                   style={
                     isActive
                       ? {
-                          background: isDark ? "rgba(255, 255, 255, 0.10)" : "rgba(0, 0, 0, 0.08)",
-                          borderColor: isDark ? "rgba(255, 255, 255, 0.18)" : "rgba(0, 0, 0, 0.14)",
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.10)"
+                            : "rgba(0, 0, 0, 0.08)",
+                          borderColor: isDark
+                            ? "rgba(255, 255, 255, 0.18)"
+                            : "rgba(0, 0, 0, 0.14)",
                           boxShadow: isDark
                             ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25)"
                             : "0 1px 2px rgba(0, 0, 0, 0.05)",
@@ -2478,7 +3006,8 @@ export function AssetsPage() {
             const growthItems = liquidHoldings.filter(
               (h) =>
                 (h.asset_type === "stock" ||
-                  (h.asset_type === "crypto" && h.symbol?.toUpperCase() !== "USDT") ||
+                  (h.asset_type === "crypto" &&
+                    h.symbol?.toUpperCase() !== "USDT") ||
                   h.asset_type === "mutual_fund" ||
                   h.asset_type === "bond") &&
                 (!query ||
@@ -2503,7 +3032,12 @@ export function AssetsPage() {
               .map((w) => {
                 const bal = Number(w.balance || 0);
                 const debtAmt = Math.abs(
-                  bal < 0 ? bal : (w.classification === "credit" || w.classification === "loan" ? bal : 0),
+                  bal < 0
+                    ? bal
+                    : w.classification === "credit" ||
+                        w.classification === "loan"
+                      ? bal
+                      : 0,
                 );
                 return { wallet: w, debtAmt };
               })
@@ -2539,14 +3073,19 @@ export function AssetsPage() {
                 )}
 
                 {/* TIER 1 SECTION */}
-                {((consolidatedTierFilter === "all" && hasTier1) || consolidatedTierFilter === "tier1") && (
+                {((consolidatedTierFilter === "all" && hasTier1) ||
+                  consolidatedTierFilter === "tier1") && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between px-1">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                        {isIndonesian ? "Tier 1 · Aset Lancar & Kas" : "Tier 1 · Liquid & Current"}
+                        {isIndonesian
+                          ? "Tier 1 · Aset Lancar & Kas"
+                          : "Tier 1 · Liquid & Current"}
                       </span>
                       <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
-                        {isStealthMode ? "••••••••" : formatRupiah(liquidAssetsTotal)}
+                        {isStealthMode
+                          ? "••••••••"
+                          : formatRupiah(liquidAssetsTotal)}
                       </span>
                     </div>
 
@@ -2582,20 +3121,32 @@ export function AssetsPage() {
                         </div>
                         <div className="text-right shrink-0 pl-2">
                           <span className="text-[13px] font-mono font-bold text-[var(--text-primary)] block leading-tight">
-                            {isStealthMode ? "••••••••" : formatRupiah(usdtMarketValue)}
+                            {isStealthMode
+                              ? "••••••••"
+                              : formatRupiah(usdtMarketValue)}
                           </span>
                           <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5 font-sans">
                             <span
                               className="font-mono font-medium"
                               style={{
-                                color: usdtFloatingPnLPct >= 0 ? "var(--text-primary)" : "var(--text-tertiary)",
+                                color:
+                                  usdtFloatingPnLPct >= 0
+                                    ? "var(--text-primary)"
+                                    : "var(--text-tertiary)",
                               }}
                             >
-                              {usdtFloatingPnLPct >= 0 ? "+" : ""}{usdtFloatingPnLPct.toFixed(1)}%
+                              {usdtFloatingPnLPct >= 0 ? "+" : ""}
+                              {usdtFloatingPnLPct.toFixed(1)}%
                             </span>
-                            <span className="text-[var(--text-tertiary)] opacity-40">·</span>
+                            <span className="text-[var(--text-tertiary)] opacity-40">
+                              ·
+                            </span>
                             <span className="text-[var(--text-tertiary)] font-mono">
-                              {((usdtMarketValue / (totalGrossAssets || 1)) * 100).toFixed(1)}%
+                              {(
+                                (usdtMarketValue / (totalGrossAssets || 1)) *
+                                100
+                              ).toFixed(1)}
+                              %
                             </span>
                           </div>
                         </div>
@@ -2618,13 +3169,17 @@ export function AssetsPage() {
                               {w.name}
                             </p>
                             <p className="text-[11px] text-[var(--text-tertiary)] truncate font-sans">
-                              {isIndonesian ? "Kas / Rekening Bank" : "Cash / Bank"}
+                              {isIndonesian
+                                ? "Kas / Rekening Bank"
+                                : "Cash / Bank"}
                             </p>
                           </div>
                         </div>
                         <div className="text-right font-mono shrink-0 pl-2">
                           <span className="text-[13px] font-bold text-[var(--text-primary)]">
-                            {isStealthMode ? "••••••••" : formatRupiah(Number(w.balance || 0))}
+                            {isStealthMode
+                              ? "••••••••"
+                              : formatRupiah(Number(w.balance || 0))}
                           </span>
                         </div>
                       </div>
@@ -2637,7 +3192,9 @@ export function AssetsPage() {
                           <Wallet size={16} strokeWidth={1.5} />
                         </div>
                         <p className="text-[12px] font-semibold text-[var(--text-secondary)]">
-                          {isIndonesian ? "Belum ada saldo kas atau USDT" : "No cash or USDT balance registered"}
+                          {isIndonesian
+                            ? "Belum ada saldo kas atau USDT"
+                            : "No cash or USDT balance registered"}
                         </p>
                       </div>
                     )}
@@ -2645,20 +3202,28 @@ export function AssetsPage() {
                 )}
 
                 {/* TIER 2 SECTION */}
-                {((consolidatedTierFilter === "all" && hasTier2) || consolidatedTierFilter === "tier2") && (
+                {((consolidatedTierFilter === "all" && hasTier2) ||
+                  consolidatedTierFilter === "tier2") && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between px-1">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                        {isIndonesian ? "Tier 2 · Pasar & Pertumbuhan" : "Tier 2 · Market & Growth"}
+                        {isIndonesian
+                          ? "Tier 2 · Pasar & Pertumbuhan"
+                          : "Tier 2 · Market & Growth"}
                       </span>
                       <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
-                        {isStealthMode ? "••••••••" : formatRupiah(growthAssetsTotal)}
+                        {isStealthMode
+                          ? "••••••••"
+                          : formatRupiah(growthAssetsTotal)}
                       </span>
                     </div>
 
                     {growthItems.map((h) => {
                       const val = calculateHoldingValuation(h);
-                      const weight = totalGrossAssets > 0 ? (val.marketValue / totalGrossAssets) * 100 : 0;
+                      const weight =
+                        totalGrossAssets > 0
+                          ? (val.marketValue / totalGrossAssets) * 100
+                          : 0;
                       return (
                         <div
                           key={h.id}
@@ -2671,7 +3236,10 @@ export function AssetsPage() {
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0">
-                              <IconRenderer icon={h.icon || "TrendingUp"} size="w-4.5 h-4.5" />
+                              <IconRenderer
+                                icon={h.icon || "TrendingUp"}
+                                size="w-4.5 h-4.5"
+                              />
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
@@ -2683,24 +3251,33 @@ export function AssetsPage() {
                                 </span>
                               </div>
                               <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5 font-sans">
-                                {h.name} · {formatHoldingUnits(h.units)} {isIndonesian ? "unit" : "units"}
+                                {h.name} · {formatHoldingUnits(h.units)}{" "}
+                                {isIndonesian ? "unit" : "units"}
                               </p>
                             </div>
                           </div>
                           <div className="text-right shrink-0 pl-2">
                             <span className="text-[13px] font-mono font-bold text-[var(--text-primary)] block leading-tight">
-                              {isStealthMode ? "••••••••" : formatRupiah(val.marketValue)}
+                              {isStealthMode
+                                ? "••••••••"
+                                : formatRupiah(val.marketValue)}
                             </span>
                             <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5 font-sans">
                               <span
                                 className="font-mono font-medium"
                                 style={{
-                                  color: val.floatingPnLPct >= 0 ? "var(--text-primary)" : "var(--text-tertiary)",
+                                  color:
+                                    val.floatingPnLPct >= 0
+                                      ? "var(--text-primary)"
+                                      : "var(--text-tertiary)",
                                 }}
                               >
-                                {val.floatingPnLPct >= 0 ? "+" : ""}{val.floatingPnLPct.toFixed(1)}%
+                                {val.floatingPnLPct >= 0 ? "+" : ""}
+                                {val.floatingPnLPct.toFixed(1)}%
                               </span>
-                              <span className="text-[var(--text-tertiary)] opacity-40">·</span>
+                              <span className="text-[var(--text-tertiary)] opacity-40">
+                                ·
+                              </span>
                               <span className="text-[var(--text-tertiary)] font-mono">
                                 {weight.toFixed(1)}%
                               </span>
@@ -2717,10 +3294,14 @@ export function AssetsPage() {
                           <TrendingUp size={16} strokeWidth={1.5} />
                         </div>
                         <p className="text-[12px] font-semibold text-[var(--text-secondary)]">
-                          {isIndonesian ? "Belum ada aset pasar atau saham terdaftar" : "No market equities or crypto registered"}
+                          {isIndonesian
+                            ? "Belum ada aset pasar atau saham terdaftar"
+                            : "No market equities or crypto registered"}
                         </p>
                         <p className="text-[10.5px] text-[var(--text-tertiary)]">
-                          {isIndonesian ? "Tambahkan saham, reksa dana, obligasi, atau kripto melalui tombol (+)." : "Add stocks, funds, bonds, or crypto via the (+) button."}
+                          {isIndonesian
+                            ? "Tambahkan saham, reksa dana, obligasi, atau kripto melalui tombol (+)."
+                            : "Add stocks, funds, bonds, or crypto via the (+) button."}
                         </p>
                       </div>
                     )}
@@ -2728,14 +3309,19 @@ export function AssetsPage() {
                 )}
 
                 {/* TIER 3 SECTION */}
-                {((consolidatedTierFilter === "all" && hasTier3) || consolidatedTierFilter === "tier3") && (
+                {((consolidatedTierFilter === "all" && hasTier3) ||
+                  consolidatedTierFilter === "tier3") && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between px-1">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                        {isIndonesian ? "Tier 3 · Aset Tetap & Riil" : "Tier 3 · Fixed & Tangibles"}
+                        {isIndonesian
+                          ? "Tier 3 · Aset Tetap & Riil"
+                          : "Tier 3 · Fixed & Tangibles"}
                       </span>
                       <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
-                        {isStealthMode ? "••••••••" : formatRupiah(fixedAssetsTotal)}
+                        {isStealthMode
+                          ? "••••••••"
+                          : formatRupiah(fixedAssetsTotal)}
                       </span>
                     </div>
 
@@ -2753,20 +3339,26 @@ export function AssetsPage() {
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0">
-                              <IconRenderer icon={h.icon || "Landmark"} size="w-4.5 h-4.5" />
+                              <IconRenderer
+                                icon={h.icon || "Landmark"}
+                                size="w-4.5 h-4.5"
+                              />
                             </div>
                             <div className="min-w-0">
                               <p className="font-semibold text-[13px] text-[var(--text-primary)] truncate">
                                 {h.name}
                               </p>
                               <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5 font-sans">
-                                {h.symbol} · {h.asset_type.replace("_", " ").toUpperCase()}
+                                {h.symbol} ·{" "}
+                                {h.asset_type.replace("_", " ").toUpperCase()}
                               </p>
                             </div>
                           </div>
                           <div className="text-right font-mono shrink-0 pl-2">
                             <span className="text-[13px] font-bold text-[var(--text-primary)]">
-                              {isStealthMode ? "••••••••" : formatRupiah(val.marketValue)}
+                              {isStealthMode
+                                ? "••••••••"
+                                : formatRupiah(val.marketValue)}
                             </span>
                           </div>
                         </div>
@@ -2780,10 +3372,14 @@ export function AssetsPage() {
                           <Landmark size={16} strokeWidth={1.5} />
                         </div>
                         <p className="text-[12px] font-semibold text-[var(--text-secondary)]">
-                          {isIndonesian ? "Belum ada emas fisik atau aset tetap terdaftar" : "No tangible assets or precious metals registered"}
+                          {isIndonesian
+                            ? "Belum ada emas fisik atau aset tetap terdaftar"
+                            : "No tangible assets or precious metals registered"}
                         </p>
                         <p className="text-[10.5px] text-[var(--text-tertiary)]">
-                          {isIndonesian ? "Tambahkan properti, emas fisik, atau aset riil lainnya." : "Add property, physical gold, or tangible assets."}
+                          {isIndonesian
+                            ? "Tambahkan properti, emas fisik, atau aset riil lainnya."
+                            : "Add property, physical gold, or tangible assets."}
                         </p>
                       </div>
                     )}
@@ -2791,14 +3387,19 @@ export function AssetsPage() {
                 )}
 
                 {/* LIABILITIES SECTION */}
-                {(consolidatedTierFilter === "all" || consolidatedTierFilter === "liabilities") && (
+                {(consolidatedTierFilter === "all" ||
+                  consolidatedTierFilter === "liabilities") && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between px-1">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                        {isIndonesian ? "Liabilitas & Kewajiban Utang" : "Liabilities & Debt"}
+                        {isIndonesian
+                          ? "Liabilitas & Kewajiban Utang"
+                          : "Liabilities & Debt"}
                       </span>
                       <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
-                        {isStealthMode ? "••••••••" : formatRupiah(liabilitiesTotal)}
+                        {isStealthMode
+                          ? "••••••••"
+                          : formatRupiah(liabilitiesTotal)}
                       </span>
                     </div>
 
@@ -2841,10 +3442,14 @@ export function AssetsPage() {
                           </div>
                           <div>
                             <p className="text-[12.5px] font-semibold text-[var(--text-primary)]">
-                              {isIndonesian ? "Bebas Kewajiban Utang" : "Zero Debt Obligations"}
+                              {isIndonesian
+                                ? "Bebas Kewajiban Utang"
+                                : "Zero Debt Obligations"}
                             </p>
                             <p className="text-[10.5px] text-[var(--text-tertiary)] font-sans">
-                              {isIndonesian ? "Solvabilitas 100% · Portofolio bersih" : "100% Solvency · No active liabilities"}
+                              {isIndonesian
+                                ? "Solvabilitas 100% · Portofolio bersih"
+                                : "100% Solvency · No active liabilities"}
                             </p>
                           </div>
                         </div>
@@ -2883,18 +3488,25 @@ export function AssetsPage() {
           {/* Header Metric Box */}
           <div
             className="p-4 rounded-2xl border border-[var(--glass-border)] space-y-1.5"
-            style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
+            style={{
+              background: "var(--bg-elevated)",
+              boxShadow: "var(--shadow-card)",
+            }}
           >
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-                {isIndonesian ? "Nilai Terkonsolidasi" : "Consolidated Valuation"}
+                {isIndonesian
+                  ? "Nilai Terkonsolidasi"
+                  : "Consolidated Valuation"}
               </span>
               <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-secondary)] font-semibold">
                 {selectedMetricDrillDown?.badge}
               </span>
             </div>
             <p className="font-mono text-2xl font-light text-[var(--text-primary)]">
-              {isStealthMode ? "••••••••" : formatRupiah(selectedMetricDrillDown?.amount || 0)}
+              {isStealthMode
+                ? "••••••••"
+                : formatRupiah(selectedMetricDrillDown?.amount || 0)}
             </p>
           </div>
 
@@ -2907,65 +3519,71 @@ export function AssetsPage() {
           </div>
 
           {/* Breakdown Items List */}
-          {selectedMetricDrillDown?.items && selectedMetricDrillDown.items.length > 0 && (
-            <div className="space-y-2">
-              <span className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block px-0.5">
-                {isIndonesian ? "Komponen Pembentuk" : "Constituent Items"}
-              </span>
-              <div className="space-y-1.5">
-                {selectedMetricDrillDown.items.map((it, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      if (it.onClick) {
-                        triggerHaptic("light");
-                        it.onClick();
-                      }
-                    }}
-                    className={`p-3 rounded-2xl border border-[var(--glass-border)] flex items-center justify-between transition-all ${
-                      it.onClick ? "cursor-pointer hover:bg-[var(--glass-fill-strong)] active:scale-[0.99]" : ""
-                    }`}
-                    style={{ background: "var(--glass-fill)" }}
-                  >
-                    <div className="min-w-0 pr-2">
-                      <p className="text-[12.5px] font-bold text-[var(--text-primary)] truncate">
-                        {it.label}
-                      </p>
-                      {it.sublabel && (
-                        <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
-                          {it.sublabel}
+          {selectedMetricDrillDown?.items &&
+            selectedMetricDrillDown.items.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block px-0.5">
+                  {isIndonesian ? "Komponen Pembentuk" : "Constituent Items"}
+                </span>
+                <div className="space-y-1.5">
+                  {selectedMetricDrillDown.items.map((it, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        if (it.onClick) {
+                          triggerHaptic("light");
+                          it.onClick();
+                        }
+                      }}
+                      className={`p-3 rounded-2xl border border-[var(--glass-border)] flex items-center justify-between transition-all ${
+                        it.onClick
+                          ? "cursor-pointer hover:bg-[var(--glass-fill-strong)] active:scale-[0.99]"
+                          : ""
+                      }`}
+                      style={{ background: "var(--glass-fill)" }}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <p className="text-[12.5px] font-bold text-[var(--text-primary)] truncate">
+                          {it.label}
                         </p>
-                      )}
-                    </div>
-                    <div className="text-right font-mono shrink-0">
-                      <p className="text-[12.5px] font-bold text-[var(--text-primary)]">
-                        {isStealthMode ? "••••••••" : (it.valueText || formatRupiah(it.amount || 0))}
-                      </p>
-                      {it.detail && (
-                        <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
-                          {it.detail}
+                        {it.sublabel && (
+                          <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
+                            {it.sublabel}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right font-mono shrink-0">
+                        <p className="text-[12.5px] font-bold text-[var(--text-primary)]">
+                          {isStealthMode
+                            ? "••••••••"
+                            : it.valueText || formatRupiah(it.amount || 0)}
                         </p>
-                      )}
+                        {it.detail && (
+                          <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                            {it.detail}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* CTA Action Button */}
-          {selectedMetricDrillDown?.ctaLabel && selectedMetricDrillDown.onCta && (
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("medium");
-                selectedMetricDrillDown.onCta!();
-              }}
-              className="w-full py-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-[var(--glass-fill-strong)] text-[var(--text-primary)] text-[12px] font-semibold tracking-wide active:scale-[0.99] transition-all cursor-pointer"
-            >
-              {selectedMetricDrillDown.ctaLabel}
-            </button>
-          )}
+          {selectedMetricDrillDown?.ctaLabel &&
+            selectedMetricDrillDown.onCta && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("medium");
+                  selectedMetricDrillDown.onCta!();
+                }}
+                className="w-full py-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-[var(--glass-fill-strong)] text-[var(--text-primary)] text-[12px] font-semibold tracking-wide active:scale-[0.99] transition-all cursor-pointer"
+              >
+                {selectedMetricDrillDown.ctaLabel}
+              </button>
+            )}
         </div>
       </BottomSheet>
     </div>
