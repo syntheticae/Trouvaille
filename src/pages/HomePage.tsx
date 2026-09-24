@@ -134,6 +134,18 @@ interface HomePageProps {
 
 type StockRange = "1D" | "1W" | "1M" | "6M" | "YTD" | "1Y" | "ALL";
 
+type ActiveHomeModal =
+  | null
+  | "notif"
+  | "billManagement"
+  | "spaceSwitcher"
+  | "profileMenu"
+  | "profileSheet"
+  | "nfc"
+  | "splitBill"
+  | "webDashboard"
+  | "customizeHome";
+
 const GlassTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
@@ -207,7 +219,9 @@ export function HomePage({
   const isDark = theme !== "light";
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarExpanded, setCalendarExpanded] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<ActiveHomeModal>(null);
+  const notifOpen = activeModal === "notif";
+  const setNotifOpen = (open: boolean) => setActiveModal(open ? "notif" : null);
   const [stockRange, setStockRange] = useState<StockRange>("1W");
   const { isStealthMode: hideBalance, toggleStealthMode: toggleHideBalance } =
     usePrivacy();
@@ -239,7 +253,8 @@ export function HomePage({
     data: any;
   } | null>(null);
 
-  const [billManagementOpen, setBillManagementOpen] = useState(false);
+  const billManagementOpen = activeModal === "billManagement";
+  const setBillManagementOpen = (open: boolean) => setActiveModal(open ? "billManagement" : null);
   const {
     activeSpace,
     activeSpaceId,
@@ -249,12 +264,24 @@ export function HomePage({
   const allTxs = useMemo(() => {
     return filterTransactionsBySpace(rawAllTxs, activeSpaceId);
   }, [rawAllTxs, activeSpaceId, filterTransactionsBySpace]);
-  const [spaceSwitcherOpen, setSpaceSwitcherOpen] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
-  const [nfcModalOpen, setNfcModalOpen] = useState(false);
-  const [splitBillSheetOpen, setSplitBillSheetOpen] = useState(false);
-  const [webDashboardOpen, setWebDashboardOpen] = useState(false);
+  const spaceSwitcherOpen = activeModal === "spaceSwitcher";
+  const setSpaceSwitcherOpen = (open: boolean) => setActiveModal(open ? "spaceSwitcher" : null);
+  const profileMenuOpen = activeModal === "profileMenu";
+  const setProfileMenuOpen = (val: boolean | ((prev: boolean) => boolean)) => {
+    setActiveModal((curr) => {
+      const isCurrentlyOpen = curr === "profileMenu";
+      const next = typeof val === "function" ? val(isCurrentlyOpen) : val;
+      return next ? "profileMenu" : null;
+    });
+  };
+  const profileSheetOpen = activeModal === "profileSheet";
+  const setProfileSheetOpen = (open: boolean) => setActiveModal(open ? "profileSheet" : null);
+  const nfcModalOpen = activeModal === "nfc";
+  const setNfcModalOpen = (open: boolean) => setActiveModal(open ? "nfc" : null);
+  const splitBillSheetOpen = activeModal === "splitBill";
+  const setSplitBillSheetOpen = (open: boolean) => setActiveModal(open ? "splitBill" : null);
+  const webDashboardOpen = activeModal === "webDashboard";
+  const setWebDashboardOpen = (open: boolean) => setActiveModal(open ? "webDashboard" : null);
   const addTx = useAddTransaction();
 
   const {
@@ -272,7 +299,8 @@ export function HomePage({
     setActivePresetKey,
   } = useWidgetLayout();
 
-  const [customizeHomeOpen, setCustomizeHomeOpen] = useState(false);
+  const customizeHomeOpen = activeModal === "customizeHome";
+  const setCustomizeHomeOpen = (open: boolean) => setActiveModal(open ? "customizeHome" : null);
 
   const intel = useFinancialIntelligence({
     transactions: allTxs,
@@ -655,35 +683,20 @@ export function HomePage({
     return allTxs.filter((t) => t.occurred_on === dStr);
   }, [selectedDate, allTxs]);
 
-  const [displayName, setDisplayName] = useState(() => {
-    return (
-      session?.user?.user_metadata?.display_name ||
-      session?.user?.email?.split("@")[0] ||
-      "User"
-    );
-  });
-  const [avatarUrl, setAvatarUrl] = useState<string>(() => {
-    return (
-      session?.user?.user_metadata?.avatar_url ||
-      localStorage.getItem("trouvaille_avatar") ||
-      ""
-    );
-  });
+  const [customDisplayName, setCustomDisplayName] = useState<string | null>(null);
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (session?.user) {
-      setDisplayName(
-        session.user.user_metadata?.display_name ||
-          session.user.email?.split("@")[0] ||
-          "User",
-      );
-      setAvatarUrl(
-        session.user.user_metadata?.avatar_url ||
-          localStorage.getItem("trouvaille_avatar") ||
-          "",
-      );
-    }
-  }, [session]);
+  const displayName =
+    customDisplayName ??
+    session?.user?.user_metadata?.display_name ??
+    session?.user?.email?.split("@")[0] ??
+    "User";
+
+  const avatarUrl =
+    customAvatarUrl ??
+    session?.user?.user_metadata?.avatar_url ??
+    localStorage.getItem("trouvaille_avatar") ??
+    "";
 
   const hour = currentHour;
   const greetingPrefix = isIndonesian
@@ -2542,7 +2555,7 @@ export function HomePage({
       {customizeHomeOpen && (
         <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fadeIn">
           <div
-            className="w-full max-w-md rounded-t-[28px] sm:rounded-3xl p-5 space-y-3.5 text-left transition-all max-h-[88dvh] flex flex-col pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),20px)] sm:pb-5"
+            className="w-full max-w-md rounded-t-[28px] sm:rounded-3xl p-5 space-y-3.5 text-left transition-all max-h-[88dvh] flex flex-col pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] sm:pb-5"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
@@ -2767,9 +2780,9 @@ export function HomePage({
         isOpen={profileSheetOpen}
         onClose={() => setProfileSheetOpen(false)}
         avatarUrl={avatarUrl}
-        setAvatarUrl={setAvatarUrl}
+        setAvatarUrl={(url) => setCustomAvatarUrl(url)}
         displayName={displayName}
-        setDisplayName={setDisplayName}
+        setDisplayName={(name) => setCustomDisplayName(name)}
         onOpenDeleteAccount={() => {
           setProfileSheetOpen(false);
           navigate("/settings");

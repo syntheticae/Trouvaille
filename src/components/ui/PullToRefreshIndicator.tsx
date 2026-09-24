@@ -15,8 +15,9 @@ export function PullToRefreshIndicator({ pullDistance, isRefreshing, threshold =
 
   return (
     <div
-      className="fixed top-2 left-0 right-0 z-40 flex items-center justify-center pointer-events-none transition-transform duration-200"
+      className="fixed left-0 right-0 z-40 flex items-center justify-center pointer-events-none transition-transform duration-200"
       style={{
+        top: "max(calc(env(safe-area-inset-top, 0px) + 8px), 16px)",
         transform: `translateY(${Math.max(0, pullDistance - 20)}px)`,
         opacity: Math.min(1, progress * 1.2),
       }}

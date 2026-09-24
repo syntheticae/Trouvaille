@@ -157,6 +157,21 @@ export function convertCurrency(
   return targetAmount;
 }
 
+const FORMATTER_CACHE = new Map<string, Intl.NumberFormat>();
+
+export function getCachedNumberFormatter(
+  locale: string,
+  options?: Intl.NumberFormatOptions
+): Intl.NumberFormat {
+  const key = `${locale}_${options?.style ?? "dec"}_${options?.currency ?? ""}_${options?.minimumFractionDigits ?? "def"}_${options?.maximumFractionDigits ?? "def"}`;
+  let formatter = FORMATTER_CACHE.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, options);
+    FORMATTER_CACHE.set(key, formatter);
+  }
+  return formatter;
+}
+
 /**
  * Format currency with internationalization standard and native symbol.
  */
@@ -171,12 +186,13 @@ export function formatCurrencyAmount(
 
   let formattedNumber = "";
   if (meta.decimals === 0) {
-    formattedNumber = Math.round(absAmount).toLocaleString(currency === "IDR" ? "id-ID" : "ja-JP");
+    const locale = currency === "IDR" ? "id-ID" : "ja-JP";
+    formattedNumber = getCachedNumberFormatter(locale).format(Math.round(absAmount));
   } else {
-    formattedNumber = absAmount.toLocaleString("en-US", {
+    formattedNumber = getCachedNumberFormatter("en-US", {
       minimumFractionDigits: meta.decimals,
       maximumFractionDigits: meta.decimals,
-    });
+    }).format(absAmount);
   }
 
   const sign = isNegative ? "-" : "";
@@ -184,6 +200,24 @@ export function formatCurrencyAmount(
   const codeSuffix = options?.showCode ? ` ${currency}` : "";
 
   return `${sign}${prefix}${formattedNumber}${codeSuffix}`;
+}
+
+/**
+ * Format compact currency for limited width displays (e.g. 1.2M, 500k, 2.5B).
+ */
+export function formatCompactRupiah(val: number): string {
+  const abs = Math.abs(val);
+  let formatted = "";
+  if (abs >= 1000000000) {
+    formatted = (abs / 1000000000).toFixed(1).replace(/\.0$/, "") + "B";
+  } else if (abs >= 1000000) {
+    formatted = (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+  } else if (abs >= 1000) {
+    formatted = Math.round(abs / 1000) + "k";
+  } else {
+    formatted = abs.toString();
+  }
+  return val < 0 ? `-${formatted}` : formatted;
 }
 
 /**
@@ -226,9 +260,15 @@ export function useCurrency() {
   useEffect(() => {
     const isStale = Date.now() - ratesData.timestamp > 24 * 60 * 60 * 1000;
     if (isStale) {
-      refreshRates();
+      let isMounted = true;
+      fetchLiveExchangeRates().then((updated) => {
+        if (isMounted) setRatesData(updated);
+      });
+      return () => {
+        isMounted = false;
+      };
     }
-  }, [ratesData.timestamp, refreshRates]);
+  }, [ratesData.timestamp]);
 
   // Synchronize across tabs and storage events
   useEffect(() => {

@@ -171,7 +171,7 @@ export function MonochromeIconPickerModal({
 
         {/* Icon Grid (Luxury Frosted Squircles) */}
         <div
-          className="grid grid-cols-4 gap-2.5 max-h-[320px] overflow-y-auto p-2 rounded-2xl no-scrollbar"
+          className="grid grid-cols-4 gap-2.5 p-2 rounded-2xl"
           style={{
             background: "var(--bg-elevated)",
             border: "1px solid var(--glass-border)",

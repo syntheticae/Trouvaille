@@ -779,7 +779,7 @@ export function WalletManagementSheets({
                 Available Preset Accounts ({availableDefaultWallets.length})
               </label>
               <div
-                className="grid grid-cols-3 gap-2 max-h-[160px] overflow-y-auto p-1.5 rounded-2xl"
+                className="grid grid-cols-3 gap-2 p-1.5 rounded-2xl"
                 style={{
                   background: "var(--bg-elevated)",
                   border: "1px solid var(--glass-border)",

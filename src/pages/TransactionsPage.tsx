@@ -1,7 +1,7 @@
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator";
 import { triggerHaptic } from "../lib/haptics";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback, useDeferredValue } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -172,7 +172,7 @@ export function TransactionsPage({
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [search, setSearch] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [filter, setFilter] = useState<FilterType>("all");
   const [selectedWalletName, setSelectedWalletName] = useState<string | null>(
     null,
@@ -347,22 +347,14 @@ export function TransactionsPage({
     document.documentElement.getAttribute("data-theme") !== "light";
   const shouldRenderHeavy = useDeferredRender(150);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 150);
-    return () => clearTimeout(timer);
-  }, [search]);
 
-  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(() =>
-    typeof document !== "undefined"
-      ? document.getElementById("app-scroll-container")
-      : null,
+  const scrollParent = useMemo(
+    () =>
+      typeof document !== "undefined"
+        ? document.getElementById("app-scroll-container")
+        : null,
+    [],
   );
-
-  useEffect(() => {
-    if (!scrollParent && typeof document !== "undefined") {
-      setScrollParent(document.getElementById("app-scroll-container"));
-    }
-  }, [scrollParent]);
 
   const resolveWalletNames = useCallback(
     (tx: Transaction) => resolveTransactionWallets(tx, walletMap),
@@ -446,7 +438,7 @@ export function TransactionsPage({
       txs = txs.filter((t) => Number(t.amount || 0) <= maxAmt);
     }
 
-    const q = debouncedSearch.toLowerCase().trim();
+    const q = deferredSearch.toLowerCase().trim();
     if (q) {
       const digitsOnly = q.replace(/[^0-9]/g, "");
       txs = txs.filter((t) => {
@@ -482,7 +474,7 @@ export function TransactionsPage({
     selectedCategoryIds,
     minAmount,
     maxAmount,
-    debouncedSearch,
+    deferredSearch,
     resolveWalletNames,
     categories,
   ]);
@@ -2025,7 +2017,7 @@ export function TransactionsPage({
                 </button>
               )}
             </div>
-            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto no-scrollbar py-0.5">
+            <div className="flex flex-wrap gap-1.5 py-0.5">
               {categories.map((c) => {
                 const isSelected = selectedCategoryIds.includes(c.id);
                 return (

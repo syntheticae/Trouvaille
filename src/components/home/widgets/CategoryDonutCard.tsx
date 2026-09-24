@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Info, PieChart } from "lucide-react";
 import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
@@ -5,6 +6,26 @@ import { CompactShell } from "./CompactShell";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import { useCurrency } from "../../../contexts/CurrencyContext";
+
+const SEGMENT_SHADES_DARK = [
+  "rgba(255, 255, 255, 0.95)",
+  "rgba(255, 255, 255, 0.68)",
+  "rgba(255, 255, 255, 0.42)",
+  "rgba(255, 255, 255, 0.24)",
+  "rgba(255, 255, 255, 0.12)",
+];
+
+const SEGMENT_SHADES_LIGHT = [
+  "rgba(9, 9, 11, 0.95)",
+  "rgba(9, 9, 11, 0.70)",
+  "rgba(9, 9, 11, 0.48)",
+  "rgba(9, 9, 11, 0.30)",
+  "rgba(9, 9, 11, 0.15)",
+];
+
+const FULL_RADIUS = 38;
+const FULL_STROKE = 8.5;
+const FULL_CIRC = 2 * Math.PI * FULL_RADIUS; // ~238.7
 
 export function CategoryDonutCard({
   categories,
@@ -22,6 +43,25 @@ export function CategoryDonutCard({
   useCurrency();
   const isIndonesian = language === "id";
   const isDark = theme === "dark";
+
+  const segmentShades = isDark ? SEGMENT_SHADES_DARK : SEGMENT_SHADES_LIGHT;
+
+  const donutSegments = useMemo(() => {
+    const raw = categories.slice(0, 5);
+    const dashes = raw.map((cat) => (Math.max(0, cat.pct) / 100) * FULL_CIRC);
+    let offsetAcc = 0;
+    const offsets: number[] = [];
+    for (let i = 0; i < dashes.length; i++) {
+      offsets.push(offsetAcc);
+      offsetAcc += dashes[i];
+    }
+    return raw.map((cat, idx) => ({
+      ...cat,
+      strokeDash: dashes[idx],
+      offset: offsets[idx],
+      color: segmentShades[idx % segmentShades.length],
+    }));
+  }, [categories, segmentShades]);
 
   const topCat = categories[0] || {
     name: isIndonesian ? "Belum ada pengeluaran" : "No expenses",
@@ -73,38 +113,6 @@ export function CategoryDonutCard({
     );
   }
 
-  // Multi-Segment SVG Donut calculations for Full Mode
-  const fullRadius = 38;
-  const fullStroke = 8.5;
-  const fullCirc = 2 * Math.PI * fullRadius; // ~238.7
-  const segmentShades = isDark
-    ? [
-        "rgba(255, 255, 255, 0.95)",
-        "rgba(255, 255, 255, 0.68)",
-        "rgba(255, 255, 255, 0.42)",
-        "rgba(255, 255, 255, 0.24)",
-        "rgba(255, 255, 255, 0.12)",
-      ]
-    : [
-        "rgba(9, 9, 11, 0.95)",
-        "rgba(9, 9, 11, 0.70)",
-        "rgba(9, 9, 11, 0.48)",
-        "rgba(9, 9, 11, 0.30)",
-        "rgba(9, 9, 11, 0.15)",
-      ];
-
-  let cumulativeOffset = 0;
-  const donutSegments = categories.slice(0, 5).map((cat, idx) => {
-    const strokeDash = (Math.max(0, cat.pct) / 100) * fullCirc;
-    const currentOffset = cumulativeOffset;
-    cumulativeOffset += strokeDash;
-    return {
-      ...cat,
-      strokeDash,
-      offset: currentOffset,
-      color: segmentShades[idx % segmentShades.length],
-    };
-  });
 
   return (
     <section
@@ -163,28 +171,28 @@ export function CategoryDonutCard({
         {/* Multi-Segment Full Donut */}
         <div className="relative flex items-center justify-center shrink-0">
           <svg
-            width={(fullRadius + fullStroke) * 2}
-            height={(fullRadius + fullStroke) * 2}
+            width={(FULL_RADIUS + FULL_STROKE) * 2}
+            height={(FULL_RADIUS + FULL_STROKE) * 2}
             className="rotate-[-90deg]"
           >
             <circle
-              cx={fullRadius + fullStroke}
-              cy={fullRadius + fullStroke}
-              r={fullRadius}
+              cx={FULL_RADIUS + FULL_STROKE}
+              cy={FULL_RADIUS + FULL_STROKE}
+              r={FULL_RADIUS}
               fill="none"
               stroke={isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)"}
-              strokeWidth={fullStroke}
+              strokeWidth={FULL_STROKE}
             />
             {donutSegments.map((seg, idx) => (
               <circle
                 key={idx}
-                cx={fullRadius + fullStroke}
-                cy={fullRadius + fullStroke}
-                r={fullRadius}
+                cx={FULL_RADIUS + FULL_STROKE}
+                cy={FULL_RADIUS + FULL_STROKE}
+                r={FULL_RADIUS}
                 fill="none"
                 stroke={seg.color}
-                strokeWidth={fullStroke}
-                strokeDasharray={`${seg.strokeDash} ${fullCirc - seg.strokeDash}`}
+                strokeWidth={FULL_STROKE}
+                strokeDasharray={`${seg.strokeDash} ${FULL_CIRC - seg.strokeDash}`}
                 strokeDashoffset={-seg.offset}
                 strokeLinecap="round"
                 style={{ transition: "all 0.6s ease-in-out" }}

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -42,26 +42,12 @@ import {
 import { calculateMonthCalendarRunway } from "../lib/calendarForecasting";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { formatRupiah } from "../lib/utils";
+import { formatCompactRupiah } from "../lib/currency";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { triggerHaptic } from "../lib/haptics";
-
-function formatCompactRupiah(val: number): string {
-  const abs = Math.abs(val);
-  let formatted = "";
-  if (abs >= 1000000000) {
-    formatted = (abs / 1000000000).toFixed(1).replace(/\.0$/, "") + "B";
-  } else if (abs >= 1000000) {
-    formatted = (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
-  } else if (abs >= 1000) {
-    formatted = Math.round(abs / 1000) + "k";
-  } else {
-    formatted = abs.toString();
-  }
-  return val < 0 ? `-${formatted}` : formatted;
-}
 
 export function CalendarPage() {
   const navigate = useNavigate();
@@ -75,18 +61,11 @@ export function CalendarPage() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [customViewMode, setCustomViewMode] = useState<"activity" | "runway" | null>(null);
   const [searchParams] = useSearchParams();
-  const initialView = searchParams.get("view") === "runway" ? "runway" : "activity";
-  const [viewMode, setViewMode] = useState<"activity" | "runway">(initialView);
-
-  useEffect(() => {
-    const viewParam = searchParams.get("view");
-    if (viewParam === "runway") {
-      setViewMode("runway");
-    } else if (viewParam === "activity") {
-      setViewMode("activity");
-    }
-  }, [searchParams]);
+  const viewParam = searchParams.get("view");
+  const viewMode = customViewMode ?? (viewParam === "runway" ? "runway" : "activity");
+  const setViewMode = (mode: "activity" | "runway") => setCustomViewMode(mode);
   const [slideDirection, setSlideDirection] = useState<number>(0);
 
   const { data: monthTxs = [] } = useMonthTransactions(

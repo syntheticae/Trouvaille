@@ -451,5 +451,6 @@ export function useFinancialIntelligence({
     categoryOverrides,
     activeMonthDate,
     language,
+    isIndonesian,
   ]);
 }

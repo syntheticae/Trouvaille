@@ -4,6 +4,7 @@ import {
   formatCurrencyAmount,
   type SupportedCurrency,
   CURRENCY_METADATA,
+  getCachedNumberFormatter,
 } from "./currency";
 
 export function cn(...inputs: ClassValue[]) {
@@ -31,7 +32,7 @@ export function formatRupiah(amount: number, forceCurrency?: SupportedCurrency):
     return formatCurrencyAmount(0, curr);
   }
   if (curr === "IDR") {
-    return new Intl.NumberFormat("id-ID", {
+    return getCachedNumberFormatter("id-ID", {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
@@ -45,13 +46,25 @@ export function formatRupiah(amount: number, forceCurrency?: SupportedCurrency):
 export const formatCurrency = formatRupiah;
 
 export function parseRupiah(value: string): number {
-  return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0
+  return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
+}
+
+const DATE_FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat>();
+
+function getCachedDateTimeFormatter(locale: string, options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${locale}_${options?.day ?? ""}_${options?.month ?? ""}_${options?.year ?? ""}`;
+  let formatter = DATE_FORMATTER_CACHE.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, options);
+    DATE_FORMATTER_CACHE.set(key, formatter);
+  }
+  return formatter;
 }
 
 export function formatDate(date: string | Date): string {
-  const d = typeof date === "string" ? new Date(date) : date
-  if (isNaN(d.getTime())) return "Unknown Date"
-  return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", year: "numeric" }).format(d)
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(d.getTime())) return "Unknown Date";
+  return getCachedDateTimeFormatter("en-US", { day: "numeric", month: "short", year: "numeric" }).format(d);
 }
 
 export function isToday(dateStr: string): boolean {

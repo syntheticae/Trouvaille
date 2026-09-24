@@ -1,6 +1,6 @@
 # Trouvaille: Private Financial Intelligence & Luxury Architectural System
 ### Comprehensive Technical Paper & System Specification
-**Version:** 3.2.0 · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
+**Version:** 3.3.0 · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
 **Author:** DeepMind Agentic Systems & Trouvaille Core Engineering  
 **Revision Date:** September 2026  
 
@@ -122,6 +122,29 @@ The visual hierarchy eliminates arbitrary rainbow category coloring in favor of 
   - `horizon` (Horizon / Wealth Planning): Long-term survival buffer & wealth retention: Capital Overview $\to$ Runway + Health Meter (Bento 1) $\to$ Cashflow Pulse $\to$ Spending Stability $\to$ Goals $\to$ Commitments $\to$ Recent Transactions.
   - `executive` (Executive / Full Telemetry): Complete command center with 3 cleanly paired 2-column bentos (Velocity + Savings Ring, Runway + Health Gauge, Donut + Activity Heatmap) plus all macro telemetry.
 
+### 2.4 Dynamic Notch, Dynamic Island & Floating Flyouts Rule (Architectural Rule 3)
+Floating capsules, top flyout banners, and status controls must never employ hardcoded vertical top coordinates (such as `top-[24px]` or `top-3`) that collide with physical iPhone hardware cutouts:
+- **Dynamic Coordinate Formula**:
+  $$\text{Top Placement} = \max(\text{env}(\text{safe-area-inset-top}, 0\text{px}) + 18\text{px}, 28\text{px})$$
+- **Centered Horizontal Constrainment**: Combined with `left-4 right-4 max-w-md mx-auto` to ensure uniform floating symmetry across all device aspect ratios (from compact iPhones to iPads and desktop browser viewports).
+- Applied across all floating system surfaces including [`ClipboardTransactionBanner`](file:///d:/Project/Trouvaille/src/components/common/ClipboardTransactionBanner.tsx), [`ProfileMenuModal`](file:///d:/Project/Trouvaille/src/components/home/ProfileMenuModal.tsx), and [`PullToRefreshIndicator`](file:///d:/Project/Trouvaille/src/components/ui/PullToRefreshIndicator.tsx).
+
+### 2.5 Bottom Sheet & Sliding Panel Architecture Rule (Architectural Rule 5)
+Bottom sheets and sliding action panels in Trouvaille follow a unified single-scroll container paradigm:
+- **Zero Artificial Inner Height Restrictions**: No child component or grid inside a `BottomSheet` is permitted to impose arbitrary low height caps (`max-h-[55vh]`, `max-h-[50vh]`, `max-h-[320px]`, `max-h-[160px]`) paired with inner `overflow-y-auto`. Nested scrollbars within modal panels are strictly prohibited.
+- **Unified 92dvh Scroll Container**: The parent `BottomSheet` manages a single, smoothly decelerated inertial scroll container (`min-h-0 flex-1 overflow-y-auto overscroll-contain`) expanding naturally up to `92dvh`.
+- **iOS Home Indicator Inset Standard**: All bottom sheets, docked action bars, and footer containers enforce a generous bottom safe-area inset:
+  $$\text{Padding Bottom} = \max(\text{env}(\text{safe-area-inset-bottom}, 0\text{px}) + 12\text{px}, 24\text{px})$$
+  Ensuring bottommost action buttons, pills, and cards are never obstructed or clipped by the physical iOS home swipe bar.
+
+### 2.6 Modal & Customization Settings Layout Rule
+Customization dialogs and settings drawers implement a strict typographic and aesthetic hierarchy:
+- **Two-Line Feature Hierarchy**:
+  - *Top Line*: Feature Title (`text-[13px] font-semibold text-[var(--text-primary)]`).
+  - *Second Line*: Concise functional description (`text-[11px] text-[var(--text-tertiary)]`).
+  - *Far Right*: High-contrast Apple iOS toggle switch (`ToggleSwitch.tsx`, `w-10 h-5.5` with `w-4.5 h-4.5` knob).
+- **Active & Inactive State Aesthetics**: Active ('on') states feature soft ambient frosted glass (`bg-white/[0.05] border border-white/14` with inner hairline glow `inset 0 1px 0 rgba(255,255,255,0.08)` in dark mode). Inactive ('off') states are gently dimmed (`opacity: 0.6`) for instant optical contrast without harsh stark white borders.
+
 ---
 
 ## 3. Technology Stack & Runtime Architecture
@@ -163,7 +186,14 @@ The visual hierarchy eliminates arbitrary rainbow category coloring in favor of 
 | **jsPDF** | `4.2.1` | On-device luxury financial statement generation & PDF export |
 | **Capgo Native Biometric** | `8.6.7` | Hardware Face ID, Touch ID, and Secure Enclave authentication bridge |
 | **Supabase Client** | `2.112.3` | Realtime Postgres replication, WebSocket channels, Row Level Security (RLS) |
-| **Vitest** | `4.1.11` | Enterprise automated test runner (41 test suites, 361 tests) |
+| **Vitest** | `4.1.11` | Enterprise automated test runner (41 test suites, 368 tests) |
+
+### 3.2 Performance, Memoization & Anti-Pattern Remediation
+During the comprehensive architectural audit and remediation, several foundational performance enhancements were integrated across the runtime:
+- **Module-Scoped Formatter Caches (`FORMATTER_CACHE` & `DATE_FORMATTER_CACHE`)**: High-overhead initializations of `Intl.NumberFormat` and `Intl.DateTimeFormat` are cached via module-level `Map` structures in [`src/lib/currency.ts`](file:///d:/Project/Trouvaille/src/lib/currency.ts) and [`src/lib/utils.ts`](file:///d:/Project/Trouvaille/src/lib/utils.ts). This eliminates thousands of redundant object instantiations during rapid list rendering and virtualized chart updates.
+- **Elimination of Cascading Effect Loops (Pure Derived State)**: Redundant `useEffect` synchronization hooks that mirror props or auth contexts into local state (such as user avatar and display name in [`HomePage.tsx`](file:///d:/Project/Trouvaille/src/pages/HomePage.tsx)) were refactored into pure derived state, eliminating double-render cycles on route entry.
+- **React 19 `useDeferredValue` for Non-Blocking Filtering**: High-frequency text search on [`TransactionsPage.tsx`](file:///d:/Project/Trouvaille/src/pages/TransactionsPage.tsx) is decoupled from the main input thread using `useDeferredValue(search)`, guaranteeing responsive 60fps typing while concurrently filtering thousands of records.
+- **Immutable Math Invariants**: Replaced in-place array mutations in statistical engines (such as the Largest Remainder percentage allocator in [`BalanceCard.tsx`](file:///d:/Project/Trouvaille/src/components/ui/BalanceCard.tsx)) with strictly pure functions to prevent stale reference regressions.
 
 ---
 
@@ -669,17 +699,19 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
 - Replaces heavy analytical accordion cards on the Assets page to preserve vertical ergonomics.
 - Clicking routes to `/statistics` with asset context.
 
-##### 7. Wealth History Card:
+##### 7. Wealth History Card (UI Parity with Liquid Position):
 - Relocated from the top hero to below the Holdings Deck.
-- Focuses on historical wealth accumulation over time rather than real-time MTM day trading.
+- Refactored to achieve **strict aesthetic and typographic parity** with the Liquid Position Card on the Home screen: identical frosted card anatomy, Urbanist typographic scale, and seamless monochrome area gradient.
+- **Unit Precision Trimming (`formatHoldingUnits`)**: Removes confusing trailing recurring decimals on asset unit amounts, rendering clean, glanceable integers or minimal fractional numbers.
 - Range Pill Selectors: `1D`, `7D`, `1M`, `3M`, `6M`, `1Y`, `ALL`.
 - Interactive Recharts AreaChart with monochrome gradient fill, Cartesian grid, and custom `GlassTooltip`.
 
-##### 8. Consolidated Balance Sheet Drawer (`BottomSheet`):
+##### 8. Modular Consolidated Balance Sheet Drawer (`ConsolidatedBalanceSheetDrawer.tsx`):
+- Extracted into a dedicated standalone component (`src/components/assets/ConsolidatedBalanceSheetDrawer.tsx`), cutting over 640 lines of JSX and state from `AssetsPage.tsx`.
 - Accessible via the "Open Consolidated Balance Sheet" trigger button below the Holdings Deck or via the 3-Tier Allocation info button.
 - Comprehensive 360-degree audit of all user capital:
   - **Executive Net Worth Banner**: Instant real-time readout of Consolidated Net Worth, Total Gross Assets, and Active Debt Liabilities.
-  - **Search & Live Filter Engine**: Instant multi-tier search across assets and liabilities.
+  - **Search & Live Filter Engine**: Instant multi-tier search across assets and liabilities with encapsulated state.
   - **Tier Filter Tabs**: Soft ambient frosted glass pills (`All Tiers`, `Tier 1: Liquid`, `Tier 2: Growth`, `Tier 3: Fixed`, `Liabilities`) adhering strictly to Rule 3.
   - **Tier 1 (Liquid & Current)**: USDT stablecoin reserves with real-time exchange rates, operational cash, and bank accounts.
   - **Tier 2 (Market & Growth)**: US & IDX equities, cryptocurrencies, mutual funds, and bonds with individual floating PnL and portfolio dominance weights.
@@ -687,9 +719,10 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
   - **Liabilities & Solvency Status**: Itemized active debts with verification (`debtAmt > 0`). When liabilities are zero, renders an elegant reassuring status card: *"Zero Debt Obligations / Bebas Kewajiban Utang"* (100% Solvency).
   - **Luxury Frosted Dismissal**: Secondary frosted glass action button respecting iOS home indicator safe area insets.
 
-##### 9. Interactive Metric Telemetry Drill-Down Sheets:
-- Direct interactive drill-down on all 6 Bento Half-Cards (Liquid, Growth, Fixed, Liabilities, Capital Deployment, Top Exposure).
+##### 9. Interactive Metric Telemetry Drill-Down Sheets (`AssetMetricDrillDownSheet.tsx`):
+- Extracted into a standalone modular component (`src/components/assets/AssetMetricDrillDownSheet.tsx`), providing direct interactive drill-down on all 6 Bento Half-Cards (Liquid, Growth, Fixed, Liabilities, Capital Deployment, Top Exposure).
 - Each sheet slides up a contextual executive narrative, constituent asset/wallet items with 1-tap navigation to deep asset sheets, and solvency telemetry.
+- **Architectural Impact**: This modular decoupling reduced `AssetsPage.tsx` from an oversized 1,600+ line "god file" down to a focused ~880 lines of clean orchestration.
 
 ---
 
@@ -1241,11 +1274,14 @@ d:\Project\Trouvaille\
 │       └── 20260921_add_ledgers_table.sql
 ├── src\
 │   ├── components\
-│   │   ├── assets\                       # Silicon Valley Wealth Bento & Dominance Cards
-│   │   │   ├── AssetBentoMicroCards.tsx
-│   │   │   ├── CapitalAllocationCard.tsx
-│   │   │   ├── MonthlyDeploymentBarCard.tsx
-│   │   │   └── PortfolioInsightCards.tsx
+│   │   ├── assets\                       # Silicon Valley Wealth Bento, Balance Sheets & Dominance Cards
+│   │   │   ├── AssetBentoMicroCards.tsx  # 6-card micro bento grid
+│   │   │   ├── AssetMetricDrillDownSheet.tsx # Contextual metric narrative & constituent asset drilldown
+│   │   │   ├── CapitalAllocationCard.tsx # 3-tier capital allocation progress visualization
+│   │   │   ├── ConsolidatedBalanceSheetDrawer.tsx # Modular 360-degree tiered balance sheet drawer
+│   │   │   ├── ExecutiveWalletCard.tsx   # Executive balance card with tuck animation & parity
+│   │   │   ├── MonthlyDeploymentBarCard.tsx # MTD capital deployment tracker
+│   │   │   └── PortfolioInsightCards.tsx # Deep telemetry gateway banners
 │   │   ├── bills\                        # Recurring obligations & due date trackers
 │   │   ├── charts\                       # Reusable Candlestick, Area & Bar charts
 │   │   ├── currency\                     # Multi-currency switcher & FX converters
@@ -1300,7 +1336,7 @@ d:\Project\Trouvaille\
 │   │   └── TransactionsPage.tsx          # Infinite-scroll virtualized transaction journal
 │   ├── App.tsx                           # Root layout, routing & background sync lifecycles
 │   └── main.tsx                          # Entry point & TanStack Query persister init
-└── tests\                                # 41 Vitest test suites (361 tests passing 100%)
+└── tests\                                # 41 Vitest test suites (368 tests passing 100%)
 ```
 
 ---

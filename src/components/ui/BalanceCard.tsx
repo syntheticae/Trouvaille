@@ -81,11 +81,9 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
     }
 
     // Largest Remainder Method for exact 100% chart segments
-    let rem = 100;
-    const chartItems = posAccs.map((acc, idx) => {
+    const rawItems = posAccs.map((acc, idx) => {
       const raw = (acc.balance / effectiveTotal) * 100;
       const floored = Math.floor(raw);
-      rem -= floored;
       return {
         name: acc.name,
         icon: acc.icon,
@@ -96,11 +94,31 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
       };
     });
 
-    const byRem = [...chartItems].sort((a, b) => b.remainder - a.remainder);
-    for (let i = 0; i < rem; i++) {
-      if (byRem[i % byRem.length]) byRem[i % byRem.length].percent += 1;
+    const totalFloored = rawItems.reduce((acc, item) => acc + item.percent, 0);
+    const rem = Math.max(0, 100 - totalFloored);
+
+    const sortedIndices = rawItems
+      .map((item, idx) => ({ idx, remainder: item.remainder }))
+      .sort((a, b) => b.remainder - a.remainder);
+
+    const bonusMap = new Map<number, number>();
+    if (sortedIndices.length > 0) {
+      for (let i = 0; i < rem; i++) {
+        const targetIdx = sortedIndices[i % sortedIndices.length].idx;
+        bonusMap.set(targetIdx, (bonusMap.get(targetIdx) || 0) + 1);
+      }
     }
-    chartItems.sort((a, b) => b.percent - a.percent);
+
+    const chartItems = rawItems
+      .map((item, idx) => ({
+        name: item.name,
+        icon: item.icon,
+        balance: item.balance,
+        percent: item.percent + (bonusMap.get(idx) || 0),
+        remainder: item.remainder,
+        color: item.color,
+      }))
+      .sort((a, b) => b.percent - a.percent);
 
     // Formatted accounts with percentage
     const formattedAccounts = allAccounts.map((acc, idx) => {

@@ -833,7 +833,7 @@ export function VoiceQuickAddModal({
                     </span>
                   </div>
 
-                  <div className="w-full max-h-[190px] overflow-y-auto no-scrollbar space-y-2 pr-0.5">
+                  <div className="w-full max-h-[min(32vh,240px)] overflow-y-auto no-scrollbar space-y-2 pr-0.5">
                     {parsedList.map((item, idx) => (
                       <div
                         key={idx}

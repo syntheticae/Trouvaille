@@ -109,7 +109,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ type: "spring", damping: 25, stiffness: 350 }}
-          className="fixed bottom-[calc(92px+env(safe-area-inset-bottom))] left-4 right-4 z-[999999] flex items-center justify-between p-3.5 px-4 rounded-[24px] pointer-events-auto"
+          className="fixed bottom-[calc(92px+env(safe-area-inset-bottom,0px))] left-4 right-4 z-[999999] max-w-md mx-auto flex items-center justify-between p-3.5 px-4 rounded-[24px] pointer-events-auto"
           style={{ 
             background: "var(--bg-elevated)", 
             border: "1px solid var(--glass-border)",

@@ -158,22 +158,22 @@ export function AssetDetailSheet({
       let note = tx.note || "";
 
       if (isUsdt) {
-        if (tx.wallet_id && cryptoWalletIds.has(tx.wallet_id)) {
-          // Outgoing from crypto wallet (transfer out to bank or expense)
+        if (tx.type === "income" && tx.wallet_id && cryptoWalletIds.has(tx.wallet_id)) {
           isMatch = true;
-          actType = "sell";
-          const toW = wallets.find((w) => w.id === tx.to_wallet_id);
-          note = tx.note || (toW ? `Transfer ke ${toW.name}` : "P2P Withdrawal / Penarikan");
+          actType = "buy";
+          note = tx.note || "Staking Yield / Bunga";
         } else if (tx.to_wallet_id && cryptoWalletIds.has(tx.to_wallet_id)) {
           // Incoming to crypto wallet (transfer in or deposit)
           isMatch = true;
           actType = "buy";
           const fromW = wallets.find((w) => w.id === tx.wallet_id);
           note = tx.note || (fromW ? `Deposit dari ${fromW.name}` : "P2P Purchase / Deposit");
-        } else if (tx.type === "income" && tx.wallet_id && cryptoWalletIds.has(tx.wallet_id)) {
+        } else if (tx.wallet_id && cryptoWalletIds.has(tx.wallet_id)) {
+          // Outgoing from crypto wallet (transfer out to bank or expense)
           isMatch = true;
-          actType = "buy";
-          note = tx.note || "Staking Yield / Bunga";
+          actType = "sell";
+          const toW = wallets.find((w) => w.id === tx.to_wallet_id);
+          note = tx.note || (toW ? `Transfer ke ${toW.name}` : "P2P Withdrawal / Penarikan");
         }
       } else if (holding.symbol) {
         const sym = holding.symbol.toUpperCase();

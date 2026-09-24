@@ -536,7 +536,7 @@ export function CustomizeStatisticsModal({
             shrink-0
             px-5
             pt-3
-            pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),16px)]
+            pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)]
           "
           style={{
             background: "var(--bg-elevated)",
