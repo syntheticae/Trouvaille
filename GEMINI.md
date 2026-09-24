@@ -103,7 +103,10 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   - Do NOT use harsh, thick, stark white outlines on active states.
   - Active ('on') states must use soft ambient frosted glass (`bg-white/[0.05] border border-white/14` with subtle inner hairline glow `inset 0 1px 0 rgba(255,255,255,0.08)` in dark mode, and soft subtle elevation in light mode).
   - Off states must be gently dimmed (`opacity: 0.6`) so active items stand out gracefully.
-- **Dynamic Notch & Safe Area**: Ensure all full-screen sheets and story modals account for iOS notch and Dynamic Island safe area insets (`max(calc(env(safe-area-inset-top, 0px) + 12px), 24px)`).
+- **Dynamic Notch, Dynamic Island & Floating Flyouts (STRICT)**:
+  - NEVER use hardcoded top positions (e.g. `top-[24px]`) on `fixed` floating elements, flyouts, capsules, or status bars. The iPhone notch / Dynamic Island and status bar extend ~47px from top, which causes hardcoded top coordinates to collide directly with the camera notch and clock.
+  - Floating capsules and top modals MUST compute vertical placement dynamically:
+    `style={{ top: "max(calc(env(safe-area-inset-top, 0px) + 18px), 28px)" }}` paired with `left-4 right-4 max-w-md mx-auto` to center and clear all hardware cutouts cleanly across all device form factors.
 
 ---
 
@@ -120,3 +123,22 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   - Always write an idempotent `.sql` script in `supabase/migrations/` (using `IF NOT EXISTS`, safe column alter checks, indexes, and user-scoped RLS policies).
   - Always provide the full, ready-to-run SQL code block directly in the chat response with copy-paste instructions for the Supabase Dashboard SQL Editor.
 - **Graceful Offline / Local Fallbacks**: The frontend code must always include resilient offline/local caching or fallbacks (e.g. `localStorage` or default fallbacks) so the application remains fully functional without crashing even before the user executes the SQL script in Supabase.
+
+---
+
+## 5. Bottom Sheet & Sliding Panel Architecture Rule (STRICT)
+
+> [!IMPORTANT]
+> **NO ARTIFICIAL INNER HEIGHT RESTRICTIONS (`max-h-[55vh]`, `max-h-[50vh]`, ETC.) IN BOTTOM SHEETS**
+> Under no circumstances should inner contents or grids inside `BottomSheet` or bottom-sliding panels have arbitrary low height caps (such as `max-h-[55vh]`, `max-h-[52vh]`, `max-h-[60vh]`, `max-h-[340px]`) with inner `overflow-y-auto`.
+
+### Architecture & Sizing Guidelines:
+
+- **Single Unified Scroll Container**:
+  - The parent `BottomSheet` component already manages `maxHeight: "92dvh"` and provides a single, smoothly decelerated scroll container (`min-h-0 flex-1 overflow-y-auto`).
+  - Child components must NOT introduce nested scrollbars (`overflow-y-auto`) or artificial height caps (`max-h-[55vh]`) that cut the sheet off halfway up the screen. Children must render with natural vertical flow or `flex-1` so the sheet expands smoothly up to 92dvh.
+- **Zero Bottom Cutoffs & iOS Home Indicator Inset**:
+  - All bottom sheets and bottom-docked modals must always respect the iOS home swipe bar by enforcing a generous bottom inset:
+    `paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px)"` (or `pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),20px)]`).
+  - The bottommost action buttons, pills, or cards must never be clipped, obstructed, or placed flush against the bottom edge of mobile displays.
+

@@ -2292,7 +2292,7 @@ export function ReceiptScanModal({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5 max-h-[55vh] overflow-y-auto no-scrollbar pr-0.5">
+            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5 pr-0.5 pb-6">
               {filteredCategories.map((cat) => {
                 const isSelected = categoryId === cat.id;
 
@@ -2461,7 +2461,7 @@ export function ReceiptScanModal({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5 max-h-[55vh] overflow-y-auto no-scrollbar pr-0.5">
+            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5 pr-0.5 pb-6">
               {filteredWallets.map((w) => {
                 const isSelected = walletId === w.id;
 
@@ -2629,7 +2629,7 @@ export function ReceiptScanModal({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5 max-h-[55vh] overflow-y-auto no-scrollbar pr-0.5">
+            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5 pr-0.5 pb-6">
               {filteredToWallets.map((w) => {
                 const isSelected = toWalletId === w.id;
                 const isSource = walletId === w.id;

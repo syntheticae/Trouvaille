@@ -88,7 +88,7 @@ export function MilestoneBadgesSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title="Prestasi & Konsistensi">
-      <div className="p-4 space-y-4 max-h-[82dvh] overflow-y-auto pb-10">
+      <div className="p-4 space-y-4 pb-10">
         {/* 1. STREAK HERO CARD */}
         <section
           className="p-4 rounded-[22px] border relative overflow-hidden"

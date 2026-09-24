@@ -25,9 +25,6 @@ import {
   TrendingUp,
   Landmark,
   ShieldAlert,
-  ShieldCheck,
-  Eye,
-  EyeOff,
   ArrowUpRight,
 } from "lucide-react";
 import {
@@ -71,10 +68,10 @@ import { MonochromeIconPickerModal } from "../components/ui/MonochromeIconPicker
 import { AssetDetailSheet } from "../components/settings/AssetDetailSheet";
 import { StakingYieldModal } from "../components/settings/StakingYieldModal";
 import { BottomSheet } from "../components/ui/BottomSheet";
-import { PortfolioInsightCards } from "../components/assets/PortfolioInsightCards";
-import { formatRunwaySummary } from "../lib/portfolioAnalytics";
+import { ExecutiveWalletCard } from "../components/assets/ExecutiveWalletCard";
 import { calculateAssetTrend } from "../lib/financialMath";
-import { subMonths } from "date-fns";
+import { startOfMonth } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import type {
   InvestmentHolding,
   AssetType,
@@ -175,13 +172,14 @@ export function AssetsPage() {
     getSavedHoldings(user?.id),
   );
 
+  const navigate = useNavigate();
+
   // Modals & Sheets State
   const [selectedDetailHolding, setSelectedDetailHolding] =
     useState<InvestmentHolding | null>(null);
   const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dismissedReconciliation, setDismissedReconciliation] = useState(false);
-  const [isHoldingsModalOpen, setIsHoldingsModalOpen] = useState(false);
 
   // Add Holding Flow State
   // 0: closed, 1: preset picker, 2: details form
@@ -308,26 +306,7 @@ export function AssetsPage() {
   const usdtFloatingPnLPct =
     usdtCostBasis > 0 ? (usdtFloatingPnL / usdtCostBasis) * 100 : 0;
 
-  const usdtInfo = useMemo(() => {
-    return {
-      symbol: "USDT",
-      name: "Tether USD",
-      units: usdtPref.units > 0 ? usdtPref.units : suggestedUsdtUnits,
-      costBasis: usdtCostBasis,
-      marketValue: usdtMarketValue,
-    };
-  }, [usdtPref.units, suggestedUsdtUnits, usdtCostBasis, usdtMarketValue]);
 
-  // Dynamic Monthly Burn Rate for Emergency Runway Coverage
-  const monthlyBurnRate = useMemo(() => {
-    const now = new Date();
-    const threeMonthsAgo = subMonths(now, 3);
-    const recentExpenses = allTxs.filter(
-      (tx) => tx.type === "expense" && tx.occurred_on && new Date(tx.occurred_on) >= threeMonthsAgo,
-    );
-    const sum = recentExpenses.reduce((s, tx) => s + Number(tx.amount || 0), 0);
-    return sum > 0 ? Math.round(sum / 3) : 3500000;
-  }, [allTxs]);
 
 
 
@@ -339,10 +318,11 @@ export function AssetsPage() {
         (w) =>
           w.classification !== "credit" &&
           w.classification !== "loan" &&
-          w.classification !== "investment",
+          w.classification !== "investment" &&
+          w.id !== cryptoWallet?.id,
       )
       .reduce((sum, w) => sum + Math.max(0, Number(w.balance || 0)), 0);
-  }, [wallets]);
+  }, [wallets, cryptoWallet]);
   const liquidAssetsTotal = liquidWalletCash + usdtMarketValue;
 
   // Pillar 2: Market & Growth Assets (Equities, Growth Crypto, Mutual Funds)
@@ -395,10 +375,39 @@ export function AssetsPage() {
   const growthPct = totalGrossAssets > 0 ? (growthAssetsTotal / totalGrossAssets) * 100 : 0;
   const fixedPct = totalGrossAssets > 0 ? (fixedAssetsTotal / totalGrossAssets) * 100 : 0;
 
-  const liquidRunwayMonths = useMemo(() => {
-    if (monthlyBurnRate <= 0) return 12;
-    return Number((liquidAssetsTotal / monthlyBurnRate).toFixed(1));
-  }, [liquidAssetsTotal, monthlyBurnRate]);
+  // Top Exposure & Capital Deployment Memos
+  const topExposure = useMemo(() => {
+    let maxName = "";
+    let maxValue = 0;
+    if (usdtMarketValue > 0) {
+      maxName = "USDT";
+      maxValue = usdtMarketValue;
+    }
+    for (const h of holdings) {
+      const val = calculateHoldingValuation(h).marketValue;
+      if (val > maxValue) {
+        maxName = h.symbol || h.name;
+        maxValue = val;
+      }
+    }
+    const pct = totalGrossAssets > 0 ? (maxValue / totalGrossAssets) * 100 : 0;
+    return { name: maxName, value: maxValue, pct };
+  }, [holdings, usdtMarketValue, totalGrossAssets]);
+
+  const capitalDeployment = useMemo(() => {
+    const now = new Date();
+    const thisMonthStart = startOfMonth(now);
+    return allTxs
+      .filter(
+        (tx) =>
+          tx.occurred_on &&
+          new Date(tx.occurred_on) >= thisMonthStart &&
+          (tx.categories?.name?.toLowerCase().includes("invest") ||
+            tx.note?.toLowerCase().includes("invest") ||
+            tx.type === "transfer"),
+      )
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+  }, [allTxs]);
 
   const assetTrend = useMemo(() => {
     return calculateAssetTrend(allTxs, netWorth, bsRange);
@@ -700,269 +709,45 @@ export function AssetsPage() {
         </div>
       </div>
 
-      {/* ── 2. Executive Balance Sheet & Solvency Matrix Hero Card ── */}
-      <div className="card-contrast-hero p-4 sm:p-5 pb-3.5 relative overflow-hidden rounded-3xl space-y-3.5">
-        {/* Top Header: Floating MTM indicator & Balance eye toggle */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-              {isIndonesian
-                ? "Valuasi Pasar Berjalan (Floating MTM)"
-                : "Floating Mark-to-Market Valuation"}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              toggleStealthMode();
-            }}
-            className={`p-1 -mr-1 cursor-pointer active:scale-90 transition-all ${
-              isDark
-                ? "text-white/60 hover:text-white"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-            }`}
-            title={isStealthMode ? "Show Balance" : "Hide Balance"}
-          >
-            {isStealthMode ? <EyeOff size={15} /> : <Eye size={15} />}
-          </button>
-        </div>
-
-        {/* Hero Number: Net Capital Equity (Strictly font-light) */}
-        <div className="space-y-0.5">
-          <span className="text-[11px] text-[var(--text-tertiary)] block font-medium">
-            {isIndonesian ? "Total Ekuitas Modal Bersih" : "Total Net Capital Equity"}
-          </span>
-          <p className="amount text-[32px] sm:text-[38px] font-light tracking-tight leading-none text-[var(--text-primary)]">
-            {isStealthMode ? "••••••••" : formatRupiah(netWorth)}
-          </p>
-        </div>
-
-        {/* Change Line + Time Label Side by Side */}
-        <div className="flex items-center justify-between gap-2">
-          <div
-            className="flex items-center gap-1 text-[12px] font-semibold"
-            style={{
-              color: isDark
-                ? assetTrend.diff >= 0 ? "#FFFFFF" : "#A1A1AA"
-                : assetTrend.diff >= 0 ? "#121214" : "#71717a",
-            }}
-          >
-            <ArrowUpRight
-              size={13}
-              className={assetTrend.diff < 0 ? "rotate-90" : ""}
-            />
-            <span>
-              {isStealthMode
-                ? "••••"
-                : `${assetTrend.diff >= 0 ? "+" : ""}${formatRupiah(assetTrend.diff)}`}
-            </span>
-            <span className="opacity-80">
-              ({isStealthMode ? "••••" : `${assetTrend.percent >= 0 ? "+" : ""}${assetTrend.percent.toFixed(2)}%`})
-            </span>
-          </div>
-
-          <span className="text-[11px] font-semibold shrink-0 text-[var(--text-tertiary)]">
-            {bsRangeLabels[bsRange]} · MTM
-          </span>
-        </div>
-
-        {/* Range Pill Selector (1D, 7D, 1M, 3M, 6M, 1Y, ALL) */}
-        <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5">
-          {(["1D", "7D", "1M", "3M", "6M", "1Y", "ALL"] as BalanceSheetRange[]).map((r) => {
-            const isActive = bsRange === r;
-            return (
-              <button
-                key={r}
-                type="button"
-                onClick={() => {
-                  setBsRange(r);
-                  triggerHaptic("light");
-                }}
-                className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none"
-                style={{
-                  background: isActive
-                    ? isDark
-                      ? "rgba(255,255,255,0.25)"
-                      : "#18181b"
-                    : isDark
-                      ? "transparent"
-                      : "#f4f4f7",
-                  color: isActive
-                    ? "#FFFFFF"
-                    : isDark
-                      ? "rgba(255,255,255,0.55)"
-                      : "#52525b",
-                  border: isActive
-                    ? isDark
-                      ? "1px solid rgba(255,255,255,0.35)"
-                      : "1px solid #18181b"
-                    : isDark
-                      ? "1px solid transparent"
-                      : "1px solid rgba(0,0,0,0.04)",
-                  boxShadow: isActive
-                    ? isDark
-                      ? "none"
-                      : "0 2px 6px rgba(0,0,0,0.18)"
-                    : "none",
-                }}
-              >
-                {r}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Chart with Right Y-Axis & Dotted Grid */}
-        <div className="h-[120px] w-full mt-0.5">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={assetTrend.chartData}
-              margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="balanceSheetHeroGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="0%"
-                    stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                    stopOpacity={isDark ? 0.25 : 0.12}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                    stopOpacity={0.0}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="2 3"
-                stroke={isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.09)"}
-                vertical={true}
-                horizontal={true}
-              />
-              <XAxis
-                dataKey="label"
-                tick={{
-                  fontSize: 9,
-                  fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
-                  fontFamily: "Urbanist",
-                  fontWeight: 600,
-                }}
-                axisLine={false}
-                tickLine={false}
-                dy={3}
-              />
-              <YAxis
-                orientation="right"
-                width={34}
-                domain={["auto", "auto"]}
-                tick={{
-                  fontSize: 9,
-                  fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
-                  fontFamily: "Urbanist",
-                  fontWeight: 700,
-                }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={formatAxisY}
-                dx={-2}
-              />
-              <Tooltip content={<GlassTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="balance"
-                stroke={isDark ? "#FFFFFF" : "#18181b"}
-                strokeWidth={2}
-                fill="url(#balanceSheetHeroGradient)"
-                dot={false}
-                activeDot={{
-                  r: 4,
-                  fill: isDark ? "#FFFFFF" : "#18181b",
-                  stroke: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.9)",
-                  strokeWidth: 1.5,
-                }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Equation Balance Strip: Gross Assets - Liabilities = Solvency */}
-        <div
-          className="grid grid-cols-3 gap-2 p-3 rounded-2xl text-center"
-          style={{
-            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
-            border: "1px solid var(--glass-border)",
-          }}
-        >
-          <div>
-            <span className="text-[10px] text-[var(--text-tertiary)] block">
-              {isIndonesian ? "Total Aset" : "Gross Assets"}
-            </span>
-            <span className="font-mono text-[12px] font-medium text-[var(--text-primary)] truncate block mt-0.5">
-              {isStealthMode ? "••••" : formatRupiah(totalGrossAssets)}
-            </span>
-          </div>
-
-          <div className="border-x border-[var(--glass-border)]">
-            <span className="text-[10px] text-[var(--text-tertiary)] block">
-              {isIndonesian ? "Liabilitas" : "Liabilities"}
-            </span>
-            <span className="font-mono text-[12px] font-medium text-[var(--text-secondary)] truncate block mt-0.5">
-              {isStealthMode ? "••••" : formatRupiah(liabilitiesTotal)}
-            </span>
-          </div>
-
-          <div>
-            <span className="text-[10px] text-[var(--text-tertiary)] block">
-              {isIndonesian ? "Solvabilitas" : "Solvency"}
-            </span>
-            <span className="font-mono text-[12px] font-medium text-[var(--text-primary)] truncate block mt-0.5">
-              {solvencyScore}%
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Liquid Glass Safe Runway Notification Bar ──────────────────────── */}
-      <div
-        className="p-3 px-3.5 rounded-2xl flex items-center justify-between gap-2.5 border border-[var(--glass-border)] backdrop-blur-xl shadow-sm"
-        style={{
-          background: isDark
-            ? "linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%)"
-            : "linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(244, 244, 247, 0.65) 100%)",
-          boxShadow: isDark
-            ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--shadow-card)"
-            : "inset 0 1px 0 rgba(255, 255, 255, 1), 0 2px 8px rgba(15, 23, 42, 0.04)",
+      {/* ── 2. Executive Balance Sheet Statement Hero Wallet Card ── */}
+      <ExecutiveWalletCard
+        netWorth={netWorth}
+        totalGrossAssets={totalGrossAssets}
+        liabilitiesTotal={liabilitiesTotal}
+        solvencyScore={solvencyScore}
+        isStealthMode={isStealthMode}
+        toggleStealthMode={toggleStealthMode}
+        isIndonesian={isIndonesian}
+        isDark={isDark}
+        wallets={wallets}
+        holdings={holdings}
+        usdtRate={usdtPref.rate}
+        onAddAsset={() => {
+          triggerHaptic("medium");
+          setAddPhase(1);
         }}
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div
-            className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <ShieldCheck size={13} strokeWidth={2} className="text-[var(--text-primary)]" />
-          </div>
-          <span className="text-[11.5px] font-medium text-[var(--text-secondary)] truncate">
-            {formatRunwaySummary(liquidRunwayMonths, monthlyBurnRate, isIndonesian)}
-          </span>
-        </div>
-        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full shrink-0 border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-tertiary)]">
-          {liquidRunwayMonths >= 6 ? (isIndonesian ? "Aman" : "Safe") : (isIndonesian ? "Buffer" : "Buffer")}
-        </span>
-      </div>
+        onDetailAsset={() => {
+          triggerHaptic("light");
+          if (holdings[0]) {
+            setSelectedDetailHolding(holdings[0]);
+          }
+        }}
+        userName={
+          user?.user_metadata?.full_name ||
+          user?.user_metadata?.name ||
+          user?.email?.split("@")[0] ||
+          (isIndonesian ? "Anggota Trouvaille" : "Trouvaille Member")
+        }
+      />
 
-      {/* ── Relocated Minimalist Quick Action Bar ──────────────────────────── */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* ── Relocated Minimalist Quick Action Bar (Compact) ────────────────── */}
+      <div className="grid grid-cols-3 gap-1.5">
         {/* 1. Refresh Prices */}
         <button
           type="button"
           onClick={handleRefreshPrices}
           disabled={isRefreshing}
-          className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-2xl text-[11.5px] font-semibold glass-surface border border-[var(--glass-border)] active:scale-[0.98] transition-transform cursor-pointer"
+          className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-[10.5px] font-medium glass-surface border border-[var(--glass-border)] active:scale-[0.98] transition-transform cursor-pointer h-7.5"
           style={{
             background: "var(--bg-elevated)",
             color: "var(--text-secondary)",
@@ -970,7 +755,7 @@ export function AssetsPage() {
           }}
         >
           <RefreshCw
-            size={13}
+            size={11.5}
             strokeWidth={2}
             className={isRefreshing ? "animate-spin" : ""}
           />
@@ -984,14 +769,14 @@ export function AssetsPage() {
             triggerHaptic("light");
             setIsStakingModalOpen(true);
           }}
-          className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-2xl text-[11.5px] font-semibold glass-surface border border-[var(--glass-border)] active:scale-[0.98] transition-transform cursor-pointer"
+          className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-[10.5px] font-medium glass-surface border border-[var(--glass-border)] active:scale-[0.98] transition-transform cursor-pointer h-7.5"
           style={{
             background: "var(--bg-elevated)",
             color: "var(--text-secondary)",
             boxShadow: "var(--shadow-card)",
           }}
         >
-          <Link2 size={14} strokeWidth={1.75} />
+          <Link2 size={12} strokeWidth={1.75} />
           <span className="truncate">{isIndonesian ? "Staking" : "Staking"}</span>
         </button>
 
@@ -1002,13 +787,13 @@ export function AssetsPage() {
             triggerHaptic("medium");
             setAddPhase(1);
           }}
-          className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-2xl text-[11.5px] font-semibold active:scale-[0.98] transition-transform cursor-pointer"
+          className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-[10.5px] font-semibold active:scale-[0.98] transition-transform cursor-pointer h-7.5"
           style={{
             background: "var(--text-primary)",
             color: "var(--bg-base)",
           }}
         >
-          <Plus size={14} strokeWidth={2.5} />
+          <Plus size={12} strokeWidth={2.5} />
           <span className="truncate">{isIndonesian ? "Tambah Aset" : "Add Asset"}</span>
         </button>
       </div>
@@ -1061,6 +846,94 @@ export function AssetsPage() {
           </span>
         </div>
 
+        {/* 3-Tier Capital Allocation Summary Strip */}
+        <div
+          className="p-3 rounded-2xl border border-[var(--glass-border)] space-y-2"
+          style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
+        >
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-semibold text-[var(--text-secondary)]">
+              {isIndonesian ? "Alokasi Modal 3-Tier" : "3-Tier Capital Allocation"}
+            </span>
+            <span className="font-mono text-[10.5px] text-[var(--text-tertiary)]">
+              {isStealthMode ? "••••••••" : formatRupiah(totalGrossAssets)}
+            </span>
+          </div>
+
+          {/* Multi-segment thin progress bar */}
+          <div className="h-2 w-full rounded-full overflow-hidden flex bg-[var(--glass-fill)] border border-[var(--glass-border)]">
+            {totalGrossAssets > 0 ? (
+              <>
+                <div
+                  style={{
+                    width: `${liquidPct}%`,
+                    background: isDark ? "#FFFFFF" : "#18181b",
+                  }}
+                  className="h-full transition-all duration-300"
+                />
+                <div
+                  style={{
+                    width: `${growthPct}%`,
+                    background: isDark ? "#A1A1AA" : "#71717a",
+                  }}
+                  className="h-full transition-all duration-300"
+                />
+                <div
+                  style={{
+                    width: `${fixedPct}%`,
+                    background: isDark ? "#3F3F46" : "#d4d4d8",
+                  }}
+                  className="h-full transition-all duration-300"
+                />
+              </>
+            ) : (
+              <div className="w-full h-full bg-white/[0.08]" />
+            )}
+          </div>
+
+          {/* 3 Tier Percentage Pill Chips */}
+          <div className="flex items-center justify-between gap-1 text-[10.5px]">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: isDark ? "#FFFFFF" : "#18181b" }}
+              />
+              <span className="text-[var(--text-secondary)] truncate">
+                {isIndonesian ? "Kas / Likuid" : "Liquid"}
+              </span>
+              <span className="font-mono font-bold text-[var(--text-primary)]">
+                {liquidPct.toFixed(1)}%
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: isDark ? "#A1A1AA" : "#71717a" }}
+              />
+              <span className="text-[var(--text-secondary)] truncate">
+                {isIndonesian ? "Pasar / Tumbuh" : "Growth"}
+              </span>
+              <span className="font-mono font-bold text-[var(--text-primary)]">
+                {growthPct.toFixed(1)}%
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: isDark ? "#3F3F46" : "#d4d4d8" }}
+              />
+              <span className="text-[var(--text-secondary)] truncate">
+                {isIndonesian ? "Aset Riil" : "Fixed"}
+              </span>
+              <span className="font-mono font-bold text-[var(--text-primary)]">
+                {fixedPct.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-2.5">
           {/* Pillar 1: Liquid & Current */}
           <div
@@ -1082,11 +955,13 @@ export function AssetsPage() {
               </span>
             </div>
             <div>
-              <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">
-                {isIndonesian ? "Aset Lancar & Kas" : "Liquid & Current"}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">
+                  {isIndonesian ? "Aset Lancar & Kas" : "Liquid & Current"}
+                </p>
+              </div>
               <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
-                {isIndonesian ? "Bank, dompet & kas" : "Cash, banks & stablecoins"}
+                {isIndonesian ? "Kas, bank & cadangan USDT" : "Cash, banks & stablecoin reserve"}
               </p>
             </div>
             <div className="pt-1.5 border-t border-[var(--glass-border)]">
@@ -1100,7 +975,8 @@ export function AssetsPage() {
           <div
             onClick={() => {
               triggerHaptic("light");
-              setIsHoldingsModalOpen(true);
+              setFilterType("stock");
+              document.getElementById("holdings-deck")?.scrollIntoView({ behavior: "smooth" });
             }}
             className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-2.5 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition-transform"
             style={{
@@ -1139,7 +1015,8 @@ export function AssetsPage() {
           <div
             onClick={() => {
               triggerHaptic("light");
-              setIsHoldingsModalOpen(true);
+              setFilterType("fixed_asset");
+              document.getElementById("holdings-deck")?.scrollIntoView({ behavior: "smooth" });
             }}
             className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-2.5 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition-transform"
             style={{
@@ -1208,138 +1085,174 @@ export function AssetsPage() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* View All Holdings Pill Button */}
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic("light");
-            setIsHoldingsModalOpen(true);
-          }}
-          className="w-full py-2.5 px-4 rounded-2xl flex items-center justify-between text-[11.5px] font-semibold transition-all active:scale-[0.99] cursor-pointer"
-          style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
-            color: "var(--text-secondary)",
-          }}
+      {/* ── Secondary Bento: Capital Deployment & Top Exposure ────────────── */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <div
+          className="p-3.5 rounded-2xl glass-surface border border-[var(--glass-border)] space-y-1.5"
+          style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
         >
-          <div className="flex items-center gap-2">
-            <Coins size={14} className="text-[var(--text-primary)]" />
-            <span>
-              {isIndonesian ? "Detail Kepemilikan & Aset Riil" : "View Asset Holdings & Ledger"}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+              {isIndonesian ? "Alokasi Modal" : "Capital Deployed"}
+            </span>
+            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[var(--glass-fill)] text-[var(--text-tertiary)]">
+              MTD
             </span>
           </div>
-          <div className="flex items-center gap-1 font-mono text-[11px] text-[var(--text-tertiary)]">
-            <span>
+          <p className="font-mono text-[13px] font-bold text-[var(--text-primary)]">
+            {isStealthMode ? "••••••••" : formatRupiah(capitalDeployment)}
+          </p>
+          <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+            {isIndonesian ? "Injeksi modal ke portofolio" : "Capital injected into assets"}
+          </p>
+        </div>
+
+        <div
+          className="p-3.5 rounded-2xl glass-surface border border-[var(--glass-border)] space-y-1.5"
+          style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+              {isIndonesian ? "Eksposur Terbesar" : "Top Exposure"}
+            </span>
+            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[var(--glass-fill)] text-[var(--text-tertiary)]">
+              {topExposure.pct.toFixed(1)}%
+            </span>
+          </div>
+          <p className="font-mono text-[13px] font-bold text-[var(--text-primary)] truncate">
+            {topExposure.name || (isIndonesian ? "Belum ada aset" : "No asset")}
+          </p>
+          <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+            {isIndonesian ? "Konsentrasi portofolio tertinggi" : "Highest single asset weight"}
+          </p>
+        </div>
+      </div>
+
+      {/* ── 5. Holdings Deck (PRIMARY INLINE CONTENT) ─────────────────────── */}
+      <section
+        id="holdings-deck"
+        className="p-4 sm:p-5 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3.5"
+        style={{ background: "var(--bg-elevated)", boxShadow: "var(--shadow-card)" }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <Coins size={14} className="text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <h4 className="text-[13px] font-bold tracking-tight text-[var(--text-primary)]">
+                {isIndonesian ? "Daftar Kepemilikan Portofolio" : "Portfolio Holdings Deck"}
+              </h4>
+              <p className="text-[10.5px] text-[var(--text-tertiary)]">
+                {isIndonesian
+                  ? "Valuasi real-time, unrealized PnL & bobot portofolio"
+                  : "Live valuation, unrealized PnL & portfolio weight"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10.5px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-secondary)]">
               {holdings.length + (usdtPref.units > 0 || recordedCryptoBalance > 0 ? 1 : 0)}{" "}
               {isIndonesian ? "aset" : "assets"}
             </span>
-            <ChevronRight size={13} />
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                setAddPhase(1);
+              }}
+              className="w-7 h-7 rounded-xl flex items-center justify-center bg-[var(--text-primary)] text-[var(--bg-base)] active:scale-95 transition-transform cursor-pointer"
+              title={isIndonesian ? "Tambah Aset" : "Add Asset"}
+            >
+              <Plus size={14} strokeWidth={2.5} />
+            </button>
           </div>
-        </button>
-      </div>
+        </div>
 
-      {/* ── 5. Portfolio Intelligence & Insight Cards ─────────────────────── */}
-      <PortfolioInsightCards
-        holdings={holdings}
-        usdtHolding={usdtInfo}
-        liquidCash={liquidAssetsTotal}
-        totalMarketValuation={totalGrossAssets}
-        monthlyBurnRate={monthlyBurnRate}
-        isDark={isDark}
-        isIndonesian={isIndonesian}
-        hideBalance={isStealthMode}
-        onSelectHolding={(symbolOrId) => {
-          triggerHaptic("light");
-          if (symbolOrId.toUpperCase() === "USDT") {
-            openUsdtDetail();
-            return;
-          }
-          const found = holdings.find(
-            (h) => h.id === symbolOrId || h.symbol.toUpperCase() === symbolOrId.toUpperCase(),
-          );
-          if (found) {
-            handleOpenHoldingDetail(found);
-          }
-        }}
-      />
+        {/* Category Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          {(
+            [
+              { key: "all", label: isIndonesian ? "Semua" : "All" },
+              { key: "crypto", label: "Crypto" },
+              { key: "stock", label: isIndonesian ? "Saham" : "Stocks" },
+              { key: "gold", label: isIndonesian ? "Emas" : "Gold" },
+              { key: "mutual_fund", label: isIndonesian ? "Reksa Dana" : "Mutual Funds" },
+              { key: "fixed_asset", label: isIndonesian ? "Aset Tetap" : "Fixed Assets" },
+            ] as const
+          ).map((t) => {
+            const isActive = filterType === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setFilterType(t.key);
+                }}
+                className={`px-2.5 py-1 rounded-xl text-[10.5px] font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                  isActive
+                    ? "bg-[var(--text-primary)] text-[var(--bg-base)] border-transparent shadow-sm"
+                    : "bg-[var(--glass-fill)] text-[var(--text-secondary)] border-[var(--glass-border)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
 
-      {/* ── 6. Holdings Ledger Sheet (Interactive Drawer) ─────────────────── */}
-      <BottomSheet
-        isOpen={isHoldingsModalOpen}
-        onClose={() => setIsHoldingsModalOpen(false)}
-        title={isIndonesian ? "Daftar Kepemilikan Aset" : "Asset Holdings Ledger"}
-      >
-        <div className="p-5 space-y-3.5 select-none pb-12">
-          {/* Category Filter Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-            {(
-              [
-                { key: "all", label: isIndonesian ? "Semua" : "All" },
-                { key: "crypto", label: "Crypto" },
-                { key: "stock", label: isIndonesian ? "Saham" : "Stocks" },
-                { key: "gold", label: isIndonesian ? "Emas" : "Gold" },
-                { key: "mutual_fund", label: isIndonesian ? "Reksa Dana" : "Mutual Funds" },
-                { key: "fixed_asset", label: isIndonesian ? "Aset Tetap" : "Fixed Assets" },
-              ] as const
-            ).map((t) => {
-              const isActive = filterType === t.key;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setFilterType(t.key);
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer border ${
-                    isActive
-                      ? "bg-[var(--text-primary)] text-[var(--bg-base)] border-transparent shadow-sm"
-                      : "bg-[var(--glass-fill)] text-[var(--text-secondary)] border-[var(--glass-border)] hover:text-[var(--text-primary)]"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-
+        {/* Holdings List Rows */}
+        <div className="space-y-2 pt-1">
           {/* Core USDT Row */}
           {(filterType === "all" || filterType === "crypto") &&
             (usdtPref.units > 0 || recordedCryptoBalance > 0) && (
             <div
-              onClick={() => {
-                setIsHoldingsModalOpen(false);
-                openUsdtDetail();
-              }}
-              className="p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform border border-[var(--glass-border)]"
-              style={{ background: "var(--bg-elevated)" }}
+              onClick={openUsdtDetail}
+              className="p-3 sm:p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform border border-[var(--glass-border)]"
+              style={{ background: "var(--glass-fill)" }}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0">
                   <Coins size={17} strokeWidth={1.75} />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-bold text-[13px] text-[var(--text-primary)]">USDT</span>
-                    <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
-                      CRYPTO
+                    <span className="text-[8.5px] px-1.5 py-0.5 rounded font-mono font-semibold bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
+                      STABLECOIN · LIQUID/RESERVE
                     </span>
                   </div>
-                  <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
+                  <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5 font-mono">
                     {usdtPref.units > 0
-                      ? `${usdtPref.units.toLocaleString()} USDT`
+                      ? `${usdtPref.units.toLocaleString()} USDT · @${formatRupiah(usdtPref.rate)}`
                       : `Wallet linked · ${suggestedUsdtUnits} USDT`}
                   </p>
                 </div>
               </div>
-              <div className="text-right font-mono shrink-0">
+              <div className="text-right font-mono shrink-0 pl-2">
                 <span className="text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
                   {isStealthMode ? "••••••••" : formatRupiah(usdtMarketValue)}
                 </span>
-                <span className="text-[10px] text-[var(--text-secondary)]">
-                  {usdtFloatingPnLPct >= 0 ? "+" : ""}{usdtFloatingPnLPct.toFixed(1)}%
-                </span>
+                <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5">
+                  <span style={{ color: usdtFloatingPnLPct >= 0 ? "var(--accent)" : "var(--text-tertiary)" }}>
+                    {usdtFloatingPnLPct >= 0 ? "+" : ""}{usdtFloatingPnLPct.toFixed(1)}%
+                  </span>
+                  <span className="text-[var(--text-tertiary)] opacity-60">·</span>
+                  <span className="text-[var(--text-tertiary)]">
+                    {((usdtMarketValue / (totalGrossAssets || 1)) * 100).toFixed(1)}%
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -1347,24 +1260,22 @@ export function AssetsPage() {
           {/* Other Holdings */}
           {displayHoldings.map((h) => {
             const val = calculateHoldingValuation(h);
+            const weight = totalGrossAssets > 0 ? (val.marketValue / totalGrossAssets) * 100 : 0;
             return (
               <div
                 key={h.id}
-                onClick={() => {
-                  setIsHoldingsModalOpen(false);
-                  handleOpenHoldingDetail(h);
-                }}
-                className="p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform border border-[var(--glass-border)]"
-                style={{ background: "var(--bg-elevated)" }}
+                onClick={() => handleOpenHoldingDetail(h)}
+                className="p-3 sm:p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform border border-[var(--glass-border)]"
+                style={{ background: "var(--glass-fill)" }}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0">
                     <IconRenderer icon={h.icon || "TrendingUp"} size="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-[13px] text-[var(--text-primary)] truncate">{h.symbol}</span>
-                      <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
+                      <span className="text-[8.5px] px-1.5 py-0.5 rounded font-mono font-medium bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
                         {h.asset_type.replace("_", " ")}
                       </span>
                     </div>
@@ -1373,22 +1284,28 @@ export function AssetsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="text-right font-mono shrink-0">
+                <div className="text-right font-mono shrink-0 pl-2">
                   <span className="text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
                     {isStealthMode ? "••••••••" : formatRupiah(val.marketValue)}
                   </span>
-                  <span className="text-[10px] text-[var(--text-secondary)]">
-                    {val.floatingPnLPct >= 0 ? "+" : ""}{val.floatingPnLPct.toFixed(1)}%
-                  </span>
+                  <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5">
+                    <span style={{ color: val.floatingPnLPct >= 0 ? "var(--accent)" : "var(--text-tertiary)" }}>
+                      {val.floatingPnLPct >= 0 ? "+" : ""}{val.floatingPnLPct.toFixed(1)}%
+                    </span>
+                    <span className="text-[var(--text-tertiary)] opacity-60">·</span>
+                    <span className="text-[var(--text-tertiary)]">
+                      {weight.toFixed(1)}%
+                    </span>
+                  </div>
                 </div>
               </div>
             );
           })}
 
           {displayHoldings.length === 0 && usdtPref.units <= 0 && recordedCryptoBalance <= 0 && (
-            <div className="py-8 text-center space-y-1 text-[var(--text-tertiary)]">
+            <div className="py-8 text-center space-y-1.5 text-[var(--text-tertiary)]">
               <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                {isIndonesian ? "Belum ada aset tercatat" : "No investment assets recorded"}
+                {isIndonesian ? "Belum ada aset pada filter ini" : "No assets in this category"}
               </p>
               <p className="text-[11px]">
                 {isIndonesian
@@ -1398,7 +1315,244 @@ export function AssetsPage() {
             </div>
           )}
         </div>
-      </BottomSheet>
+      </section>
+
+      {/* ── 6. Portfolio Insights CTA Banner (Links to /statistics) ──────── */}
+      <section
+        onClick={() => {
+          triggerHaptic("medium");
+          navigate("/statistics");
+        }}
+        className="p-3.5 sm:p-4 rounded-3xl glass-surface border border-[var(--glass-border)] flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform select-none relative overflow-hidden"
+        style={{
+          background: "var(--bg-elevated)",
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <Sparkles size={18} strokeWidth={1.75} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h4 className="text-[13px] font-bold tracking-tight text-[var(--text-primary)] truncate">
+                {isIndonesian ? "Portfolio Insights" : "Portfolio Insights"}
+              </h4>
+              <span
+                className="text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider font-mono"
+                style={{
+                  background: "var(--glass-fill-strong)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                {isIndonesian ? "Analitik Mendalam" : "Deep Analytics"}
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
+              {isIndonesian
+                ? "Eksplorasi profil risiko, diversifikasi modal & simulasi masa depan →"
+                : "Explore risk profile, asset diversification & future simulation →"}
+            </p>
+          </div>
+        </div>
+        <ChevronRight size={16} className="text-[var(--text-tertiary)] shrink-0 ml-2" />
+      </section>
+
+      {/* ── 5. Wealth History Card (Moved from Top Hero) ──────────────────── */}
+      <section
+        className="p-4 sm:p-5 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3 relative overflow-hidden"
+        style={{
+          background: "var(--bg-elevated)",
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <TrendingUp size={14} className="text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <h4 className="text-[13px] font-bold tracking-tight text-[var(--text-primary)]">
+                {isIndonesian ? "Riwayat Akumulasi Kekayaan" : "Wealth History"}
+              </h4>
+              <p className="text-[10.5px] text-[var(--text-tertiary)]">
+                {isIndonesian
+                  ? "Tren valuasi portofolio & akumulasi aset bersih"
+                  : "Portfolio valuation trend & net wealth trajectory"}
+              </p>
+            </div>
+          </div>
+
+          <span className="text-[11px] font-mono font-medium text-[var(--text-tertiary)]">
+            {bsRangeLabels[bsRange]}
+          </span>
+        </div>
+
+        {/* Change / Delta Line */}
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <div
+            className="flex items-center gap-1 text-[12px] font-semibold"
+            style={{
+              color: isDark
+                ? assetTrend.diff >= 0 ? "#FFFFFF" : "#A1A1AA"
+                : assetTrend.diff >= 0 ? "#121214" : "#71717a",
+            }}
+          >
+            <ArrowUpRight
+              size={13}
+              className={assetTrend.diff < 0 ? "rotate-90" : ""}
+            />
+            <span>
+              {isStealthMode
+                ? "••••"
+                : `${assetTrend.diff >= 0 ? "+" : ""}${formatRupiah(assetTrend.diff)}`}
+            </span>
+            <span className="opacity-80">
+              ({isStealthMode ? "••••" : `${assetTrend.percent >= 0 ? "+" : ""}${assetTrend.percent.toFixed(2)}%`})
+            </span>
+          </div>
+
+          <span className="text-[10.5px] font-mono text-[var(--text-tertiary)]">
+            MTM · IDR
+          </span>
+        </div>
+
+        {/* Range Pill Selector (1D, 7D, 1M, 3M, 6M, 1Y, ALL) */}
+        <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5">
+          {(["1D", "7D", "1M", "3M", "6M", "1Y", "ALL"] as BalanceSheetRange[]).map((r) => {
+            const isActive = bsRange === r;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => {
+                  setBsRange(r);
+                  triggerHaptic("light");
+                }}
+                className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none"
+                style={{
+                  background: isActive
+                    ? isDark
+                      ? "rgba(255,255,255,0.25)"
+                      : "#18181b"
+                    : isDark
+                      ? "transparent"
+                      : "#f4f4f7",
+                  color: isActive
+                    ? "#FFFFFF"
+                    : isDark
+                      ? "rgba(255,255,255,0.55)"
+                      : "#52525b",
+                  border: isActive
+                    ? isDark
+                      ? "1px solid rgba(255,255,255,0.35)"
+                      : "1px solid #18181b"
+                    : isDark
+                      ? "1px solid transparent"
+                      : "1px solid rgba(0,0,0,0.04)",
+                  boxShadow: isActive
+                    ? isDark
+                      ? "none"
+                      : "0 2px 6px rgba(0,0,0,0.18)"
+                    : "none",
+                }}
+              >
+                {r}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Area Chart */}
+        <div className="h-[130px] w-full mt-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={assetTrend.chartData}
+              margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="wealthHistoryGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={isDark ? "#FFFFFF" : "#18181b"}
+                    stopOpacity={isDark ? 0.25 : 0.12}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={isDark ? "#FFFFFF" : "#18181b"}
+                    stopOpacity={0.0}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="2 3"
+                stroke={isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.09)"}
+                vertical={true}
+                horizontal={true}
+              />
+              <XAxis
+                dataKey="label"
+                tick={{
+                  fontSize: 9,
+                  fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
+                  fontFamily: "Urbanist",
+                  fontWeight: 600,
+                }}
+                axisLine={false}
+                tickLine={false}
+                dy={3}
+              />
+              <YAxis
+                orientation="right"
+                width={34}
+                domain={["auto", "auto"]}
+                tick={{
+                  fontSize: 9,
+                  fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
+                  fontFamily: "Urbanist",
+                  fontWeight: 700,
+                }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={formatAxisY}
+                dx={-2}
+              />
+              <Tooltip content={<GlassTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="balance"
+                stroke={isDark ? "#FFFFFF" : "#18181b"}
+                strokeWidth={2}
+                fill="url(#wealthHistoryGradient)"
+                dot={false}
+                activeDot={{
+                  r: 4,
+                  fill: isDark ? "#FFFFFF" : "#18181b",
+                  stroke: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.9)",
+                  strokeWidth: 1.5,
+                }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+
 
       {/* ── 9. Preset Picker Sheet (Standard BottomSheet) ─────────────────── */}
       <BottomSheet
@@ -1472,7 +1626,7 @@ export function AssetsPage() {
           </div>
 
           {/* Presets List */}
-          <div className="space-y-1.5 max-h-[340px] overflow-y-auto no-scrollbar">
+          <div className="space-y-1.5 pb-6">
             {filteredPresets.map((preset) => (
               <button
                 key={preset.symbol}

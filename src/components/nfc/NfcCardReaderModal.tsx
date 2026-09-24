@@ -279,7 +279,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-0 sm:p-4 animate-fadeIn select-none">
       <div
-        className="w-full max-w-md rounded-t-[28px] sm:rounded-[28px] p-5 space-y-4 max-h-[92vh] overflow-y-auto animate-slideUp"
+        className="w-full max-w-md rounded-t-[28px] sm:rounded-[28px] p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),20px)] sm:pb-5 space-y-4 max-h-[92dvh] overflow-y-auto animate-slideUp"
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",

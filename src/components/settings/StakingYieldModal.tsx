@@ -186,7 +186,7 @@ export function StakingYieldModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 select-none animate-in fade-in duration-200">
       <div
-        className="w-full sm:max-w-md bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-t-[28px] sm:rounded-2xl p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom-5 duration-200 max-h-[92vh] overflow-y-auto no-scrollbar"
+        className="w-full sm:max-w-md bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-t-[28px] sm:rounded-2xl p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),20px)] sm:pb-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom-5 duration-200 max-h-[92dvh] overflow-y-auto no-scrollbar"
         onClick={(e) => e.stopPropagation()}
         style={{
           boxShadow: "0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08)",

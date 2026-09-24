@@ -1773,7 +1773,7 @@ export function TransactionsPage({
         isOpen={filterSheetOpen}
         onClose={() => setFilterSheetOpen(false)}
       >
-        <div className="p-5 pb-16 space-y-5 max-h-[82vh] overflow-y-auto no-scrollbar">
+        <div className="p-5 pb-16 space-y-5">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>

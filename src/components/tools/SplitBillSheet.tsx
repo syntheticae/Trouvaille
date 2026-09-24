@@ -139,7 +139,7 @@ Thank you everyone! 🙏✨`;
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="flex flex-col h-full max-h-[85vh] text-[var(--text-primary)]">
+      <div className="flex flex-col text-[var(--text-primary)]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-2 pb-4 border-b border-[var(--glass-border)] shrink-0">
           <div className="flex items-center gap-2.5">
@@ -176,7 +176,7 @@ Thank you everyone! 🙏✨`;
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-4 space-y-4">
+        <div className="px-5 py-4 space-y-4">
           {/* 1. Title / Event Input */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">

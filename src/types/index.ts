@@ -129,4 +129,28 @@ export interface Goal {
   icon?: string;
   color?: string;
   targetDate?: string;
+  target_amount?: number;
+  current_amount?: number;
+  target_date?: string | null;
+  created_at?: string;
+}
+
+export interface UserBudget {
+  id: string;
+  user_id: string;
+  target_amount: number;
+  month?: string | null;
+  updated_at?: string;
+}
+
+export interface UserShortcut {
+  id: string;
+  user_id: string;
+  title: string;
+  amount: number;
+  type: TransactionType;
+  category_id?: string | null;
+  wallet_id?: string | null;
+  note?: string | null;
+  created_at?: string;
 }

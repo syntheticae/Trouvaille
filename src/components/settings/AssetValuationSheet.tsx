@@ -667,7 +667,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-10 space-y-4 max-h-[88vh] overflow-y-auto no-scrollbar">
+      <div className="p-5 pb-10 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-[var(--glass-border)]">
           <div>

@@ -143,7 +143,7 @@ export function MonteCarloSimulatorSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-24 space-y-4 max-h-[86dvh] overflow-y-auto safe-area-bottom select-none">
+      <div className="p-5 pb-24 space-y-4 safe-area-bottom select-none">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">

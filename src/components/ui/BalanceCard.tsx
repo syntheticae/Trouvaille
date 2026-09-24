@@ -7,6 +7,7 @@ import { BottomSheet } from "./BottomSheet";
 import { IconRenderer } from "./IconRenderer";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { AssetValuationSheet } from "../settings/AssetValuationSheet";
 
 const SEGMENT_COLORS_DARK = [
@@ -41,6 +42,7 @@ interface BalanceCardProps {
 export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [valuationSheetOpen, setValuationSheetOpen] = useState(false);
+  const { isIndonesian } = useLanguage();
   useCurrency();
   const {
     allAccounts,
@@ -127,8 +129,8 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
       <section className="p-4 rounded-[22px] glass-surface">
         {/* Header */}
         <div className="flex justify-between items-center mb-2.5">
-          <span className="text-[12px] font-semibold  tracking-wider">
-            Portfolio Accounts
+          <span className="text-[12px] font-semibold tracking-wider">
+            {isIndonesian ? "Sumber Likuiditas" : "Liquidity Sources"}
           </span>
           {!isEmpty && (
             <button
@@ -136,7 +138,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
               className="text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 transition-transform"
               style={{ color: "var(--text-secondary)" }}
             >
-              All Details <ChevronRight size={13} />
+              {isIndonesian ? "Semua Detail" : "All Details"} <ChevronRight size={13} />
             </button>
           )}
         </div>
@@ -162,13 +164,15 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
               className="text-[12px] font-bold"
               style={{ color: "var(--text-secondary)" }}
             >
-              No Account Activity
+              {isIndonesian ? "Belum Ada Aktivitas Akun" : "No Account Activity"}
             </p>
             <p
               className="text-[10px] mt-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Record a transaction to see portfolio allocation
+              {isIndonesian
+                ? "Catat transaksi untuk melihat alokasi likuiditas"
+                : "Record a transaction to see liquidity allocation"}
             </p>
           </div>
         ) : (
@@ -249,7 +253,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                     className="truncate"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Safe to Spend:
+                    {isIndonesian ? "Aman Dibelanjakan:" : "Safe to Spend:"}
                   </span>
                   <span
                     className="amount font-semibold"
@@ -262,7 +266,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   className="text-right shrink-0"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  <span>Committed: </span>
+                  <span>{isIndonesian ? "Komitmen: " : "Committed: "}</span>
                   <span className="amount font-bold text-[var(--text-secondary)]">
                     {hideBalance
                       ? "Rp ••••••••"
@@ -284,13 +288,13 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                 className="font-semibold text-lg leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
-                Portfolio Breakdown
+                {isIndonesian ? "Rincian Sumber Likuiditas" : "Liquidity Sources Breakdown"}
               </h3>
               <p
                 className="text-[11px] font-medium mt-0.5"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {positiveAccounts.length} active accounts · Net portfolio
+                {positiveAccounts.length} {isIndonesian ? "akun aktif · Posisi Kas Likuid" : "active accounts · Liquid Position"}
               </p>
             </div>
             <div className="text-right">
@@ -298,7 +302,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                 className="text-[9px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Total Assets
+                {isIndonesian ? "Total Kas Likuid" : "Total Liquid Capital"}
               </p>
               <p
                 className="amount text-[16px] font-semibold leading-tight"
@@ -316,13 +320,13 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                 className="text-[12px] font-bold block"
                 style={{ color: "var(--text-primary)" }}
               >
-                Valuation & Floating P&L
+                {isIndonesian ? "Valuasi & Floating P&L" : "Valuation & Floating P&L"}
               </span>
               <span
                 className="text-[10px] block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                USDT, live rates & unrealized gains
+                {isIndonesian ? "USDT, kurs live & keuntungan mengambang" : "USDT, live rates & unrealized gains"}
               </span>
             </div>
             <button
@@ -335,7 +339,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
               }}
             >
               <TrendingUp size={12} strokeWidth={2.5} />
-              <span>Valuation</span>
+              <span>{isIndonesian ? "Valuasi" : "Valuation"}</span>
             </button>
           </div>
 
@@ -362,12 +366,21 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                       >
                         <IconRenderer icon={acc.icon} size="w-3.5 h-3.5" />
                       </div>
-                      <span
-                        className="font-bold text-[13px] truncate"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {acc.name}
-                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="font-bold text-[13px] truncate"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {acc.name}
+                          </span>
+                          {(acc.name.toUpperCase().includes("USDT") || acc.name.toLowerCase() === "crypto") && (
+                            <span className="text-[9px] px-1 py-0.2 rounded font-mono font-semibold bg-white/[0.08] text-[var(--text-tertiary)] uppercase shrink-0">
+                              LIQUID
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <span
                       className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0"
@@ -398,7 +411,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   className="text-[10px] font-bold uppercase tracking-wider mb-1.5 px-1"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Other Accounts (Rp 0)
+                  {isIndonesian ? "Akun Lainnya (Rp 0)" : "Other Accounts (Rp 0)"}
                 </p>
                 <div className="grid grid-cols-3 gap-1.5">
                   {zeroAccounts.map((acc) => (

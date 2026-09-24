@@ -120,7 +120,6 @@ export function ProfileMenuModal({
             }}
             className="
               fixed
-              top-[24px]
               left-[16px]
               right-[16px]
               z-50
@@ -142,6 +141,7 @@ export function ProfileMenuModal({
               max-w-none
             "
             style={{
+              top: "max(calc(env(safe-area-inset-top, 0px) + 18px), 28px)",
               background: isDark
                 ? `
                   linear-gradient(

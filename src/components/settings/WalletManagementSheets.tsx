@@ -253,7 +253,7 @@ export function WalletManagementSheets({
           )}
 
           {/* Apple iOS-Style Grouped Table for Accounts */}
-          <div className="pb-8 max-h-[55vh] overflow-y-auto no-scrollbar">
+          <div className="pb-8">
             {wallets.length === 0 ? (
               <div className="py-8 text-center text-[12px] text-[var(--text-tertiary)]">
                 No accounts found

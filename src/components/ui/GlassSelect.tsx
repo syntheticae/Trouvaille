@@ -99,7 +99,7 @@ export function GlassSelect({
       {isOpen && (
         <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
           <div
-            className="w-full sm:max-w-md bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-t-3xl sm:rounded-2xl p-4 space-y-3 shadow-2xl animate-in slide-in-from-bottom-4 duration-200 select-none max-h-[80vh] flex flex-col"
+            className="w-full sm:max-w-md bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-t-3xl sm:rounded-2xl p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),16px)] sm:pb-4 space-y-3 shadow-2xl animate-in slide-in-from-bottom-4 duration-200 select-none max-h-[88dvh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}

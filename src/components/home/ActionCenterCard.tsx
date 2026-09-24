@@ -9,6 +9,7 @@ import {
 import type { ActionCenterInsight } from "../../lib/financialMath";
 import type { Transaction } from "../../lib/types";
 import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { MonthForecastSheet } from "./MonthForecastSheet";
 
 interface ActionCenterCardProps {
@@ -33,6 +34,7 @@ export function ActionCenterCard({
   totalIncome = 0,
 }: ActionCenterCardProps) {
   const [detailOpen, setDetailOpen] = useState(false);
+  const { isIndonesian } = useLanguage();
 
   const getIcon = () => {
     switch (insight.type) {
@@ -87,6 +89,19 @@ export function ActionCenterCard({
               {getIcon()}
             </div>
             <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+                  {isIndonesian ? "Perlu Tindakan" : "Action Required"}
+                </span>
+                {insight.badge && (
+                  <>
+                    <span className="text-[10px] text-[var(--text-tertiary)]">·</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                      {insight.badge}
+                    </span>
+                  </>
+                )}
+              </div>
               <h3
                 className="text-[13px] font-bold leading-tight truncate"
                 style={{ color: "var(--text-primary)" }}

@@ -766,7 +766,7 @@ export function CashflowSankeySection({
             </div>
           </div>
 
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto no-scrollbar pt-1">
+          <div className="space-y-2 pt-1 pb-6">
             {allocationNodes.map((item) => (
               <div
                 key={item.id}

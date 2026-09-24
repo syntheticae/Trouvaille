@@ -36,6 +36,7 @@ import { ProfileMenuModal } from "../components/home/ProfileMenuModal";
 import { ProfileSheet } from "../components/settings/ProfileSheet";
 import { WebDashboardLinkModal } from "../components/settings/WebDashboardLinkModal";
 import { CategoryBudgetDeck } from "../components/home/CategoryBudgetDeck";
+import { InvestmentPulseCard } from "../components/home/InvestmentPulseCard";
 
 function formatNetAmount(net: number): string {
   const abs = Math.abs(net);
@@ -273,10 +274,17 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
     },
   });
 
-  // 1. Total Balance and Apple Stocks Layout Data Calculation
+  // 1. Liquid Position and Apple Stocks Layout Data Calculation
   const assetData = useMemo(() => {
-    return calculateAssetTrend(allTxs, netWorth, stockRange);
-  }, [allTxs, netWorth, stockRange]);
+    const liquidAccountIds = new Set(liquidAccounts.map((a: any) => a.id));
+    const liquidTxs = allTxs.filter(
+      (t: any) =>
+        !t.wallet_id ||
+        liquidAccountIds.has(t.wallet_id) ||
+        (t.destination_wallet_id && liquidAccountIds.has(t.destination_wallet_id)),
+    );
+    return calculateAssetTrend(liquidTxs, liquidAssets, stockRange);
+  }, [allTxs, liquidAssets, liquidAccounts, stockRange]);
 
   // Personal Baselines & Dynamic Goal Milestones (Innovation 10)
   const baselines = useMemo(() => calculatePersonalBaselines(allTxs), [allTxs]);
@@ -673,13 +681,13 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
   const greetingTitle = `${greetingPrefix}, ${displayName}`;
 
   const stockRangeLabels: Record<StockRange, string> = {
-    "1D": "Past Day",
-    "1W": "Past Week",
-    "1M": "Past Month",
-    "6M": "Past 6 Months",
-    YTD: "Year to Date",
-    "1Y": "Past 1 Year",
-    ALL: "All Time",
+    "1D": isIndonesian ? "Hari Ini" : "Past Day",
+    "1W": isIndonesian ? "7 Hari Terakhir" : "Past Week",
+    "1M": isIndonesian ? "1 Bulan Terakhir" : "Past Month",
+    "6M": isIndonesian ? "6 Bulan Terakhir" : "Past 6 Months",
+    YTD: isIndonesian ? "Tahun Berjalan" : "Year to Date",
+    "1Y": isIndonesian ? "1 Tahun Terakhir" : "Past 1 Year",
+    ALL: isIndonesian ? "Sepanjang Waktu" : "All Time",
   };
 
   const renderCardContent = (cardId: string, size: WidgetSize) => {
@@ -694,7 +702,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                   isDark ? "text-white/80" : "text-[var(--text-secondary)]"
                 }`}
               >
-                Net Portfolio
+                {isIndonesian ? "Posisi Kas Likuid" : "Liquid Position"}
               </h2>
               <button
                 onClick={toggleHideBalance}
@@ -918,7 +926,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
                   }`}
                 >
-                  High
+                  {isIndonesian ? "Tertinggi" : "High"}
                 </p>
                 <p
                   className={`text-[11px] font-semibold amount mt-0.5 ${
@@ -938,7 +946,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
                   }`}
                 >
-                  Low
+                  {isIndonesian ? "Terendah" : "Low"}
                 </p>
                 <p
                   className={`text-[11px] font-semibold amount mt-0.5 ${
@@ -958,7 +966,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
                   }`}
                 >
-                  Inflow
+                  {isIndonesian ? "Masuk" : "Inflow"}
                 </p>
                 <p
                   className={`text-[11px] font-semibold amount mt-0.5 ${
@@ -978,7 +986,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
                     isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
                   }`}
                 >
-                  Outflow
+                  {isIndonesian ? "Keluar" : "Outflow"}
                 </p>
                 <p
                   className={`text-[11px] font-semibold amount mt-0.5 ${
@@ -998,6 +1006,9 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
 
       case "portfolio_account":
         return <BalanceCard hideBalance={hideBalance} />;
+
+      case "investment_pulse":
+        return <InvestmentPulseCard />;
 
       case "spending_stability":
         if (!intel.expenseVolatility) return null;
@@ -2313,7 +2324,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
       {customizeHomeOpen && (
         <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fadeIn">
           <div
-            className="w-full max-w-md rounded-t-[28px] sm:rounded-3xl p-5 space-y-3.5 text-left transition-all"
+            className="w-full max-w-md rounded-t-[28px] sm:rounded-3xl p-5 space-y-3.5 text-left transition-all max-h-[88dvh] flex flex-col pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),20px)] sm:pb-5"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
@@ -2401,7 +2412,7 @@ export function HomePage({ onOpenAdd: _onOpenAdd, onOpenScan: _onOpenScan }: Hom
             </div>
 
             {/* Grouped Feature Rows for All Dashboard Cards */}
-            <div className="space-y-2 max-h-[52vh] overflow-y-auto no-scrollbar pr-0.5">
+            <div className="space-y-2 flex-1 min-h-0 overflow-y-auto no-scrollbar pr-0.5">
               {widgets.map((w) => {
                 const isEnabled = w.isVisible;
                 return (

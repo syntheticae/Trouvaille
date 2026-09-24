@@ -353,7 +353,6 @@ export function StatisticsPage() {
     const reportIds = new Set([
       "financial_report",
       "monthly_review",
-      "personal_baseline",
       "expense_structure",
     ]);
     return visibleStatsCards.filter((c) => reportIds.has(c.id));
@@ -364,7 +363,9 @@ export function StatisticsPage() {
       "health_score",
       "spending_patterns",
       "spending_density_heatmap",
+      "personal_baseline",
       "zero_based_envelopes",
+      "cashflow_outlook",
     ]);
     return visibleStatsCards.filter((c) => intelligenceIds.has(c.id));
   }, [visibleStatsCards]);
@@ -374,8 +375,10 @@ export function StatisticsPage() {
       "cashflow_summary",
       "category_breakdown",
       "cashflow_sankey",
+      "net_capital_trajectory",
       "inflow_outflow_trend",
       "cashflow_velocity",
+      "asset_analytics",
     ]);
     return visibleStatsCards.filter((c) => cashflowIds.has(c.id));
   }, [visibleStatsCards]);
@@ -387,7 +390,6 @@ export function StatisticsPage() {
       "fire_planner",
       "personal_financial_model",
       "debt_payoff",
-      "cashflow_outlook",
       "liquidity_horizon",
     ]);
     return visibleStatsCards.filter((c) => simulationIds.has(c.id));
@@ -2135,6 +2137,78 @@ export function StatisticsPage() {
       </div>
     </div>
 
+      {/* ── Financial Wrapped: Flagship Hero Feature Entry (Persistent across Analytics) ── */}
+      <section
+        onClick={() => {
+          setWrappedOpen(true);
+          triggerHaptic("medium");
+        }}
+        className="p-3.5 sm:p-4 rounded-3xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform select-none relative overflow-hidden"
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <Sparkles size={18} strokeWidth={1.75} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p
+                className="text-[13.5px] font-bold tracking-tight truncate"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Financial Wrapped
+              </p>
+              <span
+                className="text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider font-mono"
+                style={{
+                  background: "var(--glass-fill-strong)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                {range === "year"
+                  ? isIndonesian
+                    ? selectedYear === now.getFullYear()
+                      ? "Kilas Balik Tahun Ini"
+                      : `Kilas Balik ${selectedYear}`
+                    : selectedYear === now.getFullYear()
+                      ? "Year in Review"
+                      : `${selectedYear} Wrapped`
+                  : isIndonesian ? "Rekap Bulanan" : "Monthly Recap"}
+              </span>
+              <span className="text-[9px] font-mono text-[var(--text-tertiary)] hidden sm:inline">
+                9 chapters
+              </span>
+            </div>
+            <p
+              className="text-[11px] font-medium truncate mt-0.5"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {isIndonesian
+                ? `Kilas balik finansial sinematik ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy", { locale: idLocale })} · 9 babak interaktif`
+                : `Your financial story for ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy")} in one place · 9 chapters`}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0 text-[var(--text-tertiary)] pl-2">
+          <span className="text-[11px] font-mono font-medium hidden sm:inline">
+            {range === "year" ? selectedYear : format(activeMonthDate, "MMM yyyy")}
+          </span>
+          <ChevronRight size={16} />
+        </div>
+      </section>
+
       {/* 4-Tab Luxury Apple Glass Segmented Control Bar */}
       <div
         className="flex items-center p-1 rounded-2xl border border-[var(--glass-border)]"
@@ -2212,87 +2286,15 @@ export function StatisticsPage() {
 
       {/* TAB 1: REPORT */}
       {analyticsSubTab === "report" && (
-        <>
-          {/* Financial Wrapped Trigger Banner (Only shown on 'month' and 'year' ranges) */}
-          {(range === "month" || range === "year") && (
-            <section
-              onClick={() => {
-                setWrappedOpen(true);
-                triggerHaptic("medium");
-              }}
-              className="p-3.5 rounded-[22px] flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform select-none relative overflow-hidden"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Sparkles size={16} />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p
-                      className="text-[13px] font-semibold tracking-tight truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Financial Wrapped
-                    </p>
-                    <span
-                      className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
-                      style={{
-                        background: "var(--glass-fill-strong)",
-                        color: "var(--text-secondary)",
-                        border: "1px solid var(--glass-border)",
-                      }}
-                    >
-                      {range === "year"
-                        ? isIndonesian
-                          ? selectedYear === now.getFullYear()
-                            ? "Kilas Balik Tahun Ini"
-                            : `Kilas Balik ${selectedYear}`
-                          : selectedYear === now.getFullYear()
-                            ? "Year in Review"
-                            : `${selectedYear} Wrapped`
-                        : isIndonesian ? "Rekap Bulanan" : "Monthly Recap"}
-                    </span>
-                  </div>
-                  <p
-                    className="text-[11px] font-medium truncate"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian
-                      ? `Rekap finansial interaktif & arketipe ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy", { locale: idLocale })}`
-                      : `Interactive financial recap & archetype for ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy")}`}
-                  </p>
-                </div>
-              </div>
-              <ChevronRight
-                size={16}
-                className="shrink-0"
-                style={{ color: "var(--text-tertiary)" }}
-              />
-            </section>
-          )}
-
-          <ReorderableWidgetGrid
-            cards={visibleReportCards}
-            isEditMode={isStatsEditMode}
-            onReorder={reorderStatsCards}
-            onEnterEditMode={() => setIsStatsEditMode(true)}
-            onCycleSize={cycleStatsCardSize}
-            onHide={toggleStatsCardVisibility}
-            renderCard={(card) => renderStatisticsCard(card.id, card.size)}
-          />
-        </>
+        <ReorderableWidgetGrid
+          cards={visibleReportCards}
+          isEditMode={isStatsEditMode}
+          onReorder={reorderStatsCards}
+          onEnterEditMode={() => setIsStatsEditMode(true)}
+          onCycleSize={cycleStatsCardSize}
+          onHide={toggleStatsCardVisibility}
+          renderCard={(card) => renderStatisticsCard(card.id, card.size)}
+        />
       )}
 
       {/* TAB 2: INTELLIGENCE */}
@@ -2414,7 +2416,7 @@ export function StatisticsPage() {
           </div>
 
           {/* 2-Column Modern Compact Card Grid */}
-          <div className="grid grid-cols-2 gap-2.5 max-h-[64dvh] overflow-y-auto pb-12 pr-0.5">
+          <div className="grid grid-cols-2 gap-2.5 pb-12 pr-0.5">
             {groupMode === "category"
               ? categoryStats.map((cat, i) => {
                   const pct =

@@ -585,7 +585,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
         onClose={() => setCategorySheetOpen(false)}
         title="Assign Category"
       >
-        <div className="grid grid-cols-3 gap-2.5 p-2 max-h-[60vh] overflow-y-auto">
+        <div className="grid grid-cols-3 gap-2.5 p-2 pb-6">
           {categories.map((cat) => (
             <button
               key={cat.id}

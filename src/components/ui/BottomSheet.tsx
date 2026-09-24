@@ -348,7 +348,7 @@ export function BottomSheet({
               <div
                 className="min-h-full"
                 style={{
-                  paddingBottom: "max(env(safe-area-inset-bottom, 0px), 12px)",
+                  paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px)",
                 }}
               >
                 {children}
