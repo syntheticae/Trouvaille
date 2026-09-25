@@ -12,7 +12,6 @@
 // - Simulation / widget logic remains untouched
 // ======================================================================
 
-import { X, SlidersHorizontal } from "lucide-react";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -29,7 +28,7 @@ export interface CustomizeStatisticsModalProps {
   onToggleVisibility: (cardId: string) => void;
   onReset: () => void;
   onApplyPreset: (presetKey: StatisticsPresetKey) => void;
-  onEnterGridEdit: () => void;
+
   activePresetKey?: StatisticsPresetKey | null;
   onSelectPresetKey?: (key: StatisticsPresetKey | null) => void;
 }
@@ -41,7 +40,7 @@ export function CustomizeStatisticsModal({
   onToggleVisibility,
   onReset,
   onApplyPreset,
-  onEnterGridEdit,
+
   activePresetKey = "executive",
   onSelectPresetKey,
 }: CustomizeStatisticsModalProps) {
