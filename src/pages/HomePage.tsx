@@ -254,7 +254,8 @@ export function HomePage({
   } | null>(null);
 
   const billManagementOpen = activeModal === "billManagement";
-  const setBillManagementOpen = (open: boolean) => setActiveModal(open ? "billManagement" : null);
+  const setBillManagementOpen = (open: boolean) =>
+    setActiveModal(open ? "billManagement" : null);
   const {
     activeSpace,
     activeSpaceId,
@@ -265,7 +266,8 @@ export function HomePage({
     return filterTransactionsBySpace(rawAllTxs, activeSpaceId);
   }, [rawAllTxs, activeSpaceId, filterTransactionsBySpace]);
   const spaceSwitcherOpen = activeModal === "spaceSwitcher";
-  const setSpaceSwitcherOpen = (open: boolean) => setActiveModal(open ? "spaceSwitcher" : null);
+  const setSpaceSwitcherOpen = (open: boolean) =>
+    setActiveModal(open ? "spaceSwitcher" : null);
   const profileMenuOpen = activeModal === "profileMenu";
   const setProfileMenuOpen = (val: boolean | ((prev: boolean) => boolean)) => {
     setActiveModal((curr) => {
@@ -275,13 +277,17 @@ export function HomePage({
     });
   };
   const profileSheetOpen = activeModal === "profileSheet";
-  const setProfileSheetOpen = (open: boolean) => setActiveModal(open ? "profileSheet" : null);
+  const setProfileSheetOpen = (open: boolean) =>
+    setActiveModal(open ? "profileSheet" : null);
   const nfcModalOpen = activeModal === "nfc";
-  const setNfcModalOpen = (open: boolean) => setActiveModal(open ? "nfc" : null);
+  const setNfcModalOpen = (open: boolean) =>
+    setActiveModal(open ? "nfc" : null);
   const splitBillSheetOpen = activeModal === "splitBill";
-  const setSplitBillSheetOpen = (open: boolean) => setActiveModal(open ? "splitBill" : null);
+  const setSplitBillSheetOpen = (open: boolean) =>
+    setActiveModal(open ? "splitBill" : null);
   const webDashboardOpen = activeModal === "webDashboard";
-  const setWebDashboardOpen = (open: boolean) => setActiveModal(open ? "webDashboard" : null);
+  const setWebDashboardOpen = (open: boolean) =>
+    setActiveModal(open ? "webDashboard" : null);
   const addTx = useAddTransaction();
 
   const {
@@ -300,7 +306,8 @@ export function HomePage({
   } = useWidgetLayout();
 
   const customizeHomeOpen = activeModal === "customizeHome";
-  const setCustomizeHomeOpen = (open: boolean) => setActiveModal(open ? "customizeHome" : null);
+  const setCustomizeHomeOpen = (open: boolean) =>
+    setActiveModal(open ? "customizeHome" : null);
 
   const intel = useFinancialIntelligence({
     transactions: allTxs,
@@ -683,7 +690,9 @@ export function HomePage({
     return allTxs.filter((t) => t.occurred_on === dStr);
   }, [selectedDate, allTxs]);
 
-  const [customDisplayName, setCustomDisplayName] = useState<string | null>(null);
+  const [customDisplayName, setCustomDisplayName] = useState<string | null>(
+    null,
+  );
   const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
 
   const displayName =
@@ -764,7 +773,7 @@ export function HomePage({
                 />
               ) : (
                 <span
-                  className={`text-[28px] font-bold tracking-tight amount leading-tight ${
+                  className={`text-[28px] font-semibold tracking-tight amount leading-tight ${
                     isDark ? "text-white" : "text-[var(--text-primary)]"
                   }`}
                 >
@@ -824,7 +833,23 @@ export function HomePage({
             </div>
 
             {/* Range Pill Selector (1D, 1W, 1M, 6M, YTD, 1Y, ALL) */}
-            <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 mb-1.5">
+            <div
+              className={`
+      flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 mb-1.5
+      rounded-full
+      overflow-hidden
+      ${
+        isDark
+          ? "bg-white/[0.045] border border-white/[0.055]"
+          : "bg-black/[0.025] border border-black/[0.045]"
+      }
+    `}
+              style={{
+                boxShadow: isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.035)"
+                  : "inset 0 1px 0 rgba(255,255,255,0.8)",
+              }}
+            >
               {(
                 ["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as StockRange[]
               ).map((r) => {
@@ -856,7 +881,7 @@ export function HomePage({
                           : "1px solid #18181b"
                         : isDark
                           ? "1px solid transparent"
-                          : "1px solid rgba(0,0,0,0.04)",
+                          : "1px solid transparent",
                       boxShadow: isActive
                         ? isDark
                           ? "none"

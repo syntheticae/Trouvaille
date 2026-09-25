@@ -384,7 +384,12 @@ interface GlassTooltipProps {
   isStealthMode?: boolean;
 }
 
-const GlassTooltip = ({ active, payload, label, isStealthMode }: GlassTooltipProps) => {
+const GlassTooltip = ({
+  active,
+  payload,
+  label,
+  isStealthMode,
+}: GlassTooltipProps) => {
   if (!active || !payload?.length) return null;
   return (
     <div
@@ -1294,7 +1299,6 @@ export function AssetsPage() {
       .sort((a, b) => b.valuation.marketValue - a.valuation.marketValue);
   }, [holdings]);
 
-
   return (
     <div
       className="min-h-screen select-none pb-28 pt-[calc(env(safe-area-inset-top,0px)+12px)] px-4 max-w-lg mx-auto space-y-4"
@@ -1307,7 +1311,7 @@ export function AssetsPage() {
       {/* ── 1. Header Bar ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between pt-1">
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]">
+          <h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-primary)]">
             {isIndonesian ? "Neraca Keuangan" : "Executive Balance Sheet"}
           </h1>
           <p className="text-[12px] text-[var(--text-tertiary)] font-medium">
@@ -1467,12 +1471,12 @@ export function AssetsPage() {
       {/* ── 4. 4-Pillar Capital Hierarchy Matrix (2x2 Grid) ───────────────── */}
       <div className="space-y-2.5 pt-1">
         <div className="flex items-center justify-between px-0.5">
-          <h3 className="text-[13.5px] font-bold tracking-tight text-[var(--text-primary)]">
+          <h3 className="text-[13.5px] font-semibold tracking-tight text-[var(--text-primary)]">
             {isIndonesian
               ? "Struktur Neraca & Alokasi Modal"
               : "Balance Sheet Breakdown"}
           </h3>
-          <span className="text-[11px] font-mono text-[var(--text-tertiary)] font-medium">
+          <span className="text-[11px]  text-[var(--text-tertiary)] font-medium">
             4 Pillars
           </span>
         </div>
@@ -1509,7 +1513,7 @@ export function AssetsPage() {
                 <span>{isIndonesian ? "Lihat Semua" : "View All"}</span>
               </button>
             </div>
-            <span className="font-mono text-[10.5px] text-[var(--text-tertiary)]">
+            <span className=" text-[10.5px] text-[var(--text-tertiary)]">
               {isStealthMode ? "••••••••" : formatRupiah(totalGrossAssets)}
             </span>
           </div>
@@ -1555,7 +1559,7 @@ export function AssetsPage() {
               <span className="text-[var(--text-secondary)] truncate">
                 {isIndonesian ? "Kas / Likuid" : "Liquid"}
               </span>
-              <span className="font-mono font-bold text-[var(--text-primary)]">
+              <span className=" font-semibold text-[var(--text-primary)]">
                 {liquidPct.toFixed(1)}%
               </span>
             </div>
@@ -1568,7 +1572,7 @@ export function AssetsPage() {
               <span className="text-[var(--text-secondary)] truncate">
                 {isIndonesian ? "Pasar / Tumbuh" : "Growth"}
               </span>
-              <span className="font-mono font-bold text-[var(--text-primary)]">
+              <span className=" font-semibold text-[var(--text-primary)]">
                 {growthPct.toFixed(1)}%
               </span>
             </div>
@@ -1581,7 +1585,7 @@ export function AssetsPage() {
               <span className="text-[var(--text-secondary)] truncate">
                 {isIndonesian ? "Aset Riil" : "Fixed"}
               </span>
-              <span className="font-mono font-bold text-[var(--text-primary)]">
+              <span className=" font-semibold text-[var(--text-primary)]">
                 {fixedPct.toFixed(1)}%
               </span>
             </div>
@@ -1612,13 +1616,13 @@ export function AssetsPage() {
                   className="text-[var(--text-primary)]"
                 />
               </div>
-              <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
+              <span className=" text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
                 {liquidPct.toFixed(1)}% &gt;
               </span>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
                   {isIndonesian ? "Aset Lancar & Kas" : "Liquid & Current"}
                 </p>
               </div>
@@ -1629,7 +1633,7 @@ export function AssetsPage() {
               </p>
             </div>
             <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between">
-              <span className="font-mono text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+              <span className=" text-[13px] font-semibold text-[var(--text-primary)] block leading-tight">
                 {isStealthMode ? "••••••••" : formatRupiah(liquidAssetsTotal)}
               </span>
               <ChevronRight size={13} className="text-[var(--text-tertiary)]" />
@@ -1659,12 +1663,12 @@ export function AssetsPage() {
                   className="text-[var(--text-primary)]"
                 />
               </div>
-              <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
+              <span className=" text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
                 {growthPct.toFixed(1)}% &gt;
               </span>
             </div>
             <div>
-              <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">
+              <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
                 {isIndonesian ? "Pasar & Pertumbuhan" : "Market & Growth"}
               </p>
               <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
@@ -1674,7 +1678,7 @@ export function AssetsPage() {
               </p>
             </div>
             <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between">
-              <span className="font-mono text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+              <span className=" text-[13px] font-semibold text-[var(--text-primary)] block leading-tight">
                 {isStealthMode ? "••••••••" : formatRupiah(growthAssetsTotal)}
               </span>
               <ChevronRight size={13} className="text-[var(--text-tertiary)]" />
@@ -1704,12 +1708,12 @@ export function AssetsPage() {
                   className="text-[var(--text-primary)]"
                 />
               </div>
-              <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
+              <span className=" text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
                 {fixedPct.toFixed(1)}% &gt;
               </span>
             </div>
             <div>
-              <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">
+              <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
                 {isIndonesian ? "Aset Tetap & Riil" : "Fixed & Tangibles"}
               </p>
               <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
@@ -1719,7 +1723,7 @@ export function AssetsPage() {
               </p>
             </div>
             <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between">
-              <span className="font-mono text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+              <span className=" text-[13px] font-semibold text-[var(--text-primary)] block leading-tight">
                 {isStealthMode ? "••••••••" : formatRupiah(fixedAssetsTotal)}
               </span>
               <ChevronRight size={13} className="text-[var(--text-tertiary)]" />
@@ -1749,12 +1753,12 @@ export function AssetsPage() {
                   className="text-[var(--text-primary)]"
                 />
               </div>
-              <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
+              <span className=" text-[10.5px] text-[var(--text-tertiary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors">
                 {debtToAssetRatio.toFixed(1)}% D/A &gt;
               </span>
             </div>
             <div>
-              <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">
+              <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
                 {isIndonesian ? "Liabilitas & Utang" : "Liabilities & Debt"}
               </p>
               <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
@@ -1764,7 +1768,7 @@ export function AssetsPage() {
               </p>
             </div>
             <div className="pt-1.5 border-t border-[var(--glass-border)] flex items-center justify-between">
-              <span className="font-mono text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+              <span className=" text-[13px] font-semibold text-[var(--text-primary)] block leading-tight">
                 {isStealthMode ? "••••••••" : formatRupiah(liabilitiesTotal)}
               </span>
               <ChevronRight size={13} className="text-[var(--text-tertiary)]" />
@@ -1787,11 +1791,11 @@ export function AssetsPage() {
             <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
               {isIndonesian ? "Alokasi Modal" : "Capital Deployed"}
             </span>
-            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[var(--glass-fill)] text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors">
+            <span className="text-[9px]  px-1.5 py-0.5 rounded bg-[var(--glass-fill)] text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors">
               MTD &gt;
             </span>
           </div>
-          <p className="font-mono text-[13px] font-bold text-[var(--text-primary)]">
+          <p className=" text-[13px] font-semibold text-[var(--text-primary)]">
             {isStealthMode ? "••••••••" : formatRupiah(capitalDeployment)}
           </p>
           <p className="text-[10px] text-[var(--text-tertiary)] truncate">
@@ -1813,11 +1817,11 @@ export function AssetsPage() {
             <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
               {isIndonesian ? "Eksposur Terbesar" : "Top Exposure"}
             </span>
-            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[var(--glass-fill)] text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors">
+            <span className="text-[9px]  px-1.5 py-0.5 rounded bg-[var(--glass-fill)] text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors">
               {topExposure.pct.toFixed(1)}% &gt;
             </span>
           </div>
-          <p className="font-mono text-[13px] font-bold text-[var(--text-primary)] truncate">
+          <p className=" text-[13px] font-semibold text-[var(--text-primary)] truncate">
             {topExposure.name || (isIndonesian ? "Belum ada aset" : "No asset")}
           </p>
           <p className="text-[10px] text-[var(--text-tertiary)] truncate">
@@ -1854,7 +1858,7 @@ export function AssetsPage() {
               />
             </div>
             <div>
-              <h4 className="text-[13px] font-bold tracking-tight text-[var(--text-primary)]">
+              <h4 className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)]">
                 {isIndonesian
                   ? "Daftar Kepemilikan Portofolio"
                   : "Portfolio Holdings"}
@@ -1868,7 +1872,7 @@ export function AssetsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[10.5px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-secondary)]">
+            <span className="text-[10.5px]  font-semibold px-2 py-0.5 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-secondary)]">
               {holdings.length +
                 (usdtPref.units > 0 || recordedCryptoBalance > 0 ? 1 : 0)}{" "}
               {isIndonesian ? "aset" : "assets"}
@@ -1897,27 +1901,27 @@ export function AssetsPage() {
               style={{ background: "var(--glass-fill)" }}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0 font-mono font-bold text-xs">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0  font-semibold text-xs">
                   ₮
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-bold text-[13px] text-[var(--text-primary)]">
+                    <span className="font-semibold text-[13px] text-[var(--text-primary)]">
                       USDT
                     </span>
-                    <span className="text-[8.5px] px-1.5 py-0.5 rounded font-mono font-semibold bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
+                    <span className="text-[8.5px] px-1.5 py-0.5 rounded  font-semibold bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
                       STABLECOIN
                     </span>
                   </div>
-                  <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5 font-mono">
+                  <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5 ">
                     {usdtPref.units > 0
                       ? `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`
                       : `Wallet linked · ${formatHoldingUnits(suggestedUsdtUnits)} USDT`}
                   </p>
                 </div>
               </div>
-              <div className="text-right font-mono shrink-0 pl-2">
-                <span className="text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+              <div className="text-right  shrink-0 pl-2">
+                <span className="text-[13px] font-semibold text-[var(--text-primary)] block leading-tight">
                   {isStealthMode ? "••••••••" : formatRupiah(usdtMarketValue)}
                 </span>
                 <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5">
@@ -1970,10 +1974,10 @@ export function AssetsPage() {
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-[13px] text-[var(--text-primary)] truncate">
+                      <span className="font-semibold text-[13px] text-[var(--text-primary)] truncate">
                         {h.symbol}
                       </span>
-                      <span className="text-[8.5px] px-1.5 py-0.5 rounded font-mono font-medium bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
+                      <span className="text-[8.5px] px-1.5 py-0.5 rounded  font-medium bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
                         {h.asset_type.replace("_", " ")}
                       </span>
                     </div>
@@ -1983,8 +1987,8 @@ export function AssetsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="text-right font-mono shrink-0 pl-2">
-                  <span className="text-[13px] font-bold text-[var(--text-primary)] block leading-tight">
+                <div className="text-right  shrink-0 pl-2">
+                  <span className="text-[13px] font-semibold text-[var(--text-primary)] block leading-tight">
                     {isStealthMode ? "••••••••" : formatRupiah(val.marketValue)}
                   </span>
                   <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5">
@@ -2052,87 +2056,179 @@ export function AssetsPage() {
         </div>
       </section>
 
-      {/* ── 6. Wealth History Card (Parity with HomePage Liquid Position) ── */}
-      <section className="card-contrast-hero p-4 pb-3 relative overflow-hidden select-none">
-        {/* Title Header */}
-        <div className="flex items-center justify-between mb-1">
+      {/* ── 6. Wealth History Card — Quiet Wealth × Liquid Island ── */}
+      <section className="card-contrast-hero relative overflow-hidden select-none p-4 pb-3">
+        {/* ─────────────────────────────────────────────
+      Header
+  ───────────────────────────────────────────── */}
+        <div className="flex items-center justify-between mb-2">
           <h2
-            className={`text-[12px] font-semibold uppercase tracking-wider leading-none ${
-              isDark ? "text-white/80" : "text-[var(--text-secondary)]"
-            }`}
+            className={`
+        text-[11px]
+        font-semibold
+        uppercase
+        tracking-[0.075em]
+        leading-none
+        ${isDark ? "text-white/60" : "text-[var(--text-secondary)]"}
+      `}
           >
             {isIndonesian ? "Riwayat Akumulasi Kekayaan" : "Wealth History"}
           </h2>
+
           <button
-            onClick={toggleStealthMode}
-            className={`p-1 -mr-1 cursor-pointer active:scale-90 transition-all ${
-              isDark
-                ? "text-white/60 hover:text-white"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-            }`}
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              toggleStealthMode();
+            }}
+            className={`
+        -mr-1
+        p-1.5
+        rounded-full
+        cursor-pointer
+        transition-all
+        duration-200
+        active:scale-90
+        ${
+          isDark
+            ? "text-white/40 hover:text-white/75 hover:bg-white/[0.05]"
+            : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-black/[0.035]"
+        }
+      `}
             title={isStealthMode ? "Show Balance" : "Hide Balance"}
+            aria-label={isStealthMode ? "Show Balance" : "Hide Balance"}
           >
-            {isStealthMode ? <EyeOff size={15} /> : <Eye size={15} />}
+            {isStealthMode ? (
+              <EyeOff size={15} strokeWidth={1.8} />
+            ) : (
+              <Eye size={15} strokeWidth={1.8} />
+            )}
           </button>
         </div>
 
-        {/* Amount */}
-        <div className="mb-1.5">
+        {/* ─────────────────────────────────────────────
+      Primary Wealth Value
+      The visual hero of the card.
+  ───────────────────────────────────────────── */}
+        <div className="mb-2">
           <span
-            className={`text-[28px] font-bold tracking-tight amount leading-tight ${
-              isDark ? "text-white" : "text-[var(--text-primary)]"
-            }`}
+            className={`
+        amount
+        block
+        text-[25px]
+        leading-[1.05]
+        font-medium
+        tracking-[-0.028em]
+        tabular-nums
+        ${isDark ? "text-white" : "text-[var(--text-primary)]"}
+      `}
           >
             {isStealthMode ? "Rp ••••••••" : formatRupiah(netWorth)}
           </span>
         </div>
 
-        {/* Change Line + Time Label Side by Side */}
-        <div className="flex items-center justify-between gap-2 mb-2.5">
+        {/* ─────────────────────────────────────────────
+      Performance / Period
+      Quiet secondary information.
+  ───────────────────────────────────────────── */}
+        <div className="flex items-center justify-between gap-3 mb-3">
           <div
-            className="flex items-center gap-1 text-[12px] font-semibold"
-            style={{
-              color: isDark
-                ? assetTrend.diff >= 0
-                  ? "#FFFFFF"
-                  : "#A1A1AA"
-                : assetTrend.diff >= 0
-                  ? "#121214"
-                  : "#71717a",
-            }}
+            className={`
+        flex
+        min-w-0
+        items-center
+        gap-1
+        text-[11px]
+        font-semibold
+        leading-none
+        tracking-[-0.005em]
+        tabular-nums
+        ${isDark ? "text-white/72" : "text-[var(--text-secondary)]"}
+      `}
           >
             <ArrowUpRight
               size={13}
-              className={assetTrend.diff < 0 ? "rotate-90" : ""}
+              strokeWidth={2.1}
+              className={`
+          shrink-0
+          transition-transform
+          ${assetTrend.diff < 0 ? "rotate-90" : ""}
+        `}
             />
-            <span>
+
+            <span className="truncate">
               {isStealthMode
                 ? "••••"
-                : `${assetTrend.diff >= 0 ? "+" : ""}${formatRupiah(assetTrend.diff)}`}
+                : `${assetTrend.diff >= 0 ? "+" : ""}${formatRupiah(
+                    assetTrend.diff,
+                  )}`}
             </span>
-            <span className="opacity-80">
+
+            <span
+              className={`
+          shrink-0
+          font-medium
+          ${isDark ? "text-white/40" : "text-[var(--text-tertiary)]"}
+        `}
+            >
               (
               {isStealthMode
                 ? "••••"
-                : `${assetTrend.percent > 0 ? "+" : ""}${assetTrend.percent.toFixed(2)}%`}
+                : `${assetTrend.percent > 0 ? "+" : ""}${assetTrend.percent.toFixed(
+                    2,
+                  )}%`}
               )
             </span>
           </div>
+
           <span
-            className={`text-[11px] font-semibold shrink-0 ${
-              isDark ? "text-white/50" : "text-[var(--text-tertiary)]"
-            }`}
+            className={`
+        shrink-0
+        text-[10px]
+        font-medium
+        leading-none
+        tracking-[0.01em]
+        ${isDark ? "text-white/38" : "text-[var(--text-tertiary)]"}
+      `}
           >
             {bsRangeLabels[bsRange]} · IDR
           </span>
         </div>
 
-        {/* Range Pill Selector (1D, 7D, 1M, 3M, 6M, 1Y, ALL) */}
-        <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 mb-1.5">
+        {/* ─────────────────────────────────────────────
+      Liquid Island Range Selector
+
+      One surface, one active state.
+      The selector should feel like a control
+      rather than seven individual buttons.
+  ───────────────────────────────────────────── */}
+        <div
+          className={`
+      relative
+      flex
+      items-center
+      w-full
+      h-[30px]
+      p-[3px]
+      rounded-full
+      overflow-hidden
+      ${
+        isDark
+          ? "bg-white/[0.045] border border-white/[0.055]"
+          : "bg-black/[0.025] border border-black/[0.045]"
+      }
+    `}
+          style={{
+            boxShadow: isDark
+              ? "inset 0 1px 0 rgba(255,255,255,0.035)"
+              : "inset 0 1px 0 rgba(255,255,255,0.8)",
+          }}
+        >
           {(
             ["1D", "7D", "1M", "3M", "6M", "1Y", "ALL"] as BalanceSheetRange[]
           ).map((r) => {
             const isActive = bsRange === r;
+
             return (
               <button
                 key={r}
@@ -2141,31 +2237,49 @@ export function AssetsPage() {
                   setBsRange(r);
                   triggerHaptic("light");
                 }}
-                className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none"
+                className={`
+            relative
+            z-10
+            flex-1
+            h-full
+            min-w-0
+            rounded-full
+            text-[10px]
+            font-semibold
+            leading-none
+            tracking-[-0.005em]
+            cursor-pointer
+            select-none
+            transition-all
+            duration-200
+            active:scale-[0.94]
+            ${
+              isActive
+                ? isDark
+                  ? "text-white"
+                  : "text-[var(--bg-base)]"
+                : isDark
+                  ? "text-white/42 hover:text-white/68"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+            }
+          `}
                 style={{
                   background: isActive
                     ? isDark
-                      ? "rgba(255,255,255,0.25)"
-                      : "#18181b"
-                    : isDark
-                      ? "transparent"
-                      : "#f4f4f7",
-                  color: isActive
-                    ? "#FFFFFF"
-                    : isDark
-                      ? "rgba(255,255,255,0.55)"
-                      : "#52525b",
+                      ? "rgba(255,255,255,0.14)"
+                      : "var(--text-primary)"
+                    : "transparent",
+
                   border: isActive
                     ? isDark
-                      ? "1px solid rgba(255,255,255,0.35)"
-                      : "1px solid #18181b"
-                    : isDark
-                      ? "1px solid transparent"
-                      : "1px solid rgba(0,0,0,0.04)",
+                      ? "1px solid rgba(255,255,255,0.10)"
+                      : "1px solid var(--text-primary)"
+                    : "1px solid transparent",
+
                   boxShadow: isActive
                     ? isDark
-                      ? "none"
-                      : "0 2px 6px rgba(0,0,0,0.18)"
+                      ? "0 1px 3px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08)"
+                      : "0 1px 4px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.10)"
                     : "none",
                 }}
               >
@@ -2235,7 +2349,9 @@ export function AssetsPage() {
                 tickFormatter={formatAxisY}
                 dx={-2}
               />
-              <Tooltip content={<GlassTooltip isStealthMode={isStealthMode} />} />
+              <Tooltip
+                content={<GlassTooltip isStealthMode={isStealthMode} />}
+              />
               <Area
                 type="monotone"
                 dataKey="balance"
@@ -2326,7 +2442,7 @@ export function AssetsPage() {
                 isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
               }`}
             >
-              {isIndonesian ? "Pasar Δ" : "Market Δ"}
+              {isIndonesian ? "Ekuitas Δ" : "Equity Δ"}
             </p>
             <p
               className={`text-[11px] font-semibold amount mt-0.5 ${
@@ -2464,11 +2580,11 @@ export function AssetsPage() {
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold font-mono text-[13px] text-[var(--text-primary)]">
+                      <span className="font-semibold  text-[13px] text-[var(--text-primary)]">
                         {preset.symbol}
                       </span>
                       {preset.suggestedCurrency && (
-                        <span className="text-[9.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-white/[0.08] text-[var(--text-secondary)]">
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded  font-semibold bg-white/[0.08] text-[var(--text-secondary)]">
                           {preset.suggestedCurrency}
                         </span>
                       )}
@@ -2478,7 +2594,7 @@ export function AssetsPage() {
                     </span>
                   </div>
                 </div>
-                <span className="text-[10px] uppercase font-mono font-semibold px-2 py-0.5 rounded-lg bg-white/[0.06] text-[var(--text-tertiary)]">
+                <span className="text-[10px] uppercase  font-semibold px-2 py-0.5 rounded-lg bg-white/[0.06] text-[var(--text-tertiary)]">
                   {preset.type.replace("_", " ")}
                 </span>
               </button>
@@ -2555,7 +2671,7 @@ export function AssetsPage() {
                         color: "var(--text-tertiary)",
                       }
                 }
-                className="flex-1 py-1.5 rounded-xl text-[12px] font-bold transition-all cursor-pointer hover:text-[var(--text-primary)]"
+                className="flex-1 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer hover:text-[var(--text-primary)]"
               >
                 IDR (Rp)
               </button>
@@ -2583,7 +2699,7 @@ export function AssetsPage() {
                         color: "var(--text-tertiary)",
                       }
                 }
-                className="flex-1 py-1.5 rounded-xl text-[12px] font-bold transition-all cursor-pointer hover:text-[var(--text-primary)]"
+                className="flex-1 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer hover:text-[var(--text-primary)]"
               >
                 USD ($)
               </button>
@@ -2601,7 +2717,7 @@ export function AssetsPage() {
                 value={formSymbol}
                 onChange={(e) => setFormSymbol(e.target.value.toUpperCase())}
                 placeholder="BTC"
-                className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-bold font-mono outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
+                className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-semibold  outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
               />
             </div>
             <div className="col-span-2">
@@ -2685,7 +2801,7 @@ export function AssetsPage() {
                   setFormUnits(e.target.value.replace(/[^0-9.]/g, ""))
                 }
                 placeholder="100"
-                className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-mono font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
+                className="w-full px-3 py-2.5 rounded-2xl text-[13px]  font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
               />
             </div>
             <div>
@@ -2701,10 +2817,10 @@ export function AssetsPage() {
                   setFormBuyPrice(e.target.value.replace(/[^0-9.]/g, ""))
                 }
                 placeholder={formCurrency === "USD" ? "$0.00" : "Rp"}
-                className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-mono font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
+                className="w-full px-3 py-2.5 rounded-2xl text-[13px]  font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
               />
               {formCurrency === "USD" && formBuyPrice && (
-                <p className="text-[10px] text-[var(--text-tertiary)] font-mono mt-1">
+                <p className="text-[10px] text-[var(--text-tertiary)]  mt-1">
                   ≈{" "}
                   {formatRupiah(
                     parseFloat(formBuyPrice || "0") * usdtPref.rate,
@@ -2736,10 +2852,10 @@ export function AssetsPage() {
                     ? "$0.00"
                     : "Rp"
               }
-              className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-mono font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
+              className="w-full px-3 py-2.5 rounded-2xl text-[13px]  font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
             />
             {formCurrency === "USD" && formCurrentPrice && (
-              <p className="text-[10px] text-[var(--text-tertiary)] font-mono mt-1">
+              <p className="text-[10px] text-[var(--text-tertiary)]  mt-1">
                 ≈{" "}
                 {formatRupiah(
                   parseFloat(formCurrentPrice || "0") * usdtPref.rate,
@@ -2763,14 +2879,14 @@ export function AssetsPage() {
             <button
               type="button"
               onClick={closeAddFlow}
-              className="flex-1 py-3 rounded-2xl text-[12.5px] font-bold border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer text-center"
+              className="flex-1 py-3 rounded-2xl text-[12.5px] font-semibold border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer text-center"
             >
               {isIndonesian ? "Batal" : "Cancel"}
             </button>
             <button
               type="button"
               onClick={handleSaveNewHolding}
-              className="flex-[2] py-3 rounded-2xl text-[12.5px] font-bold active:scale-95 transition-all cursor-pointer shadow-md text-center"
+              className="flex-[2] py-3 rounded-2xl text-[12.5px] font-semibold active:scale-95 transition-all cursor-pointer shadow-md text-center"
               style={{
                 background: "var(--text-primary)",
                 color: "var(--bg-base)",

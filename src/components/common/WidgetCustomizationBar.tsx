@@ -1,12 +1,19 @@
 // ======================================================================
 // TROUVAILLE WIDGET CUSTOMIZATION BAR
-// Floating iOS Springboard control pill with Done, Reset, and Unhide drawer
-// Strictly compliant with GEMINI.md: Monochrome Apple Luxury Theme
+// Apple Minimal / Luxury Floating Editing Control
+//
+// Theme rules:
+// - Light and dark mode must use the existing CSS variable system
+// - No hardcoded white/black UI surfaces
+// - Monochrome Apple-style interaction
+// - Frosted glass without excessive contrast
+// - Compact floating Springboard-style control
 // ======================================================================
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, RotateCcw, Plus, Sparkles } from "lucide-react";
+
 import type { CardWidgetConfig } from "../../lib/widgetLayoutTypes";
 import { BottomSheet } from "../ui/BottomSheet";
 import { triggerHaptic } from "../../lib/haptics";
@@ -30,30 +37,104 @@ export function WidgetCustomizationBar({
 
   return (
     <>
+      {/* ================================================================
+          FLOATING EDITING BAR
+      ================================================================= */}
       <AnimatePresence>
         {isEditMode && (
           <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="fixed bottom-24 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none"
+            initial={{
+              y: 50,
+              opacity: 0,
+              scale: 0.96,
+            }}
+            animate={{
+              y: 0,
+              opacity: 1,
+              scale: 1,
+            }}
+            exit={{
+              y: 50,
+              opacity: 0,
+              scale: 0.96,
+            }}
+            transition={{
+              type: "spring",
+              damping: 25,
+              stiffness: 350,
+            }}
+            className="
+              fixed
+              bottom-24
+              left-0
+              right-0
+              z-40
+              flex
+              justify-center
+              px-4
+              pointer-events-none
+            "
           >
             <div
-              className="pointer-events-auto flex items-center gap-2 p-1.5 pl-3.5 rounded-full shadow-2xl backdrop-blur-2xl"
+              className="
+                pointer-events-auto
+                flex
+                items-center
+                gap-1.5
+                p-1.5
+                pl-3
+                rounded-full
+                backdrop-blur-2xl
+                supports-[backdrop-filter]:bg-[var(--bg-elevated)]
+              "
               style={{
-                background: "rgba(18, 18, 22, 0.88)",
-                border: "1px solid rgba(255, 255, 255, 0.16)",
-                boxShadow: "0 16px 36px -4px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.2)",
+                background:
+                  "color-mix(in srgb, var(--bg-elevated) 88%, transparent)",
+                border: "1px solid var(--glass-border)",
+                boxShadow:
+                  "0 10px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
               }}
             >
-              <div className="flex items-center gap-1.5 pr-1">
-                <Sparkles size={12} className="text-white/80 animate-pulse" />
-                <span className="text-[11px] font-semibold text-white/90">
+              {/* ========================================================
+                  EDITING LABEL
+              ========================================================= */}
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-1.5
+                  pr-1.5
+                  pl-0.5
+                  shrink-0
+                "
+              >
+                <Sparkles
+                  size={12}
+                  strokeWidth={1.8}
+                  className="
+                    text-[var(--text-secondary)]
+                    opacity-80
+                    animate-pulse
+                  "
+                />
+
+                <span
+                  className="
+                    text-[11px]
+                    font-semibold
+                    whitespace-nowrap
+                  "
+                  style={{
+                    color: "var(--text-primary)",
+                  }}
+                >
                   Editing Layout
                 </span>
               </div>
 
+              {/* ========================================================
+                  ADD / UNHIDE
+              ========================================================= */}
               {hiddenCards.length > 0 && (
                 <button
                   type="button"
@@ -61,45 +142,101 @@ export function WidgetCustomizationBar({
                     triggerHaptic("light");
                     setAddSheetOpen(true);
                   }}
-                  className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-transform"
+                  className="
+                    px-2.5
+                    py-1.5
+                    rounded-full
+                    text-[11px]
+                    font-semibold
+                    flex
+                    items-center
+                    gap-1
+                    whitespace-nowrap
+                    cursor-pointer
+                    active:scale-95
+                    transition-all
+                    duration-150
+                  "
                   style={{
                     background: "var(--glass-fill)",
                     border: "1px solid var(--glass-border)",
                     color: "var(--text-primary)",
                   }}
                 >
-                  <Plus size={12} />
+                  <Plus size={12} strokeWidth={2} />
+
                   <span>Add ({hiddenCards.length})</span>
                 </button>
               )}
 
+              {/* ========================================================
+                  RESET
+              ========================================================= */}
               <button
                 type="button"
                 onClick={() => {
                   if (confirm("Reset card layout and sizes to default?")) {
+                    triggerHaptic("medium");
                     onReset();
                   }
                 }}
-                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                className="
+                  w-8
+                  h-8
+                  rounded-full
+                  flex
+                  items-center
+                  justify-center
+                  shrink-0
+                  cursor-pointer
+                  active:scale-90
+                  transition-all
+                  duration-150
+                "
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
                   color: "var(--text-secondary)",
                 }}
                 title="Reset layout to default"
+                aria-label="Reset layout to default"
               >
-                <RotateCcw size={12} />
+                <RotateCcw size={12} strokeWidth={1.8} />
               </button>
 
+              {/* ========================================================
+                  DONE
+              ========================================================= */}
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("medium");
                   onDone();
                 }}
-                className="px-4 py-1.5 rounded-full text-[12px] font-semibold bg-white text-black active:scale-95 transition-transform flex items-center gap-1 shadow-md"
+                className="
+                  px-3.5
+                  py-1.5
+                  rounded-full
+                  text-[12px]
+                  font-semibold
+                  flex
+                  items-center
+                  justify-center
+                  gap-1
+                  whitespace-nowrap
+                  cursor-pointer
+                  active:scale-95
+                  transition-all
+                  duration-150
+                "
+                style={{
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.14)",
+                }}
               >
                 <Check size={13} strokeWidth={2.5} />
+
                 <span>Done</span>
               </button>
             </div>
@@ -107,48 +244,130 @@ export function WidgetCustomizationBar({
         )}
       </AnimatePresence>
 
-      {/* Hidden Cards Bottom Sheet */}
+      {/* ================================================================
+          HIDDEN CARDS BOTTOM SHEET
+      ================================================================= */}
       <BottomSheet
         isOpen={addSheetOpen}
         onClose={() => setAddSheetOpen(false)}
         title="Add Hidden Cards"
       >
-        <div className="p-4 space-y-2.5 pb-8">
-          <p className="text-[11px] text-[var(--text-tertiary)] px-1 mb-2">
+        <div
+          className="
+            px-4
+            pt-1
+            pb-8
+            space-y-2.5
+          "
+        >
+          {/* ============================================================
+              DESCRIPTION
+          ============================================================= */}
+          <p
+            className="
+              text-[11px]
+              leading-relaxed
+              px-1
+              mb-2
+            "
+            style={{
+              color: "var(--text-tertiary)",
+            }}
+          >
             Tap any card below to restore it to your active dashboard.
           </p>
+
+          {/* ============================================================
+              HIDDEN CARD LIST
+          ============================================================= */}
           {hiddenCards.map((card) => (
             <div
               key={card.id}
-              className="p-3.5 rounded-2xl flex items-center justify-between gap-3"
+              className="
+                p-3.5
+                rounded-2xl
+                flex
+                items-center
+                justify-between
+                gap-3
+              "
               style={{
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
+                boxShadow: "0 2px 10px rgba(0, 0, 0, 0.04)",
               }}
             >
-              <div>
-                <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
+              {/* ======================================================
+                  CARD INFORMATION
+              ======================================================= */}
+              <div className="min-w-0 flex-1">
+                <h4
+                  className="
+                    text-[13px]
+                    font-semibold
+                    leading-snug
+                    truncate
+                  "
+                  style={{
+                    color: "var(--text-primary)",
+                  }}
+                >
                   {card.title}
                 </h4>
-                <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+
+                <p
+                  className="
+                    text-[11px]
+                    leading-relaxed
+                    mt-0.5
+                    line-clamp-1
+                  "
+                  style={{
+                    color: "var(--text-tertiary)",
+                  }}
+                >
                   {card.subtitle}
                 </p>
               </div>
+
+              {/* ======================================================
+                  ADD BUTTON
+              ======================================================= */}
               <button
                 type="button"
                 onClick={() => {
+                  triggerHaptic("light");
+
                   onUnhideCard(card.id);
+
                   if (hiddenCards.length <= 1) {
                     setAddSheetOpen(false);
                   }
                 }}
-                className="px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-transform"
+                className="
+                  shrink-0
+                  px-3
+                  py-1.5
+                  rounded-full
+                  text-[11px]
+                  font-semibold
+                  flex
+                  items-center
+                  gap-1
+                  cursor-pointer
+                  active:scale-95
+                  transition-all
+                  duration-150
+                "
                 style={{
                   background: "var(--accent)",
                   color: "var(--accent-ink)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--accent) 70%, transparent)",
                 }}
               >
-                <Plus size={12} />
+                <Plus size={12} strokeWidth={2} />
+
                 <span>Add</span>
               </button>
             </div>

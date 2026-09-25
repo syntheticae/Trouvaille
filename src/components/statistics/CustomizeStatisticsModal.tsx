@@ -334,47 +334,6 @@ export function CustomizeStatisticsModal({
           </div>
 
           {/* ==============================================================
-              REARRANGE BUTTON
-          =============================================================== */}
-          <div className="px-5 pb-4">
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("medium");
-                onClose();
-                onEnterGridEdit();
-              }}
-              className="
-                w-full
-                flex
-                items-center
-                justify-center
-                gap-1.5
-                py-2
-                px-3
-                rounded-xl
-                text-[11px]
-                font-semibold
-                cursor-pointer
-                active:scale-[0.985]
-                transition-all
-                duration-200
-              "
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              <SlidersHorizontal size={12} strokeWidth={1.8} />
-
-              <span>
-                {t("statistics.rearrangeGrid", "Rearrange & Resize on Grid")}
-              </span>
-            </button>
-          </div>
-
-          {/* ==============================================================
               FEATURE GROUPS
 
               IMPORTANT:
