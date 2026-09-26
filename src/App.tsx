@@ -128,8 +128,8 @@ function AppShell() {
     "Preparing financial categories & wallets...",
   );
   const [syncedTxCount, setSyncedTxCount] = useState(0);
-  const { isPrivacyShieldEnabled } = usePrivacy();
-  const [isPrivacyShieldActive, setIsPrivacyShieldActive] = useState(false);
+  const { isPrivacyShieldEnabled, isPrivacyShieldActive, setIsPrivacyShieldActive } =
+    usePrivacy();
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
   const addTxMutation = useAddTransaction();
@@ -240,42 +240,12 @@ function AppShell() {
     };
   }, [categories, wallets, addTxMutation, isIndonesian]);
 
+  // Flush pending offline mutations when user returns to active app from privacy shield
   useEffect(() => {
-    if (!isPrivacyShieldEnabled) {
-      setIsPrivacyShieldActive(false);
-      return;
+    if (!isPrivacyShieldActive && user?.id) {
+      flushPendingMutations().catch(() => {});
     }
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setIsPrivacyShieldActive(true);
-      } else {
-        setTimeout(() => setIsPrivacyShieldActive(false), 120);
-        if (user?.id) {
-          flushPendingMutations().catch(() => {});
-        }
-      }
-    };
-    const handleBlur = () => {
-      setIsPrivacyShieldActive(true);
-    };
-    const handleFocus = () => {
-      setIsPrivacyShieldActive(false);
-      if (user?.id) {
-        flushPendingMutations().catch(() => {});
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("blur", handleBlur);
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, [user?.id, isPrivacyShieldEnabled]);
+  }, [isPrivacyShieldActive, user?.id]);
 
   const ensureCategories = useEnsureDefaultCategories();
   const ensureWallets = useEnsureDefaultWallets();
