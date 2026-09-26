@@ -1,6 +1,6 @@
 # Trouvaille: Private Financial Intelligence & Luxury Architectural System
 ### Comprehensive Technical Paper & System Specification
-**Version:** 3.4.0 · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
+**Version:** 3.5.0 · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
 **Author:** DeepMind Agentic Systems & Trouvaille Core Engineering  
 **Revision Date:** September 2026  
 
@@ -12,15 +12,16 @@ Modern personal financial software has largely devolved into fragmented, visuall
 
 **Trouvaille** was engineered as an uncompromising antidote: a local-first, zero-knowledge encrypted, private wealth operating system wrapped in a hyper-refined **Monochrome Apple Luxury Glassmorphism** interface. Built with **React 19**, **Vite 8**, **Tailwind CSS 4**, and native **Capacitor 8 iOS** runtime, Trouvaille harmonizes:
 
-1. **Multi-Modal Cognitive & Physical Ingestion Ecosystem**: Real-time natural voice processing capable of decomposing compound spoken phrases into multiple discrete transactions, Indonesian colloquial slang decoding, phonetic auto-correction, on-device receipt OCR with Tesseract.js WASM, automated multi-bank statement parsers (BCA, Mandiri, Jenius, BNI), push notification transaction interception, and contactless e-money NFC transit card balance readers (Flazz, e-money, TapCash, Brizzi, JakCard).
+1. **Multi-Modal Cognitive & Physical Ingestion Ecosystem**: Real-time natural voice processing capable of decomposing compound spoken phrases into multiple discrete transactions, Indonesian colloquial slang decoding, phonetic auto-correction, on-device receipt OCR with Tesseract.js WASM, automated multi-bank statement parsers (BCA, Mandiri, Jenius, BNI), push notification transaction interception, contactless e-money NFC transit card balance readers (Flazz, e-money, TapCash, Brizzi, JakCard), and native **Apple Shortcuts & iPhone Back Tap Integrations** enabling instant voice logging via double-tap chassis gestures, Dynamic Island frosted glass modals, and Action Button hardware triggers.
 2. **Silicon Valley Wealth Bento & Asset Valuation Engine**: Comprehensive multi-asset tracking covering crypto, US equities, Indonesian stocks (IDX), physical gold, mutual funds, and fixed assets with straight-line depreciation modeling, real-time live price feeds, automated USDT balance reconciliation, and staking yield tracking.
 3. **Actuarial Simulation & Deep Telemetry Suite**: 10,000-iteration stochastic Monte Carlo wealth projections, FIRE retirement modeling (LeanFIRE, FatFIRE, CoastFIRE with 4% SWR), Debt Snowball and Avalanche payoff optimizers, 6-pillar financial health diagnostic scoring, hierarchical Category Sunburst charts, and interactive Recharts Sankey cashflow diagrams.
 4. **Personal Financial Modeling & Zero-Based Budgeting**: Unified single-card Category Budget Deck, digital envelope allocations, Cashflow Pulse velocity, Expense Volatility Index, Liquidity Horizon metrics, and interactive What-If scenario forecasting.
 5. **Cinematic Financial Analytics & Story Engine**: An expanded 11-slide *Financial Wrapped* story experience featuring novel visualization paradigms including the **Three-Tiered Executive Health & Velocity Score Matrix**, **Stacked Cascade Chart**, **Temporal Spending Heatmap Matrix**, **Concentric Vital Ratio Rings**, **Multi-Horizon Runway Projections**, and multi-year historical playback with Apple Liquid Glass HUD and screen-tap navigation.
-6. **Multi-Currency Engine & Bicultural Non-Mixed Localization**: Dynamic multi-currency reactivity (IDR, USD, EUR, SGD, JPY, GBP) with offline cached exchange rates and strict 100% pure Indonesian / 100% pure English localization across all cards, modals, and telemetry sheets.
-7. **Bank-Grade Data Integrity & Hardware Cryptography**: Deterministic arbitrary-precision mathematical operations, client-side AES-GCM 256-bit vault encryption with PBKDF2 key derivation, native Apple Face ID / Touch ID hardware gating with background auto-lock, and zero-barrier guest onboarding with 1-click cloud synchronization.
-8. **Executive Dossier Generation**: On-device luxury PDF financial statement and balance sheet generation via jsPDF, adhering strictly to monochrome luxury typographic standards.
-9. **Architectural Hardening & Archive Segregation**: Full codebase audit ensuring zero temporal dead zones, pure derived state execution eliminating cascading render cycles, and strict archival decoupling of legacy experiments (`src/archive/`) for maximum runtime efficiency.
+6. **Apple Luxury Bento Hubs Console**: A completely reimagined Master Settings architecture featuring an Apple ID-style glass hero banner, 4 master bento hub cards (Financial Architecture, Automations & Shortcuts, Security & Vault, Preferences & Experience) with live real-time status badges, native 92dvh sliding bottom sheet panels, and an instant search overlay.
+7. **Multi-Currency Engine & Strict Bicultural Non-Mixed Localization**: Dynamic multi-currency reactivity (IDR, USD, EUR, SGD, JPY, GBP) with offline cached exchange rates and strict 100% pure Indonesian / 100% pure English localization across all cards, modals, and telemetry sheets ("No Gado-Gado" invariant).
+8. **Bank-Grade Data Integrity & Hardware Cryptography**: Deterministic arbitrary-precision mathematical operations, client-side AES-GCM 256-bit vault encryption with PBKDF2 key derivation, native Apple Face ID / Touch ID hardware gating with background auto-lock, and zero-barrier guest onboarding with 1-click cloud synchronization.
+9. **Executive Dossier Generation**: On-device luxury PDF financial statement and balance sheet generation via jsPDF, adhering strictly to monochrome luxury typographic standards.
+10. **Architectural Hardening & Archive Segregation**: Full codebase audit ensuring zero temporal dead zones, pure derived state execution eliminating cascading render cycles, and strict archival decoupling of legacy experiments (`src/archive/`) for maximum runtime efficiency.
 
 This document serves as the definitive architectural whitepaper, technical specification, and exhaustive component catalog for Project Trouvaille.
 
@@ -41,12 +42,12 @@ This document serves as the definitive architectural whitepaper, technical speci
    - 8.4 [Page 4: Silicon Valley Wealth Bento & Balance Sheet (`AssetsPage.tsx`) - 16 Cards & Matrices](#84-page-4-silicon-valley-wealth-bento--balance-sheet-assetspagetsx)
    - 8.5 [Page 5: Cashflow Calendar & Runway Forecaster (`CalendarPage.tsx`)](#85-page-5-cashflow-calendar--runway-forecaster-calendarpagetsx)
    - 8.6 [Page 6: Deep Telemetry & Actuarial Workstation (`StatisticsPage.tsx`) - 27 Cards & Reports](#86-page-6-deep-telemetry--actuarial-workstation-statisticspagetsx)
-   - 8.7 [Page 7: Master Settings & Cryptographic Vault (`SettingsPage.tsx`)](#87-page-7-master-settings--cryptographic-vault-settingspagetsx)
+   - 8.7 [Page 7: Master Settings & Cryptographic Vault (`SettingsPage.tsx`) - Apple Luxury Bento Hubs Architecture](#87-page-7-master-settings--cryptographic-vault-settingspagetsx---apple-luxury-bento-hubs-architecture)
    - 8.8 [Global Ecosystem Sheets, Modals & Action Overlays](#88-global-ecosystem-sheets-modals--action-overlays)
 9. [Personal Financial Modeling, Budget Decks & Cashflow Intelligence](#9-personal-financial-modeling-budget-decks--cashflow-intelligence)
 10. [Cinematic Financial Wrapped & Visualization Paradigms](#10-cinematic-financial-wrapped--visualization-paradigms)
 11. [Security, Cryptography, Multi-Currency & Offline Sync](#11-security-cryptography-multi-currency--offline-sync)
-12. [Verification, Invariants & Test Coverage (41 Suites, 368 Tests)](#12-verification-invariants--test-coverage-41-suites-368-tests)
+12. [Verification, Invariants & Test Coverage (41 Suites, 369 Tests)](#12-verification-invariants--test-coverage-41-suites-369-tests)
 13. [Repository Architecture & Codebase Map](#13-repository-architecture--codebase-map)
 14. [Strategic Roadmap & Evolution](#14-strategic-roadmap--evolution)
 
@@ -145,6 +146,35 @@ Customization dialogs and settings drawers implement a strict typographic and ae
   - *Second Line*: Concise functional description (`text-[11px] text-[var(--text-tertiary)]`).
   - *Far Right*: High-contrast Apple iOS toggle switch (`ToggleSwitch.tsx`, `w-10 h-5.5` with `w-4.5 h-4.5` knob).
 - **Active & Inactive State Aesthetics**: Active ('on') states feature soft ambient frosted glass (`bg-white/[0.05] border border-white/14` with inner hairline glow `inset 0 1px 0 rgba(255,255,255,0.08)` in dark mode). Inactive ('off') states are gently dimmed (`opacity: 0.6`) for instant optical contrast without harsh stark white borders.
+
+### 2.7 Strict Non-Mixed Localization Rule ("No Gado-Gado" Invariant - Architectural Rule 6)
+> [!IMPORTANT]
+> **ZERO BILINGUAL MIXING ("NO GADO-GADO" LOCALIZATION)**  
+> The application runtime must remain 100% pure Indonesian when `isIndonesian === true` and 100% pure English when `isIndonesian === false`.
+
+- **Comprehensive Conditional Branching**: Every user-facing UI string, modal title, description, button label, pill badge, placeholder, and toast notification MUST branch explicitly:
+  `{isIndonesian ? "Terjemahan Bahasa Indonesia Baku" : "Pure English Formulation"}`
+- **Standardized Terminology Corpus**:
+  - *Shortcuts*: Pintasan
+  - *Presets*: Preset bawaan / Preset tersimpan
+  - *Number*: Angka / Nominal
+  - *Text / Note*: Teks / Catatan
+  - *Done*: Selesai
+  - *Setup*: Atur / Konfigurasi
+  - *1-Tap*: 1-Ketukan
+  - *Auto*: Otomatis
+  - *Voice*: Suara / Dikte
+  - *Ways to Add*: Metode Pencatatan
+- **Zero Mixed Phrasing**: Prohibits English buzzwords or hybrid phrases embedded inside Indonesian copy (e.g. replacing *"Pintasan Back Tap (Glass UI)"* with *"Pintasan Ketuk Belakang (Kaca & Dikte)"*).
+
+### 2.8 Strict Monochrome Luxury Color Invariant (Architectural Rule 7)
+> [!IMPORTANT]
+> **NO VIBRANT / RAINBOW COLORS (NO EMERALD, AMBER, BLUE, PURPLE, ORANGE) IN UI CONTROLS & MODALS**  
+> UI controls, icons, checkmarks, badges, status pills, and instructional text MUST remain strictly monochrome luxury glassmorphism.
+
+- **Zero Colored Utility Classes**: Never use `text-emerald-500`, `text-amber-500`, `text-blue-500`, `bg-emerald-500`, `text-yellow-500`, etc., for icons, checkmarks, step numbers, or badges.
+- **Monochrome Status & Verification**: Success checkmarks, verification pills, and active badges must inherit theme variables (`var(--text-primary)`, `var(--text-secondary)`, `var(--bg-elevated)`, `var(--glass-border)`).
+- **Sole Permissible Exception**: Positive financial capital inflow in cashflow charts / balance metrics (`var(--accent)`), never on buttons, icons, or badges in setting sheets.
 
 ---
 
@@ -358,6 +388,36 @@ To eradicate manual logging friction, Trouvaille integrates a 6-pillar ingestion
 `SplitBillSheet.tsx` provides multi-person expense splitting:
 - Calculates itemized shares with proportional distribution of taxes, service charges, and discount vouchers.
 - Generates formatted WhatsApp settlement messages with bank payment details and QRIS deep links.
+
+### 5.7 Apple Shortcuts, Siri Voice & iOS Back Tap Integration Ecosystem
+Trouvaille features a hardware-level iOS automation architecture that bridges Apple system services directly into the client ledger without launching the full web viewport:
+
+1. **iPhone Back Tap Double-Tap Trigger**:
+   - Leverages iOS Accessibility Back Tap (`Pengaturan > Aksesibilitas > Sentuh > Ketuk Bagian Belakang > Ketuk Dua Kali`).
+   - Physically double-tapping the back chassis of the iPhone triggers the dedicated Apple Shortcut workflow.
+2. **Interactive Dynamic Island & Frosted Glass Dialogs**:
+   - Deploys sequential Apple system glass dialogs directly from the Dynamic Island / top notch:
+     - *Action 1: Ask for Number*: Prompts for transaction nominal with decimal formatting.
+     - *Action 2: Choose from List*: Native high-contrast picker populated with user categories (Makanan, Transportasi, Belanja, etc.).
+     - *Action 3: Choose from List*: Native picker for source wallet (BCA, Mandiri, Cash, GoPay).
+     - *Action 4: Ask for Date and Time*: Automatic default to current timestamp with manual override.
+     - *Action 5: Ask for Text*: Optional transaction description note.
+3. **Hands-Free Siri Voice & Speech-to-Text Dictation**:
+   - Supports natural voice logging via Siri commands: *"Hey Siri, Catat Pengeluaran di Trouvaille"* / *"Hey Siri, Log Expense in Trouvaille"*.
+   - Employs Apple's on-device `Dictate Text` action to route spoken strings into Trouvaille's compound NLP parser.
+4. **Hardware Action Button Mapping (iPhone 15 Pro & 16 Pro)**:
+   - Configurable directly in iOS Settings (`Pengaturan > Tombol Tindakan > Pintasan > Trouvaille Quick Log`).
+   - Tactile 1-press physical actuation launches the transaction ingestion dialog instantly even when the iPhone display is locked.
+5. **Contactless Apple Pay Card Automations**:
+   - Employs iOS Personal Automations (`Pintasan > Otomatisasi > Transaksi Apple Pay > Kartu Apa Saja`).
+   - Automatically prompts or logs transactions in Trouvaille immediately whenever an Apple Pay contactless NFC payment is processed at physical retail terminals.
+6. **Universal Deep Link Dispatcher (`src/lib/deepLinkHandler.ts`)**:
+   - Handles custom URL schemes and universal routes:
+     - `trouvaille://add?amount={number}&category={cat}&wallet={wallet}&note={note}`
+     - `trouvaille://voice`
+     - `trouvaille://quick-add`
+     - `trouvaille://scan`
+   - Validates query payloads, executes optimistic balance deductions, and triggers tactile haptic feedback.
 
 ---
 
@@ -967,79 +1027,115 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
 
 ---
 
-### 8.7 Page 7: Master Settings & Cryptographic Vault (`SettingsPage.tsx`) - 24 Core Sections & Sheets
+### 8.7 Page 7: Master Settings & Cryptographic Vault (`SettingsPage.tsx`) - Apple Luxury Bento Hubs Architecture
 
-`SettingsPage.tsx` acts as the security, configuration, and data sovereignty console.
+`SettingsPage.tsx` acts as the command center, security vault, and system configuration console. In Version 3.5.0, the settings interface underwent an uncompromising architectural redesign, replacing congested, multi-page vertical scroll lists with the **Apple Luxury Bento Hubs Architecture**: a 1-screen minimalist console anchored by an **Apple ID-Style Glass Hero Banner**, **4 Master Bento Hub Cards** with dynamic live status badges, native **92dvh Sliding Bottom Sheet Panels**, and an **Instant Search Overlay**.
 
-#### Complete Master Catalog of Sections, Sheets & Modals on SettingsPage:
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│               APPLE LUXURY BENTO HUBS ARCHITECTURE                     │
+├────────────────────────────────────────────────────────────────────────┤
+│ [🔍] Search Bar: "Cari pengaturan, pintasan & keamanan..."             │
+├────────────────────────────────────────────────────────────────────────┤
+│ [👤] Apple ID Glass Hero: Avatar, Name, Email / Offline Device Vault    │
+├───────────────────────────────────┬────────────────────────────────────┤
+│ [🏛️] ARSITEKTUR FINANSIAL          │ [⚡] PINTASAN & EKOSISTEM IOS       │
+│      Buku kas, dompet, kategori   │      Back Tap, Tombol Aksi, 1-Tap  │
+│      & komitmen tagihan           │      preset & Apple Pay otomatis   │
+│      • 3 Dompet • 7 Kat • 2 Tag   │      • Back Tap Aktif • 3 Preset   │
+├───────────────────────────────────┼────────────────────────────────────┤
+│ [🛡️] PRIVASI, KEAMANAN & VAULT    │ [🎛️] PREFERENSI & TAMPILAN         │
+│      Sensor saldo, Face ID,       │      Obsidian/Alabaster, keypad,   │
+│      AES-256 & cadangan cloud     │      mata uang utama & bahasa      │
+│      • Face ID • Sensor • AES-256 │      • Obsidian • IDR • ID         │
+├───────────────────────────────────┴────────────────────────────────────┤
+│ [🚪] Keluar Akun / Keluar Mode Tamu · Trouvaille Luxury v1.0.0         │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
-| # | Section Category | Card / Sheet / Modal | Key / ID | Primary Function / Telemetry | Interactive Behavior |
+#### The 4 Master Bento Hubs & Live Telemetry Badges:
+
+1. **Hub 1: Arsitektur Finansial (`Financial Architecture`)**:
+   - *Scope*: Core double-entry accounts, sub-wallets, classification taxonomies, recurring commitments, and wealth milestones.
+   - *Icon*: `Landmark` vector outline housed in frosted squircle (`var(--bg-elevated)`).
+   - *Dynamic Status Badges*:
+     - `{wallets.length} Dompet / Wallets`
+     - `{categories.length} Kategori / Categories`
+     - `{bills.length} Tagihan / Bills`
+   - *Sliding Sheet Contents*: Kelola Buku Kas (`ManageLedgersSheet`), Kategori Pengeluaran & Pemasukan (`CategoryManagementSheets`), Akun & Dompet (`WalletManagementSheets`), Target Anggaran Bulanan (`BudgetTargetSheet`), Tagihan Rutin & Komitmen (`BillManagementSheets`), Target Finansial & FIRE (`GoalManagementSheets`), Valuasi Portofolio & Aset (`AssetValuationSheet`), and Impor Rekening Koran BCA / CSV (`StatementImportModal`).
+
+2. **Hub 2: Pintasan & Ekosistem iOS (`Automations & Shortcuts`)**:
+   - *Scope*: Hardware-level Apple ecosystem integrations, chassis physical triggers, and rapid transaction entry presets.
+   - *Icon*: `Zap` vector outline housed in frosted squircle.
+   - *Dynamic Status Badges*:
+     - `Ketuk Belakang Aktif / Back Tap Ready`
+     - `{shortcuts.length} Preset / Presets`
+     - `1-Ketukan / 1-Tap Quick`
+   - *Sliding Sheet Contents*: Pintasan Ketuk Belakang Kaca & Dikte (`AppleShortcutsGuideModal` tab `back_tap`), Pintasan Tombol Aksi iPhone 15/16 Pro (`AppleShortcutsGuideModal` tab `action_button`), Preset Pintasan Cepat 1-Ketukan (`ShortcutManagementSheets`), and Otomatisasi Kartu Apple Pay (`AppleShortcutsGuideModal` tab `automation`).
+
+3. **Hub 3: Privasi, Keamanan & Vault (`Security & Data Vault`)**:
+   - *Scope*: Zero-knowledge cryptographic storage, biometric hardware gating, screen masking, and cloud synchronization.
+   - *Icon*: `ShieldCheck` vector outline housed in frosted squircle.
+   - *Dynamic Status Badges*:
+     - `Face ID / PIN / Kunci Nonaktif`
+     - `Sensor Aktif / Shield On`
+     - `AES-256 Vault`
+   - *Sliding Sheet Contents*: Perisai Privasi / Sensor Saldo (`Privacy Shield` toggle), Kunci Aplikasi Biometrik Face ID / PIN (`SecurityLockContext` toggle with auto-lock timeout `0m / 1m / 5m` and `PinSetupModal`), Izin Kamera & Berkas Struk (`MediaPermissionsSheet`), Sinkronisasi Cloud (`flushPendingMutations` with live sync status badge), Tautkan Web Dashboard via QR (`WebDashboardLinkModal`), Vault Terenkripsi AES-256 (`EncryptedVaultModal`), Ekspor Laporan Keuangan & Pajak (`LuxuryReportExportSheet`), and Reset Data Pembukuan (`ResetTransactionsSheet`).
+
+4. **Hub 4: Preferensi & Tampilan (`Preferences & Experience`)**:
+   - *Scope*: Aesthetic personalization, monetary denominations, localization, tactile haptic feedback, and notification pacing.
+   - *Icon*: `SlidersHorizontal` vector outline housed in frosted squircle.
+   - *Dynamic Status Badges*:
+     - `Obsidian / Alabaster`
+     - Base Currency Code (`IDR / USD / EUR / SGD / JPY / GBP`)
+     - `Bahasa Indonesia / English`
+   - *Sliding Sheet Contents*: Tampilan Terang Alabaster / Gelap Obsidian (`ThemeContext` toggle), Mata Uang Utama (`CurrencySwitcherSheet`), Bahasa Aplikasi (`LanguageSwitcherSheet`), Papan Tombol Angka Kustom (`ToggleSwitch` for tactile liquid numpad), Label Transaksi (#) (`ToggleSwitch` for multi-tag hashtags), Simpan Berkas Lampiran Struk (`ToggleSwitch`), Pengingat Streak Harian (`ToggleSwitch` with native time picker), Peringatan Tagihan Jatuh Tempo (`ToggleSwitch`), and Ulangi Wizard Kustomisasi (`handleRerunCustomization`).
+
+#### Native iOS Sliding Bottom Sheet Transition Paradigm:
+- **Zero Nested Scrollbars & Height Restrictions**: Conforms strictly to Architectural Rule 5. Child grids render with natural vertical flow or `flex-1` without low artificial height caps (`max-h-[55vh]`), expanding smoothly up to `92dvh`.
+- **iOS Home Indicator Clearance**: All sliding sheets enforce dynamic bottom safe-area padding:
+  $$\text{Padding Bottom} = \max(\text{env}(\text{safe-area-inset-bottom}, 0\text{px}) + 12\text{px}, 24\text{px})$$
+- **Seamless Sub-Modal Hand-off**: Selecting a deep configuration option (e.g. `Manage Categories` or `Encrypted Vault`) gracefully dismisses the Hub sheet and mounts the dedicated subsystem sheet, returning the user to the Bento view upon dismissal.
+
+#### Instant Search Results Overlay:
+- **Reactive State Swap**: When `searchQuery.trim() !== ""`, the 4 Bento Hub cards and hero banner temporarily yield to a flat, categorized results list matching titles, descriptions, and heuristic keywords.
+- **Inline Operations**: Settings with binary states (e.g. Light Appearance, Custom Keypad, Tags, Privacy Shield, Face ID, Streak Reminders) expose active toggle switches directly within the search results stream, enabling 1-tap configuration without navigating into a sheet.
+- **Instant Restoration**: Clearing the search input immediately restores the Apple Luxury Bento Hubs console with zero layout re-computation.
+
+#### Complete Master Catalog of the 24 Settings Mapped by Bento Hub:
+
+| # | Master Bento Hub | Setting / Subsystem | Key Component / Hook | Primary Function & Invariant | Interactive Control |
 | :-: | :--- | :--- | :--- | :--- | :--- |
-| 1 | Profile & Sync | `Executive Profile Card` | `profile_card` | User avatar, name, email, cloud sync status badge ("Connected" / "Guest") | Tap to open `ProfileSheet.tsx` |
-| 2 | Profile & Sync | `Guest Migration Banner` | `guest_migration_banner` | Detects unlinked local guest ledger data | 1-tap migration into authenticated cloud account |
-| 3 | Profile & Sync | `Profile Edit Sheet` | `profile_sheet` | Update display name, profile avatar, security email | Form validation with instant profile mutation |
-| 4 | Profile & Sync | `Web Dashboard Link Modal` | `web_dashboard_link` | QR code & ephemeral pairing token for desktop session pairing | Scan QR code on web client, 1-tap regenerate token |
-| 5 | Financial Architecture | `Multi-Ledger Spaces Manager` | `space_switcher_sheet` | Segregated financial books (Personal, Enterprise, Venture) | Switch active space, create/archive spaces |
-| 6 | Financial Architecture | `Categories Manager` | `category_management_sheets` | Add, edit, archive categories, parent-child trees, monthly caps | Icon picker (`IconRenderer`), color assigner, budget cap |
-| 7 | Financial Architecture | `Wallets & Accounts Manager` | `wallet_management_sheets` | Add bank accounts, cash, e-wallets, credit cards, configure initial balances | Balance adjustment, account type assignment, archive |
-| 8 | Financial Architecture | `Recurring Bills Manager` | `bill_management_sheets` | Configure recurring subscriptions, due dates, repeat cadence | Toggle auto-pay, set reminders, archive bills |
-| 9 | Financial Architecture | `Financial Goals Manager` | `goal_management_sheets` | Target savings milestones, target completion dates, allocated funds | Deposit/withdraw capital, edit milestone target |
-| 10 | Financial Architecture | `Monthly Budget Target Sheet` | `budget_target_sheet` | Global monthly spending limit cap and alert threshold | Configure monthly cap with live headroom calculator |
-| 11 | Financial Architecture | `Quick Shortcuts Manager` | `shortcut_management_sheets` | 1-tap pre-filled transaction templates (e.g. "Kopi Pagi - 25k") | Add/edit shortcut templates, reorder shortcuts |
-| 12 | Preferences | `Multi-Currency Switcher` | `currency_switcher_sheet` | Base display currency selection (IDR, USD, EUR, SGD, JPY, GBP) | 1-tap currency switch with automated rate caching |
-| 13 | Preferences | `Bicultural Language Switcher` | `language_switcher_sheet` | 100% pure English vs 100% pure Indonesian localized strings | Instant language change without application reload |
-| 14 | Preferences | `Luxury Theme Switcher` | `theme_switcher` | Dark Obsidian (`#09090c`) vs Light Alabaster (`#f4f4f7`) luxury modes | 1-tap theme toggle with smooth CSS variable transition |
-| 15 | Preferences | `Apple Shortcuts Guide Modal` | `apple_shortcuts_guide` | Siri Shortcuts hands-free voice expense logging integration | Step-by-step iOS setup guide with importable template |
-| 16 | Security & Vault | `Hardware Biometrics Switch` | `biometrics_toggle` | Apple Face ID / Touch ID gating via iOS Secure Enclave | Toggle biometric prompt on app resume |
-| 17 | Security & Vault | `Security PIN Setup Modal` | `pin_setup_modal` | 6-digit numeric fallback security PIN code | Configure/change PIN with double-entry confirmation |
-| 18 | Security & Vault | `Auto-Lock Interval Selector` | `auto_lock_interval` | App lock timeout (Immediately, 1 min, 5 min, 15 min) | Radio selector with persistent security lock interval |
-| 19 | Security & Vault | `Privacy Stealth Mode Toggle` | `stealth_mode_default` | Default balance masking on application launch | Toggle persistent stealth privacy state |
-| 20 | Security & Vault | `Zero-Knowledge Vault Modal` | `encrypted_vault_modal` | AES-256-GCM encrypted storage for confidential credentials & notes | PBKDF2 passphrase unlock, zero server exposure |
-| 21 | Data & Maintenance | `Luxury PDF Report Generator` | `luxury_report_export` | On-device PDF generation of executive financial dossiers | Export date-bounded Balance Sheet & Income Statement PDF |
-| 22 | Data & Maintenance | `CSV Spreadsheet Exporter` | `csv_ledger_export` | Raw transaction records export with ledger metadata | 1-tap CSV download formatted for Excel/Numbers |
-| 23 | Data & Maintenance | `Cloud Force Sync & Flush` | `flush_pending_mutations` | Manually push offline mutation queue to Supabase Postgres | Synchronize pending writes, display sync telemetry |
-| 24 | Data & Maintenance | `Transaction Reset & Purge` | `reset_transactions_sheet` | Selective or complete ledger wipe with double-confirmation | Purge transactions, reset balances, or purge all data |
-
-#### Detailed Card Breakdown on SettingsPage:
-
-##### 1. Executive Profile & Cloud Synchronization:
-- User avatar, name, and email display.
-- Cloud sync status badge ("Connected to Supabase" / "Guest Mode").
-- **Guest-to-Cloud Migration Banner (`guestMigration.ts`)**: 1-tap migration of local guest data into an authenticated Supabase cloud account.
-- **Profile Edit Sheet (`ProfileSheet.tsx`)**: Update name, avatar, and security credentials.
-- **Web Dashboard Linking Modal (`WebDashboardLinkModal.tsx`)**: Displays QR code and pairing token to synchronize session with the desktop web workstation.
-
-##### 2. Financial Architecture & Entities Management:
-- **Multi-Ledger Spaces (`SpaceSwitcherSheet.tsx`)**: Create and manage segregated financial books (Personal, Business, Investments).
-- **Categories Manager (`CategoryManagementSheets.tsx`)**: Add, edit, archive categories, configure parent-child hierarchies, monthly budget caps, and custom monochrome icons.
-- **Wallets & Accounts Manager (`WalletManagementSheets.tsx`)**: Add bank accounts, cash wallets, e-wallets, credit cards, configure account classifications, and initial balances.
-- **Recurring Bills & Obligations (`BillManagementSheets.tsx`)**: Configure recurring bills, due dates, repeat rules (weekly/monthly/yearly), and auto-pay tags.
-- **Financial Goals & Milestones (`GoalManagementSheets.tsx`)**: Set target amounts, target completion dates, and track savings progress.
-- **Monthly Budget Target (`BudgetTargetSheet.tsx`)**: Configure global monthly spend limits and alert thresholds.
-- **Quick Shortcuts Manager (`ShortcutManagementSheets.tsx`)**: Create 1-tap pre-filled transaction templates.
-
-##### 3. System Preferences & Regionalization:
-- **Multi-Currency Switcher (`CurrencySwitcherSheet.tsx`)**: Select base display currency (IDR, USD, EUR, SGD, JPY, GBP) with automatic exchange rate caching.
-- **Bicultural Language Switcher (`LanguageSwitcherSheet.tsx`)**: Switch between 100% pure English and 100% pure Indonesian.
-- **Theme Switcher**: Toggle between Dark Obsidian and Light Alabaster smoke themes.
-- **Apple Shortcuts Automation Guide (`AppleShortcutsGuideModal.tsx`)**: Setup instructions for Siri Shortcuts hands-free voice logging.
-
-##### 4. Security, Biometrics & Zero-Knowledge Vault:
-- **Hardware Biometrics Toggle**: Enable/disable Apple Face ID and Touch ID gating.
-- **Security PIN Setup (`PinSetupModal.tsx`)**: 6-digit numeric fallback PIN code.
-- **Auto-Lock Interval Selector**: Immediately, 1 minute, 5 minutes, or 15 minutes.
-- **Default Privacy Stealth Mode**: Toggle whether balances are blurred by default on application launch.
-- **Zero-Knowledge Encrypted Vault Master (`EncryptedVaultModal.tsx`)**:
-  - Gated by PBKDF2 passphrase.
-  - AES-GCM 256-bit encrypted storage for confidential notes, private keys, financial credentials, and emergency recovery documents.
-
-##### 5. Data Sovereignty, Reporting & Maintenance:
-- **Luxury PDF Report Generator (`LuxuryReportExportSheet.tsx`, `reportExportService.ts`)**:
-  - On-device PDF generation of executive financial dossiers including Balance Sheets, Income Statements, and burn rate telemetry.
-- **CSV / Spreadsheet Ledger Export**: Export all raw transaction records with ledger tags and wallet IDs.
-- **Cloud Force Sync & Flush Pending Mutations (`flushPendingMutations`)**: Manually sync offline mutation queues with Supabase Postgres.
-- **Transaction History Reset & Sanitizer (`ResetTransactionsSheet.tsx`)**: Selective or complete ledger wipe with double-confirmation protection.
-- **Sign Out / Account Deletion**: Secure local cache purge and session termination.
+| 1 | **Financial Architecture** | Kelola Buku Kas (`Manage Ledgers`) | `ManageLedgersSheet.tsx` | Multi-ledger space segmentation & collaborative books | Tap to open drawer |
+| 2 | **Financial Architecture** | Kategori Pengeluaran & Pemasukan | `CategoryManagementSheets.tsx` | Custom category hierarchy, monthly limits & icons | Tap to open sheet |
+| 3 | **Financial Architecture** | Akun & Dompet (`Accounts & Wallets`) | `WalletManagementSheets.tsx` | Bank accounts, cash, e-wallets, credit card ledgers | Tap to open sheet |
+| 4 | **Financial Architecture** | Target Anggaran Bulanan | `BudgetTargetSheet.tsx` | Global monthly spending limit cap & salary anchor day | Tap to open sheet |
+| 5 | **Financial Architecture** | Tagihan Rutin & Komitmen | `BillManagementSheets.tsx` | Subscriptions, scheduled commitments & auto-pay | Tap to open sheet |
+| 6 | **Financial Architecture** | Target Finansial & FIRE | `GoalManagementSheets.tsx` | Milestone savings targets & emergency fund pacing | Tap to open sheet |
+| 7 | **Financial Architecture** | Valuasi Portofolio & Aset | `AssetValuationSheet.tsx` | Crypto, stocks, gold & fixed asset depreciation | Tap to open sheet |
+| 8 | **Financial Architecture** | Impor Rekening Koran | `StatementImportModal.tsx` | Automated BCA & generic CSV bank statement parsing | Tap to open modal |
+| 9 | **Automations & Shortcuts** | Pintasan Ketuk Belakang (Kaca & Dikte) | `AppleShortcutsGuideModal.tsx` | Double-tap iPhone back chassis to trigger glass dialog | Tap to view tutorial & copy |
+| 10 | **Automations & Shortcuts** | Pintasan Tombol Aksi | `AppleShortcutsGuideModal.tsx` | iPhone 15/16 Pro hardware button 1-press quick add | Tap to view tutorial & copy |
+| 11 | **Automations & Shortcuts** | Preset Pintasan Cepat | `ShortcutManagementSheets.tsx` | 1-tap routine expense templates (e.g. "Kopi 25k") | Tap to manage presets |
+| 12 | **Automations & Shortcuts** | Otomatisasi Apple Pay | `AppleShortcutsGuideModal.tsx` | Contactless card tap automation & background prompt | Tap to view automation setup |
+| 13 | **Security & Data Vault** | Perisai Privasi (Sensor Saldo) | `PrivacyContext.tsx` | Obfuscates monetary figures across all cards & reports | Apple iOS Toggle Switch |
+| 14 | **Security & Data Vault** | Kunci Biometrik (Face ID / PIN) | `SecurityLockContext.tsx` | Enforces hardware Face ID or passcode on app launch | Toggle + Timeout pills |
+| 15 | **Security & Data Vault** | Ubah / Atur PIN Cadangan | `PinSetupModal.tsx` | 6-digit numeric fallback passcode with double entry | Tap to open PIN modal |
+| 16 | **Security & Data Vault** | Izin Kamera & Berkas Struk | `MediaPermissionsSheet.tsx` | Camera & photo gallery permissions for receipt OCR | Tap to open permission sheet |
+| 17 | **Security & Data Vault** | Sinkronisasi Cloud Live | `flushPendingMutations` | Syncs offline mutation queue with Supabase Postgres | Tap "Sync Now" button |
+| 18 | **Security & Data Vault** | Tautkan Web Dashboard | `WebDashboardLinkModal.tsx` | QR code & ephemeral token pairing for desktop access | Tap to display QR modal |
+| 19 | **Security & Data Vault** | Vault Terenkripsi (AES-256) | `EncryptedVaultModal.tsx` | Client-side AES-GCM 256-bit encrypted offline backup | Tap to unlock vault modal |
+| 20 | **Security & Data Vault** | Ekspor Laporan Keuangan & Pajak | `LuxuryReportExportSheet.tsx` | On-device luxury PDF statement, CSV & JSON export | Tap to open export sheet |
+| 21 | **Security & Data Vault** | Reset Data Pembukuan | `ResetTransactionsSheet.tsx` | Selective or complete ledger wipe with double protection | Tap to open reset sheet |
+| 22 | **Preferences & Tampilan** | Tampilan Terang Alabaster | `ThemeContext.tsx` | Toggles between Dark Obsidian and Light Alabaster | Apple iOS Toggle Switch |
+| 23 | **Preferences & Tampilan** | Mata Uang Utama (`Base Currency`) | `CurrencySwitcherSheet.tsx` | Base currency selection (IDR, USD, EUR, SGD, JPY, GBP) | Tap to open currency sheet |
+| 24 | **Preferences & Tampilan** | Bahasa Aplikasi (`App Language`) | `LanguageSwitcherSheet.tsx` | 100% pure Indonesian vs 100% pure English ("No Gado-Gado") | Tap to open language sheet |
+| 25 | **Preferences & Tampilan** | Papan Tombol Angka Kustom | `localStorage("keypad_mode")` | Tactile liquid haptic numpad for transaction entry | Apple iOS Toggle Switch |
+| 26 | **Preferences & Tampilan** | Label Transaksi (#) | `localStorage("enable_tags")` | Multi-tag hashtag categorization on transactions | Apple iOS Toggle Switch |
+| 27 | **Preferences & Tampilan** | Simpan File Lampiran Struk | `localStorage("save_attachments")` | Persists receipt photos locally on device filesystem | Apple iOS Toggle Switch |
+| 28 | **Preferences & Tampilan** | Pengingat Streak Harian | `notifications.ts` | Daily reminder at custom time to maintain active log | Toggle + Time Picker button |
+| 29 | **Preferences & Tampilan** | Peringatan Tagihan Jatuh Tempo | `notifications.ts` | Proactive notification alerts prior to bill due dates | Apple iOS Toggle Switch |
+| 30 | **Preferences & Tampilan** | Ulangi Wizard Kustomisasi | `handleRerunCustomization` | Re-runs onboarding wizard without purging transactions | Tap to trigger reset prompt |
 
 ---
 
@@ -1236,14 +1332,14 @@ Trouvaille delivers a dedicated **11-Slide Financial Wrapped** engine (`Financia
 
 ---
 
-## 12. Verification, Invariants & Test Coverage (41 Suites, 368 Tests)
+## 12. Verification, Invariants & Test Coverage (41 Suites, 369 Tests)
 
-Trouvaille enforces strict automated testing powered by **Vitest** (`vitest run`). All **41 test suites (368 tests)** pass unconditionally:
+Trouvaille enforces strict automated testing powered by **Vitest** (`vitest run`). All **41 test suites (369 tests)** pass unconditionally:
 
 ```
 Test Files  41 passed (41 total)
-Tests       368 passed (368 total)
-Duration    ~20.3 seconds
+Tests       369 passed (369 total)
+Duration    ~21.6 seconds
 ```
 
 ### Complete Test Suite Matrix
@@ -1274,7 +1370,7 @@ Duration    ~20.3 seconds
 | 22 | `tests/wrappedCharts.test.ts` | Stacked cascade categories, heatmap matrix, runway curves | 7 | PASS |
 | 23 | `tests/milestonesAndEmergencyFund.test.ts` | Financial goals, milestone tracking & emergency fund adequacy | 7 | PASS |
 | 24 | `tests/financialInvariants.test.ts` | Mathematical balance equations, transfer conservation | 6 | PASS |
-| 25 | `tests/deepLinkHandler.test.ts` | Custom URL schemes & universal link routing | 6 | PASS |
+| 25 | `tests/deepLinkHandler.test.ts` | Custom URL schemes & universal link routing | 7 | PASS |
 | 26 | `tests/keypadHelper.test.ts` | Inline math evaluator & custom numeric keypad formatting | 6 | PASS |
 | 27 | `tests/holdingSyncEngine.test.ts` | Automated USDT reconciliation & holding activity ledger | 6 | PASS |
 | 28 | `tests/languageContext.test.ts` | 100% pure non-mixed EN/ID localization verification | 6 | PASS |
@@ -1291,7 +1387,7 @@ Duration    ~20.3 seconds
 | 39 | `tests/splitBillAndGamification.test.ts` | Proportional split bill math & tax/discount distribution | 4 | PASS |
 | 40 | `tests/merchantMemory.test.ts` | Adaptive merchant memory learning & confidence scoring | 3 | PASS |
 | 41 | `tests/emoneyNfc.test.ts` | Contactless E-Money NFC card presets & transit validation | 3 | PASS |
-| **TOTAL** | **41 Test Suites** | **Complete Codebase Domain Verification** | **368** | **100%** |
+| **TOTAL** | **41 Test Suites** | **Complete Codebase Domain Verification** | **369** | **100%** |
 
 ---
 
@@ -1383,12 +1479,12 @@ d:\Project\Trouvaille\
 │   │   ├── CalendarPage.tsx              # Cashflow forecasting & daily run-rate matrix
 │   │   ├── HomePage.tsx                  # Primary dashboard & modular widget canvas
 │   │   ├── LoginPage.tsx                 # Zero-leakage biometric / Supabase auth
-│   │   ├── SettingsPage.tsx              # Security, data export & preference toggles
+│   │   ├── SettingsPage.tsx              # Apple Luxury Bento Hubs & Cryptographic Console
 │   │   ├── StatisticsPage.tsx            # Comprehensive analytics & Financial Wrapped trigger
 │   │   └── TransactionsPage.tsx          # Infinite-scroll virtualized transaction journal
 │   ├── App.tsx                           # Root layout, routing & background sync lifecycles
 │   └── main.tsx                          # Entry point & TanStack Query persister init
-└── tests\                                # 41 Vitest test suites (368 tests passing 100%)
+└── tests\                                # 41 Vitest test suites (369 tests passing 100%)
 ```
 
 ---
