@@ -14,6 +14,7 @@ import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useWallets } from "../../hooks/useWallets";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export interface SplitBillSheetProps {
   isOpen: boolean;
@@ -38,9 +39,10 @@ export function SplitBillSheet({
   onRecordTransaction,
 }: SplitBillSheetProps) {
   const { showToast } = useToast();
+  const { isIndonesian } = useLanguage();
   const { data: wallets = [] } = useWallets();
 
-  const [title, setTitle] = useState("Nongkrong & Makan");
+  const [title, setTitle] = useState(isIndonesian ? "Nongkrong & Makan" : "Dinner & Hangout");
   const [subtotal, setSubtotal] = useState<number>(180000);
   const [subtotalInput, setSubtotalInput] = useState("180.000");
   const [taxPct, setTaxPct] = useState<number>(10);
@@ -52,10 +54,10 @@ export function SplitBillSheet({
   const [selectedWalletId, setSelectedWalletId] = useState<string>("");
 
   const [friends, setFriends] = useState<FriendItem[]>([
-    { id: "1", name: "Gue", amount: 0 },
-    { id: "2", name: "Teman 1", amount: 0 },
-    { id: "3", name: "Teman 2", amount: 0 },
-    { id: "4", name: "Teman 3", amount: 0 },
+    { id: "1", name: isIndonesian ? "Gue" : "Me", amount: 0 },
+    { id: "2", name: isIndonesian ? "Teman 1" : "Friend 1", amount: 0 },
+    { id: "3", name: isIndonesian ? "Teman 2" : "Friend 2", amount: 0 },
+    { id: "4", name: isIndonesian ? "Teman 3" : "Friend 3", amount: 0 },
   ]);
 
   // Selected wallet for payment details in WhatsApp message
@@ -94,7 +96,9 @@ export function SplitBillSheet({
 
     let rincian = "";
     if (splitMode === "equal") {
-      rincian = `Bagi rata ${peopleCount} orang: @${formatRupiah(equalPerPerson)}`;
+      rincian = isIndonesian
+        ? `Bagi rata ${peopleCount} orang: @${formatRupiah(equalPerPerson)}`
+        : `Split evenly for ${peopleCount} people: @${formatRupiah(equalPerPerson)}`;
     } else {
       rincian = friends
         .map((f, i) => `${i + 1}. ${f.name}: ${formatRupiah(f.amount || equalPerPerson)}`)
@@ -103,10 +107,21 @@ export function SplitBillSheet({
 
     let transferInfo = "";
     if (paymentWallet) {
-      transferInfo = `\n\nTransfer to:\n${paymentWallet.name} a/n John / Trouvaille`;
+      transferInfo = isIndonesian
+        ? `\n\nTransfer ke:\n${paymentWallet.name} a/n John / Trouvaille`
+        : `\n\nTransfer to:\n${paymentWallet.name} a/n John / Trouvaille`;
     }
 
-    const message = `🧾 Split Bill Breakdown: ${title}
+    const message = isIndonesian
+      ? `🧾 Rincian Bagi Tagihan: ${title}
+------------------------------
+Subtotal: ${formatRupiah(subtotal)}${taxPct > 0 ? `\nPajak (${taxPct}%): ${formatRupiah(taxAmount)}` : ""}${servicePct > 0 ? `\nLayanan (${servicePct}%): ${formatRupiah(serviceAmount)}` : ""}${discountAmount > 0 ? `\nDiskon: -${formatRupiah(discountAmount)}` : ""}
+Total Tagihan: ${formatRupiah(grandTotal)}
+
+${rincian}${transferInfo}
+
+Terima kasih semuanya! 🙏✨`
+      : `🧾 Split Bill Breakdown: ${title}
 ------------------------------
 Subtotal: ${formatRupiah(subtotal)}${taxPct > 0 ? `\nTax (${taxPct}%): ${formatRupiah(taxAmount)}` : ""}${servicePct > 0 ? `\nService (${servicePct}%): ${formatRupiah(serviceAmount)}` : ""}${discountAmount > 0 ? `\nDiscount: -${formatRupiah(discountAmount)}` : ""}
 Total Bill: ${formatRupiah(grandTotal)}
@@ -117,7 +132,11 @@ Thank you everyone! 🙏✨`;
 
     navigator.clipboard.writeText(message);
     setCopied(true);
-    showToast("Bill breakdown copied to clipboard!", "add", () => {});
+    showToast(
+      isIndonesian ? "Rincian tagihan disalin ke papan klip!" : "Bill breakdown copied to clipboard!",
+      "add",
+      () => {},
+    );
     setTimeout(() => setCopied(false), 2500);
   };
 
@@ -130,10 +149,16 @@ Thank you everyone! 🙏✨`;
         total: grandTotal,
         myShare,
         title,
-        note: `Split Bill: ${title} (Total ${formatRupiah(grandTotal)}, my share ${formatRupiah(myShare)})`,
+        note: isIndonesian
+          ? `Bagi Tagihan: ${title} (Total ${formatRupiah(grandTotal)}, bagian saya ${formatRupiah(myShare)})`
+          : `Split Bill: ${title} (Total ${formatRupiah(grandTotal)}, my share ${formatRupiah(myShare)})`,
       });
     }
-    showToast("Split bill transaction recorded!", "add", () => {});
+    showToast(
+      isIndonesian ? "Transaksi bagi tagihan berhasil dicatat!" : "Split bill transaction recorded!",
+      "add",
+      () => {},
+    );
     onClose();
   };
 
@@ -154,10 +179,10 @@ Thank you everyone! 🙏✨`;
             </div>
             <div>
               <h2 className="text-[15px] font-semibold tracking-tight leading-snug">
-                Split Bill Calculator
+                {isIndonesian ? "Kalkulator Bagi Tagihan" : "Split Bill Calculator"}
               </h2>
               <p className="text-[11px] text-[var(--text-tertiary)] leading-none mt-0.5">
-                Taxes, service charges & instant breakdown
+                {isIndonesian ? "Pajak, biaya layanan & rincian instan" : "Taxes, service charges & instant breakdown"}
               </p>
             </div>
           </div>
@@ -180,13 +205,13 @@ Thank you everyone! 🙏✨`;
           {/* 1. Title / Event Input */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">
-              Venue / Event Name
+              {isIndonesian ? "Nama Tempat / Acara" : "Venue / Event Name"}
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Dinner, Coffee, Groceries..."
+              placeholder={isIndonesian ? "cth. Makan Malam, Kopi, Belanja..." : "e.g. Dinner, Coffee, Groceries..."}
               className="w-full px-3.5 py-2.5 rounded-2xl text-[13px] font-medium outline-none transition-all"
               style={{
                 background: "var(--bg-elevated)",
@@ -199,7 +224,7 @@ Thank you everyone! 🙏✨`;
           {/* 2. Subtotal Amount Input */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">
-              Subtotal (Before Tax & Service)
+              {isIndonesian ? "Subtotal (Sebelum Pajak & Layanan)" : "Subtotal (Before Tax & Service)"}
             </label>
             <div
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl transition-all"
@@ -214,6 +239,7 @@ Thank you everyone! 🙏✨`;
               <input
                 type="text"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 value={subtotalInput}
                 onChange={(e) => handleSubtotalChange(e.target.value)}
                 placeholder="0"
@@ -235,7 +261,7 @@ Thank you everyone! 🙏✨`;
             >
               <div className="flex items-center justify-between text-[11px]">
                 <span className="font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                  Tax (PB1/VAT)
+                  {isIndonesian ? "Pajak (PB1/PPN)" : "Tax (PB1/VAT)"}
                 </span>
                 <span className="font-semibold text-[var(--text-primary)]">
                   {taxPct}%
@@ -275,7 +301,7 @@ Thank you everyone! 🙏✨`;
             >
               <div className="flex items-center justify-between text-[11px]">
                 <span className="font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                  Service Charge
+                  {isIndonesian ? "Biaya Layanan" : "Service Charge"}
                 </span>
                 <span className="font-semibold text-[var(--text-primary)]">
                   {servicePct}%
@@ -309,7 +335,7 @@ Thank you everyone! 🙏✨`;
           {/* Diskon / Potongan Promo */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">
-              Discount / Promo Voucher (Optional)
+              {isIndonesian ? "Diskon / Voucher Promo (Opsional)" : "Discount / Promo Voucher (Optional)"}
             </label>
             <div
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl transition-all"
@@ -323,6 +349,8 @@ Thank you everyone! 🙏✨`;
               </span>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={discountAmount === 0 ? "" : discountAmount}
                 onChange={(e) =>
                   setDiscountAmount(Math.max(0, Number(e.target.value) || 0))
@@ -338,7 +366,7 @@ Thank you everyone! 🙏✨`;
           {wallets.length > 0 && (
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">
-                Payment Destination Wallet (For WhatsApp Message)
+                {isIndonesian ? "Dompet Tujuan Transfer (Untuk Pesan WhatsApp)" : "Payment Destination Wallet (For WhatsApp Message)"}
               </label>
               <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                 {wallets.map((w) => (
@@ -383,7 +411,7 @@ Thank you everyone! 🙏✨`;
                     : "var(--text-tertiary)",
               }}
             >
-              Split Evenly ({peopleCount} People)
+              {isIndonesian ? `Bagi Rata (${peopleCount} Orang)` : `Split Evenly (${peopleCount} People)`}
             </button>
             <button
               type="button"
@@ -401,7 +429,7 @@ Thank you everyone! 🙏✨`;
                     : "var(--text-tertiary)",
               }}
             >
-              Custom Share
+              {isIndonesian ? "Bagi Kustom" : "Custom Share"}
             </button>
           </div>
 
@@ -417,7 +445,7 @@ Thank you everyone! 🙏✨`;
               <div className="flex items-center gap-2">
                 <Users size={16} className="text-[var(--text-tertiary)]" />
                 <span className="text-[13px] font-semibold">
-                  Number of People
+                  {isIndonesian ? "Jumlah Orang" : "Number of People"}
                 </span>
               </div>
 
@@ -478,6 +506,8 @@ Thank you everyone! 🙏✨`;
                     </span>
                     <input
                       type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={friend.amount || ""}
                       onChange={(e) => {
                         const updated = [...friends];
@@ -507,19 +537,19 @@ Thank you everyone! 🙏✨`;
             </div>
             {taxPct > 0 && (
               <div className="flex justify-between text-[11px] text-[var(--text-tertiary)]">
-                <span>Tax ({taxPct}%)</span>
+                <span>{isIndonesian ? `Pajak (${taxPct}%)` : `Tax (${taxPct}%)`}</span>
                 <span className="amount font-medium">+{formatRupiah(taxAmount)}</span>
               </div>
             )}
             {servicePct > 0 && (
               <div className="flex justify-between text-[11px] text-[var(--text-tertiary)]">
-                <span>Service ({servicePct}%)</span>
+                <span>{isIndonesian ? `Layanan (${servicePct}%)` : `Service (${servicePct}%)`}</span>
                 <span className="amount font-medium">+{formatRupiah(serviceAmount)}</span>
               </div>
             )}
             <div className="pt-2 border-t border-black/5 dark:border-white/10 flex justify-between items-baseline">
               <span className="text-[12px] font-semibold">
-                Total Bill
+                {isIndonesian ? "Total Tagihan" : "Total Bill"}
               </span>
               <span className="text-[16px] font-semibold amount text-[var(--text-primary)]">
                 {formatRupiah(grandTotal)}
@@ -537,7 +567,7 @@ Thank you everyone! 🙏✨`;
               <div className="flex items-center gap-1.5">
                 <Sparkles size={14} className="text-[var(--text-primary)]" />
                 <span className="text-[12px] font-semibold">
-                  Per Person Share
+                  {isIndonesian ? "Bagian Per Orang" : "Per Person Share"}
                 </span>
               </div>
               <span className="text-[15px] font-semibold amount text-[var(--text-primary)]">
@@ -559,7 +589,7 @@ Thank you everyone! 🙏✨`;
             }}
           >
             {copied ? <Check size={16} /> : <Copy size={16} />}
-            <span>{copied ? "Copied to Clipboard!" : "Copy WhatsApp Breakdown"}</span>
+            <span>{copied ? (isIndonesian ? "Tersalin ke Papan Klip!" : "Copied to Clipboard!") : (isIndonesian ? "Salin Rincian WhatsApp" : "Copy WhatsApp Breakdown")}</span>
           </button>
 
           <button
@@ -571,7 +601,9 @@ Thank you everyone! 🙏✨`;
               border: "1px solid var(--glass-border)",
             }}
           >
-            Record My Share Expense ({formatRupiah(equalPerPerson)})
+            {isIndonesian
+              ? `Catat Pengeluaran Bagian Saya (${formatRupiah(equalPerPerson)})`
+              : `Record My Share Expense (${formatRupiah(equalPerPerson)})`}
           </button>
         </div>
       </div>

@@ -2,7 +2,9 @@ import { useState, useMemo } from "react";
 import { Plus, Trash2, Check, Bell, Calendar as CalendarIcon } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { GlassDatePicker } from "../ui/GlassDatePicker";
+import { IconRenderer } from "../ui/IconRenderer";
 import { DetectedRecurringSection } from "../bills/DetectedRecurringSection";
+import { PayBillModal } from "../bills/PayBillModal";
 import {
   useBills,
   useAddBill,
@@ -12,6 +14,8 @@ import {
 } from "../../hooks/useBills";
 import { useAllTransactions } from "../../hooks/useTransactions";
 import { useCategories } from "../../hooks/useCategories";
+import { useWallets } from "../../hooks/useWallets";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   detectRecurringTransactions,
   type DetectedRecurringItem,
@@ -31,7 +35,9 @@ export function BillManagementSheets({
   isOpen,
   onClose,
 }: BillManagementSheetsProps) {
+  const { isIndonesian } = useLanguage();
   const { data: bills = [] } = useBills();
+  const { data: wallets = [] } = useWallets();
   const addBill = useAddBill();
   const updateBill = useUpdateBill();
   const deleteBill = useDeleteBill();
@@ -43,6 +49,7 @@ export function BillManagementSheets({
   const [billSheetOpen, setBillSheetOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<any>(null);
+  const [payingBill, setPayingBill] = useState<any | null>(null);
 
   const [billTitle, setBillTitle] = useState("");
   const [billAmount, setBillAmount] = useState("");
@@ -51,6 +58,7 @@ export function BillManagementSheets({
     "none" | "weekly" | "monthly" | "yearly"
   >("monthly");
   const [billIsPaid, setBillIsPaid] = useState(false);
+  const [billWalletId, setBillWalletId] = useState<string>("");
 
   const [ignoredRecurringIds, setIgnoredRecurringIds] = useState<string[]>(
     () => {
@@ -93,7 +101,9 @@ export function BillManagementSheets({
     persistIgnoredRecurringIds([...ignoredRecurringIds, item.id]);
     triggerHaptic("light");
     showToast(
-      `${item.title} hidden from recurring suggestions`,
+      isIndonesian
+        ? `${item.title} disembunyikan dari saran tagihan rutin`
+        : `${item.title} hidden from recurring suggestions`,
       "update",
       () => {},
     );
@@ -110,8 +120,19 @@ export function BillManagementSheets({
 
   const handleConfirmRecurring = (item: DetectedRecurringItem) => {
     const repeatRule = mapRecurringFrequencyToBillRule(item.frequency);
-    const note =
-      repeatRule === "none"
+    const freqLabelId =
+      item.frequency === "weekly"
+        ? "mingguan"
+        : item.frequency === "monthly"
+          ? "bulanan"
+          : item.frequency === "yearly"
+            ? "tahunan"
+            : item.frequency;
+    const note = isIndonesian
+      ? repeatRule === "none"
+        ? `Pola transaksi berulang ${freqLabelId} terdeteksi dari riwayat. Tinjau jadwal pembayaran secara manual setelah konfirmasi.`
+        : `Dikonfirmasi dari pola transaksi berulang ${freqLabelId} yang terdeteksi.`
+      : repeatRule === "none"
         ? `Detected ${item.frequency} recurring pattern from transaction history. Review cadence manually after confirmation.`
         : `Confirmed from detected ${item.frequency} recurring transaction pattern.`;
 
@@ -129,12 +150,20 @@ export function BillManagementSheets({
         onSuccess: () => {
           setConfirmingRecurringId(null);
           triggerHaptic("medium");
-          showToast(`${item.title} added to recurring bills`, "add", () => {});
+          showToast(
+            isIndonesian
+              ? `${item.title} ditambahkan ke tagihan rutin`
+              : `${item.title} added to recurring bills`,
+            "add",
+            () => {},
+          );
         },
         onError: () => {
           setConfirmingRecurringId(null);
           showToast(
-            "Failed to confirm detected recurring item",
+            isIndonesian
+              ? "Gagal mengonfirmasi transaksi rutin yang terdeteksi"
+              : "Failed to confirm detected recurring item",
             "delete",
             () => {},
           );
@@ -150,6 +179,7 @@ export function BillManagementSheets({
     setBillDate(new Date());
     setBillRepeat("monthly");
     setBillIsPaid(false);
+    setBillWalletId(wallets[0]?.id || "");
     setBillSheetOpen(true);
   };
 
@@ -160,6 +190,7 @@ export function BillManagementSheets({
     setBillDate(b.due_date ? parseISO(b.due_date) : new Date());
     setBillRepeat(b.repeat_rule || "monthly");
     setBillIsPaid(!!b.is_paid);
+    setBillWalletId(b.wallet_id || "");
     setBillSheetOpen(true);
   };
 
@@ -172,6 +203,7 @@ export function BillManagementSheets({
       due_date: format(billDate, "yyyy-MM-dd"),
       repeat_rule: billRepeat,
       is_paid: billIsPaid,
+      wallet_id: billWalletId || null,
     };
     if (editingBill) {
       updateBill.mutate(
@@ -182,7 +214,12 @@ export function BillManagementSheets({
             setEditingBill(null);
             setBillTitle("");
             setBillAmount("");
-            showToast("Bill updated", "update", () => {});
+            setBillWalletId("");
+            showToast(
+              isIndonesian ? "Tagihan berhasil diperbarui" : "Bill updated",
+              "update",
+              () => {},
+            );
           },
         },
       );
@@ -192,7 +229,12 @@ export function BillManagementSheets({
           setBillSheetOpen(false);
           setBillTitle("");
           setBillAmount("");
-          showToast("Bill created", "add", () => {});
+          setBillWalletId("");
+          showToast(
+            isIndonesian ? "Tagihan berhasil ditambahkan" : "Bill created",
+            "add",
+            () => {},
+          );
         },
       });
     }
@@ -209,14 +251,15 @@ export function BillManagementSheets({
                 className="font-semibold text-lg"
                 style={{ color: "var(--text-primary)" }}
               >
-                Recurring Bills
+                {isIndonesian ? "Tagihan Rutin" : "Recurring Bills"}
               </h3>
               <p
                 className="text-[11px] font-semibold mt-0.5"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {bills.filter((b: any) => !b.is_paid).length} unpaid ·{" "}
-                {bills.filter((b: any) => b.is_paid).length} paid
+                {isIndonesian
+                  ? `${bills.filter((b: any) => !b.is_paid).length} belum · ${bills.filter((b: any) => b.is_paid).length} lunas`
+                  : `${bills.filter((b: any) => !b.is_paid).length} unpaid · ${bills.filter((b: any) => b.is_paid).length} paid`}
               </p>
             </div>
             <button
@@ -226,8 +269,8 @@ export function BillManagementSheets({
               }}
               className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 cursor-pointer"
               style={{
-                background: "var(--accent)",
-                color: "var(--accent-ink)",
+                background: "var(--text-primary)",
+                color: "var(--bg-base)",
               }}
             >
               <Plus size={16} />
@@ -260,15 +303,13 @@ export function BillManagementSheets({
                       className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                       style={{
                         background: isPaid
-                          ? "rgba(16, 185, 129, 0.15)"
+                          ? "var(--glass-fill-strong)"
                           : "var(--bg-elevated)",
-                        border: isPaid
-                          ? "1px solid rgba(16, 185, 129, 0.3)"
-                          : "1px solid var(--glass-border)",
-                        color: isPaid ? "#34d399" : "var(--text-tertiary)",
+                        border: "1px solid var(--glass-border)",
+                        color: isPaid ? "var(--text-primary)" : "var(--text-tertiary)",
                       }}
                     >
-                      {isPaid ? <Check size={20} /> : <Bell size={20} />}
+                      {isPaid ? <Check size={18} strokeWidth={2} /> : <Bell size={18} strokeWidth={1.75} />}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -283,17 +324,26 @@ export function BillManagementSheets({
                           {b.title}
                         </p>
                         {isPaid && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-semibold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            Paid
+                          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-semibold uppercase bg-white/10 dark:bg-white/10 text-[var(--text-secondary)] border border-[var(--glass-border)]">
+                            {isIndonesian ? "Lunas" : "Paid"}
                           </span>
                         )}
                       </div>
                       <p
-                        className="text-[11px] font-semibold mt-0.5"
+                        className="text-[11px] font-medium mt-0.5"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        <span className="capitalize">{b.repeat_rule}</span> ·
-                        Due {b.due_date} · {formatRupiah(Number(b.amount || 0))}
+                        <span className="capitalize">
+                          {b.repeat_rule === "none"
+                            ? isIndonesian ? "Sekali" : "None"
+                            : b.repeat_rule === "weekly"
+                              ? isIndonesian ? "Mingguan" : "Weekly"
+                              : b.repeat_rule === "monthly"
+                                ? isIndonesian ? "Bulanan" : "Monthly"
+                                : isIndonesian ? "Tahunan" : "Yearly"}
+                        </span>{" "}
+                        · {isIndonesian ? `Jatuh tempo ${b.due_date}` : `Due ${b.due_date}`} ·{" "}
+                        <span className="amount">{formatRupiah(Number(b.amount || 0))}</span>
                       </p>
                     </div>
                   </div>
@@ -303,59 +353,71 @@ export function BillManagementSheets({
                   >
                     <button
                       onClick={() => {
-                        markBillPaid.mutate(
-                          { bill: b, paid: !isPaid },
-                          {
-                            onSuccess: () => {
-                              showToast(
-                                isPaid
-                                  ? `Marked ${b.title} as unpaid`
-                                  : `Marked ${b.title} as paid`,
-                                "update",
-                                () => {},
-                              );
+                        if (!isPaid) {
+                          setPayingBill(b);
+                          triggerHaptic("light");
+                        } else {
+                          markBillPaid.mutate(
+                            { bill: b, paid: false },
+                            {
+                              onSuccess: () => {
+                                showToast(
+                                  isIndonesian
+                                    ? `${b.title} ditandai belum lunas`
+                                    : `Marked ${b.title} as unpaid`,
+                                  "update",
+                                  () => {},
+                                );
+                              },
+                              onError: (error: any) => {
+                                showToast(
+                                  error?.message ||
+                                    (isIndonesian
+                                      ? `Gagal memperbarui ${b.title}`
+                                      : `Failed to update ${b.title}`),
+                                  "delete",
+                                  () => {},
+                                );
+                              },
                             },
-                            onError: (error: any) => {
-                              showToast(
-                                error?.message || `Failed to update ${b.title}`,
-                                "delete",
-                                () => {},
-                              );
-                            },
-                          },
-                        );
-                        triggerHaptic("medium");
+                          );
+                          triggerHaptic("medium");
+                        }
                       }}
                       disabled={isTogglingBill}
                       className="text-[11px] font-semibold px-2.5 py-1.5 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                       style={{
                         background: isPaid
                           ? "var(--glass-fill-strong)"
-                          : "var(--accent)",
+                          : "var(--text-primary)",
                         color: isPaid
                           ? "var(--text-secondary)"
-                          : "var(--accent-ink)",
+                          : "var(--bg-base)",
                         border: isPaid
                           ? "1px solid var(--glass-border)"
                           : "none",
                       }}
                       title={
-                        isPaid ? "Tandai Belum Bayar" : "Tandai Sudah Bayar"
+                        isPaid
+                          ? isIndonesian ? "Tandai Belum Bayar" : "Mark as Unpaid"
+                          : isIndonesian ? "Tandai Sudah Bayar" : "Mark as Paid"
                       }
                     >
-                      <Check size={12} />
+                      <Check size={12} strokeWidth={2} />
                       <span>
                         {isTogglingBill
-                          ? "Saving..."
+                          ? isIndonesian ? "Menyimpan..." : "Saving..."
                           : isPaid
-                            ? "Unmark"
-                            : "Paid"}
+                            ? isIndonesian ? "Batal" : "Unmark"
+                            : isIndonesian ? "Bayar" : "Pay"}
                       </span>
                     </button>
                     <button
                       onClick={() => {
-                        showToast("Bill deleted", "delete", () =>
-                          deleteBill.mutate(b.id),
+                        showToast(
+                          isIndonesian ? "Tagihan dihapus" : "Bill deleted",
+                          "delete",
+                          () => deleteBill.mutate(b.id),
                         );
                       }}
                       className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 cursor-pointer"
@@ -375,7 +437,7 @@ export function BillManagementSheets({
                 className="text-sm text-center py-4"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                No recurring bills registered.
+                {isIndonesian ? "Belum ada tagihan rutin terdaftar." : "No recurring bills registered."}
               </p>
             )}
           </div>
@@ -392,14 +454,20 @@ export function BillManagementSheets({
             className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
-            {editingBill ? "Edit Recurring Bill" : "Add Recurring Bill"}
+            {editingBill
+              ? isIndonesian
+                ? "Ubah Tagihan Rutin"
+                : "Edit Recurring Bill"
+              : isIndonesian
+                ? "Tambah Tagihan Rutin"
+                : "Add Recurring Bill"}
           </h3>
           <div>
             <label
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Bill Title
+              {isIndonesian ? "Nama Tagihan" : "Bill Title"}
             </label>
             <input
               type="text"
@@ -419,7 +487,7 @@ export function BillManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Nominal Amount (IDR)
+              {isIndonesian ? "Nominal Tagihan (IDR)" : "Nominal Amount (IDR)"}
             </label>
             <input
               type="text"
@@ -444,7 +512,7 @@ export function BillManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Payment Status
+              {isIndonesian ? "Status Pembayaran" : "Payment Status"}
             </label>
             <div
               className="flex p-1 rounded-2xl"
@@ -458,36 +526,84 @@ export function BillManagementSheets({
                 onClick={() => setBillIsPaid(false)}
                 className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer"
                 style={{
-                  background: !billIsPaid ? "var(--accent)" : "transparent",
+                  background: !billIsPaid ? "var(--text-primary)" : "transparent",
                   color: !billIsPaid
-                    ? "var(--accent-ink)"
+                    ? "var(--bg-base)"
                     : "var(--text-tertiary)",
                 }}
               >
-                Unpaid (Belum)
+                {isIndonesian ? "Belum Bayar" : "Unpaid"}
               </button>
               <button
                 type="button"
                 onClick={() => setBillIsPaid(true)}
                 className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                 style={{
-                  background: billIsPaid ? "var(--accent)" : "transparent",
+                  background: billIsPaid ? "var(--text-primary)" : "transparent",
                   color: billIsPaid
-                    ? "var(--accent-ink)"
+                    ? "var(--bg-base)"
                     : "var(--text-tertiary)",
                 }}
               >
-                <Check size={12} />
-                <span>Paid (Sudah Bayar)</span>
+                <Check size={12} strokeWidth={2} />
+                <span>{isIndonesian ? "Sudah Bayar" : "Paid"}</span>
               </button>
             </div>
           </div>
+
+          {/* Default Account Picker */}
+          {wallets.length > 0 && (
+            <div>
+              <label
+                className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian ? "Akun Pembayaran Default" : "Default Payment Account"}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {wallets.map((w: any) => {
+                  const isSelected = billWalletId === w.id;
+                  return (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => setBillWalletId(isSelected ? "" : w.id)}
+                      className="p-2.5 rounded-2xl flex items-center gap-2 transition-all text-left cursor-pointer"
+                      style={{
+                        background: isSelected
+                          ? "var(--glass-fill-strong)"
+                          : "var(--bg-elevated)",
+                        border: isSelected
+                          ? "1px solid var(--text-primary)"
+                          : "1px solid var(--glass-border)",
+                      }}
+                    >
+                      <IconRenderer icon={w.icon || "Wallet"} size="w-4 h-4" />
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="text-[11.5px] font-semibold truncate"
+                          style={{
+                            color: isSelected
+                              ? "var(--text-primary)"
+                              : "var(--text-secondary)",
+                          }}
+                        >
+                          {w.name}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div>
             <label
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Due Date
+              {isIndonesian ? "Tanggal Jatuh Tempo" : "Due Date"}
             </label>
             <button
               onClick={() => setPickerOpen(true)}
@@ -499,9 +615,11 @@ export function BillManagementSheets({
               }}
             >
               <span className="font-medium text-sm">
-                Due Date: {format(billDate, "dd MMM yyyy")}
+                {isIndonesian
+                  ? `Jatuh tempo: ${format(billDate, "dd MMM yyyy")}`
+                  : `Due Date: ${format(billDate, "dd MMM yyyy")}`}
               </span>
-              <CalendarIcon size={18} style={{ color: "var(--accent)" }} />
+              <CalendarIcon size={18} style={{ color: "var(--text-primary)" }} />
             </button>
           </div>
           <div>
@@ -509,7 +627,7 @@ export function BillManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Repeat Frequency
+              {isIndonesian ? "Frekuensi Berulang" : "Repeat Frequency"}
             </label>
             <div
               className="flex p-1 rounded-2xl"
@@ -525,20 +643,20 @@ export function BillManagementSheets({
                   className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer"
                   style={{
                     background:
-                      billRepeat === r ? "var(--accent)" : "transparent",
+                      billRepeat === r ? "var(--text-primary)" : "transparent",
                     color:
                       billRepeat === r
-                        ? "var(--accent-ink)"
+                        ? "var(--bg-base)"
                         : "var(--text-tertiary)",
                   }}
                 >
                   {r === "none"
-                    ? "None"
+                    ? isIndonesian ? "Sekali" : "None"
                     : r === "weekly"
-                      ? "Weekly"
+                      ? isIndonesian ? "Mingguan" : "Weekly"
                       : r === "monthly"
-                        ? "Monthly"
-                        : "Yearly"}
+                        ? isIndonesian ? "Bulanan" : "Monthly"
+                        : isIndonesian ? "Tahunan" : "Yearly"}
                 </button>
               ))}
             </div>
@@ -546,9 +664,15 @@ export function BillManagementSheets({
           <button
             onClick={handleSaveBill}
             className="w-full py-4 rounded-[20px] font-semibold text-[15px] shadow-lg active:scale-95 cursor-pointer"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
           >
-            {editingBill ? "Update Bill" : "Save Bill"}
+            {editingBill
+              ? isIndonesian
+                ? "Perbarui Tagihan"
+                : "Update Bill"
+              : isIndonesian
+                ? "Simpan Tagihan"
+                : "Save Bill"}
           </button>
         </div>
       </BottomSheet>
@@ -560,7 +684,7 @@ export function BillManagementSheets({
             className="font-semibold text-lg mb-4"
             style={{ color: "var(--text-primary)" }}
           >
-            Select Due Date
+            {isIndonesian ? "Pilih Tanggal Jatuh Tempo" : "Select Due Date"}
           </h3>
           <GlassDatePicker
             date={billDate}
@@ -571,6 +695,43 @@ export function BillManagementSheets({
           />
         </div>
       </BottomSheet>
+
+      {/* Pay Bill Settlement Modal */}
+      {payingBill && (
+        <PayBillModal
+          isOpen={!!payingBill}
+          bill={payingBill}
+          onClose={() => setPayingBill(null)}
+          isPending={markBillPaid.isPending}
+          onConfirmPaid={({ bill, recordTransaction, walletId }) => {
+            markBillPaid.mutate(
+              { bill, paid: true, recordTransaction, walletId },
+              {
+                onSuccess: () => {
+                  setPayingBill(null);
+                  showToast(
+                    isIndonesian
+                      ? `${bill.title} berhasil ditandai lunas`
+                      : `${bill.title} marked as paid`,
+                    "add",
+                    () => {},
+                  );
+                },
+                onError: (error: any) => {
+                  showToast(
+                    error?.message ||
+                      (isIndonesian
+                        ? `Gagal menandai ${bill.title}`
+                        : `Failed to mark ${bill.title} as paid`),
+                    "delete",
+                    () => {},
+                  );
+                },
+              },
+            );
+          }}
+        />
+      )}
     </>
   );
 }

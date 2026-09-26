@@ -221,6 +221,32 @@ export function formatCompactRupiah(val: number): string {
 }
 
 /**
+ * Format compact currency for any preferred currency (e.g. $1.5k, €250, Rp 500k, Rp 1.2M).
+ */
+export function formatCompactCurrency(
+  idrAmount: number,
+  preferredCurrency: SupportedCurrency = "IDR",
+  rates?: Record<SupportedCurrency, number>
+): string {
+  const converted = convertCurrency(idrAmount, "IDR", preferredCurrency, rates);
+  const meta = CURRENCY_METADATA[preferredCurrency] || CURRENCY_METADATA.IDR;
+  const abs = Math.abs(converted);
+  let numStr = "";
+  if (abs >= 1_000_000_000) {
+    numStr = (abs / 1_000_000_000).toFixed(1).replace(/\.0$/, "") + "B";
+  } else if (abs >= 1_000_000) {
+    numStr = (abs / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  } else if (abs >= 1_000) {
+    numStr = (abs / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
+  } else {
+    numStr = meta.decimals === 0 ? Math.round(abs).toString() : abs.toFixed(meta.decimals);
+  }
+  const prefix = meta.symbol === "Rp" ? "Rp " : meta.symbol;
+  const sign = idrAmount < 0 ? "-" : "";
+  return `${sign}${prefix}${numStr}`;
+}
+
+/**
  * React hook to access and manage the active viewing currency across the app.
  */
 export function useCurrency() {
@@ -310,6 +336,13 @@ export function useCurrency() {
     [convertFromIdr, preferredCurrency]
   );
 
+  const formatCompactWithPreferred = useCallback(
+    (idrAmount: number) => {
+      return formatCompactCurrency(idrAmount, preferredCurrency, ratesData.rates);
+    },
+    [preferredCurrency, ratesData.rates]
+  );
+
   return {
     preferredCurrency,
     setPreferredCurrency,
@@ -320,5 +353,6 @@ export function useCurrency() {
     convertFromIdr,
     convertToIdr,
     formatWithPreferred,
+    formatCompactWithPreferred,
   };
 }

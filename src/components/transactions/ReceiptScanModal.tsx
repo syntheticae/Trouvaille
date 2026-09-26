@@ -96,9 +96,15 @@ export function ReceiptScanModal({
 
   const [step, setStep] = useState<"idle" | "processing" | "result">("idle");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imagePreviewRef = useRef(imagePreview);
+  useEffect(() => {
+    imagePreviewRef.current = imagePreview;
+  }, [imagePreview]);
   const [inspectPhotoOpen, setInspectPhotoOpen] = useState(false);
   const [progressPct, setProgressPct] = useState(0);
-  const [progressStatus, setProgressStatus] = useState("Preparing...");
+  const [progressStatus, setProgressStatus] = useState(
+    isIndonesian ? "Menyiapkan..." : "Preparing...",
+  );
   const [errorText, setErrorText] = useState<string | null>(null);
 
   // Editable parsed fields
@@ -253,9 +259,10 @@ export function ReceiptScanModal({
     if (!isOpen) {
       stopLiveCamera();
       setStep("idle");
-      if (imagePreview && imagePreview.startsWith("blob:")) {
+      const currentBlob = imagePreviewRef.current;
+      if (currentBlob && currentBlob.startsWith("blob:")) {
         try {
-          URL.revokeObjectURL(imagePreview);
+          URL.revokeObjectURL(currentBlob);
         } catch {}
       }
       setImagePreview(null);
@@ -425,7 +432,11 @@ export function ReceiptScanModal({
 
     try {
       setProgressPct(8);
-      setProgressStatus("Optimizing receipt resolution...");
+      setProgressStatus(
+        isIndonesian
+          ? "Mengoptimalkan resolusi struk..."
+          : "Optimizing receipt resolution...",
+      );
       const optimizedBlob = await downsampleImageIfNeeded(fileOrBlob, 1600);
 
       const result: OCRScanResult = await scanReceiptOrSlip(
@@ -436,6 +447,7 @@ export function ReceiptScanModal({
           setProgressPct(pct);
           setProgressStatus(status);
         },
+        isIndonesian ? "id" : "en",
       );
 
       triggerSuccessHaptic();
@@ -516,7 +528,9 @@ export function ReceiptScanModal({
       triggerHaptic("heavy");
       setErrorText(
         err?.message ||
-          "Failed to scan receipt. Please ensure the image is clear and well lit.",
+          (isIndonesian
+            ? "Gagal memindai struk. Pastikan gambar jelas dan cukup cahaya."
+            : "Failed to scan receipt. Please ensure the image is clear and well lit."),
       );
       setStep("idle");
     }
@@ -570,13 +584,21 @@ export function ReceiptScanModal({
         setPermissionPrompt({
           isOpen: true,
           type: "camera",
-          title: "Camera Access Required",
-          description:
-            "Trouvaille requires camera access to scan physical receipts, invoices, and payment slips directly.",
+          title: isIndonesian
+            ? "Akses Kamera Diperlukan"
+            : "Camera Access Required",
+          description: isIndonesian
+            ? "Trouvaille memerlukan akses kamera untuk memindai struk fisik, tagihan, dan bukti transfer secara langsung."
+            : "Trouvaille requires camera access to scan physical receipts, invoices, and payment slips directly.",
         });
       } else {
         console.error("[ReceiptScanModal] Camera capture error:", err);
-        setErrorText(err?.message || "Failed to launch camera.");
+        setErrorText(
+          err?.message ||
+            (isIndonesian
+              ? "Gagal membuka kamera."
+              : "Failed to launch camera."),
+        );
       }
     }
   };
@@ -594,13 +616,21 @@ export function ReceiptScanModal({
         setPermissionPrompt({
           isOpen: true,
           type: "photos",
-          title: "Photo Library Access Required",
-          description:
-            "Trouvaille requires photo library access to import saved receipts, invoices, and payment screenshots.",
+          title: isIndonesian
+            ? "Akses Galeri Foto Diperlukan"
+            : "Photo Library Access Required",
+          description: isIndonesian
+            ? "Trouvaille memerlukan akses galeri foto untuk mengimpor struk, tagihan, dan tangkapan layar bukti transfer yang tersimpan."
+            : "Trouvaille requires photo library access to import saved receipts, invoices, and payment screenshots.",
         });
       } else {
         console.error("[ReceiptScanModal] Gallery pick error:", err);
-        setErrorText(err?.message || "Failed to open photo library.");
+        setErrorText(
+          err?.message ||
+            (isIndonesian
+              ? "Gagal membuka galeri foto."
+              : "Failed to open photo library."),
+        );
       }
     }
   };
@@ -622,13 +652,19 @@ export function ReceiptScanModal({
             }
             setUnregisteredWalletName(null);
             showToast(
-              `Account "${unregisteredWalletName}" created`,
+              isIndonesian
+                ? `Akun "${unregisteredWalletName}" dibuat`
+                : `Account "${unregisteredWalletName}" created`,
               "add",
               () => {},
             );
           },
           onError: () => {
-            showToast("Failed to create account", "delete", () => {});
+            showToast(
+              isIndonesian ? "Gagal membuat akun" : "Failed to create account",
+              "delete",
+              () => {},
+            );
           },
         },
       );
@@ -655,13 +691,21 @@ export function ReceiptScanModal({
             }
             setUnregisteredCategoryName(null);
             showToast(
-              `Category "${unregisteredCategoryName}" created`,
+              isIndonesian
+                ? `Kategori "${unregisteredCategoryName}" dibuat`
+                : `Category "${unregisteredCategoryName}" created`,
               "add",
               () => {},
             );
           },
           onError: () => {
-            showToast("Failed to create category", "delete", () => {});
+            showToast(
+              isIndonesian
+                ? "Gagal membuat kategori"
+                : "Failed to create category",
+              "delete",
+              () => {},
+            );
           },
         },
       );
@@ -672,7 +716,14 @@ export function ReceiptScanModal({
 
   const handleSaveTransaction = () => {
     if (!amount || amount <= 0) {
-      showToast("Please enter a valid amount", "info", null, 2500);
+      showToast(
+        isIndonesian
+          ? "Silakan masukkan nominal yang valid"
+          : "Please enter a valid amount",
+        "info",
+        null,
+        2500,
+      );
       return;
     }
 
@@ -730,7 +781,9 @@ export function ReceiptScanModal({
         ? `${merchant.trim()} • ${note.trim()}`
         : note.trim()
       : merchant.trim() ||
-        (type === "transfer" ? "Transfer" : "Scanned Receipt");
+        (type === "transfer"
+          ? (isIndonesian ? "Transfer" : "Transfer")
+          : (isIndonesian ? "Struk Hasil Pindai" : "Scanned Receipt"));
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);
@@ -782,7 +835,9 @@ export function ReceiptScanModal({
         ? `${merchant.trim()} • ${note.trim()}`
         : note.trim()
       : merchant.trim() ||
-        (type === "transfer" ? "Transfer" : "Scanned Receipt");
+        (type === "transfer"
+          ? (isIndonesian ? "Transfer" : "Transfer")
+          : (isIndonesian ? "Struk Hasil Pindai" : "Scanned Receipt"));
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);
@@ -877,7 +932,7 @@ export function ReceiptScanModal({
                   className="text-[17px] font-bold tracking-tight leading-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Scan Receipt
+                  {isIndonesian ? "Pindai Struk" : "Scan Receipt"}
                 </h3>
 
                 <p
@@ -885,7 +940,9 @@ export function ReceiptScanModal({
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   <span className="truncate">
-                    Physical receipts, QRIS & bank transfer slips
+                    {isIndonesian
+                      ? "Struk fisik, QRIS & bukti transfer bank"
+                      : "Physical receipts, QRIS & bank transfer slips"}
                   </span>
 
                   {!shouldSaveAttachments && (
@@ -905,7 +962,7 @@ export function ReceiptScanModal({
                       }}
                     >
                       <Shield size={9.5} strokeWidth={1.75} />
-                      Ephemeral
+                      {isIndonesian ? "Sementara" : "Ephemeral"}
                     </span>
                   )}
                 </p>
@@ -1003,7 +1060,7 @@ export function ReceiptScanModal({
                     <div className="absolute top-3.5 left-4 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15">
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                       <span className="text-[10px] font-semibold text-white/90 tracking-wide uppercase">
-                        Live Camera
+                        {isIndonesian ? "Kamera Langsung" : "Live Camera"}
                       </span>
                     </div>
                   )}
@@ -1025,7 +1082,11 @@ export function ReceiptScanModal({
                     >
                       <Flashlight size={11} strokeWidth={2} />
                       <span className="text-[10px] font-semibold tracking-wide">
-                        {isTorchOn ? "Flash On" : "Flash"}
+                        {isTorchOn
+                          ? isIndonesian
+                            ? "Flash Nyala"
+                            : "Flash On"
+                          : "Flash"}
                       </span>
                     </button>
                   )}
@@ -1054,11 +1115,15 @@ export function ReceiptScanModal({
                       </div>
 
                       <p className="text-[13px] font-medium text-white/95">
-                        Align receipt within frame
+                        {isIndonesian
+                          ? "Posisikan struk dalam bingkai"
+                          : "Align receipt within frame"}
                       </p>
 
                       <p className="text-[11px] font-normal mt-0.5 text-white/55">
-                        Physical receipts, QRIS & bank slips
+                        {isIndonesian
+                          ? "Struk fisik, QRIS & bukti transfer"
+                          : "Physical receipts, QRIS & bank slips"}
                       </p>
                     </div>
                   )}
@@ -1099,7 +1164,11 @@ export function ReceiptScanModal({
                           }
                         }}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                        title="Choose from Gallery"
+                        title={
+                          isIndonesian
+                            ? "Pilih dari Galeri"
+                            : "Choose from Gallery"
+                        }
                       />
                     </div>
 
@@ -1107,7 +1176,7 @@ export function ReceiptScanModal({
                       className="text-[11px] font-medium"
                       style={{ color: "var(--text-secondary)" }}
                     >
-                      Gallery
+                      {isIndonesian ? "Galeri" : "Gallery"}
                     </span>
                   </div>
 
@@ -1154,7 +1223,7 @@ export function ReceiptScanModal({
                           }
                         }}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                        title="Take Photo"
+                        title={isIndonesian ? "Ambil Foto" : "Take Photo"}
                       />
                     </div>
 
@@ -1162,7 +1231,7 @@ export function ReceiptScanModal({
                       className="text-[11px] font-medium"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      Take Photo
+                      {isIndonesian ? "Ambil Foto" : "Take Photo"}
                     </span>
                   </div>
 
@@ -1213,16 +1282,19 @@ export function ReceiptScanModal({
                     setPermissionPrompt({
                       isOpen: true,
                       type: "photos",
-                      title: "Media & Camera Permissions",
-                      description:
-                        "Trouvaille requires permission to import receipts from your photo gallery or take photos with your camera.",
+                      title: isIndonesian
+                        ? "Izin Media & Kamera"
+                        : "Media & Camera Permissions",
+                      description: isIndonesian
+                        ? "Trouvaille memerlukan izin untuk mengimpor struk dari galeri foto atau mengambil foto langsung dengan kamera Anda."
+                        : "Trouvaille requires permission to import receipts from your photo gallery or take photos with your camera.",
                     });
                   }}
                   className="text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 pt-1 hover:opacity-80 active:scale-95"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   <Shield size={12} strokeWidth={1.5} />
-                  Permissions & Access
+                  {isIndonesian ? "Izin & Akses" : "Permissions & Access"}
                 </button>
               </div>
             )}
@@ -1340,14 +1412,29 @@ export function ReceiptScanModal({
                         className="text-[11px] font-normal truncate"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        Account{" "}
-                        <span
-                          className="font-medium"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {unregisteredWalletName}
-                        </span>{" "}
-                        is not registered
+                        {isIndonesian ? (
+                          <>
+                            Akun{" "}
+                            <span
+                              className="font-medium"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {unregisteredWalletName}
+                            </span>{" "}
+                            belum terdaftar
+                          </>
+                        ) : (
+                          <>
+                            Account{" "}
+                            <span
+                              className="font-medium"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {unregisteredWalletName}
+                            </span>{" "}
+                            is not registered
+                          </>
+                        )}
                       </p>
                     </div>
 
@@ -1369,7 +1456,7 @@ export function ReceiptScanModal({
                         <Plus size={12} strokeWidth={2} />
                       )}
 
-                      <span>Add Account</span>
+                      <span>{isIndonesian ? "Tambah Akun" : "Add Account"}</span>
                     </button>
                   </div>
                 ) : unregisteredCategoryName ? (
@@ -1399,14 +1486,29 @@ export function ReceiptScanModal({
                         className="text-[11px] font-normal truncate"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        Category{" "}
-                        <span
-                          className="font-medium"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {unregisteredCategoryName}
-                        </span>{" "}
-                        is not registered
+                        {isIndonesian ? (
+                          <>
+                            Kategori{" "}
+                            <span
+                              className="font-medium"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {unregisteredCategoryName}
+                            </span>{" "}
+                            belum terdaftar
+                          </>
+                        ) : (
+                          <>
+                            Category{" "}
+                            <span
+                              className="font-medium"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {unregisteredCategoryName}
+                            </span>{" "}
+                            is not registered
+                          </>
+                        )}
                       </p>
                     </div>
 
@@ -1428,7 +1530,9 @@ export function ReceiptScanModal({
                         <Plus size={12} strokeWidth={2} />
                       )}
 
-                      <span>Add Category</span>
+                      <span>
+                        {isIndonesian ? "Tambah Kategori" : "Add Category"}
+                      </span>
                     </button>
                   </div>
                 ) : (
@@ -1460,8 +1564,11 @@ export function ReceiptScanModal({
                       className="text-[11px] font-semibold"
                       style={{ color: "var(--text-secondary)" }}
                     >
-                      Receipt scanned •{" "}
-                      {Math.round(parsedSlip.confidence * 100)}% match
+                      {isIndonesian
+                        ? "Struk terpindai • "
+                        : "Receipt scanned • "}
+                      {Math.round(parsedSlip.confidence * 100)}%{" "}
+                      {isIndonesian ? "kecocokan" : "match"}
                     </span>
                   </div>
                 )}
@@ -1522,7 +1629,11 @@ export function ReceiptScanModal({
                           type="text"
                           value={merchant}
                           onChange={(e) => setMerchant(e.target.value)}
-                          placeholder="Merchant / Recipient"
+                          placeholder={
+                            isIndonesian
+                              ? "Merchant / Penerima"
+                              : "Merchant / Recipient"
+                          }
                           className="w-full text-[15.5px] font-bold bg-transparent outline-none truncate leading-tight p-0"
                           style={{
                             color: "var(--text-primary)",
@@ -1536,7 +1647,9 @@ export function ReceiptScanModal({
                         >
                           {selectedCategory
                             ? selectedCategory.name
-                            : "Select category"}
+                            : isIndonesian
+                              ? "Pilih kategori"
+                              : "Select category"}
                         </p>
                       </div>
                     </div>
@@ -1558,7 +1671,11 @@ export function ReceiptScanModal({
                             ? "0 5px 14px rgba(0,0,0,0.30)"
                             : "inset 0 1px 0 rgba(255,255,255,0.8), 0 3px 10px rgba(15,23,42,0.10)",
                         }}
-                        title="Tap to inspect original receipt"
+                        title={
+                          isIndonesian
+                            ? "Ketuk untuk melihat struk asli"
+                            : "Tap to inspect original receipt"
+                        }
                       >
                         <img
                           src={imagePreview}
@@ -1593,7 +1710,7 @@ export function ReceiptScanModal({
                       className="text-[10px] font-bold tracking-widest uppercase mb-1 select-none"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Total Amount
+                      {isIndonesian ? "Total Nominal" : "Total Amount"}
                     </span>
 
                     <div className="flex items-baseline justify-center gap-1.5">
@@ -1607,6 +1724,7 @@ export function ReceiptScanModal({
                       <input
                         type="text"
                         inputMode="numeric"
+                        pattern="[0-9]*"
                         value={amount ? amount.toLocaleString("id-ID") : ""}
                         onChange={(e) => {
                           const raw = e.target.value.replace(/[^0-9]/g, "");
@@ -2039,7 +2157,7 @@ export function ReceiptScanModal({
                         className="text-[12.5px] font-semibold"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        Notes
+                        {isIndonesian ? "Catatan" : "Notes"}
                       </span>
                     </div>
 
@@ -2047,7 +2165,11 @@ export function ReceiptScanModal({
                       type="text"
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
-                      placeholder="Add a note (optional)"
+                      placeholder={
+                        isIndonesian
+                          ? "Tambah catatan (opsional)"
+                          : "Add a note (optional)"
+                      }
                       className="text-[12px] placeholder:text-[12px] font-medium bg-transparent outline-none text-right flex-1 pl-4"
                       style={{
                         color: "var(--text-primary)",
@@ -2105,7 +2227,7 @@ export function ReceiptScanModal({
                             color: isDark ? "#000000" : "#ffffff",
                           }}
                         >
-                          Save Transaction{" "}
+                          {isIndonesian ? "Simpan Transaksi" : "Save Transaction"}{" "}
                           {amount > 0 ? `(${formatRupiah(amount)})` : ""}
                         </span>
                       </>
@@ -2132,7 +2254,7 @@ export function ReceiptScanModal({
                       }}
                     >
                       <SlidersHorizontal size={13} strokeWidth={1.75} />
-                      <span>Customize Form</span>
+                      <span>{isIndonesian ? "Kustomisasi Form" : "Customize Form"}</span>
                     </button>
 
                     <button
@@ -2158,7 +2280,7 @@ export function ReceiptScanModal({
                       }}
                     >
                       <RotateCcw size={13} strokeWidth={1.75} />
-                      <span>Scan Again</span>
+                      <span>{isIndonesian ? "Pindai Ulang" : "Scan Again"}</span>
                     </button>
                   </div>
                 </div>
@@ -2196,7 +2318,9 @@ export function ReceiptScanModal({
               />
 
               <p className="text-[12px] font-normal text-white/60 mt-3">
-                Tap anywhere to close
+                {isIndonesian
+                  ? "Ketuk di mana saja untuk menutup"
+                  : "Tap anywhere to close"}
               </p>
             </div>
           </motion.div>
@@ -2212,7 +2336,7 @@ export function ReceiptScanModal({
           setCategorySheetOpen(false);
           setSearchCatQuery("");
         }}
-        title="Select Category"
+        title={isIndonesian ? "Pilih Kategori" : "Select Category"}
       >
         <div
           className="px-4 pt-1 pb-8"
@@ -2233,7 +2357,9 @@ export function ReceiptScanModal({
               type="text"
               value={searchCatQuery}
               onChange={(e) => setSearchCatQuery(e.target.value)}
-              placeholder="Search category..."
+              placeholder={
+                isIndonesian ? "Cari kategori..." : "Search category..."
+              }
               className="w-full h-11 pl-10 pr-9 rounded-[14px] text-[12px] font-medium outline-none"
               style={{
                 background: isDark
@@ -2288,7 +2414,9 @@ export function ReceiptScanModal({
                 className="text-[12px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                No categories found for "{searchCatQuery}"
+                {isIndonesian
+                  ? `Kategori "${searchCatQuery}" tidak ditemukan`
+                  : `No categories found for "${searchCatQuery}"`}
               </p>
             </div>
           ) : (
@@ -2381,7 +2509,7 @@ export function ReceiptScanModal({
           setWalletSheetOpen(false);
           setSearchWalletQuery("");
         }}
-        title="Select Account"
+        title={isIndonesian ? "Pilih Akun" : "Select Account"}
       >
         <div
           className="px-4 pt-1 pb-8"
@@ -2402,7 +2530,9 @@ export function ReceiptScanModal({
               type="text"
               value={searchWalletQuery}
               onChange={(e) => setSearchWalletQuery(e.target.value)}
-              placeholder="Search account..."
+              placeholder={
+                isIndonesian ? "Cari akun..." : "Search account..."
+              }
               className="w-full h-11 pl-10 pr-9 rounded-[14px] text-[12px] font-medium outline-none"
               style={{
                 background: isDark
@@ -2457,7 +2587,9 @@ export function ReceiptScanModal({
                 className="text-[12px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                No accounts found for "{searchWalletQuery}"
+                {isIndonesian
+                  ? `Akun "${searchWalletQuery}" tidak ditemukan`
+                  : `No accounts found for "${searchWalletQuery}"`}
               </p>
             </div>
           ) : (
@@ -2570,7 +2702,9 @@ export function ReceiptScanModal({
               type="text"
               value={searchToWalletQuery}
               onChange={(e) => setSearchToWalletQuery(e.target.value)}
-              placeholder="Search account..."
+              placeholder={
+                isIndonesian ? "Cari akun..." : "Search account..."
+              }
               className="w-full h-11 pl-10 pr-9 rounded-[14px] text-[12px] font-medium outline-none"
               style={{
                 background: isDark
@@ -2625,7 +2759,7 @@ export function ReceiptScanModal({
                 className="text-[12px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                No accounts found
+                {isIndonesian ? "Akun tidak ditemukan" : "No accounts found"}
               </p>
             </div>
           ) : (
@@ -2718,7 +2852,7 @@ export function ReceiptScanModal({
                             : "1px solid rgba(15,23,42,0.05)",
                         }}
                       >
-                        SOURCE
+                        {isIndonesian ? "SUMBER" : "SOURCE"}
                       </span>
                     )}
                   </button>
@@ -2801,8 +2935,12 @@ export function ReceiptScanModal({
             <div className="min-w-0">
               <p className="text-[13px] font-semibold text-[var(--text-primary)]">
                 {permissionPrompt.type === "camera"
-                  ? "Camera Hardware"
-                  : "Photo Library"}
+                  ? isIndonesian
+                    ? "Perangkat Kamera"
+                    : "Camera Hardware"
+                  : isIndonesian
+                    ? "Galeri Foto"
+                    : "Photo Library"}
               </p>
 
               <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">
@@ -2830,9 +2968,9 @@ export function ReceiptScanModal({
               className="text-[11px] leading-relaxed"
               style={{ color: "var(--text-secondary)" }}
             >
-              Trouvaille processes all financial receipts and bank slips 100%
-              on-device using local optical character recognition. Your private
-              captures never leave your phone.
+              {isIndonesian
+                ? "Trouvaille memproses semua struk keuangan dan bukti transfer 100% pada perangkat menggunakan pengenalan karakter optik lokal. Foto pribadi Anda tidak pernah meninggalkan perangkat."
+                : "Trouvaille processes all financial receipts and bank slips 100% on-device using local optical character recognition. Your private captures never leave your phone."}
             </p>
           </div>
 
@@ -2852,14 +2990,22 @@ export function ReceiptScanModal({
                   }));
 
                   if (granted) {
-                    showToast("Photo library access granted", "add", () => {});
+                    showToast(
+                      isIndonesian
+                        ? "Akses galeri foto diberikan"
+                        : "Photo library access granted",
+                      "add",
+                      () => {},
+                    );
 
                     if (Capacitor.isNativePlatform()) {
                       setTimeout(() => handlePickGalleryNative(), 250);
                     }
                   } else {
                     showToast(
-                      "Please allow Photos access in device Settings",
+                      isIndonesian
+                        ? "Harap izinkan akses Foto di Pengaturan perangkat"
+                        : "Please allow Photos access in device Settings",
                       "delete",
                       () => {},
                     );
@@ -2873,7 +3019,13 @@ export function ReceiptScanModal({
                   }));
 
                   if (granted) {
-                    showToast("Camera access granted", "add", () => {});
+                    showToast(
+                      isIndonesian
+                        ? "Akses kamera diberikan"
+                        : "Camera access granted",
+                      "add",
+                      () => {},
+                    );
 
                     if (Capacitor.isNativePlatform()) {
                       setTimeout(() => handleTakePhotoNative(), 250);
@@ -2882,7 +3034,9 @@ export function ReceiptScanModal({
                     }
                   } else {
                     showToast(
-                      "Please allow Camera access in device Settings",
+                      isIndonesian
+                        ? "Harap izinkan akses Kamera di Pengaturan perangkat"
+                        : "Please allow Camera access in device Settings",
                       "delete",
                       () => {},
                     );
@@ -2904,7 +3058,7 @@ export function ReceiptScanModal({
               }}
             >
               <Check size={16} strokeWidth={2} />
-              Grant Permission
+              {isIndonesian ? "Berikan Izin" : "Grant Permission"}
             </button>
 
             <button
@@ -2922,7 +3076,7 @@ export function ReceiptScanModal({
                 color: "var(--text-secondary)",
               }}
             >
-              Cancel
+              {isIndonesian ? "Batal" : "Cancel"}
             </button>
           </div>
         </div>

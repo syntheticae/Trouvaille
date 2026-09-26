@@ -18,20 +18,19 @@ import {
   ChevronLeft,
   ChevronDown,
   Check,
-  Info,
   Sparkles,
   SlidersHorizontal,
+  Wallet,
 } from "lucide-react";
-import { useState, useMemo, useEffect, lazy, Suspense } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { useAllTransactions } from "../hooks/useTransactions";
-import { formatRupiah } from "../lib/utils";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { useSpace } from "../contexts/SpaceContext";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useBills } from "../hooks/useBills";
 import { useGoals } from "../hooks/useGoals";
@@ -48,7 +47,6 @@ import { LiquidityHorizonCard } from "../components/home/LiquidityHorizonCard";
 import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
 import { PersonalFinancialModelCard } from "../components/home/PersonalFinancialModelCard";
 import { FinancialReportSection } from "../components/statistics/FinancialReportSection";
-import { AssetAnalyticsSection } from "../components/statistics/AssetAnalyticsSection";
 import { CashflowSankeySection } from "../components/statistics/CashflowSankeySection";
 import { MonteCarloCard } from "../components/statistics/MonteCarloCard";
 import { FirePlannerCard } from "../components/statistics/FirePlannerCard";
@@ -95,6 +93,11 @@ const FirePlannerSheet = lazy(() =>
     default: m.FirePlannerSheet,
   })),
 );
+const WhatIfSimulatorSheet = lazy(() =>
+  import("../components/home/WhatIfSimulatorSheet").then((m) => ({
+    default: m.WhatIfSimulatorSheet,
+  })),
+);
 import {
   ReorderableWidgetGrid,
   WidgetCustomizationBar,
@@ -131,6 +134,8 @@ type AnalyticsSubTab = "report" | "intelligence" | "cashflow" | "simulation";
 const isTxCorrection = isCorrectionTx;
 
 const GlassTooltip = ({ active, payload, label }: any) => {
+  const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
   if (!active || !payload?.length) return null;
   return (
     <div
@@ -171,14 +176,20 @@ const GlassTooltip = ({ active, payload, label }: any) => {
             }}
           >
             {p.name === "income"
-              ? "Inflow: "
+              ? isIndonesian
+                ? "Pemasukan: "
+                : "Inflow: "
               : p.name === "expense"
-                ? "Outflow: "
+                ? isIndonesian
+                  ? "Pengeluaran: "
+                  : "Outflow: "
                 : p.name === "net"
-                  ? "Net Growth: "
+                  ? isIndonesian
+                    ? "Pertumbuhan Bersih: "
+                    : "Net Growth: "
                   : ""}
           </span>
-          {formatRupiah(p.value)}
+          {formatWithPreferred(p.value)}
         </p>
       ))}
     </div>
@@ -276,7 +287,7 @@ function useChartColors() {
 export function StatisticsPage() {
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred, formatCompactWithPreferred } = useCurrency();
   const isDark = theme !== "light";
   const [range, setRange] = useState<Range>("month");
   const [breakdownType, setBreakdownType] = useState<BreakdownType>("expense");
@@ -286,7 +297,11 @@ export function StatisticsPage() {
   const [analyticsSubTab, setAnalyticsSubTab] =
     useState<AnalyticsSubTab>("report");
   const now = useMemo(() => new Date(), []);
-  const { data: allTxs = [] } = useAllTransactions();
+  const { data: rawAllTxs = [] } = useAllTransactions();
+  const { activeSpaceId, filterTransactionsBySpace } = useSpace();
+  const allTxs = useMemo(() => {
+    return filterTransactionsBySpace(rawAllTxs, activeSpaceId);
+  }, [rawAllTxs, activeSpaceId, filterTransactionsBySpace]);
   const { data: wallets = [] } = useWallets();
   const { totalAssets, liquidAssets, liquidAccounts, netWorth, zeroAccounts } =
     useWalletBalances();
@@ -310,12 +325,10 @@ export function StatisticsPage() {
   const [assetValuationOpen, setAssetValuationOpen] = useState(false);
   const [monteCarloOpen, setMonteCarloOpen] = useState(false);
   const [firePlannerOpen, setFirePlannerOpen] = useState(false);
-  // Collapsible card states (Default: false / folded to keep page clean & compact)
+  const [whatIfSheetOpen, setWhatIfSheetOpen] = useState(false);
+  const [sankeyOpen, setSankeyOpen] = useState(false);
   const [categoryBreakdownExpanded, setCategoryBreakdownExpanded] =
-    useState(false);
-  const [netTrajectoryExpanded, setNetTrajectoryExpanded] = useState(false);
-  const [inflowOutflowExpanded, setInflowOutflowExpanded] = useState(false);
-  const [heatmapExpanded, setHeatmapExpanded] = useState(false);
+    useState(true);
   const { isStealthMode: hideBalance } = usePrivacy();
   const colors = useChartColors();
 
@@ -363,48 +376,127 @@ export function StatisticsPage() {
   const visibleReportCards = useMemo(() => {
     const reportIds = new Set([
       "financial_report",
-      "monthly_review",
-      "expense_structure",
     ]);
-    return visibleStatsCards.filter((c) => reportIds.has(c.id));
+    const reportOrder = [
+      "financial_report",
+    ];
+    return visibleStatsCards
+      .filter((c) => reportIds.has(c.id))
+      .sort((a, b) => reportOrder.indexOf(a.id) - reportOrder.indexOf(b.id));
   }, [visibleStatsCards]);
 
   const visibleIntelligenceCards = useMemo(() => {
     const intelligenceIds = new Set([
       "health_score",
+      "monthly_review",
+      "expense_structure",
       "spending_patterns",
-      "spending_density_heatmap",
-      "personal_baseline",
-      "zero_based_envelopes",
-      "cashflow_outlook",
     ]);
-    return visibleStatsCards.filter((c) => intelligenceIds.has(c.id));
-  }, [visibleStatsCards]);
+    const storyOrder = [
+      "health_score",
+      "monthly_review",
+      "expense_structure",
+      "spending_patterns",
+    ];
+
+    const cards = visibleStatsCards.filter((c) => intelligenceIds.has(c.id));
+    const hasHealthScore = cards.some((c) => c.id === "health_score");
+    const isHealthScoreHidden = hiddenStatsCards.some((c) => c.id === "health_score");
+
+    if (!hasHealthScore && !isHealthScoreHidden) {
+      cards.unshift({
+        id: "health_score",
+        title: "Financial Health Score",
+        subtitle: "Score, health metrics & performance rating",
+        page: "statistics",
+        category: "telemetry",
+        size: "full",
+        supportedSizes: ["full"],
+        order: 0,
+        isVisible: true,
+      });
+    }
+
+    return cards.sort((a, b) => storyOrder.indexOf(a.id) - storyOrder.indexOf(b.id));
+  }, [visibleStatsCards, hiddenStatsCards]);
 
   const visibleCashflowCards = useMemo(() => {
     const cashflowIds = new Set([
       "cashflow_summary",
-      "category_breakdown",
-      "cashflow_sankey",
-      "net_capital_trajectory",
       "inflow_outflow_trend",
+      "category_breakdown",
       "cashflow_velocity",
-      "asset_analytics",
     ]);
-    return visibleStatsCards.filter((c) => cashflowIds.has(c.id));
-  }, [visibleStatsCards]);
+    const cashflowOrder = [
+      "cashflow_summary",
+      "inflow_outflow_trend",
+      "category_breakdown",
+      "cashflow_velocity",
+    ];
+    const cards = visibleStatsCards.filter((c) => cashflowIds.has(c.id));
+
+    // Ensure core 4 cards exist unless explicitly hidden by the user
+    cashflowOrder.forEach((id) => {
+      const exists = cards.some((c) => c.id === id);
+      const isHidden = hiddenStatsCards.some((c) => c.id === id);
+      if (!exists && !isHidden) {
+        cards.push({
+          id,
+          title: id.replace(/_/g, " "),
+          subtitle: "",
+          page: "statistics",
+          category: "telemetry",
+          size: "full",
+          supportedSizes: ["full"],
+          order: cashflowOrder.indexOf(id),
+          isVisible: true,
+        });
+      }
+    });
+
+    return cards.sort(
+      (a, b) => cashflowOrder.indexOf(a.id) - cashflowOrder.indexOf(b.id),
+    );
+  }, [visibleStatsCards, hiddenStatsCards]);
 
   const visibleSimulationCards = useMemo(() => {
     const simulationIds = new Set([
-      "what_if_simulator",
-      "monte_carlo",
       "fire_planner",
+      "monte_carlo",
+      "what_if_simulator",
       "personal_financial_model",
-      "debt_payoff",
-      "liquidity_horizon",
     ]);
-    return visibleStatsCards.filter((c) => simulationIds.has(c.id));
-  }, [visibleStatsCards]);
+    const simulationOrder = [
+      "fire_planner",
+      "monte_carlo",
+      "what_if_simulator",
+      "personal_financial_model",
+    ];
+
+    const cards = visibleStatsCards.filter((c) => simulationIds.has(c.id));
+
+    simulationOrder.forEach((id) => {
+      const exists = cards.some((c) => c.id === id);
+      const isHidden = hiddenStatsCards.some((c) => c.id === id);
+      if (!exists && !isHidden) {
+        cards.push({
+          id,
+          title: id.replace(/_/g, " "),
+          subtitle: "",
+          page: "statistics",
+          category: "telemetry",
+          size: "full",
+          supportedSizes: ["full"],
+          order: simulationOrder.indexOf(id),
+          isVisible: true,
+        });
+      }
+    });
+
+    return cards.sort(
+      (a, b) => simulationOrder.indexOf(a.id) - simulationOrder.indexOf(b.id),
+    );
+  }, [visibleStatsCards, hiddenStatsCards]);
 
   const analyticsTabs = useMemo<
     { key: AnalyticsSubTab; label: string }[]
@@ -440,14 +532,15 @@ export function StatisticsPage() {
     visibleSimulationCards.length,
   ]);
 
-  // Auto-switch to first available tab if current active tab is collapsed
-  useEffect(() => {
+  // Derive active tab to auto-fallback if currently selected tab has no visible cards
+  const activeSubTab = useMemo(() => {
     if (
       analyticsTabs.length > 0 &&
       !analyticsTabs.some((t) => t.key === analyticsSubTab)
     ) {
-      setAnalyticsSubTab(analyticsTabs[0].key);
+      return analyticsTabs[0].key;
     }
+    return analyticsSubTab;
   }, [analyticsTabs, analyticsSubTab]);
 
   const activeMonthDate = useMemo(
@@ -464,13 +557,6 @@ export function StatisticsPage() {
     categories,
     activeMonthDate,
   });
-
-  // Phase II: Longitudinal Timeline Trajectory
-  const longitudinal = useMemo(() => {
-    const rangeParam =
-      range === "year" ? "12M" : range === "all" ? "ALL" : "6M";
-    return intel.getLongitudinalTimeline(rangeParam);
-  }, [intel, range]);
 
   // 1. Filter by range with exact ISO string boundaries
   const rangeTxs = useMemo(() => {
@@ -618,24 +704,41 @@ export function StatisticsPage() {
   );
 
   const goalTrajectoryText = useMemo(() => {
-    if (!goals.length) return "Add a goal to simulate timeline scenarios.";
+    if (!goals.length) {
+      return isIndonesian
+        ? "Tambahkan tujuan untuk mensimulasikan skenario linimasa."
+        : "Add a goal to simulate timeline scenarios.";
+    }
     const primaryGoal = goals[0];
     const planning = intel.getGoalPlanning(primaryGoal);
     const required =
-      planning.requiredMonthlyContribution.toLocaleString("id-ID");
-    return `${primaryGoal.title}: need ~Rp ${required}/month (${planning.trajectoryStatus}).`;
-  }, [goals, intel]);
+      formatWithPreferred(planning.requiredMonthlyContribution);
+    const statusText = isIndonesian
+      ? planning.trajectoryStatus === "ON TRACK"
+        ? "SESUAI TARGET"
+        : planning.trajectoryStatus === "AHEAD OF TARGET"
+          ? "LEBIH CEPAT"
+          : "DI BAWAH TARGET"
+      : planning.trajectoryStatus;
+    return isIndonesian
+      ? `${primaryGoal.title}: butuh ~${required}/bulan (${statusText}).`
+      : `${primaryGoal.title}: need ~${required}/month (${statusText}).`;
+  }, [goals, intel, isIndonesian, formatWithPreferred]);
 
   const personalBaselineText = useMemo(() => {
     const baseline = intel.personalBaselines;
     if (baseline.status === "insufficient") {
       return (
         baseline.message ||
-        "Not enough history yet for a stable personal baseline."
+        (isIndonesian
+          ? "Riwayat transaksi belum cukup untuk baseline pribadi yang stabil."
+          : "Not enough history yet for a stable personal baseline.")
       );
     }
-    return `Typical expense ${formatRupiah(baseline.medianExpense)}/month with median retained cash ${formatRupiah(Math.max(0, baseline.medianNetCashflow))}/month.`;
-  }, [intel.personalBaselines]);
+    return isIndonesian
+      ? `Pengeluaran tipikal ${formatWithPreferred(baseline.medianExpense)}/bulan dengan median kas ditahan ${formatWithPreferred(Math.max(0, baseline.medianNetCashflow))}/bulan.`
+      : `Typical expense ${formatWithPreferred(baseline.medianExpense)}/month with median retained cash ${formatWithPreferred(Math.max(0, baseline.medianNetCashflow))}/month.`;
+  }, [intel.personalBaselines, isIndonesian, formatWithPreferred]);
 
   const personalFinancialModel = useMemo(() => {
     const actualCommitted = Math.max(0, intel.committedAmount);
@@ -692,13 +795,17 @@ export function StatisticsPage() {
       },
       insights: {
         currentNetWorth: netWorth,
-        historicalTrendLabel: `Historical Trend (${modelRange})`,
-        historicalTrendValue: `${assetTrend.diff >= 0 ? "+" : "-"}${formatRupiah(Math.abs(assetTrend.diff))} (${assetTrend.percent.toFixed(1)}%)`,
+        historicalTrendLabel: isIndonesian
+          ? `Tren Historis (${modelRange})`
+          : `Historical Trend (${modelRange})`,
+        historicalTrendValue: `${assetTrend.diff >= 0 ? "+" : "-"}${formatWithPreferred(Math.abs(assetTrend.diff))} (${assetTrend.percent.toFixed(1)}%)`,
         currentCashflow: intel.netCashflow,
         personalBaseline: personalBaselineText,
         upcomingCommitments: intel.committedAmount,
         goalTrajectory: goalTrajectoryText,
-        scenarioImpact: `If expense drops Rp500K/month, retained cash changes by ${modelScenario.annualDifference >= 0 ? "+" : "-"}${formatRupiah(Math.abs(modelScenario.annualDifference))}/year.`,
+        scenarioImpact: isIndonesian
+          ? `Jika pengeluaran turun ${formatWithPreferred(500000)}/bulan, kas ditahan berubah sebesar ${modelScenario.annualDifference >= 0 ? "+" : "-"}${formatWithPreferred(Math.abs(modelScenario.annualDifference))}/tahun.`
+          : `If expense drops ${formatWithPreferred(500000)}/month, retained cash changes by ${modelScenario.annualDifference >= 0 ? "+" : "-"}${formatWithPreferred(Math.abs(modelScenario.annualDifference))}/year.`,
       },
     };
   }, [
@@ -707,6 +814,7 @@ export function StatisticsPage() {
     debtBalance,
     goalTrajectoryText,
     intel,
+    isIndonesian,
     modelRange,
     modelScenario.adjustedMonthlyExpense,
     modelScenario.adjustedMonthlyIncome,
@@ -715,6 +823,7 @@ export function StatisticsPage() {
     netWorth,
     personalBaselineText,
     totalAssets,
+    formatWithPreferred,
   ]);
 
   const healthScore = useMemo(() => {
@@ -1290,105 +1399,192 @@ export function StatisticsPage() {
     switch (cardId) {
       case "health_score":
         return (
-          <section className="card-contrast-hero p-5 relative overflow-hidden">
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex items-center gap-2.5">
+          <section
+            className="glass-surface rounded-[24px] p-5 select-none space-y-4"
+            style={{
+              border: "1px solid var(--glass-border)",
+              background: "var(--bg-elevated)",
+              boxShadow: "var(--shadow-card)",
+            }}
+          >
+            {/* ── 1. Header (Single Line) ────────────────────────────────────────── */}
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                   style={{
-                    background: isDark
-                      ? "rgba(255,255,255,0.12)"
-                      : "rgba(0,0,0,0.06)",
+                    background: "var(--glass-fill)",
                     border: "1px solid var(--glass-border)",
                     color: "var(--text-primary)",
                   }}
                 >
-                  <ShieldCheck size={18} />
+                  <ShieldCheck size={16} strokeWidth={1.75} />
                 </div>
-                <div>
-                  <p
-                    className="text-[13px] font-semibold"
+                <div className="min-w-0">
+                  <h3
+                    className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Financial Health
-                  </p>
+                    {isIndonesian
+                      ? "Indeks Ketahanan Finansial"
+                      : "Financial Health Diagnostic Index"}
+                  </h3>
                   <p
-                    className="text-[11px]"
+                    className="text-[11px] truncate"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {rangeTitle} performance
+                    {isIndonesian
+                      ? `Evaluasi performa ${rangeTitle} · 6 pilar ketahanan`
+                      : `${rangeTitle} performance · 6-pillar resilience`}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setHealthDiagnosticOpen(true);
-                    triggerHaptic("light");
-                  }}
-                  className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-                  style={{
-                    background: isDark
-                      ? "rgba(255,255,255,0.12)"
-                      : "rgba(0,0,0,0.06)",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                  title="Executive Health Diagnostic"
-                >
-                  <Info size={13} />
-                </button>
+
+              {/* Status Grade Pill (Single Line) */}
+              <div
+                className="px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1.5"
+                style={{
+                  background: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.04)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
                 <span
-                  className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                  style={{
-                    background: isDark
-                      ? "rgba(255,255,255,0.12)"
-                      : "rgba(0,0,0,0.06)",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--glass-border)",
-                  }}
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ background: isDark ? "#ffffff" : "#18181b" }}
+                />
+                <span
+                  className="text-[11px] font-semibold"
+                  style={{ color: "var(--text-primary)" }}
                 >
                   {healthScore >= 85
-                    ? "Excellent"
+                    ? isIndonesian ? "Prima (AAA)" : "Excellent (AAA)"
                     : healthScore >= 70
-                      ? "Good"
+                      ? isIndonesian ? "Sehat (AA)" : "Good (AA)"
                       : healthScore >= 50
-                        ? "Moderate"
+                        ? isIndonesian ? "Moderat (A)" : "Moderate (A)"
                         : healthScore >= 16
-                          ? "Deficit"
-                          : "Critical"}
+                          ? isIndonesian ? "Defisit (BB)" : "Deficit (BB)"
+                          : isIndonesian ? "Kritis (C)" : "Critical (C)"}
                 </span>
               </div>
             </div>
-            <div className="flex items-end gap-3 mb-3">
-              <span
-                className="amount text-[36px] font-bold leading-none"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {healthScore}
-              </span>
-              <span
-                className="text-[12px] font-medium pb-1.5"
+
+            {/* ── 2. Hero Score & View Diagnostic Link ──────────────────────────── */}
+            <div className="flex items-baseline justify-between pt-0.5">
+              <div className="flex items-baseline gap-2">
+                <span
+                  className="text-[34px] sm:text-[38px] font-light tracking-tight leading-none tabular-nums"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {healthScore}
+                </span>
+                <span
+                  className="text-[12px] font-medium"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  / 100 {isIndonesian ? "poin indeks" : "score index"}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setHealthDiagnosticOpen(true);
+                  triggerHaptic("light");
+                }}
+                className="flex items-center gap-1 text-[11px] font-semibold cursor-pointer transition-colors hover:text-[var(--text-primary)]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                / 100 pts
-              </span>
+                <span>{isIndonesian ? "Buka Diagnostik" : "View Diagnostic"}</span>
+                <ChevronRight size={13} />
+              </button>
             </div>
+
+            {/* ── 3. Sleek Single-Track Progress Gauge ─────────────────────────── */}
             <div
-              className="w-full h-1.5 rounded-full overflow-hidden"
+              className="w-full h-2 rounded-full overflow-hidden p-0.5"
               style={{
                 background: isDark
-                  ? "rgba(255,255,255,0.15)"
-                  : "rgba(0,0,0,0.08)",
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(0,0,0,0.06)",
               }}
             >
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{
-                  width: `${healthScore}%`,
-                  background: "var(--text-primary)",
+                  width: `${Math.max(4, Math.min(100, healthScore))}%`,
+                  background: isDark ? "#FFFFFF" : "#18181B",
                 }}
               />
+            </div>
+
+            {/* ── 4. Key 3-Pillar Telemetry Summary ────────────────────────────── */}
+            <div className="grid grid-cols-3 gap-2 pt-0.5">
+              <div
+                className="p-2.5 rounded-xl border text-center"
+                style={{
+                  background: "var(--glass-fill)",
+                  borderColor: "var(--glass-border)",
+                }}
+              >
+                <span
+                  className="text-[9.5px] uppercase font-semibold block truncate"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "Laju Tabungan" : "Savings Rate"}
+                </span>
+                <span
+                  className="text-[12px] font-bold tabular-nums block mt-0.5"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {savingsRate.toFixed(0)}%
+                </span>
+              </div>
+
+              <div
+                className="p-2.5 rounded-xl border text-center"
+                style={{
+                  background: "var(--glass-fill)",
+                  borderColor: "var(--glass-border)",
+                }}
+              >
+                <span
+                  className="text-[9.5px] uppercase font-semibold block truncate"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "Arus Bersih" : "Net Flow"}
+                </span>
+                <span
+                  className="text-[12px] font-bold tabular-nums block mt-0.5"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {totalIncome >= totalExpense ? "+" : ""}
+                  {formatWithPreferred(totalIncome - totalExpense)}
+                </span>
+              </div>
+
+              <div
+                className="p-2.5 rounded-xl border text-center"
+                style={{
+                  background: "var(--glass-fill)",
+                  borderColor: "var(--glass-border)",
+                }}
+              >
+                <span
+                  className="text-[9.5px] uppercase font-semibold block truncate"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "Beban Komitmen" : "Committed"}
+                </span>
+                <span
+                  className="text-[12px] font-bold tabular-nums block mt-0.5"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {intel.expenseStructure ? `${intel.expenseStructure.committedPercentage.toFixed(0)}%` : "0%"}
+                </span>
+              </div>
             </div>
           </section>
         );
@@ -1453,165 +1649,269 @@ export function StatisticsPage() {
         if (range !== "month") return null;
         return <SpendingPatternsSection patterns={intel.behavioralPatterns} />;
 
-      case "spending_density_heatmap":
+      case "spending_density_heatmap": {
+        let noSpendDays = 0;
+        let activeSpendDays = 0;
+        let peakDayAmount = 0;
+
+        calendarSpendingHeatmap.days.forEach((d) => {
+          const dStr = format(d, "yyyy-MM-dd");
+          const spent = calendarSpendingHeatmap.dailySpendMap.get(dStr) || 0;
+          if (spent > 0) {
+            activeSpendDays++;
+            if (spent > peakDayAmount) {
+              peakDayAmount = spent;
+            }
+          } else {
+            noSpendDays++;
+          }
+        });
+
         return (
           <div className="p-5 rounded-[24px] glass-surface">
-            <div
-              className="flex justify-between items-center cursor-pointer select-none"
-              onClick={() => {
-                setHeatmapExpanded((v) => !v);
-                triggerHaptic("light");
-              }}
-            >
+            {/* Header */}
+            <div className="flex justify-between items-start mb-4">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mb-0.5">
                   <Calendar
                     size={16}
+                    strokeWidth={1.75}
                     style={{ color: "var(--text-tertiary)" }}
                   />
                   <h2
                     className="text-[13px] font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Spending Density & Heatmap
+                    {isIndonesian ? "Kepadatan & Matriks Pengeluaran" : "Spending Density & Heatmap"}
                   </h2>
                 </div>
                 <p
                   className="text-[11px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Daily expense cluster · {rangeTitle}
+                  {isIndonesian ? "Bukti empiris ritme belanja harian" : "Daily expense rhythm matrix"} · {rangeTitle}
                 </p>
               </div>
 
-              <button
-                type="button"
-                className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer active:scale-90 shrink-0"
+              <div
+                className="px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
                   color: "var(--text-secondary)",
                 }}
-                aria-label={heatmapExpanded ? "Lipat" : "Bentangkan"}
               >
-                <motion.div
-                  animate={{ rotate: heatmapExpanded ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex items-center justify-center"
-                >
-                  <ChevronDown size={14} strokeWidth={1.75} />
-                </motion.div>
-              </button>
+                {noSpendDays} {isIndonesian ? "Hari Hemat" : "No-Spend Days"}
+              </div>
             </div>
 
-            <AnimatePresence initial={false}>
-              {heatmapExpanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="overflow-hidden pt-3"
-                >
+            {/* 3 Metric Glance Cards */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <div
+                className="p-2.5 rounded-xl text-center"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div className="text-[10px] text-[var(--text-tertiary)] mb-0.5">
+                  {isIndonesian ? "Hari Hemat" : "Zero Spend"}
+                </div>
+                <div className="text-[13px] font-semibold text-[var(--text-primary)]">
+                  {noSpendDays} <span className="text-[10px] font-normal text-[var(--text-tertiary)]">{isIndonesian ? "hari" : "days"}</span>
+                </div>
+              </div>
+
+              <div
+                className="p-2.5 rounded-xl text-center"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div className="text-[10px] text-[var(--text-tertiary)] mb-0.5">
+                  {isIndonesian ? "Hari Belanja" : "Active Days"}
+                </div>
+                <div className="text-[13px] font-semibold text-[var(--text-primary)]">
+                  {activeSpendDays} <span className="text-[10px] font-normal text-[var(--text-tertiary)]">{isIndonesian ? "hari" : "days"}</span>
+                </div>
+              </div>
+
+              <div
+                className="p-2.5 rounded-xl text-center"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div className="text-[10px] text-[var(--text-tertiary)] mb-0.5">
+                  {isIndonesian ? "Puncak Belanja" : "Peak Spend"}
+                </div>
+                <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
+                  {peakDayAmount > 0
+                    ? hideBalance
+                      ? "••••"
+                      : formatCompactWithPreferred(peakDayAmount)
+                    : formatWithPreferred(0)}
+                </div>
+              </div>
+            </div>
+
+            {/* Calendar Grid Container */}
+            <div
+              className="p-3.5 rounded-2xl"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <div className="grid grid-cols-7 gap-1.5 text-center mb-2">
+                {(isIndonesian
+                  ? ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"]
+                  : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+                ).map((w, i) => (
                   <div
-                    className="p-3 rounded-2xl"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                    }}
+                    key={i}
+                    className="text-[10px] font-semibold tracking-wider uppercase"
+                    style={{ color: "var(--text-tertiary)" }}
                   >
-                    <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
-                      {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
-                        <div
-                          key={i}
-                          className="text-[9px] font-semibold"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {w}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-7 gap-1">
-                      {Array.from({ length: calendarSpendingHeatmap.pad }).map(
-                        (_, i) => (
-                          <div key={`pad-${i}`} />
-                        ),
-                      )}
-                      {calendarSpendingHeatmap.days.map((d) => {
-                        const dStr = format(d, "yyyy-MM-dd");
-                        const spent =
-                          calendarSpendingHeatmap.dailySpendMap.get(dStr) || 0;
-                        const intensity =
-                          calendarSpendingHeatmap.maxSpend > 0
-                            ? spent / calendarSpendingHeatmap.maxSpend
-                            : 0;
-                        const isT = isToday(d);
-
-                        let bg = isDark
-                          ? "rgba(255,255,255,0.04)"
-                          : "rgba(0,0,0,0.04)";
-                        let textColor = "var(--text-tertiary)";
-                        if (spent > 0) {
-                          if (isDark) {
-                            if (intensity > 0.6) {
-                              bg = "#FFFFFF";
-                              textColor = "#0A0A0B";
-                            } else if (intensity > 0.3) {
-                              bg = "rgba(255,255,255,0.45)";
-                              textColor = "#FFFFFF";
-                            } else {
-                              bg = "rgba(255,255,255,0.18)";
-                              textColor = "rgba(255,255,255,0.9)";
-                            }
-                          } else {
-                            if (intensity > 0.6) {
-                              bg = "#18181B";
-                              textColor = "#FFFFFF";
-                            } else if (intensity > 0.3) {
-                              bg = "rgba(24,24,27,0.5)";
-                              textColor = "#FFFFFF";
-                            } else {
-                              bg = "rgba(24,24,27,0.18)";
-                              textColor = "#18181B";
-                            }
-                          }
-                        }
-
-                        return (
-                          <div
-                            key={dStr}
-                            className="aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all"
-                            style={{
-                              background: bg,
-                              color: textColor,
-                              border: isT
-                                ? "1px solid var(--accent)"
-                                : "1px solid transparent",
-                            }}
-                            title={`${format(d, "dd MMM")}: ${spent > 0 ? formatRupiah(spent) : "No spend"}`}
-                          >
-                            <span className="text-[10px] font-semibold">
-                              {d.getDate()}
-                            </span>
-                            {spent > 0 && (
-                              <span className="text-[8px] font-semibold opacity-80 scale-90 leading-none mt-0.5">
-                                {spent >= 1000000
-                                  ? (spent / 1000000).toFixed(0) + "M"
-                                  : spent >= 1000
-                                    ? (spent / 1000).toFixed(0) + "K"
-                                    : spent}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    {w}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1.5">
+                {Array.from({ length: calendarSpendingHeatmap.pad }).map(
+                  (_, i) => (
+                    <div key={`pad-${i}`} />
+                  ),
+                )}
+                {calendarSpendingHeatmap.days.map((d) => {
+                  const dStr = format(d, "yyyy-MM-dd");
+                  const spent =
+                    calendarSpendingHeatmap.dailySpendMap.get(dStr) || 0;
+                  const intensity =
+                    calendarSpendingHeatmap.maxSpend > 0
+                      ? spent / calendarSpendingHeatmap.maxSpend
+                      : 0;
+                  const isT = isToday(d);
+
+                  let bg = isDark
+                    ? "rgba(255,255,255,0.03)"
+                    : "rgba(0,0,0,0.03)";
+                  let textColor = "var(--text-tertiary)";
+                  let borderColor = "transparent";
+
+                  if (spent > 0) {
+                    if (isDark) {
+                      if (intensity > 0.6) {
+                        bg = "#FFFFFF";
+                        textColor = "#09090C";
+                      } else if (intensity > 0.3) {
+                        bg = "rgba(255,255,255,0.42)";
+                        textColor = "#FFFFFF";
+                      } else {
+                        bg = "rgba(255,255,255,0.14)";
+                        textColor = "rgba(255,255,255,0.9)";
+                      }
+                    } else {
+                      if (intensity > 0.6) {
+                        bg = "#121214";
+                        textColor = "#FFFFFF";
+                      } else if (intensity > 0.3) {
+                        bg = "rgba(18,18,20,0.48)";
+                        textColor = "#FFFFFF";
+                      } else {
+                        bg = "rgba(18,18,20,0.14)";
+                        textColor = "#121214";
+                      }
+                    }
+                  }
+
+                  if (isT) {
+                    borderColor = "var(--accent)";
+                  }
+
+                  return (
+                    <div
+                      key={dStr}
+                      className="aspect-square rounded-[8px] flex flex-col items-center justify-center relative transition-all cursor-default group"
+                      style={{
+                        background: bg,
+                        color: textColor,
+                        border: `1px solid ${borderColor}`,
+                        boxShadow:
+                          isDark && intensity > 0.6
+                            ? "0 0 12px rgba(255,255,255,0.2)"
+                            : undefined,
+                      }}
+                      title={`${format(d, "dd MMM yyyy")}: ${spent > 0 ? formatWithPreferred(spent) : isIndonesian ? "Tidak ada pengeluaran" : "No expense"}`}
+                    >
+                      <span className="text-[11px] font-medium leading-none">
+                        {d.getDate()}
+                      </span>
+                      {spent === 0 && (
+                        <span
+                          className="w-1 h-1 rounded-full mt-1 opacity-30"
+                          style={{
+                            background: isDark ? "#FFFFFF" : "#000000",
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Matrix Legend Footer */}
+            <div className="flex items-center justify-between mt-3 px-1 text-[10px] text-[var(--text-tertiary)]">
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="w-2 h-2 rounded-full inline-block"
+                  style={{
+                    background: isDark
+                      ? "rgba(255,255,255,0.2)"
+                      : "rgba(0,0,0,0.2)",
+                  }}
+                />
+                {isIndonesian ? `Hemat (${formatWithPreferred(0)})` : "No Spend"}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <span>{isIndonesian ? "Aktivitas" : "Intensity"}</span>
+                <div className="flex items-center gap-1">
+                  <div
+                    className="w-3 h-3 rounded-[3px]"
+                    style={{
+                      background: isDark
+                        ? "rgba(255,255,255,0.14)"
+                        : "rgba(18,18,20,0.14)",
+                    }}
+                    title={isIndonesian ? "Rendah" : "Low"}
+                  />
+                  <div
+                    className="w-3 h-3 rounded-[3px]"
+                    style={{
+                      background: isDark
+                        ? "rgba(255,255,255,0.42)"
+                        : "rgba(18,18,20,0.48)",
+                    }}
+                    title={isIndonesian ? "Sedang" : "Medium"}
+                  />
+                  <div
+                    className="w-3 h-3 rounded-[3px]"
+                    style={{
+                      background: isDark ? "#FFFFFF" : "#121214",
+                    }}
+                    title={isIndonesian ? "Tinggi / Puncak" : "High / Peak"}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         );
+      }
 
       case "debt_payoff":
         return <DebtPayoffSimulatorCard hideBalance={hideBalance} />;
@@ -1622,6 +1922,10 @@ export function StatisticsPage() {
             monthlyIncome={intel.totalIncome}
             monthlyExpense={intel.totalExpense}
             hideBalance={hideBalance}
+            onOpenDetails={() => {
+              setWhatIfSheetOpen(true);
+              triggerHaptic("light");
+            }}
           />
         );
 
@@ -1633,6 +1937,7 @@ export function StatisticsPage() {
             baseline={personalFinancialModel.baseline}
             scenario={personalFinancialModel.scenario}
             insights={personalFinancialModel.insights}
+            liquidityHorizon={intel.liquidityHorizon}
             onOpenDetails={() => {
               setPersonalModelOpen(true);
               triggerHaptic("light");
@@ -1659,6 +1964,7 @@ export function StatisticsPage() {
         return (
           <MonthlyReviewSection
             review={intel.monthlyReview}
+            healthScore={healthScore}
             onCategoryClick={(catName) => {
               const found = intel.categoryShifts.find(
                 (s) => s.name.toLowerCase() === catName.toLowerCase(),
@@ -1694,114 +2000,271 @@ export function StatisticsPage() {
         );
 
       // --- CASHFLOW TAB CARDS ---
-      case "cashflow_summary":
+      case "cashflow_summary": {
+        const netValue = totalIncome - totalExpense;
+        const retentionRate =
+          totalIncome > 0 ? Math.max(0, (netValue / totalIncome) * 100) : 0;
+        const totalVolume = totalIncome + totalExpense;
+
         return (
           <div
-            className="p-5 rounded-[24px]"
+            className="p-5 rounded-[24px] select-none space-y-4"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
               boxShadow: "var(--shadow-card)",
             }}
           >
-            <div className="flex justify-between items-center mb-3">
-              <p
-                className="text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Ringkasan Periode" : "Period Summary"} ·{" "}
-                {rangeTitle}
-              </p>
-              {range === "month" && (
-                <span
-                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            {/* 1-Line Header with Vector Icon */}
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                   style={{
                     background: "var(--glass-fill)",
-                    color: "var(--text-tertiary)",
                     border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
                   }}
                 >
-                  {isIndonesian ? "vs bln lalu" : "vs prev month"}
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                {
-                  label: isIndonesian ? "Total Masuk" : "Total In",
-                  value: totalIncome,
-                  delta: range === "month" ? incomeDelta : null,
-                  isExpense: false,
-                },
-                {
-                  label: isIndonesian ? "Total Keluar" : "Total Out",
-                  value: totalExpense,
-                  delta: range === "month" ? expenseDelta : null,
-                  isExpense: true,
-                },
-                {
-                  label: isIndonesian ? "Bersih" : "Net",
-                  value: totalIncome - totalExpense,
-                  delta: range === "month" ? netDelta : null,
-                  isNet: true,
-                },
-              ].map(({ label, value, delta, isNet }) => {
-                const abs = Math.abs(value);
-                let formatted = "0";
-                if (abs >= 1000000) {
-                  formatted =
-                    (abs / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
-                } else if (abs >= 1000) {
-                  formatted = (abs / 1000).toFixed(0) + "K";
-                } else {
-                  formatted = abs.toLocaleString("id-ID");
-                }
-                const sign = isNet
-                  ? value < 0
-                    ? "-"
-                    : value > 0
-                      ? "+"
-                      : ""
-                  : "";
-                return (
-                  <div
-                    key={label}
-                    className="text-center p-2 rounded-2xl flex flex-col justify-between"
-                    style={{ background: "var(--glass-fill)" }}
+                  <Wallet size={16} strokeWidth={1.75} />
+                </div>
+                <div className="min-w-0">
+                  <h3
+                    className="text-[13px] font-semibold tracking-tight truncate"
+                    style={{ color: "var(--text-primary)" }}
                   >
-                    <div>
-                      <p
-                        className="text-[10px] font-semibold uppercase tracking-wider mb-1"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        {label}
-                      </p>
-                      <p
-                        className="amount text-[14px] leading-tight"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {sign}
-                        {formatted}
-                      </p>
-                    </div>
-                    {delta && (
-                      <div className="mt-1.5 pt-1 border-t border-[var(--glass-border)] flex items-center justify-center gap-0.5">
-                        <span
-                          className="text-[10px] font-medium flex items-center"
-                          style={{
-                            color: "var(--text-secondary)",
-                          }}
-                        >
-                          {delta.isUp ? "↑" : "↓"} {delta.pct}%
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                    {isIndonesian ? "Ringkasan Arus Kas" : "Cashflow Summary"}
+                  </h3>
+                  <p
+                    className="text-[11px] truncate"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {isIndonesian
+                      ? "Retensi kas bersih & pacing likuiditas"
+                      : "Net cash retention & pacing"}{" "}
+                    · {rangeTitle}
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className="px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1.5"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{
+                    background: isDark ? "#FFFFFF" : "#18181B",
+                  }}
+                />
+                <span
+                  className="text-[11px] font-semibold tabular-nums"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {netValue >= 0
+                    ? isIndonesian
+                      ? `Tersimpan ${retentionRate.toFixed(0)}%`
+                      : `Retained ${retentionRate.toFixed(0)}%`
+                    : isIndonesian
+                      ? `Defisit ${((Math.abs(netValue) / (totalIncome || 1)) * 100).toFixed(0)}%`
+                      : `Deficit ${((Math.abs(netValue) / (totalIncome || 1)) * 100).toFixed(0)}%`}
+                </span>
+              </div>
+            </div>
+
+            {/* Large Hero Number & Context Narrative */}
+            <div className="space-y-1">
+              <div
+                className="text-[34px] sm:text-[38px] font-light tracking-tight leading-none tabular-nums"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {netValue < 0
+                  ? `-${formatWithPreferred(Math.abs(netValue))}`
+                  : `+${formatWithPreferred(netValue)}`}
+              </div>
+              <p
+                className="text-[12px] leading-relaxed"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {netValue < 0
+                  ? isIndonesian
+                    ? `Arus kas keluar sebesar ${formatWithPreferred(totalExpense)} sedikit melampaui pemasukan ${formatWithPreferred(totalIncome)} pada periode ini.`
+                    : `Outflow of ${formatWithPreferred(totalExpense)} exceeded inflow of ${formatWithPreferred(totalIncome)} for this period.`
+                  : isIndonesian
+                    ? `Surplus bersih sebesar ${formatWithPreferred(netValue)} berhasil dipertahankan (${retentionRate.toFixed(0)}% retensi) pada periode ini.`
+                    : `Net surplus of ${formatWithPreferred(netValue)} retained (${retentionRate.toFixed(0)}% retention) for this period.`}
+              </p>
+            </div>
+
+            {/* Segmented Dual Proportion Bar */}
+            <div className="space-y-1.5 pt-1">
+              <div
+                className="h-2 w-full rounded-full overflow-hidden flex gap-0.5 p-0.5"
+                style={{ background: "var(--glass-fill)" }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${totalVolume > 0 ? (totalIncome / totalVolume) * 100 : 50}%`,
+                    background: isDark ? "#FFFFFF" : "#18181B",
+                  }}
+                />
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${totalVolume > 0 ? (totalExpense / totalVolume) * 100 : 50}%`,
+                    background: isDark
+                      ? "rgba(255,255,255,0.4)"
+                      : "rgba(24,24,27,0.4)",
+                  }}
+                />
+              </div>
+              <div
+                className="flex items-center justify-between text-[10px] tabular-nums"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: isDark ? "#FFFFFF" : "#18181B" }}
+                  />
+                  <span>
+                    {isIndonesian ? "Masuk" : "Inflow"}:{" "}
+                    {formatCompactWithPreferred(totalIncome)} (
+                    {totalVolume > 0
+                      ? ((totalIncome / totalVolume) * 100).toFixed(0)
+                      : 0}
+                    %)
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      background: isDark
+                        ? "rgba(255,255,255,0.4)"
+                        : "rgba(24,24,27,0.4)",
+                    }}
+                  />
+                  <span>
+                    {isIndonesian ? "Keluar" : "Outflow"}:{" "}
+                    {formatCompactWithPreferred(totalExpense)} (
+                    {totalVolume > 0
+                      ? ((totalExpense / totalVolume) * 100).toFixed(0)
+                      : 0}
+                    %)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3-Pillar Micro Cards */}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <div
+                className="p-2.5 rounded-2xl text-center"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <span
+                  className="text-[9.5px] uppercase font-semibold block truncate"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "Total Masuk" : "Total In"}
+                </span>
+                <span
+                  className="text-[13px] font-semibold tabular-nums block mt-0.5"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {formatCompactWithPreferred(totalIncome)}
+                </span>
+                <span
+                  className="text-[9px] block mt-0.5"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {range === "month" && incomeDelta
+                    ? `${incomeDelta.isUp ? "↑" : "↓"} ${incomeDelta.pct}% vs lalu`
+                    : isIndonesian
+                      ? "Arus positif"
+                      : "Positive inflow"}
+                </span>
+              </div>
+
+              <div
+                className="p-2.5 rounded-2xl text-center"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <span
+                  className="text-[9.5px] uppercase font-semibold block truncate"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "Total Keluar" : "Total Out"}
+                </span>
+                <span
+                  className="text-[13px] font-semibold tabular-nums block mt-0.5"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {formatCompactWithPreferred(totalExpense)}
+                </span>
+                <span
+                  className="text-[9px] block mt-0.5"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {range === "month" && expenseDelta
+                    ? `${expenseDelta.isUp ? "↑" : "↓"} ${expenseDelta.pct}% vs lalu`
+                    : isIndonesian
+                      ? "Beban transaksi"
+                      : "Total outflows"}
+                </span>
+              </div>
+
+              <div
+                className="p-2.5 rounded-2xl text-center"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <span
+                  className="text-[9.5px] uppercase font-semibold block truncate"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "Saldo Bersih" : "Net Balance"}
+                </span>
+                <span
+                  className="text-[13px] font-semibold tabular-nums block mt-0.5"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {netValue < 0
+                    ? `-${formatCompactWithPreferred(Math.abs(netValue))}`
+                    : `+${formatCompactWithPreferred(netValue)}`}
+                </span>
+                <span
+                  className="text-[9px] block mt-0.5 font-medium truncate"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {range === "month" && netDelta
+                    ? `${netDelta.isUp ? "↑" : "↓"} ${netDelta.pct}% vs lalu`
+                    : netValue >= 0
+                      ? isIndonesian
+                        ? "Surplus Terjaga"
+                        : "Surplus Retained"
+                      : isIndonesian
+                        ? "Defisit Terkendali"
+                        : "Deficit Controlled"}
+                </span>
+              </div>
             </div>
           </div>
         );
+      }
 
       case "category_breakdown":
         return (
@@ -1847,8 +2310,6 @@ export function StatisticsPage() {
             hideBalance={hideBalance}
             rangeTitle={rangeTitle}
             netWorthData={netWorthData}
-            netTrajectoryExpanded={netTrajectoryExpanded}
-            setNetTrajectoryExpanded={setNetTrajectoryExpanded}
             colors={colors}
             isDark={isDark}
             isIndonesian={isIndonesian}
@@ -1862,9 +2323,6 @@ export function StatisticsPage() {
             rangeTitle={rangeTitle}
             trendData={trendData}
             range={range}
-            longitudinal={longitudinal}
-            inflowOutflowExpanded={inflowOutflowExpanded}
-            setInflowOutflowExpanded={setInflowOutflowExpanded}
             colors={colors}
             isDark={isDark}
             isIndonesian={isIndonesian}
@@ -1888,19 +2346,12 @@ export function StatisticsPage() {
             hashtagStats={hashtagStats}
             isDark={isDark}
             isIndonesian={isIndonesian}
+            onOpenSankey={() => setSankeyOpen(true)}
           />
         );
 
-      // --- ASSETS TAB CARDS ---
       case "asset_analytics":
-        return (
-          <AssetAnalyticsSection
-            wallets={wallets}
-            monthlyBurnRate={intel.totalExpense || 3500000}
-            hideBalance={hideBalance}
-            onOpenValuation={() => setAssetValuationOpen(true)}
-          />
-        );
+        return null;
 
       default:
         return null;
@@ -2119,7 +2570,7 @@ export function StatisticsPage() {
                         }}
                         className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
                         style={{ color: "var(--text-secondary)" }}
-                        title="Previous Month"
+                        title={isIndonesian ? "Bulan Sebelumnya" : "Previous Month"}
                       >
                         <ChevronLeft size={14} />
                       </button>
@@ -2151,7 +2602,7 @@ export function StatisticsPage() {
                         }}
                         className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer"
                         style={{ color: "var(--text-secondary)" }}
-                        title="Next Month"
+                        title={isIndonesian ? "Bulan Berikutnya" : "Next Month"}
                       >
                         <ChevronRight size={14} />
                       </button>
@@ -2319,7 +2770,7 @@ export function StatisticsPage() {
                 Financial Wrapped
               </p>
               <span
-                className="text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider font-mono"
+                className="text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider"
                 style={{
                   background: "var(--glass-fill-strong)",
                   color: "var(--text-secondary)",
@@ -2338,7 +2789,7 @@ export function StatisticsPage() {
                     ? "Rekap Bulanan"
                     : "Monthly Recap"}
               </span>
-              <span className="text-[9px] font-mono text-[var(--text-tertiary)] hidden sm:inline">
+              <span className="text-[9px] text-[var(--text-tertiary)] hidden sm:inline">
                 9 chapters
               </span>
             </div>
@@ -2353,7 +2804,7 @@ export function StatisticsPage() {
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0 text-[var(--text-tertiary)] pl-2">
-          <span className="text-[11px] font-mono font-medium hidden sm:inline">
+          <span className="text-[11px] font-medium hidden sm:inline">
             {range === "year"
               ? selectedYear
               : format(activeMonthDate, "MMM yyyy")}
@@ -2370,7 +2821,7 @@ export function StatisticsPage() {
         }}
       >
         {analyticsTabs.map((t) => {
-          const isSelected = analyticsSubTab === t.key;
+          const isSelected = activeSubTab === t.key;
           return (
             <button
               key={t.key}
@@ -2443,7 +2894,7 @@ export function StatisticsPage() {
       )}
 
       {/* TAB 1: REPORT */}
-      {analyticsSubTab === "report" && (
+      {activeSubTab === "report" && (
         <ReorderableWidgetGrid
           cards={visibleReportCards}
           isEditMode={isStatsEditMode}
@@ -2456,7 +2907,7 @@ export function StatisticsPage() {
       )}
 
       {/* TAB 2: INTELLIGENCE */}
-      {analyticsSubTab === "intelligence" && (
+      {activeSubTab === "intelligence" && (
         <ReorderableWidgetGrid
           cards={visibleIntelligenceCards}
           isEditMode={isStatsEditMode}
@@ -2469,7 +2920,7 @@ export function StatisticsPage() {
       )}
 
       {/* TAB 3: CASHFLOW */}
-      {analyticsSubTab === "cashflow" && (
+      {activeSubTab === "cashflow" && (
         <ReorderableWidgetGrid
           cards={visibleCashflowCards}
           isEditMode={isStatsEditMode}
@@ -2482,7 +2933,7 @@ export function StatisticsPage() {
       )}
 
       {/* TAB 4: SIMULATION */}
-      {analyticsSubTab === "simulation" && (
+      {activeSubTab === "simulation" && (
         <ReorderableWidgetGrid
           cards={visibleSimulationCards}
           isEditMode={isStatsEditMode}
@@ -2519,7 +2970,7 @@ export function StatisticsPage() {
                   ? parentCategoryStats.length
                   : categoryStats.length}{" "}
                 {groupMode === "parent" ? "parent groups" : "categories"} ·
-                Total {formatRupiah(totalBreakdownAmount)}
+                Total {formatWithPreferred(totalBreakdownAmount)}
               </p>
             </div>
           </div>
@@ -2640,7 +3091,7 @@ export function StatisticsPage() {
                           className="amount text-[13px] truncate"
                           style={{ color: "var(--text-primary)" }}
                         >
-                          {formatRupiah(cat.total)}
+                          {formatWithPreferred(cat.total)}
                         </p>
                         <div
                           className="flex items-center justify-between text-[10px] mt-0.5 mb-1.5"
@@ -2728,7 +3179,7 @@ export function StatisticsPage() {
                           className="amount text-[13px] truncate"
                           style={{ color: "var(--text-primary)" }}
                         >
-                          {formatRupiah(parent.total)}
+                          {formatWithPreferred(parent.total)}
                         </p>
                         <div
                           className="flex items-center justify-between text-[10px] mt-0.5 mb-1.5"
@@ -2751,6 +3202,23 @@ export function StatisticsPage() {
                   );
                 })}
           </div>
+        </div>
+      </BottomSheet>
+
+      {/* Cashflow Sankey Flow Diagram BottomSheet */}
+      <BottomSheet
+        isOpen={sankeyOpen}
+        onClose={() => setSankeyOpen(false)}
+        title={isIndonesian ? "Diagram Alur Arus Kas" : "Cashflow Sankey Flow"}
+      >
+        <div className="px-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),28px)] space-y-4">
+          <CashflowSankeySection
+            transactions={rangeTxs}
+            categories={categories}
+            wallets={wallets}
+            periodLabel={rangeTitle}
+            hideTitle
+          />
         </div>
       </BottomSheet>
 
@@ -2814,6 +3282,15 @@ export function StatisticsPage() {
           initialNetWorth={netWorth}
           defaultMonthlySavings={Math.max(1000000, totalIncome - totalExpense)}
           defaultMonthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
+          hideBalance={hideBalance}
+        />
+
+        <WhatIfSimulatorSheet
+          isOpen={whatIfSheetOpen}
+          onClose={() => setWhatIfSheetOpen(false)}
+          monthlyIncome={intel.totalIncome}
+          monthlyExpense={intel.totalExpense}
+          netWorth={netWorth}
           hideBalance={hideBalance}
         />
       </Suspense>

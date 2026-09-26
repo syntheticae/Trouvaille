@@ -21,6 +21,7 @@ import {
   CircleDollarSign,
   ArrowRightLeft,
   RotateCcw,
+  Globe,
   Utensils,
   UtensilsCrossed,
   Coffee,
@@ -138,6 +139,7 @@ export const ALL_ICONS_MAP: Record<string, IconComponent> = {
   CircleDollarSign,
   ArrowRightLeft,
   RotateCcw,
+  Globe,
 
   // Food & Dining
   Utensils,
@@ -283,6 +285,8 @@ export const CURATED_ICON_GROUPS: IconGroup[] = [
       "CandlestickChart",
       "CircleDollarSign",
       "RotateCcw",
+      "ArrowRightLeft",
+      "Globe",
     ],
   },
   {
@@ -451,6 +455,7 @@ export const ICON_KEYWORDS: Record<string, string[]> = {
   CandlestickChart: ["trading", "forex", "crypto", "chart", "grafik", "saham"],
   CircleDollarSign: ["uang", "koin", "dollar", "keuangan", "finansial"],
   RotateCcw: ["refund", "pengembalian", "retur", "kembali", "putar"],
+  Globe: ["wise", "revolut", "global", "dunia", "international", "valas", "kurs", "forex", "borderless", "world", "foreign"],
 
   Utensils: ["makan", "makanan", "food", "resto", "dinner", "lunch", "sarapan", "kuliner"],
   UtensilsCrossed: ["restoran", "cafe", "makan", "dining", "chef"],
@@ -505,7 +510,7 @@ export const ICON_KEYWORDS: Record<string, string[]> = {
   Package: ["paket", "kurir", "ongkir", "delivery", "jne", "jnt"],
   Trophy: ["prestasi", "piala", "reward", "juara", "hadiah"],
 
-  Smartphone: ["hp", "gadget", "pulsa", "dana", "gopay", "ovo", "telepon", "handphone"],
+  Smartphone: ["hp", "gadget", "pulsa", "dana", "gopay", "ovo", "telepon", "handphone", "paypal"],
   Laptop: ["komputer", "laptop", "pc", "elektronik", "kerja", "device"],
   Wifi: ["internet", "wifi", "kuota", "provider", "indihome", "biznet"],
   Tv: ["tv", "televisi", "netflix", "streaming", "hiburan", "film"],

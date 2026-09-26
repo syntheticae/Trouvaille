@@ -972,9 +972,9 @@ export function parseNaturalTransaction(
               canonKey.includes(n) ||
               aliasList.some((a) => n.includes(a)) ||
               (canonKey === "makanan" && (n.includes("food") || n.includes("kuliner") || n.includes("f&b"))) ||
-              (canonKey === "minuman" && (n.includes("drink") || n.includes("beverage"))) ||
-              (canonKey === "kopi" && (n.includes("coffee") || n.includes("cafe"))) ||
-              (canonKey === "bensin" && (n.includes("transport") || n.includes("bbm")))
+              (canonKey === "minuman" && (n.includes("drink") || n.includes("beverage") || n.includes("makan") || n.includes("minum"))) ||
+              (canonKey === "kopi" && (n.includes("coffee") || n.includes("cafe") || n.includes("makan") || n.includes("minum"))) ||
+              (canonKey === "bensin" && (n.includes("transport") || n.includes("bbm") || n.includes("kendaraan")))
             );
           }) ||
           categories.find((c) => {

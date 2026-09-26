@@ -179,7 +179,7 @@ export function CapitalAllocationCard({
           <div className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
             <Zap size={12} strokeWidth={2} />
             <span className="text-[10px] font-bold uppercase tracking-wider">
-              {isIndonesian ? "Growth" : "Growth"}
+              {isIndonesian ? "Bertumbuh" : "Growth"}
             </span>
           </div>
           <p className="text-[14px] font-bold font-mono text-[var(--text-primary)] leading-tight">

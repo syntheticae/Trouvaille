@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mic,
@@ -348,7 +348,7 @@ export function VoiceQuickAddModal({
     };
   }, [isOpen]);
 
-  const stopRecognition = () => {
+  const stopRecognition = useCallback(() => {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.onstart = null;
@@ -360,9 +360,9 @@ export function VoiceQuickAddModal({
       recognitionRef.current = null;
     }
     setIsListening(false);
-  };
+  }, []);
 
-  const startRecognition = () => {
+  const startRecognition = useCallback(() => {
     stopRecognition();
 
     const SpeechRec =
@@ -428,7 +428,7 @@ export function VoiceQuickAddModal({
       console.warn("[VoiceQuickAdd] Failed to start speech recognition:", err);
       stopRecognition();
     }
-  };
+  }, [stopRecognition, showToast]);
 
   // Speech Recognition lifecycle
   useEffect(() => {
@@ -444,7 +444,7 @@ export function VoiceQuickAddModal({
     return () => {
       stopRecognition();
     };
-  }, [isOpen]);
+  }, [isOpen, startRecognition, stopRecognition]);
 
   const toggleListening = () => {
     if (isListening) {

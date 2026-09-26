@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   runMonteCarloSimulation,
   type MonteCarloSimulationResult,
@@ -37,6 +38,8 @@ export function MonteCarloFireCard({
   hideBalance = false,
   onOpenSimulator,
 }: MonteCarloFireCardProps) {
+  const { isIndonesian } = useLanguage();
+
   // Run baseline Monte Carlo simulation with real user finances
   const simulation: MonteCarloSimulationResult = useMemo(() => {
     const annualExpenses = Math.max(12000000, monthlyBurnRate * 12);
@@ -50,24 +53,37 @@ export function MonteCarloFireCard({
       annualInflation: 0.035,
       safeWithdrawalRate: 0.04,
       iterations: 350,
+      language: isIndonesian ? "id" : "en",
     });
-  }, [netWorth, monthlyBurnRate, monthlySavings]);
+  }, [netWorth, monthlyBurnRate, monthlySavings, isIndonesian]);
 
   const { fireMilestones, successRate, resilienceRating, yearlyTrajectory } =
     simulation;
+
+  const localizedResilience = isIndonesian
+    ? resilienceRating === "Exceptional"
+      ? "Sangat Tangguh"
+      : resilienceRating === "High Resilience"
+        ? "Ketahanan Tinggi"
+        : resilienceRating === "Moderate"
+          ? "Moderat"
+          : resilienceRating === "Vulnerable"
+            ? "Rentan"
+            : "Kritis"
+    : resilienceRating;
 
   // Chart data sampled every 2 years to keep the card chart lightweight
   const chartData = useMemo(() => {
     return yearlyTrajectory
       .filter((_, idx) => idx % 2 === 0 || idx === yearlyTrajectory.length - 1)
       .map((item) => ({
-        yearLabel: item.year === 0 ? "Now" : `Y${item.year}`,
+        yearLabel: item.year === 0 ? (isIndonesian ? "Sekarang" : "Now") : isIndonesian ? `Thn ${item.year}` : `Y${item.year}`,
         p10: item.p10,
         p50: item.p50,
         p90: item.p90,
         fireTarget: item.fireTarget,
       }));
-  }, [yearlyTrajectory]);
+  }, [yearlyTrajectory, isIndonesian]);
 
   const standardMilestone = fireMilestones.standard;
   const progressPercent = Math.min(100, Math.max(0, standardMilestone.currentProgressPct));
@@ -100,7 +116,7 @@ export function MonteCarloFireCard({
                 className="text-[13px] font-bold tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
-                Monte Carlo & FIRE Outlook
+                {isIndonesian ? "Prospek Monte Carlo & FIRE" : "Monte Carlo & FIRE Outlook"}
               </h2>
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
@@ -110,14 +126,16 @@ export function MonteCarloFireCard({
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                Stochastic Lab
+                {isIndonesian ? "Lab Stokastik" : "Stochastic Lab"}
               </span>
             </div>
             <p
               className="text-[11px] font-medium"
               style={{ color: "var(--text-tertiary)" }}
             >
-              1,000-path probabilistic independence forecast
+              {isIndonesian
+                ? "Prakiraan kemandirian probabilistik 1.000 lintasan"
+                : "1,000-path probabilistic independence forecast"}
             </p>
           </div>
         </div>
@@ -133,8 +151,8 @@ export function MonteCarloFireCard({
             border: "1px solid var(--glass-border)",
             color: "var(--text-secondary)",
           }}
-          title="Configure Monte Carlo Simulation Lab"
-          aria-label="Configure Monte Carlo Simulation Lab"
+          title={isIndonesian ? "Konfigurasi Lab Simulasi Monte Carlo" : "Configure Monte Carlo Simulation Lab"}
+          aria-label={isIndonesian ? "Konfigurasi Lab Simulasi Monte Carlo" : "Configure Monte Carlo Simulation Lab"}
         >
           <SlidersHorizontal size={14} strokeWidth={1.75} />
         </button>
@@ -155,7 +173,7 @@ export function MonteCarloFireCard({
               className="text-[10px] font-bold uppercase tracking-wider mb-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              FIRE Progress
+              {isIndonesian ? "Progres FIRE" : "FIRE Progress"}
             </p>
             <div className="flex items-baseline gap-1.5">
               <span
@@ -168,7 +186,7 @@ export function MonteCarloFireCard({
                 className="text-[10px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                of Goal
+                {isIndonesian ? "dari Target" : "of Goal"}
               </span>
             </div>
           </div>
@@ -199,7 +217,7 @@ export function MonteCarloFireCard({
               className="text-[10px] font-bold uppercase tracking-wider mb-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Success Probability
+              {isIndonesian ? "Probabilitas Sukses" : "Success Probability"}
             </p>
             <div className="flex items-baseline gap-1.5">
               <span
@@ -212,7 +230,7 @@ export function MonteCarloFireCard({
                 className="text-[10px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Confidence
+                {isIndonesian ? "Keyakinan" : "Confidence"}
               </span>
             </div>
           </div>
@@ -226,7 +244,7 @@ export function MonteCarloFireCard({
               className="text-[10px] font-bold tracking-tight"
               style={{ color: "var(--text-secondary)" }}
             >
-              {resilienceRating}
+              {localizedResilience}
             </span>
           </div>
         </div>
@@ -245,7 +263,7 @@ export function MonteCarloFireCard({
             className="text-[10px] font-bold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
-            P10 / Median / P90 Dispersion
+            {isIndonesian ? "Dispersi P10 / Median / P90" : "P10 / Median / P90 Dispersion"}
           </span>
           <div className="flex items-center gap-3 text-[10px]">
             <span className="flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
@@ -295,7 +313,7 @@ export function MonteCarloFireCard({
                       }}
                     >
                       <p className="font-bold text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
-                        Timeline: {label}
+                        {isIndonesian ? "Garis Waktu" : "Timeline"}: {label}
                       </p>
                       <p className="text-[var(--text-primary)]">
                         Median: {hideBalance ? "••••••" : formatRupiah(data.p50)}
@@ -386,10 +404,10 @@ export function MonteCarloFireCard({
                 }}
               >
                 {m.isAchieved
-                  ? "Achieved"
+                  ? (isIndonesian ? "Tercapai" : "Achieved")
                   : m.estimatedYearsMedian !== null
-                  ? `~${m.estimatedYearsMedian} yrs`
-                  : ">20 yrs"}
+                  ? `~${m.estimatedYearsMedian} ${isIndonesian ? "thn" : "yrs"}`
+                  : (isIndonesian ? ">20 thn" : ">20 yrs")}
               </span>
             </div>
           </div>
@@ -411,7 +429,7 @@ export function MonteCarloFireCard({
       >
         <span className="flex items-center gap-2">
           <Sparkles size={14} style={{ color: "var(--text-tertiary)" }} />
-          Launch Monte Carlo & FIRE Simulation Lab
+          {isIndonesian ? "Buka Lab Simulasi Monte Carlo & FIRE" : "Launch Monte Carlo & FIRE Simulation Lab"}
         </span>
         <ChevronRight size={14} style={{ color: "var(--text-tertiary)" }} />
       </button>

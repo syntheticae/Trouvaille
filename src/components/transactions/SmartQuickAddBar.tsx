@@ -21,6 +21,7 @@ import {
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface SmartQuickAddBarProps {
   categories: Category[];
@@ -37,6 +38,7 @@ export function SmartQuickAddBar({
 }: SmartQuickAddBarProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const { isIndonesian } = useLanguage();
 
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -200,8 +202,12 @@ export function SmartQuickAddBar({
           }}
           placeholder={
             isListening
-              ? "Listening... (e.g. Coffee 35k BCA)"
-              : "Quick add: e.g. Coffee 35k BCA or 50k Lunch..."
+              ? isIndonesian
+                ? "Mendengarkan... (cth. Kopi 35rb BCA)"
+                : "Listening... (e.g. Coffee 35k BCA)"
+              : isIndonesian
+                ? "Tambah cepat: cth. Kopi 35rb BCA atau Makan Siang 50rb..."
+                : "Quick add: e.g. Coffee 35k BCA or 50k Lunch..."
           }
           className="flex-1 bg-transparent text-[12px] font-medium outline-none placeholder:text-[var(--text-tertiary)] placeholder:font-normal"
           style={{ color: "var(--text-primary)" }}
@@ -217,7 +223,9 @@ export function SmartQuickAddBar({
             }}
             className="p-1 rounded-full active:scale-90 transition-transform cursor-pointer"
             style={{ color: "var(--text-tertiary)" }}
-            title="Clear quick add"
+            title={
+              isIndonesian ? "Hapus teks tambah cepat" : "Clear quick add"
+            }
           >
             <X size={13} strokeWidth={1.75} />
           </button>
@@ -244,7 +252,15 @@ export function SmartQuickAddBar({
                 isListening ? "transparent" : "var(--glass-border)"
               }`,
             }}
-            title={isListening ? "Stop listening" : "Dictate with voice"}
+            title={
+              isListening
+                ? isIndonesian
+                  ? "Berhenti mendengarkan"
+                  : "Stop listening"
+                : isIndonesian
+                  ? "Dikte dengan suara"
+                  : "Dictate with voice"
+            }
           >
             {isListening ? (
               <MicOff size={14} strokeWidth={1.75} />
@@ -266,7 +282,13 @@ export function SmartQuickAddBar({
             }}
           >
             <Check size={12} strokeWidth={2} />
-            {isMulti && onBatchApply ? `Save All (${parsedList.length})` : "Fill"}
+            {isMulti && onBatchApply
+              ? isIndonesian
+                ? `Simpan Semua (${parsedList.length})`
+                : `Save All (${parsedList.length})`
+              : isIndonesian
+                ? "Isi"
+                : "Fill"}
           </button>
         )}
       </div>
@@ -292,7 +314,7 @@ export function SmartQuickAddBar({
                   }}
                 >
                   <Layers size={10.5} strokeWidth={1.5} style={{ color: "var(--text-secondary)" }} />
-                  {parsedList.length} Items • Total {formatRupiah(totalBatchAmount)}
+                  {parsedList.length} {isIndonesian ? "Item • Total" : "Items • Total"} {formatRupiah(totalBatchAmount)}
                 </span>
                 {parsedList.map((item, idx) => (
                   <span
@@ -354,19 +376,21 @@ export function SmartQuickAddBar({
                   </span>
                 )}
 
-                {parsed.dateLabel && parsed.dateLabel !== "Today" && (
-                  <span
-                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium flex items-center gap-1"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-tertiary)",
-                    }}
-                  >
-                    <Calendar size={10.5} strokeWidth={1.5} />
-                    {parsed.dateLabel}
-                  </span>
-                )}
+                {parsed.dateLabel &&
+                  parsed.dateLabel !== "Today" &&
+                  parsed.dateLabel !== "Hari Ini" && (
+                    <span
+                      className="px-2 py-0.5 rounded-lg text-[11px] font-medium flex items-center gap-1"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--glass-border)",
+                        color: "var(--text-tertiary)",
+                      }}
+                    >
+                      <Calendar size={10.5} strokeWidth={1.5} />
+                      {parsed.dateLabel}
+                    </span>
+                  )}
               </>
             )}
 
@@ -374,7 +398,13 @@ export function SmartQuickAddBar({
               className="text-[10px] font-medium ml-auto"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Press Enter or tap {isMulti && onBatchApply ? "Save All" : "Fill"}
+              {isIndonesian
+                ? `Tekan Enter atau ketuk ${
+                    isMulti && onBatchApply ? "Simpan Semua" : "Isi"
+                  }`
+                : `Press Enter or tap ${
+                    isMulti && onBatchApply ? "Save All" : "Fill"
+                  }`}
             </span>
           </motion.div>
         )}

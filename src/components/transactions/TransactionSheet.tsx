@@ -51,6 +51,7 @@ import { evaluateMathSafe } from "../../lib/evaluateMathSafe";
 import { useSpace } from "../../contexts/SpaceContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   isInvestmentOrCryptoWallet,
   syncTransactionWithHolding,
@@ -89,6 +90,7 @@ export function TransactionSheet({
 }: TransactionSheetProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const { isIndonesian } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>(
     () => transaction?.type || initialValues?.type || "expense",
   );
@@ -110,6 +112,9 @@ export function TransactionSheet({
     const saved = localStorage.getItem("trouvaille_keypad_mode");
     return saved !== "system";
   });
+
+  // Keypad & Calculator Pad State
+  const [isKeypadOpen, setIsKeypadOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -222,9 +227,6 @@ export function TransactionSheet({
   const [walletTarget, setWalletTarget] = useState<"from" | "to">("from");
   const [showSmartBar, setShowSmartBar] = useState(false);
   const [isNoteFocused, setIsNoteFocused] = useState(false);
-
-  // Keypad & Calculator Pad State
-  const [isKeypadOpen, setIsKeypadOpen] = useState(false);
 
   const activeTags = useMemo(() => {
     if (!note) return [];
@@ -341,7 +343,8 @@ export function TransactionSheet({
   const isDuplicateDetected = useMemo(() => {
     const currentVal = evaluateMathSafe(amountInput);
     if (!currentVal || currentVal <= 0 || allTxs.length === 0) return false;
-    const now = Date.now();
+    const refTime = date ? date.getTime() : 0;
+    if (!refTime) return false;
     return allTxs.some((tx) => {
       if (transaction && tx.id === transaction.id) return false;
       if (tx.amount !== currentVal) return false;
@@ -349,10 +352,10 @@ export function TransactionSheet({
         return false;
       if (walletId && tx.wallet_id !== walletId) return false;
       const txTime = new Date(tx.created_at || tx.occurred_on).getTime();
-      const diffMinutes = Math.abs(now - txTime) / (1000 * 60);
+      const diffMinutes = Math.abs(refTime - txTime) / (1000 * 60);
       return diffMinutes <= 15;
     });
-  }, [amountInput, allTxs, transaction, type, categoryId, walletId]);
+  }, [amountInput, allTxs, transaction, type, categoryId, walletId, date]);
 
   // Budget Impact Preview (Expense MTD projection)
   const budgetImpact = useMemo(() => {
@@ -392,7 +395,8 @@ export function TransactionSheet({
       );
       return {
         hasBudget: true,
-        categoryName: selectedCat?.name || "Category",
+        categoryName:
+          selectedCat?.name || (isIndonesian ? "Kategori" : "Category"),
         projectedSpent,
         budget: catBudget,
         pct: remainingPct,
@@ -422,7 +426,7 @@ export function TransactionSheet({
 
       return {
         hasBudget: true,
-        categoryName: "Overall Budget",
+        categoryName: isIndonesian ? "Total Anggaran" : "Overall Budget",
         projectedSpent: totalProjected,
         budget: budgetTarget,
         pct: remainingPct,
@@ -434,7 +438,8 @@ export function TransactionSheet({
 
     return {
       hasBudget: false,
-      categoryName: selectedCat?.name || "Category",
+      categoryName:
+        selectedCat?.name || (isIndonesian ? "Kategori" : "Category"),
       projectedSpent,
       budget: null,
       pct: null,
@@ -452,6 +457,7 @@ export function TransactionSheet({
     transaction,
     allCategories,
     budgetTarget,
+    isIndonesian,
   ]);
 
   const filteredMoreCategories = useMemo(() => {
@@ -739,7 +745,13 @@ export function TransactionSheet({
 
     if (type !== "transfer" && !isUUID(effectiveWalletId)) {
       setIsSaving(false);
-      showToast("Choose a valid wallet before saving", "delete", () => {});
+      showToast(
+        isIndonesian
+          ? "Pilih akun yang valid sebelum menyimpan"
+          : "Choose a valid wallet before saving",
+        "delete",
+        () => {},
+      );
       return;
     }
 
@@ -747,7 +759,9 @@ export function TransactionSheet({
       if (!isUUID(effectiveWalletId) || !isUUID(effectiveToWalletId)) {
         setIsSaving(false);
         showToast(
-          "Choose both source and destination wallets",
+          isIndonesian
+            ? "Pilih akun asal dan akun tujuan"
+            : "Choose both source and destination wallets",
           "delete",
           () => {},
         );
@@ -755,14 +769,26 @@ export function TransactionSheet({
       }
       if (effectiveWalletId === effectiveToWalletId) {
         setIsSaving(false);
-        showToast("Transfer wallets must be different", "delete", () => {});
+        showToast(
+          isIndonesian
+            ? "Akun transfer harus berbeda"
+            : "Transfer wallets must be different",
+          "delete",
+          () => {},
+        );
         return;
       }
     }
 
     if (type !== "transfer" && !isUUID(effectiveCatId)) {
       setIsSaving(false);
-      showToast("Choose a valid category before saving", "delete", () => {});
+      showToast(
+        isIndonesian
+          ? "Pilih kategori yang valid sebelum menyimpan"
+          : "Choose a valid category before saving",
+        "delete",
+        () => {},
+      );
       return;
     }
 
@@ -784,8 +810,10 @@ export function TransactionSheet({
           : `${peopleCount - 1} friend${peopleCount - 1 > 1 ? "s" : ""}`;
 
         const myNote = note.trim()
-          ? `${note.trim()} [Split: My share]`
-          : "Split bill [My share]";
+          ? `${note.trim()} [Split: ${isIndonesian ? "Porsi saya" : "My share"}]`
+          : isIndonesian
+            ? "Patungan [Porsi saya]"
+            : "Split bill [My share]";
         const piutangNote = note.trim()
           ? `${note.trim()} [Piutang: ${friendsLabel}]`
           : `Piutang [${friendsLabel}]`;
@@ -825,13 +853,26 @@ export function TransactionSheet({
               };
 
         onClose();
-        showToast("Saving split transaction...", "info", null, 1600);
+        showToast(
+          isIndonesian
+            ? "Menyimpan transaksi patungan..."
+            : "Saving split transaction...",
+          "info",
+          null,
+          1600,
+        );
         addTx.mutate(tx1, {
           onSuccess: () => {
             addTx.mutate(tx2, {
               onSuccess: () => {
                 triggerSuccessHaptic();
-                showToast("Split bill & Piutang recorded!", "add", () => {});
+                showToast(
+                  isIndonesian
+                    ? "Patungan & Piutang berhasil dicatat!"
+                    : "Split bill & Piutang recorded!",
+                  "add",
+                  () => {},
+                );
               },
             });
           },
@@ -851,8 +892,10 @@ export function TransactionSheet({
             type: "expense" as const,
             amount: cat1Amount,
             note: note.trim()
-              ? `${note.trim()} [Part 1]`
-              : "Multi-category [Part 1]",
+              ? `${note.trim()} [${isIndonesian ? "Bagian 1" : "Part 1"}]`
+              : isIndonesian
+                ? "Multi-kategori [Bagian 1]"
+                : "Multi-category [Part 1]",
             occurred_on: format(date, "yyyy-MM-dd"),
             created_at: txDate.toISOString(),
             category_id: isUUID(effectiveCatId) ? effectiveCatId : null,
@@ -863,8 +906,10 @@ export function TransactionSheet({
             type: "expense" as const,
             amount: cat2Amount,
             note: note.trim()
-              ? `${note.trim()} [Part 2]`
-              : "Multi-category [Part 2]",
+              ? `${note.trim()} [${isIndonesian ? "Bagian 2" : "Part 2"}]`
+              : isIndonesian
+                ? "Multi-kategori [Bagian 2]"
+                : "Multi-category [Part 2]",
             occurred_on: format(date, "yyyy-MM-dd"),
             created_at: new Date(txDate.getTime() + 1000).toISOString(),
             category_id: isUUID(effectiveCat2Id) ? effectiveCat2Id : null,
@@ -873,14 +918,23 @@ export function TransactionSheet({
           };
 
           onClose();
-          showToast("Saving multi-category transaction...", "info", null, 1600);
+          showToast(
+            isIndonesian
+              ? "Menyimpan transaksi multi-kategori..."
+              : "Saving multi-category transaction...",
+            "info",
+            null,
+            1600,
+          );
           addTx.mutate(tx1, {
             onSuccess: () => {
               addTx.mutate(tx2, {
                 onSuccess: () => {
                   triggerSuccessHaptic();
                   showToast(
-                    "Multi-category transaction recorded!",
+                    isIndonesian
+                      ? "Transaksi multi-kategori berhasil dicatat!"
+                      : "Multi-category transaction recorded!",
                     "add",
                     () => {},
                   );
@@ -915,7 +969,12 @@ export function TransactionSheet({
     };
 
     if (!transaction) {
-      showToast("Saving transaction...", "info", null, 1600);
+      showToast(
+        isIndonesian ? "Menyimpan transaksi..." : "Saving transaction...",
+        "info",
+        null,
+        1600,
+      );
     }
 
     // Synchronize with investment holding if crypto/investment wallet is involved
@@ -946,11 +1005,21 @@ export function TransactionSheet({
         {
           onSuccess: () => {
             triggerSuccessHaptic();
-            showToast("Transaction updated", "update", () => {});
+            showToast(
+              isIndonesian ? "Transaksi diperbarui" : "Transaction updated",
+              "update",
+              () => {},
+            );
           },
           onError: (err) => {
             console.error("Update tx error:", err);
-            showToast("Failed to update transaction", "delete", () => {});
+            showToast(
+              isIndonesian
+                ? "Gagal memperbarui transaksi"
+                : "Failed to update transaction",
+              "delete",
+              () => {},
+            );
           },
         },
       );
@@ -958,10 +1027,20 @@ export function TransactionSheet({
       addTx.mutate(payload, {
         onSuccess: () => {
           triggerSuccessHaptic();
-          showToast("Transaction added", "add", () => {});
+          showToast(
+            isIndonesian ? "Transaksi ditambahkan" : "Transaction added",
+            "add",
+            () => {},
+          );
         },
         onError: () => {
-          showToast("Failed to save transaction", "delete", () => {});
+          showToast(
+            isIndonesian
+              ? "Gagal menyimpan transaksi"
+              : "Failed to save transaction",
+            "delete",
+            () => {},
+          );
         },
       });
     }
@@ -985,7 +1064,11 @@ export function TransactionSheet({
     }
     deleteTx.mutate(transaction.id, {
       onSuccess: () => {
-        showToast("Transaction deleted", "delete", () => {});
+        showToast(
+          isIndonesian ? "Transaksi dihapus" : "Transaction deleted",
+          "delete",
+          () => {},
+        );
         onClose();
       },
     });
@@ -1009,24 +1092,24 @@ export function TransactionSheet({
           {[
             {
               key: "expense" as TabType,
-              label: "Expense",
+              label: isIndonesian ? "Pengeluaran" : "Expense",
               icon: <ArrowDownCircle size={13.5} strokeWidth={1.75} />,
             },
             {
               key: "income" as TabType,
-              label: "Income",
+              label: isIndonesian ? "Pemasukan" : "Income",
               icon: <ArrowUpCircle size={13.5} strokeWidth={1.75} />,
             },
             {
               key: "transfer" as TabType,
-              label: "Transfer",
+              label: isIndonesian ? "Transfer" : "Transfer",
               icon: <RefreshCcw size={13.5} strokeWidth={1.75} />,
             },
             ...(!transaction
               ? [
                   {
                     key: "split" as TabType,
-                    label: "Split",
+                    label: isIndonesian ? "Patungan" : "Split",
                     icon: <Users size={13.5} strokeWidth={1.75} />,
                   },
                 ]
@@ -1223,7 +1306,7 @@ export function TransactionSheet({
               >
                 <span>= {formatRupiah(evaluateMathSafe(amountInput))}</span>
                 <span className="text-[10px] opacity-75 font-normal">
-                  (Tap to apply)
+                  {isIndonesian ? "(Ketuk untuk terapkan)" : "(Tap to apply)"}
                 </span>
               </button>
             </div>
@@ -1284,12 +1367,20 @@ export function TransactionSheet({
                     style={{ color: "var(--text-primary)" }}
                   >
                     {isFromCrypto && type === "transfer"
-                      ? "P2P Withdrawal / Penarikan"
+                      ? isIndonesian
+                        ? "Penarikan P2P"
+                        : "P2P Withdrawal / Penarikan"
                       : isToCrypto && type === "transfer"
-                        ? "P2P Purchase / Deposit"
+                        ? isIndonesian
+                          ? "Pembelian / Setoran P2P"
+                          : "P2P Purchase / Deposit"
                         : type === "income"
-                          ? "Staking Yield / Income"
-                          : "Crypto Asset Execution"}
+                          ? isIndonesian
+                            ? "Hasil Staking / Pemasukan"
+                            : "Staking Yield / Income"
+                          : isIndonesian
+                            ? "Eksekusi Aset Kripto"
+                            : "Crypto Asset Execution"}
                   </span>
                 </div>
                 <span
@@ -1311,7 +1402,7 @@ export function TransactionSheet({
                     className="text-[10px] font-medium"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Kuantitas Koin
+                    {isIndonesian ? "Kuantitas Koin" : "Coin Quantity"}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <input
@@ -1343,7 +1434,7 @@ export function TransactionSheet({
                     className="text-[10px] font-medium"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Dampak Kepemilikan
+                    {isIndonesian ? "Dampak Kepemilikan" : "Holding Impact"}
                   </div>
                   <div
                     className="text-[12px] font-mono font-semibold mt-1"
@@ -1378,7 +1469,9 @@ export function TransactionSheet({
             >
               <AlertCircle size={14} className="shrink-0" strokeWidth={2} />
               <span>
-                Possible duplicate: similar transaction recorded within 15 mins
+                {isIndonesian
+                  ? "Kemungkinan duplikat: transaksi serupa tercatat dalam 15 menit terakhir"
+                  : "Possible duplicate: similar transaction recorded within 15 mins"}
               </span>
             </motion.div>
           )}
@@ -1420,9 +1513,15 @@ export function TransactionSheet({
                 <span className="truncate">
                   {budgetImpact.hasBudget
                     ? budgetImpact.isOver
-                      ? `Budget Exceeded: +${formatRupiah(budgetImpact.diff)}`
-                      : `Remaining: ${formatRupiah(budgetImpact.remaining)}`
-                    : `Month Total: ${formatRupiah(budgetImpact.projectedSpent)}`}
+                      ? isIndonesian
+                        ? `Melebihi Anggaran: +${formatRupiah(budgetImpact.diff)}`
+                        : `Budget Exceeded: +${formatRupiah(budgetImpact.diff)}`
+                      : isIndonesian
+                        ? `Sisa: ${formatRupiah(budgetImpact.remaining)}`
+                        : `Remaining: ${formatRupiah(budgetImpact.remaining)}`
+                    : isIndonesian
+                      ? `Total Bulan: ${formatRupiah(budgetImpact.projectedSpent)}`
+                      : `Month Total: ${formatRupiah(budgetImpact.projectedSpent)}`}
                 </span>
               </div>
               {budgetImpact.hasBudget && (
@@ -1441,7 +1540,7 @@ export function TransactionSheet({
                         : "1px solid var(--glass-border)",
                     }}
                   >
-                    {budgetImpact.pct}% left
+                    {budgetImpact.pct}% {isIndonesian ? "tersisa" : "left"}
                   </span>
                 </div>
               )}
@@ -1509,7 +1608,11 @@ export function TransactionSheet({
             onFocus={() => setIsNoteFocused(true)}
             onBlur={() => setIsNoteFocused(false)}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Add a note (optional)..."
+            placeholder={
+              isIndonesian
+                ? "Tambah catatan (opsional)..."
+                : "Add a note (optional)..."
+            }
             className="bg-transparent text-[13px] placeholder:text-[12px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-60 font-normal flex-1 outline-none min-w-0"
             style={{
               color: "var(--text-primary)",
@@ -1545,7 +1648,13 @@ export function TransactionSheet({
                     strokeWidth={1.5}
                     style={{ color: "var(--text-tertiary)" }}
                   />
-                  <span>{isToday(date) ? "Today" : format(date, "dd/MM")}</span>
+                  <span>
+                    {isToday(date)
+                      ? isIndonesian
+                        ? "Hari Ini"
+                        : "Today"
+                      : format(date, "dd/MM")}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -1593,12 +1702,16 @@ export function TransactionSheet({
                   className="text-[10px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-white/[0.06] border border-white/10 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
                 >
                   {activeTags.includes(activeSpace.tag.toLowerCase())
-                    ? "Tagged"
-                    : `Attach ${activeSpace.tag}`}
+                    ? isIndonesian
+                      ? "Tertaut"
+                      : "Tagged"
+                    : isIndonesian
+                      ? `Lampirkan ${activeSpace.tag}`
+                      : `Attach ${activeSpace.tag}`}
                 </button>
               ) : (
                 <span className="text-[10px] font-mono text-[var(--text-secondary)] bg-white/[0.06] border border-white/10 px-2 py-0.5 rounded-full">
-                  Auto-linked
+                  {isIndonesian ? "Otomatis tertaut" : "Auto-linked"}
                 </span>
               )}
             </div>
@@ -1609,8 +1722,17 @@ export function TransactionSheet({
           <div className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
             <span>
-              Tag <strong>#reimburse</strong> active · Marked for expense
-              reimbursement claim
+              {isIndonesian ? (
+                <>
+                  Tag <strong>#reimburse</strong> aktif · Ditandai untuk klaim
+                  penggantian biaya
+                </>
+              ) : (
+                <>
+                  Tag <strong>#reimburse</strong> active · Marked for expense
+                  reimbursement claim
+                </>
+              )}
             </span>
           </div>
         )}
@@ -1640,7 +1762,7 @@ export function TransactionSheet({
               }}
             >
               <Sparkles size={12} className="text-[var(--accent)] shrink-0" />
-              <span>Smart match:</span>
+              <span>{isIndonesian ? "Cocok pintar:" : "Smart match:"}</span>
               {predictedCategory && (
                 <span
                   className="font-bold"
@@ -1661,7 +1783,7 @@ export function TransactionSheet({
                   color: "var(--accent-ink)",
                 }}
               >
-                Apply
+                {isIndonesian ? "Terapkan" : "Apply"}
               </span>
             </button>
           </motion.div>
@@ -1734,7 +1856,11 @@ export function TransactionSheet({
                   batchAddTx.mutate(payloads, {
                     onSuccess: () => {
                       showToast(
-                        `${parsedList.length} transactions saved`,
+                        `${parsedList.length} ${
+                          isIndonesian
+                            ? "transaksi disimpan"
+                            : "transactions saved"
+                        }`,
                         "add",
                         () => {},
                       );
@@ -1743,7 +1869,10 @@ export function TransactionSheet({
                     },
                     onError: (err: any) => {
                       showToast(
-                        err?.message || "Failed to save transactions",
+                        err?.message ||
+                          (isIndonesian
+                            ? "Gagal menyimpan transaksi"
+                            : "Failed to save transactions"),
                         "delete",
                         () => {},
                       );
@@ -1794,7 +1923,7 @@ export function TransactionSheet({
                 color: "#ef4444",
                 border: "1px solid rgba(239, 68, 68, 0.25)",
               }}
-              title="Delete Transaction"
+              title={isIndonesian ? "Hapus Transaksi" : "Delete Transaction"}
             >
               <Trash2 size={18} strokeWidth={1.75} />
             </button>
@@ -1816,8 +1945,16 @@ export function TransactionSheet({
                   ? "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
                   : "0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #ffffff",
               }}
-              title="Scan Receipt / Slip"
-              aria-label="Scan Receipt or Slip"
+              title={
+                isIndonesian
+                  ? "Pindai Struk / Bukti Transfer"
+                  : "Scan Receipt / Slip"
+              }
+              aria-label={
+                isIndonesian
+                  ? "Pindai Struk atau Bukti Transfer"
+                  : "Scan Receipt or Slip"
+              }
             >
               <ScanLine size={18} strokeWidth={1.75} />
             </button>
@@ -1848,16 +1985,24 @@ export function TransactionSheet({
             }}
           >
             {isSaving || addTx.isPending || updateTx.isPending ? (
-              <span className="font-semibold">Saving...</span>
+              <span className="font-semibold">
+                {isIndonesian ? "Menyimpan..." : "Saving..."}
+              </span>
             ) : (
               <>
                 <Check size={16} strokeWidth={2.25} />
                 <span className="font-semibold">
                   {transaction
-                    ? "Update Transaction"
+                    ? isIndonesian
+                      ? "Perbarui Transaksi"
+                      : "Update Transaction"
                     : activeTab === "split"
-                      ? "Split & Record Expense"
-                      : "Save Transaction"}
+                      ? isIndonesian
+                        ? "Bagi & Catat Pengeluaran"
+                        : "Split & Record Expense"
+                      : isIndonesian
+                        ? "Simpan Transaksi"
+                        : "Save Transaction"}
                 </span>
               </>
             )}
@@ -1885,8 +2030,12 @@ export function TransactionSheet({
                   ? "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
                   : "0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #ffffff",
               }}
-              title="Voice / Natural Language Quick Add"
-              aria-label="Quick Add"
+              title={
+                isIndonesian
+                  ? "Tambah Cepat Suara / Teks Alami"
+                  : "Voice / Natural Language Quick Add"
+              }
+              aria-label={isIndonesian ? "Tambah Cepat" : "Quick Add"}
             >
               <Sparkles size={18} strokeWidth={1.75} />
             </button>
@@ -1919,7 +2068,7 @@ export function TransactionSheet({
                   color: "var(--text-primary)",
                 }}
               >
-                Select Category
+                {isIndonesian ? "Pilih Kategori" : "Select Category"}
               </h3>
 
               <p
@@ -1928,7 +2077,8 @@ export function TransactionSheet({
                   color: "var(--text-tertiary)",
                 }}
               >
-                {filteredMoreCategories.length} categories available
+                {filteredMoreCategories.length}{" "}
+                {isIndonesian ? "kategori tersedia" : "categories available"}
               </p>
             </div>
 
@@ -1967,7 +2117,7 @@ export function TransactionSheet({
                 WebkitBackdropFilter: "blur(18px) saturate(155%)",
               }}
             >
-              Close
+              {isIndonesian ? "Tutup" : "Close"}
             </button>
           </div>
 
@@ -1992,7 +2142,9 @@ export function TransactionSheet({
               type="text"
               value={searchCatQuery}
               onChange={(e) => setSearchCatQuery(e.target.value)}
-              placeholder="Search category..."
+              placeholder={
+                isIndonesian ? "Cari kategori..." : "Search category..."
+              }
               className="
           w-full
           h-11
@@ -2068,7 +2220,9 @@ export function TransactionSheet({
                   color: "var(--text-tertiary)",
                 }}
               >
-                No categories found matching "{searchCatQuery}"
+                {isIndonesian
+                  ? `Kategori "${searchCatQuery}" tidak ditemukan`
+                  : `No categories found matching "${searchCatQuery}"`}
               </p>
             </div>
           ) : (
@@ -2236,7 +2390,9 @@ export function TransactionSheet({
                   color: "var(--text-primary)",
                 }}
               >
-                Select Account / Wallet
+                {isIndonesian
+                  ? "Pilih Akun / Dompet"
+                  : "Select Account / Wallet"}
               </h3>
 
               <p
@@ -2246,9 +2402,14 @@ export function TransactionSheet({
                 }}
               >
                 {walletTarget === "from"
-                  ? "Source Account"
-                  : "Destination Account"}{" "}
-                · {filteredMoreWallets.length} accounts
+                  ? isIndonesian
+                    ? "Akun Asal"
+                    : "Source Account"
+                  : isIndonesian
+                    ? "Akun Tujuan"
+                    : "Destination Account"}{" "}
+                · {filteredMoreWallets.length}{" "}
+                {isIndonesian ? "akun" : "accounts"}
               </p>
             </div>
 
@@ -2287,7 +2448,7 @@ export function TransactionSheet({
                 WebkitBackdropFilter: "blur(18px) saturate(155%)",
               }}
             >
-              Close
+              {isIndonesian ? "Tutup" : "Close"}
             </button>
           </div>
 
@@ -2312,7 +2473,9 @@ export function TransactionSheet({
               type="text"
               value={searchWalletQuery}
               onChange={(e) => setSearchWalletQuery(e.target.value)}
-              placeholder="Search account..."
+              placeholder={
+                isIndonesian ? "Cari akun..." : "Search account..."
+              }
               className="
           w-full
           h-11
@@ -2388,7 +2551,9 @@ export function TransactionSheet({
                   color: "var(--text-tertiary)",
                 }}
               >
-                No accounts found matching "{searchWalletQuery}"
+                {isIndonesian
+                  ? `Akun "${searchWalletQuery}" tidak ditemukan`
+                  : `No accounts found matching "${searchWalletQuery}"`}
               </p>
             </div>
           ) : (
@@ -2544,7 +2709,7 @@ export function TransactionSheet({
             className="font-semibold text-lg mb-4"
             style={{ color: "var(--text-primary)" }}
           >
-            Select Date
+            {isIndonesian ? "Pilih Tanggal" : "Select Date"}
           </h3>
           <GlassDatePicker
             date={date}
@@ -2563,13 +2728,13 @@ export function TransactionSheet({
             className="font-semibold text-lg mb-1"
             style={{ color: "var(--text-primary)" }}
           >
-            Select Time
+            {isIndonesian ? "Pilih Waktu" : "Select Time"}
           </h3>
           <p
             className="text-[12px] font-medium mb-5"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Transaction timestamp
+            {isIndonesian ? "Waktu transaksi" : "Transaction timestamp"}
           </p>
 
           <div
@@ -2591,30 +2756,27 @@ export function TransactionSheet({
           {/* Quick preset buttons */}
           <div className="flex gap-2 mt-5">
             {[
-              "Morning (08:00)",
-              "Noon (12:30)",
-              "Evening (17:00)",
-              "Night (20:00)",
-            ].map((preset) => {
-              const t = preset.match(/\((.*?)\)/)?.[1] || "12:00";
-              return (
-                <button
-                  key={preset}
-                  onClick={() => {
-                    setTime(t);
-                    setTimeOpen(false);
-                  }}
-                  className="px-2.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  {preset.split(" ")[0]}
-                </button>
-              );
-            })}
+              { label: isIndonesian ? "Pagi" : "Morning", time: "08:00" },
+              { label: isIndonesian ? "Siang" : "Noon", time: "12:30" },
+              { label: isIndonesian ? "Sore" : "Evening", time: "17:00" },
+              { label: isIndonesian ? "Malam" : "Night", time: "20:00" },
+            ].map((preset) => (
+              <button
+                key={preset.time}
+                onClick={() => {
+                  setTime(preset.time);
+                  setTimeOpen(false);
+                }}
+                className="px-2.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                {preset.label}
+              </button>
+            ))}
           </div>
 
           <button
@@ -2628,7 +2790,7 @@ export function TransactionSheet({
                 "inset 0 1px 0 0 #ffffff, 0 8px 20px -4px rgba(0, 0, 0, 0.45)",
             }}
           >
-            Done
+            {isIndonesian ? "Selesai" : "Done"}
           </button>
         </div>
       </BottomSheet>

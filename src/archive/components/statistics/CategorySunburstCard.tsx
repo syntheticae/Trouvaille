@@ -17,6 +17,7 @@ import { getCategoryParent } from "../../hooks/useCategories";
 import { resolveTransactionCategory } from "../../lib/categoryResolver";
 import { IconRenderer } from "../ui/IconRenderer";
 import { isCorrectionTx } from "../../lib/financialMath";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface CategorySunburstCardProps {
   transactions: Transaction[];
@@ -31,6 +32,7 @@ export function CategorySunburstCard({
   timeframeLabel = "Current Period",
   defaultType = "expense",
 }: CategorySunburstCardProps) {
+  const { isIndonesian } = useLanguage();
   const [breakdownType, setBreakdownType] = useState<"expense" | "income">(defaultType);
   const [selectedNode, setSelectedNode] = useState<{
     id: string;
@@ -203,7 +205,7 @@ export function CategorySunburstCard({
               className="text-[14px] font-bold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              Capital Sunburst
+              {isIndonesian ? "Sunburst Modal" : "Capital Sunburst"}
             </h2>
             <span
               className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full border border-[var(--glass-border)]"
@@ -212,14 +214,16 @@ export function CategorySunburstCard({
                 color: "var(--text-tertiary)",
               }}
             >
-              2-Tier Radial
+              {isIndonesian ? "Radial 2 Tingkat" : "2-Tier Radial"}
             </span>
           </div>
           <p
             className="text-[11px] mt-0.5"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Macro sectors (inner) to micro categories (outer) · {timeframeLabel}
+            {isIndonesian
+              ? `Sektor makro (dalam) ke kategori mikro (luar) · ${timeframeLabel}`
+              : `Macro sectors (inner) to micro categories (outer) · ${timeframeLabel}`}
           </p>
         </div>
 
@@ -250,7 +254,7 @@ export function CategorySunburstCard({
                   : "var(--text-tertiary)",
             }}
           >
-            Expense
+            {isIndonesian ? "Pengeluaran" : "Expense"}
           </button>
           <button
             type="button"
@@ -271,7 +275,7 @@ export function CategorySunburstCard({
                   : "var(--text-tertiary)",
             }}
           >
-            Income
+            {isIndonesian ? "Pemasukan" : "Income"}
           </button>
         </div>
       </div>
@@ -285,7 +289,9 @@ export function CategorySunburstCard({
                 className="text-[10px] uppercase font-mono tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {selectedNode ? "Inspecting" : "Tap slices to inspect"}
+                {selectedNode
+                  ? (isIndonesian ? "Memeriksa" : "Inspecting")
+                  : (isIndonesian ? "Ketuk bagian untuk rincian" : "Tap slices to inspect")}
               </span>
               {selectedNode && (
                 <span
@@ -308,7 +314,7 @@ export function CategorySunburstCard({
                 style={{ color: "var(--text-secondary)" }}
               >
                 <RotateCcw size={11} />
-                <span>Reset view</span>
+                <span>{isIndonesian ? "Atur ulang tampilan" : "Reset view"}</span>
               </button>
             )}
           </div>
@@ -324,8 +330,16 @@ export function CategorySunburstCard({
             <SunburstChart
               data={sunburstData}
               totalValue={totalValue}
-              title="Total Flow"
-              unitLabel={breakdownType === "expense" ? "Outflow" : "Inflow"}
+              title={isIndonesian ? "Total Alur" : "Total Flow"}
+              unitLabel={
+                breakdownType === "expense"
+                  ? isIndonesian
+                    ? "Pengeluaran"
+                    : "Outflow"
+                  : isIndonesian
+                  ? "Pemasukan"
+                  : "Inflow"
+              }
               onSelectNode={handleSelectNode}
               height={300}
             />
@@ -344,7 +358,7 @@ export function CategorySunburstCard({
                 className="text-[9px] font-mono uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                DOMINANT SECTOR
+                {isIndonesian ? "SEKTOR DOMINAN" : "DOMINANT SECTOR"}
               </span>
               <p
                 className="text-[12px] font-bold truncate mt-0.5"
@@ -357,8 +371,10 @@ export function CategorySunburstCard({
                   className="text-[10px] font-medium mt-0.5"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  {Math.round((dominantParent.value / totalValue) * 100)}% of{" "}
-                  {breakdownType}
+                  {Math.round((dominantParent.value / totalValue) * 100)}%{" "}
+                  {isIndonesian
+                    ? `dari ${breakdownType === "expense" ? "pengeluaran" : "pemasukan"}`
+                    : `of ${breakdownType}`}
                 </p>
               )}
             </div>
@@ -374,7 +390,7 @@ export function CategorySunburstCard({
                 className="text-[9px] font-mono uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                TOP CATEGORY
+                {isIndonesian ? "KATEGORI TERATAS" : "TOP CATEGORY"}
               </span>
               <p
                 className="text-[12px] font-bold truncate mt-0.5"
@@ -403,19 +419,19 @@ export function CategorySunburstCard({
                 className="text-[9px] font-mono uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                TAXONOMY BREADTH
+                {isIndonesian ? "CAKUPAN TAKSONOMI" : "TAXONOMY BREADTH"}
               </span>
               <p
                 className="text-[12px] font-bold truncate mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
-                {sunburstData.length} Sectors
+                {sunburstData.length} {isIndonesian ? "Sektor" : "Sectors"}
               </p>
               <p
                 className="text-[10px] font-medium mt-0.5"
                 style={{ color: "var(--text-secondary)" }}
               >
-                {totalSubcategoriesCount} Subcategories
+                {totalSubcategoriesCount} {isIndonesian ? "Subkategori" : "Subcategories"}
               </p>
             </div>
           </div>
@@ -427,13 +443,13 @@ export function CategorySunburstCard({
                 className="text-[11px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Sector & Subcategory Hierarchy
+                {isIndonesian ? "Hierarki Sektor & Subkategori" : "Sector & Subcategory Hierarchy"}
               </span>
               <span
                 className="text-[10px] font-mono"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {sunburstData.length} Macro Groups
+                {sunburstData.length} {isIndonesian ? "Grup Makro" : "Macro Groups"}
               </span>
             </div>
 
@@ -488,7 +504,7 @@ export function CategorySunburstCard({
                             className="text-[10px] font-medium leading-none mt-0.5"
                             style={{ color: "var(--text-tertiary)" }}
                           >
-                            {parent.children.length} subcategories · {parent.count} ops
+                            {parent.children.length} {isIndonesian ? "subkategori" : "subcategories"} · {parent.count} {isIndonesian ? "transaksi" : "ops"}
                           </p>
                         </div>
                       </div>
@@ -603,13 +619,17 @@ export function CategorySunburstCard({
             className="text-[13px] font-bold"
             style={{ color: "var(--text-secondary)" }}
           >
-            No {breakdownType} recorded in {timeframeLabel}
+            {isIndonesian
+              ? `Tidak ada ${breakdownType === "expense" ? "pengeluaran" : "pemasukan"} tercatat pada ${timeframeLabel}`
+              : `No ${breakdownType} recorded in ${timeframeLabel}`}
           </p>
           <p
             className="text-[11px] mt-1"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Adjust filters or add transactions to inspect hierarchical flows
+            {isIndonesian
+              ? "Sesuaikan filter atau catat transaksi untuk melihat alur hierarki"
+              : "Adjust filters or add transactions to inspect hierarchical flows"}
           </p>
         </div>
       )}

@@ -667,7 +667,7 @@ export function AssetAnalyticsSection({
               className="text-[10px] font-bold uppercase tracking-wider block"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Gross Valuation
+              {isIndonesian ? "Valuasi Bruto" : "Gross Valuation"}
             </span>
             <p
               className="text-[16px] font-semibold amount tracking-tight leading-tight"
@@ -679,7 +679,7 @@ export function AssetAnalyticsSection({
               className="text-[10px] font-medium truncate pt-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Cost: {hideBalance ? "••••" : formatRupiah(cryptoCostBasis + otherHoldingsCostBasis)}
+              {isIndonesian ? "Modal: " : "Cost: "}{hideBalance ? "••••" : formatRupiah(cryptoCostBasis + otherHoldingsCostBasis)}
             </p>
           </div>
         </div>
@@ -687,7 +687,7 @@ export function AssetAnalyticsSection({
         {/* Mini Visual Spread Bar */}
         <div className="space-y-1.5 pt-1">
           <div className="flex items-center justify-between text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
-            <span>Capital Expansion Ratio</span>
+            <span>{isIndonesian ? "Rasio Ekspansi Modal" : "Capital Expansion Ratio"}</span>
             <span className="font-mono font-bold text-[var(--text-primary)]">
               {(1 + (Math.max(0, totalFloatingPct) / 100)).toFixed(2)}x
             </span>
@@ -696,17 +696,17 @@ export function AssetAnalyticsSection({
             <div
               className="h-full bg-white/40"
               style={{ width: `${Math.min(100, (100 / Math.max(100, 100 + totalFloatingPct)) * 100)}%` }}
-              title="Cost Basis"
+              title={isIndonesian ? "Basis Modal" : "Cost Basis"}
             />
             <div
               className="h-full bg-white"
               style={{ width: `${Math.min(100, (Math.max(0, totalFloatingPct) / Math.max(100, 100 + totalFloatingPct)) * 100)}%` }}
-              title="Floating Gain"
+              title={isIndonesian ? "Keuntungan Mengambang" : "Floating Gain"}
             />
           </div>
           <div className="flex justify-between text-[9px] text-[var(--text-tertiary)] pt-0.5">
-            <span>Invested Cost Basis (100%)</span>
-            <span>Floating Gain (+{totalFloatingPct.toFixed(1)}%)</span>
+            <span>{isIndonesian ? "Basis Modal Terinvestasi (100%)" : "Invested Cost Basis (100%)"}</span>
+            <span>{isIndonesian ? `Keuntungan Mengambang (+${totalFloatingPct.toFixed(1)}%)` : `Floating Gain (+${totalFloatingPct.toFixed(1)}%)`}</span>
           </div>
         </div>
       </div>
@@ -726,13 +726,13 @@ export function AssetAnalyticsSection({
               className="text-[13px] font-bold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              Risk & Volatility Profile
+              {isIndonesian ? "Profil Risiko & Volatilitas" : "Risk & Volatility Profile"}
             </h3>
             <p
               className="text-[11px] font-medium mt-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Capital distribution across volatility tiers
+              {isIndonesian ? "Distribusi modal berdasarkan tingkat volatilitas" : "Capital distribution across volatility tiers"}
             </p>
           </div>
           <div
@@ -761,7 +761,7 @@ export function AssetAnalyticsSection({
                 className="text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Defensive & Liquid
+                {isIndonesian ? "Defensif & Likuid" : "Defensive & Liquid"}
               </span>
               <ShieldCheck size={12} style={{ color: "var(--text-secondary)" }} />
             </div>
@@ -772,7 +772,7 @@ export function AssetAnalyticsSection({
               {hideBalance ? "••••" : formatRupiah(nonCryptoLiquidCash)}
             </p>
             <p className="text-[10px] font-mono font-bold" style={{ color: "var(--text-secondary)" }}>
-              {allocation.liquidShare.toFixed(1)}% of portfolio
+              {allocation.liquidShare.toFixed(1)}% {isIndonesian ? "dari portofolio" : "of portfolio"}
             </p>
           </div>
 
@@ -789,7 +789,7 @@ export function AssetAnalyticsSection({
                 className="text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Market Exposure
+                {isIndonesian ? "Eksposur Pasar" : "Market Exposure"}
               </span>
               <Zap size={12} style={{ color: "var(--text-primary)" }} />
             </div>
@@ -800,7 +800,7 @@ export function AssetAnalyticsSection({
               {hideBalance ? "••••" : formatRupiah(cryptoCostBasis + otherHoldingsCostBasis)}
             </p>
             <p className="text-[10px] font-mono font-bold" style={{ color: "var(--text-secondary)" }}>
-              {allocation.volatileShare.toFixed(1)}% of portfolio
+              {allocation.volatileShare.toFixed(1)}% {isIndonesian ? "dari portofolio" : "of portfolio"}
             </p>
           </div>
         </div>
@@ -814,7 +814,7 @@ export function AssetAnalyticsSection({
                 width: `${allocation.liquidShare}%`,
                 background: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.3)",
               }}
-              title="Defensive & Liquid"
+              title={isIndonesian ? "Defensif & Likuid" : "Defensive & Liquid"}
             />
             <div
               className="h-full transition-all duration-500"
@@ -822,12 +822,12 @@ export function AssetAnalyticsSection({
                 width: `${allocation.volatileShare}%`,
                 background: "var(--text-primary)",
               }}
-              title="Market Volatile"
+              title={isIndonesian ? "Pasar Volatil" : "Market Volatile"}
             />
           </div>
           <div className="flex justify-between text-[9px] text-[var(--text-tertiary)] pt-0.5">
-            <span>Defensive ({allocation.liquidShare.toFixed(1)}%)</span>
-            <span>Market Volatile ({allocation.volatileShare.toFixed(1)}%)</span>
+            <span>{isIndonesian ? "Defensif" : "Defensive"} ({allocation.liquidShare.toFixed(1)}%)</span>
+            <span>{isIndonesian ? "Pasar Volatil" : "Market Volatile"} ({allocation.volatileShare.toFixed(1)}%)</span>
           </div>
         </div>
 
@@ -849,13 +849,21 @@ export function AssetAnalyticsSection({
           <div className="text-[11px] leading-relaxed">
             <span className="font-bold block" style={{ color: "var(--text-primary)" }}>
               {isHighConcentration
-                ? `High Single-Asset Exposure (${topAsset?.label}: ${topAsset?.share.toFixed(1)}%)`
-                : "Healthy Asset Diversification"}
+                ? isIndonesian
+                  ? `Konsentrasi Aset Tunggal Tinggi (${topAsset?.label}: ${topAsset?.share.toFixed(1)}%)`
+                  : `High Single-Asset Exposure (${topAsset?.label}: ${topAsset?.share.toFixed(1)}%)`
+                : isIndonesian
+                  ? "Diversifikasi Aset Sehat"
+                  : "Healthy Asset Diversification"}
             </span>
             <p className="mt-0.5 text-[11px]" style={{ color: "var(--text-tertiary)" }}>
               {isHighConcentration
-                ? `Over 60% of capital is tied to ${topAsset?.label}. While benefiting from foreign currency strength, consider channeling upcoming income streams into liquid reserves to reduce portfolio drawdown exposure.`
-                : "Capital is distributed across defensive cash and investment vehicles without excessive vulnerability to single-market downturns."}
+                ? isIndonesian
+                  ? `Lebih dari 60% modal terikat pada ${topAsset?.label}. Meski diuntungkan oleh penguatan nilai valuta, pertimbangkan menyalurkan arus kas masuk mendatang ke cadangan likuid untuk mengurangi risiko penarikan portofolio.`
+                  : `Over 60% of capital is tied to ${topAsset?.label}. While benefiting from foreign currency strength, consider channeling upcoming income streams into liquid reserves to reduce portfolio drawdown exposure.`
+                : isIndonesian
+                  ? "Modal terdistribusi secara seimbang antara kas defensif dan instrumen investasi tanpa kerentanan berlebih terhadap penurunan satu pasar."
+                  : "Capital is distributed across defensive cash and investment vehicles without excessive vulnerability to single-market downturns."}
             </p>
           </div>
         </div>
@@ -876,7 +884,7 @@ export function AssetAnalyticsSection({
               className="text-[13px] font-bold"
               style={{ color: "var(--text-primary)" }}
             >
-              Portfolio Holdings
+              {isIndonesian ? "Kepemilikan Portofolio" : "Portfolio Holdings"}
             </h3>
             <span
               className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full"
@@ -904,7 +912,7 @@ export function AssetAnalyticsSection({
                 color: "var(--text-primary)",
               }}
             >
-              Manage
+              {isIndonesian ? "Kelola" : "Manage"}
             </button>
           )}
         </div>
@@ -993,13 +1001,13 @@ export function AssetAnalyticsSection({
               className="text-[13px] font-bold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              Emergency Cushion Roadmap
+              {isIndonesian ? "Peta Jalan Dana Darurat" : "Emergency Cushion Roadmap"}
             </h3>
             <p
               className="text-[11px] font-medium mt-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Defensive cash moat relative to monthly burn ({hideBalance ? "••••" : formatRupiah(burn)}/mo)
+              {isIndonesian ? "Benteng kas defensif dibanding pengeluaran bulanan" : "Defensive cash moat relative to monthly burn"} ({hideBalance ? "••••" : formatRupiah(burn)}{isIndonesian ? "/bln" : "/mo"})
             </p>
           </div>
           <div
@@ -1028,13 +1036,13 @@ export function AssetAnalyticsSection({
             }}
           >
             <span className="text-[9px] font-bold uppercase tracking-wider block" style={{ color: "var(--text-tertiary)" }}>
-              1 Mo Basic
+              {isIndonesian ? "1 Bln Dasar" : "1 Mo Basic"}
             </span>
             <p className="text-[11px] font-semibold amount" style={{ color: "var(--text-primary)" }}>
               {hideBalance ? "••••" : formatRupiah(burn * 1)}
             </p>
             <span className="text-[9px] font-bold block" style={{ color: emergencyRunwayMonths >= 1 ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-              {emergencyRunwayMonths >= 1 ? "Achieved" : `${emergencyRunwayMonths.toFixed(1)}/1.0 mo`}
+              {emergencyRunwayMonths >= 1 ? (isIndonesian ? "Tercapai" : "Achieved") : `${emergencyRunwayMonths.toFixed(1)}/${isIndonesian ? "1,0 bln" : "1.0 mo"}`}
             </span>
           </div>
 
@@ -1051,13 +1059,13 @@ export function AssetAnalyticsSection({
             }}
           >
             <span className="text-[9px] font-bold uppercase tracking-wider block" style={{ color: "var(--text-tertiary)" }}>
-              3 Mo Target
+              {isIndonesian ? "Target 3 Bln" : "3 Mo Target"}
             </span>
             <p className="text-[11px] font-semibold amount" style={{ color: "var(--text-primary)" }}>
               {hideBalance ? "••••" : formatRupiah(target3Month)}
             </p>
             <span className="text-[9px] font-bold block" style={{ color: emergencyRunwayMonths >= 3 ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-              {emergencyRunwayMonths >= 3 ? "Optimal" : `${cushionProgress.toFixed(0)}% funded`}
+              {emergencyRunwayMonths >= 3 ? (isIndonesian ? "Optimal" : "Optimal") : `${cushionProgress.toFixed(0)}% ${isIndonesian ? "terdanai" : "funded"}`}
             </span>
           </div>
 
@@ -1074,13 +1082,13 @@ export function AssetAnalyticsSection({
             }}
           >
             <span className="text-[9px] font-bold uppercase tracking-wider block" style={{ color: "var(--text-tertiary)" }}>
-              6 Mo Fortified
+              {isIndonesian ? "6 Bln Kokoh" : "6 Mo Fortified"}
             </span>
             <p className="text-[11px] font-semibold amount" style={{ color: "var(--text-primary)" }}>
               {hideBalance ? "••••" : formatRupiah(target6Month)}
             </p>
             <span className="text-[9px] font-bold block" style={{ color: emergencyRunwayMonths >= 6 ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-              {emergencyRunwayMonths >= 6 ? "Fortified" : "Moat Target"}
+              {emergencyRunwayMonths >= 6 ? (isIndonesian ? "Kokoh" : "Fortified") : (isIndonesian ? "Target Benteng" : "Moat Target")}
             </span>
           </div>
         </div>
@@ -1088,7 +1096,7 @@ export function AssetAnalyticsSection({
         {/* Progress Bar towards 3-month buffer */}
         <div className="space-y-1.5 pt-0.5">
           <div className="flex items-center justify-between text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
-            <span>3-Month Cushion Progress</span>
+            <span>{isIndonesian ? "Progres Dana Darurat 3 Bulan" : "3-Month Cushion Progress"}</span>
             <span className="font-mono font-bold text-[var(--text-primary)]">
               {cushionProgress.toFixed(1)}%
             </span>
@@ -1115,12 +1123,17 @@ export function AssetAnalyticsSection({
           <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             {cushionGap > 0 ? (
               <>
-                <strong>Cushion Gap:</strong> An additional{" "}
-                <strong className="text-[var(--text-primary)]">{hideBalance ? "••••" : formatRupiah(cushionGap)}</strong> in liquid cash is needed to reach the recommended 3-month living cushion.
+                <strong>{isIndonesian ? "Kekurangan Cadangan:" : "Cushion Gap:"}</strong>{" "}
+                {isIndonesian ? "Dibutuhkan tambahan " : "An additional "}
+                <strong className="text-[var(--text-primary)]">{hideBalance ? "••••" : formatRupiah(cushionGap)}</strong>{" "}
+                {isIndonesian ? "dalam bentuk kas likuid untuk mencapai target bantalan hidup 3 bulan yang disarankan." : "in liquid cash is needed to reach the recommended 3-month living cushion."}
               </>
             ) : (
               <>
-                <strong>Safety Moat Secured:</strong> You have {emergencyRunwayMonths.toFixed(1)} months of emergency cash. Further surplus cash can be safely deployed into investments.
+                <strong>{isIndonesian ? "Benteng Keamanan Aman:" : "Safety Moat Secured:"}</strong>{" "}
+                {isIndonesian
+                  ? `Anda memiliki ${emergencyRunwayMonths.toFixed(1)} bulan kas darurat. Surplus kas selanjutnya dapat dialokasikan dengan aman ke instrumen investasi.`
+                  : `You have ${emergencyRunwayMonths.toFixed(1)} months of emergency cash. Further surplus cash can be safely deployed into investments.`}
               </>
             )}
           </p>
@@ -1143,7 +1156,7 @@ export function AssetAnalyticsSection({
               className="text-[10px] font-bold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Emergency Runway
+              {isIndonesian ? "Runway Darurat" : "Emergency Runway"}
             </span>
             <Clock size={13} style={{ color: "var(--text-tertiary)" }} />
           </div>
@@ -1152,15 +1165,15 @@ export function AssetAnalyticsSection({
             className="text-[22px] font-semibold tracking-tight leading-none amount"
             style={{ color: "var(--text-primary)" }}
           >
-            {emergencyRunwayMonths.toFixed(1)} <span className="text-[13px] font-semibold text-[var(--text-tertiary)]">Months</span>
+            {emergencyRunwayMonths.toFixed(1)} <span className="text-[13px] font-semibold text-[var(--text-tertiary)]">{isIndonesian ? "Bulan" : "Months"}</span>
           </p>
 
           <p className="text-[11px] leading-tight" style={{ color: "var(--text-secondary)" }}>
             {emergencyRunwayMonths >= 6
-              ? "Fortified buffer (6+ mo burn covered)"
+              ? (isIndonesian ? "Benteng kokoh (tercover >6 bln beban)" : "Fortified buffer (6+ mo burn covered)")
               : emergencyRunwayMonths >= 3
-              ? "Optimal safety buffer (3-6 mo burn covered)"
-              : "Tight liquidity buffer (<3 mo burn covered)"}
+              ? (isIndonesian ? "Bantalan aman optimal (tercover 3-6 bln beban)" : "Optimal safety buffer (3-6 mo burn covered)")
+              : (isIndonesian ? "Bantalan likuiditas ketat (<3 bln beban tercover)" : "Tight liquidity buffer (<3 mo burn covered)")}
           </p>
 
           {/* Runway Progress Bar */}
@@ -1189,7 +1202,7 @@ export function AssetAnalyticsSection({
               className="text-[10px] font-bold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Liquidity Ratio
+              {isIndonesian ? "Rasio Likuiditas" : "Liquidity Ratio"}
             </span>
             <Coins size={13} style={{ color: "var(--text-tertiary)" }} />
           </div>
@@ -1203,13 +1216,13 @@ export function AssetAnalyticsSection({
 
           <p className="text-[11px] leading-tight" style={{ color: "var(--text-secondary)" }}>
             {allocation.liquidShare >= 50
-              ? "High agility · Readily accessible capital"
-              : "Asset heavy · Capital tied to market holdings"}
+              ? (isIndonesian ? "Kelincahan tinggi · Modal siap diakses" : "High agility · Readily accessible capital")
+              : (isIndonesian ? "Berat aset · Modal terikat di instrumen pasar" : "Asset heavy · Capital tied to market holdings")}
           </p>
 
           <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] pt-1">
-            <span>Liquid: {allocation.liquidShare.toFixed(0)}%</span>
-            <span>Market: {allocation.volatileShare.toFixed(0)}%</span>
+            <span>{isIndonesian ? "Likuid" : "Liquid"}: {allocation.liquidShare.toFixed(0)}%</span>
+            <span>{isIndonesian ? "Pasar" : "Market"}: {allocation.volatileShare.toFixed(0)}%</span>
           </div>
         </div>
       </div>
@@ -1226,7 +1239,7 @@ export function AssetAnalyticsSection({
         <div className="flex items-center gap-1.5">
           <Sparkles size={14} style={{ color: "var(--text-primary)" }} />
           <h4 className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>
-            Wealth Intelligence & Insights
+            {isIndonesian ? "Wawasan & Intelijen Kekayaan" : "Wealth Intelligence & Insights"}
           </h4>
         </div>
 
@@ -1237,8 +1250,10 @@ export function AssetAnalyticsSection({
               style={{ background: isDark ? "#FFFFFF" : "#09090C" }}
             />
             <p style={{ color: "var(--text-secondary)" }}>
-              <strong>Currency Resilience:</strong> USDT & foreign-denominated holdings comprise{" "}
-              {allocation.categories.find((c) => c.id === "crypto")?.share.toFixed(1) || 0}% of your total portfolio, offering a powerful hedge against local currency depreciation.
+              <strong>{isIndonesian ? "Ketahanan Mata Uang:" : "Currency Resilience:"}</strong>{" "}
+              {isIndonesian
+                ? `USDT & aset valuta asing mencakup ${allocation.categories.find((c) => c.id === "crypto")?.share.toFixed(1) || 0}% dari total portofolio Anda, memberi lindung nilai kuat terhadap depresiasi mata uang lokal.`
+                : `USDT & foreign-denominated holdings comprise ${allocation.categories.find((c) => c.id === "crypto")?.share.toFixed(1) || 0}% of your total portfolio, offering a powerful hedge against local currency depreciation.`}
             </p>
           </div>
 
@@ -1248,8 +1263,10 @@ export function AssetAnalyticsSection({
               style={{ background: isDark ? "#FFFFFF" : "#09090C" }}
             />
             <p style={{ color: "var(--text-secondary)" }}>
-              <strong>Solvency & Leverage:</strong> Total liabilities represent{" "}
-              {leverageRatio.toFixed(1)}% of gross asset valuation (healthy threshold is &lt;30%).
+              <strong>{isIndonesian ? "Solvabilitas & Leverage:" : "Solvency & Leverage:"}</strong>{" "}
+              {isIndonesian
+                ? `Total liabilitas mewakili ${leverageRatio.toFixed(1)}% dari valuasi bruto aset (ambang batas sehat adalah <30%).`
+                : `Total liabilities represent ${leverageRatio.toFixed(1)}% of gross asset valuation (healthy threshold is <30%).`}
             </p>
           </div>
 
@@ -1259,8 +1276,10 @@ export function AssetAnalyticsSection({
               style={{ background: isDark ? "#FFFFFF" : "#09090C" }}
             />
             <p style={{ color: "var(--text-secondary)" }}>
-              <strong>Capital Agility:</strong> Your emergency liquid capital provides{" "}
-              {emergencyRunwayMonths.toFixed(1)} months of burn protection without requiring forced asset liquidation.
+              <strong>{isIndonesian ? "Kelincahan Modal:" : "Capital Agility:"}</strong>{" "}
+              {isIndonesian
+                ? `Modal likuid darurat Anda menyediakan proteksi pengeluaran selama ${emergencyRunwayMonths.toFixed(1)} bulan tanpa perlu melikuidasi aset secara terpaksa.`
+                : `Your emergency liquid capital provides ${emergencyRunwayMonths.toFixed(1)} months of burn protection without requiring forced asset liquidation.`}
             </p>
           </div>
 
@@ -1270,10 +1289,14 @@ export function AssetAnalyticsSection({
               style={{ background: isDark ? "#FFFFFF" : "#09090C" }}
             />
             <p style={{ color: "var(--text-secondary)" }}>
-              <strong>Strategic Allocation:</strong>{" "}
+              <strong>{isIndonesian ? "Alokasi Strategis:" : "Strategic Allocation:"}</strong>{" "}
               {cushionGap > 0
-                ? "Prioritize funneling the next monthly surpluses into liquid cash to fortify your 3-month defense cushion before expanding high-volatility holdings."
-                : "Your defensive foundation is secure. Surplus capital can be systematically deployed via DCA into yield-generating market assets."}
+                ? (isIndonesian
+                    ? "Prioritaskan pengalihan surplus bulanan berikutnya ke kas likuid untuk memperkuat benteng pertahanan 3 bulan sebelum memperluas kepemilikan berisiko tinggi."
+                    : "Prioritize funneling the next monthly surpluses into liquid cash to fortify your 3-month defense cushion before expanding high-volatility holdings.")
+                : (isIndonesian
+                    ? "Fondasi defensif Anda telah aman. Surplus modal dapat dialokasikan secara sistematis via DCA ke instrumen pasar yang menghasilkan imbal hasil."
+                    : "Your defensive foundation is secure. Surplus capital can be systematically deployed via DCA into yield-generating market assets.")}
             </p>
           </div>
         </div>

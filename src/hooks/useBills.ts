@@ -21,7 +21,10 @@ interface BillInput {
   repeat_rule: RepeatRule;
   is_paid?: boolean;
   note?: string | null;
+  wallet_id?: string | null;
+  category_id?: string | null;
 }
+
 
 function sortBills(bills: Bill[]) {
   return [...bills].sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -180,12 +183,18 @@ export function getDaysUntilDue(dueDate: string): number {
   return Math.ceil((due.getTime() - today.getTime()) / 86400000);
 }
 
-export function getBillDueStatusLabel(dueDate: string): string {
+export function getBillDueStatusLabel(dueDate: string, isIndonesian?: boolean): string {
   const days = getDaysUntilDue(dueDate);
-  if (days < 0)
-    return `Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"}`;
-  if (days === 0) return "Due today";
-  return `Due in ${days} day${days === 1 ? "" : "s"}`;
+  if (days < 0) {
+    const abs = Math.abs(days);
+    return isIndonesian
+      ? `Terlambat ${abs} hari`
+      : `Overdue by ${abs} day${abs === 1 ? "" : "s"}`;
+  }
+  if (days === 0) return isIndonesian ? "Jatuh tempo hari ini" : "Due today";
+  return isIndonesian
+    ? `${days} hari lagi`
+    : `Due in ${days} day${days === 1 ? "" : "s"}`;
 }
 
 export function getNextDueDate(bill: Bill): string | null {
@@ -224,7 +233,28 @@ export function useAddBill() {
         .insert({ ...input, user_id: user.id })
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        if (
+          error.message?.includes("wallet_id") ||
+          error.message?.includes("category_id")
+        ) {
+          const fallbackInput = { ...input };
+          delete fallbackInput.wallet_id;
+          delete fallbackInput.category_id;
+          const { data: retryData, error: retryError } = await supabase
+            .from("bills")
+            .insert({ ...fallbackInput, user_id: user.id })
+            .select()
+            .single();
+          if (retryError) throw retryError;
+          return {
+            ...retryData,
+            wallet_id: input.wallet_id,
+            category_id: input.category_id,
+          } as Bill;
+        }
+        throw error;
+      }
       return data as Bill;
     },
     onSuccess: (newBill) => {
@@ -251,7 +281,29 @@ export function useUpdateBill() {
         .eq("id", id)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        if (
+          error.message?.includes("wallet_id") ||
+          error.message?.includes("category_id")
+        ) {
+          const fallbackInput = { ...input };
+          delete fallbackInput.wallet_id;
+          delete fallbackInput.category_id;
+          const { data: retryData, error: retryError } = await supabase
+            .from("bills")
+            .update(fallbackInput)
+            .eq("id", id)
+            .select()
+            .single();
+          if (retryError) throw retryError;
+          return {
+            ...retryData,
+            wallet_id: input.wallet_id,
+            category_id: input.category_id,
+          } as Bill;
+        }
+        throw error;
+      }
       return data as Bill;
     },
     onSuccess: (updated) => {

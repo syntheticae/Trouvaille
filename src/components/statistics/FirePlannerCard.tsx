@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   Flame,
   ChevronRight,
@@ -24,6 +25,9 @@ export function FirePlannerCard({
   hideBalance = false,
   onOpenPlanner,
 }: FirePlannerCardProps) {
+  const { language } = useLanguage();
+  const isIndonesian = language === "id";
+
   // SWR default 4% (25x rule)
   const swr = 0.04;
   const annualExpenses = Math.max(12000000, (monthlyBurnRate || 3500000) * 12);
@@ -55,19 +59,19 @@ export function FirePlannerCard({
   const milestones = [
     {
       label: "Lean FIRE",
-      sub: "Essential Living (70%)",
+      sub: isIndonesian ? "Kebutuhan Pokok (70%)" : "Essential Living (70%)",
       target: leanFireNumber,
       isAchieved: currentCapital >= leanFireNumber,
     },
     {
       label: "Standard FIRE",
-      sub: "Full Independence (100%)",
+      sub: isIndonesian ? "Kemandirian Penuh (100%)" : "Full Independence (100%)",
       target: standardFireNumber,
       isAchieved: currentCapital >= standardFireNumber,
     },
     {
       label: "Fat FIRE",
-      sub: "Luxury & Buffer (140%)",
+      sub: isIndonesian ? "Kemewahan & Cadangan (140%)" : "Luxury & Buffer (140%)",
       target: fatFireNumber,
       isAchieved: currentCapital >= fatFireNumber,
     },
@@ -101,7 +105,7 @@ export function FirePlannerCard({
                 className="text-[13px] font-bold tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
-                FIRE Planner
+                {isIndonesian ? "Perencana FIRE" : "FIRE Planner"}
               </h2>
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
@@ -111,14 +115,16 @@ export function FirePlannerCard({
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                Retire Early
+                {isIndonesian ? "Pensiun Dini" : "Retire Early"}
               </span>
             </div>
             <p
               className="text-[11px] font-medium"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Financial Independence milestones & safe withdrawal runway
+              {isIndonesian
+                ? "Tonggak kemandirian finansial & runway penarikan aman"
+                : "Financial Independence milestones & safe withdrawal runway"}
             </p>
           </div>
         </div>
@@ -128,14 +134,14 @@ export function FirePlannerCard({
             triggerHaptic("light");
             onOpenPlanner();
           }}
-          className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+          className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
           style={{
             background: "var(--glass-fill)",
             border: "1px solid var(--glass-border)",
             color: "var(--text-secondary)",
           }}
-          title="Configure FIRE Parameters"
-          aria-label="Configure FIRE Parameters"
+          title={isIndonesian ? "Konfigurasi Parameter FIRE" : "Configure FIRE Parameters"}
+          aria-label={isIndonesian ? "Konfigurasi Parameter FIRE" : "Configure FIRE Parameters"}
         >
           <SlidersHorizontal size={14} strokeWidth={1.75} />
         </button>
@@ -152,24 +158,31 @@ export function FirePlannerCard({
         <div className="flex justify-between items-start mb-2">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-              Standard FIRE Progress
+              {isIndonesian ? "Progres Standard FIRE" : "Standard FIRE Progress"}
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-[26px] font-semibold tracking-tight leading-none text-[var(--text-primary)]">
+              <span className="text-[26px] font-semibold tracking-tight leading-none text-[var(--text-primary)] tabular-nums">
                 {progressPct}%
               </span>
-              <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
-                of {hideBalance ? "••••••" : formatRupiah(standardFireNumber)}
+              <span className="text-[11px] font-medium text-[var(--text-tertiary)] tabular-nums">
+                {isIndonesian ? "dari" : "of"}{" "}
+                {hideBalance ? "••••••" : formatRupiah(standardFireNumber)}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--bg-elevated)] border border-[var(--glass-border)]">
             <Hourglass size={12} className="text-[var(--text-secondary)]" />
-            <span className="text-[11px] font-bold text-[var(--text-primary)]">
+            <span className="text-[11px] font-bold text-[var(--text-primary)] tabular-nums">
               {estimatedYears === 0
-                ? "Achieved"
+                ? isIndonesian
+                  ? "Tercapai"
+                  : "Achieved"
                 : estimatedYears !== null
-                ? `~${estimatedYears} yrs to FIRE`
+                ? isIndonesian
+                  ? `~${estimatedYears} thn lagi`
+                  : `~${estimatedYears} yrs to FIRE`
+                : isIndonesian
+                ? "Tingkatkan Tabungan"
                 : "Extend Savings"}
             </span>
           </div>
@@ -210,18 +223,24 @@ export function FirePlannerCard({
                   <CheckCircle2 size={11} className="text-[var(--text-primary)] shrink-0" />
                 )}
               </div>
-              <p className="text-[12px] font-bold tracking-tight text-[var(--text-primary)] truncate">
+              <p className="text-[12px] font-bold tracking-tight text-[var(--text-primary)] truncate tabular-nums">
                 {hideBalance ? "••••••" : formatRupiah(m.target)}
               </p>
             </div>
             <div className="mt-2 pt-1.5 border-t border-[var(--glass-border)]">
               <span
-                className="text-[10px] font-bold block truncate"
+                className="text-[10px] font-bold block truncate tabular-nums"
                 style={{
                   color: m.isAchieved ? "var(--text-primary)" : "var(--text-secondary)",
                 }}
               >
-                {m.isAchieved ? "Met" : `${((currentCapital / m.target) * 100).toFixed(0)}% reached`}
+                {m.isAchieved
+                  ? isIndonesian
+                    ? "Tercapai"
+                    : "Met"
+                  : isIndonesian
+                  ? `${((currentCapital / m.target) * 100).toFixed(0)}% tercapai`
+                  : `${((currentCapital / m.target) * 100).toFixed(0)}% reached`}
               </span>
             </div>
           </div>
@@ -234,7 +253,7 @@ export function FirePlannerCard({
           triggerHaptic("medium");
           onOpenPlanner();
         }}
-        className="w-full py-2.5 px-4 rounded-xl flex items-center justify-between font-bold text-[12px] active:scale-[0.99] transition-transform select-none"
+        className="w-full py-2.5 px-4 rounded-xl flex items-center justify-between font-bold text-[12px] active:scale-[0.99] transition-transform select-none cursor-pointer"
         style={{
           background: "var(--glass-fill)",
           border: "1px solid var(--glass-border)",
@@ -243,7 +262,9 @@ export function FirePlannerCard({
       >
         <span className="flex items-center gap-2">
           <Flame size={14} style={{ color: "var(--text-tertiary)" }} />
-          Open FIRE Milestones & Runway Planner
+          {isIndonesian
+            ? "Buka Tonggak & Perencana Runway FIRE"
+            : "Open FIRE Milestones & Runway Planner"}
         </span>
         <ChevronRight size={14} style={{ color: "var(--text-tertiary)" }} />
       </button>

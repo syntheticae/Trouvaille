@@ -2078,6 +2078,7 @@ export function TransactionsPage({
                 <input
                   type="number"
                   inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="0"
                   value={minAmount}
                   onChange={(e) => setMinAmount(e.target.value)}
@@ -2101,6 +2102,7 @@ export function TransactionsPage({
                 <input
                   type="number"
                   inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder={isIndonesian ? "Tanpa Batas" : "Unlimited"}
                   value={maxAmount}
                   onChange={(e) => setMaxAmount(e.target.value)}

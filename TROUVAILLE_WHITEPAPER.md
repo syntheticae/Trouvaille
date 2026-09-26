@@ -1,6 +1,6 @@
 # Trouvaille: Private Financial Intelligence & Luxury Architectural System
 ### Comprehensive Technical Paper & System Specification
-**Version:** 3.3.0 · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
+**Version:** 3.4.0 · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
 **Author:** DeepMind Agentic Systems & Trouvaille Core Engineering  
 **Revision Date:** September 2026  
 
@@ -16,10 +16,11 @@ Modern personal financial software has largely devolved into fragmented, visuall
 2. **Silicon Valley Wealth Bento & Asset Valuation Engine**: Comprehensive multi-asset tracking covering crypto, US equities, Indonesian stocks (IDX), physical gold, mutual funds, and fixed assets with straight-line depreciation modeling, real-time live price feeds, automated USDT balance reconciliation, and staking yield tracking.
 3. **Actuarial Simulation & Deep Telemetry Suite**: 10,000-iteration stochastic Monte Carlo wealth projections, FIRE retirement modeling (LeanFIRE, FatFIRE, CoastFIRE with 4% SWR), Debt Snowball and Avalanche payoff optimizers, 6-pillar financial health diagnostic scoring, hierarchical Category Sunburst charts, and interactive Recharts Sankey cashflow diagrams.
 4. **Personal Financial Modeling & Zero-Based Budgeting**: Unified single-card Category Budget Deck, digital envelope allocations, Cashflow Pulse velocity, Expense Volatility Index, Liquidity Horizon metrics, and interactive What-If scenario forecasting.
-5. **Cinematic Financial Analytics & Story Engine**: An expanded 9-slide *Financial Wrapped* story experience featuring novel visualization paradigms including the **Stacked Cascade Chart**, **Temporal Spending Heatmap Matrix**, **Concentric Vital Ratio Rings**, **Multi-Horizon Runway Projections**, and multi-year historical playback.
+5. **Cinematic Financial Analytics & Story Engine**: An expanded 11-slide *Financial Wrapped* story experience featuring novel visualization paradigms including the **Three-Tiered Executive Health & Velocity Score Matrix**, **Stacked Cascade Chart**, **Temporal Spending Heatmap Matrix**, **Concentric Vital Ratio Rings**, **Multi-Horizon Runway Projections**, and multi-year historical playback with Apple Liquid Glass HUD and screen-tap navigation.
 6. **Multi-Currency Engine & Bicultural Non-Mixed Localization**: Dynamic multi-currency reactivity (IDR, USD, EUR, SGD, JPY, GBP) with offline cached exchange rates and strict 100% pure Indonesian / 100% pure English localization across all cards, modals, and telemetry sheets.
 7. **Bank-Grade Data Integrity & Hardware Cryptography**: Deterministic arbitrary-precision mathematical operations, client-side AES-GCM 256-bit vault encryption with PBKDF2 key derivation, native Apple Face ID / Touch ID hardware gating with background auto-lock, and zero-barrier guest onboarding with 1-click cloud synchronization.
 8. **Executive Dossier Generation**: On-device luxury PDF financial statement and balance sheet generation via jsPDF, adhering strictly to monochrome luxury typographic standards.
+9. **Architectural Hardening & Archive Segregation**: Full codebase audit ensuring zero temporal dead zones, pure derived state execution eliminating cascading render cycles, and strict archival decoupling of legacy experiments (`src/archive/`) for maximum runtime efficiency.
 
 This document serves as the definitive architectural whitepaper, technical specification, and exhaustive component catalog for Project Trouvaille.
 
@@ -428,9 +429,9 @@ Located in `src/pages/StatisticsPage.tsx` and `src/components/statistics/`:
   5. *Expense Stability & Variance* (10%)
   6. *Budget Discipline Adherence* (10%)
 
-### 7.5 Hierarchical Visualizations: Sankey & Sunburst
+### 7.5 Hierarchical Visualizations: Sankey & Categorical Breakdown
 - **Cashflow Sankey Diagram** (`CashflowSankeySection.tsx`, `src/lib/sankeyEngine.ts`): Directed acyclic graph tracking capital flow from Gross Inflow $\to$ Accounts $\to$ Operating Expenses & Retained Capital.
-- **Category Sunburst Card** (`CategorySunburstCard.tsx`): Concentric multi-level donut visualizing parent categories down to granular transaction tags.
+- **Category Breakdown & Structure Cards** (`CategoryBreakdownCard.tsx`, `ExpenseStructureCard.tsx`): Interactive categorical breakdown with sub-category drilldowns and parent category aggregation (legacy experimental `CategorySunburstCard.tsx` preserved in `src/archive/`).
 
 ---
 
@@ -792,7 +793,7 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
 
 | # | Section Tab | Card / Feature Component | Widget ID | Primary Telemetry / Metric Displayed | Interactive Behavior |
 | :-: | :--- | :--- | :--- | :--- | :--- |
-| 1 | **Hero (All Tabs)** | `FinancialWrappedModal.tsx` | `financial_wrapped` | Cinematic 9-Slide Wrapped story (Cascade, Heatmap, Concentric Rings, Persona, Poster) | Tap to play full-screen annual or monthly wrapped recap |
+| 1 | **Hero (All Tabs)** | `FinancialWrappedModal.tsx` | `financial_wrapped` | Cinematic 11-Slide Wrapped story (Score Matrix, Cascade, Heatmap, Concentric Rings, Persona, Trajectory, Poster) | Tap to play full-screen annual or monthly wrapped recap |
 | 2 | Intelligence | `FinancialHealthDiagnosticModal.tsx` | `health_score` | 6-Pillar Financial Health Score (0–100) and Institutional Grade | Tap to launch full 6-pillar diagnostic sheet |
 | 3 | Intelligence | `CashflowOutlookCard.tsx` | `cashflow_outlook` | 30 to 90 day forward-looking liquidity projection curve and forecast floor | View projected cash surplus or deficit trajectory |
 | 4 | Intelligence | `SpendingPatternsSection.tsx` | `spending_patterns` | Peak spending weekday, weekend vs weekday ratio, highest single expense outlier | Behavioral spending shifts analysis |
@@ -812,32 +813,33 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
 | 18 | Cashflow | `NetCapitalTrajectoryCard.tsx` | `net_capital_trajectory` | Cumulative net worth growth curve over the selected timeframe | Foldable card; historical capital accumulation area chart with `GlassTooltip` |
 | 19 | Cashflow | `InflowOutflowTrendCard.tsx` | `inflow_outflow_trend` | Side-by-side monthly comparison bars of capital received vs capital burned | Foldable card; identifies net positive vs negative cashflow months |
 | 20 | Cashflow | `CashflowVelocityCard.tsx` | `cashflow_velocity` | Inflow/Outflow velocity curve, circular savings rate ring gauge, wallet usage stats | Foldable card; inspect daily expenditure density and velocity trends |
-| 21 | Cashflow | `AssetAnalyticsSection.tsx` | `asset_analytics` | Net Worth trajectory, asset allocation breakdown across accounts | Deep telemetry on capital distribution; link to `AssetValuationSheet` |
-| 22 | Simulation | `WhatIfSimulatorCard.tsx` | `what_if_simulator` | Interactive scenario stress-testing: salary shock, budget reduction, loan addition | Sliders with real-time recalculation of cash runway |
-| 23 | Simulation | `MonteCarloCard.tsx` / `MonteCarloSimulatorSheet.tsx` | `monte_carlo` | 10,000 stochastic Geometric Brownian Motion iterations: P10, P50, P90 corridors | Configure expected return, volatility, monthly deposit |
-| 24 | Simulation | `FirePlannerCard.tsx` / `FirePlannerSheet.tsx` | `fire_planner` | FIRE targets (LeanFIRE, FatFIRE, CoastFIRE) using 4% Safe Withdrawal Rate | Countdown years to financial independence, savings rate required |
-| 25 | Simulation | `PersonalFinancialModelCard.tsx` / `PersonalFinancialModelSheet.tsx` | `personal_financial_model` | Actual monthly expenditure vs 3-Tier Baseline (Survival, Comfort, Luxury) | Configure living cost baselines and scenario multipliers |
-| 26 | Simulation | `DebtPayoffSimulatorCard.tsx` | `debt_payoff` | Comparative simulation: Debt Snowball vs Debt Avalanche schedules | Extra monthly payment slider, payoff date acceleration |
-| 27 | Simulation | `LiquidityHorizonCard.tsx` | `liquidity_horizon` | Emergency survival runway under complete zero income | Calculates survival buffer in months |
-| 28 | Navigation | `CustomizeStatisticsModal.tsx` | `customize_statistics` | Modular statistics widget layout manager: toggle visibility, reorder cards | 1-tap preset selector (`executive`, `telemetry`, `planning`, `essential`) |
-| 29 | Navigation | `WidgetCustomizationBar.tsx` | `widget_customization_bar` | Floating iOS Springboard edit bar for live grid reordering and unhiding cards | Tactile drag-and-drop handles, reset layout, done button |
+| 21 | Simulation | `WhatIfSimulatorCard.tsx` | `what_if_simulator` | Interactive scenario stress-testing: salary shock, budget reduction, loan addition | Sliders with real-time recalculation of cash runway |
+| 22 | Simulation | `MonteCarloCard.tsx` / `MonteCarloSimulatorSheet.tsx` | `monte_carlo` | 10,000 stochastic Geometric Brownian Motion iterations: P10, P50, P90 corridors | Configure expected return, volatility, monthly deposit |
+| 23 | Simulation | `FirePlannerCard.tsx` / `FirePlannerSheet.tsx` | `fire_planner` | FIRE targets (LeanFIRE, FatFIRE, CoastFIRE) using 4% Safe Withdrawal Rate | Countdown years to financial independence, savings rate required |
+| 24 | Simulation | `PersonalFinancialModelCard.tsx` / `PersonalFinancialModelSheet.tsx` | `personal_financial_model` | Actual monthly expenditure vs 3-Tier Baseline (Survival, Comfort, Luxury) | Configure living cost baselines and scenario multipliers |
+| 25 | Simulation | `DebtPayoffSimulatorCard.tsx` | `debt_payoff` | Comparative simulation: Debt Snowball vs Debt Avalanche schedules | Extra monthly payment slider, payoff date acceleration |
+| 26 | Simulation | `LiquidityHorizonCard.tsx` | `liquidity_horizon` | Emergency survival runway under complete zero income | Calculates survival buffer in months |
+| 27 | Navigation | `CustomizeStatisticsModal.tsx` | `customize_statistics` | Modular statistics widget layout manager: toggle visibility, reorder cards | 1-tap preset selector (`executive`, `telemetry`, `planning`, `essential`) |
+| 28 | Navigation | `WidgetCustomizationBar.tsx` | `widget_customization_bar` | Floating iOS Springboard edit bar for live grid reordering and unhiding cards | Tactile drag-and-drop handles, reset layout, done button |
 
 #### Detailed Card Breakdown on StatisticsPage:
 
 ##### 1. Persistent Top Flagship Hero & Header Navigation:
 - **Financial Wrapped Flagship Banner (`FinancialWrappedModal.tsx`)**:
   - Positioned persistently at the very top of `StatisticsPage.tsx`, visible across all 4 workstation tabs.
-  - Displays dynamic badges based on active range: "Kilas Balik 2026" / "Year in Review" for year ranges, and "Rekap Bulanan" / "Monthly Recap" for month ranges, annotated with "9 chapters".
-  - Tapping launches the full-screen cinematic 9-slide interactive story:
+  - Displays dynamic badges based on active range: "Kilas Balik 2026" / "Year in Review" for year ranges, and "Rekap Bulanan" / "Monthly Recap" for month ranges, annotated with "11 chapters".
+  - Tapping launches the full-screen cinematic 11-slide interactive story:
     - *Slide 0*: Executive Briefing (Turnover KPI & Daily Burn) via cardless typography.
-    - *Slide 1*: Waves of Capital (Dual Inflow/Outflow Curves) with Hermite Area Spline.
-    - *Slide 2*: Capital Allocation Cascade (Stacked cascade chart).
-    - *Slide 3*: Spending Heatmap Matrix (7-column intensity calendar).
-    - *Slide 4*: Vital Efficiency Ratios (Concentric ring gauges).
-    - *Slide 5*: Capital Runway Horizon & Forward Forecast (Multi-horizon projection).
-    - *Slide 6*: Weekly Rhythm & Maximum Disruption Outlier (Step bars & outlier pinpoint).
-    - *Slide 7*: Capital Archetype & Behavioral Persona (Executive audit grid).
-    - *Slide 8*: Shareable Private Financial Statement (Framed fluted luxury poster).
+    - *Slide 1*: Three-Tiered Executive Score & Velocity Matrix (Live avatar, overall score, savings rate, and screen-bottom liquid burn reserves).
+    - *Slide 2*: Waves of Capital (Dual Inflow/Outflow Curves) with Hermite Area Spline.
+    - *Slide 3*: Capital Allocation Cascade (Stacked cascade chart).
+    - *Slide 4*: Spending Heatmap Matrix (7-column intensity calendar).
+    - *Slide 5*: Vital Efficiency Ratios (Concentric ring gauges).
+    - *Slide 6*: Capital Runway Horizon & Forward Forecast (Multi-horizon projection).
+    - *Slide 7*: Weekly Rhythm & Maximum Disruption Outlier (Step bars & outlier pinpoint).
+    - *Slide 8*: Capital Archetype & Behavioral Persona (Executive audit grid).
+    - *Slide 9*: Multi-Year Historical Trajectory (Comparative performance matrix).
+    - *Slide 10*: Shareable Private Financial Statement (Framed fluted luxury poster with native device share).
 - **Compact Timeframe Selector Popover**:
   - Compact rounded pill displaying current range title (e.g. "September 2026", "Minggu Ini", "Tahun 2026").
   - Tapping opens Apple luxury frosted popover with 1-tap options: Week, Month, Year, All-Time.
@@ -916,8 +918,8 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
 - **Cashflow Velocity Card (`CashflowVelocityCard.tsx`)**:
   - Inflow/outflow velocity curves, daily burn density, and circular savings rate ring gauge (`SavingsRing`).
   - Wallet utilization breakdown showing transaction distribution across cash, banks, and e-wallets.
-- **Asset Analytics Section (`AssetAnalyticsSection.tsx`)**:
-  - Net worth progression curve, liquid vs invested asset allocation, and direct shortcut to `AssetValuationSheet.tsx`.
+- **Asset Valuation & Net Capital Gateway (`AssetValuationSheet.tsx`)**:
+  - Direct shortcut to comprehensive asset rebalancing, multi-currency valuations, and net worth reconciliation (legacy `AssetAnalyticsSection.tsx` preserved in `src/archive/`).
 
 ##### 5. Workstation Tab 4: Simulation (Stochastic Forecasting & Independence Planning):
 - **What-If Scenario Simulator Card (`WhatIfSimulatorCard.tsx`)**:
@@ -1118,25 +1120,50 @@ Located in `src/components/home/CategoryBudgetDeck.tsx`:
 
 ## 10. Cinematic Financial Wrapped & Visualization Paradigms
 
-Trouvaille delivers a dedicated **9-Slide Financial Wrapped** engine (`FinancialWrappedModal.tsx` & `src/lib/wrappedAnalytics.ts`) supporting multi-year historical comparison:
+Trouvaille delivers a dedicated **11-Slide Financial Wrapped** engine (`FinancialWrappedModal.tsx` & `src/lib/wrappedAnalytics.ts`) supporting full-screen annual and monthly story recaps with multi-year historical comparison:
 
 ```
 =============================================================================
-                        FINANCIAL WRAPPED STORY FLOW
+                    11-SLIDE FINANCIAL WRAPPED STORY FLOW
 =============================================================================
-[Slide 0] Executive Briefing (Turnover KPI & Daily Burn) -> Cardless Typography
-[Slide 1] Waves of Capital (Dual Inflow/Outflow Curves)  -> Hermite Area Spline
-[Slide 2] Capital Allocation Cascade                    -> STACKED CASCADE CHART
-[Slide 3] Spending Heatmap Matrix                       -> 7-COLUMN INTENSITY GRID
-[Slide 4] Vital Efficiency Ratios                       -> CONCENTRIC RING GAUGES
-[Slide 5] Capital Runway Horizon & Forecast             -> MULTI-HORIZON PROJECTION
-[Slide 6] Weekly Rhythm & Maximum Disruption Outlier     -> STEP BARS & PINPOINT
-[Slide 7] Capital Archetype & Behavioral Persona        -> EXECUTIVE AUDIT GRID
-[Slide 8] Shareable Private Financial Statement         -> FRAMED FLUTED POSTER
+[Slide 0]  Executive Briefing (Turnover KPI & Daily Burn) -> Cardless Typography
+[Slide 1]  Three-Tiered Executive Score & Velocity Matrix -> 3-PILLAR BENTO DECK
+[Slide 2]  Waves of Capital (Dual Inflow/Outflow Curves)  -> Hermite Area Spline
+[Slide 3]  Capital Allocation Cascade                    -> STACKED CASCADE CHART
+[Slide 4]  Spending Heatmap Matrix                       -> 7-COLUMN INTENSITY GRID
+[Slide 5]  Vital Efficiency Ratios                       -> CONCENTRIC RING GAUGES
+[Slide 6]  Capital Runway Horizon & Forecast             -> MULTI-HORIZON PROJECTION
+[Slide 7]  Weekly Rhythm & Maximum Disruption Outlier     -> STEP BARS & PINPOINT
+[Slide 8]  Capital Archetype & Behavioral Persona        -> EXECUTIVE AUDIT GRID
+[Slide 9]  Multi-Year Historical Trajectory              -> COMPARATIVE MATRIX
+[Slide 10] Shareable Private Financial Statement         -> FRAMED FLUTED POSTER
 =============================================================================
 ```
 
-### 10.1 The Stacked Cascade Chart (Slide 2)
+### 10.1 Fluid Touch Ergonomics & Apple Liquid Glass Pause HUD
+- **Zero-Bar Full-Screen Tap Zones**:
+  - The bottom navigation bar has been removed in favor of intuitive, natural full-screen tap gestures:
+    - *Left Zone (0% – 30% Width)*: Instantly navigates to the previous slide with haptic feedback.
+    - *Right Zone (70% – 100% Width)*: Instantly advances to the next slide with haptic feedback.
+    - *Center Zone (30% – 70% Width)*: Toggles pause and resume, freezing progress bar countdowns.
+- **Apple Liquid Glass Pause HUD**:
+  - Centered floating indicator (`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`) utilizing `backdrop-blur-3xl`, dual specular hairline borders (`1.5px solid rgba(255, 255, 255, 0.25)`), subtle inner drop shadow, and spring pop entrance animation (`framer-motion`).
+  - Pointer events are set to `pointer-events-none` so interaction flow remains completely unhindered.
+
+### 10.2 Three-Tiered Executive Health & Velocity Score (Slide 1)
+- Eliminates fragmented micro-cards in favor of a cohesive vertical tri-deck:
+  - **Block 1 (Executive Header & Overall Score)**:
+    - Authentic user profile avatar rendered from local storage or cloud profile (fallback to monogram initials).
+    - 3-line typographic hierarchy: italic greeting, bold user name, and overall health score with italicized numerical presentation.
+    - Full-bleed upward placement positioned behind floating hardware status indicators.
+  - **Block 2 (Capital Retention & Efficiency Grade)**:
+    - Capital retention rate ($\text{SavingsRate}\%$) paired with institutional efficiency grade (`A+`, `A`, `B`, etc.).
+    - Unified luxury styling: solid obsidian slate (`#181922`) in dark mode, and smoky pewter milky glass (`linear-gradient(160deg, #d8dae4, #c9ccd8)`) with specular hairline border (`1.5px solid rgba(255, 255, 255, 0.9)`) and `#09090B` typography in light mode.
+  - **Block 3 (Liquid Reserves & Burn Rate)**:
+    - Extends seamlessly all the way to the bottom display edge (`height: calc(33% - 6px)`, `rounded-b-none`).
+    - Enforces safe-area bottom insets (`paddingBottom: max(safe-area-bottom + 20px, 32px)`) so home swipe indicators never clip metrics.
+
+### 10.3 The Stacked Cascade Chart (Slide 3)
 - Features 5 overlapping, asymmetrical frosted-glass blocks cascading downward.
 - **Dominant Percentages**: Each block renders its sector allocation weight in bold, prominent Urbanist typography (`38%`, `24%`, `16%`, etc.).
 - **Overlapping Depth**: Implemented via negative vertical margins (`space-y-[-14px]`) and progressive z-indexing:
@@ -1146,7 +1173,7 @@ Trouvaille delivers a dedicated **9-Slide Financial Wrapped** engine (`Financial
   - Block 4 (Rank 4): Anchored left, `w-[84%]`, `bg-white/[0.06]`, `border-white/12`, `z-40`
   - Block 5 (Rank 5): Centered, `w-[92%]`, `bg-white/[0.04]`, `border-white/[0.09]`, `z-50`
 
-### 10.2 Temporal Spending Heatmap Matrix (Slide 3)
+### 10.4 Temporal Spending Heatmap Matrix (Slide 4)
 - Renders a 7-column calendar matrix (`M T W T F S S`) displaying day-by-day outflow intensity across the active period.
 - **5 Monochrome Intensity Tiers**:
   - `Level 0`: Zero spend (`bg-white/[0.03]`, dimmed text)
@@ -1155,15 +1182,27 @@ Trouvaille delivers a dedicated **9-Slide Financial Wrapped** engine (`Financial
   - `Level 3`: Substantial outflow (`bg-white/[0.55]`)
   - `Level 4`: Peak outflow (`bg-white text-black font-bold shadow-[0_0_14px_rgba(255,255,255,0.7)]`)
 
-### 10.3 Concentric Ring Chart for Vital Ratios (Slide 4)
+### 10.5 Concentric Ring Chart for Vital Ratios (Slide 5)
 - Three nested circular SVG progress arcs:
   1. **Outer Arc ($r=76$)**: Capital Retention Rate ($\text{SavingsRate}\%$), solid white stroke with glow.
   2. **Middle Arc ($r=56$)**: Essential Living Needs ($\text{EssentialPct}\%$), $65\%$ opacity stroke.
   3. **Inner Arc ($r=36$)**: Weekend Outflow Ratio ($\text{WeekendPct}\%$), $35\%$ opacity stroke.
 
-### 10.4 Multi-Horizon Runway Projection (Slide 5)
+### 10.6 Multi-Horizon Runway Projection (Slide 6)
 - Solid historical baseline anchored at Present transitioning into a smooth dashed Bezier extrapolation curve terminating at `+6 Mo Horizon`.
 - Illuminated terminal pin with glowing halo and quantitative callout (+$\Delta$ Rupiah).
+
+### 10.7 Disruption Outlier & Weekly Rhythm (Slide 7)
+- Step bars pinpointing expenditure distribution across weekdays and identifying peak single expense anomalies with timestamp and note annotations.
+
+### 10.8 Capital Archetype & Behavioral Persona (Slide 8)
+- Executive institutional audit grid mapping the user's spending psychology to distinct archetypes (*The Sovereign Architect*, *The Strategic Accumulator*, *The Capital Optimizer*).
+
+### 10.9 Multi-Year Historical Trajectory (Slide 9)
+- Multi-horizon comparative matrix benchmarking the current period against historical annual datasets to measure long-term wealth acceleration.
+
+### 10.10 Shareable Private Financial Statement (Slide 10)
+- Framed fluted luxury poster exportable as high-resolution PNG using HTML-to-Canvas rendering with direct invocation of native iOS / Android share sheets (`navigator.share` with file blob fallback).
 
 ---
 
@@ -1271,40 +1310,52 @@ d:\Project\Trouvaille\
 │   └── migrations\                       # Production SQL DDL & RLS Policies
 │       ├── 20260918_audit_and_migration.sql
 │       ├── 20260920_production_ready_holdings.sql
-│       └── 20260921_add_ledgers_table.sql
+│       ├── 20260921_add_ledgers_table.sql
+│       ├── 20260925_bills_wallet_and_category.sql
+│       └── 20260925_user_budgets_and_category_limit.sql
 ├── src\
+│   ├── archive\                          # Cleanly preserved legacy components (excluded from tsc & oxlint)
+│   │   └── components\
+│   │       ├── assets\                   # AssetBentoMicroCards, CapitalAllocationCard, PortfolioInsightCards
+│   │       ├── gamification\             # MilestoneBadgesSheet
+│   │       ├── onboarding\               # OrbitCardSelector, WheelCarouselSelector
+│   │       └── statistics\               # AssetAnalyticsSection, CategorySunburstCard, FinancialCleanSheetModal, MonteCarloFireCard
 │   ├── components\
-│   │   ├── assets\                       # Silicon Valley Wealth Bento, Balance Sheets & Dominance Cards
-│   │   │   ├── AssetBentoMicroCards.tsx  # 6-card micro bento grid
+│   │   ├── assets\                       # Silicon Valley Wealth Bento, Balance Sheets & Intelligence Deck
 │   │   │   ├── AssetMetricDrillDownSheet.tsx # Contextual metric narrative & constituent asset drilldown
-│   │   │   ├── CapitalAllocationCard.tsx # 3-tier capital allocation progress visualization
 │   │   │   ├── ConsolidatedBalanceSheetDrawer.tsx # Modular 360-degree tiered balance sheet drawer
 │   │   │   ├── ExecutiveWalletCard.tsx   # Executive balance card with tuck animation & parity
 │   │   │   ├── MonthlyDeploymentBarCard.tsx # MTD capital deployment tracker
-│   │   │   └── PortfolioInsightCards.tsx # Deep telemetry gateway banners
-│   │   ├── bills\                        # Recurring obligations & due date trackers
+│   │   │   └── PortfolioIntelligenceDeck.tsx # Unified portfolio intelligence & allocation deck
+│   │   ├── bills\                        # Recurring obligations, due date trackers & PayBillModal
+│   │   │   ├── DetectedRecurringSection.tsx # Automated recurring subscription detection
+│   │   │   └── PayBillModal.tsx          # Bill settlement modal with wallet deduction & slip capture
 │   │   ├── charts\                       # Reusable Candlestick, Area & Bar charts
 │   │   ├── currency\                     # Multi-currency switcher & FX converters
 │   │   ├── export\                       # jsPDF luxury financial report generator
-│   │   ├── goals\                        # Target savings milestones & progress rings
+│   │   ├── goals\                        # Target savings milestones, progress rings & GoalDetailModal
 │   │   ├── home\                         # Balance summary, CategoryBudgetDeck, Bento cards
 │   │   │   ├── CategoryBudgetDeck.tsx    # Unified single-card budget deck
 │   │   │   ├── CashflowPulseCard.tsx     # Burn rate velocity vs moving average
 │   │   │   ├── ProfileMenuModal.tsx      # Dynamic Island profile flyout
-│   │   │   └── widgets\                  # Modular widget components
+│   │   │   ├── WhatIfSimulatorCard.tsx   # Real-time interactive scenario stress-tester
+│   │   │   ├── WhatIfSimulatorSheet.tsx  # Full-screen What-If scenario simulation sheet
+│   │   │   └── widgets\                  # Modular widget components & CompactHalfCards
 │   │   ├── layout\                       # Dynamic Island wrappers, bottom navigation tab bar
 │   │   ├── nfc\                          # Contactless e-money transit card reader
 │   │   ├── security\                     # Biometric lock overlay & AES vault gates
 │   │   ├── settings\                     # AssetDetailSheet, StakingYieldModal, Preferences
 │   │   ├── spaces\                       # Multi-ledger spaces & collaborative switches
 │   │   ├── statistics\                   # Deep telemetry, Monte Carlo, FIRE, Sankey
-│   │   │   ├── FinancialWrappedModal.tsx # 9-Slide Cinematic Story Experience
+│   │   │   ├── FinancialWrappedModal.tsx # 11-Slide Cinematic Story Experience & Liquid Glass HUD
 │   │   │   ├── MonteCarloSimulatorSheet.tsx # 10k stochastic simulation engine
 │   │   │   ├── FirePlannerSheet.tsx      # FIRE retirement calculator
 │   │   │   ├── DebtPayoffSimulatorCard.tsx # Snowball vs Avalanche optimizer
 │   │   │   ├── FinancialHealthDiagnosticModal.tsx # 6-pillar health assessment
 │   │   │   ├── CashflowSankeySection.tsx # Directed cashflow flow diagram
-│   │   │   └── CategorySunburstCard.tsx  # Concentric sub-category breakdown
+│   │   │   ├── CategoryBreakdownCard.tsx # Category expense breakdown & drilldowns
+│   │   │   ├── InflowOutflowTrendCard.tsx # Side-by-side comparative monthly cashflow
+│   │   │   └── NetCapitalTrajectoryCard.tsx # Cumulative net capital progression
 │   │   ├── tools\                        # Split bill workstation & settlement generator
 │   │   ├── transactions\                 # Voice, OCR, Statement, Keypad sheets
 │   │   │   ├── VoiceQuickAddModal.tsx    # Multi-transaction speech engine & Hermite wave
@@ -1325,6 +1376,7 @@ d:\Project\Trouvaille\
 │   │   ├── nlpParser.ts                  # Multi-transaction NLP parser & slang dictionary
 │   │   ├── reportExportService.ts        # jsPDF luxury dossier export
 │   │   ├── statementParser.ts            # Multi-bank statement extraction heuristics
+│   │   ├── wrappedAnalytics.ts           # 11-Slide Financial Wrapped metrics generator
 │   │   └── vaultEncryption.ts            # AES-GCM 256-bit client-side encryption
 │   ├── pages\                            # 7 Primary Application Workstations
 │   │   ├── AssetsPage.tsx                # Silicon Valley Wealth Bento & Balance Sheet

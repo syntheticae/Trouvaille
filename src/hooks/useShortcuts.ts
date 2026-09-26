@@ -22,7 +22,7 @@ export function useShortcuts() {
     if (saved) {
       try {
         return JSON.parse(saved)
-      } catch (e) {
+      } catch {
         return DEFAULT_SHORTCUTS
       }
     }

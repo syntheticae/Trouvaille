@@ -253,7 +253,7 @@ export function CategoryBudgetDeck({
 
                     {env.isOverbudget && (
                       <span
-                        className="font-mono text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0"
+                        className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0"
                         style={{
                           background: isDark
                             ? "rgba(255, 255, 255, 0.15)"
@@ -262,12 +262,12 @@ export function CategoryBudgetDeck({
                           border: "1px solid var(--glass-border)",
                         }}
                       >
-                        Over
+                        {isIndonesian ? "Lebih" : "Over"}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
+                  <div className="flex items-center gap-1.5 shrink-0 text-[11px]">
                     <span className="font-semibold text-[var(--text-primary)]">
                       {hideBalance ? "••••" : formatRupiah(env.spent)}
                     </span>
@@ -313,7 +313,7 @@ export function CategoryBudgetDeck({
                 </div>
 
                 {/* Bottom Row: Remaining buffer or excess amount */}
-                <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] font-mono">
+                <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
                   <span>
                     {env.isOverbudget
                       ? isIndonesian

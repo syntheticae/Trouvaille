@@ -264,7 +264,7 @@ export function MiniHeatmapCard({
 
                 {/* Amount or Quiet Indicator */}
                 <span
-                  className={`text-[7.5px] font-mono leading-none truncate max-w-full px-0.5 ${
+                  className={`text-[7.5px] font-medium leading-none truncate max-w-full px-0.5 ${
                     hasSpend
                       ? "text-[var(--text-secondary)] font-semibold"
                       : "text-[var(--text-tertiary)] opacity-30"

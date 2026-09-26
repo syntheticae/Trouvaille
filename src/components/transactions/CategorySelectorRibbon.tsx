@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { IconRenderer } from "../ui/IconRenderer";
 import { triggerHaptic } from "../../lib/haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import type { Category } from "../../lib/types";
 
 export interface CategorySelectorRibbonProps {
@@ -19,6 +20,7 @@ export function CategorySelectorRibbon({
 }: CategorySelectorRibbonProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const { isIndonesian } = useLanguage();
   return (
     <div className="mb-4.5">
       <div className="flex items-center justify-between mb-2 px-1">
@@ -26,7 +28,7 @@ export function CategorySelectorRibbon({
           className="text-[11px] font-semibold uppercase tracking-wider"
           style={{ color: "var(--text-tertiary)" }}
         >
-          Category
+          {isIndonesian ? "Kategori" : "Category"}
         </span>
         <button
           type="button"
@@ -37,7 +39,7 @@ export function CategorySelectorRibbon({
           className="text-[11px] font-medium flex items-center gap-0.5 active:opacity-70 transition-opacity cursor-pointer"
           style={{ color: "var(--text-secondary)" }}
         >
-          <span>All</span>
+          <span>{isIndonesian ? "Semua" : "All"}</span>
           <ChevronRight size={13} strokeWidth={1.75} />
         </button>
       </div>
@@ -94,7 +96,7 @@ export function CategorySelectorRibbon({
             color: "var(--text-tertiary)",
           }}
         >
-          <span>+ More</span>
+          <span>{isIndonesian ? "+ Lainnya" : "+ More"}</span>
         </button>
       </div>
     </div>

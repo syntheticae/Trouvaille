@@ -174,7 +174,7 @@ export function SpendingVelocityBarCard({
               bottom: `${Math.min(95, Math.max(10, (dailyAverage / maxAmount) * 100))}%`,
             }}
           >
-            <span className="text-[8px] font-mono text-white absolute right-0 -top-3.5 px-1 bg-zinc-800 dark:bg-zinc-800 rounded">
+            <span className="text-[8px] font-semibold text-white absolute right-0 -top-3.5 px-1 bg-zinc-800 dark:bg-zinc-800 rounded">
               {isIndonesian ? "Rerata" : "Avg"}: {formatRupiah(dailyAverage)}
             </span>
           </div>
@@ -188,7 +188,7 @@ export function SpendingVelocityBarCard({
                 className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end z-20 group relative cursor-pointer"
               >
                 {/* Amount Label Above Bar */}
-                <span className="text-[8.5px] font-mono font-semibold text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors truncate">
+                <span className="text-[8.5px] font-semibold text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors truncate">
                   {d.amount > 0
                     ? `${Math.round(d.amount / 1000)}k`
                     : "0"}

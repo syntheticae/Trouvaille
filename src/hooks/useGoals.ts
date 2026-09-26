@@ -10,60 +10,154 @@ export interface Goal {
   targetDate?: string
 }
 
-const STORAGE_KEY = "trouvaille_financial_goals_v2"
-const INITIALIZED_KEY = "trouvaille_goals_initialized_v2"
+export const GOALS_STORAGE_KEY = "trouvaille_financial_goals_v2"
+export const GOALS_INITIALIZED_KEY = "trouvaille_goals_initialized_v2"
+export const GOALS_UPDATED_EVENT = "trouvaille_goals_updated"
+
+export function deductGoalFromStorage(goalIdOrTag: string, amount: number) {
+  try {
+    const raw = localStorage.getItem(GOALS_STORAGE_KEY);
+    if (!raw) return;
+    const goals: Goal[] = JSON.parse(raw);
+    if (!Array.isArray(goals)) return;
+
+    let matched = false;
+    const cleanTag = goalIdOrTag.trim();
+    const updated = goals.map((g) => {
+      const matchesId = g.id === cleanTag || cleanTag.includes(g.id);
+      const matchesTitle =
+        cleanTag.toLowerCase().includes(g.title.toLowerCase()) ||
+        g.title.toLowerCase().includes(cleanTag.toLowerCase());
+      if (!matched && (matchesId || matchesTitle)) {
+        matched = true;
+        return {
+          ...g,
+          currentAmount: Math.max(0, (g.currentAmount || 0) - amount),
+        };
+      }
+      return g;
+    });
+
+    if (matched) {
+      localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent(GOALS_UPDATED_EVENT));
+    }
+  } catch (err) {
+    console.warn("[deductGoalFromStorage] Error:", err);
+  }
+}
+
+export function addGoalToStorage(goalIdOrTag: string, amount: number) {
+  try {
+    const raw = localStorage.getItem(GOALS_STORAGE_KEY);
+    if (!raw) return;
+    const goals: Goal[] = JSON.parse(raw);
+    if (!Array.isArray(goals)) return;
+
+    let matched = false;
+    const cleanTag = goalIdOrTag.trim();
+    const updated = goals.map((g) => {
+      const matchesId = g.id === cleanTag || cleanTag.includes(g.id);
+      const matchesTitle =
+        cleanTag.toLowerCase().includes(g.title.toLowerCase()) ||
+        g.title.toLowerCase().includes(cleanTag.toLowerCase());
+      if (!matched && (matchesId || matchesTitle)) {
+        matched = true;
+        return {
+          ...g,
+          currentAmount: Math.min(g.targetAmount, (g.currentAmount || 0) + amount),
+        };
+      }
+      return g;
+    });
+
+    if (matched) {
+      localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent(GOALS_UPDATED_EVENT));
+    }
+  } catch (err) {
+    console.warn("[addGoalToStorage] Error:", err);
+  }
+}
 
 export function useGoals() {
   const [goals, setGoals] = useState<Goal[]>(() => {
     try {
-      const isInit = localStorage.getItem(INITIALIZED_KEY)
+      const isInit = localStorage.getItem(GOALS_INITIALIZED_KEY);
       if (isInit) {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        return stored ? JSON.parse(stored) : []
+        const stored = localStorage.getItem(GOALS_STORAGE_KEY);
+        return stored ? JSON.parse(stored) : [];
       }
-      localStorage.setItem(INITIALIZED_KEY, "true")
-      return []
+      localStorage.setItem(GOALS_INITIALIZED_KEY, "true");
+      return [];
     } catch {
-      return []
+      return [];
     }
-  })
+  });
+
+  const persistGoals = (nextGoals: Goal[]) => {
+    setGoals(nextGoals);
+    try {
+      localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(nextGoals));
+      localStorage.setItem(GOALS_INITIALIZED_KEY, "true");
+      window.dispatchEvent(new CustomEvent(GOALS_UPDATED_EVENT));
+    } catch (e) {
+      console.warn("Failed to persist goals:", e);
+    }
+  };
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(goals))
-      localStorage.setItem(INITIALIZED_KEY, "true")
-    } catch (e) {
-      console.warn("Failed to persist goals:", e)
-    }
-  }, [goals])
+    const handleSync = () => {
+      try {
+        const stored = localStorage.getItem(GOALS_STORAGE_KEY);
+        if (stored) {
+          setGoals(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.warn("Failed to sync goals:", e);
+      }
+    };
+    window.addEventListener(GOALS_UPDATED_EVENT, handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener(GOALS_UPDATED_EVENT, handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, []);
 
   const addGoal = (goal: Omit<Goal, "id">) => {
-    const newGoal: Goal = { ...goal, id: Math.random().toString(36).slice(2, 9) }
-    setGoals(prev => [newGoal, ...prev])
-  }
+    const newGoal: Goal = { ...goal, id: Math.random().toString(36).slice(2, 9) };
+    persistGoals([newGoal, ...goals]);
+  };
 
   const updateGoal = (id: string, updates: Partial<Goal>) => {
-    setGoals(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g))
-  }
+    const next = goals.map((g) => (g.id === id ? { ...g, ...updates } : g));
+    persistGoals(next);
+  };
 
   const deleteGoal = (id: string) => {
-    setGoals(prev => prev.filter(g => g.id !== id))
-  }
+    const next = goals.filter((g) => g.id !== id);
+    persistGoals(next);
+  };
 
   const depositToGoal = (id: string, amount: number) => {
-    setGoals(prev => prev.map(g => {
+    const next = goals.map((g) => {
       if (g.id === id) {
-        return { ...g, currentAmount: Math.min(g.targetAmount, g.currentAmount + amount) }
+        return {
+          ...g,
+          currentAmount: Math.min(g.targetAmount, (g.currentAmount || 0) + amount),
+        };
       }
-      return g
-    }))
-  }
+      return g;
+    });
+    persistGoals(next);
+  };
 
   return {
     goals,
     addGoal,
     updateGoal,
     deleteGoal,
-    depositToGoal
-  }
+    depositToGoal,
+  };
 }

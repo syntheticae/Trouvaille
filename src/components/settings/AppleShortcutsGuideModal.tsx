@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 
 interface AppleShortcutsGuideModalProps {
@@ -26,6 +27,7 @@ export function AppleShortcutsGuideModal({
   onClose,
 }: AppleShortcutsGuideModalProps) {
   const { showToast } = useToast();
+  const { isIndonesian } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>("ways_to_add");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -124,92 +126,211 @@ export function AppleShortcutsGuideModal({
               {
                 num: "1",
                 icon: Mic,
-                title: "Voice Quick-Add",
-                desc: "Tap the mic and speak naturally, e.g., 'Kopi 35 ribu pakai BCA'.",
+                title: isIndonesian ? "Voice Quick-Add (Siri)" : "Voice Quick-Add (Siri)",
+                desc: isIndonesian
+                  ? "Bicara santai tanpa mengetik, contoh: 'Kopi 35 ribu pakai BCA'."
+                  : "Speak naturally without typing, e.g., 'Coffee 35k with BCA'.",
                 scheme: "trouvaille://voice",
+                steps: isIndonesian
+                  ? [
+                      "Buka aplikasi Shortcuts di iPhone, lalu ketuk tanda '+' untuk membuat Shortcut baru.",
+                      "Cari tindakan 'Open URL' (Buka URL), lalu masukkan skema 'trouvaille://voice'.",
+                      "Beri nama shortcut 'Catat Pengeluaran' atau 'Trouvaille Voice'.",
+                      "Kini cukup ucapkan 'Hey Siri, Catat Pengeluaran' — mic langsung aktif mendengar!",
+                    ]
+                  : [
+                      "Open the Apple Shortcuts app on iPhone, then tap '+' to create a new Shortcut.",
+                      "Search for the 'Open URL' action, then paste the scheme 'trouvaille://voice'.",
+                      "Name the shortcut 'Quick Expense' or 'Trouvaille Voice'.",
+                      "Now simply say 'Hey Siri, Quick Expense' — the mic activates instantly!",
+                    ],
               },
               {
                 num: "2",
                 icon: Zap,
-                title: "Apple Shortcuts",
-                desc: "Trigger Voice or Screen Scanner directly via Siri, Widget, or Action Button.",
+                title: isIndonesian ? "Apple Shortcuts & Lock Screen" : "Apple Shortcuts & Lock Screen",
+                desc: isIndonesian
+                  ? "Buka jendela pencatatan instan dari Lock Screen atau Control Center."
+                  : "Trigger the instant logging modal directly from Lock Screen or Control Center.",
                 scheme: "trouvaille://add",
+                steps: isIndonesian
+                  ? [
+                      "Buat Shortcut baru dengan tindakan 'Open URL', lalu masukkan 'trouvaille://add'.",
+                      "Tambahkan widget Shortcuts ke Lock Screen atau Home Screen iPhone Anda.",
+                      "Ketuk widget satu kali kapan pun ingin membuka modal pencatatan tanpa navigasi manual.",
+                    ]
+                  : [
+                      "Create a new Shortcut with 'Open URL' action pointing to 'trouvaille://add'.",
+                      "Add a Shortcuts widget to your iPhone Lock Screen or Home Screen.",
+                      "Tap the widget anytime to launch the transaction entry modal in 1 tap.",
+                    ],
               },
               {
                 num: "3",
                 icon: Camera,
-                title: "Scan Receipt",
-                desc: "Snap a physical paper receipt or QRIS printout to parse items with AI.",
+                title: isIndonesian ? "AI Receipt Scanner (Struk Fisik)" : "AI Receipt Scanner (Paper Receipts)",
+                desc: isIndonesian
+                  ? "Foto struk kasir atau barcode QRIS; AI membedah item & nominal otomatis."
+                  : "Snap physical receipts or QRIS slips; AI extracts items and amounts automatically.",
                 scheme: "trouvaille://scan",
+                steps: isIndonesian
+                  ? [
+                      "Buat Shortcut baru dengan tindakan 'Open URL' dan skema 'trouvaille://scan'.",
+                      "Pasang shortcut ini di menu Back Tap (Ketuk Belakang) atau Action Button.",
+                      "Arahkan kamera ke struk belanja; AI Trouvaille memproses merchant dan nominal belanja.",
+                    ]
+                  : [
+                      "Create a new Shortcut with 'Open URL' action using scheme 'trouvaille://scan'.",
+                      "Assign this shortcut to your iOS Back Tap or Action Button gesture.",
+                      "Point the camera at any receipt; Trouvaille AI parses merchant and amount.",
+                    ],
               },
               {
                 num: "4",
                 icon: Layers,
-                title: "Attach Screenshot",
-                desc: "Select a payment proof or bank mutation screenshot from your photo library.",
+                title: isIndonesian ? "Screenshot Mutasi & Bukti Transfer" : "Screenshot & Transfer Proof",
+                desc: isIndonesian
+                  ? "Ekstrak bukti pembayaran m-banking langsung dari galeri foto iPhone."
+                  : "Extract m-banking transaction confirmations directly from photo library.",
                 scheme: "trouvaille://scan",
+                steps: isIndonesian
+                  ? [
+                      "Setelah transfer di BCA, Mandiri, atau GoPay, simpan screenshot bukti pembayaran.",
+                      "Gunakan skema 'trouvaille://scan' untuk langsung melompat ke pemindai screenshot.",
+                      "Pilih foto dari galeri; OCR AI mengekstrak nominal dan tanggal dalam hitungan detik.",
+                    ]
+                  : [
+                      "After completing a payment in your banking app, save the confirmation screenshot.",
+                      "Trigger 'trouvaille://scan' to jump directly into the screenshot parser.",
+                      "Select the photo from gallery; AI extracts nominal and date within seconds.",
+                    ],
               },
               {
                 num: "5",
                 icon: Share2,
-                title: "iOS Share Sheet",
-                desc: "Share transaction text or receipts from WhatsApp, BCA, or Grab to Trouvaille.",
+                title: isIndonesian ? "iOS Share Sheet (Bagikan Teks)" : "iOS Share Sheet (Direct Text)",
+                desc: isIndonesian
+                  ? "Bagikan teks tagihan dari WhatsApp atau SMS perbankan ke Trouvaille."
+                  : "Share transaction text from WhatsApp or SMS banking directly to Trouvaille.",
                 scheme: "trouvaille://add?text=",
+                steps: isIndonesian
+                  ? [
+                      "Di detail Shortcut, aktifkan toggle 'Show in Share Sheet' (Tampilkan di Lembar Berbagi).",
+                      "Konfigurasikan aksi URL: 'trouvaille://add?text=[Shortcut Input]'.",
+                      "Saat menerima pesan tagihan atau mutasi, pilih Bagikan > Trouvaille untuk auto-parse.",
+                    ]
+                  : [
+                      "In Shortcut details, enable 'Show in Share Sheet'.",
+                      "Configure the URL action as: 'trouvaille://add?text=[Shortcut Input]'.",
+                      "When receiving an SMS or message, tap Share > Trouvaille for instant auto-parse.",
+                    ],
               },
               {
                 num: "6",
                 icon: PlusCircle,
-                title: "Manual Keypad",
-                desc: "Ergonomic triple-zero 000 keypad with in-line math calculation.",
+                title: isIndonesian ? "Numpad Ergonomis & Kalkulator" : "Ergonomic Numpad & Math Calc",
+                desc: isIndonesian
+                  ? "Keypad monokrom dengan tombol 000 dan perhitungan matematika in-line."
+                  : "Monochrome keypad with triple-zero 000 and in-line mathematical calculation.",
                 scheme: "trouvaille://add",
+                steps: isIndonesian
+                  ? [
+                      "Buka Trouvaille di Safari iOS, lalu pilih 'Add to Home Screen' untuk mode PWA fullscreen.",
+                      "Gunakan tombol '+' di navbar bawah atau panggil via skema 'trouvaille://add'.",
+                      "Ketik nominal dengan bantuan tombol '000' dan operator '+' atau '-' langsung di kolom.",
+                    ]
+                  : [
+                      "Open Trouvaille in iOS Safari and tap 'Add to Home Screen' for standalone fullscreen mode.",
+                      "Use the '+' bottom navbar button or launch via 'trouvaille://add'.",
+                      "Type amounts with triple-zero '000' and in-line '+' or '-' arithmetic directly in-field.",
+                    ],
               },
             ].map((item) => {
               const Icon = item.icon;
               return (
                 <div
                   key={item.num}
-                  className="flex items-start gap-3.5 p-3.5 rounded-2xl border transition-all"
+                  className="p-3.5 rounded-2xl border transition-all space-y-2.5"
                   style={{
                     background: "var(--bg-elevated)",
                     borderColor: "var(--glass-border)",
                   }}
                 >
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border"
-                    style={{
-                      background: "var(--bg-base)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Icon size={16} strokeWidth={1.5} />
-                  </div>
-                  <div className="flex-1 space-y-0.5 pr-1">
-                    <p
-                      className="text-[13px] font-semibold"
-                      style={{ color: "var(--text-primary)" }}
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border"
+                      style={{
+                        background: "var(--bg-base)",
+                        borderColor: "var(--glass-border)",
+                        color: "var(--text-primary)",
+                      }}
                     >
-                      {item.title}
-                    </p>
-                    <p
-                      className="text-[11px] leading-relaxed font-normal"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {item.desc}
-                    </p>
+                      <Icon size={16} strokeWidth={1.5} />
+                    </div>
+                    <div className="flex-1 space-y-0.5 pr-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold font-mono px-1.5 py-0.2 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-tertiary)]">
+                          #{item.num}
+                        </span>
+                        <p
+                          className="text-[13px] font-semibold"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {item.title}
+                        </p>
+                      </div>
+                      <p
+                        className="text-[11px] leading-relaxed font-normal"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {item.desc}
+                      </p>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(item.scheme, item.title)}
-                    className="p-1.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0 mt-0.5"
-                    title="Copy URL Scheme"
-                  >
-                    {copiedKey === item.title ? (
-                      <Check size={13} className="text-emerald-600 dark:text-emerald-400" />
-                    ) : (
-                      <Copy size={13} />
-                    )}
-                  </button>
+
+                  {/* Step-by-Step Instructions */}
+                  <div className="pt-2 border-t border-[var(--glass-border)] space-y-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+                      {isIndonesian ? "Panduan Langkah demi Langkah" : "Step-by-Step Setup Guide"}
+                    </p>
+                    {item.steps.map((st, sIdx) => (
+                      <div key={sIdx} className="flex items-start gap-2 text-[11px] text-[var(--text-secondary)]">
+                        <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)] mt-0.5">
+                          {sIdx + 1}
+                        </span>
+                        <span className="leading-snug flex-1">{st}</span>
+                      </div>
+                    ))}
+
+                    <div className="pt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(item.scheme, item.title)}
+                        className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] active:scale-95 text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        {copiedKey === item.title ? (
+                          <>
+                            <Check size={12} className="text-emerald-500" />
+                            <span>{isIndonesian ? "URL Tersalin!" : "Scheme Copied!"}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} />
+                            <span>{isIndonesian ? "Salin URL Scheme" : "Copy URL Scheme"}</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTestDeepLink(item.scheme)}
+                        className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] active:scale-95 text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                        title={isIndonesian ? "Uji coba buka deep link langsung" : "Test trigger deep link"}
+                      >
+                        <Zap size={11} />
+                        <span>{isIndonesian ? "Tes Link" : "Test Link"}</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             })}

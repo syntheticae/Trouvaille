@@ -431,6 +431,10 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function useOptionalSpace(): SpaceContextValue | null {
+  return useContext(SpaceContext) || null;
+}
+
 export function useSpace(): SpaceContextValue {
   const context = useContext(SpaceContext);
   if (!context) {
@@ -441,3 +445,4 @@ export function useSpace(): SpaceContextValue {
 
 export const useDomain = useSpace;
 export const useLedger = useSpace;
+

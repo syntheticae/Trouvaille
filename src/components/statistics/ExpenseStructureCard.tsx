@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Layers3, ChevronDown } from "lucide-react";
+import { Layers3, ChevronRight, CheckCircle2 } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import type { ExpenseStructureResult } from "../../hooks/useFinancialIntelligence";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { useTheme } from "../../contexts/ThemeContext";
+import { BottomSheet } from "../ui/BottomSheet";
 
 interface ExpenseStructureCardProps {
   expenseStructure: ExpenseStructureResult;
@@ -18,287 +20,348 @@ export function ExpenseStructureCard({
 }: ExpenseStructureCardProps) {
   useCurrency();
   const { isIndonesian } = useLanguage();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+  const [breakdownSheetOpen, setBreakdownSheetOpen] = useState(false);
 
-  const rows = [
+  const buckets = [
     {
       key: "fixed",
-      label: isIndonesian ? "Tetap / Rutin" : "Recurring / Fixed",
+      label: isIndonesian ? "Tetap" : "Fixed",
       amount: expenseStructure.fixedAmount,
-      percentage: expenseStructure.fixedPercentage,
+      pct: expenseStructure.fixedPercentage,
+      color: isDark ? "#FFFFFF" : "#18181B",
+      desc: isIndonesian ? "Sewa, cicilan, tagihan" : "Rent, loans, bills",
     },
     {
       key: "variable",
-      label: isIndonesian ? "Variabel / Pokok" : "Variable",
+      label: isIndonesian ? "Pokok" : "Needs",
       amount: expenseStructure.variableAmount,
-      percentage: expenseStructure.variablePercentage,
+      pct: expenseStructure.variablePercentage,
+      color: isDark ? "rgba(255, 255, 255, 0.65)" : "rgba(24, 24, 27, 0.65)",
+      desc: isIndonesian ? "Bahan makanan, transport" : "Groceries, transit",
     },
     {
       key: "discretionary",
-      label: isIndonesian ? "Gaya Hidup / Fleksibel" : "Discretionary",
+      label: isIndonesian ? "Fleksibel" : "Flexible",
       amount: expenseStructure.discretionaryAmount,
-      percentage: expenseStructure.discretionaryPercentage,
-    },
-    {
-      key: "unclassified",
-      label: isIndonesian ? "Lainnya" : "Unclassified",
-      amount: expenseStructure.unclassifiedAmount,
-      percentage: expenseStructure.unclassifiedPercentage,
+      pct: expenseStructure.discretionaryPercentage,
+      color: isDark ? "rgba(255, 255, 255, 0.35)" : "rgba(24, 24, 27, 0.35)",
+      desc: isIndonesian ? "Hiburan, jajan, belanja" : "Dining, leisure, hobby",
     },
   ] as const;
 
+  const mask = (val: string) => (hideBalance ? "••••••••" : val);
+
   return (
     <section
-      className="glass-surface rounded-3xl overflow-hidden transition-all"
+      className="glass-surface rounded-[24px] p-5 transition-all select-none space-y-4"
       style={{
-        background: "var(--bg-elevated)",
         border: "1px solid var(--glass-border)",
+        background: "var(--bg-elevated)",
         boxShadow: "var(--shadow-card)",
       }}
     >
-      <button
-        type="button"
-        onClick={() => {
-          setIsExpanded(!isExpanded);
-          triggerHaptic("light");
-        }}
-        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-white/5 transition-colors"
-      >
-        <div className="flex items-center gap-2.5">
+      {/* ── 1. Header ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill-strong)",
+              background: "var(--glass-fill)",
               border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
           >
-            <Layers3 size={13} />
+            <Layers3 size={16} strokeWidth={1.75} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span
-                className="text-[10px] font-semibold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Struktur Pengeluaran" : "Expense Structure"}
-              </span>
-              <span
-                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
-                style={{
-                  background: expenseStructure.reconciliationCheck
-                    ? "var(--glass-fill-strong)"
-                    : "var(--text-primary)",
-                  color: expenseStructure.reconciliationCheck
-                    ? "var(--text-primary)"
-                    : "var(--bg-canvas)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                {expenseStructure.reconciliationCheck
-                  ? (isIndonesian ? "TERREKONSILIASI" : "RECONCILED")
-                  : (isIndonesian ? "PERIKSA DATA" : "CHECK DATA")}
-              </span>
-            </div>
-            <p
-              className="text-[13px] font-bold mt-0.5"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {isIndonesian ? "Komposisi komitmen vs fleksibel" : "Committed vs flexible composition"}
+          <div className="min-w-0">
+            <h3 className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Anatomi Komitmen & Amplop" : "Committed & Envelope Pacing"}
+            </h3>
+            <p className="text-[11px] truncate" style={{ color: "var(--text-tertiary)" }}>
+              {isIndonesian
+                ? `${expenseStructure.committedPercentage.toFixed(0)}% beban rutin tak terhindarkan`
+                : `${expenseStructure.committedPercentage.toFixed(0)}% non-discretionary commitments`}
             </p>
           </div>
         </div>
-        <motion.div
-          animate={{ rotate: isExpanded ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <ChevronDown size={18} />
-        </motion.div>
-      </button>
 
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="overflow-hidden"
+        {/* Committed vs Flexible Badge (Single Line) */}
+        <div
+          className="px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1.5"
+          style={{
+            background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <span
+            className="text-[10.5px] font-medium"
+            style={{ color: "var(--text-tertiary)" }}
           >
-            <div className="p-4 pt-1 border-t border-(--glass-border) space-y-4">
-              <div className="space-y-2.5">
-                {rows.map((row, index) => (
+            {isIndonesian ? "Komitmen" : "Committed"}
+          </span>
+          <span className="text-[11px] font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+            {expenseStructure.committedPercentage.toFixed(0)}%
+          </span>
+        </div>
+      </div>
+
+      {/* ── 2. Segmented Proportional Bar Chart ─────────────────────────────── */}
+      <div
+        className="p-3.5 rounded-2xl space-y-2.5"
+        style={{
+          background: "var(--glass-fill)",
+          border: "1px solid var(--glass-border)",
+        }}
+      >
+        <div className="flex items-center justify-between text-[11px] font-medium">
+          <span style={{ color: "var(--text-tertiary)" }}>
+            {isIndonesian ? "Distribusi Beban Pengeluaran" : "Expense Distribution"}
+          </span>
+          <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+            {mask(formatRupiah(expenseStructure.totalExpense))}
+          </span>
+        </div>
+
+        {/* Multi-Segment Stacked Bar */}
+        <div className="h-3 w-full rounded-full overflow-hidden flex bg-white/[0.06] p-0.5 gap-1">
+          {buckets.map((b) => (
+            <motion.div
+              key={b.key}
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.max(b.pct > 0 ? 3 : 0, b.pct)}%` }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="h-full rounded-full relative group"
+              style={{ background: b.color }}
+              title={`${b.label}: ${b.pct.toFixed(1)}%`}
+            />
+          ))}
+          {expenseStructure.unclassifiedPercentage > 0 && (
+            <div
+              className="h-full rounded-full opacity-20"
+              style={{
+                width: `${Math.max(2, expenseStructure.unclassifiedPercentage)}%`,
+                background: isDark ? "#FFFFFF" : "#000000",
+              }}
+              title={`Lainnya: ${expenseStructure.unclassifiedPercentage.toFixed(1)}%`}
+            />
+          )}
+        </div>
+
+        {/* Legend Pills below chart */}
+        <div className="grid grid-cols-3 gap-1 pt-1">
+          {buckets.map((b) => (
+            <div key={b.key} className="flex items-center gap-1.5 min-w-0">
+              <div
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: b.color }}
+              />
+              <span className="text-[10px] font-medium truncate text-[var(--text-secondary)]">
+                {b.label}
+              </span>
+              <span className="text-[10px] font-bold tabular-nums text-[var(--text-primary)] ml-auto">
+                {b.pct.toFixed(0)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 3. 3-Bucket Metric Cards ────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-2">
+        {buckets.map((b) => (
+          <div
+            key={b.key}
+            className="p-3 rounded-2xl flex flex-col justify-between border"
+            style={{
+              background: "var(--glass-fill)",
+              borderColor: "var(--glass-border)",
+            }}
+          >
+            <div>
+              <p
+                className="text-[9.5px] font-semibold uppercase tracking-wider truncate"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {b.label}
+              </p>
+              <p
+                className="amount text-[12px] font-bold tabular-nums mt-1"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {mask(formatRupiah(b.amount))}
+              </p>
+            </div>
+            <p
+              className="text-[9px] mt-1.5 truncate"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {b.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 4. Strategic Financial Insight ──────────────────────────────────── */}
+      <div
+        className="p-3 rounded-2xl flex items-center justify-between border text-[11px]"
+        style={{
+          background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+          borderColor: "var(--glass-border)",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <CheckCircle2 size={13} className="text-[var(--text-primary)] shrink-0" />
+          <span style={{ color: "var(--text-secondary)" }}>
+            {isIndonesian
+              ? `${expenseStructure.flexiblePercentage.toFixed(0)}% adalah ruang fleksibel yang aman dipangkas saat kondisi darurat.`
+              : `${expenseStructure.flexiblePercentage.toFixed(0)}% of outflow is flexible and can be paused immediately during emergencies.`}
+          </span>
+        </div>
+      </div>
+
+      {/* ── 5. Category Breakdown BottomSheet Trigger ──────────────────────── */}
+      {expenseStructure.items && expenseStructure.items.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              setBreakdownSheetOpen(true);
+            }}
+            className="w-full pt-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold cursor-pointer transition-colors hover:text-[var(--text-primary)]"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            <span>
+              {isIndonesian
+                ? `Lihat Rincian Klasifikasi (${expenseStructure.items.length} Pos)`
+                : `View Category Breakdown (${expenseStructure.items.length} Items)`}
+            </span>
+            <ChevronRight size={13} />
+          </button>
+
+          {/* Dedicated Drilldown BottomSheet */}
+          <BottomSheet
+            isOpen={breakdownSheetOpen}
+            onClose={() => setBreakdownSheetOpen(false)}
+            title={isIndonesian ? "Klasifikasi Pos Pengeluaran" : "Expense Breakdown"}
+          >
+            <div className="space-y-4 px-5 pb-6">
+              {/* Top Overview Cards */}
+              <div className="grid grid-cols-3 gap-2">
+                {buckets.map((b) => (
                   <div
-                    key={row.key}
-                    className="p-3 rounded-2xl"
+                    key={b.key}
+                    className="p-3 rounded-2xl flex flex-col justify-between border"
                     style={{
                       background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
+                      borderColor: "var(--glass-border)",
                     }}
                   >
-                    <div className="flex justify-between items-center gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{
-                            background: [
-                              "#FFFFFF",
-                              "#D1D1D6",
-                              "#8E8E93",
-                              "#636366",
-                            ][index],
-                          }}
-                        />
-                        <p
-                          className="text-[12px] font-bold truncate"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {row.label}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p
-                          className="amount text-[12px] font-semibold"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {hideBalance
-                            ? "••••••••"
-                            : formatRupiah(row.amount)}
-                        </p>
-                        <p
-                          className="text-[10px] font-semibold"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {row.percentage.toFixed(1)}%
-                        </p>
-                      </div>
+                    <div>
+                      <p
+                        className="text-[10px] font-semibold uppercase tracking-wider"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {b.label}
+                      </p>
+                      <p
+                        className="amount text-[13px] font-bold tabular-nums mt-1"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {mask(formatRupiah(b.amount))}
+                      </p>
                     </div>
+                    <span
+                      className="text-[10px] font-semibold tabular-nums mt-1.5"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {b.pct.toFixed(0)}%
+                    </span>
                   </div>
                 ))}
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian ? "Komitmen vs Fleksibel" : "Committed vs Flexible"}
-                  </p>
-                  <p
-                    className="text-[11px] font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {expenseStructure.committedPercentage.toFixed(1)}% /{" "}
-                    {expenseStructure.flexiblePercentage.toFixed(1)}%
-                  </p>
-                </div>
-                <div
-                  className="h-2 rounded-full overflow-hidden"
-                  style={{ background: "var(--glass-fill)" }}
+              {/* Items List Sorted by Amount */}
+              <div className="space-y-2 pt-1">
+                <p
+                  className="text-[10.5px] font-semibold uppercase tracking-wider px-0.5"
+                  style={{ color: "var(--text-tertiary)" }}
                 >
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.min(100, expenseStructure.committedPercentage)}%`,
-                      background: "var(--text-primary)",
-                    }}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                  <div
-                    className="p-3 rounded-2xl"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    <p
-                      className="text-[9px] font-bold uppercase tracking-wider"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian ? "Komitmen" : "Committed"}
-                    </p>
-                    <p
-                      className="amount text-[13px] font-semibold mt-1"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {hideBalance
-                        ? "••••••••"
-                        : formatRupiah(expenseStructure.committedAmount)}
-                    </p>
-                  </div>
-                  <div
-                    className="p-3 rounded-2xl"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    <p
-                      className="text-[9px] font-bold uppercase tracking-wider"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian ? "Fleksibel" : "Flexible"}
-                    </p>
-                    <p
-                      className="amount text-[13px] font-semibold mt-1"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {hideBalance
-                        ? "••••••••"
-                        : formatRupiah(expenseStructure.flexibleAmount)}
-                    </p>
-                  </div>
-                </div>
-              </div>
+                  {isIndonesian ? "Daftar Pos Pengeluaran" : "Category Outflow Details"}
+                </p>
 
-              {expenseStructure.items.length > 0 && (
-                <div className="pt-2">
-                  <p
-                    className="text-[11px] font-bold uppercase tracking-wider mb-2"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian ? "Komponen Terbesar" : "Largest Components"}
-                  </p>
-                  <div className="space-y-2">
-                    {expenseStructure.items.slice(0, 5).map((item) => (
+                {expenseStructure.items
+                  .slice()
+                  .sort((a, b) => b.amount - a.amount)
+                  .map((item, i) => {
+                    const isFixed = item.classification === "fixed";
+                    const isVariable = item.classification === "variable";
+                    const pctOfTotal =
+                      expenseStructure.totalExpense > 0
+                        ? (item.amount / expenseStructure.totalExpense) * 100
+                        : 0;
+
+                    return (
                       <div
-                        key={item.categoryId + item.name}
-                        className="flex items-center justify-between px-2 py-1"
+                        key={`item-${i}`}
+                        className="p-3.5 rounded-2xl flex items-center justify-between text-[12.5px] border"
+                        style={{
+                          background: "var(--glass-fill)",
+                          borderColor: "var(--glass-border)",
+                        }}
                       >
-                        <div>
-                          <p
-                            className="text-[11px] font-bold"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {item.name}
-                          </p>
-                          <p
-                            className="text-[9px] font-medium capitalize"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            {item.classification}
+                        <div className="min-w-0 pr-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{
+                                background: isFixed
+                                  ? isDark ? "#FFFFFF" : "#18181B"
+                                  : isVariable
+                                    ? isDark ? "rgba(255, 255, 255, 0.65)" : "rgba(24, 24, 27, 0.65)"
+                                    : isDark ? "rgba(255, 255, 255, 0.35)" : "rgba(24, 24, 27, 0.35)",
+                              }}
+                            />
+                            <span className="font-semibold text-[var(--text-primary)] truncate block">
+                              {item.name}
+                            </span>
+                            <span
+                              className="text-[9.5px] font-semibold uppercase px-2 py-0.5 rounded-full"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255, 255, 255, 0.08)"
+                                  : "rgba(0, 0, 0, 0.05)",
+                                color: "var(--text-tertiary)",
+                                border: "1px solid var(--glass-border)",
+                              }}
+                            >
+                              {isFixed
+                                ? isIndonesian ? "Tetap" : "Fixed"
+                                : isVariable
+                                  ? isIndonesian ? "Pokok" : "Needs"
+                                  : isIndonesian ? "Fleksibel" : "Flexible"}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[var(--text-tertiary)]">
+                            {pctOfTotal.toFixed(1)}% {isIndonesian ? "dari total belanja" : "of total outflow"}
                           </p>
                         </div>
-                        <span
-                          className="amount text-[11px] font-semibold"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {hideBalance
-                            ? "••••••••"
-                            : formatRupiah(item.amount)}
-                        </span>
+
+                        <div className="text-right shrink-0">
+                          <span className="tabular-nums font-bold text-[13.5px] text-[var(--text-primary)] block">
+                            {mask(formatRupiah(item.amount))}
+                          </span>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    );
+                  })}
+              </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </BottomSheet>
+        </>
+      )}
     </section>
   );
 }

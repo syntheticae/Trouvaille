@@ -6,6 +6,7 @@ import {
   subMonths,
   subDays,
 } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import type { Transaction, Category, Wallet, Bill, AccountClassification } from "./types";
 import { formatRupiah } from "./utils";
 
@@ -1011,29 +1012,39 @@ export function computeBudgetRisk(
   consumedPct: number,
   timePct: number,
   budget: number,
+  language: "en" | "id" = "en",
 ): { riskLevel: BudgetRiskLevel; reason: string } {
+  const isId = language === "id";
   if (!budget || budget <= 0) {
     return {
       riskLevel: "SAFE",
-      reason: "No monthly budget limit configured.",
+      reason: isId
+        ? "Batas anggaran bulanan belum dikonfigurasi."
+        : "No monthly budget limit configured.",
     };
   }
 
   if (consumedPct >= 95 || consumedPct > timePct + 20) {
     return {
       riskLevel: "AT RISK",
-      reason: `Budget is ${consumedPct.toFixed(0)}% consumed while ${timePct.toFixed(0)}% of the month has elapsed.`,
+      reason: isId
+        ? `Anggaran telah terpakai ${consumedPct.toFixed(0)}% sementara ${timePct.toFixed(0)}% hari dalam bulan ini telah berlalu.`
+        : `Budget is ${consumedPct.toFixed(0)}% consumed while ${timePct.toFixed(0)}% of the month has elapsed.`,
     };
   }
   if (consumedPct > timePct + 5) {
     return {
       riskLevel: "WATCH",
-      reason: `Spending is running slightly ahead of the ${timePct.toFixed(0)}% monthly elapsed pace.`,
+      reason: isId
+        ? `Laju pengeluaran sedikit lebih cepat dibandingkan progres bulan (${timePct.toFixed(0)}%).`
+        : `Spending is running slightly ahead of the ${timePct.toFixed(0)}% monthly elapsed pace.`,
     };
   }
   return {
     riskLevel: "SAFE",
-    reason: `Spending pace (${consumedPct.toFixed(0)}%) is healthy relative to elapsed month (${timePct.toFixed(0)}%).`,
+    reason: isId
+      ? `Laju pengeluaran (${consumedPct.toFixed(0)}%) terkendali dan sehat relatif terhadap progres bulan (${timePct.toFixed(0)}%).`
+      : `Spending pace (${consumedPct.toFixed(0)}%) is healthy relative to elapsed month (${timePct.toFixed(0)}%).`,
   };
 }
 
@@ -1504,6 +1515,7 @@ export function calculatePersonalBaselines(
   transactions: Transaction[],
   categories: Category[] = [],
   now = new Date(),
+  language: "id" | "en" = "en",
 ): PersonalBaselineResult {
   const currentMonthKey = format(now, "yyyy-MM");
   const currentMonthTxs = transactions.filter((t) =>
@@ -1537,7 +1549,10 @@ export function calculatePersonalBaselines(
       status: "insufficient",
       confidence: "low",
       historicalMonthsCount,
-      message: "Build more history to establish your personal baseline.",
+      message:
+        language === "id"
+          ? "Kumpulkan lebih banyak riwayat transaksi untuk membentuk batas dasar pribadi Anda."
+          : "Build more history to establish your personal baseline.",
       medianExpense: currentMonthExpense || 0,
       meanExpense: currentMonthExpense || 0,
       typicalExpenseRange: [currentMonthExpense, currentMonthExpense],
@@ -1721,9 +1736,12 @@ export function detectBehavioralPatterns(
   transactions: Transaction[],
   baselines: PersonalBaselineResult,
   _now = new Date(),
+  language: "id" | "en" = "en",
 ): BehavioralPattern[] {
   const patterns: BehavioralPattern[] = [];
   if (baselines.status === "insufficient") return patterns;
+
+  const isId = language === "id";
 
   const formatIdr = (n: number) => {
     if (Math.abs(n) >= 1000000)
@@ -1763,20 +1781,32 @@ export function detectBehavioralPatterns(
         patterns.push({
           id: "pattern-weekend-elevated",
           type: "day_of_week",
-          title: "Weekend spending is typically elevated",
-          subtitle: `Weekend daily expenses average ${weekendRatio.toFixed(1)}× higher than weekdays.`,
-          badge: "DAY OF WEEK",
-          evidence: `Average daily spending is ${formatIdr(avgWeekendDay)} on weekends vs ${formatIdr(avgWeekdayDay)} on weekdays.`,
+          title: isId
+            ? "Pengeluaran akhir pekan cenderung meningkat"
+            : "Weekend spending is typically elevated",
+          subtitle: isId
+            ? `Rata-rata belanja harian akhir pekan ${weekendRatio.toFixed(1)}× lebih tinggi dibanding hari kerja.`
+            : `Weekend daily expenses average ${weekendRatio.toFixed(1)}× higher than weekdays.`,
+          badge: isId ? "AKHIR PEKAN" : "DAY OF WEEK",
+          evidence: isId
+            ? `Rata-rata belanja harian ${formatIdr(avgWeekendDay)} di akhir pekan vs ${formatIdr(avgWeekdayDay)} di hari kerja.`
+            : `Average daily spending is ${formatIdr(avgWeekendDay)} on weekends vs ${formatIdr(avgWeekdayDay)} on weekdays.`,
           metricValue: weekendRatio,
         });
       } else if (weekendRatio <= 0.75) {
         patterns.push({
           id: "pattern-weekday-elevated",
           type: "day_of_week",
-          title: "Weekday spending is typically higher",
-          subtitle: `Weekday daily expenses average ${(1 / weekendRatio).toFixed(1)}× higher than weekends.`,
-          badge: "DAY OF WEEK",
-          evidence: `Average daily spending is ${formatIdr(avgWeekdayDay)} on weekdays vs ${formatIdr(avgWeekendDay)} on weekends.`,
+          title: isId
+            ? "Pengeluaran hari kerja cenderung lebih tinggi"
+            : "Weekday spending is typically higher",
+          subtitle: isId
+            ? `Rata-rata belanja harian hari kerja ${(1 / weekendRatio).toFixed(1)}× lebih tinggi dibanding akhir pekan.`
+            : `Weekday daily expenses average ${(1 / weekendRatio).toFixed(1)}× higher than weekends.`,
+          badge: isId ? "HARI KERJA" : "DAY OF WEEK",
+          evidence: isId
+            ? `Rata-rata belanja harian ${formatIdr(avgWeekdayDay)} di hari kerja vs ${formatIdr(avgWeekendDay)} di akhir pekan.`
+            : `Average daily spending is ${formatIdr(avgWeekdayDay)} on weekdays vs ${formatIdr(avgWeekendDay)} on weekends.`,
           metricValue: weekendRatio,
         });
       }
@@ -1793,10 +1823,16 @@ export function detectBehavioralPatterns(
       patterns.push({
         id: "pattern-category-concentration",
         type: "category_concentration",
-        title: `${topCat.name} is your largest expense allocation`,
-        subtitle: `${topCat.name} typically represents ${concentrationPct}% of monthly expenses.`,
-        badge: "CONCENTRATION",
-        evidence: `Typical monthly allocation of ${formatIdr(topCat.medianMonthlyTotal)} out of ${formatIdr(baselines.medianExpense)} total monthly expenses.`,
+        title: isId
+          ? `${topCat.name} adalah alokasi pengeluaran terbesar Anda`
+          : `${topCat.name} is your largest expense allocation`,
+        subtitle: isId
+          ? `${topCat.name} biasanya mencakup ${concentrationPct}% dari pengeluaran bulanan.`
+          : `${topCat.name} typically represents ${concentrationPct}% of monthly expenses.`,
+        badge: isId ? "KONSENTRASI" : "CONCENTRATION",
+        evidence: isId
+          ? `Alokasi tipikal ${formatIdr(topCat.medianMonthlyTotal)} dari total ${formatIdr(baselines.medianExpense)} pengeluaran bulanan.`
+          : `Typical monthly allocation of ${formatIdr(topCat.medianMonthlyTotal)} out of ${formatIdr(baselines.medianExpense)} total monthly expenses.`,
         metricValue: concentrationPct,
       });
     }
@@ -1822,10 +1858,16 @@ export function detectBehavioralPatterns(
       patterns.push({
         id: "pattern-spending-timing",
         type: "spending_timing",
-        title: "Front-loaded monthly spending pattern",
-        subtitle: `${earlyPct}% of monthly expenses typically occur during the first 10 days.`,
-        badge: "TIMING",
-        evidence: `Early-cycle commitments and recurring obligations represent ${earlyPct}% of total outflow.`,
+        title: isId
+          ? "Pola pengeluaran terkonsentrasi di awal bulan"
+          : "Front-loaded monthly spending pattern",
+        subtitle: isId
+          ? `${earlyPct}% dari belanja bulanan biasanya terjadi dalam 10 hari pertama.`
+          : `${earlyPct}% of monthly expenses typically occur during the first 10 days.`,
+        badge: isId ? "TEMPO BULANAN" : "TIMING",
+        evidence: isId
+          ? `Komitmen awal siklus mencakup ${earlyPct}% dari seluruh arus kas keluar.`
+          : `Early-cycle commitments and recurring obligations represent ${earlyPct}% of total outflow.`,
         metricValue: earlyPct,
       });
     }
@@ -1836,10 +1878,16 @@ export function detectBehavioralPatterns(
     patterns.push({
       id: "pattern-ticket-size",
       type: "ticket_size",
-      title: `Typical expense size is ${formatIdr(baselines.medianTxSize)}`,
-      subtitle: `Your typical rhythm is ${baselines.monthlyTxFrequency} expense transactions per month.`,
-      badge: "TICKET SIZE",
-      evidence: `Median transaction amount across completed historical cycles.`,
+      title: isId
+        ? `Besaran transaksi tipikal adalah ${formatIdr(baselines.medianTxSize)}`
+        : `Typical expense size is ${formatIdr(baselines.medianTxSize)}`,
+      subtitle: isId
+        ? `Ritme pengeluaran Anda berkisar ${baselines.monthlyTxFrequency} transaksi per bulan.`
+        : `Your typical rhythm is ${baselines.monthlyTxFrequency} expense transactions per month.`,
+      badge: isId ? "UKURAN TIKET" : "TICKET SIZE",
+      evidence: isId
+        ? "Nilai median transaksi di seluruh siklus historis tercatat."
+        : `Median transaction amount across completed historical cycles.`,
       metricValue: baselines.medianTxSize,
     });
   }
@@ -1854,7 +1902,9 @@ export function calculateLongitudinalTimeline(
   transactions: Transaction[],
   range: "3M" | "6M" | "12M" | "ALL" = "6M",
   now = new Date(),
+  language: "en" | "id" = "en",
 ): LongitudinalTimelineResult {
+  const isId = language === "id";
   const datedTxs = transactions.filter((t) => !!t.occurred_on);
   const earliestMonthKey =
     datedTxs.length > 0
@@ -1890,7 +1940,7 @@ export function calculateLongitudinalTimeline(
 
     points.push({
       monthKey: mKey,
-      label: format(d, "MMM yy"),
+      label: format(d, "MMM yy", { locale: isId ? idLocale : undefined }),
       year: y,
       month: m,
       income: agg.totalIncome,
@@ -1922,8 +1972,9 @@ export function calculateLongitudinalTimeline(
 
   // Trajectory interpretation
   let trendDirection: "increasing" | "decreasing" | "stable" = "stable";
-  let trajectoryInterpretation =
-    "Monthly cashflow and expense trajectory have remained stable across this period.";
+  let trajectoryInterpretation = isId
+    ? "Arus kas bulanan dan arah pengeluaran tetap stabil sepanjang periode ini."
+    : "Monthly cashflow and expense trajectory have remained stable across this period.";
 
   if (points.length >= 4) {
     const half = Math.floor(points.length / 2);
@@ -1937,18 +1988,24 @@ export function calculateLongitudinalTimeline(
 
     const formatIdr = (n: number) => {
       if (Math.abs(n) >= 1000000)
-        return `Rp ${(Math.abs(n) / 1000000).toFixed(1)}M`;
+        return `Rp ${(Math.abs(n) / 1000000).toFixed(1)}${isId ? " Jt" : "M"}`;
       return `Rp ${(Math.abs(n) / 1000).toFixed(0)}K`;
     };
 
     if (firstHalfAvg > 0 && secondHalfAvg > firstHalfAvg * 1.12) {
       trendDirection = "increasing";
-      trajectoryInterpretation = `Average monthly expense increased from ${formatIdr(firstHalfAvg)} to ${formatIdr(secondHalfAvg)} over the selected period.`;
+      trajectoryInterpretation = isId
+        ? `Rata-rata pengeluaran bulanan meningkat dari ${formatIdr(firstHalfAvg)} ke ${formatIdr(secondHalfAvg)} selama periode yang dipilih.`
+        : `Average monthly expense increased from ${formatIdr(firstHalfAvg)} to ${formatIdr(secondHalfAvg)} over the selected period.`;
     } else if (firstHalfAvg > 0 && secondHalfAvg < firstHalfAvg * 0.88) {
       trendDirection = "decreasing";
-      trajectoryInterpretation = `Average monthly expense decreased from ${formatIdr(firstHalfAvg)} to ${formatIdr(secondHalfAvg)} over the selected period.`;
+      trajectoryInterpretation = isId
+        ? `Rata-rata pengeluaran bulanan menurun dari ${formatIdr(firstHalfAvg)} ke ${formatIdr(secondHalfAvg)} selama periode yang dipilih.`
+        : `Average monthly expense decreased from ${formatIdr(firstHalfAvg)} to ${formatIdr(secondHalfAvg)} over the selected period.`;
     } else {
-      trajectoryInterpretation = `Average monthly expense has remained balanced around ${formatIdr(averageMonthlyExpense)}.`;
+      trajectoryInterpretation = isId
+        ? `Rata-rata pengeluaran bulanan tetap seimbang di kisaran ${formatIdr(averageMonthlyExpense)}.`
+        : `Average monthly expense has remained balanced around ${formatIdr(averageMonthlyExpense)}.`;
     }
   }
 
@@ -2021,7 +2078,9 @@ export function calculateGoalScenario(
   },
   monthlyContribution: number,
   now = new Date(),
+  language: "en" | "id" = "en",
 ): GoalScenarioResult {
+  const isId = language === "id";
   const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
   const safeContribution = Math.max(0, Number(monthlyContribution || 0));
 
@@ -2032,7 +2091,7 @@ export function calculateGoalScenario(
       monthsToTarget: 0,
       yearsToTarget: 0,
       extraMonths: 0,
-      projectedCompletionLabel: "Already completed",
+      projectedCompletionLabel: isId ? "Sudah tercapai" : "Already completed",
       projectedCompletionDate: format(now, "yyyy-MM-dd"),
       isAlreadyCompleted: true,
       isFeasible: true,
@@ -2046,7 +2105,7 @@ export function calculateGoalScenario(
       monthsToTarget: 0,
       yearsToTarget: 0,
       extraMonths: 0,
-      projectedCompletionLabel: "Set a monthly contribution",
+      projectedCompletionLabel: isId ? "Tentukan kontribusi bulanan" : "Set a monthly contribution",
       projectedCompletionDate: null,
       isAlreadyCompleted: false,
       isFeasible: false,
@@ -2062,7 +2121,9 @@ export function calculateGoalScenario(
     monthsToTarget,
     yearsToTarget: Math.floor(monthsToTarget / 12),
     extraMonths: monthsToTarget % 12,
-    projectedCompletionLabel: format(completionDate, "MMMM yyyy"),
+    projectedCompletionLabel: format(completionDate, "MMMM yyyy", {
+      locale: isId ? idLocale : undefined,
+    }),
     projectedCompletionDate: format(completionDate, "yyyy-MM-dd"),
     isAlreadyCompleted: false,
     isFeasible: true,
@@ -2079,7 +2140,9 @@ export function calculateGoalPlanning(
   },
   baselines: PersonalBaselineResult,
   now = new Date(),
+  language: "en" | "id" = "en",
 ): GoalPlanningResult {
+  const isId = language === "id";
   const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
 
   let remainingMonths = 12;
@@ -2099,20 +2162,30 @@ export function calculateGoalPlanning(
 
   let trajectoryStatus: "ON TRACK" | "BEHIND TARGET" | "AHEAD OF TARGET" =
     "ON TRACK";
-  let trajectoryExplanation = `Requires approximately Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/month over ${remainingMonths} months.`;
+  let trajectoryExplanation = isId
+    ? `Membutuhkan sekitar Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/bulan selama ${remainingMonths} bulan.`
+    : `Requires approximately Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/month over ${remainingMonths} months.`;
 
   if (goal.currentAmount >= goal.targetAmount) {
     trajectoryStatus = "AHEAD OF TARGET";
-    trajectoryExplanation = "Target goal has been fully reached.";
+    trajectoryExplanation = isId
+      ? "Target sasaran telah tercapai sepenuhnya."
+      : "Target goal has been fully reached.";
   } else if (historicalRetainedCash >= requiredMonthlyContribution * 1.1) {
     trajectoryStatus = "ON TRACK";
-    trajectoryExplanation = `Your historical average retained cash (Rp ${historicalRetainedCash.toLocaleString("id-ID")}/mo) supports the required Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/mo pace.`;
+    trajectoryExplanation = isId
+      ? `Rata-rata kas ditahan historis Anda (Rp ${historicalRetainedCash.toLocaleString("id-ID")}/bln) mendukung laju Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/bln yang diperlukan.`
+      : `Your historical average retained cash (Rp ${historicalRetainedCash.toLocaleString("id-ID")}/mo) supports the required Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/mo pace.`;
   } else if (historicalRetainedCash >= requiredMonthlyContribution * 0.8) {
     trajectoryStatus = "ON TRACK";
-    trajectoryExplanation = `Required contribution (Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/mo) closely aligns with historical net cashflow (Rp ${historicalRetainedCash.toLocaleString("id-ID")}/mo).`;
+    trajectoryExplanation = isId
+      ? `Kontribusi yang diperlukan (Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/bln) sangat selaras dengan arus kas bersih historis (Rp ${historicalRetainedCash.toLocaleString("id-ID")}/bln).`
+      : `Required contribution (Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/mo) closely aligns with historical net cashflow (Rp ${historicalRetainedCash.toLocaleString("id-ID")}/mo).`;
   } else {
     trajectoryStatus = "BEHIND TARGET";
-    trajectoryExplanation = `Target requires Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/month while historical average retained cash is Rp ${historicalRetainedCash.toLocaleString("id-ID")}/month.`;
+    trajectoryExplanation = isId
+      ? `Target membutuhkan Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/bulan sementara rata-rata kas ditahan historis adalah Rp ${historicalRetainedCash.toLocaleString("id-ID")}/bulan.`
+      : `Target requires Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/month while historical average retained cash is Rp ${historicalRetainedCash.toLocaleString("id-ID")}/month.`;
   }
 
   return {
@@ -2164,7 +2237,10 @@ export function calculateDynamicGoalMilestones(
     medianExpense?: number;
   },
   now = new Date(),
+  language: "en" | "id" = "en",
 ): DynamicGoalMilestonesResult {
+  const isId = language === "id";
+  const locale = isId ? idLocale : undefined;
   const currentAmount = Math.max(0, goal.currentAmount);
   const targetAmount = Math.max(1, goal.targetAmount);
   const remainingAmount = Math.max(0, targetAmount - currentAmount);
@@ -2178,14 +2254,14 @@ export function calculateDynamicGoalMilestones(
 
   const getPaceResult = (monthly: number) => {
     if (isAlreadyCompleted) {
-      return { monthly, projectedCompletion: format(now, "MMM yyyy"), months: 0 };
+      return { monthly, projectedCompletion: format(now, "MMM yyyy", { locale }), months: 0 };
     }
     if (monthly <= 0) {
       return { monthly, projectedCompletion: null, months: 999 };
     }
     const months = Math.ceil(remainingAmount / monthly);
     const date = addMonths(now, months);
-    return { monthly, projectedCompletion: format(date, "MMM yyyy"), months };
+    return { monthly, projectedCompletion: format(date, "MMM yyyy", { locale }), months };
   };
 
   const milestones: GoalMilestone[] = [25, 50, 75, 100].map((pct) => {
@@ -2196,13 +2272,13 @@ export function calculateDynamicGoalMilestones(
         percentage: pct,
         targetAmount: milestoneTarget,
         isReached: true,
-        projectedDate: "Reached",
+        projectedDate: isId ? "Tercapai" : "Reached",
         monthsAway: 0,
       };
     }
     const neededForMilestone = Math.max(0, milestoneTarget - currentAmount);
     const monthsAway = currentVelocity > 0 ? Math.ceil(neededForMilestone / currentVelocity) : 999;
-    const projectedDate = currentVelocity > 0 ? format(addMonths(now, monthsAway), "MMM yyyy") : null;
+    const projectedDate = currentVelocity > 0 ? format(addMonths(now, monthsAway), "MMM yyyy", { locale }) : null;
     return {
       percentage: pct,
       targetAmount: milestoneTarget,
@@ -2260,7 +2336,9 @@ export function detectRecurringTransactions(
   bills: Bill[] = [],
   categories: Category[] = [],
   now = new Date(),
+  language: "en" | "id" = "en",
 ): DetectedRecurringItem[] {
+  const isId = language === "id";
   const result: DetectedRecurringItem[] = [];
   const catMap = new Map<string, Category>();
   categories.forEach((c) => catMap.set(c.id, c));
@@ -2405,26 +2483,38 @@ export function detectRecurringTransactions(
     const minAmount = Math.min(...amounts);
     const maxAmount = Math.max(...amounts);
 
-    result.push({
-      id: `rec-${key.replace(/[^a-z0-9]/g, "-")}-${frequency}`,
-      title: displayTitle,
-      normalizedMerchant: key.split(":")[1],
-      categoryId: latestTx.category_id || null,
-      categoryName: catName,
-      categoryEmoji: catEmoji,
-      walletId: latestTx.wallet_id || null,
-      type: latestTx.type as "expense" | "income",
-      frequency,
-      typicalAmount: medianAmt,
-      amountRange: [minAmount, maxAmount],
-      confidence,
-      occurrencesCount: sorted.length,
-      lastOccurrenceDate: latestTx.occurred_on,
-      nextExpectedDate,
-      status,
-      matchingTransactionIds: sorted.map((t) => t.id),
-      explanation: `Recurring ${frequency} pattern observed across ${sorted.length} occurrences (~Rp ${medianAmt.toLocaleString("id-ID")}/${frequency === "monthly" ? "mo" : frequency}).`,
-    });
+      const freqLabelId: Record<string, string> = {
+        weekly: "mingguan",
+        biweekly: "dua mingguan",
+        monthly: "bulanan",
+        quarterly: "triwulanan",
+        yearly: "tahunan",
+      };
+      const freqLabel = isId ? freqLabelId[frequency] || frequency : frequency;
+      const cadenceLabel = isId ? (frequency === "monthly" ? "bln" : freqLabel) : (frequency === "monthly" ? "mo" : frequency);
+
+      result.push({
+        id: `rec-${key.replace(/[^a-z0-9]/g, "-")}-${frequency}`,
+        title: displayTitle,
+        normalizedMerchant: key.split(":")[1],
+        categoryId: latestTx.category_id || null,
+        categoryName: catName,
+        categoryEmoji: catEmoji,
+        walletId: latestTx.wallet_id || null,
+        type: latestTx.type as "expense" | "income",
+        frequency,
+        typicalAmount: medianAmt,
+        amountRange: [minAmount, maxAmount],
+        confidence,
+        occurrencesCount: sorted.length,
+        lastOccurrenceDate: latestTx.occurred_on,
+        nextExpectedDate,
+        status,
+        matchingTransactionIds: sorted.map((t) => t.id),
+        explanation: isId
+          ? `Pola ${freqLabel} terdeteksi dari ${sorted.length} transaksi (~Rp ${medianAmt.toLocaleString("id-ID")}/${cadenceLabel}).`
+          : `Recurring ${frequency} pattern observed across ${sorted.length} occurrences (~Rp ${medianAmt.toLocaleString("id-ID")}/${cadenceLabel}).`,
+      });
   });
 
   return result.sort((a, b) => b.typicalAmount - a.typicalAmount);
@@ -2626,7 +2716,9 @@ export function calculateCashflowFloor(
   recurringItems: DetectedRecurringItem[] = [],
   horizonDays = 14,
   now = new Date(),
+  language: "en" | "id" = "en",
 ): CashflowFloorResult {
+  const isId = language === "id";
   const dailyPoints: CashflowCalendarDayPoint[] = [];
   let runningBalance = currentLiquidBalance;
   let lowestBalance = currentLiquidBalance;
@@ -2644,29 +2736,31 @@ export function calculateCashflowFloor(
     (r) => r.status === "confirmed" || r.status === "detected",
   );
 
+  const dayNamesEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const dayNamesId = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+  const monthNamesEn = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  const monthNamesId = [
+    "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+    "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+  ];
+
   for (let offset = 0; offset < horizonDays; offset++) {
     const pointDate = new Date(todayTime + offset * 24 * 3600 * 1000);
     const dateStr = pointDate.toISOString().slice(0, 10);
     const isToday = offset === 0;
     const dayOfMonth = pointDate.getUTCDate();
-    const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
-      pointDate.getUTCDay()
-    ];
-    const monthName = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ][pointDate.getUTCMonth()];
-    const dayLabel = `${dayName}, ${monthName} ${dayOfMonth}`;
+    const dayName = isId
+      ? dayNamesId[pointDate.getUTCDay()]
+      : dayNamesEn[pointDate.getUTCDay()];
+    const monthName = isId
+      ? monthNamesId[pointDate.getUTCMonth()]
+      : monthNamesEn[pointDate.getUTCMonth()];
+    const dayLabel = isId
+      ? `${dayName}, ${dayOfMonth} ${monthName}`
+      : `${dayName}, ${monthName} ${dayOfMonth}`;
 
     const knownInflowItems: Array<{ title: string; amount: number }> = [];
     const knownOutflowItems: Array<{
@@ -2756,7 +2850,9 @@ export function calculateLiquidityHorizon(
   baselines: PersonalBaselineResult,
   expenseStructure?: ExpenseStructureResult,
   liquidAccounts: Array<{ name: string; balance: number; icon: string }> = [],
+  language: "en" | "id" = "en",
 ): LiquidityHorizonResult {
+  const isId = language === "id";
   if (baselines.status === "insufficient" || liquidAssets < 0) {
     return {
       status: "insufficient",
@@ -2766,11 +2862,16 @@ export function calculateLiquidityHorizon(
       typicalCommittedOutflow: 0,
       totalCoverageMonths: 0,
       committedCoverageMonths: 0,
-      coverageText: "Insufficient historical baseline",
-      committedCoverageText: "Insufficient historical baseline",
+      coverageText: isId
+        ? "Garis dasar historis belum memadai"
+        : "Insufficient historical baseline",
+      committedCoverageText: isId
+        ? "Garis dasar historis belum memadai"
+        : "Insufficient historical baseline",
       resilienceTier: "MODERATE",
-      explanation:
-        "Build more spending history across at least two completed monthly cycles to establish reliable liquidity coverage.",
+      explanation: isId
+        ? "Kumpulkan riwayat pengeluaran minimal selama dua siklus bulanan penuh untuk menetapkan cakupan likuiditas yang andal."
+        : "Build more spending history across at least two completed monthly cycles to establish reliable liquidity coverage.",
     };
   }
 
@@ -2795,26 +2896,40 @@ export function calculateLiquidityHorizon(
     | "HEALTHY"
     | "STRONG"
     | "EXCEPTIONAL" = "HEALTHY";
-  let explanation = `Your current liquid cash of Rp ${liquidAssets.toLocaleString("id-ID")} covers ${totalCoverageMonths} months of typical spending.`;
+  let explanation = isId
+    ? `Kas likuid Anda sebesar Rp ${liquidAssets.toLocaleString("id-ID")} mencakup ${totalCoverageMonths} bulan pengeluaran tipikal.`
+    : `Your current liquid cash of Rp ${liquidAssets.toLocaleString("id-ID")} covers ${totalCoverageMonths} months of typical spending.`;
 
   if (totalCoverageMonths < 1.0) {
     resilienceTier = "CRITICAL";
-    explanation = `Liquid reserves (Rp ${liquidAssets.toLocaleString("id-ID")}) cover less than 1 month of recent typical outflows (~Rp ${typicalMonthlyOutflow.toLocaleString("id-ID")}/mo).`;
+    explanation = isId
+      ? `Cadangan likuid (Rp ${liquidAssets.toLocaleString("id-ID")}) menutupi kurang dari 1 bulan pengeluaran tipikal (~Rp ${typicalMonthlyOutflow.toLocaleString("id-ID")}/bln).`
+      : `Liquid reserves (Rp ${liquidAssets.toLocaleString("id-ID")}) cover less than 1 month of recent typical outflows (~Rp ${typicalMonthlyOutflow.toLocaleString("id-ID")}/mo).`;
   } else if (totalCoverageMonths < 2.0) {
     resilienceTier = "LOW";
-    explanation = `Liquid reserves cover ${totalCoverageMonths} months of typical spending. Building an additional cash buffer is recommended.`;
+    explanation = isId
+      ? `Cadangan likuid menutupi ${totalCoverageMonths} bulan pengeluaran tipikal. Disarankan untuk menambah buffer kas.`
+      : `Liquid reserves cover ${totalCoverageMonths} months of typical spending. Building an additional cash buffer is recommended.`;
   } else if (totalCoverageMonths < 3.0) {
     resilienceTier = "MODERATE";
-    explanation = `Liquid reserves cover ${totalCoverageMonths} months of typical total spending (${committedCoverageMonths} months of essential fixed costs).`;
+    explanation = isId
+      ? `Cadangan likuid menutupi ${totalCoverageMonths} bulan pengeluaran tipikal (${committedCoverageMonths} bulan biaya komitmen tetap).`
+      : `Liquid reserves cover ${totalCoverageMonths} months of typical total spending (${committedCoverageMonths} months of essential fixed costs).`;
   } else if (totalCoverageMonths < 6.0) {
     resilienceTier = "HEALTHY";
-    explanation = `Solid liquidity coverage. Current reserves support ${totalCoverageMonths} months of operations without new income.`;
+    explanation = isId
+      ? `Cakupan likuiditas solid. Cadangan saat ini menopang operasional selama ${totalCoverageMonths} bulan tanpa pemasukan baru.`
+      : `Solid liquidity coverage. Current reserves support ${totalCoverageMonths} months of operations without new income.`;
   } else if (totalCoverageMonths < 12.0) {
     resilienceTier = "STRONG";
-    explanation = `High capital resilience. Liquid assets cover ${totalCoverageMonths} months of typical expenses.`;
+    explanation = isId
+      ? `Ketahanan modal tinggi. Aset likuid menutupi ${totalCoverageMonths} bulan pengeluaran tipikal.`
+      : `High capital resilience. Liquid assets cover ${totalCoverageMonths} months of typical expenses.`;
   } else {
     resilienceTier = "EXCEPTIONAL";
-    explanation = `Exceptional liquidity runway (${totalCoverageMonths} months total coverage, ${committedCoverageMonths} months committed coverage).`;
+    explanation = isId
+      ? `Runway likuiditas luar biasa (${totalCoverageMonths} bulan cakupan total, ${committedCoverageMonths} bulan cakupan komitmen).`
+      : `Exceptional liquidity runway (${totalCoverageMonths} months total coverage, ${committedCoverageMonths} months committed coverage).`;
   }
 
   return {
@@ -2825,8 +2940,12 @@ export function calculateLiquidityHorizon(
     typicalCommittedOutflow,
     totalCoverageMonths,
     committedCoverageMonths,
-    coverageText: `${totalCoverageMonths} months of typical spending`,
-    committedCoverageText: `${committedCoverageMonths} months of essential commitments`,
+    coverageText: isId
+      ? `${totalCoverageMonths} bulan pengeluaran tipikal`
+      : `${totalCoverageMonths} months of typical spending`,
+    committedCoverageText: isId
+      ? `${committedCoverageMonths} bulan komitmen rutin esensial`
+      : `${committedCoverageMonths} months of essential commitments`,
     resilienceTier,
     explanation,
   };
@@ -2856,7 +2975,9 @@ export interface ExpenseVolatilityResult {
 export function calculateExpenseVolatility(
   transactions: Transaction[],
   now: Date = new Date(),
+  language: "en" | "id" = "en",
 ): ExpenseVolatilityResult {
+  const isId = language === "id";
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
   const currentDay = now.getDate();
@@ -2918,9 +3039,12 @@ export function calculateExpenseVolatility(
       activeDaysCount,
       totalDaysInPeriod: totalDays,
       totalExpense,
-      reason: "Not enough daily expense data to calculate volatility yet.",
-      explanation:
-        "Spending stability tracks how evenly your daily outflows occur compared to baseline spending.",
+      reason: isId
+        ? "Data pengeluaran harian belum cukup untuk menghitung volatilitas."
+        : "Not enough daily expense data to calculate volatility yet.",
+      explanation: isId
+        ? "Stabilitas pengeluaran melacak seberapa merata pengeluaran harian Anda dibandingkan dengan garis dasar normal."
+        : "Spending stability tracks how evenly your daily outflows occur compared to baseline spending.",
     };
   }
 
@@ -2941,25 +3065,37 @@ export function calculateExpenseVolatility(
   let reason = "";
 
   const peakDateFormatted = peakDate
-    ? format(new Date(peakDate), "MMM d")
+    ? format(new Date(peakDate), isId ? "d MMM" : "MMM d", {
+        locale: isId ? idLocale : undefined,
+      })
     : "";
 
   if (cv < 0.85) {
     stability = "STABLE";
-    reason = `Consistent daily run-rate around ${formatRupiah(Math.round(meanDailyExpense))}/day with minimal unexpected swings.`;
+    reason = isId
+      ? `Laju harian konsisten sekitar ${formatRupiah(Math.round(meanDailyExpense))}/hari dengan ayunan tak terduga yang minimal.`
+      : `Consistent daily run-rate around ${formatRupiah(Math.round(meanDailyExpense))}/day with minimal unexpected swings.`;
   } else if (cv <= 1.6) {
     stability = "MODERATE";
     if (peakDailyExpense > meanDailyExpense * 2.2) {
-      reason = `Daily spending shows moderate variation, with a peak of ${formatRupiah(peakDailyExpense)} on ${peakDateFormatted}.`;
+      reason = isId
+        ? `Pengeluaran harian menunjukkan variasi moderat, dengan puncak ${formatRupiah(peakDailyExpense)} pada ${peakDateFormatted}.`
+        : `Daily spending shows moderate variation, with a peak of ${formatRupiah(peakDailyExpense)} on ${peakDateFormatted}.`;
     } else {
-      reason = "Daily spending shows moderate fluctuation between busy days and quiet days.";
+      reason = isId
+        ? "Pengeluaran harian menunjukkan fluktuasi moderat antara hari sibuk dan hari tenang."
+        : "Daily spending shows moderate fluctuation between busy days and quiet days.";
     }
   } else {
     stability = "VOLATILE";
     if (peakDailyExpense > meanDailyExpense * 3) {
-      reason = `Your daily spending fluctuated more than usual this month, driven by a ${formatRupiah(peakDailyExpense)} peak on ${peakDateFormatted}.`;
+      reason = isId
+        ? `Pengeluaran harian Anda berfluktuasi lebih dari biasanya bulan ini, dipicu puncak ${formatRupiah(peakDailyExpense)} pada ${peakDateFormatted}.`
+        : `Your daily spending fluctuated more than usual this month, driven by a ${formatRupiah(peakDailyExpense)} peak on ${peakDateFormatted}.`;
     } else {
-      reason = "Your daily spending fluctuated significantly this month with irregular large outlays.";
+      reason = isId
+        ? "Pengeluaran harian Anda berfluktuasi signifikan bulan ini dengan pengeluaran besar yang tidak teratur."
+        : "Your daily spending fluctuated significantly this month with irregular large outlays.";
     }
   }
 
@@ -2976,8 +3112,9 @@ export function calculateExpenseVolatility(
     totalDaysInPeriod: totalDays,
     totalExpense,
     reason,
-    explanation:
-      "Spending stability distinguishes high baseline living costs from unpredictable cashflow spikes. Stable spending allows accurate cashflow forecasting.",
+    explanation: isId
+      ? "Stabilitas pengeluaran membedakan biaya hidup dasar tinggi dari lonjakan arus kas yang tidak terduga. Pengeluaran yang stabil memungkinkan prakiraan arus kas yang akurat."
+      : "Spending stability distinguishes high baseline living costs from unpredictable cashflow spikes. Stable spending allows accurate cashflow forecasting.",
   };
 }
 

@@ -4,6 +4,7 @@ import { BottomSheet } from "../ui/BottomSheet";
 import { formatRupiah } from "../../lib/utils";
 import type { CategoryMoMShift } from "../../lib/financialMath";
 import { IconRenderer } from "../ui/IconRenderer";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface CategoryDrillDownSheetProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export function CategoryDrillDownSheet({
   shift,
 }: CategoryDrillDownSheetProps) {
   const navigate = useNavigate();
+  const { isIndonesian } = useLanguage();
 
   if (!shift) return null;
 
@@ -29,7 +31,7 @@ export function CategoryDrillDownSheet({
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
-      title={`Why ${shift.name} Changed`}
+      title={isIndonesian ? `Penyebab Perubahan ${shift.name}` : `Why ${shift.name} Changed`}
     >
       <div className="px-5 space-y-4 pb-6 select-none">
         {/* Category Header Card */}
@@ -62,7 +64,9 @@ export function CategoryDrillDownSheet({
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {shift.isIncrease ? "Increased" : "Decreased"} vs last month
+                {isIndonesian
+                  ? `${shift.isIncrease ? "Meningkat" : "Menurun"} dibanding bulan lalu`
+                  : `${shift.isIncrease ? "Increased" : "Decreased"} vs last month`}
               </p>
             </div>
           </div>
@@ -94,7 +98,7 @@ export function CategoryDrillDownSheet({
               className="text-[10px] font-bold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Selected Month
+              {isIndonesian ? "Bulan Terpilih" : "Selected Month"}
             </p>
             <p
               className="amount text-[14px] font-semibold mt-0.5"
@@ -111,7 +115,7 @@ export function CategoryDrillDownSheet({
               className="text-[10px] font-bold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Previous Month
+              {isIndonesian ? "Bulan Sebelumnya" : "Previous Month"}
             </p>
             <p
               className="amount text-[14px] font-semibold mt-0.5"
@@ -129,7 +133,7 @@ export function CategoryDrillDownSheet({
               className="text-[11px] font-bold uppercase tracking-wider px-0.5"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Top Outflow Contributors
+              {isIndonesian ? "Kontributor Pengeluaran Terbesar" : "Top Outflow Contributors"}
             </p>
             <div className="space-y-1.5">
               {shift.contributors.map((c, idx) => (
@@ -149,7 +153,7 @@ export function CategoryDrillDownSheet({
                       className="text-[10px]"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      {c.count} {c.count === 1 ? "transaction" : "transactions"}
+                      {c.count} {isIndonesian ? "transaksi" : c.count === 1 ? "transaction" : "transactions"}
                     </p>
                   </div>
                   <p
@@ -175,7 +179,11 @@ export function CategoryDrillDownSheet({
               color: "var(--accent-ink)",
             }}
           >
-            <span>View {shift.name} Transactions</span>
+            <span>
+              {isIndonesian
+                ? `Lihat Transaksi ${shift.name}`
+                : `View ${shift.name} Transactions`}
+            </span>
             <ArrowRight size={15} />
           </button>
         </div>

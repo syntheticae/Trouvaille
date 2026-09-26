@@ -143,7 +143,7 @@ export function CompactAIInsightsHalf({
   const isIndonesian = language === "id";
 
   return (
-    <CompactShell title={isIndonesian ? "Wawasan AI" : "AI Insight"} onOpenDetail={onOpenDetail}>
+    <CompactShell title={isIndonesian ? "Wawasan Finansial" : "Financial Insight"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex items-center py-1">
         <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-snug line-clamp-3">
           {insightTitle}

@@ -169,32 +169,41 @@ describe("Widget Layout Engine", () => {
       const updated = applyPresetToWidgets(DEFAULT_STATISTICS_WIDGETS, "executive");
       const visible = filterVisibleWidgets(updated);
 
+      expect(visible.length).toBe(13);
+      expect(visible.some((w) => w.id === "financial_report")).toBe(true);
       expect(visible.some((w) => w.id === "health_score")).toBe(true);
-      expect(visible.some((w) => w.id === "cashflow_outlook")).toBe(true);
-      expect(visible.some((w) => w.id === "liquidity_horizon")).toBe(true);
-      expect(visible.some((w) => w.id === "monte_carlo")).toBe(true);
-      expect(visible.some((w) => w.id === "fire_planner")).toBe(true);
+      expect(visible.some((w) => w.id === "monthly_review")).toBe(true);
+      expect(visible.some((w) => w.id === "expense_structure")).toBe(true);
       expect(visible.some((w) => w.id === "spending_patterns")).toBe(true);
-      expect(visible.some((w) => w.id === "personal_financial_model")).toBe(true);
+      expect(visible.some((w) => w.id === "cashflow_summary")).toBe(true);
+      expect(visible.some((w) => w.id === "inflow_outflow_trend")).toBe(true);
+      expect(visible.some((w) => w.id === "category_breakdown")).toBe(true);
+      expect(visible.some((w) => w.id === "cashflow_velocity")).toBe(true);
+      expect(visible.some((w) => w.id === "fire_planner")).toBe(true);
+      expect(visible.some((w) => w.id === "monte_carlo")).toBe(true);
       expect(visible.some((w) => w.id === "what_if_simulator")).toBe(true);
-
-      // Hidden in executive
-      expect(visible.some((w) => w.id === "zero_based_envelopes")).toBe(false);
-      expect(visible.some((w) => w.id === "debt_payoff")).toBe(false);
-      expect(visible.some((w) => w.id === "spending_density_heatmap")).toBe(false);
+      expect(visible.some((w) => w.id === "personal_financial_model")).toBe(true);
     });
 
     it("applies 'telemetry' preset with operational focus", () => {
       const updated = applyPresetToWidgets(DEFAULT_STATISTICS_WIDGETS, "telemetry");
       const visible = filterVisibleWidgets(updated);
 
+      // Report & Intelligence active
+      expect(visible.some((w) => w.id === "financial_report")).toBe(true);
       expect(visible.some((w) => w.id === "health_score")).toBe(true);
-      expect(visible.some((w) => w.id === "cashflow_outlook")).toBe(true);
-      expect(visible.some((w) => w.id === "liquidity_horizon")).toBe(true);
+      expect(visible.some((w) => w.id === "monthly_review")).toBe(true);
+      expect(visible.some((w) => w.id === "expense_structure")).toBe(true);
       expect(visible.some((w) => w.id === "spending_patterns")).toBe(true);
-      expect(visible.some((w) => w.id === "spending_density_heatmap")).toBe(true);
 
-      // Planning models hidden
+      // Operational cashflow all active
+      expect(visible.some((w) => w.id === "cashflow_summary")).toBe(true);
+      expect(visible.some((w) => w.id === "inflow_outflow_trend")).toBe(true);
+      expect(visible.some((w) => w.id === "category_breakdown")).toBe(true);
+      expect(visible.some((w) => w.id === "cashflow_velocity")).toBe(true);
+
+      // Simulation: What-If stress test active, long-term models hidden
+      expect(visible.some((w) => w.id === "what_if_simulator")).toBe(true);
       expect(visible.some((w) => w.id === "monte_carlo")).toBe(false);
       expect(visible.some((w) => w.id === "fire_planner")).toBe(false);
       expect(visible.some((w) => w.id === "personal_financial_model")).toBe(false);
@@ -204,46 +213,50 @@ describe("Widget Layout Engine", () => {
       const updated = applyPresetToWidgets(DEFAULT_STATISTICS_WIDGETS, "planning");
       const visible = filterVisibleWidgets(updated);
 
+      // Simulation models all active
       expect(visible.some((w) => w.id === "fire_planner")).toBe(true);
       expect(visible.some((w) => w.id === "monte_carlo")).toBe(true);
       expect(visible.some((w) => w.id === "personal_financial_model")).toBe(true);
       expect(visible.some((w) => w.id === "what_if_simulator")).toBe(true);
-      expect(visible.some((w) => w.id === "debt_payoff")).toBe(true);
-      expect(visible.some((w) => w.id === "zero_based_envelopes")).toBe(true);
-      expect(visible.some((w) => w.id === "liquidity_horizon")).toBe(true);
 
-      // Operational telemetry hidden
-      expect(visible.some((w) => w.id === "health_score")).toBe(false);
+      // Baseline report and structure active
+      expect(visible.some((w) => w.id === "financial_report")).toBe(true);
+      expect(visible.some((w) => w.id === "health_score")).toBe(true);
+      expect(visible.some((w) => w.id === "expense_structure")).toBe(true);
+      expect(visible.some((w) => w.id === "cashflow_summary")).toBe(true);
+
+      // Granular operational cashflow & pacing hidden
+      expect(visible.some((w) => w.id === "monthly_review")).toBe(false);
       expect(visible.some((w) => w.id === "spending_patterns")).toBe(false);
-      expect(visible.some((w) => w.id === "spending_density_heatmap")).toBe(false);
+      expect(visible.some((w) => w.id === "inflow_outflow_trend")).toBe(false);
+      expect(visible.some((w) => w.id === "category_breakdown")).toBe(false);
+      expect(visible.some((w) => w.id === "cashflow_velocity")).toBe(false);
     });
 
     it("applies 'essential' preset with minimal cards across all sections", () => {
       const updated = applyPresetToWidgets(DEFAULT_STATISTICS_WIDGETS, "essential");
       const visible = filterVisibleWidgets(updated);
 
-      expect(visible.length).toBe(6);
+      expect(visible.length).toBe(4);
       expect(visible.map((w) => w.id)).toEqual([
-        "health_score",
-        "cashflow_outlook",
-        "liquidity_horizon",
         "financial_report",
+        "health_score",
         "cashflow_summary",
-        "asset_analytics",
+        "fire_planner",
       ]);
       // Verify every section has at least one card
-      expect(visible.some((w) => ["financial_report", "monthly_review", "personal_baseline", "expense_structure"].includes(w.id))).toBe(true);
-      expect(visible.some((w) => ["health_score", "cashflow_outlook", "liquidity_horizon"].includes(w.id))).toBe(true);
-      expect(visible.some((w) => ["cashflow_summary", "cashflow_sankey"].includes(w.id))).toBe(true);
-      expect(visible.some((w) => w.id === "asset_analytics")).toBe(true);
+      expect(visible.some((w) => ["financial_report"].includes(w.id))).toBe(true);
+      expect(visible.some((w) => ["health_score", "monthly_review", "expense_structure", "spending_patterns"].includes(w.id))).toBe(true);
+      expect(visible.some((w) => ["cashflow_summary", "inflow_outflow_trend", "category_breakdown", "cashflow_velocity"].includes(w.id))).toBe(true);
+      expect(visible.some((w) => ["fire_planner", "monte_carlo", "what_if_simulator", "personal_financial_model"].includes(w.id))).toBe(true);
     });
 
     it("ensures every preset has at least one card in each of the 4 analytics sections", () => {
       const presets = ["executive", "telemetry", "planning", "essential"] as const;
-      const reportCards = ["financial_report", "monthly_review", "personal_baseline", "expense_structure"];
-      const intelligenceCards = ["health_score", "cashflow_outlook", "liquidity_horizon", "monte_carlo", "fire_planner", "spending_patterns", "spending_density_heatmap", "zero_based_envelopes", "debt_payoff", "what_if_simulator", "personal_financial_model"];
-      const cashflowCards = ["cashflow_summary", "cashflow_sankey"];
-      const assetCards = ["asset_analytics"];
+      const reportCards = ["financial_report"];
+      const intelligenceCards = ["health_score", "monthly_review", "expense_structure", "spending_patterns"];
+      const cashflowCards = ["cashflow_summary", "inflow_outflow_trend", "category_breakdown", "cashflow_velocity"];
+      const simulationCards = ["fire_planner", "monte_carlo", "what_if_simulator", "personal_financial_model"];
 
       for (const presetKey of presets) {
         const updated = applyPresetToWidgets(DEFAULT_STATISTICS_WIDGETS, presetKey);
@@ -252,12 +265,12 @@ describe("Widget Layout Engine", () => {
         const hasReport = visible.some((w) => reportCards.includes(w.id));
         const hasIntel = visible.some((w) => intelligenceCards.includes(w.id));
         const hasCashflow = visible.some((w) => cashflowCards.includes(w.id));
-        const hasAsset = visible.some((w) => assetCards.includes(w.id));
+        const hasSimulation = visible.some((w) => simulationCards.includes(w.id));
 
         expect(hasReport, `Preset ${presetKey} must have at least one report card`).toBe(true);
         expect(hasIntel, `Preset ${presetKey} must have at least one intelligence card`).toBe(true);
         expect(hasCashflow, `Preset ${presetKey} must have at least one cashflow card`).toBe(true);
-        expect(hasAsset, `Preset ${presetKey} must have at least one asset card`).toBe(true);
+        expect(hasSimulation, `Preset ${presetKey} must have at least one simulation card`).toBe(true);
       }
     });
   });
@@ -269,9 +282,10 @@ describe("Widget Layout Engine", () => {
 
       expect(visible.some((w) => w.id === "net_portfolio")).toBe(true);
       expect(visible.some((w) => w.id === "portfolio_account")).toBe(true);
-      expect(visible.some((w) => w.id === "cashflow_pulse")).toBe(true);
+      expect(visible.some((w) => w.id === "ai_insights")).toBe(true);
+      expect(visible.some((w) => w.id === "activity_heatmap")).toBe(true);
       expect(visible.some((w) => w.id === "upcoming_bills")).toBe(true);
-      expect(visible.some((w) => w.id === "recent_transactions")).toBe(true);
+      expect(visible.some((w) => w.id === "category_budgets")).toBe(true);
 
       // Newly added half-cards in minimal preset positioned under portfolio_account (Liquidity Sources)
       const savingsRing = visible.find((w) => w.id === "savings_ring");
@@ -282,19 +296,26 @@ describe("Widget Layout Engine", () => {
       expect(miniHeatmap).toBeDefined();
       expect(miniHeatmap?.size).toBe("half");
 
-      // Verify sequence: net_portfolio -> portfolio_account -> savings_ring / mini_heatmap -> cashflow_pulse
+      // Verify sequence: net_portfolio -> portfolio_account -> savings_ring / mini_heatmap -> ai_insights -> activity_heatmap -> upcoming_bills -> category_budgets
       const visibleIds = visible.map((w) => w.id);
       const portAccountIdx = visibleIds.indexOf("portfolio_account");
       const savingsRingIdx = visibleIds.indexOf("savings_ring");
       const miniHeatmapIdx = visibleIds.indexOf("mini_heatmap");
-      const cashflowIdx = visibleIds.indexOf("cashflow_pulse");
+      const aiInsightsIdx = visibleIds.indexOf("ai_insights");
+      const activityHeatmapIdx = visibleIds.indexOf("activity_heatmap");
+      const billsIdx = visibleIds.indexOf("upcoming_bills");
+      const budgetsIdx = visibleIds.indexOf("category_budgets");
 
       expect(savingsRingIdx).toBe(portAccountIdx + 1);
       expect(miniHeatmapIdx).toBe(portAccountIdx + 2);
-      expect(cashflowIdx).toBe(miniHeatmapIdx + 1);
+      expect(aiInsightsIdx).toBe(miniHeatmapIdx + 1);
+      expect(activityHeatmapIdx).toBe(aiInsightsIdx + 1);
+      expect(billsIdx).toBe(activityHeatmapIdx + 1);
+      expect(budgetsIdx).toBe(billsIdx + 1);
 
-      // Verify other full/heavy widgets are hidden in minimal
-      expect(visible.some((w) => w.id === "ai_insights")).toBe(false);
+      // Verify other widgets are hidden in minimal
+      expect(visible.some((w) => w.id === "cashflow_pulse")).toBe(false);
+      expect(visible.some((w) => w.id === "recent_transactions")).toBe(false);
       expect(visible.some((w) => w.id === "spending_stability")).toBe(false);
       expect(visible.some((w) => w.id === "financial_goals")).toBe(false);
     });

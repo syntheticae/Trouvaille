@@ -1,11 +1,9 @@
-import { useMemo, useState } from "react";
-import { SlidersHorizontal, ChevronDown } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
+import { useMemo, useState, useEffect } from "react";
+import { SlidersHorizontal, CheckCircle2, AlertCircle, ChevronRight, BarChart3 } from "lucide-react";
 import {
   calculateWhatIfScenario,
   type WhatIfScenarioType,
 } from "../../lib/financialMath";
-import { motion, AnimatePresence } from "framer-motion";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
@@ -14,62 +12,156 @@ interface WhatIfSimulatorCardProps {
   monthlyIncome: number;
   monthlyExpense: number;
   hideBalance?: boolean;
+  onOpenDetails?: () => void;
 }
 
 export function WhatIfSimulatorCard({
   monthlyIncome,
   monthlyExpense,
   hideBalance = false,
+  onOpenDetails,
 }: WhatIfSimulatorCardProps) {
   const { language } = useLanguage();
-  useCurrency();
+  const {
+    preferredCurrency,
+    currencyMeta,
+    convertToIdr,
+    formatCompactWithPreferred,
+  } = useCurrency();
   const isIndonesian = language === "id";
 
   const scenarios: Array<{
     type: WhatIfScenarioType;
     label: string;
     inputLabel: string;
-    helper: string;
     presets: number[];
-  }> = [
-    {
-      type: "expense_cut",
-      label: isIndonesian ? "Pangkas Beban ↓" : "Expense ↓",
-      inputLabel: isIndonesian ? "Kurangi pengeluaran bulanan sebesar" : "Reduce monthly expense by",
-      helper: isIndonesian ? "Contoh: pangkas Rp500 rb/bulan" : "Example: cut Rp500K/month",
-      presets: [250000, 500000, 1000000],
-    },
-    {
-      type: "income_boost",
-      label: isIndonesian ? "Tambah Masuk ↑" : "Income ↑",
-      inputLabel: isIndonesian ? "Tingkatkan pemasukan bulanan sebesar" : "Increase monthly income by",
-      helper: isIndonesian ? "Contoh: tambah Rp2 jt/bulan" : "Example: add Rp2M/month",
-      presets: [500000, 1000000, 2000000],
-    },
-    {
-      type: "expense_change_pct",
-      label: isIndonesian ? "Beban %" : "Expense %",
-      inputLabel: isIndonesian ? "Ubah pengeluaran dalam persentase" : "Change expense by percent",
-      helper: isIndonesian ? "Positif menaikkan beban, negatif menurunkan" : "Positive raises expense, negative lowers it",
-      presets: [-10, 10, 20],
-    },
-    {
-      type: "saving_plan",
-      label: isIndonesian ? "Tabung / bln" : "Save / mo",
-      inputLabel: isIndonesian ? "Tentukan target tabungan bulanan" : "Set dedicated monthly savings",
-      helper: isIndonesian ? "Contoh: sisihkan Rp1,5 jt tiap bulan" : "Example: reserve Rp1.5M every month",
-      presets: [500000, 1500000, 3000000],
-    },
-  ];
+    presetLabels?: Record<number, string>;
+  }> = useMemo(() => {
+    const symbol = currencyMeta.symbol === "Rp" ? "" : currencyMeta.symbol;
 
-  const [scenarioType, setScenarioType] =
-    useState<WhatIfScenarioType>("expense_cut");
-  const [rawValue, setRawValue] = useState("500000");
-  const [isExpanded, setIsExpanded] = useState(false);
+    if (preferredCurrency === "IDR") {
+      return [
+        {
+          type: "expense_cut",
+          label: isIndonesian ? "Pangkas" : "Cut",
+          inputLabel: isIndonesian ? "Pangkas beban" : "Cut expense",
+          presets: [250000, 500000, 1000000],
+          presetLabels: isIndonesian
+            ? { 250000: "250k", 500000: "500k", 1000000: "1 Jt" }
+            : { 250000: "250k", 500000: "500k", 1000000: "1M" },
+        },
+        {
+          type: "income_boost",
+          label: isIndonesian ? "Tambah" : "Boost",
+          inputLabel: isIndonesian ? "Tambah masuk" : "Boost income",
+          presets: [500000, 1000000, 2000000],
+          presetLabels: isIndonesian
+            ? { 500000: "500k", 1000000: "1 Jt", 2000000: "2 Jt" }
+            : { 500000: "500k", 1000000: "1M", 2000000: "2M" },
+        },
+        {
+          type: "expense_change_pct",
+          label: isIndonesian ? "Beban %" : "Expense %",
+          inputLabel: isIndonesian ? "Ubah beban" : "Change %",
+          presets: [-10, 10, 20],
+          presetLabels: {
+            [-10]: "-10%",
+            10: "+10%",
+            20: "+20%",
+          },
+        },
+        {
+          type: "saving_plan",
+          label: isIndonesian ? "Tabung" : "Save",
+          inputLabel: isIndonesian ? "Target simpan" : "Target savings",
+          presets: [500000, 1500000, 3000000],
+          presetLabels: isIndonesian
+            ? { 500000: "500k", 1500000: "1.5 Jt", 3000000: "3 Jt" }
+            : { 500000: "500k", 1500000: "1.5M", 3000000: "3M" },
+        },
+      ];
+    }
+
+    // Units for foreign currencies
+    let cutUnits = [20, 50, 100];
+    let boostUnits = [30, 75, 150];
+    let saveUnits = [30, 100, 200];
+    const cutUnitLabels: Record<number, string> = {};
+    const boostUnitLabels: Record<number, string> = {};
+    const saveUnitLabels: Record<number, string> = {};
+
+    if (preferredCurrency === "JPY") {
+      cutUnits = [2500, 5000, 10000];
+      boostUnits = [5000, 10000, 20000];
+      saveUnits = [5000, 15000, 30000];
+    } else if (preferredCurrency === "THB") {
+      cutUnits = [500, 1000, 2000];
+      boostUnits = [1000, 2000, 4000];
+      saveUnits = [1000, 3000, 6000];
+    }
+
+    const cutPresets = cutUnits.map((u) => Math.round(convertToIdr(u, preferredCurrency)));
+    const boostPresets = boostUnits.map((u) => Math.round(convertToIdr(u, preferredCurrency)));
+    const savePresets = saveUnits.map((u) => Math.round(convertToIdr(u, preferredCurrency)));
+
+    cutPresets.forEach((p, i) => {
+      cutUnitLabels[p] = `${symbol}${cutUnits[i] >= 1000 ? `${(cutUnits[i] / 1000).toFixed(0)}k` : cutUnits[i]}`;
+    });
+    boostPresets.forEach((p, i) => {
+      boostUnitLabels[p] = `${symbol}${boostUnits[i] >= 1000 ? `${(boostUnits[i] / 1000).toFixed(0)}k` : boostUnits[i]}`;
+    });
+    savePresets.forEach((p, i) => {
+      saveUnitLabels[p] = `${symbol}${saveUnits[i] >= 1000 ? `${(saveUnits[i] / 1000).toFixed(0)}k` : saveUnits[i]}`;
+    });
+
+    return [
+      {
+        type: "expense_cut",
+        label: isIndonesian ? "Pangkas" : "Cut",
+        inputLabel: isIndonesian ? "Pangkas beban" : "Cut expense",
+        presets: cutPresets,
+        presetLabels: cutUnitLabels,
+      },
+      {
+        type: "income_boost",
+        label: isIndonesian ? "Tambah" : "Boost",
+        inputLabel: isIndonesian ? "Tambah masuk" : "Boost income",
+        presets: boostPresets,
+        presetLabels: boostUnitLabels,
+      },
+      {
+        type: "expense_change_pct",
+        label: isIndonesian ? "Beban %" : "Expense %",
+        inputLabel: isIndonesian ? "Ubah beban" : "Change %",
+        presets: [-10, 10, 20],
+        presetLabels: {
+          [-10]: "-10%",
+          10: "+10%",
+          20: "+20%",
+        },
+      },
+      {
+        type: "saving_plan",
+        label: isIndonesian ? "Tabung" : "Save",
+        inputLabel: isIndonesian ? "Target simpan" : "Target savings",
+        presets: savePresets,
+        presetLabels: saveUnitLabels,
+      },
+    ];
+  }, [preferredCurrency, currencyMeta.symbol, convertToIdr, isIndonesian]);
+
+  const [scenarioType, setScenarioType] = useState<WhatIfScenarioType>("expense_cut");
+  const [numericValue, setNumericValue] = useState<number>(() => scenarios[0]?.presets[1] ?? 500000);
+
+  useEffect(() => {
+    const cur = scenarios.find((s) => s.type === scenarioType);
+    if (cur && !cur.presets.includes(numericValue)) {
+      setNumericValue(cur.presets[1]);
+    }
+  }, [scenarios, scenarioType, numericValue]);
 
   const activeScenario =
     scenarios.find((item) => item.type === scenarioType) ?? scenarios[0];
-  const numericValue = Number(rawValue || 0);
 
   const result = useMemo(
     () =>
@@ -84,260 +176,291 @@ export function WhatIfSimulatorCard({
 
   return (
     <section
-      className="glass-surface rounded-3xl overflow-hidden transition-all mb-3 select-none"
+      className="p-4 sm:p-5 rounded-[24px] glass-surface transition-all select-none space-y-2.5 flex flex-col justify-between hover:border-white/20"
       style={{
         background: "var(--bg-elevated)",
         border: "1px solid var(--glass-border)",
         boxShadow: "var(--shadow-card)",
       }}
     >
+      <div>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <SlidersHorizontal size={16} strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h2
+                  className="text-[13px] font-semibold tracking-tight"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian ? "Stress Test & Skenario What-If" : "What-If Stress Test"}
+                </h2>
+                <span
+                  className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
+                  style={{
+                    background: "var(--glass-fill-strong)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  {isIndonesian ? "Interaktif" : "Interactive"}
+                </span>
+              </div>
+              <p
+                className="text-[11px] font-medium leading-tight mt-0.5"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian
+                  ? "Simulasi shock arus kas, beban & tabungan"
+                  : "Cashflow shock & savings simulation"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Scenario Type Selector (Single Row 4-Tab Segmented Control) */}
+        <div
+          className="grid grid-cols-4 gap-1 p-1 rounded-xl mb-2.5"
+          style={{
+            background: "var(--glass-fill)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          {scenarios.map((s) => {
+            const isActive = s.type === scenarioType;
+            return (
+              <button
+                key={s.type}
+                type="button"
+                onClick={() => {
+                  setScenarioType(s.type);
+                  setNumericValue(s.presets[1]);
+                  triggerHaptic("light");
+                }}
+                className="py-1 px-1 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer text-center truncate"
+                style={{
+                  background: isActive ? "var(--text-primary)" : "transparent",
+                  color: isActive
+                    ? "var(--bg-base)"
+                    : "var(--text-secondary)",
+                  boxShadow: isActive ? "0 1px 4px var(--shadow-strength)" : "none",
+                }}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Presets & Input Simulation Container */}
+        <div
+          className="p-2.5 rounded-xl space-y-2 mb-2.5"
+          style={{
+            background: "var(--glass-fill)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          {/* Preset Buttons Row (Single Line) */}
+          <div className="flex items-center justify-between text-xs gap-1.5">
+            <span
+              className="text-[10.5px] font-medium leading-none truncate shrink-0"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {activeScenario.inputLabel}:
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              {activeScenario.presets.map((preset) => {
+                const isSelected = numericValue === preset;
+                const label =
+                  activeScenario.presetLabels?.[preset] ??
+                  (scenarioType === "expense_change_pct"
+                    ? `${preset > 0 ? "+" : ""}${preset}%`
+                    : formatCompactWithPreferred(preset));
+
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => {
+                      setNumericValue(preset);
+                      triggerHaptic("light");
+                    }}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-semibold cursor-pointer transition-all tabular-nums"
+                    style={{
+                      background: isSelected
+                        ? "var(--text-primary)"
+                        : "var(--bg-elevated)",
+                      color: isSelected
+                        ? "var(--bg-base)"
+                        : "var(--text-secondary)",
+                      border: isSelected
+                        ? "1px solid transparent"
+                        : "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Output Impact 3-Col (Ultra-compact 2-line layout) */}
+          <div className="grid grid-cols-3 gap-1.5 text-center">
+            <div
+              className="p-1.5 rounded-lg"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <span
+                className="text-[9px] uppercase font-semibold block leading-none truncate"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian ? "Saat Ini" : "Current"}
+              </span>
+              <div className="mt-1 flex items-baseline justify-center gap-0.5">
+                <span
+                  className="text-[11.5px] font-bold tabular-nums whitespace-nowrap"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {hideBalance ? "••••••" : formatCompactWithPreferred(result.currentAnnualRetainedCash)}
+                </span>
+                <span
+                  className="text-[8.5px] opacity-60"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "/thn" : "/yr"}
+                </span>
+              </div>
+            </div>
+
+            <div
+              className="p-1.5 rounded-lg"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <span
+                className="text-[9px] uppercase font-semibold block leading-none truncate"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian ? "Disesuaikan" : "Adjusted"}
+              </span>
+              <div className="mt-1 flex items-baseline justify-center gap-0.5">
+                <span
+                  className="text-[11.5px] font-bold tabular-nums whitespace-nowrap"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {hideBalance ? "••••••" : formatCompactWithPreferred(result.adjustedAnnualRetainedCash)}
+                </span>
+                <span
+                  className="text-[8.5px] opacity-60"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "/thn" : "/yr"}
+                </span>
+              </div>
+            </div>
+
+            <div
+              className="p-1.5 rounded-lg"
+              style={{
+                background: "var(--glass-fill-strong)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <span
+                className="text-[9px] uppercase font-semibold block leading-none truncate"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {isIndonesian ? "Selisih" : "Net Diff"}
+              </span>
+              <div className="mt-1 flex items-baseline justify-center gap-0.5">
+                <span
+                  className="text-[11.5px] font-bold tabular-nums whitespace-nowrap"
+                  style={{
+                    color:
+                      result.annualDifference >= 0
+                        ? "var(--text-primary)"
+                        : "var(--text-secondary)",
+                  }}
+                >
+                  {hideBalance
+                    ? "••••••"
+                    : `${result.annualDifference >= 0 ? "+" : "-"}${formatCompactWithPreferred(Math.abs(result.annualDifference))}`}
+                </span>
+                <span
+                  className="text-[8.5px] opacity-60"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "/thn" : "/yr"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Verdict Pill */}
+          <div
+            className="flex items-start sm:items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10.5px] leading-tight"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            {result.isOvercommitted ? (
+              <AlertCircle size={13} className="shrink-0 mt-0.5 sm:mt-0 text-[var(--text-secondary)]" />
+            ) : (
+              <CheckCircle2 size={13} className="shrink-0 mt-0.5 sm:mt-0 text-[var(--text-primary)]" />
+            )}
+            <span>
+              {result.isOvercommitted
+                ? isIndonesian
+                  ? "Beban melebihi kapasitas arus kas bulanan."
+                  : "Overcommits monthly cashflow."
+                : isIndonesian
+                ? "Aman dalam batas arus kas bulanan."
+                : "Within monthly cashflow limit."}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Action Button */}
       <button
         type="button"
         onClick={() => {
-          setIsExpanded(!isExpanded);
-          triggerHaptic("light");
+          triggerHaptic("medium");
+          onOpenDetails?.();
         }}
-        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-black/5 dark:active:bg-white/5 transition-colors"
+        className="w-full py-2 px-3 rounded-xl flex items-center justify-between text-[11.5px] font-semibold active:scale-[0.99] transition-transform select-none cursor-pointer"
+        style={{
+          background: "var(--glass-fill)",
+          border: "1px solid var(--glass-border)",
+          color: "var(--text-primary)",
+        }}
       >
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
-            style={{
-              background: "var(--glass-fill-strong)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-          >
-            <SlidersHorizontal size={13} />
-          </div>
-          <div>
-            <span
-              className="text-[10px] font-semibold uppercase tracking-wider"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Simulator What-If" : "What-if Simulator"}
-            </span>
-            <p
-              className="text-[13px] font-semibold mt-0.5"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {isIndonesian ? "Perencanaan Finansial Proyektif" : "Deterministic Planning"}
-            </p>
-          </div>
-        </div>
-        <motion.div
-          animate={{ rotate: isExpanded ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <ChevronDown size={18} />
-        </motion.div>
+        <span className="flex items-center gap-2">
+          <BarChart3 size={13} style={{ color: "var(--text-tertiary)" }} />
+          {isIndonesian
+            ? "Detail Analisis Skenario"
+            : "Detailed Scenario Analysis"}
+        </span>
+        <ChevronRight size={13} style={{ color: "var(--text-tertiary)" }} />
       </button>
-
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="p-4 pt-1 border-t border-[var(--glass-border)] space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                {scenarios.map((scenario) => {
-                  const isActive = scenario.type === scenarioType;
-                  return (
-                    <button
-                      key={scenario.type}
-                      type="button"
-                      onClick={() => {
-                        setScenarioType(scenario.type);
-                        triggerHaptic("light");
-                      }}
-                      className="px-3 py-2.5 rounded-2xl text-[11px] font-semibold transition-all active:scale-95"
-                      style={{
-                        background: isActive
-                          ? "var(--accent)"
-                          : "var(--glass-fill)",
-                        color: isActive
-                          ? "var(--accent-ink)"
-                          : "var(--text-secondary)",
-                        border: "1px solid var(--glass-border)",
-                      }}
-                    >
-                      {scenario.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div
-                className="p-3.5 rounded-[20px] space-y-3"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <div>
-                  <p
-                    className="text-[11px] font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {activeScenario.inputLabel}
-                  </p>
-                  <p
-                    className="text-[10px] mt-0.5"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {activeScenario.helper}
-                  </p>
-                </div>
-
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  value={rawValue}
-                  onChange={(e) => setRawValue(e.target.value)}
-                  className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
-                  placeholder={
-                    scenarioType === "expense_change_pct" ? "10" : "500000"
-                  }
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-
-                <div className="flex flex-wrap gap-2">
-                  {activeScenario.presets.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => {
-                        setRawValue(String(preset));
-                        triggerHaptic("light");
-                      }}
-                      className="px-2.5 py-1.5 rounded-full text-[10px] font-bold active:scale-95 transition-transform"
-                      style={{
-                        background: "var(--glass-fill)",
-                        color: "var(--text-secondary)",
-                        border: "1px solid var(--glass-border)",
-                      }}
-                    >
-                      {scenarioType === "expense_change_pct"
-                        ? `${preset > 0 ? "+" : ""}${preset}%`
-                        : formatRupiah(preset)}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-3">
-                  <div
-                    className="p-2.5 rounded-xl"
-                    style={{ background: "var(--glass-fill)" }}
-                  >
-                    <p style={{ color: "var(--text-tertiary)" }}>
-                      {isIndonesian ? "Saat ini / tahun" : "Current / year"}
-                    </p>
-                    <p
-                      className="amount font-semibold mt-0.5"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {hideBalance
-                        ? "Rp ••••••••"
-                        : formatRupiah(result.currentAnnualRetainedCash)}
-                    </p>
-                  </div>
-                  <div
-                    className="p-2.5 rounded-xl"
-                    style={{ background: "var(--glass-fill)" }}
-                  >
-                    <p style={{ color: "var(--text-tertiary)" }}>
-                      {isIndonesian ? "Setelah penyesuaian" : "After adjustment"}
-                    </p>
-                    <p
-                      className="amount font-semibold mt-0.5"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {hideBalance
-                        ? "Rp ••••••••"
-                        : formatRupiah(result.adjustedAnnualRetainedCash)}
-                    </p>
-                  </div>
-                  <div
-                    className="p-2.5 rounded-xl"
-                    style={{ background: "var(--glass-fill)" }}
-                  >
-                    <p style={{ color: "var(--text-tertiary)" }}>
-                      {isIndonesian ? "Selisih / tahun" : "Difference / year"}
-                    </p>
-                    <p
-                      className="amount font-semibold mt-0.5"
-                      style={{
-                        color:
-                          result.annualDifference >= 0
-                            ? "var(--text-primary)"
-                            : "var(--text-secondary)",
-                      }}
-                    >
-                      {hideBalance
-                        ? "Rp ••••••••"
-                        : `${result.annualDifference >= 0 ? "+" : ""}${formatRupiah(result.annualDifference)}`}
-                    </p>
-                  </div>
-                </div>
-
-                <div
-                  className="pt-2.5 text-[11px] space-y-1"
-                  style={{ borderTop: "1px solid var(--glass-border)" }}
-                >
-                  <p style={{ color: "var(--text-secondary)" }}>
-                    {isIndonesian ? "Pemasukan disesuaikan: " : "Adjusted income: "}
-                    {hideBalance
-                      ? "Rp ••••••••"
-                      : formatRupiah(result.adjustedMonthlyIncome)}{" "}
-                    {isIndonesian ? "/ bulan" : "/ month"}
-                  </p>
-                  <p style={{ color: "var(--text-secondary)" }}>
-                    {isIndonesian ? "Pengeluaran disesuaikan: " : "Adjusted expense: "}
-                    {hideBalance
-                      ? "Rp ••••••••"
-                      : formatRupiah(result.adjustedMonthlyExpense)}{" "}
-                    {isIndonesian ? "/ bulan" : "/ month"}
-                  </p>
-                  {result.suggestedMonthlySavings > 0 && (
-                    <p style={{ color: "var(--text-secondary)" }}>
-                      {isIndonesian ? "Alokasi tabungan: " : "Dedicated savings: "}
-                      {hideBalance
-                        ? "Rp ••••••••"
-                        : formatRupiah(result.suggestedMonthlySavings)}{" "}
-                      {isIndonesian ? "/ bulan" : "/ month"}
-                    </p>
-                  )}
-                  <p
-                    className="font-semibold"
-                    style={{
-                      color: result.isOvercommitted
-                        ? "var(--text-secondary)"
-                        : "var(--text-primary)",
-                    }}
-                  >
-                    {result.isOvercommitted
-                      ? isIndonesian
-                        ? "Skenario ini membebani arus kas melebihi kapasitas bulanan."
-                        : "This scenario overcommits monthly cashflow."
-                      : isIndonesian
-                        ? "Skenario ini aman dalam batas arus kas bulanan Anda."
-                        : "This scenario stays within your current monthly cashflow."}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </section>
   );
 }

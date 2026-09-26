@@ -8,8 +8,8 @@ import { IconRenderer } from "../ui/IconRenderer";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useAllTransactions, useAddTransaction } from "../../hooks/useTransactions";
-import { useWallets } from "../../hooks/useWallets";
-import { useCategories } from "../../hooks/useCategories";
+import { useWallets, useAddWallet } from "../../hooks/useWallets";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { format } from "date-fns";
 import {
   calculatePersonalBaselines,
@@ -62,17 +62,24 @@ export function GoalDetailModal({
     "conservative" | "current" | "accelerated"
   >("current");
 
+  const { isIndonesian } = useLanguage();
   const { data: wallets = [] } = useWallets();
-  const { data: categories = [] } = useCategories();
+  const addWallet = useAddWallet();
   const addTransaction = useAddTransaction();
   const [selectedWalletId, setSelectedWalletId] = useState<string>("");
   const [recordInLedger, setRecordInLedger] = useState(true);
 
-  useEffect(() => {
-    if (wallets.length > 0 && !selectedWalletId) {
-      setSelectedWalletId(wallets[0].id);
+  const sourceWallets = useMemo(
+    () => wallets.filter((w) => w.name.trim().toLowerCase() !== "manifesting"),
+    [wallets],
+  );
+
+  const activeWalletId = useMemo(() => {
+    if (selectedWalletId && sourceWallets.some((w) => w.id === selectedWalletId)) {
+      return selectedWalletId;
     }
-  }, [wallets, selectedWalletId]);
+    return sourceWallets[0]?.id || "";
+  }, [selectedWalletId, sourceWallets]);
 
   const progress = useMemo(() => {
     if (!goal || goal.targetAmount <= 0) return 0;
@@ -83,18 +90,18 @@ export function GoalDetailModal({
   }, [goal]);
 
   const baselines = useMemo(() => {
-    return calculatePersonalBaselines(allTxs);
-  }, [allTxs]);
+    return calculatePersonalBaselines(allTxs, undefined, undefined, isIndonesian ? "id" : "en");
+  }, [allTxs, isIndonesian]);
 
   const planning = useMemo(() => {
     if (!goal) return null;
-    return calculateGoalPlanning(goal, baselines);
-  }, [goal, baselines]);
+    return calculateGoalPlanning(goal, baselines, undefined, isIndonesian ? "id" : "en");
+  }, [goal, baselines, isIndonesian]);
 
   const dynamicMilestones = useMemo(() => {
     if (!goal) return null;
-    return calculateDynamicGoalMilestones(goal, baselines);
-  }, [goal, baselines]);
+    return calculateDynamicGoalMilestones(goal, baselines, undefined, isIndonesian ? "id" : "en");
+  }, [goal, baselines, isIndonesian]);
 
   const scenarioPresets = useMemo(() => {
     if (!goal) return [];
@@ -107,27 +114,27 @@ export function GoalDetailModal({
 
     return amounts.map((amt) => ({
       amount: amt,
-      result: calculateGoalScenario(goal, amt),
+      result: calculateGoalScenario(goal, amt, undefined, isIndonesian ? "id" : "en"),
     }));
-  }, [goal, planning]);
+  }, [goal, planning, isIndonesian]);
 
   const customScenario = useMemo(() => {
     if (!goal) return null;
     const amt = Number(scenarioAmount) || 0;
-    return calculateGoalScenario(goal, amt);
-  }, [goal, scenarioAmount]);
+    return calculateGoalScenario(goal, amt, undefined, isIndonesian ? "id" : "en");
+  }, [goal, scenarioAmount, isIndonesian]);
 
   if (!goal) return null;
 
   const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
 
   const formatScenarioDuration = (months: number) => {
-    if (months <= 0) return "Now";
+    if (months <= 0) return isIndonesian ? "Sekarang" : "Now";
     const years = Math.floor(months / 12);
     const extraMonths = months % 12;
-    if (years === 0) return `${extraMonths} mo`;
-    if (extraMonths === 0) return `${years} yr`;
-    return `${years} yr ${extraMonths} mo`;
+    if (years === 0) return isIndonesian ? `${extraMonths} bln` : `${extraMonths} mo`;
+    if (extraMonths === 0) return isIndonesian ? `${years} thn` : `${years} yr`;
+    return isIndonesian ? `${years} thn ${extraMonths} bln` : `${years} yr ${extraMonths} mo`;
   };
 
   const handleQuickDeposit = async (add: number) => {
@@ -135,21 +142,35 @@ export function GoalDetailModal({
     setIsSubmitting(true);
     try {
       onDeposit(goal.id, add);
-      if (recordInLedger && selectedWalletId) {
-        const tabunganCategory = categories.find(
-          (c: any) => c.name.toLowerCase() === "tabungan" && c.type === "expense"
+      if (recordInLedger && activeWalletId) {
+        let targetWallet = wallets.find(
+          (w) => w.name.trim().toLowerCase() === "manifesting",
         );
+        if (!targetWallet) {
+          targetWallet = await addWallet.mutateAsync({
+            name: "Manifesting",
+            icon: "Sparkles",
+            classification: "liquid",
+          });
+        }
         await addTransaction.mutateAsync({
           amount: add,
-          type: "expense",
-          category_id: tabunganCategory?.id || null,
-          wallet_id: selectedWalletId,
+          type: "transfer",
+          category_id: null,
+          wallet_id: activeWalletId,
+          to_wallet_id: targetWallet.id,
           occurred_on: format(new Date(), "yyyy-MM-dd"),
-          note: `Alokasi Tabungan: ${goal.title}`,
+          note: `Alokasi Tabungan: ${goal.title} #goal_${goal.id}`,
         });
       }
       triggerHaptic("medium");
-      showToast(`+${formatRupiah(add)} dialokasikan ke ${goal.title}`, "add", () => {});
+      showToast(
+        isIndonesian
+          ? `+${formatRupiah(add)} dialokasikan ke ${goal.title}`
+          : `+${formatRupiah(add)} allocated to ${goal.title}`,
+        "add",
+        () => {},
+      );
       onClose();
     } catch (err) {
       console.warn("Failed to deposit to goal:", err);
@@ -165,21 +186,35 @@ export function GoalDetailModal({
     setIsSubmitting(true);
     try {
       onDeposit(goal.id, amt);
-      if (recordInLedger && selectedWalletId) {
-        const tabunganCategory = categories.find(
-          (c: any) => c.name.toLowerCase() === "tabungan" && c.type === "expense"
+      if (recordInLedger && activeWalletId) {
+        let targetWallet = wallets.find(
+          (w) => w.name.trim().toLowerCase() === "manifesting",
         );
+        if (!targetWallet) {
+          targetWallet = await addWallet.mutateAsync({
+            name: "Manifesting",
+            icon: "Sparkles",
+            classification: "liquid",
+          });
+        }
         await addTransaction.mutateAsync({
           amount: amt,
-          type: "expense",
-          category_id: tabunganCategory?.id || null,
-          wallet_id: selectedWalletId,
+          type: "transfer",
+          category_id: null,
+          wallet_id: activeWalletId,
+          to_wallet_id: targetWallet.id,
           occurred_on: format(new Date(), "yyyy-MM-dd"),
-          note: `Alokasi Tabungan: ${goal.title}`,
+          note: `Alokasi Tabungan: ${goal.title} #goal_${goal.id}`,
         });
       }
       triggerHaptic("medium");
-      showToast(`+${formatRupiah(amt)} dialokasikan ke ${goal.title}`, "add", () => {});
+      showToast(
+        isIndonesian
+          ? `+${formatRupiah(amt)} dialokasikan ke ${goal.title}`
+          : `+${formatRupiah(amt)} allocated to ${goal.title}`,
+        "add",
+        () => {},
+      );
       onClose();
     } catch (err) {
       console.warn("Failed to deposit to goal:", err);
@@ -200,7 +235,11 @@ export function GoalDetailModal({
       currentAmount: current,
     });
     triggerHaptic("medium");
-    showToast("Financial goal updated", "update", () => {});
+    showToast(
+      isIndonesian ? "Target finansial diperbarui" : "Financial goal updated",
+      "update",
+      () => {},
+    );
     setIsEditing(false);
     setIsSubmitting(false);
   };
@@ -236,8 +275,12 @@ export function GoalDetailModal({
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {progress >= 100
-                  ? "Goal Reached!"
-                  : `${formatRupiah(remaining)} remaining`}
+                  ? isIndonesian
+                    ? "Target Tercapai!"
+                    : "Goal Reached!"
+                  : isIndonesian
+                    ? `Sisa ${formatRupiah(remaining)}`
+                    : `${formatRupiah(remaining)} remaining`}
               </p>
             </div>
           </div>
@@ -251,7 +294,13 @@ export function GoalDetailModal({
               border: "1px solid var(--glass-border)",
             }}
           >
-            {isEditing ? "Cancel" : "Edit"}
+            {isEditing
+              ? isIndonesian
+                ? "Batal"
+                : "Cancel"
+              : isIndonesian
+                ? "Ubah"
+                : "Edit"}
           </button>
         </div>
 
@@ -271,7 +320,7 @@ export function GoalDetailModal({
                   className="text-[11px] font-bold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Collected
+                  {isIndonesian ? "Terkumpul" : "Collected"}
                 </span>
                 <span
                   className="text-[13px] font-semibold"
@@ -292,7 +341,8 @@ export function GoalDetailModal({
                   className="text-[12px] font-semibold"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  of {formatRupiah(goal.targetAmount)}
+                  {isIndonesian ? "dari " : "of "}
+                  {formatRupiah(goal.targetAmount)}
                 </span>
               </div>
 
@@ -333,7 +383,7 @@ export function GoalDetailModal({
                       className="text-[10px] font-semibold uppercase tracking-wider"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Planning Trajectory
+                      {isIndonesian ? "Lintasan Perencanaan" : "Planning Trajectory"}
                     </span>
                   </div>
                   <span
@@ -348,7 +398,13 @@ export function GoalDetailModal({
                       border: "1px solid var(--glass-border)",
                     }}
                   >
-                    {planning.trajectoryStatus}
+                    {isIndonesian
+                      ? planning.trajectoryStatus === "ON TRACK"
+                        ? "SESUAI JALUR"
+                        : planning.trajectoryStatus === "AHEAD OF TARGET"
+                          ? "MELAMPAUI TARGET"
+                          : "DI BAWAH TARGET"
+                      : planning.trajectoryStatus}
                   </span>
                 </div>
 
@@ -361,7 +417,7 @@ export function GoalDetailModal({
                       className="text-[9px] font-bold uppercase tracking-wider"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Required Pace
+                      {isIndonesian ? "Laju Dibutuhkan" : "Required Pace"}
                     </p>
                     <p
                       className="amount font-semibold text-[13px] mt-0.5"
@@ -372,7 +428,7 @@ export function GoalDetailModal({
                         className="text-[9px] font-normal"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        / mo
+                        {isIndonesian ? "/ bln" : "/ mo"}
                       </span>
                     </p>
                   </div>
@@ -384,7 +440,7 @@ export function GoalDetailModal({
                       className="text-[9px] font-bold uppercase tracking-wider"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Retained Cash
+                      {isIndonesian ? "Kas Tersisa" : "Retained Cash"}
                     </p>
                     <p
                       className="amount font-semibold text-[13px] mt-0.5"
@@ -395,7 +451,7 @@ export function GoalDetailModal({
                         className="text-[9px] font-normal"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        / mo
+                        {isIndonesian ? "/ bln" : "/ mo"}
                       </span>
                     </p>
                   </div>
@@ -426,7 +482,7 @@ export function GoalDetailModal({
                       className="text-[10px] font-semibold uppercase tracking-wider"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Milestone Roadmap
+                      {isIndonesian ? "Peta Pencapaian" : "Milestone Roadmap"}
                     </span>
                   </div>
                   <span
@@ -437,7 +493,9 @@ export function GoalDetailModal({
                       border: "1px solid var(--glass-border)",
                     }}
                   >
-                    Velocity: {formatRupiah(dynamicMilestones.currentVelocityMonthly)}/mo
+                    {isIndonesian ? "Kecepatan: " : "Velocity: "}
+                    {formatRupiah(dynamicMilestones.currentVelocityMonthly)}
+                    {isIndonesian ? "/bln" : "/mo"}
                   </span>
                 </div>
 
@@ -493,7 +551,7 @@ export function GoalDetailModal({
                             : "var(--text-secondary)",
                         }}
                       >
-                        {m.projectedDate || "In progress"}
+                        {m.projectedDate || (isIndonesian ? "Dalam proses" : "In progress")}
                       </p>
                     </div>
                   ))}
@@ -506,7 +564,7 @@ export function GoalDetailModal({
                       className="text-[10px] font-bold uppercase tracking-wider"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Savings Velocity Pace
+                      {isIndonesian ? "Kecepatan Tabungan" : "Savings Velocity Pace"}
                     </span>
                     <span
                       className="text-[11px] font-semibold amount"
@@ -515,7 +573,9 @@ export function GoalDetailModal({
                       {dynamicMilestones.velocityPaces[velocitySpeed]
                         .projectedCompletion
                         ? `Est. ${dynamicMilestones.velocityPaces[velocitySpeed].projectedCompletion}`
-                        : "Requires positive cashflow"}
+                        : isIndonesian
+                          ? "Memerlukan arus kas positif"
+                          : "Requires positive cashflow"}
                     </span>
                   </div>
 
@@ -527,13 +587,17 @@ export function GoalDetailModal({
                       [
                         {
                           id: "conservative",
-                          label: "Conservative",
+                          label: isIndonesian ? "Konservatif" : "Conservative",
                           pct: "60%",
                         },
-                        { id: "current", label: "Current Pace", pct: "100%" },
+                        {
+                          id: "current",
+                          label: isIndonesian ? "Laju Saat Ini" : "Current Pace",
+                          pct: "100%",
+                        },
                         {
                           id: "accelerated",
-                          label: "Accelerated",
+                          label: isIndonesian ? "Dipercepat" : "Accelerated",
                           pct: "140%",
                         },
                       ] as const
@@ -565,7 +629,7 @@ export function GoalDetailModal({
                             {tier.label}
                           </p>
                           <p className="text-[9px] font-semibold amount opacity-70 truncate">
-                            {formatRupiah(pace.monthly)}/mo
+                            {formatRupiah(pace.monthly)}{isIndonesian ? "/bln" : "/mo"}
                           </p>
                         </button>
                       );
@@ -589,7 +653,7 @@ export function GoalDetailModal({
                   className="text-[10px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Goal Scenario
+                  {isIndonesian ? "Skenario Target" : "Goal Scenario"}
                 </span>
               </div>
 
@@ -608,17 +672,23 @@ export function GoalDetailModal({
                         className="text-[12px] font-bold"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {formatRupiah(amount)} / month
+                        {formatRupiah(amount)} {isIndonesian ? "/ bulan" : "/ month"}
                       </p>
                       <p
                         className="text-[10px] mt-0.5"
                         style={{ color: "var(--text-tertiary)" }}
                       >
                         {result.isAlreadyCompleted
-                          ? "Goal already completed"
+                          ? isIndonesian
+                            ? "Target sudah tercapai"
+                            : "Goal already completed"
                           : result.isFeasible
-                            ? `Target around ${result.projectedCompletionLabel}`
-                            : "Set a positive monthly amount"}
+                            ? isIndonesian
+                              ? `Target sekitar ${result.projectedCompletionLabel}`
+                              : `Target around ${result.projectedCompletionLabel}`
+                            : isIndonesian
+                              ? "Tentukan kontribusi bulanan positif"
+                              : "Set a positive monthly amount"}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
@@ -632,7 +702,7 @@ export function GoalDetailModal({
                         className="text-[10px]"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        to finish
+                        {isIndonesian ? "tersisa" : "to finish"}
                       </p>
                     </div>
                   </div>
@@ -644,10 +714,12 @@ export function GoalDetailModal({
                   className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Custom monthly contribution
+                  {isIndonesian ? "Kontribusi bulanan kustom" : "Custom monthly contribution"}
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={scenarioAmount}
                   onChange={(e) => setScenarioAmount(e.target.value)}
                   placeholder="1500000"
@@ -673,17 +745,24 @@ export function GoalDetailModal({
                     style={{ color: "var(--text-primary)" }}
                   >
                     {customScenario.isAlreadyCompleted
-                      ? "Goal already completed"
+                      ? isIndonesian
+                        ? "Target sudah tercapai"
+                        : "Goal already completed"
                       : customScenario.isFeasible
-                        ? `At ${formatRupiah(customScenario.monthlyContribution)}/month, target projects to ${customScenario.projectedCompletionLabel}`
-                        : "Enter a positive monthly contribution to simulate your goal."}
+                        ? isIndonesian
+                          ? `Dengan ${formatRupiah(customScenario.monthlyContribution)}/bulan, target diproyeksikan selesai ${customScenario.projectedCompletionLabel}`
+                          : `At ${formatRupiah(customScenario.monthlyContribution)}/month, target projects to ${customScenario.projectedCompletionLabel}`
+                        : isIndonesian
+                          ? "Masukkan kontribusi bulanan positif untuk simulasi target."
+                          : "Enter a positive monthly contribution to simulate your goal."}
                   </p>
                   <p
                     className="text-[10px] mt-1"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    Remaining {formatRupiah(customScenario.remainingAmount)} ·
-                    ETA {formatScenarioDuration(customScenario.monthsToTarget)}
+                    {isIndonesian ? "Sisa " : "Remaining "}
+                    {formatRupiah(customScenario.remainingAmount)} · ETA{" "}
+                    {formatScenarioDuration(customScenario.monthsToTarget)}
                   </p>
                 </div>
               )}
@@ -700,12 +779,12 @@ export function GoalDetailModal({
                   className="text-[11px] font-bold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Add Funds (Top Up)
+                  {isIndonesian ? "Tambah Dana Celengan" : "Add Funds (Top Up)"}
                 </span>
               </div>
 
               {/* Source Account & Ledger Sync Selector */}
-              {wallets.length > 0 && (
+              {sourceWallets.length > 0 && (
                 <div
                   className="p-3 rounded-2xl space-y-2 glass-surface"
                   style={{
@@ -720,7 +799,9 @@ export function GoalDetailModal({
                         className="text-[11px] font-semibold"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        Deduct Wallet Balance (Ledger)
+                        {isIndonesian
+                          ? "Transfer Saldo ke Akun Manifesting"
+                          : "Record Transfer to Manifesting Account"}
                       </span>
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>
@@ -728,15 +809,15 @@ export function GoalDetailModal({
                         checked={recordInLedger}
                         onChange={(val) => setRecordInLedger(val)}
                         size="sm"
-                        ariaLabel="Deduct Wallet Balance"
+                        ariaLabel="Transfer to Manifesting"
                       />
                     </div>
                   </div>
 
                   {recordInLedger && (
                     <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
-                      {wallets.map((w) => {
-                        const isSelected = selectedWalletId === w.id;
+                      {sourceWallets.map((w) => {
+                        const isSelected = activeWalletId === w.id;
                         return (
                           <button
                             key={w.id}
@@ -777,7 +858,7 @@ export function GoalDetailModal({
                       color: "var(--text-primary)",
                     }}
                   >
-                    +{val >= 1000000 ? `${val / 1000000}M` : `${val / 1000}k`}
+                    +{val >= 1000000 ? `${val / 1000000}${isIndonesian ? "Jt" : "M"}` : `${val / 1000}k`}
                   </button>
                 ))}
               </div>
@@ -786,9 +867,11 @@ export function GoalDetailModal({
               <div className="flex gap-2 pt-1">
                 <input
                   type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
-                  placeholder="Custom amount (Rp)"
+                  placeholder={isIndonesian ? "Nominal kustom (Rp)" : "Custom amount (Rp)"}
                   className="flex-1 px-4 py-3 rounded-2xl text-[13px] outline-none font-semibold"
                   style={{
                     background: "var(--bg-elevated)",
@@ -805,7 +888,7 @@ export function GoalDetailModal({
                     color: "var(--accent-ink)",
                   }}
                 >
-                  <Plus size={15} /> Save
+                  <Plus size={15} /> {isIndonesian ? "Simpan" : "Save"}
                 </button>
               </div>
             </div>
@@ -818,7 +901,7 @@ export function GoalDetailModal({
                 className="text-[11px] font-bold uppercase tracking-wider block mb-1"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Goal Name
+                {isIndonesian ? "Nama Target" : "Goal Name"}
               </label>
               <input
                 type="text"
@@ -838,10 +921,12 @@ export function GoalDetailModal({
                 className="text-[11px] font-bold uppercase tracking-wider block mb-1"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Target Amount (Rp)
+                {isIndonesian ? "Nominal Target (Rp)" : "Target Amount (Rp)"}
               </label>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={editTarget}
                 onChange={(e) => setEditTarget(e.target.value)}
                 className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[13px]"
@@ -858,10 +943,12 @@ export function GoalDetailModal({
                 className="text-[11px] font-bold uppercase tracking-wider block mb-1"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Current Saved Balance (Rp)
+                {isIndonesian ? "Saldo Terkumpul Saat Ini (Rp)" : "Current Saved Balance (Rp)"}
               </label>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={editCurrent}
                 onChange={(e) => setEditCurrent(e.target.value)}
                 className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[13px]"
@@ -876,10 +963,14 @@ export function GoalDetailModal({
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => {
-                  if (confirm(`Delete goal "${goal.title}"?`)) {
+                  if (confirm(isIndonesian ? `Hapus target "${goal.title}"?` : `Delete goal "${goal.title}"?`)) {
                     onDelete(goal.id);
                     triggerHaptic("medium");
-                    showToast("Financial goal deleted", "delete", () => {});
+                    showToast(
+                      isIndonesian ? "Target finansial dihapus" : "Financial goal deleted",
+                      "delete",
+                      () => {},
+                    );
                     onClose();
                   }
                 }}
@@ -888,7 +979,7 @@ export function GoalDetailModal({
                   background: "rgba(239, 68, 68, 0.12)",
                   border: "1px solid rgba(239, 68, 68, 0.25)",
                 }}
-                title="Delete Goal"
+                title={isIndonesian ? "Hapus Target" : "Delete Goal"}
               >
                 <Trash2 size={16} />
               </button>
@@ -901,7 +992,7 @@ export function GoalDetailModal({
                   color: "var(--accent-ink)",
                 }}
               >
-                <CheckCircle2 size={16} /> Save Changes
+                <CheckCircle2 size={16} /> {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
               </button>
             </div>
           </div>

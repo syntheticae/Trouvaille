@@ -1,133 +1,163 @@
-import { useState } from "react"
-import { Activity, ChevronDown, CheckCircle2 } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
-import type { BehavioralPattern } from "../../lib/financialMath"
-import { triggerHaptic } from "../../lib/haptics"
-import { useLanguage } from "../../contexts/LanguageContext"
-import { useCurrency } from "../../contexts/CurrencyContext"
+import { useState } from "react";
+import { Activity, CheckCircle2, Sparkles, ChevronDown } from "lucide-react";
+import type { BehavioralPattern } from "../../lib/financialMath";
+import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface SpendingPatternsSectionProps {
-  patterns: BehavioralPattern[]
+  patterns: BehavioralPattern[];
 }
 
-export function SpendingPatternsSection({ patterns }: SpendingPatternsSectionProps) {
-  useCurrency()
-  const { isIndonesian } = useLanguage()
-  const [isExpanded, setIsExpanded] = useState(false)
+export function SpendingPatternsSection({
+  patterns,
+}: SpendingPatternsSectionProps) {
+  useCurrency();
+  const { isIndonesian } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+  const [showAll, setShowAll] = useState(false);
 
   if (!patterns || patterns.length === 0) {
-    return null
+    return null;
   }
+
+  const visiblePatterns = showAll ? patterns : patterns.slice(0, 2);
 
   return (
     <section
-      className="glass-surface rounded-[24px] overflow-hidden transition-all"
+      className="glass-surface rounded-[24px] p-5 transition-all select-none space-y-4"
       style={{
         border: "1px solid var(--glass-border)",
         background: "var(--bg-elevated)",
         boxShadow: "var(--shadow-card)",
       }}
     >
-      {/* Trigger */}
-      <button
-        type="button"
-        onClick={() => {
-          setIsExpanded(!isExpanded)
-          triggerHaptic("light")
-        }}
-        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-black/5 dark:active:bg-white/5 transition-colors"
-      >
-        <div className="flex items-center gap-2.5">
+      {/* ── 1. Header ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center"
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill-strong)",
+              background: "var(--glass-fill)",
               border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
           >
-            <Activity size={13} />
+            <Activity size={16} strokeWidth={1.75} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                {isIndonesian ? "Pola Pengeluaran" : "Spending Patterns"}
-              </span>
-              <span
-                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
-                style={{
-                  background: "var(--glass-fill)",
-                  color: "var(--text-secondary)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                {patterns.length} {isIndonesian ? "Terverifikasi" : "Verified"}
-              </span>
-            </div>
-            <p className="text-[13px] font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>
-              {patterns[0].title}
+          <div className="min-w-0">
+            <h3 className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Dinamika Kategori & Perilaku" : "Behavioral Patterns & Shifts"}
+            </h3>
+            <p className="text-[11px] truncate" style={{ color: "var(--text-tertiary)" }}>
+              {isIndonesian ? "Observasi ritme & kebiasaan kas" : "Rhythm observations & spending cues"}
             </p>
           </div>
         </div>
 
-        <motion.div
-          animate={{ rotate: isExpanded ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          style={{ color: "var(--text-secondary)" }}
+        {/* Pattern Count Badge (Single Line) */}
+        <div
+          className="px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1.5"
+          style={{
+            background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
+            border: "1px solid var(--glass-border)",
+          }}
         >
-          <ChevronDown size={18} />
-        </motion.div>
-      </button>
+          <span className="text-[11px] font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+            {patterns.length} {isIndonesian ? "Pola Terdeteksi" : "Patterns"}
+          </span>
+        </div>
+      </div>
 
-      {/* Expandable Pattern Cards */}
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="overflow-hidden"
+      {/* ── 2. Clean Pattern Cards ─────────────────────────────────────────── */}
+      <div className="space-y-2.5">
+        {visiblePatterns.map((p) => (
+          <div
+            key={p.id}
+            className="p-3.5 rounded-2xl border space-y-2 transition-all"
+            style={{
+              background: "var(--glass-fill)",
+              borderColor: "var(--glass-border)",
+            }}
           >
-            <div className="p-4 pt-1 space-y-2.5 border-t border-[var(--glass-border)] text-[12px]">
-              {patterns.map((p) => (
-                <div
-                  key={p.id}
-                  className="p-3 rounded-2xl space-y-1.5"
-                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-                >
-                  <div className="flex justify-between items-center">
-                    <span
-                      className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
-                      style={{
-                        background: "var(--glass-fill)",
-                        color: "var(--text-secondary)",
-                        border: "1px solid var(--glass-border)",
-                      }}
-                    >
-                      {p.badge}
-                    </span>
-                    <span className="text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
-                      {isIndonesian ? "Pola Historis" : "Historical Pattern"}
-                    </span>
-                  </div>
-
-                  <p className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>
-                    {p.title}
-                  </p>
-                  <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                    {p.subtitle}
-                  </p>
-                  <div className="pt-1 border-t border-[var(--glass-border)] flex items-center gap-1.5 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                    <CheckCircle2 size={11} className="flex-shrink-0" style={{ color: "var(--text-primary)" }} />
-                    <span>{p.evidence}</span>
-                  </div>
-                </div>
-              ))}
+            {/* Top Row: Category Type Badge + Sparkles */}
+            <div className="flex items-center justify-between gap-2">
+              <span
+                className="text-[9.5px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.08)"
+                    : "rgba(0, 0, 0, 0.05)",
+                  color: "var(--text-tertiary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                {p.badge}
+              </span>
+              <Sparkles size={13} className="text-[var(--text-tertiary)] shrink-0" />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+            {/* Pattern Headline - full width, natural wrap, NO truncate */}
+            <h4
+              className="text-[13px] font-semibold leading-snug"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {p.title}
+            </h4>
+
+            {/* Subtitle explanation */}
+            <p className="text-[11.5px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              {p.subtitle}
+            </p>
+
+            {/* Evidence row: wraps naturally, NO truncate so numbers & amounts are never clipped */}
+            <div
+              className="pt-2 border-t flex items-start gap-1.5 text-[11px] leading-relaxed"
+              style={{
+                borderColor: "var(--glass-border)",
+                color: "var(--text-tertiary)",
+              }}
+            >
+              <CheckCircle2
+                size={12}
+                className="shrink-0 mt-0.5 text-[var(--text-primary)]"
+              />
+              <span className="leading-relaxed">{p.evidence}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 3. Toggle for Additional Patterns ───────────────────────────────── */}
+      {patterns.length > 2 && (
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic("light");
+            setShowAll(!showAll);
+          }}
+          className="w-full pt-1 flex items-center justify-center gap-1 text-[11px] font-semibold cursor-pointer transition-colors"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          <span>
+            {showAll
+              ? isIndonesian
+                ? "Tampilkan Lebih Sedikit"
+                : "Show Less"
+              : isIndonesian
+                ? `Tampilkan ${patterns.length - 2} Pola Lainnya`
+                : `View ${patterns.length - 2} More Patterns`}
+          </span>
+          <ChevronDown
+            size={13}
+            className={`transition-transform duration-200 ${
+              showAll ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+      )}
     </section>
-  )
+  );
 }

@@ -19,7 +19,9 @@ import {
   X,
 } from "lucide-react";
 import { addMonths, format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const DEFAULT_DEBTS: DebtItem[] = [];
 const DUMMY_DEBT_IDS = new Set(["debt-cc-1", "debt-pl-2", "debt-loan-3"]);
@@ -33,7 +35,10 @@ interface DebtPayoffSimulatorCardProps {
 export function DebtPayoffSimulatorCard({
   hideBalance = false,
 }: DebtPayoffSimulatorCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const { language } = useLanguage();
+  const isIndonesian = language === "id";
+
+  const [isExpanded, setIsExpanded] = useState(true);
   const [debts, setDebts] = useState<DebtItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -75,11 +80,12 @@ export function DebtPayoffSimulatorCard({
 
   const activeResult = strategy === "snowball" ? comparison.snowball : comparison.avalanche;
 
-  const now = new Date();
   const projectedFreeDate = useMemo(() => {
-    if (activeResult.totalMonths === 0) return "Debt Free";
-    return format(addMonths(now, activeResult.totalMonths), "MMM yyyy");
-  }, [now, activeResult.totalMonths]);
+    if (activeResult.totalMonths === 0) return isIndonesian ? "Bebas Utang" : "Debt Free";
+    return format(addMonths(new Date(), activeResult.totalMonths), "MMM yyyy", {
+      locale: isIndonesian ? idLocale : undefined,
+    });
+  }, [activeResult.totalMonths, isIndonesian]);
 
   const mask = (val: string) => (hideBalance ? "••••••" : val);
 
@@ -146,7 +152,7 @@ export function DebtPayoffSimulatorCard({
   };
 
   const handleClearAllDebts = () => {
-    if (!confirm("Clear all debt records?")) return;
+    if (!confirm(isIndonesian ? "Hapus semua catatan utang?" : "Clear all debt records?")) return;
     setDebts([]);
     triggerHaptic("medium");
   };
@@ -179,7 +185,7 @@ export function DebtPayoffSimulatorCard({
                 className="text-[10px] font-semibold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Debt Payoff Engine
+                {isIndonesian ? "Mesin Pelunasan Utang" : "Debt Payoff Engine"}
               </span>
               <span
                 className="text-[9px] font-semibold uppercase px-2 py-0.2 rounded-full"
@@ -197,9 +203,15 @@ export function DebtPayoffSimulatorCard({
               style={{ color: "var(--text-primary)" }}
             >
               {activeResult.totalMonths > 0
-                ? `Debt-Free in ${activeResult.totalMonths} Mos (${projectedFreeDate})`
+                ? isIndonesian
+                  ? `Bebas Utang dalam ${activeResult.totalMonths} Bln (${projectedFreeDate})`
+                  : `Debt-Free in ${activeResult.totalMonths} Mos (${projectedFreeDate})`
                 : debts.length === 0
-                ? "No Active Debts"
+                ? isIndonesian
+                  ? "Tidak Ada Utang Aktif"
+                  : "No Active Debts"
+                : isIndonesian
+                ? "Semua Utang Telah Lunas"
                 : "All Debts Cleared"}
             </p>
           </div>
@@ -240,10 +252,12 @@ export function DebtPayoffSimulatorCard({
               {debts.length === 0 ? (
                 <div className="py-8 text-center space-y-2">
                   <p className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                    No Debts Recorded
+                    {isIndonesian ? "Belum Ada Catatan Utang" : "No Debts Recorded"}
                   </p>
                   <p className="text-[11.5px] max-w-xs mx-auto" style={{ color: "var(--text-tertiary)" }}>
-                    You currently have no active liabilities or loans. Tap below to track credit cards, paylaters, or installments.
+                    {isIndonesian
+                      ? "Saat ini Anda tidak memiliki liabilitas atau pinjaman aktif. Ketuk di bawah untuk memantau kartu kredit, paylater, atau cicilan."
+                      : "You currently have no active liabilities or loans. Tap below to track credit cards, paylaters, or installments."}
                   </p>
                   <div className="pt-2">
                     <button
@@ -256,7 +270,7 @@ export function DebtPayoffSimulatorCard({
                       }}
                     >
                       <Plus size={13} />
-                      Add Debt Account
+                      {isIndonesian ? "Tambah Akun Utang" : "Add Debt Account"}
                     </button>
                   </div>
                 </div>
@@ -275,7 +289,7 @@ export function DebtPayoffSimulatorCard({
                     className="text-[10px] font-bold uppercase tracking-wider block"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Total Debt Principal
+                    {isIndonesian ? "Total Pokok Utang" : "Total Debt Principal"}
                   </span>
                   <span
                     className="text-[16px] font-semibold tracking-tight block mt-0.5"
@@ -289,7 +303,7 @@ export function DebtPayoffSimulatorCard({
                     className="text-[10px] font-bold uppercase tracking-wider block"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Required Minimum / Mo
+                    {isIndonesian ? "Minimum Wajib / Bln" : "Required Minimum / Mo"}
                   </span>
                   <span
                     className="text-[16px] font-semibold tracking-tight block mt-0.5"
@@ -303,14 +317,16 @@ export function DebtPayoffSimulatorCard({
               {/* 2. Strategy Selector */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] font-bold px-0.5">
-                  <span style={{ color: "var(--text-secondary)" }}>Payoff Strategy:</span>
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    {isIndonesian ? "Strategi Pelunasan:" : "Payoff Strategy:"}
+                  </span>
                   <span
                     className="text-[10px] uppercase font-bold"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {strategy === "avalanche"
-                      ? "Minimizes Total Interest"
-                      : "Quick Psychological Wins"}
+                      ? isIndonesian ? "Minimalkan Total Bunga" : "Minimizes Total Interest"
+                      : isIndonesian ? "Kemenangan Psikologis Cepat" : "Quick Psychological Wins"}
                   </span>
                 </div>
 
@@ -375,13 +391,15 @@ export function DebtPayoffSimulatorCard({
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-[11px] font-bold px-0.5">
                   <span style={{ color: "var(--text-secondary)" }}>
-                    Extra Monthly Payment (Accelerator):
+                    {isIndonesian ? "Pembayaran Tambahan / Bln (Akselerator):" : "Extra Monthly Payment (Accelerator):"}
                   </span>
                   <span
                     className="font-semibold text-[12px]"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {extraPayment > 0 ? `+${formatRupiah(extraPayment)}/mo` : "Min only"}
+                    {extraPayment > 0
+                      ? `+${formatRupiah(extraPayment)}/${isIndonesian ? "bln" : "mo"}`
+                      : isIndonesian ? "Hanya min" : "Min only"}
                   </span>
                 </div>
 
@@ -419,7 +437,7 @@ export function DebtPayoffSimulatorCard({
                       onClick={() => setExtraPayment(0)}
                       className="text-[10px] font-bold px-2 py-1 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                     >
-                      Clear
+                      {isIndonesian ? "Hapus" : "Clear"}
                     </button>
                   )}
                 </div>
@@ -447,7 +465,7 @@ export function DebtPayoffSimulatorCard({
                         border: "1px solid var(--glass-border)",
                       }}
                     >
-                      {val === 0 ? "Min Only" : `+${formatRupiah(val)}`}
+                      {val === 0 ? (isIndonesian ? "Hanya Min" : "Min Only") : `+${formatRupiah(val)}`}
                     </button>
                   ))}
                 </div>
@@ -467,7 +485,7 @@ export function DebtPayoffSimulatorCard({
                       className="text-[9px] font-semibold uppercase tracking-wider block"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Estimated Debt-Free Date
+                      {isIndonesian ? "Estimasi Tanggal Bebas Utang" : "Estimated Debt-Free Date"}
                     </span>
                     <div className="flex items-baseline gap-2 mt-0.5">
                       <span
@@ -480,7 +498,7 @@ export function DebtPayoffSimulatorCard({
                         className="text-[12px] font-bold"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        Months ({projectedFreeDate})
+                        {isIndonesian ? "Bulan" : "Months"} ({projectedFreeDate})
                       </span>
                     </div>
                   </div>
@@ -490,7 +508,7 @@ export function DebtPayoffSimulatorCard({
                       className="text-[9px] font-semibold uppercase tracking-wider block"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Total Interest Accrued
+                      {isIndonesian ? "Total Bunga Terakumulasi" : "Total Interest Accrued"}
                     </span>
                     <span
                       className="text-[15px] font-semibold block mt-0.5"
@@ -513,11 +531,23 @@ export function DebtPayoffSimulatorCard({
                   >
                     <TrendingDown size={14} className="shrink-0" style={{ color: "var(--text-primary)" }} />
                     <span>
-                      Avalanche saves{" "}
-                      <strong style={{ color: "var(--text-primary)" }}>
-                        {mask(formatRupiah(comparison.interestSaved))}
-                      </strong>{" "}
-                      interest compared to Snowball.
+                      {isIndonesian ? (
+                        <>
+                          Avalanche menghemat bunga{" "}
+                          <strong style={{ color: "var(--text-primary)" }}>
+                            {mask(formatRupiah(comparison.interestSaved))}
+                          </strong>{" "}
+                          dibandingkan Snowball.
+                        </>
+                      ) : (
+                        <>
+                          Avalanche saves{" "}
+                          <strong style={{ color: "var(--text-primary)" }}>
+                            {mask(formatRupiah(comparison.interestSaved))}
+                          </strong>{" "}
+                          interest compared to Snowball.
+                        </>
+                      )}
                     </span>
                   </div>
                 )}
@@ -529,7 +559,7 @@ export function DebtPayoffSimulatorCard({
                       className="text-[10px] font-bold uppercase tracking-wider block"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Clearance Milestone Order:
+                      {isIndonesian ? "Urutan Milestone Pelunasan:" : "Clearance Milestone Order:"}
                     </span>
                     <div className="space-y-1">
                       {activeResult.debtPayoffOrder.map((step, idx) => (
@@ -563,7 +593,7 @@ export function DebtPayoffSimulatorCard({
                               className="text-[10px] font-medium"
                               style={{ color: "var(--text-tertiary)" }}
                             >
-                              Month {step.paidMonth}
+                              {isIndonesian ? `Bulan ke-${step.paidMonth}` : `Month ${step.paidMonth}`}
                             </span>
                             <CheckCircle2
                               size={12}
@@ -584,7 +614,7 @@ export function DebtPayoffSimulatorCard({
                     className="text-[11px] font-semibold uppercase tracking-wider"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    Your Debts ({debts.length})
+                    {isIndonesian ? `Daftar Utang (${debts.length})` : `Your Debts (${debts.length})`}
                   </span>
                   <div className="flex items-center gap-1.5">
                     {debts.length > 0 && (
@@ -596,10 +626,10 @@ export function DebtPayoffSimulatorCard({
                           background: "var(--glass-fill)",
                           color: "var(--text-tertiary)",
                         }}
-                        title="Clear all debts"
+                        title={isIndonesian ? "Hapus semua catatan utang" : "Clear all debts"}
                       >
                         <Trash2 size={10} />
-                        Clear All
+                        {isIndonesian ? "Hapus Semua" : "Clear All"}
                       </button>
                     )}
                     <button
@@ -612,7 +642,7 @@ export function DebtPayoffSimulatorCard({
                       }}
                     >
                       <Plus size={11} />
-                      Add Debt
+                      {isIndonesian ? "Tambah Utang" : "Add Debt"}
                     </button>
                   </div>
                 </div>
@@ -650,11 +680,11 @@ export function DebtPayoffSimulatorCard({
                           className="text-[11px] font-medium mt-0.5"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          Balance:{" "}
+                          {isIndonesian ? "Sisa Pokok: " : "Balance: "}
                           <strong style={{ color: "var(--text-primary)" }}>
                             {mask(formatRupiah(d.balance))}
                           </strong>{" "}
-                          • Min: {mask(formatRupiah(d.minPayment))}/mo
+                          • {isIndonesian ? "Min: " : "Min: "}{mask(formatRupiah(d.minPayment))}/{isIndonesian ? "bln" : "mo"}
                         </p>
                       </div>
 
@@ -663,7 +693,7 @@ export function DebtPayoffSimulatorCard({
                           type="button"
                           onClick={() => openEditDebt(d)}
                           className="p-2 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                          title="Edit nominal"
+                          title={isIndonesian ? "Edit nominal utang" : "Edit nominal"}
                         >
                           <Edit2 size={13} />
                         </button>
@@ -671,7 +701,7 @@ export function DebtPayoffSimulatorCard({
                           type="button"
                           onClick={() => handleDeleteDebt(d.id)}
                           className="p-2 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                          title="Delete debt"
+                          title={isIndonesian ? "Hapus catatan utang" : "Delete debt"}
                         >
                           <Trash2 size={13} />
                         </button>
@@ -703,7 +733,9 @@ export function DebtPayoffSimulatorCard({
                 className="text-[14px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
-                {editingDebtId ? "Edit Debt Item" : "Add Debt Item"}
+                {editingDebtId
+                  ? isIndonesian ? "Edit Rincian Utang" : "Edit Debt Item"
+                  : isIndonesian ? "Tambah Rincian Utang" : "Add Debt Item"}
               </h3>
               <button
                 type="button"
@@ -720,11 +752,11 @@ export function DebtPayoffSimulatorCard({
                   className="text-[10px] font-bold uppercase tracking-wider block mb-1"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Debt Name / Label
+                  {isIndonesian ? "Nama / Label Utang" : "Debt Name / Label"}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. BCA Credit Card, Shopee PayLater"
+                  placeholder={isIndonesian ? "cth. Kartu Kredit BCA, Shopee PayLater" : "e.g. BCA Credit Card, Shopee PayLater"}
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl text-[12px] font-bold bg-transparent focus:outline-none"
@@ -741,13 +773,13 @@ export function DebtPayoffSimulatorCard({
                   className="text-[10px] font-bold uppercase tracking-wider block mb-1"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Remaining Principal Balance (Rp)
+                  {isIndonesian ? "Sisa Pokok Pinjaman (Rp)" : "Remaining Principal Balance (Rp)"}
                 </label>
                 <input
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  placeholder="e.g. 10.000.000"
+                  placeholder={isIndonesian ? "cth. 10.000.000" : "e.g. 10.000.000"}
                   value={formBalance}
                   onChange={(e) => {
                     const raw = e.target.value.replace(/\D/g, "");
@@ -769,13 +801,13 @@ export function DebtPayoffSimulatorCard({
                     className="text-[10px] font-bold uppercase tracking-wider block mb-1"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Monthly Min Pay (Rp)
+                    {isIndonesian ? "Cicilan / Min Bulanan (Rp)" : "Monthly Min Pay (Rp)"}
                   </label>
                   <input
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    placeholder="e.g. 500.000"
+                    placeholder={isIndonesian ? "cth. 500.000" : "e.g. 500.000"}
                     value={formMinPay}
                     onChange={(e) => {
                       const raw = e.target.value.replace(/\D/g, "");
@@ -796,7 +828,7 @@ export function DebtPayoffSimulatorCard({
                     className="text-[10px] font-bold uppercase tracking-wider block mb-1"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Interest APR (%)
+                    {isIndonesian ? "Suku Bunga Tahunan / APR (%)" : "Interest APR (%)"}
                   </label>
                   <input
                     type="number"
@@ -821,7 +853,7 @@ export function DebtPayoffSimulatorCard({
                   className="px-3.5 py-1.5 rounded-xl text-[11px] font-bold"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Cancel
+                  {isIndonesian ? "Batal" : "Cancel"}
                 </button>
                 <button
                   type="submit"
@@ -831,7 +863,7 @@ export function DebtPayoffSimulatorCard({
                     color: "var(--accent-ink)",
                   }}
                 >
-                  Save Debt
+                  {isIndonesian ? "Simpan Utang" : "Save Debt"}
                 </button>
               </div>
             </form>

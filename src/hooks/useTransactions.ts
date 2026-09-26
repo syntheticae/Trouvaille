@@ -10,6 +10,7 @@ import {
   flushPendingMutations,
 } from "../lib/syncEngine";
 import { categoryKeys } from "./useCategories";
+import { deductGoalFromStorage, addGoalToStorage } from "./useGoals";
 
 export function generateUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -182,6 +183,45 @@ export function removeTransactionFromCaches(
       data.filter((item) => item.id !== id),
     );
   });
+}
+
+export function findTransactionInCache(
+  qc: ReturnType<typeof useQueryClient>,
+  id: string,
+): Transaction | null {
+  const queries = qc.getQueryCache().findAll({ queryKey: ["transactions"] });
+  for (const query of queries) {
+    const data = query.state.data;
+    if (isTransactionList(data)) {
+      const found = data.find((t) => t.id === id);
+      if (found) return found;
+    }
+  }
+  const allTxs = qc.getQueryCache().findAll({ queryKey: ["all_transactions"] });
+  for (const query of allTxs) {
+    const data = query.state.data;
+    if (Array.isArray(data)) {
+      const found = data.find((t: any) => t?.id === id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+export function checkAndDeductGoalFromTx(tx: Transaction) {
+  if (!tx || !tx.note) return;
+  const match = tx.note.match(/#goal_([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    deductGoalFromStorage(match[1], Number(tx.amount || 0));
+  } else if (tx.note.includes("Alokasi Tabungan:")) {
+    const titleMatch = tx.note
+      .replace("Alokasi Tabungan:", "")
+      .split("#")[0]
+      .trim();
+    if (titleMatch) {
+      deductGoalFromStorage(titleMatch, Number(tx.amount || 0));
+    }
+  }
 }
 
 function delay(ms: number) {
@@ -626,7 +666,7 @@ export function useAddTransaction() {
 
       // Attempt immediate sync to Supabase with quick timeout/retry
       try {
-        const { categories, wallet, to_wallet, ...dbPayload } = fullTx as any;
+        const { categories: _categories, wallet: _wallet, to_wallet: _to_wallet, ...dbPayload } = fullTx as any;
         let query = supabase
           .from("transactions")
           .upsert({ ...dbPayload, user_id: currentUser.id })
@@ -636,7 +676,7 @@ export function useAddTransaction() {
         if (res.error) {
           // Graceful fallback: If ledger_id or space_id column does not exist yet in Supabase,
           // retry without them so the operation succeeds unconditionally.
-          const { ledger_id, space_id, ...fallbackPayload } = dbPayload;
+          const { ledger_id: _ledger_id, space_id: _space_id, ...fallbackPayload } = dbPayload;
           res = await withTimeout(
             supabase
               .from("transactions")
@@ -762,7 +802,7 @@ export function useBatchAddTransactions() {
 
         if (currentUser?.id) {
           try {
-            const { categories, wallet, to_wallet, ...dbPayload } = fullTx as any;
+            const { categories: _categories, wallet: _wallet, to_wallet: _to_wallet, ...dbPayload } = fullTx as any;
             let query = supabase
               .from("transactions")
               .upsert({ ...dbPayload, user_id: currentUser.id })
@@ -898,7 +938,7 @@ export function useUpdateTransaction() {
         let res = await withTimeout(query, 7000);
         if (res.error) {
           // Graceful fallback: retry without ledger_id/space_id if columns don't exist yet
-          const { ledger_id, space_id, ...fallbackPayload } = cleanUpdate;
+          const { ledger_id: _ledger_id, space_id: _space_id, ...fallbackPayload } = cleanUpdate;
           res = await withTimeout(
             supabase
               .from("transactions")
@@ -989,8 +1029,12 @@ export function useDeleteTransaction() {
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: ["transactions"] });
       const snapshots = snapshotTransactionQueries(qc);
+      const targetTx = findTransactionInCache(qc, id);
+      if (targetTx) {
+        checkAndDeductGoalFromTx(targetTx);
+      }
       removeTransactionFromCaches(qc, id);
-      return { snapshots };
+      return { snapshots, targetTx };
     },
     onSuccess: (deletedId) => {
       removeTransactionFromCaches(qc, deletedId);
@@ -998,6 +1042,12 @@ export function useDeleteTransaction() {
     onError: (_err, _id, context) => {
       if (context?.snapshots) {
         restoreTransactionQueries(qc, context.snapshots);
+      }
+      if (context?.targetTx?.note) {
+        const match = context.targetTx.note.match(/#goal_([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+          addGoalToStorage(match[1], Number(context.targetTx.amount || 0));
+        }
       }
     },
     onSettled: () => {
@@ -1028,8 +1078,16 @@ export function useBatchDeleteTransactions() {
     onMutate: async (ids) => {
       await qc.cancelQueries({ queryKey: ["transactions"] });
       const snapshots = snapshotTransactionQueries(qc);
-      ids.forEach((id) => removeTransactionFromCaches(qc, id));
-      return { snapshots };
+      const targetTxs: Transaction[] = [];
+      ids.forEach((id) => {
+        const targetTx = findTransactionInCache(qc, id);
+        if (targetTx) {
+          targetTxs.push(targetTx);
+          checkAndDeductGoalFromTx(targetTx);
+        }
+        removeTransactionFromCaches(qc, id);
+      });
+      return { snapshots, targetTxs };
     },
     onSuccess: (deletedIds) => {
       deletedIds.forEach((id) => removeTransactionFromCaches(qc, id));
@@ -1037,6 +1095,16 @@ export function useBatchDeleteTransactions() {
     onError: (_err, _ids, context) => {
       if (context?.snapshots) {
         restoreTransactionQueries(qc, context.snapshots);
+      }
+      if (context?.targetTxs) {
+        context.targetTxs.forEach((tx) => {
+          if (tx.note) {
+            const match = tx.note.match(/#goal_([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+              addGoalToStorage(match[1], Number(tx.amount || 0));
+            }
+          }
+        });
       }
     },
     onSettled: () => {

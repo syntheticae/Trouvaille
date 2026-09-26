@@ -1,9 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatRupiah } from "../../lib/utils";
-import { Layers, Folder } from "lucide-react";
-import { IconRenderer } from "../ui/IconRenderer";
-import { FinancialGlossaryTooltip } from "../common/FinancialGlossaryTooltip";
+import { Layers, ChevronDown, CheckCircle2 } from "lucide-react";
 import type { Category, Bill, Goal } from "../../lib/types";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { useTheme } from "../../contexts/ThemeContext";
+import { triggerHaptic } from "../../lib/haptics";
+import { motion } from "framer-motion";
 
 interface ZeroBasedEnvelopesCardProps {
   monthlyIncome: number;
@@ -22,8 +25,13 @@ export function ZeroBasedEnvelopesCard({
   categorySpendMap,
   hideBalance = false,
 }: ZeroBasedEnvelopesCardProps) {
-  // 1. Calculate allocated amounts across 3 buckets:
-  // A. Category Budget Envelopes
+  useCurrency();
+  const { isIndonesian } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+  const [showAllEnvelopes, setShowAllEnvelopes] = useState(false);
+
+  // 1. Calculate allocated amounts across 3 buckets
   const categoryEnvelopes = useMemo(() => {
     return categories
       .filter((c) => c.type === "expense" && (c.budget_amount ?? 0) > 0)
@@ -31,7 +39,8 @@ export function ZeroBasedEnvelopesCard({
         const allocated = c.budget_amount || 0;
         const spent = categorySpendMap[c.id] || 0;
         const remaining = Math.max(0, allocated - spent);
-        const percent = allocated > 0 ? Math.min(100, Math.round((spent / allocated) * 100)) : 0;
+        const percent =
+          allocated > 0 ? Math.min(100, Math.round((spent / allocated) * 100)) : 0;
         return {
           id: c.id,
           name: c.name,
@@ -47,279 +56,373 @@ export function ZeroBasedEnvelopesCard({
 
   const totalCategoryAllocated = useMemo(
     () => categoryEnvelopes.reduce((sum, c) => sum + c.allocated, 0),
-    [categoryEnvelopes]
+    [categoryEnvelopes],
   );
 
-  // B. Fixed Obligations & Bills
   const totalBillsAllocated = useMemo(() => {
     return bills.reduce((sum, b) => sum + (b.amount || 0), 0);
   }, [bills]);
 
-  // C. Sinking Funds & Goal Contributions
   const totalGoalsAllocated = useMemo(() => {
-    // Treat active goals needing funds as target monthly allocations
     return goals.reduce((sum, g) => {
       const remainingTarget = Math.max(0, g.targetAmount - g.currentAmount);
-      // Rough 1-year sinking fund monthly allocation if remainingTarget > 0
       const monthlyPace = remainingTarget > 0 ? Math.round(remainingTarget / 12) : 0;
       return sum + Math.min(remainingTarget, Math.max(monthlyPace, 250000));
     }, 0);
   }, [goals]);
 
-  // Total allocated capital
-  const totalAllocated = totalCategoryAllocated + totalBillsAllocated + totalGoalsAllocated;
-
-  // Unallocated cash: Income minus all allocated envelopes
+  const totalAllocated =
+    totalCategoryAllocated + totalBillsAllocated + totalGoalsAllocated;
   const unallocatedCash = monthlyIncome - totalAllocated;
   const isOverallocated = unallocatedCash < -1000;
   const isBalanced = Math.abs(unallocatedCash) <= 1000;
 
-  const mask = (val: string) => (hideBalance ? "••••••" : val);
+  const incomeBase = Math.max(monthlyIncome, totalAllocated, 1);
+  const billsPct = (totalBillsAllocated / incomeBase) * 100;
+  const envelopesPct = (totalCategoryAllocated / incomeBase) * 100;
+  const goalsPct = (totalGoalsAllocated / incomeBase) * 100;
+
+  const mask = (val: string) => (hideBalance ? "••••••••" : val);
 
   return (
-    <div
-      className="p-5 rounded-[24px] glass-surface space-y-4"
+    <section
+      className="glass-surface rounded-[24px] p-5 transition-all select-none space-y-4"
       style={{
-        background: "var(--bg-elevated)",
         border: "1px solid var(--glass-border)",
+        background: "var(--bg-elevated)",
         boxShadow: "var(--shadow-card)",
       }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      {/* ── 1. Header ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
               background: "var(--glass-fill)",
               border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
           >
-            <Layers size={18} />
+            <Layers size={16} strokeWidth={1.75} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <h3
-                  className="text-[14px] font-semibold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  Zero-Based Envelopes
-                </h3>
-                <FinancialGlossaryTooltip term="zero_based" />
-              </div>
-              <span
-                className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
-                style={{
-                  background: isOverallocated
-                    ? "rgba(255, 255, 255, 0.15)"
-                    : isBalanced
-                      ? "var(--accent)"
-                      : "var(--glass-fill)",
-                  color: isBalanced ? "var(--accent-ink)" : "var(--text-secondary)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                {isOverallocated ? "Overallocated" : isBalanced ? "Balanced" : "Surplus"}
-              </span>
-            </div>
-            <p
-              className="text-[11px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Every Rupiah has a designated job
+          <div className="min-w-0">
+            <h3 className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Alokasi Amplop Nol" : "Zero-Based Envelopes"}
+            </h3>
+            <p className="text-[11px] truncate" style={{ color: "var(--text-tertiary)" }}>
+              {isIndonesian ? "Setiap Rupiah Punya Peran" : "Every Unit Assigned"}
             </p>
           </div>
         </div>
-      </div>
 
-      {/* Unallocated Inflow Hero Card */}
-      <div
-        className="p-4 rounded-2xl space-y-2"
-        style={{
-          background: "var(--bg-surface)",
-          border: "1px solid var(--glass-border)",
-        }}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <span
-              className="text-[10px] font-semibold uppercase tracking-wider block"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isOverallocated ? "Deficit to Rebalance" : "Unallocated Cashflow"}
-            </span>
-            <span
-              className="text-[20px] font-semibold tracking-tight block mt-0.5"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {mask(formatRupiah(Math.abs(unallocatedCash)))}
-            </span>
-          </div>
-
-          <div className="text-right">
-            <span
-              className="text-[10px] font-semibold uppercase tracking-wider block"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Monthly Inflow Base
-            </span>
-            <span
-              className="text-[13px] font-semibold block mt-0.5"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {mask(formatRupiah(monthlyIncome))}
-            </span>
-          </div>
-        </div>
-
-        <p
-          className="text-[11px] font-medium"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          {isOverallocated
-            ? "Your envelopes exceed your monthly income. Trim discretionary categories to achieve zero-based balance."
-            : isBalanced
-              ? "All monthly income is fully assigned to bills, living envelopes, and future savings."
-              : "This surplus can be assigned to sinking funds, debt acceleration, or investment goals."}
-        </p>
-      </div>
-
-      {/* 3 Pillars of Allocation */}
-      <div className="grid grid-cols-3 gap-2">
+        {/* Status Badge (Monochrome) */}
         <div
-          className="p-3 rounded-xl border text-center"
+          className="text-right px-2.5 py-1 rounded-xl shrink-0"
           style={{
-            borderColor: "var(--glass-border)",
-            background: "var(--glass-fill)",
+            background: isDark
+              ? "rgba(255, 255, 255, 0.05)"
+              : "rgba(0, 0, 0, 0.04)",
+            border: "1px solid var(--glass-border)",
           }}
         >
           <span
-            className="text-[9px] font-bold uppercase tracking-wider block"
+            className="text-[9px] font-medium uppercase tracking-wider block"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Fixed Bills
+            {isIndonesian ? "Status" : "Status"}
           </span>
           <span
-            className="text-[12px] font-semibold block mt-1"
+            className="text-[12px] font-semibold tabular-nums"
             style={{ color: "var(--text-primary)" }}
           >
+            {isOverallocated
+              ? isIndonesian
+                ? "Defisit Alokasi"
+                : "Overallocated"
+              : isBalanced
+                ? isIndonesian
+                  ? "Teralokasi Pas"
+                  : "Zero-Balanced"
+                : isIndonesian
+                  ? "Surplus Kas"
+                  : "Surplus"}
+          </span>
+        </div>
+      </div>
+
+      {/* ── 2. Multi-Segment Allocation Meter Chart ────────────────────────── */}
+      <div
+        className="p-3.5 rounded-2xl space-y-2.5 border"
+        style={{
+          background: "var(--glass-fill)",
+          borderColor: "var(--glass-border)",
+        }}
+      >
+        <div className="flex items-center justify-between text-[11px] font-medium">
+          <span style={{ color: "var(--text-tertiary)" }}>
+            {isIndonesian ? "Total Pemasukan Masuk" : "Monthly Income Base"}
+          </span>
+          <span className="tabular-nums font-bold" style={{ color: "var(--text-primary)" }}>
+            {mask(formatRupiah(monthlyIncome))}
+          </span>
+        </div>
+
+        {/* Stacked Allocation Bar */}
+        <div className="h-3 w-full rounded-full overflow-hidden flex bg-white/[0.06] p-0.5 gap-1">
+          {billsPct > 0 && (
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.max(3, billsPct)}%` }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="h-full rounded-full"
+              style={{ background: isDark ? "#FFFFFF" : "#18181B" }}
+              title={`Tagihan: ${billsPct.toFixed(0)}%`}
+            />
+          )}
+          {envelopesPct > 0 && (
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.max(3, envelopesPct)}%` }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
+              className="h-full rounded-full"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.55)"
+                  : "rgba(24, 24, 27, 0.55)",
+              }}
+              title={`Amplop: ${envelopesPct.toFixed(0)}%`}
+            />
+          )}
+          {goalsPct > 0 && (
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.max(3, goalsPct)}%` }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+              className="h-full rounded-full"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.25)"
+                  : "rgba(24, 24, 27, 0.25)",
+              }}
+              title={`Celengan: ${goalsPct.toFixed(0)}%`}
+            />
+          )}
+        </div>
+
+        {/* Legend */}
+        <div className="grid grid-cols-3 gap-1 pt-1 text-[10px]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ background: isDark ? "#FFFFFF" : "#18181B" }}
+            />
+            <span className="truncate text-[var(--text-secondary)]">
+              {isIndonesian ? "Tagihan" : "Bills"}
+            </span>
+            <span className="font-bold tabular-nums text-[var(--text-primary)] ml-auto">
+              {billsPct.toFixed(0)}%
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.55)"
+                  : "rgba(24, 24, 27, 0.55)",
+              }}
+            />
+            <span className="truncate text-[var(--text-secondary)]">
+              {isIndonesian ? "Amplop" : "Budgets"}
+            </span>
+            <span className="font-bold tabular-nums text-[var(--text-primary)] ml-auto">
+              {envelopesPct.toFixed(0)}%
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.25)"
+                  : "rgba(24, 24, 27, 0.25)",
+              }}
+            />
+            <span className="truncate text-[var(--text-secondary)]">
+              {isIndonesian ? "Tabungan" : "Goals"}
+            </span>
+            <span className="font-bold tabular-nums text-[var(--text-primary)] ml-auto">
+              {goalsPct.toFixed(0)}%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. 3-Bucket Metric Cards ────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-2">
+        <div
+          className="p-3 rounded-2xl border"
+          style={{
+            background: "var(--glass-fill)",
+            borderColor: "var(--glass-border)",
+          }}
+        >
+          <span className="text-[9px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
+            {isIndonesian ? "Tagihan Wajib" : "Fixed Bills"}
+          </span>
+          <span className="amount text-[12px] font-bold tabular-nums block mt-1 text-[var(--text-primary)]">
             {mask(formatRupiah(totalBillsAllocated))}
           </span>
         </div>
 
         <div
-          className="p-3 rounded-xl border text-center"
+          className="p-3 rounded-2xl border"
           style={{
-            borderColor: "var(--glass-border)",
             background: "var(--glass-fill)",
+            borderColor: "var(--glass-border)",
           }}
         >
-          <span
-            className="text-[9px] font-bold uppercase tracking-wider block"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Envelopes
+          <span className="text-[9px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
+            {isIndonesian ? "Amplop Belanja" : "Envelopes"}
           </span>
-          <span
-            className="text-[12px] font-semibold block mt-1"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <span className="amount text-[12px] font-bold tabular-nums block mt-1 text-[var(--text-primary)]">
             {mask(formatRupiah(totalCategoryAllocated))}
           </span>
         </div>
 
         <div
-          className="p-3 rounded-xl border text-center"
+          className="p-3 rounded-2xl border"
           style={{
-            borderColor: "var(--glass-border)",
             background: "var(--glass-fill)",
+            borderColor: "var(--glass-border)",
           }}
         >
-          <span
-            className="text-[9px] font-bold uppercase tracking-wider block"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Sinking Funds
+          <span className="text-[9px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
+            {isIndonesian ? "Sinking Funds" : "Goals/Funds"}
           </span>
-          <span
-            className="text-[12px] font-semibold block mt-1"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <span className="amount text-[12px] font-bold tabular-nums block mt-1 text-[var(--text-primary)]">
             {mask(formatRupiah(totalGoalsAllocated))}
           </span>
         </div>
       </div>
 
-      {/* Envelope Progress List */}
+      {/* ── 4. Unallocated Balance Insight ──────────────────────────────────── */}
+      <div
+        className="p-3 rounded-2xl border flex items-center justify-between text-[11px]"
+        style={{
+          background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+          borderColor: "var(--glass-border)",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <CheckCircle2 size={13} className="text-[var(--text-primary)] shrink-0" />
+          <span style={{ color: "var(--text-secondary)" }}>
+            {isOverallocated
+              ? isIndonesian
+                ? `Alokasi melebihi pemasukan sebesar ${mask(formatRupiah(Math.abs(unallocatedCash)))}.`
+                : `Allocations exceed income by ${mask(formatRupiah(Math.abs(unallocatedCash)))}.`
+              : isBalanced
+                ? isIndonesian
+                  ? "Seluruh pemasukan bulan ini telah memiliki alokasi pos terencana."
+                  : "All monthly income is fully assigned with zero left unassigned."
+                : isIndonesian
+                  ? `Sisa ${mask(formatRupiah(unallocatedCash))} siap dialokasikan ke pos tabungan ekstra.`
+                  : `Surplus of ${mask(formatRupiah(unallocatedCash))} available to deploy to goals.`}
+          </span>
+        </div>
+      </div>
+
+      {/* ── 5. Top Active Envelopes Glance ──────────────────────────────────── */}
       {categoryEnvelopes.length > 0 && (
-        <div className="space-y-2.5 pt-1">
-          <div className="flex items-center justify-between text-[11px] font-bold">
-            <span style={{ color: "var(--text-secondary)" }}>
-              Active Category Envelopes ({categoryEnvelopes.length})
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between px-0.5">
+            <span
+              className="text-[10px] font-semibold uppercase tracking-wider"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {isIndonesian ? "Status Amplop Kategori" : "Active Category Envelopes"}
             </span>
-            <span style={{ color: "var(--text-tertiary)" }}>Spent / Assigned</span>
+            <span className="text-[10px] text-[var(--text-tertiary)]">
+              {categoryEnvelopes.length} {isIndonesian ? "pos" : "envelopes"}
+            </span>
           </div>
 
-          <div className="space-y-2">
-            {categoryEnvelopes.slice(0, 5).map((env) => (
+          <div className="space-y-1.5">
+            {(showAllEnvelopes
+              ? categoryEnvelopes
+              : categoryEnvelopes.slice(0, 3)
+            ).map((env) => (
               <div
                 key={env.id}
-                className="p-3 rounded-xl space-y-1.5"
+                className="p-2.5 rounded-xl border space-y-1.5"
                 style={{
-                  background: "var(--bg-surface)",
-                  border: "1px solid var(--glass-border)",
+                  background: "var(--glass-fill)",
+                  borderColor: "var(--glass-border)",
                 }}
               >
-                <div className="flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5">
-                    {env.emoji ? (
-                      <IconRenderer icon={env.emoji} size="text-[13px]" />
-                    ) : (
-                      <Folder size={13} style={{ color: "var(--text-tertiary)" }} />
-                    )}
-                    <span
-                      className="font-bold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
+                <div className="flex items-center justify-between text-[11.5px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold text-[var(--text-primary)] truncate">
                       {env.name}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span
-                      className="font-semibold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {mask(formatRupiah(env.spent))}
+                    <span className="text-[9.5px] tabular-nums text-[var(--text-tertiary)]">
+                      {env.percent}%
                     </span>
-                    <span
-                      className="text-[10px] font-medium"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      / {mask(formatRupiah(env.allocated))}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="tabular-nums font-semibold text-[11.5px] text-[var(--text-primary)]">
+                      {mask(formatRupiah(env.remaining))}{" "}
+                      <span className="text-[9.5px] font-normal text-[var(--text-tertiary)]">
+                        {isIndonesian ? "sisa" : "left"}
+                      </span>
                     </span>
                   </div>
                 </div>
 
-                {/* Progress Bar */}
-                <div
-                  className="w-full h-1.5 rounded-full overflow-hidden"
-                  style={{ background: "var(--glass-fill)" }}
-                >
+                {/* Progress bar */}
+                <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all duration-500"
+                    className="h-full rounded-full transition-all"
                     style={{
                       width: `${Math.min(100, env.percent)}%`,
-                      background: env.percent >= 100 ? "var(--text-primary)" : "var(--accent)",
+                      background: isDark ? "#ffffff" : "#18181b",
                     }}
                   />
                 </div>
               </div>
             ))}
           </div>
+
+          {categoryEnvelopes.length > 3 && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setShowAllEnvelopes(!showAllEnvelopes);
+              }}
+              className="w-full pt-1 flex items-center justify-center gap-1 text-[11px] font-semibold cursor-pointer transition-colors"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              <span>
+                {showAllEnvelopes
+                  ? isIndonesian
+                    ? "Tampilkan Lebih Sedikit"
+                    : "Show Less"
+                  : isIndonesian
+                    ? `Lihat Semua (${categoryEnvelopes.length} Amplop)`
+                    : `View All (${categoryEnvelopes.length} Envelopes)`}
+              </span>
+              <ChevronDown
+                size={13}
+                className={`transition-transform duration-200 ${
+                  showAllEnvelopes ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          )}
         </div>
       )}
-    </div>
+    </section>
   );
 }

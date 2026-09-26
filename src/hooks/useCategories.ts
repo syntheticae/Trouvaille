@@ -14,7 +14,22 @@ export const categoryKeys = {
 // Expense: everything else
 // ======================================================================
 export const CATEGORY_PARENT_MAP: Record<string, string> = {
-  // Expense Parents
+  // Universal Generalized Expense Parents
+  "makanan & minuman": "Pangan",
+  "groceries & supermarket": "Papan",
+  "transportasi & kendaraan": "Transportasi",
+  "hunian & utilitas": "Papan",
+  "tagihan & langganan": "Biaya",
+  "belanja & gaya hidup": "Sandang",
+  "kesehatan & medis": "Sandang",
+  "hiburan & rekreasi": "Hiburan",
+  "keluarga & pribadi": "Keluarga",
+  "pendidikan & karir": "Sandang",
+  "sosial & amal": "Sosial",
+  "biaya finansial & pajak": "Biaya",
+  "investasi & tabungan": "Keuangan",
+
+  // Legacy & Specific Expense Mappings (for existing data backward compatibility)
   kerugian: "Biaya",
   karir: "Biaya",
   "admin & fee": "Biaya",
@@ -54,7 +69,17 @@ export const CATEGORY_PARENT_MAP: Record<string, string> = {
   parkir: "Transportasi",
   kendaraan: "Transportasi",
 
-  // Income Parents
+  // Universal Generalized Income Parents
+  "gaji & upah": "Pendapatan",
+  "bisnis & freelance": "Pendapatan",
+  "bonus & komisi": "Pendapatan",
+  "investasi & dividen": "Keuangan",
+  "bunga & passive income": "Pendapatan",
+  "cashback & refund": "Pendapatan",
+  "hadiah & hibah": "Pendapatan",
+  "pendapatan lainnya": "Pendapatan",
+
+  // Legacy & Specific Income Mappings
   bonus: "Pendapatan",
   komisi: "Pendapatan",
   saku: "Pendapatan",
@@ -88,7 +113,14 @@ export const PARENT_ICON_MAP: Record<string, string> = {
 
 export function getCategoryParent(categoryName: string): string {
   if (!categoryName) return "Lainnya";
-  return CATEGORY_PARENT_MAP[categoryName.trim().toLowerCase()] || "Lainnya";
+  const k = categoryName.trim().toLowerCase();
+  if (CATEGORY_PARENT_MAP[k]) return CATEGORY_PARENT_MAP[k];
+  for (const [key, parent] of Object.entries(CATEGORY_PARENT_MAP)) {
+    if (k.includes(key) || key.includes(k)) {
+      return parent;
+    }
+  }
+  return "Lainnya";
 }
 
 export function getParentIcon(parentName: string): string {
@@ -97,10 +129,14 @@ export function getParentIcon(parentName: string): string {
 
 export const CATEGORY_CASHFLOW_MAP: Record<string, CashflowNature> = {
   investasi: "investing",
+  "investasi & tabungan": "investing",
+  "investasi & dividen": "investing",
   trading: "investing",
   saham: "investing",
+  "saham idx": "investing",
   crypto: "investing",
   reksadana: "investing",
+  "reksa dana": "investing",
   deposito: "investing",
   emas: "investing",
   gadget: "investing",
@@ -122,280 +158,148 @@ export function getCategoryCashflowNature(
   if (customNature) return customNature;
   if (!categoryName) return "operating";
   const k = categoryName.trim().toLowerCase();
-  return CATEGORY_CASHFLOW_MAP[k] || "operating";
+  if (CATEGORY_CASHFLOW_MAP[k]) return CATEGORY_CASHFLOW_MAP[k];
+  for (const [key, nature] of Object.entries(CATEGORY_CASHFLOW_MAP)) {
+    if (k.includes(key)) {
+      return nature;
+    }
+  }
+  return "operating";
 }
 
 // ======================================================================
-// DEFAULT CATEGORIES — using PNG icons from public/icons/
+// DEFAULT CATEGORIES — Universal, Non-Redundant Luxury Taxonomy
 // ======================================================================
 export const DEFAULT_CATEGORIES: Omit<
   Category,
   "id" | "user_id" | "created_at"
 >[] = [
-  // --- INCOME ---
-  { name: "Gaji", emoji: "Briefcase", type: "income", is_default: true },
+  // --- INCOME (8 Universal Streams) ---
   {
-    name: "Bonus",
-    emoji: "Gift",
-    type: "income",
-    is_default: true,
-  },
-  {
-    name: "Komisi",
-    emoji: "BadgePercent",
-    type: "income",
-    is_default: true,
-  },
-  { name: "Saku", emoji: "Coins", type: "income", is_default: true },
-  {
-    name: "Cashback",
-    emoji: "Percent",
-    type: "income",
-    is_default: true,
-  },
-  {
-    name: "Refund",
-    emoji: "RotateCcw",
-    type: "income",
-    is_default: true,
-  },
-  {
-    name: "Penjualan",
-    emoji: "Store",
-    type: "income",
-    is_default: true,
-  },
-  {
-    name: "Investasi",
-    emoji: "TrendingUp",
-    type: "income",
-    is_default: true,
-  },
-  {
-    name: "Trading",
-    emoji: "CandlestickChart",
-    type: "income",
-    is_default: true,
-  },
-  {
-    name: "Side Job",
+    name: "Gaji & Upah",
     emoji: "Briefcase",
     type: "income",
     is_default: true,
   },
   {
-    name: "Bunga",
-    emoji: "Percent",
+    name: "Bisnis & Freelance",
+    emoji: "Store",
     type: "income",
     is_default: true,
   },
   {
-    name: "Pemberian",
+    name: "Bonus & Komisi",
     emoji: "Gift",
     type: "income",
     is_default: true,
   },
   {
-    name: "Hadiah",
+    name: "Investasi & Dividen",
+    emoji: "TrendingUp",
+    type: "income",
+    is_default: true,
+  },
+  {
+    name: "Bunga & Passive Income",
+    emoji: "Percent",
+    type: "income",
+    is_default: true,
+  },
+  {
+    name: "Cashback & Refund",
+    emoji: "RotateCcw",
+    type: "income",
+    is_default: true,
+  },
+  {
+    name: "Hadiah & Hibah",
     emoji: "Trophy",
     type: "income",
     is_default: true,
   },
-
-  // --- EXPENSE ---
   {
-    name: "Makanan",
+    name: "Pendapatan Lainnya",
+    emoji: "Coins",
+    type: "income",
+    is_default: true,
+  },
+
+  // --- EXPENSE (14 Universal Pillars) ---
+  {
+    name: "Makanan & Minuman",
     emoji: "Utensils",
     type: "expense",
     is_default: true,
   },
   {
-    name: "Minuman",
-    emoji: "CupSoda",
-    type: "expense",
-    is_default: true,
-  },
-  { name: "Kopi", emoji: "Coffee", type: "expense", is_default: true },
-  { name: "Cafe", emoji: "Coffee", type: "expense", is_default: true },
-  {
-    name: "Groceries",
+    name: "Groceries & Supermarket",
     emoji: "ShoppingBag",
     type: "expense",
     is_default: true,
   },
   {
-    name: "Transportasi",
+    name: "Transportasi & Kendaraan",
     emoji: "Car",
     type: "expense",
     is_default: true,
   },
   {
-    name: "Bensin",
-    emoji: "Fuel",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Kendaraan",
-    emoji: "Car",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Parkir",
-    emoji: "ParkingCircle",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Fashion",
-    emoji: "Shirt",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Asuransi",
-    emoji: "ShieldCheck",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Kesehatan",
-    emoji: "HeartPulse",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Perawatan",
-    emoji: "Sparkles",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Pendidikan",
-    emoji: "GraduationCap",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Gadget",
-    emoji: "Smartphone",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Elektronik",
-    emoji: "Tv",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Peralatan",
-    emoji: "Wrench",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Furnitur",
-    emoji: "Armchair",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Reparasi",
-    emoji: "Hammer",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Hunian",
+    name: "Hunian & Utilitas",
     emoji: "Home",
     type: "expense",
     is_default: true,
   },
   {
-    name: "Laundry",
-    emoji: "Shirt",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Keluarga",
-    emoji: "Users",
-    type: "expense",
-    is_default: true,
-  },
-  { name: "Pets", emoji: "Dog", type: "expense", is_default: true },
-  {
-    name: "Olahraga",
-    emoji: "Dumbbell",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Hiburan",
-    emoji: "Gamepad2",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Subscription",
-    emoji: "CreditCard",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Liburan",
-    emoji: "Plane",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Zakat",
-    emoji: "HeartHandshake",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Donasi",
-    emoji: "HeartHandshake",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Internet",
-    emoji: "Wifi",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Admin & Fee",
+    name: "Tagihan & Langganan",
     emoji: "Receipt",
     type: "expense",
     is_default: true,
   },
   {
-    name: "Pajak & Legal",
+    name: "Belanja & Gaya Hidup",
+    emoji: "Shirt",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Kesehatan & Medis",
+    emoji: "HeartPulse",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Hiburan & Rekreasi",
+    emoji: "Gamepad2",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Keluarga & Pribadi",
+    emoji: "Users",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Pendidikan & Karir",
+    emoji: "GraduationCap",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Sosial & Amal",
+    emoji: "HeartHandshake",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Biaya Finansial & Pajak",
     emoji: "Scale",
     type: "expense",
     is_default: true,
   },
-  { name: "Jasa", emoji: "Briefcase", type: "expense", is_default: true },
   {
-    name: "Karir",
+    name: "Investasi & Tabungan",
     emoji: "TrendingUp",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Kerugian",
-    emoji: "TrendingDown",
-    type: "expense",
-    is_default: true,
-  },
-  {
-    name: "Tabungan",
-    emoji: "Wallet",
     type: "expense",
     is_default: true,
   },
@@ -582,24 +486,104 @@ export function useResetDefaultCategories() {
 
 export function useAddCategory() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isGuest =
+    !user ||
+    user.id === "guest_local_user" ||
+    localStorage.getItem("trouvaille_guest_mode") === "true";
+
   return useMutation({
     mutationFn: async (cat: {
       name: string;
       emoji: string;
       type: TransactionType;
+      budget_amount?: number;
     }) => {
+      // 1. Guest / Offline Mode
+      if (isGuest) {
+        const newCat: Category = {
+          id: `custom-cat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: cat.name,
+          emoji: cat.emoji,
+          type: cat.type,
+          budget_amount: cat.budget_amount,
+          is_default: false,
+          created_at: new Date().toISOString(),
+          user_id: "guest_local_user",
+        };
+        try {
+          const raw = localStorage.getItem(CATEGORIES_BACKUP_STORAGE_KEY);
+          const list = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(list)) {
+            list.push(newCat);
+            localStorage.setItem(
+              CATEGORIES_BACKUP_STORAGE_KEY,
+              JSON.stringify(list),
+            );
+          }
+        } catch {}
+        return newCat;
+      }
+
+      // 2. Cloud Mode
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) throw new Error("Not authenticated");
-      const { data, error } = await supabase
-        .from("categories")
-        .insert({ ...cat, user_id: user.id, is_default: false })
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Category;
+      const authUser = session?.user;
+      if (!authUser) throw new Error("Not authenticated");
+
+      try {
+        const { data, error } = await supabase
+          .from("categories")
+          .insert({ ...cat, user_id: authUser.id, is_default: false })
+          .select()
+          .single();
+
+        if (error) {
+          console.warn("[useAddCategory] Cloud insert error:", error);
+          if (error.message?.includes("budget_amount")) {
+            const fallbackCat = { ...cat };
+            delete fallbackCat.budget_amount;
+            const { data: retryData, error: retryError } = await supabase
+              .from("categories")
+              .insert({ ...fallbackCat, user_id: authUser.id, is_default: false })
+              .select()
+              .single();
+            if (retryError) throw retryError;
+            return retryData as Category;
+          }
+          throw error;
+        }
+
+        // Cache locally
+        try {
+          const raw = localStorage.getItem(CATEGORIES_BACKUP_STORAGE_KEY);
+          const list = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(list)) {
+            list.push(data);
+            localStorage.setItem(
+              CATEGORIES_BACKUP_STORAGE_KEY,
+              JSON.stringify(list),
+            );
+          }
+        } catch {}
+
+        return data as Category;
+      } catch (cloudErr) {
+        console.warn("[useAddCategory] Exception inserting category:", cloudErr);
+        // Fallback local return
+        const fallbackCat: Category = {
+          id: `custom-cat-${Date.now()}`,
+          name: cat.name,
+          emoji: cat.emoji,
+          type: cat.type,
+          budget_amount: cat.budget_amount,
+          is_default: false,
+          created_at: new Date().toISOString(),
+          user_id: authUser.id,
+        };
+        return fallbackCat;
+      }
     },
     onSuccess: (newCat) => {
       qc.setQueriesData<Category[]>({ queryKey: ["categories"] }, (old) => {
@@ -643,6 +627,12 @@ export function useDeleteCategory() {
 
 export function useUpdateCategory() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isGuest =
+    !user ||
+    user.id === "guest_local_user" ||
+    localStorage.getItem("trouvaille_guest_mode") === "true";
+
   return useMutation({
     mutationFn: async ({
       id,
@@ -659,19 +649,96 @@ export function useUpdateCategory() {
       if (name !== undefined) updates.name = name;
       if (emoji !== undefined) updates.emoji = emoji;
       if (budget_amount !== undefined) updates.budget_amount = budget_amount;
-      const { data, error } = await supabase
-        .from("categories")
-        .update(updates)
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Category;
+
+      // Handle Guest or Offline Mode
+      if (isGuest) {
+        let cachedCategories: Category[] = [];
+        try {
+          const raw = localStorage.getItem(CATEGORIES_BACKUP_STORAGE_KEY);
+          if (raw) cachedCategories = JSON.parse(raw);
+        } catch {}
+        const existingIdx = cachedCategories.findIndex((c) => c.id === id);
+        const existingCat = existingIdx >= 0 ? cachedCategories[existingIdx] : null;
+        const updatedCat: Category = {
+          id,
+          name: name !== undefined ? name : existingCat?.name || "Category",
+          emoji: emoji !== undefined ? emoji : existingCat?.emoji || "Tag",
+          type: existingCat?.type || "expense",
+          budget_amount:
+            budget_amount !== undefined ? budget_amount : existingCat?.budget_amount,
+          created_at: existingCat?.created_at || new Date().toISOString(),
+          is_default: existingCat?.is_default ?? false,
+          user_id: "guest_local_user",
+        };
+        if (existingIdx >= 0) {
+          cachedCategories[existingIdx] = updatedCat;
+        } else {
+          cachedCategories.push(updatedCat);
+        }
+        try {
+          localStorage.setItem(
+            CATEGORIES_BACKUP_STORAGE_KEY,
+            JSON.stringify(cachedCategories),
+          );
+        } catch {}
+        return updatedCat;
+      }
+
+      // Cloud user
+      try {
+        const { data, error } = await supabase
+          .from("categories")
+          .update(updates)
+          .eq("id", id)
+          .select()
+          .single();
+
+        if (error) {
+          console.warn("[useUpdateCategory] Cloud update error:", error);
+          if (error.message?.includes("budget_amount")) {
+            const fallbackUpdates = { ...updates };
+            delete fallbackUpdates.budget_amount;
+            await supabase.from("categories").update(fallbackUpdates).eq("id", id);
+          }
+        }
+
+        if (data) {
+          // Sync to local cache
+          try {
+            const raw = localStorage.getItem(CATEGORIES_BACKUP_STORAGE_KEY);
+            if (raw) {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list)) {
+                const idx = list.findIndex((c: Category) => c.id === id);
+                if (idx >= 0) {
+                  list[idx] = { ...list[idx], ...updates };
+                  localStorage.setItem(
+                    CATEGORIES_BACKUP_STORAGE_KEY,
+                    JSON.stringify(list),
+                  );
+                }
+              }
+            }
+          } catch {}
+          return data as Category;
+        }
+      } catch (cloudErr) {
+        console.warn("[useUpdateCategory] Cloud mutation exception:", cloudErr);
+      }
+
+      // Local fallback return
+      return {
+        id,
+        name: name || "Category",
+        emoji: emoji || "Tag",
+        budget_amount,
+        type: "expense",
+      } as Category;
     },
     onSuccess: (updated) => {
       qc.setQueriesData<Category[]>({ queryKey: ["categories"] }, (old) => {
-        if (!old) return [];
-        return old.map((c) => (c.id === updated.id ? updated : c));
+        if (!old) return [updated];
+        return old.map((c) => (c.id === updated.id ? { ...c, ...updated } : c));
       });
       qc.invalidateQueries({ queryKey: ["categories"] });
     },

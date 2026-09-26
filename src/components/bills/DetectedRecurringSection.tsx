@@ -1,5 +1,6 @@
 import { Check, Clock3, MinusCircle } from "lucide-react"
 import { formatRupiah } from "../../lib/utils"
+import { useLanguage } from "../../contexts/LanguageContext"
 import type { DetectedRecurringItem } from "../../hooks/useFinancialIntelligence"
 
 interface DetectedRecurringSectionProps {
@@ -12,14 +13,39 @@ interface DetectedRecurringSectionProps {
 const SUPPORTED_REPEAT = new Set(["weekly", "monthly", "yearly"])
 
 export function DetectedRecurringSection({ items, confirmingId = null, onConfirm, onIgnore }: DetectedRecurringSectionProps) {
+  const { isIndonesian } = useLanguage()
+
   if (items.length === 0) return null
+
+  const getConfidenceLabel = (conf: string) => {
+    if (isIndonesian) {
+      if (conf === "high") return "tinggi"
+      if (conf === "medium") return "sedang"
+      if (conf === "low") return "rendah"
+    }
+    return conf
+  }
+
+  const getFrequencyLabel = (freq: string) => {
+    if (isIndonesian) {
+      if (freq === "weekly") return "mingguan"
+      if (freq === "monthly") return "bulanan"
+      if (freq === "quarterly") return "triwulanan"
+      if (freq === "yearly") return "tahunan"
+    }
+    return freq
+  }
 
   return (
     <div className="space-y-2.5">
       <div className="px-1">
-        <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Detected Recurring</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+          {isIndonesian ? "Pola Berulang Terdeteksi" : "Detected Recurring"}
+        </p>
         <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-          Review recurring patterns found from transaction history.
+          {isIndonesian
+            ? "Tinjau pola transaksi berulang yang ditemukan dari riwayat transaksi."
+            : "Review recurring patterns found from transaction history."}
         </p>
       </div>
 
@@ -33,15 +59,15 @@ export function DetectedRecurringSection({ items, confirmingId = null, onConfirm
                   <p className="font-semibold text-[14px] truncate" style={{ color: "var(--text-primary)" }}>{item.title}</p>
                   <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full capitalize"
                     style={{ background: "var(--glass-fill)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}>
-                    {item.confidence}
+                    {getConfidenceLabel(item.confidence)}
                   </span>
                   <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full capitalize"
                     style={{ background: "var(--glass-fill-strong)", color: "var(--text-primary)", border: "1px solid var(--glass-border)" }}>
-                    {item.frequency}
+                    {getFrequencyLabel(item.frequency)}
                   </span>
                 </div>
                 <p className="text-[11px] font-medium mt-1" style={{ color: "var(--text-tertiary)" }}>
-                  {item.categoryName} · {item.occurrencesCount} occurrences · next {item.nextExpectedDate}
+                  {item.categoryName} · {item.occurrencesCount} {isIndonesian ? "kali terjadi · berikutnya" : "occurrences · next"} {item.nextExpectedDate}
                 </p>
                 <p className="amount text-[15px] font-semibold mt-2" style={{ color: "var(--text-primary)" }}>
                   {formatRupiah(item.typicalAmount)}
@@ -50,7 +76,9 @@ export function DetectedRecurringSection({ items, confirmingId = null, onConfirm
                   <Clock3 size={13} className="mt-0.5 shrink-0" style={{ color: "var(--text-tertiary)" }} />
                   <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     {requiresManualCadence
-                      ? `This cadence is not directly supported by the bill repeat rule yet, so confirmation will create the next due item with a manual review note.`
+                      ? (isIndonesian
+                          ? "Frekuensi ini belum didukung langsung oleh aturan pengulangan tagihan, sehingga konfirmasi akan membuat item jatuh tempo berikutnya dengan catatan tinjauan manual."
+                          : "This cadence is not directly supported by the bill repeat rule yet, so confirmation will create the next due item with a manual review note.")
                       : item.explanation}
                   </p>
                 </div>
@@ -61,19 +89,23 @@ export function DetectedRecurringSection({ items, confirmingId = null, onConfirm
               <button
                 onClick={() => onConfirm(item)}
                 disabled={confirmingId === item.id}
-                className="flex-1 text-[11px] font-semibold px-3 py-2 rounded-full flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60"
+                className="flex-1 text-[11px] font-semibold px-3 py-2 rounded-full flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
                 style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
               >
                 <Check size={12} />
-                <span>{confirmingId === item.id ? "Confirming..." : "Confirm"}</span>
+                <span>
+                  {confirmingId === item.id
+                    ? (isIndonesian ? "Mengonfirmasi..." : "Confirming...")
+                    : (isIndonesian ? "Konfirmasi" : "Confirm")}
+                </span>
               </button>
               <button
                 onClick={() => onIgnore(item)}
-                className="text-[11px] font-semibold px-3 py-2 rounded-full flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                className="text-[11px] font-semibold px-3 py-2 rounded-full flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
                 style={{ background: "var(--glass-fill)", color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
               >
                 <MinusCircle size={12} />
-                <span>Ignore</span>
+                <span>{isIndonesian ? "Abaikan" : "Ignore"}</span>
               </button>
             </div>
           </div>

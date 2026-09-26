@@ -12,6 +12,7 @@
 // ======================================================================
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Link2,
@@ -28,6 +29,9 @@ import {
   Eye,
   EyeOff,
   ArrowUpRight,
+  Sun,
+  Moon,
+  Settings,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -72,6 +76,7 @@ import { StakingYieldModal } from "../components/settings/StakingYieldModal";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { ExecutiveWalletCard } from "../components/assets/ExecutiveWalletCard";
 import { ConsolidatedBalanceSheetDrawer } from "../components/assets/ConsolidatedBalanceSheetDrawer";
+import { PortfolioIntelligenceDeck } from "../components/assets/PortfolioIntelligenceDeck";
 import {
   AssetMetricDrillDownSheet,
   type MetricDrillDownData,
@@ -79,15 +84,13 @@ import {
 import { calculateAssetTrend } from "../lib/financialMath";
 import { startOfMonth } from "date-fns";
 import type { InvestmentHolding, AssetType } from "../lib/types";
+import {
+  PRESET_ASSETS,
+  type PresetAsset,
+  type PresetCategory,
+} from "../lib/assetPresets";
 
-export type PresetCategory =
-  | "all"
-  | "crypto"
-  | "stock_us"
-  | "stock_id"
-  | "gold"
-  | "mutual_fund"
-  | "fixed_asset";
+export type { PresetCategory, PresetAsset };
 
 export type BalanceSheetRange = "1D" | "7D" | "1M" | "3M" | "6M" | "1Y" | "ALL";
 
@@ -97,285 +100,6 @@ function formatAxisY(val: number): string {
   if (Math.abs(val) >= 1000) return (val / 1000).toFixed(0) + "K";
   return String(val);
 }
-
-interface PresetAsset {
-  symbol: string;
-  name: string;
-  type: AssetType;
-  category: PresetCategory;
-  suggestedCurrency?: "IDR" | "USD";
-  icon?: string;
-}
-
-const PRESET_ASSETS: PresetAsset[] = [
-  // Crypto
-  {
-    symbol: "BTC",
-    name: "Bitcoin",
-    type: "crypto",
-    category: "crypto",
-    suggestedCurrency: "USD",
-    icon: "Coins",
-  },
-  {
-    symbol: "ETH",
-    name: "Ethereum",
-    type: "crypto",
-    category: "crypto",
-    suggestedCurrency: "USD",
-    icon: "Coins",
-  },
-  {
-    symbol: "SOL",
-    name: "Solana",
-    type: "crypto",
-    category: "crypto",
-    suggestedCurrency: "USD",
-    icon: "Coins",
-  },
-  {
-    symbol: "BNB",
-    name: "Binance Coin",
-    type: "crypto",
-    category: "crypto",
-    suggestedCurrency: "USD",
-    icon: "Coins",
-  },
-  {
-    symbol: "XRP",
-    name: "Ripple",
-    type: "crypto",
-    category: "crypto",
-    suggestedCurrency: "USD",
-    icon: "Coins",
-  },
-  {
-    symbol: "ADA",
-    name: "Cardano",
-    type: "crypto",
-    category: "crypto",
-    suggestedCurrency: "USD",
-    icon: "Coins",
-  },
-  {
-    symbol: "DOGE",
-    name: "Dogecoin",
-    type: "crypto",
-    category: "crypto",
-    suggestedCurrency: "USD",
-    icon: "Coins",
-  },
-
-  // US Equities
-  {
-    symbol: "AAPL",
-    name: "Apple Inc.",
-    type: "stock",
-    category: "stock_us",
-    suggestedCurrency: "USD",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "NVDA",
-    name: "NVIDIA Corp.",
-    type: "stock",
-    category: "stock_us",
-    suggestedCurrency: "USD",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "TSLA",
-    name: "Tesla Inc.",
-    type: "stock",
-    category: "stock_us",
-    suggestedCurrency: "USD",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "MSFT",
-    name: "Microsoft Corp.",
-    type: "stock",
-    category: "stock_us",
-    suggestedCurrency: "USD",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "GOOGL",
-    name: "Alphabet Inc.",
-    type: "stock",
-    category: "stock_us",
-    suggestedCurrency: "USD",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "AMZN",
-    name: "Amazon.com Inc.",
-    type: "stock",
-    category: "stock_us",
-    suggestedCurrency: "USD",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "META",
-    name: "Meta Platforms",
-    type: "stock",
-    category: "stock_us",
-    suggestedCurrency: "USD",
-    icon: "TrendingUp",
-  },
-
-  // IDX Equities
-  {
-    symbol: "BBCA",
-    name: "Bank Central Asia",
-    type: "stock",
-    category: "stock_id",
-    suggestedCurrency: "IDR",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "BBRI",
-    name: "Bank Rakyat Indonesia",
-    type: "stock",
-    category: "stock_id",
-    suggestedCurrency: "IDR",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "BMRI",
-    name: "Bank Mandiri",
-    type: "stock",
-    category: "stock_id",
-    suggestedCurrency: "IDR",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "BBNI",
-    name: "Bank Negara Indonesia",
-    type: "stock",
-    category: "stock_id",
-    suggestedCurrency: "IDR",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "TLKM",
-    name: "Telkom Indonesia",
-    type: "stock",
-    category: "stock_id",
-    suggestedCurrency: "IDR",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "ASII",
-    name: "Astra International",
-    type: "stock",
-    category: "stock_id",
-    suggestedCurrency: "IDR",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "ICBP",
-    name: "Indofood CBP",
-    type: "stock",
-    category: "stock_id",
-    suggestedCurrency: "IDR",
-    icon: "TrendingUp",
-  },
-
-  // Gold & Commodities
-  {
-    symbol: "XAU",
-    name: "Gold Antam (per gram)",
-    type: "gold",
-    category: "gold",
-    suggestedCurrency: "IDR",
-    icon: "Landmark",
-  },
-  {
-    symbol: "UBS",
-    name: "Gold UBS (per gram)",
-    type: "gold",
-    category: "gold",
-    suggestedCurrency: "IDR",
-    icon: "Landmark",
-  },
-  {
-    symbol: "XAG",
-    name: "Silver Pure (per gram)",
-    type: "gold",
-    category: "gold",
-    suggestedCurrency: "IDR",
-    icon: "Landmark",
-  },
-
-  // Mutual Funds
-  {
-    symbol: "RD-PASAR-UANG",
-    name: "Money Market Fund",
-    type: "mutual_fund",
-    category: "mutual_fund",
-    suggestedCurrency: "IDR",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "RD-PENDAPATAN-TETAP",
-    name: "Fixed Income Fund",
-    type: "mutual_fund",
-    category: "mutual_fund",
-    suggestedCurrency: "IDR",
-    icon: "FileText",
-  },
-  {
-    symbol: "RD-SAHAM",
-    name: "Equity Fund",
-    type: "mutual_fund",
-    category: "mutual_fund",
-    suggestedCurrency: "IDR",
-    icon: "TrendingUp",
-  },
-  {
-    symbol: "RD-CAMPURAN",
-    name: "Balanced Fund",
-    type: "mutual_fund",
-    category: "mutual_fund",
-    suggestedCurrency: "IDR",
-    icon: "TrendingUp",
-  },
-
-  // Fixed Assets
-  {
-    symbol: "RUMAH",
-    name: "Residential Property",
-    type: "fixed_asset",
-    category: "fixed_asset",
-    suggestedCurrency: "IDR",
-    icon: "Home",
-  },
-  {
-    symbol: "TANAH",
-    name: "Land / Real Estate",
-    type: "fixed_asset",
-    category: "fixed_asset",
-    suggestedCurrency: "IDR",
-    icon: "Landmark",
-  },
-  {
-    symbol: "MOBIL",
-    name: "Vehicle / Automobile",
-    type: "fixed_asset",
-    category: "fixed_asset",
-    suggestedCurrency: "IDR",
-    icon: "Shield",
-  },
-  {
-    symbol: "LOGAM",
-    name: "Physical Precious Metals",
-    type: "fixed_asset",
-    category: "fixed_asset",
-    suggestedCurrency: "IDR",
-    icon: "Coins",
-  },
-];
 
 interface GlassTooltipProps {
   active?: boolean;
@@ -424,8 +148,9 @@ const GlassTooltip = ({
 };
 
 export function AssetsPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const isDark = theme !== "light";
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
@@ -1319,6 +1044,57 @@ export function AssetsPage() {
               ? "Matriks solvabilitas & struktur modal lengkap"
               : "Solvency matrix & capital breakdown"}
           </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              toggleTheme();
+            }}
+            className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer select-none"
+            title={
+              theme === "light"
+                ? isIndonesian
+                  ? "Beralih ke Mode Gelap"
+                  : "Switch to Dark Mode"
+                : isIndonesian
+                  ? "Beralih ke Mode Terang"
+                  : "Switch to Light Mode"
+            }
+            aria-label="Toggle Theme"
+          >
+            {theme === "light" ? (
+              <Moon
+                size={14}
+                strokeWidth={1.75}
+                style={{ color: "var(--text-primary)" }}
+              />
+            ) : (
+              <Sun
+                size={14}
+                strokeWidth={1.75}
+                style={{ color: "var(--text-primary)" }}
+              />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              navigate("/settings");
+            }}
+            className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer"
+            title={isIndonesian ? "Pengaturan" : "Settings"}
+            aria-label="Settings"
+          >
+            <Settings
+              size={14}
+              strokeWidth={1.75}
+              style={{ color: "var(--text-primary)" }}
+            />
+          </button>
         </div>
       </div>
 
@@ -2457,6 +2233,14 @@ export function AssetsPage() {
         </div>
       </section>
 
+      {/* ── 7. Portfolio Health & Risk Intelligence Deck ── */}
+      <PortfolioIntelligenceDeck
+        holdings={holdings}
+        wallets={wallets}
+        netWorth={netWorth}
+        totalLiabilities={liabilitiesTotal}
+      />
+
       {/* ── 9. Preset Picker Sheet (Standard BottomSheet) ─────────────────── */}
       <BottomSheet
         isOpen={addPhase === 1}
@@ -2796,6 +2580,7 @@ export function AssetsPage() {
               </label>
               <input
                 type="text"
+                inputMode="decimal"
                 value={formUnits}
                 onChange={(e) =>
                   setFormUnits(e.target.value.replace(/[^0-9.]/g, ""))
@@ -2812,6 +2597,7 @@ export function AssetsPage() {
               </label>
               <input
                 type="text"
+                inputMode="decimal"
                 value={formBuyPrice}
                 onChange={(e) =>
                   setFormBuyPrice(e.target.value.replace(/[^0-9.]/g, ""))
@@ -2839,6 +2625,7 @@ export function AssetsPage() {
             </label>
             <input
               type="text"
+              inputMode="decimal"
               value={formCurrentPrice}
               onChange={(e) =>
                 setFormCurrentPrice(e.target.value.replace(/[^0-9.]/g, ""))

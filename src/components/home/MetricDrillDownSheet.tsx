@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { formatRupiah } from "../../lib/utils";
+import { useLanguage } from "../../contexts/LanguageContext";
 import type { CategoryMoMShift } from "../../lib/financialMath";
 
 interface MetricDrillDownSheetProps {
@@ -48,6 +49,7 @@ export function MetricDrillDownSheet({
   data,
 }: MetricDrillDownSheetProps) {
   const navigate = useNavigate();
+  const { isIndonesian } = useLanguage();
 
   if (!type || !data) return null;
 
@@ -55,13 +57,25 @@ export function MetricDrillDownSheet({
   const isSnapshot = type === "snapshot";
   const isExpense = type === "expense";
 
-  const title = isBudgetRisk
-    ? "Budget Risk Explanation"
+  const getRiskLabel = (risk?: string) => {
+    if (!risk) return isIndonesian ? "AMAN" : "SAFE";
+    if (isIndonesian) {
+      if (risk === "SAFE") return "AMAN";
+      if (risk === "WATCH") return "PERHATIAN";
+      if (risk === "AT RISK") return "BERISIKO";
+    }
+    return risk;
+  };
+
+  const defaultTitle = isBudgetRisk
+    ? (isIndonesian ? "Penjelasan Risiko Anggaran" : "Budget Risk Explanation")
     : isSnapshot
-      ? data.title || "Current Period Snapshot"
+      ? data.title || (isIndonesian ? "Ringkasan Periode Berjalan" : "Current Period Snapshot")
       : isExpense
-        ? "Why Outflow Changed"
-        : "Why Inflow Changed";
+        ? (isIndonesian ? "Faktor Perubahan Pengeluaran" : "Why Outflow Changed")
+        : (isIndonesian ? "Faktor Perubahan Pemasukan" : "Why Inflow Changed");
+
+  const title = data.title && isSnapshot ? data.title : defaultTitle;
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title={title}>
@@ -93,14 +107,14 @@ export function MetricDrillDownSheet({
                     className="font-semibold text-[15px]"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Status: {data.budgetRisk || "SAFE"}
+                    Status: {getRiskLabel(data.budgetRisk)}
                   </h4>
                   <p
                     className="text-[11px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {data.consumedPct?.toFixed(0)}% budget consumed vs{" "}
-                    {data.timePct?.toFixed(0)}% time elapsed
+                    {data.consumedPct?.toFixed(0)}% {isIndonesian ? "anggaran terpakai vs" : "budget consumed vs"}{" "}
+                    {data.timePct?.toFixed(0)}% {isIndonesian ? "waktu berlalu" : "time elapsed"}
                   </p>
                 </div>
               </div>
@@ -122,7 +136,7 @@ export function MetricDrillDownSheet({
                   className="text-[10px] font-bold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Monthly Budget
+                  {isIndonesian ? "Anggaran Bulanan" : "Monthly Budget"}
                 </p>
                 <p
                   className="amount text-[14px] font-semibold mt-0.5"
@@ -139,7 +153,7 @@ export function MetricDrillDownSheet({
                   className="text-[10px] font-bold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Current Spending
+                  {isIndonesian ? "Pengeluaran Berjalan" : "Current Spending"}
                 </p>
                 <p
                   className="amount text-[14px] font-semibold mt-0.5"
@@ -163,7 +177,7 @@ export function MetricDrillDownSheet({
                   color: "var(--accent-ink)",
                 }}
               >
-                <span>Adjust Budget Limit</span>
+                <span>{isIndonesian ? "Sesuaikan Batas Anggaran" : "Adjust Budget Limit"}</span>
                 <ArrowRight size={15} />
               </button>
             </div>
@@ -183,7 +197,7 @@ export function MetricDrillDownSheet({
                     className="text-[11px] font-bold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {data.badge || "Current Period"}
+                    {data.badge || (isIndonesian ? "Periode Berjalan" : "Current Period")}
                   </p>
                   <h4
                     className="amount font-semibold text-[18px] mt-1"
@@ -203,7 +217,7 @@ export function MetricDrillDownSheet({
                     color: "var(--text-primary)",
                   }}
                 >
-                  {data.badge || (data.delta > 0 ? "SURPLUS" : data.delta < 0 ? "DEFICIT" : "SUMMARY")}
+                  {data.badge || (data.delta > 0 ? "SURPLUS" : data.delta < 0 ? (isIndonesian ? "DEFISIT" : "DEFICIT") : (isIndonesian ? "RINGKASAN" : "SUMMARY"))}
                 </span>
               </div>
               {data.subtitle && (
@@ -226,8 +240,8 @@ export function MetricDrillDownSheet({
                 }}
               >
                 <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider pb-1 border-b border-black/5 dark:border-white/5">
-                  <span>Category Breakdown</span>
-                  <span>Amount & Share</span>
+                  <span>{isIndonesian ? "Rincian Kategori" : "Category Breakdown"}</span>
+                  <span>{isIndonesian ? "Nominal & Porsi" : "Amount & Share"}</span>
                 </div>
                 {data.items.map((item, idx) => (
                   <div key={idx} className="space-y-1">
@@ -240,7 +254,7 @@ export function MetricDrillDownSheet({
                           {item.valueText || (item.amount !== undefined ? formatRupiah(item.amount) : "")}
                         </span>
                         {item.pct !== undefined && (
-                          <span className="text-[10px] text-[var(--text-tertiary)] ml-1.5 font-mono">
+                          <span className="text-[10px] text-[var(--text-tertiary)] ml-1.5 font-medium">
                             ({item.pct.toFixed(0)}%)
                           </span>
                         )}
@@ -274,7 +288,7 @@ export function MetricDrillDownSheet({
                     className="text-[10px] font-bold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Current Total
+                    {isIndonesian ? "Total Saat Ini" : "Current Total"}
                   </p>
                   <p
                     className="amount text-[14px] font-semibold mt-0.5"
@@ -291,7 +305,7 @@ export function MetricDrillDownSheet({
                     className="text-[10px] font-bold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Reference Change
+                    {isIndonesian ? "Perubahan Acuan" : "Reference Change"}
                   </p>
                   <p
                     className="amount text-[14px] font-semibold mt-0.5"
@@ -321,7 +335,7 @@ export function MetricDrillDownSheet({
                   color: "var(--bg-base)",
                 }}
               >
-                <span>{data.ctaLabel || "View Full Analytics Breakdown"}</span>
+                <span>{data.ctaLabel || (isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown")}</span>
                 <ArrowRight size={15} />
               </button>
             </div>
@@ -347,8 +361,7 @@ export function MetricDrillDownSheet({
                   className="text-[11px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  {data.delta >= 0 ? "Increased" : "Decreased"} vs previous
-                  month
+                  {data.delta >= 0 ? (isIndonesian ? "Meningkat" : "Increased") : (isIndonesian ? "Menurun" : "Decreased")} {isIndonesian ? "vs bulan sebelumnya" : "vs previous month"}
                 </p>
               </div>
               <span
@@ -368,7 +381,7 @@ export function MetricDrillDownSheet({
                   className="text-[11px] font-bold uppercase tracking-wider px-0.5"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Top Category Contributors
+                  {isIndonesian ? "Kontributor Kategori Teratas" : "Top Category Contributors"}
                 </p>
                 <div className="space-y-1.5">
                   {data.topContributors.map((c, idx) => (
@@ -417,7 +430,7 @@ export function MetricDrillDownSheet({
                   color: "var(--accent-ink)",
                 }}
               >
-                <span>View Full Analytics Breakdown</span>
+                <span>{isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown"}</span>
                 <ArrowRight size={15} />
               </button>
             </div>

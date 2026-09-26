@@ -98,7 +98,7 @@ export function LoginPage() {
   // Inline email form state
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => getBiometricLoginCredentials()?.email || "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -141,13 +141,6 @@ export function LoginPage() {
       setLoading(false);
     }
   }, [email, setSession]);
-
-  useEffect(() => {
-    const hint = getBiometricLoginCredentials();
-    if (hint?.email && !email) {
-      setEmail(hint.email);
-    }
-  }, []);
 
   const handleOAuthLogin = async (provider: "google") => {
     setLoading(true);

@@ -17,7 +17,7 @@ import {
   WidgetCustomizationBar,
 } from "../components/common";
 import type { WidgetSize } from "../lib/widgetLayoutTypes";
-import { HOME_PRESETS } from "../lib/widgetLayoutTypes";
+import { HOME_PRESETS, getLocalizedWidgetMeta } from "../lib/widgetLayoutTypes";
 import {
   CompactSpendingStabilityHalf,
   CompactCashflowPulseHalf,
@@ -35,6 +35,7 @@ import {
   CalendarCard,
 } from "../components/home/CompactHomeCards";
 import { BillManagementSheets } from "../components/settings/BillManagementSheets";
+import { PayBillModal } from "../components/bills/PayBillModal";
 import { ProfileMenuModal } from "../components/home/ProfileMenuModal";
 import { ProfileSheet } from "../components/settings/ProfileSheet";
 import { WebDashboardLinkModal } from "../components/settings/WebDashboardLinkModal";
@@ -106,6 +107,7 @@ import {
   subDays,
   startOfDay,
 } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { BalanceCard } from "../components/ui/BalanceCard";
 import { NotificationSheet } from "../components/ui/NotificationSheet";
@@ -256,6 +258,7 @@ export function HomePage({
   const billManagementOpen = activeModal === "billManagement";
   const setBillManagementOpen = (open: boolean) =>
     setActiveModal(open ? "billManagement" : null);
+  const [payingBill, setPayingBill] = useState<any | null>(null);
   const {
     activeSpace,
     activeSpaceId,
@@ -345,24 +348,27 @@ export function HomePage({
   }, [allTxs, liquidAssets, liquidAccounts, stockRange]);
 
   // Personal Baselines & Dynamic Goal Milestones (Innovation 10)
-  const baselines = useMemo(() => calculatePersonalBaselines(allTxs), [allTxs]);
+  const baselines = useMemo(
+    () => calculatePersonalBaselines(allTxs, categories, now, isIndonesian ? "id" : "en"),
+    [allTxs, categories, now, isIndonesian],
+  );
 
   const goalMilestonesMap = useMemo(() => {
     const map = new Map<string, { label: string; isComplete: boolean }>();
     goals.forEach((g) => {
-      const res = calculateDynamicGoalMilestones(g, baselines, now);
+      const res = calculateDynamicGoalMilestones(g, baselines, now, isIndonesian ? "id" : "en");
       if (res.isAlreadyCompleted) {
-        map.set(g.id, { label: "Completed", isComplete: true });
+        map.set(g.id, { label: isIndonesian ? "Tercapai" : "Completed", isComplete: true });
       } else {
         const est = res.velocityPaces.current.projectedCompletion;
         map.set(g.id, {
-          label: est ? `Est. ${est}` : "In Progress",
+          label: est ? `Est. ${est}` : isIndonesian ? "Sedang Berjalan" : "In Progress",
           isComplete: false,
         });
       }
     });
     return map;
-  }, [goals, baselines, now]);
+  }, [goals, baselines, now, isIndonesian]);
 
   // 2. Current Month Financial Calculations
   const currentMonthStats = useMemo(() => {
@@ -488,9 +494,14 @@ export function HomePage({
           t.occurred_on === dStr && t.type === "expense" && !isCorrectionTx(t),
       );
       const amount = dayTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-      return { dayLabel: format(d, "EEE"), amount };
+      return {
+        dayLabel: format(d, "EEE", {
+          locale: isIndonesian ? idLocale : undefined,
+        }),
+        amount,
+      };
     });
-  }, [allTxs, now]);
+  }, [allTxs, now, isIndonesian]);
 
   const categoryDonutData = useMemo(() => {
     const list = currentMonthStats.topExpenseCategories || [];
@@ -507,14 +518,14 @@ export function HomePage({
 
     if (otherTotal > 0 && list.length > 4) {
       res.push({
-        name: "Lainnya",
+        name: isIndonesian ? "Lainnya" : "Others",
         amount: otherTotal,
         pct: totalExpense > 0 ? (otherTotal / totalExpense) * 100 : 0,
         count: list.slice(4).reduce((s, c) => s + c.count, 0),
       });
     }
     return res;
-  }, [currentMonthStats.topExpenseCategories, totalExpense]);
+  }, [currentMonthStats.topExpenseCategories, totalExpense, isIndonesian]);
 
   const { heatmapDaysData, activeSpendDaysCount } = useMemo(() => {
     const start = startOfMonth(now);
@@ -757,7 +768,15 @@ export function HomePage({
                     ? "text-white/60 hover:text-white"
                     : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 }`}
-                title={hideBalance ? "Show Balance" : "Hide Balance"}
+                title={
+                  hideBalance
+                    ? isIndonesian
+                      ? "Tampilkan Saldo"
+                      : "Show Balance"
+                    : isIndonesian
+                      ? "Sembunyikan Saldo"
+                      : "Hide Balance"
+                }
               >
                 {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
@@ -1104,10 +1123,18 @@ export function HomePage({
                     totalPrevious: 0,
                     delta: 0,
                     pctChange: 0,
-                    title: "Spending Stability",
-                    subtitle: `Your spending consistency is evaluated as ${intel.expenseVolatility.stability} with a daily average outlay of ${formatRupiah(dailyAverage)}/day.`,
-                    badge: intel.expenseVolatility.stability,
-                    ctaLabel: "View Analytics Breakdown",
+                    title: isIndonesian ? "Stabilitas Pengeluaran" : "Spending Stability",
+                    subtitle: isIndonesian
+                      ? `Konsistensi pengeluaran Anda dievaluasi sebagai ${intel.expenseVolatility.stability === "VOLATILE" ? "Tinggi (Volatil)" : intel.expenseVolatility.stability === "MODERATE" ? "Moderat" : "Stabil"} dengan rata-rata belanja ${formatRupiah(dailyAverage)}/hari.`
+                      : `Your spending consistency is evaluated as ${intel.expenseVolatility.stability} with a daily average outlay of ${formatRupiah(dailyAverage)}/day.`,
+                    badge: isIndonesian
+                      ? intel.expenseVolatility.stability === "VOLATILE"
+                        ? "VOLATIL"
+                        : intel.expenseVolatility.stability === "MODERATE"
+                          ? "MODERAT"
+                          : "STABIL"
+                      : intel.expenseVolatility.stability,
+                    ctaLabel: isIndonesian ? "Lihat Rincian Analisis" : "View Analytics Breakdown",
                   },
                 });
               }}
@@ -1136,10 +1163,12 @@ export function HomePage({
                     totalPrevious: 0,
                     delta: intel.netCashflow,
                     pctChange: 0,
-                    title: "Net Cashflow",
-                    subtitle: `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
-                    badge: "Current Month",
-                    ctaLabel: "View Full Analytics Breakdown",
+                    title: isIndonesian ? "Arus Kas Bersih" : "Net Cashflow",
+                    subtitle: isIndonesian
+                      ? `Bulan ini ditutup dengan ${intel.netCashflow >= 0 ? "surplus" : "defisit"} setelah pemasukan ${formatRupiah(intel.totalIncome)} dan pengeluaran ${formatRupiah(intel.totalExpense)}.`
+                      : `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
+                    badge: isIndonesian ? "Bulan Ini" : "Current Month",
+                    ctaLabel: isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown",
                   },
                 });
               }}
@@ -1186,10 +1215,12 @@ export function HomePage({
                     totalPrevious: 0,
                     delta: intel.netCashflow,
                     pctChange: 0,
-                    title: "Net Cashflow",
-                    subtitle: `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
-                    badge: "Current Month",
-                    ctaLabel: "View Full Analytics Breakdown",
+                    title: isIndonesian ? "Arus Kas Bersih" : "Net Cashflow",
+                    subtitle: isIndonesian
+                      ? `Bulan ini ditutup dengan ${intel.netCashflow >= 0 ? "surplus" : "defisit"} setelah pemasukan ${formatRupiah(intel.totalIncome)} dan pengeluaran ${formatRupiah(intel.totalExpense)}.`
+                      : `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
+                    badge: isIndonesian ? "Bulan Ini" : "Current Month",
+                    ctaLabel: isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown",
                   },
                 });
               } else {
@@ -1201,10 +1232,12 @@ export function HomePage({
                     totalPrevious: exp.totalPrevious,
                     delta: exp.delta,
                     pctChange: exp.pctChange,
-                    title: "Total Outflow",
-                    subtitle: `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
-                    badge: "Current Month",
-                    ctaLabel: "View Analytics Breakdown",
+                    title: isIndonesian ? "Total Pengeluaran" : "Total Outflow",
+                    subtitle: isIndonesian
+                      ? `Pengeluaran bulan berjalan adalah ${formatRupiah(intel.totalExpense)}. Dibandingkan bulan sebelumnya, perubahannya ${exp.delta >= 0 ? "meningkat" : "menurun"} sebesar ${formatRupiah(Math.abs(exp.delta))}.`
+                      : `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
+                    badge: isIndonesian ? "Bulan Ini" : "Current Month",
+                    ctaLabel: isIndonesian ? "Lihat Rincian Analisis" : "View Analytics Breakdown",
                   },
                 });
               }
@@ -1228,14 +1261,19 @@ export function HomePage({
                     delta: 0,
                     pctChange: 0,
                     title:
-                      intel.actionCenterInsight?.title || "Financial Alert",
+                      intel.actionCenterInsight?.title ||
+                      (isIndonesian ? "Peringatan Finansial" : "Financial Alert"),
                     subtitle:
                       intel.actionCenterInsight?.subtitle ||
-                      "Anomalous spending detected",
-                    badge: intel.actionCenterInsight?.badge || "Insight",
+                      (isIndonesian
+                        ? "Terdeteksi pola pengeluaran anomali"
+                        : "Anomalous spending detected"),
+                    badge:
+                      intel.actionCenterInsight?.badge ||
+                      (isIndonesian ? "Wawasan" : "Insight"),
                     ctaLabel:
                       intel.actionCenterInsight?.actionLabel ||
-                      "Open Action Center",
+                      (isIndonesian ? "Buka Pusat Aksi" : "Open Action Center"),
                   },
                 });
               }}
@@ -1262,7 +1300,13 @@ export function HomePage({
                 className="text-[11px] font-bold tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {calendarExpanded ? "Monthly Activity" : "Past 7 Days Activity"}
+                {calendarExpanded
+                  ? isIndonesian
+                    ? "Aktivitas Bulanan"
+                    : "Monthly Activity"
+                  : isIndonesian
+                    ? "Aktivitas 7 Hari Terakhir"
+                    : "Past 7 Days Activity"}
               </span>
               <button
                 type="button"
@@ -1278,7 +1322,15 @@ export function HomePage({
                 }}
               >
                 <CalendarDays size={12} />
-                <span>{calendarExpanded ? "Compact (7D)" : "Full Month"}</span>
+                <span>
+                  {calendarExpanded
+                    ? isIndonesian
+                      ? "Ringkas (7H)"
+                      : "Compact (7D)"
+                    : isIndonesian
+                      ? "Bulan Penuh"
+                      : "Full Month"}
+                </span>
               </button>
             </div>
 
@@ -1292,7 +1344,10 @@ export function HomePage({
             >
               {calendarExpanded ? (
                 <div className="grid grid-cols-7 gap-y-1 gap-x-1 text-center">
-                  {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => (
+                  {(isIndonesian
+                    ? ["M", "S", "S", "R", "K", "J", "S"]
+                    : ["S", "M", "T", "W", "T", "F", "S"]
+                  ).map((w, i) => (
                     <div
                       key={i}
                       className="text-[9px] font-bold mb-0.5"
@@ -1318,7 +1373,9 @@ export function HomePage({
                           : "var(--text-tertiary)",
                       }}
                     >
-                      {format(d, "EEE")}
+                      {format(d, "EEE", {
+                        locale: isIndonesian ? idLocale : undefined,
+                      })}
                     </div>
                   ))}
                   {compactDays.map((d) => renderCalendarDay(d))}
@@ -1337,7 +1394,9 @@ export function HomePage({
           const pct = Math.min(100, Math.round((curr / tgt) * 100));
           return (
             <CompactGoalsHalf
-              goalTitle={g.title || g.name || "Savings Goal"}
+              goalTitle={
+                g.title || g.name || (isIndonesian ? "Target Tabungan" : "Savings Goal")
+              }
               progressPct={pct}
               currentAmount={curr}
               targetAmount={tgt}
@@ -1352,13 +1411,15 @@ export function HomePage({
                 className="text-[11px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Financial Goals
+                {isIndonesian ? "Target Finansial" : "Financial Goals"}
               </span>
               <span
                 className="text-[11px] font-bold"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {goals.length} {goals.length === 1 ? "Goal" : "Goals"}
+                {isIndonesian
+                  ? `${goals.length} Target`
+                  : `${goals.length} ${goals.length === 1 ? "Goal" : "Goals"}`}
               </span>
             </div>
 
@@ -1407,7 +1468,8 @@ export function HomePage({
                             className="text-[11px] font-medium"
                             style={{ color: "var(--text-tertiary)" }}
                           >
-                            {formatRupiah(g.currentAmount)} of{" "}
+                            {formatRupiah(g.currentAmount)}{" "}
+                            {isIndonesian ? "dari" : "of"}{" "}
                             {formatRupiah(g.targetAmount)}
                           </p>
                         </div>
@@ -1494,18 +1556,21 @@ export function HomePage({
                 className="text-[11px] font-semibold uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Upcoming Bills
+                {isIndonesian ? "Tagihan Mendatang" : "Upcoming Bills"}
               </span>
               <span
                 className="text-[11px] font-medium hover:underline flex items-center gap-1"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Manage Bills
+                {isIndonesian ? "Kelola Tagihan" : "Manage Bills"}
               </span>
             </div>
             <div className="space-y-2">
               {upcomingBills.slice(0, 3).map((bill: any) => {
-                const dueStatusLabel = getBillDueStatusLabel(bill.due_date);
+                const dueStatusLabel = getBillDueStatusLabel(
+                  bill.due_date,
+                  isIndonesian,
+                );
                 const isMarkingPaid =
                   markBillPaid.isPending &&
                   markBillPaid.variables?.bill.id === bill.id;
@@ -1558,39 +1623,27 @@ export function HomePage({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          markBillPaid.mutate(
-                            { bill, paid: true },
-                            {
-                              onSuccess: () => {
-                                showToast(
-                                  `${bill.title} marked as paid`,
-                                  "add",
-                                  () => {},
-                                );
-                              },
-                              onError: (error: any) => {
-                                showToast(
-                                  error?.message ||
-                                    `Failed to mark ${bill.title} as paid`,
-                                  "delete",
-                                  () => {},
-                                );
-                              },
-                            },
-                          );
-                          triggerHaptic("medium");
+                          setPayingBill(bill);
+                          triggerHaptic("light");
                         }}
                         disabled={isMarkingPaid}
                         className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                         style={{
-                          background: "var(--glass-fill-strong)",
-                          border: "1px solid var(--glass-border)",
-                          color: "var(--text-primary)",
+                          background: "var(--text-primary)",
+                          color: "var(--bg-base)",
                         }}
-                        title="Mark as paid"
+                        title={isIndonesian ? "Bayar Tagihan" : "Pay Bill"}
                       >
-                        <Check size={11} />
-                        <span>{isMarkingPaid ? "Saving..." : "Paid"}</span>
+                        <Check size={11} strokeWidth={2} />
+                        <span>
+                          {isMarkingPaid
+                            ? isIndonesian
+                              ? "Menyimpan..."
+                              : "Saving..."
+                            : isIndonesian
+                              ? "Bayar"
+                              : "Pay"}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -1609,7 +1662,11 @@ export function HomePage({
                   border: "1px solid var(--glass-border)",
                   boxShadow: "var(--shadow-card)",
                 }}
-                title="View Calendar & Bill Runway"
+                title={
+                  isIndonesian
+                    ? "Buka Kalender & Runway Tagihan"
+                    : "View Calendar & Bill Runway"
+                }
               >
                 <div className="flex items-center gap-2">
                   <div
@@ -1625,7 +1682,9 @@ export function HomePage({
                     className="text-[12px] font-medium"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Total Upcoming Bills · View Calendar
+                    {isIndonesian
+                      ? "Total Tagihan · Buka Kalender"
+                      : "Total Upcoming Bills · View Calendar"}
                   </span>
                 </div>
                 <span
@@ -1661,13 +1720,15 @@ export function HomePage({
                 className="text-[13px] font-semibold tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
-                Recent Transactions
+                {isIndonesian ? "Transaksi Terkini" : "Recent Transactions"}
               </h3>
               <span
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Latest {size === "half" ? "3" : "5"}
+                {isIndonesian
+                  ? `${size === "half" ? "3" : "5"} Terakhir`
+                  : `Latest ${size === "half" ? "3" : "5"}`}
               </span>
             </div>
             <div className="space-y-2">
@@ -1706,7 +1767,7 @@ export function HomePage({
                       style={{
                         color:
                           tx.type === "income"
-                            ? "#10b981"
+                            ? "var(--accent)"
                             : tx.type === "transfer"
                               ? "var(--text-secondary)"
                               : "var(--text-primary)",
@@ -1751,10 +1812,18 @@ export function HomePage({
                     totalPrevious: 0,
                     delta: 0,
                     pctChange: 0,
-                    title: `Top Category: ${topCat.name}`,
-                    subtitle: `${topCat.name} is your highest expense driver this month (${formatRupiah(topCat.total)}), making up ${pct}% of total monthly spending.`,
-                    badge: `${pct}% of Total`,
-                    ctaLabel: "View All Categories",
+                    title: isIndonesian
+                      ? `Kategori Utama: ${topCat.name}`
+                      : `Top Category: ${topCat.name}`,
+                    subtitle: isIndonesian
+                      ? `${topCat.name} adalah pendorong pengeluaran tertinggi Anda bulan ini (${formatRupiah(topCat.total)}), menyumbang ${pct}% dari total belanja bulanan.`
+                      : `${topCat.name} is your highest expense driver this month (${formatRupiah(topCat.total)}), making up ${pct}% of total monthly spending.`,
+                    badge: isIndonesian
+                      ? `${pct}% dari Total`
+                      : `${pct}% of Total`,
+                    ctaLabel: isIndonesian
+                      ? "Lihat Semua Kategori"
+                      : "View All Categories",
                     onCta: () => navigate("/statistics"),
                   },
                 });
@@ -1769,13 +1838,15 @@ export function HomePage({
                 className="text-[13px] font-semibold tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
-                Top Spending Categories
+                {isIndonesian
+                  ? "Kategori Pengeluaran Terbesar"
+                  : "Top Spending Categories"}
               </h3>
               <span
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                This Month
+                {isIndonesian ? "Bulan Ini" : "This Month"}
               </span>
             </div>
             <div
@@ -1810,7 +1881,7 @@ export function HomePage({
                           {formatRupiah(cat.total)}
                         </span>
                         <span
-                          className="text-[10px] font-mono"
+                          className="text-[10px] font-medium"
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           ({pct}%)
@@ -1848,13 +1919,15 @@ export function HomePage({
                 className="text-[13px] font-semibold tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
-                Savings Rate & Velocity
+                {isIndonesian
+                  ? "Rasio & Laju Tabungan"
+                  : "Savings Rate & Velocity"}
               </h3>
               <span
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Telemetry
+                {isIndonesian ? "Telemetri" : "Telemetry"}
               </span>
             </div>
             <div
@@ -1875,7 +1948,7 @@ export function HomePage({
                   className="text-[11px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Savings Rate
+                  {isIndonesian ? "Rasio Tabungan" : "Savings Rate"}
                 </p>
                 <p
                   className="text-[20px] font-semibold tracking-tight"
@@ -1889,7 +1962,9 @@ export function HomePage({
                   className="text-[10px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Net capital retained
+                  {isIndonesian
+                    ? "Sisa modal bersih"
+                    : "Net capital retained"}
                 </p>
               </div>
               <div
@@ -1903,21 +1978,23 @@ export function HomePage({
                   className="text-[11px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Runway
+                  {isIndonesian ? "Runway Kas" : "Runway"}
                 </p>
                 <p
                   className="text-[20px] font-semibold tracking-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {currentMonthStats.expense > 0
-                    ? `${(liquidAssets / currentMonthStats.expense).toFixed(1)} mo`
+                    ? `${(liquidAssets / currentMonthStats.expense).toFixed(1)} ${isIndonesian ? "bln" : "mo"}`
                     : "∞"}
                 </p>
                 <p
                   className="text-[10px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Liquid reserves buffer
+                  {isIndonesian
+                    ? "Cadangan dana likuid"
+                    : "Liquid reserves buffer"}
                 </p>
               </div>
             </div>
@@ -1942,13 +2019,15 @@ export function HomePage({
                 className="text-[13px] font-semibold tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
-                Split Bill & Receivables
+                {isIndonesian
+                  ? "Bagi Tagihan & Piutang"
+                  : "Split Bill & Receivables"}
               </h3>
               <span
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Shared Balances
+                {isIndonesian ? "Saldo Bersama" : "Shared Balances"}
               </span>
             </div>
             <div
@@ -1974,13 +2053,17 @@ export function HomePage({
                     className="text-[13px] font-semibold leading-tight truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Shared Settlements
+                    {isIndonesian
+                      ? "Patungan & Penyelesaian"
+                      : "Shared Settlements"}
                   </p>
                   <p
                     className="text-[11px] mt-0.5 truncate"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Track friend shares & pending settlements
+                    {isIndonesian
+                      ? "Pantau tagihan teman & penyelesaian tertunda"
+                      : "Track friend shares & pending settlements"}
                   </p>
                 </div>
               </div>
@@ -1996,7 +2079,7 @@ export function HomePage({
                   color: "var(--bg-base)",
                 }}
               >
-                Split Bill
+                {isIndonesian ? "Bagi Tagihan" : "Split Bill"}
               </button>
             </div>
           </section>
@@ -2021,37 +2104,59 @@ export function HomePage({
                   delta: netRetention,
                   pctChange: 0,
                   displayValue: `${isSurplus ? "+" : "-"}${formatRupiah(Math.abs(netRetention))}`,
-                  title: "Savings Telemetry",
+                  title: isIndonesian ? "Telemetri Tabungan" : "Savings Telemetry",
                   subtitle: isSurplus
-                    ? `Net capital retention is ${intel.savingsRate.toFixed(1)}% of total monthly inflow (${formatRupiah(currentMonthStats.income)}). Retained capital: ${formatRupiah(netRetention)}.`
-                    : `Outflow (${formatRupiah(currentMonthStats.expense)}) exceeds inflow (${formatRupiah(currentMonthStats.income)}) this month by a deficit of ${formatRupiah(Math.abs(netRetention))}.`,
+                    ? isIndonesian
+                      ? `Retensi modal bersih adalah ${intel.savingsRate.toFixed(1)}% dari total arus kas masuk bulanan (${formatRupiah(currentMonthStats.income)}). Modal yang tersimpan: ${formatRupiah(netRetention)}.`
+                      : `Net capital retention is ${intel.savingsRate.toFixed(1)}% of total monthly inflow (${formatRupiah(currentMonthStats.income)}). Retained capital: ${formatRupiah(netRetention)}.`
+                    : isIndonesian
+                      ? `Pengeluaran (${formatRupiah(currentMonthStats.expense)}) melebihi pemasukan (${formatRupiah(currentMonthStats.income)}) bulan ini dengan defisit ${formatRupiah(Math.abs(netRetention))}.`
+                      : `Outflow (${formatRupiah(currentMonthStats.expense)}) exceeds inflow (${formatRupiah(currentMonthStats.income)}) this month by a deficit of ${formatRupiah(Math.abs(netRetention))}.`,
                   badge: isSurplus
-                    ? `${intel.savingsRate.toFixed(0)}% Saved`
-                    : "Cash Deficit",
+                    ? isIndonesian
+                      ? `${intel.savingsRate.toFixed(0)}% Ditabung`
+                      : `${intel.savingsRate.toFixed(0)}% Saved`
+                    : isIndonesian
+                      ? "Defisit Kas"
+                      : "Cash Deficit",
                   hideGrid: true,
                   items: [
                     {
-                      label: "Gross Inflow",
+                      label: isIndonesian ? "Pemasukan Kotor" : "Gross Inflow",
                       amount: currentMonthStats.income,
-                      detail: "All earnings and incoming transfers",
+                      detail: isIndonesian
+                        ? "Semua pendapatan & transfer masuk"
+                        : "All earnings and incoming transfers",
                     },
                     {
-                      label: "Gross Outflow",
+                      label: isIndonesian ? "Pengeluaran Kotor" : "Gross Outflow",
                       amount: currentMonthStats.expense,
-                      detail: "All spending and asset allocations",
+                      detail: isIndonesian
+                        ? "Semua belanja & alokasi aset"
+                        : "All spending and asset allocations",
                     },
                     {
                       label: isSurplus
-                        ? "Net Capital Retained"
-                        : "Net Cash Deficit",
+                        ? isIndonesian
+                          ? "Modal Bersih Ditahan"
+                          : "Net Capital Retained"
+                        : isIndonesian
+                          ? "Defisit Kas Bersih"
+                          : "Net Cash Deficit",
                       amount: Math.abs(netRetention),
                       valueText: `${isSurplus ? "+" : "-"}${formatRupiah(Math.abs(netRetention))}`,
                       detail: isSurplus
-                        ? "Capital retained in period"
-                        : "Additional capital required",
+                        ? isIndonesian
+                          ? "Modal tersimpan dalam periode"
+                          : "Capital retained in period"
+                        : isIndonesian
+                          ? "Tambahan modal yang dibutuhkan"
+                          : "Additional capital required",
                     },
                   ],
-                  ctaLabel: "View Financial Report",
+                  ctaLabel: isIndonesian
+                    ? "Lihat Laporan Finansial"
+                    : "View Financial Report",
                   onCta: () => navigate("/statistics"),
                 },
               });
@@ -2082,20 +2187,30 @@ export function HomePage({
                   delta: 0,
                   pctChange: 0,
                   displayValue: formatRupiah(total7d),
-                  title: "7-Day Spending Velocity",
-                  subtitle: `Total outflow over the last 7 days is ${formatRupiah(total7d)} with a daily average of ${formatRupiah(Math.round(total7d / 7))}. Peak spending was on ${peak7d.dayLabel} (${formatRupiah(peak7d.amount)}).`,
-                  badge: "Last 7 Days",
+                  title: isIndonesian
+                    ? "Laju Pengeluaran 7-Hari"
+                    : "7-Day Spending Velocity",
+                  subtitle: isIndonesian
+                    ? `Total pengeluaran selama 7 hari terakhir adalah ${formatRupiah(total7d)} dengan rata-rata harian ${formatRupiah(Math.round(total7d / 7))}. Pengeluaran tertinggi pada ${peak7d.dayLabel} (${formatRupiah(peak7d.amount)}).`
+                    : `Total outflow over the last 7 days is ${formatRupiah(total7d)} with a daily average of ${formatRupiah(Math.round(total7d / 7))}. Peak spending was on ${peak7d.dayLabel} (${formatRupiah(peak7d.amount)}).`,
+                  badge: isIndonesian ? "7 Hari Terakhir" : "Last 7 Days",
                   hideGrid: true,
                   items: last7DaysOutlays.map((d) => ({
-                    label: `${d.dayLabel} Outflow`,
+                    label: `${d.dayLabel} ${isIndonesian ? "Pengeluaran" : "Outflow"}`,
                     amount: d.amount,
                     pct: total7d > 0 ? (d.amount / total7d) * 100 : 0,
                     detail:
                       d.amount > dailyAverage
-                        ? "Above daily average"
-                        : "Within pace",
+                        ? isIndonesian
+                          ? "Di atas rata-rata harian"
+                          : "Above daily average"
+                        : isIndonesian
+                          ? "Sesuai laju aman"
+                          : "Within pace",
                   })),
-                  ctaLabel: "View All Transactions",
+                  ctaLabel: isIndonesian
+                    ? "Lihat Semua Transaksi"
+                    : "View All Transactions",
                   onCta: () => navigate("/transactions"),
                 },
               });
@@ -2118,17 +2233,23 @@ export function HomePage({
                   delta: -currentMonthStats.expense,
                   pctChange: 0,
                   displayValue: formatRupiah(currentMonthStats.expense),
-                  title: "Category Expense Allocation",
-                  subtitle: `Total gross outflow this month is ${formatRupiah(currentMonthStats.expense)}. Inflow is recorded at ${formatRupiah(currentMonthStats.income)}, resulting in a net monthly balance of ${formatRupiah(currentMonthStats.income - currentMonthStats.expense)}.`,
-                  badge: "Gross Outflow",
+                  title: isIndonesian
+                    ? "Alokasi Pengeluaran Kategori"
+                    : "Category Expense Allocation",
+                  subtitle: isIndonesian
+                    ? `Total pengeluaran kotor bulan ini adalah ${formatRupiah(currentMonthStats.expense)}. Pemasukan tercatat sebesar ${formatRupiah(currentMonthStats.income)}, menghasilkan saldo bersih bulanan ${formatRupiah(currentMonthStats.income - currentMonthStats.expense)}.`
+                    : `Total gross outflow this month is ${formatRupiah(currentMonthStats.expense)}. Inflow is recorded at ${formatRupiah(currentMonthStats.income)}, resulting in a net monthly balance of ${formatRupiah(currentMonthStats.income - currentMonthStats.expense)}.`,
+                  badge: isIndonesian ? "Pengeluaran Kotor" : "Gross Outflow",
                   hideGrid: true,
                   items: categoryDonutData.map((c) => ({
                     label: c.name,
                     amount: c.amount,
                     pct: c.pct,
-                    detail: `${c.pct.toFixed(0)}% of total outflow${c.count ? ` (${c.count} txs)` : ""}`,
+                    detail: `${c.pct.toFixed(0)}% ${isIndonesian ? "dari total pengeluaran" : "of total outflow"}${c.count ? ` (${c.count} ${isIndonesian ? "trx" : "txs"})` : ""}`,
                   })),
-                  ctaLabel: "View Analytics in Statistics",
+                  ctaLabel: isIndonesian
+                    ? "Lihat Analisis di Statistik"
+                    : "View Analytics in Statistics",
                   onCta: () => navigate("/statistics"),
                 },
               });
@@ -2156,39 +2277,61 @@ export function HomePage({
                   totalPrevious: 0,
                   delta: 0,
                   pctChange: 0,
-                  displayValue: `${activeSpendDaysCount} Active Days`,
-                  title: "Monthly Activity Matrix",
-                  subtitle: `You recorded transactions on ${activeSpendDaysCount} out of ${heatmapDaysData.length} days this month (${Math.round((activeSpendDaysCount / heatmapDaysData.length) * 100)}% active frequency). Total outflow reached ${formatRupiah(currentMonthStats.expense)} with peak daily spend on Day ${peak.day} (${formatRupiah(peak.amount || 0)}).`,
-                  badge: `${activeSpendDaysCount} Active Days`,
+                  displayValue: `${activeSpendDaysCount} ${isIndonesian ? "Hari Aktif" : "Active Days"}`,
+                  title: isIndonesian
+                    ? "Matriks Aktivitas Bulanan"
+                    : "Monthly Activity Matrix",
+                  subtitle: isIndonesian
+                    ? `Anda mencatat transaksi pada ${activeSpendDaysCount} dari ${heatmapDaysData.length} hari bulan ini (frekuensi aktif ${Math.round((activeSpendDaysCount / heatmapDaysData.length) * 100)}%). Total pengeluaran mencapai ${formatRupiah(currentMonthStats.expense)} dengan pengeluaran harian puncak pada Hari ke-${peak.day} (${formatRupiah(peak.amount || 0)}).`
+                    : `You recorded transactions on ${activeSpendDaysCount} out of ${heatmapDaysData.length} days this month (${Math.round((activeSpendDaysCount / heatmapDaysData.length) * 100)}% active frequency). Total outflow reached ${formatRupiah(currentMonthStats.expense)} with peak daily spend on Day ${peak.day} (${formatRupiah(peak.amount || 0)}).`,
+                  badge: `${activeSpendDaysCount} ${isIndonesian ? "Hari Aktif" : "Active Days"}`,
                   hideGrid: true,
                   items: [
                     {
-                      label: "Total Outflow This Month",
+                      label: isIndonesian
+                        ? "Total Pengeluaran Bulan Ini"
+                        : "Total Outflow This Month",
                       amount: currentMonthStats.expense,
-                      detail: "Cumulative spending across all wallets",
+                      detail: isIndonesian
+                        ? "Pengeluaran kumulatif di seluruh dompet"
+                        : "Cumulative spending across all wallets",
                     },
                     {
-                      label: "Daily Average Outflow",
+                      label: isIndonesian
+                        ? "Rata-rata Pengeluaran Harian"
+                        : "Daily Average Outflow",
                       amount: Math.round(dailyAverage),
-                      detail: `Based on ${daysInMonth} elapsed days`,
+                      detail: isIndonesian
+                        ? `Berdasarkan ${daysInMonth} hari berjalan`
+                        : `Based on ${daysInMonth} elapsed days`,
                     },
                     {
-                      label: "Active Day Average",
+                      label: isIndonesian
+                        ? "Rerata Hari Aktif"
+                        : "Active Day Average",
                       amount:
                         activeSpendDaysCount > 0
                           ? Math.round(
                               currentMonthStats.expense / activeSpendDaysCount,
                             )
                           : 0,
-                      detail: "Average spending on active transaction days",
+                      detail: isIndonesian
+                        ? "Rata-rata belanja pada hari transaksi aktif"
+                        : "Average spending on active transaction days",
                     },
                     {
-                      label: `Peak Outflow (Day ${peak.day})`,
+                      label: isIndonesian
+                        ? `Pengeluaran Puncak (Hari ke-${peak.day})`
+                        : `Peak Outflow (Day ${peak.day})`,
                       amount: peak.amount || 0,
-                      detail: "Highest spending day of the month",
+                      detail: isIndonesian
+                        ? "Hari belanja tertinggi dalam bulan ini"
+                        : "Highest spending day of the month",
                     },
                   ],
-                  ctaLabel: "View Activity Patterns in Statistics",
+                  ctaLabel: isIndonesian
+                    ? "Lihat Pola Aktivitas di Statistik"
+                    : "View Activity Patterns in Statistics",
                   onCta: () => navigate("/statistics"),
                 },
               });
@@ -2211,10 +2354,16 @@ export function HomePage({
                   delta: 0,
                   pctChange: 0,
                   displayValue: `${score}/100`,
-                  title: "Executive Health Telemetry",
-                  subtitle: `Your financial health score is rated at ${score}/100 based on savings pace, debt servicing, and liquidity buffer ratios.`,
-                  badge: `${score}/100 Score`,
-                  ctaLabel: "Health Diagnostics",
+                  title: isIndonesian
+                    ? "Telemetri Kesehatan Finansial"
+                    : "Executive Health Telemetry",
+                  subtitle: isIndonesian
+                    ? `Skor kesehatan finansial Anda dinilai ${score}/100 berdasarkan laju tabungan, pemenuhan kewajiban, dan rasio bantalan likuiditas.`
+                    : `Your financial health score is rated at ${score}/100 based on savings pace, debt servicing, and liquidity buffer ratios.`,
+                  badge: `${score}/100 ${isIndonesian ? "Skor" : "Score"}`,
+                  ctaLabel: isIndonesian
+                    ? "Diagnostik Kesehatan"
+                    : "Health Diagnostics",
                   onCta: () => navigate("/statistics"),
                 },
               });
@@ -2343,7 +2492,13 @@ export function HomePage({
             }}
             className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer select-none"
             title={
-              theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"
+              theme === "light"
+                ? isIndonesian
+                  ? "Beralih ke Mode Gelap"
+                  : "Switch to Dark Mode"
+                : isIndonesian
+                  ? "Beralih ke Mode Terang"
+                  : "Switch to Light Mode"
             }
             aria-label="Toggle Theme"
           >
@@ -2367,7 +2522,11 @@ export function HomePage({
               setCustomizeHomeOpen(true);
             }}
             className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer select-none"
-            title="Customize Dashboard Widgets"
+            title={
+              isIndonesian
+                ? "Kustomisasi Widget Dashboard"
+                : "Customize Dashboard Widgets"
+            }
           >
             <SlidersHorizontal
               size={14}
@@ -2406,7 +2565,7 @@ export function HomePage({
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
             <span>
-              Active Ledger:{" "}
+              {isIndonesian ? "Buku Kas Aktif: " : "Active Ledger: "}
               <strong className="text-[var(--text-primary)]">
                 {activeSpace.name}
               </strong>{" "}
@@ -2418,7 +2577,7 @@ export function HomePage({
             onClick={() => setActiveSpaceId("personal")}
             className="text-[10px] font-semibold text-[var(--text-primary)] hover:underline cursor-pointer"
           >
-            Reset
+            {isIndonesian ? "Atur Ulang" : "Reset"}
           </button>
         </div>
       )}
@@ -2452,7 +2611,7 @@ export function HomePage({
             size={12}
             style={{ color: "var(--text-primary)" }}
           />
-          <span>Customize Dashboard</span>
+          <span>{isIndonesian ? "Kustomisasi Dashboard" : "Customize Dashboard"}</span>
         </button>
       </div>
 
@@ -2466,14 +2625,20 @@ export function HomePage({
             className="font-semibold text-base mb-4"
             style={{ color: "var(--text-primary)" }}
           >
-            {selectedDate ? format(selectedDate, "dd MMMM yyyy") : ""}
+            {selectedDate
+              ? format(selectedDate, "dd MMMM yyyy", {
+                  locale: isIndonesian ? idLocale : undefined,
+                })
+              : ""}
           </h3>
           {selectedDayTxs.length === 0 ? (
             <p
               className="text-sm text-center py-6"
               style={{ color: "var(--text-tertiary)" }}
             >
-              No transactions on this date.
+              {isIndonesian
+                ? "Tidak ada transaksi pada tanggal ini."
+                : "No transactions on this date."}
             </p>
           ) : (
             <div className="space-y-2.5">
@@ -2518,7 +2683,7 @@ export function HomePage({
                         className="text-[11px]"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        {tx.note || "No note"}
+                        {tx.note || (isIndonesian ? "Tanpa catatan" : "No note")}
                       </p>
                     </div>
                   </div>
@@ -2567,6 +2732,41 @@ export function HomePage({
         isOpen={billManagementOpen}
         onClose={() => setBillManagementOpen(false)}
       />
+      {payingBill && (
+        <PayBillModal
+          isOpen={!!payingBill}
+          bill={payingBill}
+          onClose={() => setPayingBill(null)}
+          isPending={markBillPaid.isPending}
+          onConfirmPaid={({ bill, recordTransaction, walletId }) => {
+            markBillPaid.mutate(
+              { bill, paid: true, recordTransaction, walletId },
+              {
+                onSuccess: () => {
+                  setPayingBill(null);
+                  showToast(
+                    isIndonesian
+                      ? `${bill.title} berhasil ditandai lunas`
+                      : `${bill.title} marked as paid`,
+                    "add",
+                    () => {},
+                  );
+                },
+                onError: (error: any) => {
+                  showToast(
+                    error?.message ||
+                      (isIndonesian
+                        ? `Gagal menandai ${bill.title}`
+                        : `Failed to mark ${bill.title} as paid`),
+                    "delete",
+                    () => {},
+                  );
+                },
+              },
+            );
+          }}
+        />
+      )}
       <SpaceSwitcherSheet
         isOpen={spaceSwitcherOpen}
         onClose={() => setSpaceSwitcherOpen(false)}
@@ -2593,13 +2793,15 @@ export function HomePage({
                   className="text-[15px] font-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Customize Dashboard
+                  {isIndonesian ? "Kustomisasi Dashboard" : "Customize Dashboard"}
                 </h3>
                 <p
                   className="text-[11px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Toggle Bento cards on your Home screen
+                  {isIndonesian
+                    ? "Aktifkan atau nonaktifkan kartu Bento di Beranda"
+                    : "Toggle Bento cards on your Home screen"}
                 </p>
               </div>
               <button
@@ -2622,7 +2824,7 @@ export function HomePage({
                   className="text-[10px] font-bold uppercase tracking-wider block"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Dashboard Presets
+                  {isIndonesian ? "Preset Dashboard" : "Dashboard Presets"}
                 </span>
                 <span className="text-[10px] font-medium text-[var(--text-tertiary)] truncate max-w-[200px]">
                   {t(
@@ -2672,6 +2874,12 @@ export function HomePage({
             <div className="space-y-2 flex-1 min-h-0 overflow-y-auto no-scrollbar pr-0.5">
               {widgets.map((w) => {
                 const isEnabled = w.isVisible;
+                const locMeta = getLocalizedWidgetMeta(
+                  w.id,
+                  isIndonesian,
+                  w.title,
+                  w.subtitle,
+                );
                 return (
                   <div
                     key={w.id}
@@ -2702,7 +2910,7 @@ export function HomePage({
                           className="text-[13px] font-semibold leading-snug"
                           style={{ color: "var(--text-primary)" }}
                         >
-                          {w.title}
+                          {locMeta.title}
                         </p>
                         <span
                           className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
@@ -2719,7 +2927,7 @@ export function HomePage({
                         className="text-[11px] leading-relaxed mt-0.5"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        {w.subtitle}
+                        {locMeta.subtitle}
                       </p>
                     </div>
                     <div
@@ -2730,7 +2938,11 @@ export function HomePage({
                         checked={isEnabled}
                         onChange={() => toggleCardVisibility(w.id)}
                         size="sm"
-                        ariaLabel={`Toggle ${w.title}`}
+                        ariaLabel={
+                          isIndonesian
+                            ? `Alihkan ${locMeta.title}`
+                            : `Toggle ${locMeta.title}`
+                        }
                       />
                     </div>
                   </div>
@@ -2752,7 +2964,7 @@ export function HomePage({
                   color: "var(--text-secondary)",
                 }}
               >
-                Reset Defaults
+                {isIndonesian ? "Atur Ulang Bawaan" : "Reset Defaults"}
               </button>
               <button
                 type="button"
@@ -2766,7 +2978,7 @@ export function HomePage({
                   color: "var(--bg-base)",
                 }}
               >
-                Done
+                {isIndonesian ? "Selesai" : "Done"}
               </button>
             </div>
           </div>

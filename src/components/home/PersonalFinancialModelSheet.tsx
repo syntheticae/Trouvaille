@@ -1,5 +1,6 @@
 import { BottomSheet } from "../ui/BottomSheet";
 import { formatRupiah } from "../../lib/utils";
+import { useLanguage } from "../../contexts/LanguageContext";
 import type {
   ModelFlowValues,
   PersonalFinancialModelInsights,
@@ -32,15 +33,33 @@ export function PersonalFinancialModelSheet({
   scenario,
   insights,
 }: PersonalFinancialModelSheetProps) {
+  const { language } = useLanguage();
+  const isIndonesian = language === "id";
+
   const rows: Array<{ key: keyof ModelFlowValues; label: string; negative?: boolean }> = [
-    { key: "income", label: "Income" },
-    { key: "committedExpenses", label: "Committed Expenses", negative: true },
-    { key: "variableExpenses", label: "Variable Expenses", negative: true },
-    { key: "retainedCash", label: "Retained Cash" },
-    { key: "savingsInvestment", label: "Savings / Investment" },
-    { key: "assets", label: "Assets" },
-    { key: "liabilities", label: "Liabilities", negative: true },
-    { key: "netWorth", label: "Net Worth" },
+    { key: "income", label: isIndonesian ? "Pemasukan" : "Income" },
+    {
+      key: "committedExpenses",
+      label: isIndonesian ? "Beban Rutin (Komitmen)" : "Committed Expenses",
+      negative: true,
+    },
+    {
+      key: "variableExpenses",
+      label: isIndonesian ? "Beban Fleksibel (Variabel)" : "Variable Expenses",
+      negative: true,
+    },
+    { key: "retainedCash", label: isIndonesian ? "Kas Ditahan" : "Retained Cash" },
+    {
+      key: "savingsInvestment",
+      label: isIndonesian ? "Tabungan / Investasi" : "Savings / Investment",
+    },
+    { key: "assets", label: isIndonesian ? "Aset" : "Assets" },
+    {
+      key: "liabilities",
+      label: isIndonesian ? "Liabilitas / Utang" : "Liabilities",
+      negative: true,
+    },
+    { key: "netWorth", label: isIndonesian ? "Kekayaan Bersih" : "Net Worth" },
   ];
 
   return (
@@ -48,10 +67,12 @@ export function PersonalFinancialModelSheet({
       <div className="p-5 pb-12 space-y-4">
         <div>
           <h3 className="font-semibold text-[18px]" style={{ color: "var(--text-primary)" }}>
-            Personal Financial Model
+            {isIndonesian ? "Model Finansial Personal" : "Personal Financial Model"}
           </h3>
           <p className="text-[12px] mt-1" style={{ color: "var(--text-tertiary)" }}>
-            Actual vs Baseline vs Scenario from one data model
+            {isIndonesian
+              ? "Aktual vs Garis Dasar vs Skenario dalam satu model data"
+              : "Actual vs Baseline vs Scenario from one data model"}
           </p>
         </div>
 
@@ -63,10 +84,10 @@ export function PersonalFinancialModelSheet({
             className="grid grid-cols-4 text-[10px] font-bold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)", background: "var(--glass-fill)" }}
           >
-            <div className="p-2.5">Flow</div>
-            <div className="p-2.5 text-right">Actual</div>
-            <div className="p-2.5 text-right">Baseline</div>
-            <div className="p-2.5 text-right">Scenario</div>
+            <div className="p-2.5">{isIndonesian ? "Arus" : "Flow"}</div>
+            <div className="p-2.5 text-right">{isIndonesian ? "Aktual" : "Actual"}</div>
+            <div className="p-2.5 text-right">{isIndonesian ? "Garis Dasar" : "Baseline"}</div>
+            <div className="p-2.5 text-right">{isIndonesian ? "Skenario" : "Scenario"}</div>
           </div>
 
           {rows.map((row, idx) => {
@@ -100,13 +121,13 @@ export function PersonalFinancialModelSheet({
 
         <div className="grid grid-cols-2 gap-2 text-[11px]">
           <div className="p-3 rounded-xl" style={{ background: "var(--glass-fill)" }}>
-            <p style={{ color: "var(--text-tertiary)" }}>Net Worth</p>
+            <p style={{ color: "var(--text-tertiary)" }}>{isIndonesian ? "Kekayaan Bersih" : "Net Worth"}</p>
             <p className="amount font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
               {amount(insights.currentNetWorth, hideBalance)}
             </p>
           </div>
           <div className="p-3 rounded-xl" style={{ background: "var(--glass-fill)" }}>
-            <p style={{ color: "var(--text-tertiary)" }}>Cashflow</p>
+            <p style={{ color: "var(--text-tertiary)" }}>{isIndonesian ? "Arus Kas" : "Cashflow"}</p>
             <p className="amount font-semibold mt-0.5" style={{ color: "var(--text-primary)" }}>
               {amount(insights.currentCashflow, hideBalance, true)}
             </p>
@@ -122,23 +143,33 @@ export function PersonalFinancialModelSheet({
           }}
         >
           <p>
-            <strong style={{ color: "var(--text-primary)" }}>Historical Trend:</strong>{" "}
+            <strong style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Tren Historis:" : "Historical Trend:"}
+            </strong>{" "}
             {insights.historicalTrendValue}
           </p>
           <p>
-            <strong style={{ color: "var(--text-primary)" }}>Personal Baseline:</strong>{" "}
+            <strong style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Garis Dasar Personal:" : "Personal Baseline:"}
+            </strong>{" "}
             {insights.personalBaseline}
           </p>
           <p>
-            <strong style={{ color: "var(--text-primary)" }}>Upcoming Commitments:</strong>{" "}
+            <strong style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Komitmen Mendatang:" : "Upcoming Commitments:"}
+            </strong>{" "}
             {amount(insights.upcomingCommitments, hideBalance)}
           </p>
           <p>
-            <strong style={{ color: "var(--text-primary)" }}>Goal Trajectory:</strong>{" "}
+            <strong style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Arah Sasaran (Goals):" : "Goal Trajectory:"}
+            </strong>{" "}
             {insights.goalTrajectory}
           </p>
           <p>
-            <strong style={{ color: "var(--text-primary)" }}>Scenario Impact:</strong>{" "}
+            <strong style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Dampak Skenario:" : "Scenario Impact:"}
+            </strong>{" "}
             {insights.scenarioImpact}
           </p>
         </div>

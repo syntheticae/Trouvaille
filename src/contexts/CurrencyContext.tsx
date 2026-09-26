@@ -18,6 +18,7 @@ export interface CurrencyContextValue {
   convertFromIdr: (idrAmount: number, targetCurr?: SupportedCurrency) => number;
   convertToIdr: (foreignAmount: number, sourceCurr?: SupportedCurrency) => number;
   formatWithPreferred: (idrAmount: number, options?: { showCode?: boolean }) => string;
+  formatCompactWithPreferred: (idrAmount: number) => string;
 }
 
 const CurrencyContext = createContext<CurrencyContextValue | null>(null);
@@ -53,6 +54,13 @@ export function useCurrency(): CurrencyContextValue {
       convertFromIdr: (amt: number) => amt,
       convertToIdr: (amt: number) => amt,
       formatWithPreferred: (amt: number) => `Rp ${Math.round(amt).toLocaleString("id-ID")}`,
+      formatCompactWithPreferred: (amt: number) => {
+        const abs = Math.abs(amt);
+        if (abs >= 1_000_000_000) return (amt / 1_000_000_000).toFixed(1).replace(/\.0$/, "") + "B";
+        if (abs >= 1_000_000) return (amt / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+        if (abs >= 1_000) return Math.round(amt / 1_000) + "k";
+        return Math.round(amt).toString();
+      },
     };
   }
   return context;

@@ -3,6 +3,7 @@ import { Users, Layers, Minus, Plus } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import type { Category, Wallet } from "../../lib/types";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export interface SplitTransactionSectionProps {
   splitMode: "friends" | "categories";
@@ -50,6 +51,8 @@ export function SplitTransactionSection({
   myShareFriends,
   friendsShare,
 }: SplitTransactionSectionProps) {
+  const { isIndonesian } = useLanguage();
+
   return (
     <div className="mb-3">
       <div className="flex justify-between items-center mb-1.5 px-1">
@@ -57,13 +60,17 @@ export function SplitTransactionSection({
           className="text-[11px] font-semibold uppercase tracking-wider"
           style={{ color: "var(--text-tertiary)" }}
         >
-          Split Configuration
+          {isIndonesian ? "Konfigurasi Bagi Tagihan" : "Split Configuration"}
         </span>
         <span
           className="text-[10px] font-semibold"
           style={{ color: "var(--text-secondary)" }}
         >
-          {splitMode === "friends" ? `${peopleCount} People` : "Multi-Category"}
+          {splitMode === "friends"
+            ? `${peopleCount} ${isIndonesian ? "Orang" : "People"}`
+            : isIndonesian
+              ? "Multi-Kategori"
+              : "Multi-Category"}
         </span>
       </div>
 
@@ -103,7 +110,7 @@ export function SplitTransactionSection({
               }}
             >
               <Users size={12} />
-              Split with Friends
+              {isIndonesian ? "Bagi Bersama Teman" : "Split with Friends"}
             </button>
             <button
               type="button"
@@ -128,7 +135,7 @@ export function SplitTransactionSection({
               }}
             >
               <Layers size={12} />
-              Multi-Category
+              {isIndonesian ? "Multi-Kategori" : "Multi-Category"}
             </button>
           </div>
 
@@ -157,7 +164,7 @@ export function SplitTransactionSection({
                         : "var(--text-tertiary)",
                   }}
                 >
-                  Split Equally
+                  {isIndonesian ? "Bagi Rata" : "Split Equally"}
                 </button>
                 <button
                   type="button"
@@ -180,7 +187,7 @@ export function SplitTransactionSection({
                         : "var(--text-tertiary)",
                   }}
                 >
-                  Custom Share
+                  {isIndonesian ? "Bagi Kustom" : "Custom Share"}
                 </button>
               </div>
 
@@ -190,7 +197,7 @@ export function SplitTransactionSection({
                   className="text-[11px] font-semibold"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  Total People
+                  {isIndonesian ? "Jumlah Orang" : "Total People"}
                 </span>
                 <div className="flex items-center gap-2">
                   <button
@@ -215,7 +222,7 @@ export function SplitTransactionSection({
                     className="text-[12px] font-semibold px-1"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {peopleCount} People
+                    {peopleCount} {isIndonesian ? "Orang" : "People"}
                   </span>
                   <button
                     type="button"
@@ -250,7 +257,7 @@ export function SplitTransactionSection({
                   type="text"
                   value={friendNames}
                   onChange={(e) => setFriendNames(e.target.value)}
-                  placeholder="Friend names (e.g. Alex, Sam)"
+                  placeholder={isIndonesian ? "Nama teman (cth. Alex, Sam)" : "Friend names (e.g. Alex, Sam)"}
                   className="bg-transparent text-[12px] font-medium w-full outline-none"
                   style={{
                     color: "var(--text-primary)",
@@ -267,7 +274,7 @@ export function SplitTransactionSection({
                       className="font-medium"
                       style={{ color: "var(--text-secondary)" }}
                     >
-                      Your Personal Share
+                      {isIndonesian ? "Bagian Anda" : "Your Personal Share"}
                     </span>
                     <span
                       className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[var(--glass-border)]"
@@ -298,6 +305,7 @@ export function SplitTransactionSection({
                     <input
                       type="number"
                       inputMode="numeric"
+                      pattern="[0-9]*"
                       value={customMyShare === 0 ? "" : customMyShare}
                       onChange={(e) => {
                         const val = Math.max(
@@ -309,7 +317,7 @@ export function SplitTransactionSection({
                         );
                         setCustomMyShare(val);
                       }}
-                      placeholder="Enter your share..."
+                      placeholder={isIndonesian ? "Masukkan bagian Anda..." : "Enter your share..."}
                       className="bg-transparent text-[13px] font-semibold w-full outline-none amount"
                       style={{ color: "var(--text-primary)" }}
                     />
@@ -384,12 +392,12 @@ export function SplitTransactionSection({
                   </div>
                   <div className="flex justify-between text-[9px] font-medium text-[var(--text-tertiary)]">
                     <span>
-                      Your Share:{" "}
+                      {isIndonesian ? "Bagian Anda:" : "Your Share:"}{" "}
                       {Math.round((myShareFriends / totalAmountNum) * 100)}
                       %
                     </span>
                     <span>
-                      Friends' Share:{" "}
+                      {isIndonesian ? "Bagian Teman:" : "Friends' Share:"}{" "}
                       {Math.round((friendsShare / totalAmountNum) * 100)}%
                     </span>
                   </div>
@@ -405,7 +413,7 @@ export function SplitTransactionSection({
                   <p
                     className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]"
                   >
-                    Your Share
+                    {isIndonesian ? "Bagian Anda" : "Your Share"}
                   </p>
                   <p
                     className="text-[13px] font-semibold amount"
@@ -417,7 +425,7 @@ export function SplitTransactionSection({
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Personal Expense
+                    {isIndonesian ? "Pengeluaran Pribadi" : "Personal Expense"}
                   </p>
                 </div>
                 <div
@@ -427,7 +435,7 @@ export function SplitTransactionSection({
                   <p
                     className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]"
                   >
-                    Friends' Share
+                    {isIndonesian ? "Bagian Teman" : "Friends' Share"}
                   </p>
                   <p
                     className="text-[13px] font-semibold amount"
@@ -439,12 +447,19 @@ export function SplitTransactionSection({
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Piutang ({peopleCount - 1} friend
-                    {peopleCount - 1 > 1 ? "s" : ""}
-                    {peopleCount > 2
-                      ? ` · ~${formatRupiah(Math.round(friendsShare / (peopleCount - 1)))}/ea`
-                      : ""}
-                    )
+                    {isIndonesian
+                      ? `Piutang (${peopleCount - 1} teman${
+                          peopleCount > 2
+                            ? ` · ~${formatRupiah(Math.round(friendsShare / (peopleCount - 1)))}/org`
+                            : ""
+                        })`
+                      : `Receivable (${peopleCount - 1} friend${
+                          peopleCount - 1 > 1 ? "s" : ""
+                        }${
+                          peopleCount > 2
+                            ? ` · ~${formatRupiah(Math.round(friendsShare / (peopleCount - 1)))}/ea`
+                            : ""
+                        })`}
                   </p>
                 </div>
               </div>
@@ -460,7 +475,7 @@ export function SplitTransactionSection({
                     className="text-[9px] font-semibold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Part 1 (Primary)
+                    {isIndonesian ? "Bagian 1 (Utama)" : "Part 1 (Primary)"}
                   </span>
                   <p
                     className="text-[13px] font-semibold amount"
@@ -473,7 +488,7 @@ export function SplitTransactionSection({
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {categories.find((c) => c.id === categoryId)?.name ||
-                      "Primary Category"}
+                      (isIndonesian ? "Kategori Utama" : "Primary Category")}
                   </span>
                 </div>
 
@@ -486,7 +501,7 @@ export function SplitTransactionSection({
                       className="text-[9px] font-semibold uppercase tracking-wider"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Part 2
+                      {isIndonesian ? "Bagian 2" : "Part 2"}
                     </span>
                     <select
                       value={itemCatId2 || ""}
@@ -520,7 +535,7 @@ export function SplitTransactionSection({
                         c.id ===
                         (itemCatId2 ||
                           (categories[1] ? categories[1].id : categoryId)),
-                    )?.name || "Secondary Category"}
+                    )?.name || (isIndonesian ? "Kategori Sekunder" : "Secondary Category")}
                   </span>
                 </div>
               </div>

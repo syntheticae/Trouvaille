@@ -66,6 +66,8 @@ import {
   cancelAllBillNotifications,
   syncDailyStreakReminder,
   cancelDailyStreakReminder,
+  getDailyStreakReminderTime,
+  setDailyStreakReminderTime,
 } from "../lib/notifications";
 import { flushPendingMutations } from "../lib/syncEngine";
 import { saveBiometricLoginCredentials } from "../lib/biometricAuth";
@@ -321,6 +323,29 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const [dailyReminderEnabled, setDailyReminderEnabled] = useState(() => {
     return localStorage.getItem("trouvaille_daily_reminder_enabled") !== "false";
   });
+  const [dailyReminderTime, setDailyReminderTime] = useState<string>(() => {
+    return getDailyStreakReminderTime();
+  });
+
+  const handleReminderTimeChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const newTime = e.target.value;
+    if (!newTime) return;
+    setDailyReminderTime(newTime);
+    setDailyStreakReminderTime(newTime);
+    triggerHaptic("light");
+    if (dailyReminderEnabled) {
+      await syncDailyStreakReminder(false);
+      showToast(
+        isIndonesian
+          ? `Pengingat streak diatur ke jam ${newTime}`
+          : `Streak reminder set to ${newTime}`,
+        "update",
+        () => {},
+      );
+    }
+  };
 
   const handleToggleDailyReminder = async () => {
     triggerHaptic("light");
@@ -328,16 +353,34 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
       setDailyReminderEnabled(false);
       localStorage.setItem("trouvaille_daily_reminder_enabled", "false");
       await cancelDailyStreakReminder();
-      showToast("Daily streak reminder turned off", "delete", () => {});
+      showToast(
+        isIndonesian
+          ? "Pengingat streak harian dinonaktifkan"
+          : "Daily streak reminder turned off",
+        "delete",
+        () => {},
+      );
     } else {
       const granted = await requestNotificationPermission();
       if (granted) {
         setDailyReminderEnabled(true);
         localStorage.setItem("trouvaille_daily_reminder_enabled", "true");
         await syncDailyStreakReminder(false);
-        showToast("Daily streak reminder enabled", "add", () => {});
+        showToast(
+          isIndonesian
+            ? `Pengingat streak harian aktif (${dailyReminderTime})`
+            : `Daily streak reminder enabled (${dailyReminderTime})`,
+          "add",
+          () => {},
+        );
       } else {
-        showToast("Notification permission denied", "delete", () => {});
+        showToast(
+          isIndonesian
+            ? "Izin notifikasi belum diberikan"
+            : "Notification permission denied",
+          "delete",
+          () => {},
+        );
       }
     }
   };
@@ -490,7 +533,10 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
   // Section 3: Automations & Siri
   const showShortcuts = matches("Quick-Add Shortcuts", "fast entry quick voice 1-tap presets");
-  const showBackTap = matches("iPhone Back Tap", "ios accessibility double tap shortcut");
+  const showBackTap = matches(
+    "Apple Shortcuts & iOS Automations",
+    "ios accessibility double tap shortcut back tap siri action button apple pay automations",
+  );
   const hasAutomations = showShortcuts || showBackTap;
 
   // Section 4: Notifications
@@ -1312,7 +1358,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
               </button>
             )}
 
-            {/* iPhone Back Tap */}
+            {/* Apple Shortcuts & iOS Automations */}
             {showBackTap && (
               <button
                 type="button"
@@ -1334,7 +1380,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    iPhone Back Tap
+                    Apple Shortcuts & iOS Automations
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -1390,23 +1436,48 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Pengingat Streak Harian (20:00)" : "Daily Streak Reminder (20:00)"}
+                      {isIndonesian ? "Pengingat Streak Harian" : "Daily Streak Reminder"}
                     </span>
                     <span
                       className="text-[11px] truncate"
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       {isIndonesian
-                        ? "Notifikasi malam untuk menjaga catatan finansial rutin"
-                        : "Evening notification to keep your ledger up to date"}
+                        ? `Notifikasi harian pukul ${dailyReminderTime} untuk konsistensi kas`
+                        : `Daily reminder at ${dailyReminderTime} to keep your ledger active`}
                     </span>
                   </div>
                 </div>
-                <ToggleSwitch
-                  checked={dailyReminderEnabled}
-                  onChange={handleToggleDailyReminder}
-                  ariaLabel="Toggle daily streak reminder"
-                />
+                <div className="flex items-center gap-2 shrink-0">
+                  {dailyReminderEnabled && (
+                    <div className="relative">
+                      <input
+                        type="time"
+                        value={dailyReminderTime}
+                        onChange={handleReminderTimeChange}
+                        className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
+                        aria-label={isIndonesian ? "Pilih Jam Pengingat" : "Select Reminder Time"}
+                      />
+                      <button
+                        type="button"
+                        className="px-2.5 py-1 rounded-xl text-[12px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                        style={{
+                          background: "var(--bg-elevated)",
+                          border: "1px solid var(--glass-border)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        <Clock size={12} strokeWidth={1.75} className="text-[var(--text-tertiary)]" />
+                        <span>{dailyReminderTime}</span>
+                      </button>
+                    </div>
+                  )}
+                  <ToggleSwitch
+                    checked={dailyReminderEnabled}
+                    onChange={handleToggleDailyReminder}
+                    ariaLabel="Toggle daily streak reminder"
+                  />
+                </div>
               </div>
             )}
 
@@ -2116,6 +2187,14 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           onOpenDeleteAccount={() => {
             setProfileOpen(false);
             setDeleteAccountOpen(true);
+          }}
+          onOpenResetTransactions={() => {
+            setProfileOpen(false);
+            setResetOpen(true);
+          }}
+          onReRunCustomization={() => {
+            setProfileOpen(false);
+            handleRerunCustomization();
           }}
         />
 

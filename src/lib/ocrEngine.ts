@@ -23,19 +23,41 @@ let workerPromise: Promise<Worker> | null = null;
  * Using 'eng' is optimal for Indonesian financial slips & receipts because
  * all numerals, currency symbols, and banking/retail terms use standard Latin script.
  */
-async function getOCRWorker(onProgress?: OCRProgressCallback): Promise<Worker> {
+async function getOCRWorker(
+  onProgress?: OCRProgressCallback,
+  language: "id" | "en" = "en",
+): Promise<Worker> {
+  const isId = language === "id";
   if (!workerPromise) {
     workerPromise = (async () => {
-      onProgress?.(10, "Initializing on-device OCR...");
+      onProgress?.(
+        10,
+        isId
+          ? "Menginisialisasi OCR pada perangkat..."
+          : "Initializing on-device OCR...",
+      );
       const worker = await createWorker("eng", 1, {
         logger: (m) => {
           if (m.status === "recognizing text" && typeof m.progress === "number") {
             const pct = Math.round(30 + m.progress * 65);
-            onProgress?.(pct, `Reading receipt text (${Math.round(m.progress * 100)}%)...`);
+            onProgress?.(
+              pct,
+              isId
+                ? `Membaca teks struk (${Math.round(m.progress * 100)}%)...`
+                : `Reading receipt text (${Math.round(m.progress * 100)}%)...`,
+            );
           } else if (m.status === "loading tesseract core") {
-            onProgress?.(15, "Loading OCR engine...");
+            onProgress?.(
+              15,
+              isId ? "Memuat mesin OCR..." : "Loading OCR engine...",
+            );
           } else if (m.status === "loading language traineddata") {
-            onProgress?.(25, "Loading character dictionary...");
+            onProgress?.(
+              25,
+              isId
+                ? "Memuat kamus karakter..."
+                : "Loading character dictionary...",
+            );
           }
         },
       });
@@ -57,27 +79,40 @@ export async function scanReceiptOrSlip(
   userWallets: Wallet[] = [],
   userCategories: Category[] = [],
   onProgress?: OCRProgressCallback,
+  language: "id" | "en" = "en",
 ): Promise<OCRScanResult> {
-  onProgress?.(5, "Enhancing image clarity & contrast...");
+  const isId = language === "id";
+  onProgress?.(
+    5,
+    isId
+      ? "Meningkatkan ketajaman & kontras gambar..."
+      : "Enhancing image clarity & contrast...",
+  );
 
   // 1. Preprocess on Canvas
   const preprocessed = await preprocessReceiptImage(fileOrBlob);
 
-  onProgress?.(30, "Scanning text on-device...");
+  onProgress?.(
+    30,
+    isId ? "Memindai teks di perangkat..." : "Scanning text on-device...",
+  );
 
   // 2. Get OCR Worker
-  const worker = await getOCRWorker(onProgress);
+  const worker = await getOCRWorker(onProgress, language);
 
   // 3. Recognize
   const { data } = await worker.recognize(preprocessed.dataUrl);
   const rawText = data.text || "";
 
-  onProgress?.(95, "Extracting amount & merchant...");
+  onProgress?.(
+    95,
+    isId ? "Mengekstrak nominal & merchant..." : "Extracting amount & merchant...",
+  );
 
   // 4. Parse Indonesian financial structure
   const slip = parseSlipText(rawText, userWallets, userCategories);
 
-  onProgress?.(100, "Done!");
+  onProgress?.(100, isId ? "Selesai!" : "Done!");
 
   return {
     slip,

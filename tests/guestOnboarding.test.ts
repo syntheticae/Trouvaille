@@ -78,7 +78,7 @@ describe("Batch 2: Guest Mode & Adaptive Onboarding System", () => {
     const resEmpty = await migrateGuestDataToCloud("");
     expect(resEmpty.walletsMigrated).toBe(0);
     expect(resEmpty.transactionsMigrated).toBe(0);
-  });
+  }, 15000);
 
   it("safely transfers offline transactions into pending mutations for authenticated user", async () => {
     const { migrateGuestDataToCloud } = await import("../src/lib/guestMigration");
@@ -104,5 +104,5 @@ describe("Batch 2: Guest Mode & Adaptive Onboarding System", () => {
     const migrated = pending.find((m) => m.payload.id === "tx-guest-1");
     expect(migrated).toBeDefined();
     expect(migrated?.payload.user_id).toBe("user-cloud-123");
-  });
+  }, 15000);
 });

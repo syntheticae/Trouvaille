@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import {
@@ -18,6 +19,7 @@ import type { Transaction, Category } from "../../lib/types";
 import type { AccountBalanceItem } from "../../lib/financialMath";
 import { isCorrectionTx } from "../../lib/financialMath";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface FinancialCleanSheetModalProps {
   isOpen: boolean;
@@ -37,6 +39,7 @@ export function FinancialCleanSheetModal({
   totalAssets = 0,
   liquidAccounts = [],
 }: FinancialCleanSheetModalProps) {
+  const { isIndonesian } = useLanguage();
   const { session } = useAuth();
   const [copied, setCopied] = useState(false);
   const [statementType, setStatementType] = useState<"month" | "year">("month");
@@ -211,19 +214,28 @@ export function FinancialCleanSheetModal({
 
   const periodTitle =
     statementType === "month"
-      ? format(parseISO(`${selectedMonth}-01`), "MMMM yyyy").toUpperCase()
+      ? format(parseISO(`${selectedMonth}-01`), "MMMM yyyy", {
+          locale: isIndonesian ? idLocale : undefined,
+        }).toUpperCase()
+      : isIndonesian
+      ? `TAHUN KALENDER ${selectedYear}`
       : `CALENDAR YEAR ${selectedYear}`;
 
   const periodDateRange =
     statementType === "month"
-      ? `${format(startOfMonth(parseISO(`${selectedMonth}-01`)), "dd MMM yyyy")} - ${format(endOfMonth(parseISO(`${selectedMonth}-01`)), "dd MMM yyyy")}`
-      : `01 Jan ${selectedYear} - 31 Des ${selectedYear}`;
+      ? `${format(startOfMonth(parseISO(`${selectedMonth}-01`)), "dd MMM yyyy", { locale: isIndonesian ? idLocale : undefined })} - ${format(endOfMonth(parseISO(`${selectedMonth}-01`)), "dd MMM yyyy", { locale: isIndonesian ? idLocale : undefined })}`
+      : isIndonesian
+      ? `01 Jan ${selectedYear} - 31 Des ${selectedYear}`
+      : `01 Jan ${selectedYear} - 31 Dec ${selectedYear}`;
 
-  const generationTimestamp = format(new Date(), "dd MMM yyyy HH:mm") + " WIB";
+  const generationTimestamp =
+    format(new Date(), "dd MMM yyyy HH:mm", {
+      locale: isIndonesian ? idLocale : undefined,
+    }) + " WIB";
   const userName =
     (session?.user?.user_metadata?.display_name as string) ||
     session?.user?.email?.split("@")[0] ||
-    "Private Ledger Holder";
+    (isIndonesian ? "Pemilik Buku Kas Pribadi" : "Private Ledger Holder");
 
   const handlePrint = () => {
     triggerHaptic("medium");
@@ -234,28 +246,32 @@ export function FinancialCleanSheetModal({
     triggerHaptic("light");
     const reportText = [
       `========================================================================`,
-      `              TROUVAILLE OFFICIAL ELECTRONIC STATEMENT                  `,
+      isIndonesian
+        ? `              REKENING KORAN ELEKTRONIK RESMI TROUVAILLE                `
+        : `              TROUVAILLE OFFICIAL ELECTRONIC STATEMENT                  `,
       `                       PERIODE: ${periodTitle}                         `,
       `========================================================================`,
-      `Account Holder    : ${userName}`,
-      `Statement Period  : ${periodDateRange}`,
-      `Statement No      : ${auditId}`,
-      `Generated At      : ${generationTimestamp}`,
-      `Currency          : IDR`,
+      `${isIndonesian ? "Nama Nasabah      " : "Account Holder    "}: ${userName}`,
+      `${isIndonesian ? "Periode Rekening  " : "Statement Period  "}: ${periodDateRange}`,
+      `${isIndonesian ? "No. Referensi     " : "Statement No      "}: ${auditId}`,
+      `${isIndonesian ? "Tanggal Cetak     " : "Generated At      "}: ${generationTimestamp}`,
+      `${isIndonesian ? "Mata Uang         " : "Currency          "}: IDR`,
       ``,
-      `--- ACCOUNT SUMMARY ---`,
-      `Opening Balance   : ${formatRupiah(openingBalance)}`,
-      `Total Inflow      : +${formatRupiah(totalIncoming)} (${incomingCount} transactions)`,
-      `Total Outflow     : -${formatRupiah(totalOutgoing)} (${outgoingCount} transactions)`,
-      `Closing Balance   : ${formatRupiah(closingBalance)}`,
-      `Net Surplus       : ${formatRupiah(netCashflow)} (Savings Rate: ${savingsRate.toFixed(1)}%)`,
+      isIndonesian ? `--- RINGKASAN REKENING ---` : `--- ACCOUNT SUMMARY ---`,
+      `${isIndonesian ? "Saldo Awal        " : "Opening Balance   "}: ${formatRupiah(openingBalance)}`,
+      `${isIndonesian ? "Total Pemasukan   " : "Total Inflow      "}: +${formatRupiah(totalIncoming)} (${incomingCount} ${isIndonesian ? "transaksi" : "transactions"})`,
+      `${isIndonesian ? "Total Pengeluaran " : "Total Outflow     "}: -${formatRupiah(totalOutgoing)} (${outgoingCount} ${isIndonesian ? "transaksi" : "transactions"})`,
+      `${isIndonesian ? "Saldo Akhir       " : "Closing Balance   "}: ${formatRupiah(closingBalance)}`,
+      `${isIndonesian ? "Surplus Bersih    " : "Net Surplus       "}: ${formatRupiah(netCashflow)} (${isIndonesian ? "Rasio Tabungan" : "Savings Rate"}: ${savingsRate.toFixed(1)}%)`,
       ``,
-      `--- TRANSACTION LEDGER ---`,
-      `No | Date       | Description                 | Amount          | Balance`,
+      isIndonesian ? `--- BUKU MUTASI TRANSAKSI ---` : `--- TRANSACTION LEDGER ---`,
+      isIndonesian
+        ? `No | Tanggal    | Keterangan                  | Jumlah          | Saldo`
+        : `No | Date       | Description                 | Amount          | Balance`,
       `------------------------------------------------------------------------`,
       ...ledgerRows.map((r) => {
         const sign = r.tx.type === "income" ? "+" : "-";
-        const cat = r.tx.categories?.name || "General";
+        const cat = r.tx.categories?.name || (isIndonesian ? "Umum" : "General");
         const note = r.tx.note ? ` (${r.tx.note})` : "";
         const desc = `${cat}${note}`.slice(0, 26).padEnd(26, " ");
         const dateStr = format(parseISO(r.tx.occurred_on), "dd/MM/yyyy");
@@ -265,7 +281,9 @@ export function FinancialCleanSheetModal({
       }),
       ``,
       `========================================================================`,
-      `Automatically generated from Trouvaille Ledger. Official & Verified.`,
+      isIndonesian
+        ? `Dibuat secara otomatis oleh Buku Kas Trouvaille. Sah & Terverifikasi.`
+        : `Automatically generated from Trouvaille Ledger. Official & Verified.`,
       `========================================================================`,
     ].join("\n");
 
@@ -335,7 +353,7 @@ export function FinancialCleanSheetModal({
             className="text-[12px] font-semibold uppercase tracking-wider hidden sm:inline"
             style={{ color: "var(--text-primary)" }}
           >
-            E-Statement
+            {isIndonesian ? "Rekening Koran" : "E-Statement"}
           </span>
 
           {/* Month vs Year Segmented Control */}
@@ -362,7 +380,7 @@ export function FinancialCleanSheetModal({
                     : "var(--text-secondary)",
               }}
             >
-              Monthly
+              {isIndonesian ? "Bulanan" : "Monthly"}
             </button>
             <button
               type="button"
@@ -380,7 +398,7 @@ export function FinancialCleanSheetModal({
                     : "var(--text-secondary)",
               }}
             >
-              Yearly
+              {isIndonesian ? "Tahunan" : "Yearly"}
             </button>
           </div>
 
@@ -413,7 +431,9 @@ export function FinancialCleanSheetModal({
                       value={m}
                       style={{ background: "#18181b", color: "#ffffff" }}
                     >
-                      {format(parseISO(`${m}-01`), "MMMM yyyy")}
+                      {format(parseISO(`${m}-01`), "MMMM yyyy", {
+                        locale: isIndonesian ? idLocale : undefined,
+                      })}
                     </option>
                   ))
                 : availableYears.map((y) => (
@@ -422,7 +442,7 @@ export function FinancialCleanSheetModal({
                       value={y}
                       style={{ background: "#18181b", color: "#ffffff" }}
                     >
-                      Tahun {y}
+                      {isIndonesian ? `Tahun ${y}` : `Year ${y}`}
                     </option>
                   ))}
             </select>
@@ -444,10 +464,12 @@ export function FinancialCleanSheetModal({
               borderColor: "var(--glass-border)",
               color: "var(--text-secondary)",
             }}
-            title="Ganti mode pratinjau kertas"
+            title={isIndonesian ? "Ganti mode pratinjau kertas" : "Toggle paper theme"}
           >
             {isWhite ? <Moon size={12} /> : <Sun size={12} />}
-            <span className="hidden sm:inline">{isWhite ? "Dark" : "Paper"}</span>
+            <span className="hidden sm:inline">
+              {isWhite ? (isIndonesian ? "Gelap" : "Dark") : (isIndonesian ? "Kertas" : "Paper")}
+            </span>
           </button>
 
           {/* Copy Plaintext */}
@@ -460,10 +482,12 @@ export function FinancialCleanSheetModal({
               borderColor: "var(--glass-border)",
               color: "var(--text-secondary)",
             }}
-            title="Copy text summary"
+            title={isIndonesian ? "Salin ringkasan teks" : "Copy text summary"}
           >
             {copied ? <Check size={12} className="text-white" /> : <Copy size={12} />}
-            <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
+            <span className="hidden sm:inline">
+              {copied ? (isIndonesian ? "Tersalin" : "Copied") : (isIndonesian ? "Salin" : "Copy")}
+            </span>
           </button>
 
           {/* Download / Print PDF Button */}
@@ -475,10 +499,10 @@ export function FinancialCleanSheetModal({
               background: "var(--accent)",
               color: "var(--accent-ink)",
             }}
-            title="Download or Print as PDF"
+            title={isIndonesian ? "Unduh atau Cetak sebagai PDF" : "Download or Print as PDF"}
           >
             <Download size={13} />
-            <span>Download PDF</span>
+            <span>{isIndonesian ? "Unduh PDF" : "Download PDF"}</span>
           </button>
 
           {/* BIG, PROMINENT CLOSE BUTTON */}
@@ -493,7 +517,7 @@ export function FinancialCleanSheetModal({
               background: "rgba(255, 255, 255, 0.12)",
               borderColor: "var(--glass-border)",
             }}
-            aria-label="Close E-Statement"
+            aria-label={isIndonesian ? "Tutup Rekening Koran" : "Close E-Statement"}
           >
             <X size={18} />
           </button>
@@ -540,7 +564,7 @@ export function FinancialCleanSheetModal({
                       className="text-[10px] font-bold tracking-wider uppercase block mt-0.5"
                       style={{ color: isWhite ? "#4B5563" : "#9CA3AF" }}
                     >
-                      Electronic Statement (e-Statement)
+                      {isIndonesian ? "Rekening Koran Elektronik (e-Statement)" : "Electronic Statement (e-Statement)"}
                     </span>
                   </div>
                 </div>
@@ -548,7 +572,9 @@ export function FinancialCleanSheetModal({
                   className="text-[9px] mt-2 max-w-xs leading-relaxed"
                   style={{ color: isWhite ? "#6B7280" : "#6B7280" }}
                 >
-                  Trouvaille Wealth Operations Center · Immutable Double-Entry Ledger
+                  {isIndonesian
+                    ? "Pusat Operasional Kekayaan Trouvaille · Buku Kas Ganda Abadi"
+                    : "Trouvaille Wealth Operations Center · Immutable Double-Entry Ledger"}
                 </p>
               </div>
 
@@ -602,7 +628,7 @@ export function FinancialCleanSheetModal({
               className="text-[11px] font-semibold tracking-wider uppercase"
               style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
             >
-              Account Summary
+              {isIndonesian ? "Ringkasan Rekening" : "Account Summary"}
             </h2>
 
             <div
@@ -617,7 +643,7 @@ export function FinancialCleanSheetModal({
                   className="text-[9px] font-bold uppercase tracking-wider block"
                   style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
                 >
-                  Opening Balance
+                  {isIndonesian ? "Saldo Awal" : "Opening Balance"}
                 </span>
                 <span className="text-[15px] font-semibold block mt-0.5">
                   {formatRupiah(openingBalance)}
@@ -629,7 +655,7 @@ export function FinancialCleanSheetModal({
                   className="text-[9px] font-bold uppercase tracking-wider block"
                   style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
                 >
-                  Inflow ({incomingCount} txs)
+                  {isIndonesian ? `Pemasukan (${incomingCount} tx)` : `Inflow (${incomingCount} txs)`}
                 </span>
                 <span
                   className="text-[15px] font-semibold block mt-0.5"
@@ -644,7 +670,7 @@ export function FinancialCleanSheetModal({
                   className="text-[9px] font-bold uppercase tracking-wider block"
                   style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
                 >
-                  Outflow ({outgoingCount} txs)
+                  {isIndonesian ? `Pengeluaran (${outgoingCount} tx)` : `Outflow (${outgoingCount} txs)`}
                 </span>
                 <span
                   className="text-[15px] font-semibold block mt-0.5"
@@ -659,7 +685,7 @@ export function FinancialCleanSheetModal({
                   className="text-[9px] font-bold uppercase tracking-wider block"
                   style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
                 >
-                  Closing Balance
+                  {isIndonesian ? "Saldo Akhir" : "Closing Balance"}
                 </span>
                 <span className="text-[15px] font-semibold block mt-0.5">
                   {formatRupiah(closingBalance)}
@@ -677,21 +703,21 @@ export function FinancialCleanSheetModal({
               }}
             >
               <span>
-                Period Net Surplus:{" "}
+                {isIndonesian ? "Surplus Bersih Periode: " : "Period Net Surplus: "}
                 <strong style={{ color: isWhite ? "#111827" : "#FFFFFF" }}>
                   {formatRupiah(netCashflow)}
                 </strong>
               </span>
               <span>
-                Savings Rate:{" "}
+                {isIndonesian ? "Rasio Tabungan: " : "Savings Rate: "}
                 <strong style={{ color: isWhite ? "#111827" : "#FFFFFF" }}>
                   {savingsRate.toFixed(1)}%
                 </strong>
               </span>
               <span>
-                Total Activity:{" "}
+                {isIndonesian ? "Total Aktivitas: " : "Total Activity: "}
                 <strong style={{ color: isWhite ? "#111827" : "#FFFFFF" }}>
-                  {periodTxs.length} Transactions
+                  {periodTxs.length} {isIndonesian ? "Transaksi" : "Transactions"}
                 </strong>
               </span>
             </div>
@@ -706,7 +732,7 @@ export function FinancialCleanSheetModal({
                 className="text-[11px] font-semibold tracking-wider uppercase"
                 style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
               >
-                Account Holdings & Portfolio Balances
+                {isIndonesian ? "Rincian Saldo Akun & Portofolio" : "Account Holdings & Portfolio Balances"}
               </h2>
 
               <div
@@ -723,9 +749,15 @@ export function FinancialCleanSheetModal({
                         color: isWhite ? "#4B5563" : "#9CA3AF",
                       }}
                     >
-                      <th className="text-left p-2 font-bold uppercase">Account / Wallet Name</th>
-                      <th className="text-right p-2 font-bold uppercase">Current Balance</th>
-                      <th className="text-right p-2 font-bold uppercase">Portfolio Share</th>
+                      <th className="text-left p-2 font-bold uppercase">
+                        {isIndonesian ? "Nama Akun / Dompet" : "Account / Wallet Name"}
+                      </th>
+                      <th className="text-right p-2 font-bold uppercase">
+                        {isIndonesian ? "Saldo Saat Ini" : "Current Balance"}
+                      </th>
+                      <th className="text-right p-2 font-bold uppercase">
+                        {isIndonesian ? "Porsi Portofolio" : "Portfolio Share"}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -767,13 +799,13 @@ export function FinancialCleanSheetModal({
                 className="text-[11px] font-semibold tracking-wider uppercase"
                 style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
               >
-                Transaction Ledger & Entries
+                {isIndonesian ? "Buku Mutasi & Entri Transaksi" : "Transaction Ledger & Entries"}
               </h2>
               <span
                 className="text-[9px] font-bold uppercase"
                 style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
               >
-                {ledgerRows.length} Recorded Transactions
+                {ledgerRows.length} {isIndonesian ? "Transaksi Tercatat" : "Recorded Transactions"}
               </span>
             </div>
 
@@ -786,7 +818,9 @@ export function FinancialCleanSheetModal({
                   color: isWhite ? "#6B7280" : "#9CA3AF",
                 }}
               >
-                No transactions recorded for this period.
+                {isIndonesian
+                  ? "Tidak ada transaksi tercatat untuk periode ini."
+                  : "No transactions recorded for this period."}
               </div>
             ) : (
               <div
@@ -804,16 +838,24 @@ export function FinancialCleanSheetModal({
                       }}
                     >
                       <th className="text-center p-2 font-bold uppercase w-10">No</th>
-                      <th className="text-left p-2 font-bold uppercase w-24">Date</th>
-                      <th className="text-left p-2 font-bold uppercase">Description / Note</th>
-                      <th className="text-right p-2 font-bold uppercase w-28">Amount (IDR)</th>
-                      <th className="text-right p-2 font-bold uppercase w-28">Balance (IDR)</th>
+                      <th className="text-left p-2 font-bold uppercase w-24">
+                        {isIndonesian ? "Tanggal" : "Date"}
+                      </th>
+                      <th className="text-left p-2 font-bold uppercase">
+                        {isIndonesian ? "Keterangan / Catatan" : "Description / Note"}
+                      </th>
+                      <th className="text-right p-2 font-bold uppercase w-28">
+                        {isIndonesian ? "Nominal (IDR)" : "Amount (IDR)"}
+                      </th>
+                      <th className="text-right p-2 font-bold uppercase w-28">
+                        {isIndonesian ? "Saldo (IDR)" : "Balance (IDR)"}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {ledgerRows.map((r) => {
                       const isInc = r.tx.type === "income";
-                      const catName = r.tx.categories?.name || "Umum";
+                      const catName = r.tx.categories?.name || (isIndonesian ? "Umum" : "General");
                       const noteText = r.tx.note ? ` - ${r.tx.note}` : "";
                       return (
                         <tr
@@ -831,7 +873,9 @@ export function FinancialCleanSheetModal({
                           </td>
                           <td className="p-2 font-medium whitespace-nowrap">
                             {r.tx.occurred_on
-                              ? format(parseISO(r.tx.occurred_on), "dd MMM yyyy")
+                              ? format(parseISO(r.tx.occurred_on), "dd MMM yyyy", {
+                                  locale: isIndonesian ? idLocale : undefined,
+                                })
                               : "-"}
                           </td>
                           <td className="p-2">
@@ -892,7 +936,7 @@ export function FinancialCleanSheetModal({
                 className="text-[11px] font-semibold tracking-wider uppercase"
                 style={{ color: isWhite ? "#374151" : "#D1D5DB" }}
               >
-                Top Expense Allocation (Drivers)
+                {isIndonesian ? "Alokasi Beban Tertinggi (Pemicu)" : "Top Expense Allocation (Drivers)"}
               </h2>
 
               <div
@@ -920,7 +964,7 @@ export function FinancialCleanSheetModal({
                       className="text-[9px] font-medium block mt-0.5"
                       style={{ color: isWhite ? "#6B7280" : "#9CA3AF" }}
                     >
-                      {c.percentage.toFixed(1)}% of total outflow
+                      {c.percentage.toFixed(1)}% {isIndonesian ? "dari total pengeluaran" : "of total outflow"}
                     </span>
                   </div>
                 ))}
@@ -940,10 +984,12 @@ export function FinancialCleanSheetModal({
           >
             <div className="space-y-0.5 max-w-md leading-relaxed">
               <p className="font-bold" style={{ color: isWhite ? "#111827" : "#E5E7EB" }}>
-                OFFICIAL NOTICE & DOCUMENT INTEGRITY:
+                {isIndonesian ? "PEMBERITAHUAN RESMI & INTEGRITAS DOKUMEN:" : "OFFICIAL NOTICE & DOCUMENT INTEGRITY:"}
               </p>
               <p>
-                This document is an electronic financial statement automatically generated by the Trouvaille Ledger System. Legally valid without physical signature.
+                {isIndonesian
+                  ? "Dokumen ini merupakan rekening koran elektronik yang dicetak secara otomatis oleh Sistem Buku Kas Trouvaille. Sah tanpa tanda tangan basah."
+                  : "This document is an electronic financial statement automatically generated by the Trouvaille Ledger System. Legally valid without physical signature."}
               </p>
             </div>
 
@@ -957,7 +1003,7 @@ export function FinancialCleanSheetModal({
                 }}
               >
                 <ShieldCheck size={14} />
-                <span>OFFICIAL AUDIT VERIFIED</span>
+                <span>{isIndonesian ? "AUDIT RESMI TERVERIFIKASI" : "OFFICIAL AUDIT VERIFIED"}</span>
               </div>
             </div>
           </div>
@@ -976,7 +1022,7 @@ export function FinancialCleanSheetModal({
           className="text-[11px] font-medium hidden sm:inline"
           style={{ color: "var(--text-tertiary)" }}
         >
-          {periodTitle} · {periodTxs.length} Recorded Transactions
+          {periodTitle} · {periodTxs.length} {isIndonesian ? "Transaksi Tercatat" : "Recorded Transactions"}
         </span>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -991,7 +1037,7 @@ export function FinancialCleanSheetModal({
             }}
           >
             <Download size={13} />
-            <span>Download PDF</span>
+            <span>{isIndonesian ? "Unduh PDF" : "Download PDF"}</span>
           </button>
 
           <button
@@ -1006,7 +1052,7 @@ export function FinancialCleanSheetModal({
               color: "var(--accent-ink)",
             }}
           >
-            Close
+            {isIndonesian ? "Tutup" : "Close"}
           </button>
         </div>
       </footer>

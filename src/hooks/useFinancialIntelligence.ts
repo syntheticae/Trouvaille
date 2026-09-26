@@ -124,6 +124,7 @@ export function useFinancialIntelligence({
       transactions,
       categories,
       referenceDate,
+      language,
     );
 
     // 4. Behavioral Spending Patterns (Phase II)
@@ -131,6 +132,7 @@ export function useFinancialIntelligence({
       transactions,
       personalBaselines,
       referenceDate,
+      language,
     );
 
     // 5. Spending Pace & Projections (Custom Payday Interval Aware)
@@ -155,7 +157,7 @@ export function useFinancialIntelligence({
       effectiveDaysElapsed,
       effectiveTotalDays,
     );
-    const risk = computeBudgetRisk(pace.consumedPct, pace.timePct, budget);
+    const risk = computeBudgetRisk(pace.consumedPct, pace.timePct, budget, language);
 
     // 6. Category MoM Shifts
     const currentMonthTxs = getMonthTransactions(
@@ -282,12 +284,12 @@ export function useFinancialIntelligence({
     const getLongitudinalTimeline = (
       range: "3M" | "6M" | "12M" | "ALL" = "6M",
     ) => {
-      return calculateLongitudinalTimeline(transactions, range, referenceDate);
+      return calculateLongitudinalTimeline(transactions, range, referenceDate, language);
     };
 
     // 12. Planning & Goal Trajectory Helper (Phase II)
     const getGoalPlanning = (goal: Goal) => {
-      return calculateGoalPlanning(goal, personalBaselines, referenceDate);
+      return calculateGoalPlanning(goal, personalBaselines, referenceDate, language);
     };
 
     // 13. Helpers for "Why?" Drill-Down Insights
@@ -321,6 +323,7 @@ export function useFinancialIntelligence({
       bills,
       categories,
       referenceDate,
+      language,
     );
 
     // 15. Phase III: Expense Structure (Fixed, Variable, Discretionary)
@@ -340,6 +343,7 @@ export function useFinancialIntelligence({
       detectedRecurring,
       14,
       referenceDate,
+      language,
     );
     const getCashflowHorizon = (days = 14) => {
       return calculateCashflowFloor(
@@ -348,6 +352,7 @@ export function useFinancialIntelligence({
         detectedRecurring,
         days,
         referenceDate,
+        language,
       );
     };
 
@@ -357,12 +362,14 @@ export function useFinancialIntelligence({
       personalBaselines,
       expenseStructure,
       liquidAccounts,
+      language,
     );
 
     // 18. Expense Volatility (Spending Stability)
     const expenseVolatility = calculateExpenseVolatility(
       transactions,
       referenceDate,
+      language,
     );
 
     // 19. Daily Logging Streak (Gamification & Retention)

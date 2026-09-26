@@ -3,6 +3,7 @@ import { Activity, ChevronRight, Info } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import { BottomSheet } from "../ui/BottomSheet";
 import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
 import type { ExpenseVolatilityResult } from "../../lib/financialMath";
 
 interface ExpenseVolatilityCardProps {
@@ -14,7 +15,17 @@ export function ExpenseVolatilityCard({
   volatility,
   hideBalance = false,
 }: ExpenseVolatilityCardProps) {
+  const { isIndonesian } = useLanguage();
   const [detailOpen, setDetailOpen] = useState(false);
+
+  const getStabilityLabel = (stability: string) => {
+    if (isIndonesian) {
+      if (stability === "STABLE") return "Stabil";
+      if (stability === "MODERATE") return "Moderat";
+      if (stability === "VOLATILE") return "Volatil";
+    }
+    return stability.charAt(0).toUpperCase() + stability.slice(1).toLowerCase();
+  };
 
   const getBadgeStyle = () => {
     switch (volatility.stability) {
@@ -71,13 +82,15 @@ export function ExpenseVolatilityCard({
                 className="text-[13px] font-bold leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
-                Spending Stability
+                {isIndonesian ? "Stabilitas Pengeluaran" : "Spending Stability"}
               </p>
               <p
                 className="text-[11px] font-medium mt-0.5 leading-tight"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Expense Volatility & Variance
+                {isIndonesian
+                  ? "Volatilitas & Variansi Beban"
+                  : "Expense Volatility & Variance"}
               </p>
             </div>
           </div>
@@ -87,8 +100,7 @@ export function ExpenseVolatilityCard({
               className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
               style={getBadgeStyle()}
             >
-              {volatility.stability.charAt(0).toUpperCase() +
-                volatility.stability.slice(1).toLowerCase()}
+              {getStabilityLabel(volatility.stability)}
             </span>
             <ChevronRight size={14} style={{ color: "var(--text-tertiary)" }} />
           </div>
@@ -101,7 +113,7 @@ export function ExpenseVolatilityCard({
               className="text-[11px] font-medium"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Daily Average
+              {isIndonesian ? "Rata-rata Harian" : "Daily Average"}
             </p>
             <p
               className="amount text-[13px] font-bold mt-0.5"
@@ -109,7 +121,7 @@ export function ExpenseVolatilityCard({
             >
               {hideBalance
                 ? "Rp ••••••••"
-                : `${formatRupiah(volatility.meanDailyExpense)}/day`}
+                : `${formatRupiah(volatility.meanDailyExpense)}${isIndonesian ? "/hari" : "/day"}`}
             </p>
           </div>
           <div className="text-right">
@@ -117,7 +129,7 @@ export function ExpenseVolatilityCard({
               className="text-[11px] font-medium"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Peak Day Outlay
+              {isIndonesian ? "Puncak Beban Harian" : "Peak Day Outlay"}
             </p>
             <p
               className="amount text-[13px] font-bold mt-0.5"
@@ -162,7 +174,7 @@ export function ExpenseVolatilityCard({
       <BottomSheet
         isOpen={detailOpen}
         onClose={() => setDetailOpen(false)}
-        title="Spending Stability Analysis"
+        title={isIndonesian ? "Analisis Stabilitas Pengeluaran" : "Spending Stability Analysis"}
       >
         <div className="px-5 pb-10 space-y-4">
           <div className="flex items-start gap-2.5 p-3 rounded-2xl" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
@@ -184,14 +196,13 @@ export function ExpenseVolatilityCard({
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Stability Status
+                {isIndonesian ? "Status Stabilitas" : "Stability Status"}
               </p>
               <p
                 className="text-[15px] font-semibold mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
-                {volatility.stability.charAt(0).toUpperCase() +
-                  volatility.stability.slice(1).toLowerCase()}
+                {getStabilityLabel(volatility.stability)}
               </p>
             </div>
             <div
@@ -205,7 +216,7 @@ export function ExpenseVolatilityCard({
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Stability Score
+                {isIndonesian ? "Skor Stabilitas" : "Stability Score"}
               </p>
               <p
                 className="amount text-[15px] font-semibold mt-0.5"
@@ -225,7 +236,7 @@ export function ExpenseVolatilityCard({
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Daily Variation (Std Dev)
+                {isIndonesian ? "Variasi Harian (Deviasi Standar)" : "Daily Variation (Std Dev)"}
               </p>
               <p
                 className="amount text-[15px] font-semibold mt-0.5"
@@ -247,13 +258,15 @@ export function ExpenseVolatilityCard({
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Active Days Ratio
+                {isIndonesian ? "Rasio Hari Aktif" : "Active Days Ratio"}
               </p>
               <p
                 className="amount text-[15px] font-semibold mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
-                {volatility.activeDaysCount} of {volatility.totalDaysInPeriod} days
+                {isIndonesian
+                  ? `${volatility.activeDaysCount} dari ${volatility.totalDaysInPeriod} hari`
+                  : `${volatility.activeDaysCount} of ${volatility.totalDaysInPeriod} days`}
               </p>
             </div>
           </div>
@@ -269,7 +282,7 @@ export function ExpenseVolatilityCard({
               className="text-[10px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Behavioral Takeaway
+              {isIndonesian ? "Wawasan Perilaku" : "Behavioral Takeaway"}
             </p>
             <p
               className="text-[12px] leading-relaxed"

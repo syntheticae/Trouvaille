@@ -17,6 +17,7 @@ export interface MonteCarloConfig {
   safeWithdrawalRate?: number; // e.g. 0.04 for 4%
   iterations?: number; // default 1000
   earlyShock?: boolean; // simulates a -25% market crash in Year 1
+  language?: "en" | "id";
 }
 
 export interface YearlyPercentiles {
@@ -94,6 +95,7 @@ export function runMonteCarloSimulation(
     safeWithdrawalRate: Math.max(0.02, Math.min(0.10, rawConfig.safeWithdrawalRate ?? 0.04)),
     iterations: Math.min(2500, Math.max(100, rawConfig.iterations ?? 1000)),
     earlyShock: Boolean(rawConfig.earlyShock),
+    language: rawConfig.language ?? "en",
   };
 
   const {
@@ -206,11 +208,15 @@ export function runMonteCarloSimulation(
     return null;
   };
 
+  const isId = rawConfig.language === "id";
+
   // Milestone objects
   const leanMilestone: FireMilestone = {
     type: "lean",
     label: "Lean FIRE",
-    description: "Covers essential baseline living expenses (70% of current spend).",
+    description: isId
+      ? "Mencakup kebutuhan pokok esensial (70% dari pengeluaran saat ini)."
+      : "Covers essential baseline living expenses (70% of current spend).",
     targetAmount: leanFireTarget,
     currentProgressPct: Math.min(100, Number(((initialNetWorth / leanFireTarget) * 100).toFixed(1))),
     isAchieved: initialNetWorth >= leanFireTarget,
@@ -222,7 +228,9 @@ export function runMonteCarloSimulation(
   const standardMilestone: FireMilestone = {
     type: "standard",
     label: "Standard FIRE",
-    description: "Full financial independence maintaining 100% of current lifestyle.",
+    description: isId
+      ? "Kemandirian finansial penuh mempertahankan 100% gaya hidup saat ini."
+      : "Full financial independence maintaining 100% of current lifestyle.",
     targetAmount: standardFireTarget,
     currentProgressPct: Math.min(100, Number(((initialNetWorth / standardFireTarget) * 100).toFixed(1))),
     isAchieved: initialNetWorth >= standardFireTarget,
@@ -234,7 +242,9 @@ export function runMonteCarloSimulation(
   const fatMilestone: FireMilestone = {
     type: "fat",
     label: "Fat FIRE",
-    description: "Affords luxury buffer, international travel, and generous contingencies (140%).",
+    description: isId
+      ? "Memberikan buffer kemewahan, perjalanan internasional, dan dana cadangan melimpah (140%)."
+      : "Affords luxury buffer, international travel, and generous contingencies (140%).",
     targetAmount: fatFireTarget,
     currentProgressPct: Math.min(100, Number(((initialNetWorth / fatFireTarget) * 100).toFixed(1))),
     isAchieved: initialNetWorth >= fatFireTarget,
@@ -246,7 +256,9 @@ export function runMonteCarloSimulation(
   const coastMilestone: FireMilestone = {
     type: "coast",
     label: "Coast FIRE",
-    description: "Capital needed today to compound into Standard FIRE by horizon without more savings.",
+    description: isId
+      ? "Modal yang dibutuhkan hari ini untuk tumbuh menjadi Standard FIRE pada akhir horizon tanpa tambahan tabungan."
+      : "Capital needed today to compound into Standard FIRE by horizon without more savings.",
     targetAmount: coastFireTarget,
     currentProgressPct: Math.min(100, Number(((initialNetWorth / coastFireTarget) * 100).toFixed(1))),
     isAchieved: initialNetWorth >= coastFireTarget,
@@ -297,31 +309,43 @@ export function runMonteCarloSimulation(
 
   if (standardMilestone.isAchieved) {
     insights.push(
-      "Your current net worth already surpasses your Standard FIRE number. Your primary focus is capital preservation and optimal tax-efficient distribution."
+      isId
+        ? "Kekayaan bersih Anda saat ini telah melampaui angka Standard FIRE. Fokus utama Anda adalah pelestarian modal dan distribusi yang efisien pajak."
+        : "Your current net worth already surpasses your Standard FIRE number. Your primary focus is capital preservation and optimal tax-efficient distribution."
     );
   } else if (standardMilestone.estimatedYearsMedian !== null) {
     insights.push(
-      `At your current savings rate, you are projected to reach full Financial Independence in approximately ${standardMilestone.estimatedYearsMedian} years in expected market conditions.`
+      isId
+        ? `Pada tingkat tabungan Anda saat ini, Anda diproyeksikan mencapai Kemandirian Finansial penuh dalam sekitar ${standardMilestone.estimatedYearsMedian} tahun dalam kondisi pasar yang diharapkan.`
+        : `At your current savings rate, you are projected to reach full Financial Independence in approximately ${standardMilestone.estimatedYearsMedian} years in expected market conditions.`
     );
   } else {
     insights.push(
-      `Under current contribution levels, achieving Standard FIRE extends beyond the ${years}-year horizon. Boosting monthly savings by 20% would dramatically compress this timeline.`
+      isId
+        ? `Berdasarkan tingkat kontribusi saat ini, pencapaian Standard FIRE melampaui horizon ${years} tahun. Meningkatkan tabungan bulanan sebesar 20% akan mempercepat garis waktu ini secara signifikan.`
+        : `Under current contribution levels, achieving Standard FIRE extends beyond the ${years}-year horizon. Boosting monthly savings by 20% would dramatically compress this timeline.`
     );
   }
 
   if (terminalValues.p10 > 0) {
     insights.push(
-      `In a conservative 10th-percentile bear market, your terminal capital retains strong structural solvency, evidencing high resilience against prolonged market stagnation.`
+      isId
+        ? "Dalam pasar bear persentil ke-10 yang konservatif, modal akhir Anda mempertahankan solvabilitas struktural yang kuat, membuktikan ketahanan tinggi terhadap stagnasi pasar yang berkepanjangan."
+        : "In a conservative 10th-percentile bear market, your terminal capital retains strong structural solvency, evidencing high resilience against prolonged market stagnation."
     );
   } else {
     insights.push(
-      `In a severe bear market, capital depletion is possible before the horizon. Consider diversifying asset classes to curtail volatility.`
+      isId
+        ? "Dalam pasar bear yang parah, penurunan modal mungkin terjadi sebelum akhir horizon. Pertimbangkan untuk mendiversifikasi kelas aset untuk menekan volatilitas."
+        : "In a severe bear market, capital depletion is possible before the horizon. Consider diversifying asset classes to curtail volatility."
     );
   }
 
   if (coastMilestone.isAchieved) {
     insights.push(
-      "You have achieved Coast FIRE. Even if you pause further retirement contributions today, your existing balance is projected to compound into your full FIRE number."
+      isId
+        ? "Anda telah mencapai Coast FIRE. Bahkan jika Anda menghentikan kontribusi pensiun mulai hari ini, saldo yang ada diproyeksikan akan berkembang menjadi target FIRE penuh Anda."
+        : "You have achieved Coast FIRE. Even if you pause further retirement contributions today, your existing balance is projected to compound into your full FIRE number."
     );
   }
 

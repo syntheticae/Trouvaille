@@ -173,6 +173,8 @@ export function BudgetTargetSheet({
               <div className="flex items-center gap-2">
                 <input
                   type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   min="1"
                   max="28"
                   value={tempPeriodStart}

@@ -13,11 +13,16 @@ export function getDefaultWalletClassification(name: string): AccountClassificat
     n.includes("crypto") ||
     n.includes("investasi") ||
     n.includes("reksadana") ||
+    n.includes("reksa dana") ||
     n.includes("deposito") ||
     n.includes("stock") ||
+    n.includes("brokerage") ||
+    n.includes("ibkr") ||
+    n.includes("schwab") ||
     n.includes("emas") ||
     n.includes("gold") ||
     n.includes("usdt") ||
+    n.includes("vault") ||
     n.includes("tether") ||
     n.includes("btc") ||
     n.includes("bitcoin") ||
@@ -128,15 +133,31 @@ export function getWalletIcon(name: string): string {
     n === "bni" ||
     n === "blu" ||
     n === "jago" ||
+    n === "bank jago" ||
     n === "krom" ||
     n === "seabank" ||
     n === "superbank" ||
-    n === "bank"
+    n === "bank" ||
+    n === "chase" ||
+    n === "citi" ||
+    n === "hsbc" ||
+    n === "dbs" ||
+    n === "ocbc"
   ) {
     return "Landmark";
   }
-  if (n === "cash" || n === "tunai") return "Banknote";
-  if (n === "crypto" || n === "usdt" || n === "btc") return "Coins";
+  if (n === "cash" || n === "tunai" || n === "physical cash") return "Banknote";
+  if (
+    n === "crypto" ||
+    n === "usdt" ||
+    n === "btc" ||
+    n === "crypto / usdt" ||
+    n === "crypto vault" ||
+    n === "usdt vault" ||
+    n === "binance"
+  ) {
+    return "Coins";
+  }
   if (
     n === "dana" ||
     n === "gopay" ||
@@ -144,36 +165,147 @@ export function getWalletIcon(name: string): string {
     n === "link" ||
     n === "linkaja" ||
     n === "shopeepay" ||
-    n === "shopee"
+    n === "shopee" ||
+    n === "paypal" ||
+    n === "ewallet" ||
+    n === "digital e-wallet"
   ) {
     return "Smartphone";
   }
-  if (n === "tapcash" || n === "credit" || n === "kartu kredit") return "CreditCard";
-  if (n === "saham" || n === "investasi" || n === "bibit" || n === "ajaib") return "TrendingUp";
+  if (
+    n === "wise" ||
+    n === "revolut" ||
+    n === "global" ||
+    n === "multi-currency" ||
+    n === "borderless"
+  ) {
+    return "Globe";
+  }
+  if (
+    n === "tapcash" ||
+    n === "credit" ||
+    n === "kartu kredit" ||
+    n === "credit card" ||
+    n === "paylater"
+  ) {
+    return "CreditCard";
+  }
+  if (
+    n === "saham" ||
+    n === "saham idx" ||
+    n === "investasi" ||
+    n === "bibit" ||
+    n === "ajaib" ||
+    n === "brokerage" ||
+    n === "global brokerage" ||
+    n === "stocks" ||
+    n === "ibkr" ||
+    n === "schwab"
+  ) {
+    return "TrendingUp";
+  }
   if (n === "piutang") return "HandCoins";
   if (n === "liabilities" || n === "hutang") return "Scale";
-  if (n === "tabungan" || n === "saving") return "PiggyBank";
+  if (
+    n === "tabungan" ||
+    n === "saving" ||
+    n === "savings" ||
+    n === "reksa dana" ||
+    n === "emergency fund"
+  ) {
+    return "PiggyBank";
+  }
   return "Wallet";
 }
 
 export const DEFAULT_WALLETS = ["Cash"];
 
 export const WALLET_PRESETS = [
+  // Cash & Physical
   "Cash",
+  // Indonesian Banks
   "BCA",
   "Mandiri",
   "BRI",
   "BNI",
-  "Dana",
-  "Gopay",
-  "Ovo",
-  "Shopeepay",
-  "Jago",
-  "BLU",
-  "Seabank",
-  "Superbank",
-  "Crypto",
-  "Saham",
+  "Bank Jago",
+  "SeaBank",
+  "Blu",
+  // Indonesian E-Wallets
+  "GoPay",
+  "OVO",
+  "DANA",
+  "ShopeePay",
+  // Global & Multi-Currency
+  "PayPal",
+  "Wise",
+  "Revolut",
+  // Investments & Assets
+  "Global Brokerage",
+  "Crypto / USDT",
+  "Saham IDX",
+  "Reksa Dana",
+];
+
+export interface CategorizedWalletItem {
+  name: string;
+  icon: string;
+  classification: AccountClassification;
+  currency?: string;
+  badge?: string;
+  description?: string;
+}
+
+export interface WalletPresetGroup {
+  id: string;
+  label: string;
+  wallets: CategorizedWalletItem[];
+}
+
+export const CATEGORIZED_WALLET_PRESETS: WalletPresetGroup[] = [
+  {
+    id: "local_banks",
+    label: "Lokal & Perbankan (IDR)",
+    wallets: [
+      { name: "Cash", icon: "Banknote", classification: "liquid", badge: "Tunai", description: "Uang tunai & dompet fisik" },
+      { name: "BCA", icon: "Landmark", classification: "liquid", badge: "BCA", description: "Bank Central Asia" },
+      { name: "Mandiri", icon: "Landmark", classification: "liquid", badge: "Mandiri", description: "Bank Mandiri" },
+      { name: "BRI", icon: "Landmark", classification: "liquid", badge: "BRI", description: "Bank Rakyat Indonesia" },
+      { name: "BNI", icon: "Landmark", classification: "liquid", badge: "BNI", description: "Bank Negara Indonesia" },
+      { name: "Bank Jago", icon: "Landmark", classification: "liquid", badge: "Digital", description: "Kantong tabungan digital" },
+      { name: "SeaBank", icon: "Landmark", classification: "liquid", badge: "Digital", description: "Bunga cair harian" },
+      { name: "Blu", icon: "Landmark", classification: "liquid", badge: "Digital", description: "blu by BCA Digital" },
+    ],
+  },
+  {
+    id: "local_wallets",
+    label: "Dompet Digital (IDR)",
+    wallets: [
+      { name: "GoPay", icon: "Smartphone", classification: "liquid", badge: "QRIS", description: "Gojek & merchant QRIS" },
+      { name: "OVO", icon: "Smartphone", classification: "liquid", badge: "OVO", description: "Grab & e-commerce" },
+      { name: "DANA", icon: "Smartphone", classification: "liquid", badge: "DANA", description: "Dompet digital serbaguna" },
+      { name: "ShopeePay", icon: "Smartphone", classification: "liquid", badge: "Shopee", description: "Belanja online" },
+    ],
+  },
+  {
+    id: "global",
+    label: "Global & Multi-Currency (USD/EUR)",
+    wallets: [
+      { name: "PayPal", icon: "Smartphone", classification: "liquid", badge: "USD", description: "Global checkout & freelance" },
+      { name: "Wise", icon: "Globe", classification: "liquid", badge: "Multi", description: "Multi-currency borderless account" },
+      { name: "Revolut", icon: "Globe", classification: "liquid", badge: "Multi", description: "Global card & exchange" },
+    ],
+  },
+  {
+    id: "investments",
+    label: "Investasi & Vault",
+    wallets: [
+      { name: "Global Brokerage", icon: "TrendingUp", classification: "investment", badge: "US Stocks", description: "IBKR, Charles Schwab, ETF" },
+      { name: "Saham IDX", icon: "TrendingUp", classification: "investment", badge: "IDX", description: "Pasar modal Indonesia" },
+      { name: "Crypto / USDT", icon: "Coins", classification: "investment", badge: "Web3", description: "Binance, cold storage & USDT" },
+      { name: "Reksa Dana", icon: "PiggyBank", classification: "investment", badge: "Mutual Funds", description: "Bibit, Bareksa & pasar uang" },
+    ],
+  },
 ];
 
 export const FALLBACK_WALLETS: Wallet[] = [
@@ -192,6 +324,7 @@ export const AVAILABLE_WALLET_ICONS = [
   "Landmark",
   "Smartphone",
   "CreditCard",
+  "Globe",
   "Coins",
   "PiggyBank",
   "TrendingUp",

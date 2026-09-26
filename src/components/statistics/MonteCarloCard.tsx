@@ -5,6 +5,7 @@ import {
 } from "../../lib/monteCarloEngine";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   Sparkles,
   ChevronRight,
@@ -35,6 +36,9 @@ export function MonteCarloCard({
   hideBalance = false,
   onOpenSimulator,
 }: MonteCarloCardProps) {
+  const { language } = useLanguage();
+  const isIndonesian = language === "id";
+
   const simulation: MonteCarloSimulationResult = useMemo(() => {
     return runMonteCarloSimulation({
       initialNetWorth: Math.max(0, netWorth),
@@ -46,10 +50,23 @@ export function MonteCarloCard({
       annualInflation: 0.035,
       safeWithdrawalRate: 0.04,
       iterations: 350,
+      language: isIndonesian ? "id" : "en",
     });
-  }, [netWorth, monthlySavings]);
+  }, [netWorth, monthlySavings, isIndonesian]);
 
   const { successRate, resilienceRating, yearlyTrajectory, terminalValues } = simulation;
+
+  const localizedResilience = isIndonesian
+    ? resilienceRating === "Exceptional"
+      ? "Sangat Tangguh"
+      : resilienceRating === "High Resilience"
+        ? "Ketahanan Tinggi"
+        : resilienceRating === "Moderate"
+          ? "Moderat"
+          : resilienceRating === "Vulnerable"
+            ? "Rentan"
+            : "Kritis"
+    : resilienceRating;
 
   const chartData = useMemo(() => {
     return yearlyTrajectory
@@ -91,7 +108,7 @@ export function MonteCarloCard({
                   className="text-[13px] font-semibold tracking-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Monte Carlo Simulation
+                  {isIndonesian ? "Simulasi Monte Carlo" : "Monte Carlo Simulation"}
                 </h2>
                 <FinancialGlossaryTooltip term="monte_carlo" />
               </div>
@@ -103,14 +120,16 @@ export function MonteCarloCard({
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                1,000 Paths
+                {isIndonesian ? "1.000 Lintasan" : "1,000 Paths"}
               </span>
             </div>
             <p
               className="text-[11px] font-medium"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Stochastic market asset dispersion & terminal forecast
+              {isIndonesian
+                ? "Dispersi aset stokastik & proyeksi nilai terminal 20 tahun"
+                : "Stochastic market asset dispersion & terminal forecast"}
             </p>
           </div>
         </div>
@@ -120,14 +139,14 @@ export function MonteCarloCard({
             triggerHaptic("light");
             onOpenSimulator();
           }}
-          className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+          className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
           style={{
             background: "var(--glass-fill)",
             border: "1px solid var(--glass-border)",
             color: "var(--text-secondary)",
           }}
-          title="Configure Monte Carlo Simulator"
-          aria-label="Configure Monte Carlo Simulator"
+          title={isIndonesian ? "Konfigurasi Simulator Monte Carlo" : "Configure Monte Carlo Simulator"}
+          aria-label={isIndonesian ? "Konfigurasi Simulator Monte Carlo" : "Configure Monte Carlo Simulator"}
         >
           <SlidersHorizontal size={14} strokeWidth={1.75} />
         </button>
@@ -147,10 +166,10 @@ export function MonteCarloCard({
             className="text-[10px] font-bold uppercase tracking-wider mb-1"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Median 20Y Target
+            {isIndonesian ? "Target Median 20Y (P50)" : "Median 20Y Target"}
           </p>
           <p
-            className="text-[18px] font-semibold tracking-tight truncate"
+            className="text-[18px] font-semibold tracking-tight truncate tabular-nums"
             style={{ color: "var(--text-primary)" }}
           >
             {hideBalance ? "••••••" : formatRupiah(terminalValues.p50)}
@@ -159,7 +178,7 @@ export function MonteCarloCard({
             className="text-[10px] font-medium mt-1"
             style={{ color: "var(--text-secondary)" }}
           >
-            50th %ile Expected Case
+            {isIndonesian ? "Ekspektasi Kasus Dasar" : "50th %ile Expected Case"}
           </span>
         </div>
 
@@ -175,11 +194,11 @@ export function MonteCarloCard({
             className="text-[10px] font-bold uppercase tracking-wider mb-1"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Market Resilience
+            {isIndonesian ? "Ketahanan Pasar" : "Market Resilience"}
           </p>
           <div className="flex items-baseline gap-1.5">
             <span
-              className="text-[18px] font-semibold tracking-tight"
+              className="text-[18px] font-semibold tracking-tight tabular-nums"
               style={{ color: "var(--text-primary)" }}
             >
               {successRate}%
@@ -188,7 +207,7 @@ export function MonteCarloCard({
               className="text-[10px] font-bold"
               style={{ color: "var(--text-secondary)" }}
             >
-              {resilienceRating}
+              {localizedResilience}
             </span>
           </div>
           <div className="flex items-center gap-1 mt-1 text-[10px] text-[var(--text-tertiary)]">
@@ -197,7 +216,7 @@ export function MonteCarloCard({
             ) : (
               <ShieldAlert size={12} style={{ color: "var(--text-tertiary)" }} />
             )}
-            <span>Low ruin probability</span>
+            <span>{isIndonesian ? "Risiko kehabisan dana rendah" : "Low ruin probability"}</span>
           </div>
         </div>
       </div>
@@ -215,7 +234,7 @@ export function MonteCarloCard({
             className="text-[10px] font-bold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Stochastic Dispersion Band
+            {isIndonesian ? "Pita Dispersi Stokastik" : "Stochastic Dispersion Band"}
           </span>
           <div className="flex items-center gap-3 text-[10px]">
             <span className="flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
@@ -265,16 +284,16 @@ export function MonteCarloCard({
                       }}
                     >
                       <p className="font-bold text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
-                        Horizon: {label}
+                        {isIndonesian ? "Horizon:" : "Horizon:"} {label}
                       </p>
-                      <p className="text-[var(--text-primary)] font-bold">
+                      <p className="text-[var(--text-primary)] font-bold tabular-nums">
                         Median (P50): {hideBalance ? "••••••" : formatRupiah(data.p50)}
                       </p>
-                      <p className="text-[var(--text-tertiary)] text-[10px]">
-                        Bear Floor (P10): {hideBalance ? "••••••" : formatRupiah(data.p10)}
+                      <p className="text-[var(--text-tertiary)] text-[10px] tabular-nums">
+                        {isIndonesian ? "Dasar Bear (P10):" : "Bear Floor (P10):"} {hideBalance ? "••••••" : formatRupiah(data.p10)}
                       </p>
-                      <p className="text-[var(--text-secondary)] text-[10px]">
-                        Bull High (P90): {hideBalance ? "••••••" : formatRupiah(data.p90)}
+                      <p className="text-[var(--text-secondary)] text-[10px] tabular-nums">
+                        {isIndonesian ? "Puncak Bull (P90):" : "Bull High (P90):"} {hideBalance ? "••••••" : formatRupiah(data.p90)}
                       </p>
                     </div>
                   );
@@ -319,9 +338,9 @@ export function MonteCarloCard({
           }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block mb-0.5">
-            Bear Market Floor (10th %ile)
+            {isIndonesian ? "Dasar Pasar Bear (P10)" : "Bear Market Floor (10th %ile)"}
           </span>
-          <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
+          <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate tabular-nums">
             {hideBalance ? "••••••" : formatRupiah(terminalValues.p10)}
           </p>
         </div>
@@ -333,9 +352,9 @@ export function MonteCarloCard({
           }}
         >
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] block mb-0.5">
-            Bull Market Ceiling (90th %ile)
+            {isIndonesian ? "Puncak Pasar Bull (P90)" : "Bull Market Ceiling (90th %ile)"}
           </span>
-          <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
+          <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate tabular-nums">
             {hideBalance ? "••••••" : formatRupiah(terminalValues.p90)}
           </p>
         </div>
@@ -347,7 +366,7 @@ export function MonteCarloCard({
           triggerHaptic("medium");
           onOpenSimulator();
         }}
-        className="w-full py-2.5 px-4 rounded-xl flex items-center justify-between font-bold text-[12px] active:scale-[0.99] transition-transform select-none"
+        className="w-full py-2.5 px-4 rounded-xl flex items-center justify-between font-bold text-[12px] active:scale-[0.99] transition-transform select-none cursor-pointer"
         style={{
           background: "var(--glass-fill)",
           border: "1px solid var(--glass-border)",
@@ -356,7 +375,7 @@ export function MonteCarloCard({
       >
         <span className="flex items-center gap-2">
           <Sparkles size={14} style={{ color: "var(--text-tertiary)" }} />
-          Launch Monte Carlo Simulation Lab
+          {isIndonesian ? "Buka Lab Simulator Monte Carlo" : "Launch Monte Carlo Simulation Lab"}
         </span>
         <ChevronRight size={14} style={{ color: "var(--text-tertiary)" }} />
       </button>

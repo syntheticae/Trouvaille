@@ -47,6 +47,9 @@ import { IconRenderer } from "../components/ui/IconRenderer";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useToast } from "../contexts/ToastContext";
+import { PayBillModal } from "../components/bills/PayBillModal";
+import type { Bill } from "../lib/types";
 import { triggerHaptic } from "../lib/haptics";
 
 export function CalendarPage() {
@@ -55,6 +58,8 @@ export function CalendarPage() {
   const isDark = theme !== "light";
   const { isStealthMode, toggleStealthMode } = usePrivacy();
   const { t, isIndonesian } = useLanguage();
+  const { showToast } = useToast();
+  const [payingBill, setPayingBill] = useState<Bill | null>(null);
   const dateLocale = isIndonesian ? idLocale : undefined;
   const displayRupiah = (val: number) => (isStealthMode ? "Rp ••••••••" : formatRupiah(val));
   const displayCompact = (val: number) => (isStealthMode ? "••••" : formatCompactRupiah(val));
@@ -80,8 +85,8 @@ export function CalendarPage() {
 
   // Baseline Discretionary Burn & Recurring Inflows Detection
   const personalBaselines = useMemo(() => {
-    return calculatePersonalBaselines(allTxs, categories, new Date());
-  }, [allTxs, categories]);
+    return calculatePersonalBaselines(allTxs, categories, new Date(), isIndonesian ? "id" : "en");
+  }, [allTxs, categories, isIndonesian]);
 
   const detectedRecurring = useMemo(() => {
     return detectRecurringTransactions(allTxs, bills, categories, new Date());
@@ -132,13 +137,15 @@ export function CalendarPage() {
     return monthTxs.filter((t) => t.occurred_on === dStr);
   }, [selectedDay, monthTxs]);
 
-  const handlePrevMonth = () => {
+  const handlePrevMonth = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     triggerHaptic("light");
     setSlideDirection(-1);
     setCurrentDate((prev) => subMonths(prev, 1));
   };
 
-  const handleNextMonth = () => {
+  const handleNextMonth = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     triggerHaptic("light");
     setSlideDirection(1);
     setCurrentDate((prev) => addMonths(prev, 1));
@@ -151,24 +158,35 @@ export function CalendarPage() {
     setSelectedDay(new Date());
   };
 
+  const handleBack = () => {
+    triggerHaptic("light");
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate("/");
+    }
+  };
+
   const isCurrentMonthView = isSameMonth(currentDate, new Date());
-  const WEEKS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const WEEKS = isIndonesian
+    ? ["MIN", "SEN", "SEL", "RAB", "KAM", "JUM", "SAB"]
+    : ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
   return (
     <div
-      className="px-5 py-5 min-h-screen space-y-6 pb-28"
-      style={{ background: "var(--bg-base)" }}
+      className="px-5 min-h-screen space-y-6 pb-28"
+      style={{
+        background: "var(--bg-base)",
+        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 14px), 20px)",
+      }}
     >
       {/* Header & View Mode Switcher */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
           <button
             type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              navigate(-1);
-            }}
-            className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none shrink-0"
+            onClick={handleBack}
+            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none shrink-0 relative z-10"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",
@@ -177,7 +195,7 @@ export function CalendarPage() {
             title={isIndonesian ? "Kembali" : "Back"}
             aria-label={isIndonesian ? "Kembali" : "Back"}
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={18} />
           </button>
           <div className="min-w-0 flex-1">
             <h1
@@ -208,7 +226,15 @@ export function CalendarPage() {
               border: "1px solid var(--glass-border)",
               color: isStealthMode ? "var(--accent)" : "var(--text-secondary)",
             }}
-            title={isStealthMode ? "Disable Stealth Mode" : "Enable Stealth Mode (or 3-finger tap)"}
+            title={
+              isStealthMode
+                ? isIndonesian
+                  ? "Nonaktifkan Mode Samaran"
+                  : "Disable Stealth Mode"
+                : isIndonesian
+                  ? "Aktifkan Mode Samaran (atau ketuk 3 jari)"
+                  : "Enable Stealth Mode (or 3-finger tap)"
+            }
           >
             {isStealthMode ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
@@ -274,7 +300,7 @@ export function CalendarPage() {
                     className="text-[10px] font-semibold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Runway Floor
+                    {isIndonesian ? "Titik Terendah" : "Runway Floor"}
                   </span>
                   <TrendingDown size={13} style={{ color: "var(--text-secondary)" }} />
                 </div>
@@ -290,8 +316,12 @@ export function CalendarPage() {
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {runwayTelemetry.lowestDipDate
-                      ? `Dip on ${format(parseISO(runwayTelemetry.lowestDipDate), "dd MMM")}`
-                      : "Stable runway"}
+                      ? isIndonesian
+                        ? `Terendah ${format(parseISO(runwayTelemetry.lowestDipDate), "dd MMM", { locale: dateLocale })}`
+                        : `Dip on ${format(parseISO(runwayTelemetry.lowestDipDate), "dd MMM")}`
+                      : isIndonesian
+                        ? "Runway stabil"
+                        : "Stable runway"}
                   </p>
                 </div>
               </div>
@@ -306,7 +336,7 @@ export function CalendarPage() {
                     className="text-[10px] font-semibold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Payday Horizon
+                    {isIndonesian ? "Horizon Gajian" : "Payday Horizon"}
                   </span>
                   <Coins size={13} style={{ color: "var(--text-secondary)" }} />
                 </div>
@@ -316,8 +346,16 @@ export function CalendarPage() {
                     style={{ color: "var(--text-primary)" }}
                   >
                     {runwayTelemetry.daysUntilPayday !== null
-                      ? `${runwayTelemetry.daysUntilPayday}d to Payday`
-                      : "No Payday"}
+                      ? runwayTelemetry.daysUntilPayday === 0
+                        ? isIndonesian
+                          ? "Gajian Hari Ini"
+                          : "Payday Today"
+                        : isIndonesian
+                          ? `${runwayTelemetry.daysUntilPayday} hr ke Gajian`
+                          : `${runwayTelemetry.daysUntilPayday}d to Payday`
+                      : isIndonesian
+                        ? "Tanpa Jadwal Gajian"
+                        : "No Payday"}
                   </p>
                   <p
                     className="text-[10px] mt-0.5 truncate"
@@ -325,7 +363,9 @@ export function CalendarPage() {
                   >
                     {runwayTelemetry.nextPaydayAmount > 0
                       ? `+${displayRupiah(runwayTelemetry.nextPaydayAmount)}`
-                      : "Check recurring"}
+                      : isIndonesian
+                        ? "Cek transaksi rutin"
+                        : "Check recurring"}
                   </p>
                 </div>
               </div>
@@ -340,7 +380,7 @@ export function CalendarPage() {
                     className="text-[10px] font-semibold uppercase tracking-wider"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    No-Spend Days
+                    {isIndonesian ? "Hari Bebas Belanja" : "No-Spend Days"}
                   </span>
                   <ShieldCheck size={13} style={{ color: "var(--text-secondary)" }} />
                 </div>
@@ -349,13 +389,13 @@ export function CalendarPage() {
                     className="text-[14px] font-semibold tracking-tight truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {runwayTelemetry.noSpendDaysCount} Days
+                    {runwayTelemetry.noSpendDaysCount} {isIndonesian ? "Hari" : "Days"}
                   </p>
                   <p
                     className="text-[10px] mt-0.5 truncate"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {runwayTelemetry.noSpendRatioPct}% of elapsed days
+                    {runwayTelemetry.noSpendRatioPct}% {isIndonesian ? "hari berjalan" : "of elapsed days"}
                   </p>
                 </div>
               </div>
@@ -373,10 +413,11 @@ export function CalendarPage() {
         transition={{ type: "spring", stiffness: 280, damping: 28 }}
       >
         {/* Month Navigation Bar */}
-        <div className="flex items-center justify-between mb-5 px-1">
+        <div className="flex items-center justify-between mb-5 px-1 relative z-10">
           <button
-            onClick={handlePrevMonth}
-            className="w-9 h-9 flex items-center justify-center rounded-full glass-surface active:scale-95 transition-transform cursor-pointer"
+            type="button"
+            onClick={(e) => handlePrevMonth(e)}
+            className="w-9 h-9 flex items-center justify-center rounded-full glass-surface active:scale-95 transition-transform cursor-pointer select-none touch-manipulation relative z-10"
             style={{ color: "var(--text-primary)" }}
             aria-label="Previous Month"
           >
@@ -392,8 +433,9 @@ export function CalendarPage() {
             </span>
             {!isCurrentMonthView && (
               <button
+                type="button"
                 onClick={handleResetToToday}
-                className="px-2 py-0.5 rounded-full text-[10px] font-semibold glass-surface active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                className="px-2 py-0.5 rounded-full text-[10px] font-semibold glass-surface active:scale-95 transition-all flex items-center gap-1 cursor-pointer select-none touch-manipulation"
                 style={{
                   border: "1px solid var(--glass-border)",
                   color: "var(--text-secondary)",
@@ -406,8 +448,9 @@ export function CalendarPage() {
           </div>
 
           <button
-            onClick={handleNextMonth}
-            className="w-9 h-9 flex items-center justify-center rounded-full glass-surface active:scale-95 transition-transform cursor-pointer"
+            type="button"
+            onClick={(e) => handleNextMonth(e)}
+            className="w-9 h-9 flex items-center justify-center rounded-full glass-surface active:scale-95 transition-transform cursor-pointer select-none touch-manipulation relative z-10"
             style={{ color: "var(--text-primary)" }}
             aria-label="Next Month"
           >
@@ -754,13 +797,13 @@ export function CalendarPage() {
               className="text-[13px] font-semibold"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Upcoming Reminders
+              {isIndonesian ? "Pengingat Mendatang" : "Upcoming Reminders"}
             </p>
             <span
               className="text-[11px] font-semibold"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {bills.filter((b) => !b.is_paid).length} pending
+              {bills.filter((b) => !b.is_paid).length} {isIndonesian ? "tertunda" : "pending"}
             </span>
           </div>
 
@@ -795,7 +838,7 @@ export function CalendarPage() {
                       className="text-[11px]"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      {format(parseISO(b.due_date), "dd MMM yyyy")}
+                      {format(parseISO(b.due_date), "dd MMM yyyy", { locale: dateLocale })}
                     </p>
                   </div>
                   {b.amount && (
@@ -824,17 +867,23 @@ export function CalendarPage() {
                     className="text-[20px] font-semibold tracking-tight"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {format(selectedDay, "EEEE, dd MMMM yyyy")}
+                    {format(selectedDay, "EEEE, dd MMMM yyyy", { locale: dateLocale })}
                   </h2>
                   <p
                     className="text-[12px] font-medium"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {selectedDayForecast.isToday
-                      ? "Today"
+                      ? isIndonesian
+                        ? "Hari Ini"
+                        : "Today"
                       : selectedDayForecast.isFuture
-                      ? "Future Projection"
-                      : "Past Ledger"}
+                      ? isIndonesian
+                        ? "Proyeksi Masa Depan"
+                        : "Future Projection"
+                      : isIndonesian
+                        ? "Buku Kas Lampau"
+                        : "Past Ledger"}
                   </p>
                 </div>
 
@@ -849,7 +898,7 @@ export function CalendarPage() {
                     }}
                   >
                     <ShieldCheck size={12} />
-                    No-Spend Day
+                    {isIndonesian ? "Hari Bebas Belanja" : "No-Spend Day"}
                   </div>
                 )}
               </div>
@@ -867,7 +916,7 @@ export function CalendarPage() {
                         className="text-[11px] font-semibold"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        Projected Liquid Balance
+                        {isIndonesian ? "Proyeksi Saldo Likuid" : "Projected Liquid Balance"}
                       </span>
                       {selectedDayForecast.isLowestDip && (
                         <span
@@ -878,7 +927,7 @@ export function CalendarPage() {
                             color: "var(--text-primary)",
                           }}
                         >
-                          Lowest Dip Floor
+                          {isIndonesian ? "Titik Terendah" : "Lowest Dip Floor"}
                         </span>
                       )}
                     </div>
@@ -892,7 +941,9 @@ export function CalendarPage() {
                       className="text-[11px] mt-1"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Expected liquidity based on scheduled bills, recurring income, and daily burn.
+                      {isIndonesian
+                        ? "Estimasi likuiditas berbasis tagihan terjadwal, pendapatan rutin, dan rata-rata pengeluaran harian."
+                        : "Expected liquidity based on scheduled bills, recurring income, and daily burn."}
                     </p>
                   </div>
 
@@ -908,7 +959,7 @@ export function CalendarPage() {
                           className="text-[11px] font-semibold"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          Expected Inflow
+                          {isIndonesian ? "Pemasukan Diharapkan" : "Expected Inflow"}
                         </span>
                       </div>
                       <p
@@ -929,7 +980,7 @@ export function CalendarPage() {
                           className="text-[11px] font-semibold"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          Bills & Est. Burn
+                          {isIndonesian ? "Tagihan & Estimasi Beban" : "Bills & Est. Burn"}
                         </span>
                       </div>
                       <p
@@ -950,7 +1001,7 @@ export function CalendarPage() {
                         className="text-[12px] font-semibold px-1"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        Scheduled Obligations
+                        {isIndonesian ? "Kewajiban Terjadwal" : "Scheduled Obligations"}
                       </p>
                       {selectedDayForecast.scheduledBills.map((b) => (
                         <div
@@ -979,7 +1030,7 @@ export function CalendarPage() {
                                 className="text-[11px]"
                                 style={{ color: "var(--text-tertiary)" }}
                               >
-                                {b.isPaid ? "Paid" : "Due"}
+                                {b.isPaid ? (isIndonesian ? "Lunas" : "Paid") : (isIndonesian ? "Jatuh Tempo" : "Due")}
                               </span>
                             </div>
                           </div>
@@ -996,11 +1047,8 @@ export function CalendarPage() {
                                 onClick={() => {
                                   const originalBill = bills.find((item) => item.id === b.id);
                                   if (originalBill) {
-                                    markBillPaidMutation.mutate({
-                                      bill: originalBill,
-                                      paid: true,
-                                    });
-                                    triggerHaptic("medium");
+                                    setPayingBill(originalBill);
+                                    triggerHaptic("light");
                                   }
                                 }}
                                 className="px-2.5 py-1 rounded-xl text-[11px] font-semibold glass-surface active:scale-95 transition-all cursor-pointer flex items-center gap-1"
@@ -1009,8 +1057,8 @@ export function CalendarPage() {
                                   color: "var(--text-primary)",
                                 }}
                               >
-                                <CheckCircle2 size={12} />
-                                Pay
+                                <CheckCircle2 size={12} strokeWidth={2} />
+                                {isIndonesian ? "Bayar" : "Pay"}
                               </button>
                             )}
                           </div>
@@ -1026,7 +1074,7 @@ export function CalendarPage() {
                         className="text-[12px] font-semibold px-1"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        Expected Income Inflow
+                        {isIndonesian ? "Pemasukan Pendapatan Diharapkan" : "Expected Income Inflow"}
                       </p>
                       {selectedDayForecast.expectedInflows.map((inf, idx) => (
                         <div
@@ -1054,7 +1102,7 @@ export function CalendarPage() {
                               <span
                                 className="text-[11px] text-[var(--text-secondary)] font-semibold"
                               >
-                                Scheduled Payday
+                                {isIndonesian ? "Jadwal Gajian" : "Scheduled Payday"}
                               </span>
                             </div>
                           </div>
@@ -1085,7 +1133,7 @@ export function CalendarPage() {
                           className="text-[11px] font-semibold"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          Inflow
+                          {isIndonesian ? "Pemasukan" : "Inflow"}
                         </p>
                       </div>
                       <p
@@ -1109,7 +1157,7 @@ export function CalendarPage() {
                           className="text-[11px] font-semibold"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          Outflow
+                          {isIndonesian ? "Pengeluaran" : "Outflow"}
                         </p>
                       </div>
                       <p
@@ -1133,8 +1181,12 @@ export function CalendarPage() {
                           style={{ color: "var(--text-tertiary)" }}
                         >
                           {selectedDayForecast.isNoSpendDay
-                            ? "Zero spend day! No expenses recorded."
-                            : "No transactions on this date."}
+                            ? isIndonesian
+                              ? "Hari bebas belanja! Tidak ada pengeluaran tercatat."
+                              : "Zero spend day! No expenses recorded."
+                            : isIndonesian
+                              ? "Tidak ada transaksi pada tanggal ini."
+                              : "No transactions on this date."}
                         </p>
                       </div>
                     ) : (
@@ -1158,7 +1210,7 @@ export function CalendarPage() {
                               className="text-[14px] font-semibold"
                               style={{ color: "var(--text-primary)" }}
                             >
-                              {tx.categories?.name ?? "General"}
+                              {tx.categories?.name ?? (isIndonesian ? "Umum" : "General")}
                             </p>
                             {tx.note && (
                               <p
@@ -1174,8 +1226,8 @@ export function CalendarPage() {
                             style={{
                               color:
                                 tx.type === "income"
-                                  ? "var(--accent)"
-                                  : "var(--text-primary)",
+                                    ? "var(--accent)"
+                                    : "var(--text-primary)",
                             }}
                           >
                             {tx.type === "income" ? "+" : "-"}
@@ -1191,6 +1243,42 @@ export function CalendarPage() {
           )}
         </div>
       </BottomSheet>
+
+      {payingBill && (
+        <PayBillModal
+          isOpen={!!payingBill}
+          bill={payingBill}
+          onClose={() => setPayingBill(null)}
+          isPending={markBillPaidMutation.isPending}
+          onConfirmPaid={({ bill, recordTransaction, walletId }) => {
+            markBillPaidMutation.mutate(
+              { bill, paid: true, recordTransaction, walletId },
+              {
+                onSuccess: () => {
+                  setPayingBill(null);
+                  showToast(
+                    isIndonesian
+                      ? `${bill.title} berhasil ditandai lunas`
+                      : `${bill.title} marked as paid`,
+                    "add",
+                    () => {},
+                  );
+                },
+                onError: (error: any) => {
+                  showToast(
+                    error?.message ||
+                      (isIndonesian
+                        ? `Gagal menandai ${bill.title}`
+                        : `Failed to mark ${bill.title} as paid`),
+                    "delete",
+                    () => {},
+                  );
+                },
+              },
+            );
+          }}
+        />
+      )}
 
       <div className="h-4" />
     </div>

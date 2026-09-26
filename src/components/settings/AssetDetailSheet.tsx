@@ -51,23 +51,29 @@ interface AssetDetailSheetProps {
   onStartEditHolding?: (holding: InvestmentHolding) => void;
 }
 
-const TYPE_BADGES: Record<AssetType, string> = {
-  crypto: "Crypto",
-  stock: "Equities",
-  gold: "Gold 24K",
-  mutual_fund: "Mutual Fund",
-  bond: "Government Bond",
-  fixed_asset: "Fixed Asset",
+const getTypeBadge = (type: AssetType, isIndonesian: boolean): string => {
+  const badges: Record<AssetType, { en: string; id: string }> = {
+    crypto: { en: "Crypto", id: "Kripto" },
+    stock: { en: "Equities", id: "Saham" },
+    gold: { en: "Gold 24K", id: "Emas 24K" },
+    mutual_fund: { en: "Mutual Fund", id: "Reksa Dana" },
+    bond: { en: "Government Bond", id: "Surat Berharga Negara" },
+    fixed_asset: { en: "Fixed Asset", id: "Aset Tetap" },
+  };
+  return isIndonesian ? badges[type]?.id || type : badges[type]?.en || type;
 };
 
-const stockRangeLabels: Record<string, string> = {
-  "1D": "Past Day",
-  "1W": "Past Week",
-  "1M": "Past Month",
-  "6M": "Past 6 Months",
-  YTD: "Year to Date",
-  "1Y": "Past 1 Year",
-  ALL: "All Time",
+const getStockRangeLabel = (range: string, isIndonesian: boolean): string => {
+  const labels: Record<string, { en: string; id: string }> = {
+    "1D": { en: "Past Day", id: "1 Hari Terakhir" },
+    "1W": { en: "Past Week", id: "1 Minggu Terakhir" },
+    "1M": { en: "Past Month", id: "1 Bulan Terakhir" },
+    "6M": { en: "Past 6 Months", id: "6 Bulan Terakhir" },
+    YTD: { en: "Year to Date", id: "Awal Tahun Hingga Kini" },
+    "1Y": { en: "Past 1 Year", id: "1 Tahun Terakhir" },
+    ALL: { en: "All Time", id: "Semua Waktu" },
+  };
+  return isIndonesian ? labels[range]?.id || range : labels[range]?.en || range;
 };
 
 const GlassTooltip = ({ active, payload, label }: any) => {
@@ -480,7 +486,7 @@ export function AssetDetailSheet({
                     {holding.symbol}
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.06] text-[var(--text-secondary)] border border-[var(--glass-border)]">
-                    {TYPE_BADGES[holding.asset_type] || holding.asset_type}
+                    {getTypeBadge(holding.asset_type, isIndonesian)}
                   </span>
                 </div>
                 <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
@@ -499,7 +505,7 @@ export function AssetDetailSheet({
                     onStartEditHolding(holding);
                   }}
                   className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] transition-colors cursor-pointer"
-                  title="Edit Asset"
+                  title={isIndonesian ? "Ubah Aset" : "Edit Asset"}
                 >
                   <Edit3 size={14} strokeWidth={1.75} />
                 </button>
@@ -511,7 +517,7 @@ export function AssetDetailSheet({
                   onDeleteHolding(holding.id, holding.name);
                 }}
                 className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-rose-400 hover:bg-white/[0.06] transition-colors cursor-pointer"
-                title="Delete Asset"
+                title={isIndonesian ? "Hapus Aset" : "Delete Asset"}
               >
                 <Trash2 size={14} strokeWidth={1.75} />
               </button>
@@ -552,10 +558,10 @@ export function AssetDetailSheet({
           <div className="pt-2 border-t border-[var(--glass-border)] space-y-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">
-                {stockRangeLabels[timeframe]} · {holding.currency || "IDR"}
+                {getStockRangeLabel(timeframe, isIndonesian)} · {holding.currency || "IDR"}
               </span>
               <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-                Live: {formatRupiah(currentPrice)} / unit
+                {isIndonesian ? "Langsung:" : "Live:"} {formatRupiah(currentPrice)} / unit
               </span>
             </div>
 
@@ -687,7 +693,9 @@ export function AssetDetailSheet({
           {/* Row 1: Units Owned */}
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-1.5">
-              <span className="text-[12px] text-[var(--text-tertiary)]">Units Owned</span>
+              <span className="text-[12px] text-[var(--text-tertiary)]">
+                {isIndonesian ? "Unit Dimiliki" : "Units Owned"}
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -706,14 +714,17 @@ export function AssetDetailSheet({
                 {formatHoldingUnits(holding.units)} {holding.symbol}
               </span>
               <p className="text-[10px] text-[var(--text-tertiary)]">
-                Cost basis: {formatRupiah(valuation.costBasis)}
+                {isIndonesian ? "Basis biaya: " : "Cost basis: "}
+                {formatRupiah(valuation.costBasis)}
               </p>
             </div>
           </div>
 
           {/* Row 2: Average Buy Price */}
           <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-[12px] text-[var(--text-tertiary)]">Average Price</span>
+            <span className="text-[12px] text-[var(--text-tertiary)]">
+              {isIndonesian ? "Harga Rata-rata" : "Average Price"}
+            </span>
             <span className="text-[13px] font-bold text-[var(--text-primary)] font-mono">
               {formatRupiah(holding.avg_buy_price)}
             </span>
@@ -736,7 +747,9 @@ export function AssetDetailSheet({
 
           {/* Row 4: Unrealized Profit / Loss */}
           <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-[12px] text-[var(--text-tertiary)]">Unrealized P&L</span>
+            <span className="text-[12px] text-[var(--text-tertiary)]">
+              {isIndonesian ? "P&L Belum Terealisasi" : "Unrealized P&L"}
+            </span>
             <div className="text-right font-mono">
               <span className="text-[13px] font-bold text-[var(--text-primary)]">
                 {isProfitable ? "+" : ""}
@@ -760,7 +773,7 @@ export function AssetDetailSheet({
             className="flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 bg-[var(--text-primary)] text-[var(--bg-elevated)] font-semibold text-[13px] hover:opacity-90 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
           >
             <Plus size={14} strokeWidth={2} />
-            <span>Add Units</span>
+            <span>{isIndonesian ? "Tambah Unit" : "Add Units"}</span>
           </button>
 
           <button
@@ -769,7 +782,7 @@ export function AssetDetailSheet({
             className="flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)] font-semibold text-[13px] hover:bg-white/[0.06] transition-all cursor-pointer active:scale-[0.99]"
           >
             <Minus size={14} strokeWidth={2} />
-            <span>Reduce Units</span>
+            <span>{isIndonesian ? "Kurangi Unit" : "Reduce Units"}</span>
           </button>
         </div>
 
@@ -782,7 +795,7 @@ export function AssetDetailSheet({
               {isIndonesian ? "Riwayat Aktivitas" : "Activity History"}
             </h3>
             <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-              {activities.length} {activities.length === 1 ? "entry" : "entries"}
+              {activities.length} {isIndonesian ? "entri" : activities.length === 1 ? "entry" : "entries"}
             </span>
           </div>
 
@@ -877,10 +890,22 @@ export function AssetDetailSheet({
                   </div>
                   <div>
                     <h3 className="text-[14px] font-bold text-[var(--text-primary)]">
-                      {actionModal === "buy" ? `Add ${holding.symbol} Units` : `Reduce ${holding.symbol} Units`}
+                      {actionModal === "buy"
+                        ? isIndonesian
+                          ? `Tambah Unit ${holding.symbol}`
+                          : `Add ${holding.symbol} Units`
+                        : isIndonesian
+                          ? `Kurangi Unit ${holding.symbol}`
+                          : `Reduce ${holding.symbol} Units`}
                     </h3>
                     <p className="text-[11px] text-[var(--text-tertiary)]">
-                      {actionModal === "buy" ? "Add to investment portfolio" : "Liquidate asset position"}
+                      {actionModal === "buy"
+                        ? isIndonesian
+                          ? "Tambahkan ke portofolio investasi"
+                          : "Add to investment portfolio"
+                        : isIndonesian
+                          ? "Likuidasi posisi aset"
+                          : "Liquidate asset position"}
                     </p>
                   </div>
                 </div>
@@ -896,14 +921,22 @@ export function AssetDetailSheet({
               {/* Input 1: Invested / Realized Amount in IDR */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] px-0.5">
-                  {actionModal === "buy" ? "Investment Amount (IDR)" : "Liquidated Amount (IDR)"}
+                  {actionModal === "buy"
+                    ? isIndonesian
+                      ? "Nominal Investasi (IDR)"
+                      : "Investment Amount (IDR)"
+                    : isIndonesian
+                      ? "Nominal Likuidasi (IDR)"
+                      : "Liquidated Amount (IDR)"}
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={inputNominal}
                   onChange={(e) => handleNominalChange(e.target.value)}
-                  placeholder="e.g. 500000"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-[13px] font-mono bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
+                  placeholder={isIndonesian ? "cth. 500000" : "e.g. 500000"}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-[13px] bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
                   autoFocus
                 />
               </div>
@@ -912,28 +945,35 @@ export function AssetDetailSheet({
               <div className="space-y-1">
                 <div className="flex items-center justify-between px-0.5">
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                    {actionModal === "buy" ? "Units to Add" : "Units to Reduce"}
+                    {actionModal === "buy"
+                      ? isIndonesian
+                        ? "Unit yang Ditambah"
+                        : "Units to Add"
+                      : isIndonesian
+                        ? "Unit yang Dikurangi"
+                        : "Units to Reduce"}
                   </label>
                   {actionModal === "sell" ? (
                     <button
                       type="button"
                       onClick={() => handleUnitsChange(String(holding.units))}
-                      className="text-[10px] font-mono text-[var(--text-primary)] hover:underline cursor-pointer font-bold"
+                      className="text-[10px] text-[var(--text-primary)] hover:underline cursor-pointer font-bold"
                     >
-                      Max: {holding.units.toLocaleString()} (All)
+                      {isIndonesian ? `Maks: ${holding.units.toLocaleString()} (Semua)` : `Max: ${holding.units.toLocaleString()} (All)`}
                     </button>
                   ) : (
-                    <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-                      Hold: {holding.units.toLocaleString()}
+                    <span className="text-[10px] text-[var(--text-tertiary)]">
+                      {isIndonesian ? "Dimiliki:" : "Hold:"} {holding.units.toLocaleString()}
                     </span>
                   )}
                 </div>
                 <input
                   type="text"
+                  inputMode="decimal"
                   value={inputUnits}
                   onChange={(e) => handleUnitsChange(e.target.value)}
-                  placeholder={`Units in ${holding.symbol}`}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-[13px] font-mono bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
+                  placeholder={isIndonesian ? `Jumlah unit dalam ${holding.symbol}` : `Units in ${holding.symbol}`}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-[13px] bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
                 />
               </div>
 
@@ -984,17 +1024,18 @@ export function AssetDetailSheet({
                 <div className="relative">
                   <input
                     type="text"
+                    inputMode="decimal"
                     value={inputPrice}
                     onChange={(e) => {
                       setModalPriceMode("custom");
                       handlePriceChange(e.target.value);
                     }}
-                    placeholder={modalPriceMode === "auto" ? "Market price" : "e.g. 16350"}
-                    className="w-full px-3.5 py-2.5 rounded-xl text-[13px] font-mono bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
+                    placeholder={modalPriceMode === "auto" ? (isIndonesian ? "Harga pasar" : "Market price") : (isIndonesian ? "cth. 16350" : "e.g. 16350")}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-[13px] bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
                   />
                   {modalPriceMode === "auto" && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-mono px-2 py-0.5 rounded-md bg-white/[0.08] text-[var(--text-secondary)] border border-[var(--glass-border)] pointer-events-none">
-                      Live Spot
+                      {isIndonesian ? "Pasar Langsung" : "Live Spot"}
                     </span>
                   )}
                 </div>
@@ -1013,7 +1054,7 @@ export function AssetDetailSheet({
               {/* Input 4: Purchase / Execution Date */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] px-0.5">
-                  Date
+                  {isIndonesian ? "Tanggal" : "Date"}
                 </label>
                 <input
                   type="date"
@@ -1032,7 +1073,9 @@ export function AssetDetailSheet({
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-[12px] font-medium text-[var(--text-primary)]">
-                        {actionModal === "buy" ? "Deduct from Wallet" : "Deposit to Wallet"}
+                        {actionModal === "buy"
+                          ? (isIndonesian ? "Potong dari Saldo Dompet" : "Deduct from Wallet")
+                          : (isIndonesian ? "Setor ke Saldo Dompet" : "Deposit to Wallet")}
                       </span>
                     </div>
                     <div
@@ -1051,7 +1094,7 @@ export function AssetDetailSheet({
                       value={selectedWalletId}
                       onChange={setSelectedWalletId}
                       options={walletOptions}
-                      placeholder="Select wallet..."
+                      placeholder={isIndonesian ? "Pilih dompet..." : "Select wallet..."}
                       className="mt-2"
                     />
                   )}
@@ -1065,13 +1108,15 @@ export function AssetDetailSheet({
                   onClick={() => setActionModal("none")}
                   className="flex-1 py-2.5 px-4 rounded-xl text-[13px] font-medium border border-[var(--glass-border)] text-[var(--text-secondary)] hover:bg-white/[0.04] transition-colors"
                 >
-                  Cancel
+                  {isIndonesian ? "Batal" : "Cancel"}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-2.5 px-4 rounded-xl text-[13px] font-bold bg-[var(--text-primary)] text-[var(--bg-elevated)] hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
                 >
-                  {actionModal === "buy" ? "Confirm Add" : "Confirm Reduce"}
+                  {actionModal === "buy"
+                    ? (isIndonesian ? "Konfirmasi Beli" : "Confirm Add")
+                    : (isIndonesian ? "Konfirmasi Jual" : "Confirm Reduce")}
                 </button>
               </div>
             </form>
@@ -1116,15 +1161,16 @@ export function AssetDetailSheet({
                     {isIndonesian ? "Total Unit Riil Baru" : "New Total Units"}
                   </label>
                   <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-                    Saat ini: {holding.units.toLocaleString()} {holding.symbol}
+                    {isIndonesian ? "Saat ini:" : "Current:"} {holding.units.toLocaleString()} {holding.symbol}
                   </span>
                 </div>
                 <input
                   type="text"
+                  inputMode="decimal"
                   value={directUnitsInput}
                   onChange={(e) => setDirectUnitsInput(e.target.value)}
                   placeholder="e.g. 1002.41"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-[14px] font-mono font-bold bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-[14px] font-bold bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
                   autoFocus
                 />
                 <p className="text-[10px] text-[var(--text-tertiary)] px-0.5">

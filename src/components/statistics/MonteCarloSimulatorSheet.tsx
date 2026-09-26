@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   runMonteCarloSimulation,
   type MonteCarloSimulationResult,
@@ -44,6 +45,8 @@ export function MonteCarloSimulatorSheet({
   defaultMonthlyBurnRate,
   hideBalance = false,
 }: MonteCarloSimulatorSheetProps) {
+  const { isIndonesian } = useLanguage();
+
   // Parameters
   const [horizonYears, setHorizonYears] = useState<number>(20);
   const [monthlySavings, setMonthlySavings] = useState<number>(
@@ -76,6 +79,7 @@ export function MonteCarloSimulatorSheet({
       safeWithdrawalRate: swr,
       iterations: 600,
       earlyShock,
+      language: isIndonesian ? "id" : "en",
     });
   }, [
     initialNetWorth,
@@ -88,6 +92,7 @@ export function MonteCarloSimulatorSheet({
     swr,
     earlyShock,
     seed,
+    isIndonesian,
   ]);
 
   const {
@@ -100,11 +105,23 @@ export function MonteCarloSimulatorSheet({
     insights,
   } = simulation;
 
+  const localizedResilience = isIndonesian
+    ? resilienceRating === "Exceptional"
+      ? "Sangat Tangguh"
+      : resilienceRating === "High Resilience"
+        ? "Ketahanan Tinggi"
+        : resilienceRating === "Moderate"
+          ? "Moderat"
+          : resilienceRating === "Vulnerable"
+            ? "Rentan"
+            : "Kritis"
+    : resilienceRating;
+
   // Chart data formatting
   const chartData = useMemo(() => {
     return yearlyTrajectory.map((item) => ({
       year: item.year,
-      yearLabel: item.year === 0 ? "Now" : `Y${item.year}`,
+      yearLabel: item.year === 0 ? (isIndonesian ? "Sekarang" : "Now") : isIndonesian ? `Thn ${item.year}` : `Y${item.year}`,
       p10: item.p10,
       p25: item.p25,
       p50: item.p50,
@@ -112,7 +129,7 @@ export function MonteCarloSimulatorSheet({
       p90: item.p90,
       fireTarget: item.fireTarget,
     }));
-  }, [yearlyTrajectory]);
+  }, [yearlyTrajectory, isIndonesian]);
 
   // Presets
   const applyPreset = (preset: "conservative" | "moderate" | "aggressive") => {
@@ -163,7 +180,7 @@ export function MonteCarloSimulatorSheet({
                   className="font-semibold text-[16px] tracking-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Monte Carlo & FIRE Lab
+                  {isIndonesian ? "Lab Monte Carlo & FIRE" : "Monte Carlo & FIRE Lab"}
                 </h3>
                 <span
                   className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
@@ -173,14 +190,16 @@ export function MonteCarloSimulatorSheet({
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  Simulation
+                  {isIndonesian ? "Simulasi" : "Simulation"}
                 </span>
               </div>
               <p
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Probabilistic retirement trajectory & market resilience
+                {isIndonesian
+                  ? "Lintasan pensiun probabilistik & ketahanan pasar"
+                  : "Probabilistic retirement trajectory & market resilience"}
               </p>
             </div>
           </div>
@@ -193,7 +212,8 @@ export function MonteCarloSimulatorSheet({
               border: "1px solid var(--glass-border)",
               color: "var(--text-secondary)",
             }}
-            title="Reset Simulation Parameters"
+            title={isIndonesian ? "Reset Parameter Simulasi" : "Reset Simulation Parameters"}
+            aria-label={isIndonesian ? "Reset Parameter Simulasi" : "Reset Simulation Parameters"}
           >
             <RotateCcw size={13} />
           </button>
@@ -213,7 +233,7 @@ export function MonteCarloSimulatorSheet({
               className="text-[10px] font-bold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Monte Carlo Probability
+              {isIndonesian ? "Probabilitas Monte Carlo" : "Monte Carlo Probability"}
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span
@@ -226,14 +246,15 @@ export function MonteCarloSimulatorSheet({
                 className="text-[12px] font-bold"
                 style={{ color: "var(--text-secondary)" }}
               >
-                {resilienceRating}
+                {localizedResilience}
               </span>
             </div>
             <p
               className="text-[11px] font-medium mt-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Standard FIRE Goal: {hideBalance ? "••••••" : formatRupiah(fireMilestones.standard.targetAmount)}
+              {isIndonesian ? "Target Standard FIRE: " : "Standard FIRE Goal: "}
+              {hideBalance ? "••••••" : formatRupiah(fireMilestones.standard.targetAmount)}
             </p>
           </div>
 
@@ -249,7 +270,7 @@ export function MonteCarloSimulatorSheet({
               color: "var(--text-primary)",
             }}
           >
-            <Sparkles size={13} /> Re-Simulate
+            <Sparkles size={13} /> {isIndonesian ? "Simulasi Ulang" : "Re-Simulate"}
           </button>
         </div>
 
@@ -266,37 +287,55 @@ export function MonteCarloSimulatorSheet({
               className="text-[11px] font-bold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Simulation Horizon & Strategy
+              {isIndonesian ? "Horizon & Strategi Simulasi" : "Simulation Horizon & Strategy"}
             </span>
             {/* Quick Strategy Presets */}
             <div className="flex items-center gap-1">
-              {(["conservative", "moderate", "aggressive"] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => applyPreset(p)}
-                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold capitalize transition-all"
-                  style={{
-                    background:
-                      (p === "conservative" && annualReturn === 0.06) ||
-                      (p === "moderate" && annualReturn === 0.085) ||
-                      (p === "aggressive" && annualReturn === 0.11)
-                        ? "var(--glass-fill-strong)"
-                        : "transparent",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                >
-                  {p}
-                </button>
-              ))}
+              {(["conservative", "moderate", "aggressive"] as const).map((p) => {
+                const pLabel =
+                  p === "conservative"
+                    ? isIndonesian
+                      ? "Konservatif"
+                      : "Conservative"
+                    : p === "moderate"
+                    ? isIndonesian
+                      ? "Moderat"
+                      : "Moderate"
+                    : isIndonesian
+                    ? "Agresif"
+                    : "Aggressive";
+                return (
+                  <button
+                    key={p}
+                    onClick={() => applyPreset(p)}
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all"
+                    style={{
+                      background:
+                        (p === "conservative" && annualReturn === 0.06) ||
+                        (p === "moderate" && annualReturn === 0.085) ||
+                        (p === "aggressive" && annualReturn === 0.11)
+                          ? "var(--glass-fill-strong)"
+                          : "transparent",
+                      color: "var(--text-primary)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {pLabel}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Horizon Selection */}
           <div>
             <div className="flex justify-between text-[11px] font-semibold mb-1.5">
-              <span style={{ color: "var(--text-secondary)" }}>Horizon</span>
-              <span style={{ color: "var(--text-primary)" }}>{horizonYears} Years</span>
+              <span style={{ color: "var(--text-secondary)" }}>
+                {isIndonesian ? "Horizon Waktu" : "Horizon"}
+              </span>
+              <span style={{ color: "var(--text-primary)" }}>
+                {horizonYears} {isIndonesian ? "Tahun" : "Years"}
+              </span>
             </div>
             <div className="grid grid-cols-5 gap-1.5">
               {[10, 15, 20, 25, 30].map((yr) => (
@@ -319,7 +358,7 @@ export function MonteCarloSimulatorSheet({
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  {yr}Y
+                  {yr}{isIndonesian ? "Thn" : "Y"}
                 </button>
               ))}
             </div>
@@ -328,9 +367,11 @@ export function MonteCarloSimulatorSheet({
           {/* Monthly Contribution Slider & Stepper */}
           <div>
             <div className="flex justify-between text-[11px] font-semibold mb-1">
-              <span style={{ color: "var(--text-secondary)" }}>Monthly Contribution</span>
+              <span style={{ color: "var(--text-secondary)" }}>
+                {isIndonesian ? "Kontribusi Bulanan" : "Monthly Contribution"}
+              </span>
               <span className="font-bold" style={{ color: "var(--text-primary)" }}>
-                {hideBalance ? "••••••" : formatRupiah(monthlySavings)} / mo
+                {hideBalance ? "••••••" : formatRupiah(monthlySavings)} {isIndonesian ? "/ bln" : "/ mo"}
               </span>
             </div>
             <input
@@ -343,9 +384,9 @@ export function MonteCarloSimulatorSheet({
               className="w-full accent-[var(--text-primary)] cursor-pointer"
             />
             <div className="flex justify-between text-[9px] font-bold text-[var(--text-tertiary)] mt-0.5">
-              <span>Rp 500K</span>
-              <span>Rp 12.5M</span>
-              <span>Rp 25M</span>
+              <span>{isIndonesian ? "Rp 500 Rb" : "Rp 500K"}</span>
+              <span>{isIndonesian ? "Rp 12,5 Jt" : "Rp 12.5M"}</span>
+              <span>{isIndonesian ? "Rp 25 Jt" : "Rp 25M"}</span>
             </div>
           </div>
 
@@ -353,7 +394,9 @@ export function MonteCarloSimulatorSheet({
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div>
               <div className="flex justify-between text-[10px] font-semibold mb-1">
-                <span style={{ color: "var(--text-secondary)" }}>Return (Nominal)</span>
+                <span style={{ color: "var(--text-secondary)" }}>
+                  {isIndonesian ? "Imbal Hasil (Nominal)" : "Return (Nominal)"}
+                </span>
                 <span className="font-bold" style={{ color: "var(--text-primary)" }}>
                   {(annualReturn * 100).toFixed(1)}%
                 </span>
@@ -370,7 +413,9 @@ export function MonteCarloSimulatorSheet({
             </div>
             <div>
               <div className="flex justify-between text-[10px] font-semibold mb-1">
-                <span style={{ color: "var(--text-secondary)" }}>Volatility (σ)</span>
+                <span style={{ color: "var(--text-secondary)" }}>
+                  {isIndonesian ? "Volatilitas (σ)" : "Volatility (σ)"}
+                </span>
                 <span className="font-bold" style={{ color: "var(--text-primary)" }}>
                   {(annualVolatility * 100).toFixed(1)}%
                 </span>
@@ -391,7 +436,7 @@ export function MonteCarloSimulatorSheet({
           <div className="pt-2 border-t border-[var(--glass-border)] flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-                SWR:
+                {isIndonesian ? "Rasio Penarikan (SWR):" : "SWR:"}
               </span>
               <div className="flex items-center gap-1">
                 {[0.035, 0.04, 0.045].map((rate) => (
@@ -426,7 +471,7 @@ export function MonteCarloSimulatorSheet({
                 border: "1px solid var(--glass-border)",
               }}
             >
-              <AlertTriangle size={11} /> -25% Early Shock
+              <AlertTriangle size={11} /> {isIndonesian ? "-25% Guncangan Awal" : "-25% Early Shock"}
             </button>
           </div>
         </div>
@@ -440,10 +485,10 @@ export function MonteCarloSimulatorSheet({
           }}
         >
           {[
-            { key: "fan", label: "Fan Chart" },
-            { key: "milestones", label: "FIRE Milestones" },
-            { key: "stress", label: "Stress Test" },
-            { key: "insights", label: "Executive Insights" },
+            { key: "fan", label: isIndonesian ? "Bagan Pita" : "Fan Chart" },
+            { key: "milestones", label: isIndonesian ? "Tonggak FIRE" : "FIRE Milestones" },
+            { key: "stress", label: isIndonesian ? "Uji Stres" : "Stress Test" },
+            { key: "insights", label: isIndonesian ? "Wawasan Eksekutif" : "Executive Insights" },
           ].map((t) => (
             <button
               key={t.key}
@@ -488,24 +533,26 @@ export function MonteCarloSimulatorSheet({
                     className="text-[12px] font-bold"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Stochastic Wealth Dispersion
+                    {isIndonesian ? "Dispersi Kekayaan Stokastik" : "Stochastic Wealth Dispersion"}
                   </h4>
                   <p
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Confidence intervals across {horizonYears} years
+                    {isIndonesian
+                      ? `Interval kepercayaan sepanjang ${horizonYears} tahun`
+                      : `Confidence intervals across ${horizonYears} years`}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 text-[10px]">
                   <span className="flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
-                    <span className="w-2 h-0.5 bg-[var(--text-tertiary)] rounded-full" /> P10 Bear
+                    <span className="w-2 h-0.5 bg-[var(--text-tertiary)] rounded-full" /> {isIndonesian ? "Bear (P10)" : "P10 Bear"}
                   </span>
                   <span className="flex items-center gap-1 font-bold" style={{ color: "var(--text-primary)" }}>
                     <span className="w-2 h-0.5 bg-[var(--text-primary)] rounded-full" /> Median
                   </span>
                   <span className="flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
-                    <span className="w-2 h-0.5 bg-[var(--text-secondary)] rounded-full" /> P90 Bull
+                    <span className="w-2 h-0.5 bg-[var(--text-secondary)] rounded-full" /> {isIndonesian ? "Bull (P90)" : "P90 Bull"}
                   </span>
                 </div>
               </div>
@@ -548,7 +595,7 @@ export function MonteCarloSimulatorSheet({
                             }}
                           >
                             <p className="font-bold text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
-                              Timeline: {label}
+                              {isIndonesian ? "Garis Waktu" : "Timeline"}: {label}
                             </p>
                             <p className="text-[var(--text-primary)] font-bold">
                               Median: {hideBalance ? "••••••" : formatRupiah(data.p50)}
@@ -560,7 +607,8 @@ export function MonteCarloSimulatorSheet({
                               Bull (P90): {hideBalance ? "••••••" : formatRupiah(data.p90)}
                             </p>
                             <p className="text-[10px] pt-1 mt-1 border-t border-[var(--glass-border)] text-[var(--text-tertiary)]">
-                              FIRE Target: {hideBalance ? "••••••" : formatRupiah(data.fireTarget)}
+                              {isIndonesian ? "Target FIRE: " : "FIRE Target: "}
+                              {hideBalance ? "••••••" : formatRupiah(data.fireTarget)}
                             </p>
                           </div>
                         );
@@ -610,7 +658,7 @@ export function MonteCarloSimulatorSheet({
                 }}
               >
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                  10th %ile (Bear)
+                  {isIndonesian ? "Persentil ke-10 (Bear)" : "10th %ile (Bear)"}
                 </p>
                 <p className="text-[13px] font-semibold tracking-tight mt-1 text-[var(--text-primary)]">
                   {hideBalance ? "••••••" : formatRupiah(terminalValues.p10)}
@@ -624,7 +672,7 @@ export function MonteCarloSimulatorSheet({
                 }}
               >
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                  Median Expected
+                  {isIndonesian ? "Ekspektasi Median" : "Median Expected"}
                 </p>
                 <p className="text-[13px] font-semibold tracking-tight mt-1 text-[var(--text-primary)]">
                   {hideBalance ? "••••••" : formatRupiah(terminalValues.p50)}
@@ -638,7 +686,7 @@ export function MonteCarloSimulatorSheet({
                 }}
               >
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                  90th %ile (Bull)
+                  {isIndonesian ? "Persentil ke-90 (Bull)" : "90th %ile (Bull)"}
                 </p>
                 <p className="text-[13px] font-semibold tracking-tight mt-1 text-[var(--text-primary)]">
                   {hideBalance ? "••••••" : formatRupiah(terminalValues.p90)}
@@ -679,7 +727,7 @@ export function MonteCarloSimulatorSheet({
                           border: "1px solid var(--glass-border)",
                         }}
                       >
-                        <CheckCircle2 size={10} /> Achieved
+                        <CheckCircle2 size={10} /> {isIndonesian ? "Tercapai" : "Achieved"}
                       </span>
                     )}
                   </div>
@@ -707,15 +755,17 @@ export function MonteCarloSimulatorSheet({
                 </div>
 
                 <div className="flex justify-between items-center text-[10px] text-[var(--text-secondary)]">
-                  <span>Current: {m.currentProgressPct}%</span>
+                  <span>{isIndonesian ? "Saat Ini: " : "Current: "}{m.currentProgressPct}%</span>
                   <span>
-                    Arrival:{" "}
+                    {isIndonesian ? "Perkiraan Capai: " : "Arrival: "}
                     <strong className="text-[var(--text-primary)]">
                       {m.isAchieved
-                        ? "Now"
+                        ? (isIndonesian ? "Sekarang" : "Now")
                         : m.estimatedYearsMedian !== null
-                        ? `~${m.estimatedYearsMedian} yrs (Median) · ~${m.estimatedYearsBear || ">30"} yrs (Bear)`
-                        : `Beyond ${horizonYears} years`}
+                        ? (isIndonesian
+                            ? `~${m.estimatedYearsMedian} thn (Median) · ~${m.estimatedYearsBear || ">30"} thn (Bear)`
+                            : `~${m.estimatedYearsMedian} yrs (Median) · ~${m.estimatedYearsBear || ">30"} yrs (Bear)`)
+                        : (isIndonesian ? `Melampaui ${horizonYears} tahun` : `Beyond ${horizonYears} years`)}
                     </strong>
                   </span>
                 </div>
@@ -737,12 +787,21 @@ export function MonteCarloSimulatorSheet({
               <div className="flex items-center gap-2 mb-2">
                 <AlertTriangle size={16} style={{ color: "var(--text-primary)" }} />
                 <h4 className="text-[13px] font-bold text-[var(--text-primary)]">
-                  Sequence of Returns Risk (SORR)
+                  {isIndonesian ? "Risiko Urutan Imbal Hasil (SORR)" : "Sequence of Returns Risk (SORR)"}
                 </h4>
               </div>
               <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)] mb-3">
-                Market crashes occurring early in your accumulation or withdrawal phase
-                exponentially harm compound interest. Here we simulate a <strong>-25% drawdown</strong> in Month 6 of Year 1.
+                {isIndonesian ? (
+                  <>
+                    Penurunan tajam pasar di awal fase akumulasi atau penarikan secara
+                    drastis merusak efek bunga majemuk. Di sini kami menyimulasikan <strong>penurunan -25%</strong> pada Bulan ke-6 Tahun ke-1.
+                  </>
+                ) : (
+                  <>
+                    Market crashes occurring early in your accumulation or withdrawal phase
+                    exponentially harm compound interest. Here we simulate a <strong>-25% drawdown</strong> in Month 6 of Year 1.
+                  </>
+                )}
               </p>
 
               <div
@@ -754,14 +813,14 @@ export function MonteCarloSimulatorSheet({
               >
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                    Early Shock Impact
+                    {isIndonesian ? "Dampak Guncangan Awal" : "Early Shock Impact"}
                   </p>
                   <p className="text-[14px] font-semibold text-[var(--text-primary)] mt-0.5">
                     {earlyShock
                       ? sequenceOfReturnsImpact
-                        ? `-${sequenceOfReturnsImpact.terminalPercentageLoss}% Terminal Delta`
-                        : "Active"
-                      : "Shock Mode Off"}
+                        ? `-${sequenceOfReturnsImpact.terminalPercentageLoss}% ${isIndonesian ? "Delta Terminal" : "Terminal Delta"}`
+                        : (isIndonesian ? "Aktif" : "Active")
+                      : (isIndonesian ? "Mode Guncangan Nonaktif" : "Shock Mode Off")}
                   </p>
                 </div>
                 <button
@@ -779,7 +838,9 @@ export function MonteCarloSimulatorSheet({
                       : "var(--text-primary)",
                   }}
                 >
-                  {earlyShock ? "Deactivate Shock" : "Inject -25% Crash"}
+                  {earlyShock
+                    ? (isIndonesian ? "Nonaktifkan Guncangan" : "Deactivate Shock")
+                    : (isIndonesian ? "Simulasikan Crash -25%" : "Inject -25% Crash")}
                 </button>
               </div>
             </div>
@@ -794,13 +855,25 @@ export function MonteCarloSimulatorSheet({
               <div className="flex items-center gap-2 mb-1">
                 <ShieldCheck size={14} style={{ color: "var(--text-secondary)" }} />
                 <span className="text-[11px] font-bold text-[var(--text-primary)]">
-                  Hedging Recommendations
+                  {isIndonesian ? "Rekomendasi Lindung Nilai" : "Hedging Recommendations"}
                 </span>
               </div>
               <ul className="text-[11px] space-y-1 text-[var(--text-tertiary)] list-disc pl-4">
-                <li>Maintain 6–12 months of living expenses in ultra-liquid money market instruments.</li>
-                <li>Utilize a dynamic withdrawal strategy rather than fixed nominal withdrawals during bear markets.</li>
-                <li>Establish multiple non-correlated capital inflows (Barista FIRE model).</li>
+                <li>
+                  {isIndonesian
+                    ? "Pertahankan 6–12 bulan biaya hidup dalam instrumen pasar uang yang sangat likuid."
+                    : "Maintain 6–12 months of living expenses in ultra-liquid money market instruments."}
+                </li>
+                <li>
+                  {isIndonesian
+                    ? "Gunakan strategi penarikan dinamis alih-alih penarikan nominal tetap selama pasar bear (lesu)."
+                    : "Utilize a dynamic withdrawal strategy rather than fixed nominal withdrawals during bear markets."}
+                </li>
+                <li>
+                  {isIndonesian
+                    ? "Bangun beberapa sumber arus modal masuk yang tidak berkorelasi (model Barista FIRE)."
+                    : "Establish multiple non-correlated capital inflows (Barista FIRE model)."}
+                </li>
               </ul>
             </div>
           </div>

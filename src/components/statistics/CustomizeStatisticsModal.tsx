@@ -22,6 +22,145 @@ import type {
 } from "../../lib/widgetLayoutTypes";
 import { STATISTICS_PRESETS } from "../../lib/widgetLayoutTypes";
 
+const STATISTICS_CARD_METAS: Record<
+  string,
+  {
+    en: { title: string; subtitle: string };
+    id: { title: string; subtitle: string };
+  }
+> = {
+  financial_report: {
+    en: {
+      title: "Financial Report",
+      subtitle: "Balance Sheet, Cash Flows & Disclosures",
+    },
+    id: {
+      title: "Laporan Keuangan",
+      subtitle: "Neraca Keuangan, Arus Kas & Catatan Kaki",
+    },
+  },
+  health_score: {
+    en: {
+      title: "Financial Health Diagnostic Index",
+      subtitle: "Composite health score, diagnostic pillars & performance rating",
+    },
+    id: {
+      title: "Indeks Ketahanan Finansial",
+      subtitle: "Skor komposit kesehatan, pilar diagnosis & rating kinerja",
+    },
+  },
+  monthly_review: {
+    en: {
+      title: "Monthly Financial Review",
+      subtitle: "Period performance review & significant category shifts",
+    },
+    id: {
+      title: "Tinjauan Finansial Bulanan",
+      subtitle: "Evaluasi kinerja periode & pergeseran kategori signifikan",
+    },
+  },
+  expense_structure: {
+    en: {
+      title: "Expense Structure Analysis",
+      subtitle: "Essential baseline vs discretionary monthly commitments",
+    },
+    id: {
+      title: "Analisis Struktur Beban",
+      subtitle: "Komitmen kebutuhan pokok vs pengeluaran diskresioner",
+    },
+  },
+  spending_patterns: {
+    en: {
+      title: "Spending Patterns & Cycles",
+      subtitle: "Temporal spending cadence & weekday vs weekend pacing",
+    },
+    id: {
+      title: "Pola & Siklus Pengeluaran",
+      subtitle: "Ritme waktu belanja & komparasi hari kerja vs akhir pekan",
+    },
+  },
+  cashflow_summary: {
+    en: {
+      title: "Period Cashflow Summary",
+      subtitle: "Net cash retention, total turnover & operational runway",
+    },
+    id: {
+      title: "Ringkasan Arus Kas",
+      subtitle: "Retensi kas bersih, total omset & cadangan operasional",
+    },
+  },
+  inflow_outflow_trend: {
+    en: {
+      title: "Inflow vs Outflow Trend",
+      subtitle: "Multi-period historical cash movement comparison",
+    },
+    id: {
+      title: "Tren Arus Masuk vs Keluar",
+      subtitle: "Komparasi historis pergerakan kas antar periode",
+    },
+  },
+  category_breakdown: {
+    en: {
+      title: "Category Expense Breakdown",
+      subtitle: "Hierarchical category distribution and share of wallet",
+    },
+    id: {
+      title: "Rincian Beban Kategori",
+      subtitle: "Distribusi hierarki kategori & porsi alokasi dompet",
+    },
+  },
+  cashflow_velocity: {
+    en: {
+      title: "Cashflow Velocity & Pacing",
+      subtitle: "Daily burn rate & moving average expenditure curve",
+    },
+    id: {
+      title: "Kecepatan & Pacing Arus Kas",
+      subtitle: "Laju pengeluaran harian & kurva rata-rata bergerak",
+    },
+  },
+  fire_planner: {
+    en: {
+      title: "FIRE Independence Planner",
+      subtitle: "Retirement velocity & target capital runway",
+    },
+    id: {
+      title: "Perencana Kemandirian FIRE",
+      subtitle: "Kecepatan menuju pensiun & target landasan kapital",
+    },
+  },
+  monte_carlo: {
+    en: {
+      title: "Monte Carlo Wealth Projection",
+      subtitle: "Stochastic probability dispersion across market conditions",
+    },
+    id: {
+      title: "Proyeksi Kekayaan Monte Carlo",
+      subtitle: "Dispersi probabilitas stokastik melintasi berbagai kondisi pasar",
+    },
+  },
+  what_if_simulator: {
+    en: {
+      title: "What-If Simulator",
+      subtitle: "Interactive shock scenarios & liquidity stress test",
+    },
+    id: {
+      title: "Simulator Skenario What-If",
+      subtitle: "Skenario guncangan interaktif & uji stres likuiditas",
+    },
+  },
+  personal_financial_model: {
+    en: {
+      title: "Personal Financial Model",
+      subtitle: "Baseline trajectory, structural runway & liquidity horizon",
+    },
+    id: {
+      title: "Model Finansial Personal",
+      subtitle: "Trajektori dasar, landasan struktural & horizon likuiditas",
+    },
+  },
+};
+
 export interface CustomizeStatisticsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -60,51 +199,54 @@ export function CustomizeStatisticsModal({
         : "Custom configuration tailored to your preference";
     }
 
-    return t(
-      `statistics.presets.${activePresetKey}Desc`,
-      currentPresetDef.description,
-    );
+    if (isIndonesian) {
+      switch (activePresetKey) {
+        case "executive":
+          return "Pusat komando lengkap: skor ketahanan, proyeksi kekayaan & seluruh model skenario";
+        case "telemetry":
+          return "Fokus telemetri: arus kas operasional, tren siklus belanja & kurva pacing harian";
+        case "planning":
+          return "Fokus perencanaan jangka panjang: akumulasi kekayaan, target FIRE & simulasi skenario";
+        case "essential":
+          return "Tampilan esensial tanpa distraksi: skor utama, laporan neraca & arus kas inti";
+      }
+    }
+
+    return currentPresetDef.description;
   };
 
   const groups = [
     {
-      title: isIndonesian ? "Laporan & Evaluasi" : "Report & Diagnostics",
+      title: isIndonesian ? "Laporan Keuangan" : "Financial Report",
       ids: [
         "financial_report",
-        "monthly_review",
-        "personal_baseline",
-        "expense_structure",
       ],
     },
     {
       title: isIndonesian ? "Kecerdasan Finansial" : "Financial Intelligence",
       ids: [
         "health_score",
+        "monthly_review",
+        "expense_structure",
         "spending_patterns",
-        "spending_density_heatmap",
-        "zero_based_envelopes",
       ],
     },
     {
       title: isIndonesian ? "Arus Kas & Tren" : "Cashflow & Trend",
       ids: [
         "cashflow_summary",
-        "category_breakdown",
-        "cashflow_sankey",
         "inflow_outflow_trend",
+        "category_breakdown",
         "cashflow_velocity",
       ],
     },
     {
       title: isIndonesian ? "Simulasi & Proyeksi" : "Simulation & Planning",
       ids: [
-        "what_if_simulator",
-        "monte_carlo",
         "fire_planner",
+        "monte_carlo",
+        "what_if_simulator",
         "personal_financial_model",
-        "debt_payoff",
-        "cashflow_outlook",
-        "liquidity_horizon",
       ],
     },
   ];
@@ -426,56 +568,70 @@ export function CustomizeStatisticsModal({
                           }}
                         >
                           {/* Text */}
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className="
-                                  text-[12.5px]
-                                  font-semibold
-                                  leading-snug
-                                  truncate
-                                "
-                              style={{
-                                color: "var(--text-primary)",
-                              }}
-                            >
-                              {widget.title}
-                            </p>
+                          {(() => {
+                            const meta = STATISTICS_CARD_METAS[widget.id];
+                            const cardTitle = isIndonesian
+                              ? (meta?.id.title ?? widget.title)
+                              : (meta?.en.title ?? widget.title);
+                            const cardSubtitle = isIndonesian
+                              ? (meta?.id.subtitle ?? widget.subtitle)
+                              : (meta?.en.subtitle ?? widget.subtitle);
 
-                            <p
-                              className="
-                                  mt-0.5
-                                  text-[10.5px]
-                                  leading-relaxed
-                                  line-clamp-1
-                                "
-                              style={{
-                                color: "var(--text-tertiary)",
-                              }}
-                            >
-                              {widget.subtitle}
-                            </p>
-                          </div>
+                            return (
+                              <>
+                                <div className="min-w-0 flex-1">
+                                  <p
+                                    className="
+                                        text-[12.5px]
+                                        font-semibold
+                                        leading-snug
+                                        truncate
+                                      "
+                                    style={{
+                                      color: "var(--text-primary)",
+                                    }}
+                                  >
+                                    {cardTitle}
+                                  </p>
 
-                          {/* Toggle */}
-                          <div
-                            className="
-                                shrink-0
-                                ml-2
-                              "
-                            onClick={(event) => {
-                              event.stopPropagation();
-                            }}
-                          >
-                            <ToggleSwitch
-                              checked={isEnabled}
-                              onChange={() => {
-                                onSelectPresetKey?.(null);
-                                onToggleVisibility(widget.id);
-                              }}
-                              size="sm"
-                              ariaLabel={`Toggle ${widget.title}`}
-                            />
-                          </div>
+                                  <p
+                                    className="
+                                        mt-0.5
+                                        text-[10.5px]
+                                        leading-relaxed
+                                        line-clamp-1
+                                      "
+                                    style={{
+                                      color: "var(--text-tertiary)",
+                                    }}
+                                  >
+                                    {cardSubtitle}
+                                  </p>
+                                </div>
+
+                                {/* Toggle */}
+                                <div
+                                  className="
+                                      shrink-0
+                                      ml-2
+                                    "
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                  }}
+                                >
+                                  <ToggleSwitch
+                                    checked={isEnabled}
+                                    onChange={() => {
+                                      onSelectPresetKey?.(null);
+                                      onToggleVisibility(widget.id);
+                                    }}
+                                    size="sm"
+                                    ariaLabel={`Toggle ${cardTitle}`}
+                                  />
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       );
                     })}

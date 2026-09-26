@@ -15,8 +15,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, RotateCcw, Plus, Sparkles } from "lucide-react";
 
 import type { CardWidgetConfig } from "../../lib/widgetLayoutTypes";
+import { getLocalizedWidgetMeta } from "../../lib/widgetLayoutTypes";
 import { BottomSheet } from "../ui/BottomSheet";
 import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface WidgetCustomizationBarProps {
   isEditMode: boolean;
@@ -33,6 +35,7 @@ export function WidgetCustomizationBar({
   hiddenCards,
   onUnhideCard,
 }: WidgetCustomizationBarProps) {
+  const { isIndonesian } = useLanguage();
   const [addSheetOpen, setAddSheetOpen] = useState(false);
 
   return (
@@ -128,7 +131,7 @@ export function WidgetCustomizationBar({
                     color: "var(--text-primary)",
                   }}
                 >
-                  Editing Layout
+                  {isIndonesian ? "Mengedit Tata Letak" : "Editing Layout"}
                 </span>
               </div>
 
@@ -165,7 +168,11 @@ export function WidgetCustomizationBar({
                 >
                   <Plus size={12} strokeWidth={2} />
 
-                  <span>Add ({hiddenCards.length})</span>
+                  <span>
+                    {isIndonesian
+                      ? `Tambah (${hiddenCards.length})`
+                      : `Add (${hiddenCards.length})`}
+                  </span>
                 </button>
               )}
 
@@ -175,7 +182,13 @@ export function WidgetCustomizationBar({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm("Reset card layout and sizes to default?")) {
+                  if (
+                    confirm(
+                      isIndonesian
+                        ? "Atur ulang tata letak dan ukuran kartu ke bawaan?"
+                        : "Reset card layout and sizes to default?",
+                    )
+                  ) {
                     triggerHaptic("medium");
                     onReset();
                   }
@@ -198,8 +211,16 @@ export function WidgetCustomizationBar({
                   border: "1px solid var(--glass-border)",
                   color: "var(--text-secondary)",
                 }}
-                title="Reset layout to default"
-                aria-label="Reset layout to default"
+                title={
+                  isIndonesian
+                    ? "Atur ulang tata letak ke bawaan"
+                    : "Reset layout to default"
+                }
+                aria-label={
+                  isIndonesian
+                    ? "Atur ulang tata letak ke bawaan"
+                    : "Reset layout to default"
+                }
               >
                 <RotateCcw size={12} strokeWidth={1.8} />
               </button>
@@ -237,7 +258,7 @@ export function WidgetCustomizationBar({
               >
                 <Check size={13} strokeWidth={2.5} />
 
-                <span>Done</span>
+                <span>{isIndonesian ? "Selesai" : "Done"}</span>
               </button>
             </div>
           </motion.div>
@@ -250,7 +271,7 @@ export function WidgetCustomizationBar({
       <BottomSheet
         isOpen={addSheetOpen}
         onClose={() => setAddSheetOpen(false)}
-        title="Add Hidden Cards"
+        title={isIndonesian ? "Tambah Kartu Tersembunyi" : "Add Hidden Cards"}
       >
         <div
           className="
@@ -274,104 +295,114 @@ export function WidgetCustomizationBar({
               color: "var(--text-tertiary)",
             }}
           >
-            Tap any card below to restore it to your active dashboard.
+            {isIndonesian
+              ? "Ketuk kartu di bawah untuk menampilkannya kembali di dasbor aktif."
+              : "Tap any card below to restore it to your active dashboard."}
           </p>
 
           {/* ============================================================
               HIDDEN CARD LIST
           ============================================================= */}
-          {hiddenCards.map((card) => (
-            <div
-              key={card.id}
-              className="
-                p-3.5
-                rounded-2xl
-                flex
-                items-center
-                justify-between
-                gap-3
-              "
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "0 2px 10px rgba(0, 0, 0, 0.04)",
-              }}
-            >
-              {/* ======================================================
-                  CARD INFORMATION
-              ======================================================= */}
-              <div className="min-w-0 flex-1">
-                <h4
-                  className="
-                    text-[13px]
-                    font-semibold
-                    leading-snug
-                    truncate
-                  "
-                  style={{
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  {card.title}
-                </h4>
-
-                <p
-                  className="
-                    text-[11px]
-                    leading-relaxed
-                    mt-0.5
-                    line-clamp-1
-                  "
-                  style={{
-                    color: "var(--text-tertiary)",
-                  }}
-                >
-                  {card.subtitle}
-                </p>
-              </div>
-
-              {/* ======================================================
-                  ADD BUTTON
-              ======================================================= */}
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-
-                  onUnhideCard(card.id);
-
-                  if (hiddenCards.length <= 1) {
-                    setAddSheetOpen(false);
-                  }
-                }}
+          {hiddenCards.map((card) => {
+            const meta = getLocalizedWidgetMeta(
+              card.id,
+              isIndonesian,
+              card.title,
+              card.subtitle,
+            );
+            return (
+              <div
+                key={card.id}
                 className="
-                  shrink-0
-                  px-3
-                  py-1.5
-                  rounded-full
-                  text-[11px]
-                  font-semibold
+                  p-3.5
+                  rounded-2xl
                   flex
                   items-center
-                  gap-1
-                  cursor-pointer
-                  active:scale-95
-                  transition-all
-                  duration-150
+                  justify-between
+                  gap-3
                 "
                 style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
-                  border:
-                    "1px solid color-mix(in srgb, var(--accent) 70%, transparent)",
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.04)",
                 }}
               >
-                <Plus size={12} strokeWidth={2} />
+                {/* ======================================================
+                    CARD INFORMATION
+                ======================================================= */}
+                <div className="min-w-0 flex-1">
+                  <h4
+                    className="
+                      text-[13px]
+                      font-semibold
+                      leading-snug
+                      truncate
+                    "
+                    style={{
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    {meta.title}
+                  </h4>
 
-                <span>Add</span>
-              </button>
-            </div>
-          ))}
+                  <p
+                    className="
+                      text-[11px]
+                      leading-relaxed
+                      mt-0.5
+                      line-clamp-1
+                    "
+                    style={{
+                      color: "var(--text-tertiary)",
+                    }}
+                  >
+                    {meta.subtitle}
+                  </p>
+                </div>
+
+                {/* ======================================================
+                    ADD BUTTON
+                ======================================================= */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+
+                    onUnhideCard(card.id);
+
+                    if (hiddenCards.length <= 1) {
+                      setAddSheetOpen(false);
+                    }
+                  }}
+                  className="
+                    shrink-0
+                    px-3
+                    py-1.5
+                    rounded-full
+                    text-[11px]
+                    font-semibold
+                    flex
+                    items-center
+                    gap-1
+                    cursor-pointer
+                    active:scale-95
+                    transition-all
+                    duration-150
+                  "
+                  style={{
+                    background: "var(--accent)",
+                    color: "var(--accent-ink)",
+                    border:
+                      "1px solid color-mix(in srgb, var(--accent) 70%, transparent)",
+                  }}
+                >
+                  <Plus size={12} strokeWidth={2} />
+
+                  <span>{isIndonesian ? "Tambah" : "Add"}</span>
+                </button>
+              </div>
+            );
+          })}
         </div>
       </BottomSheet>
     </>

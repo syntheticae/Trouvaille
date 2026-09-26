@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { BottomSheet } from "../ui/BottomSheet";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   Flame,
   CheckCircle2,
@@ -26,6 +27,7 @@ export function FirePlannerSheet({
   defaultMonthlyBurnRate,
   hideBalance = false,
 }: FirePlannerSheetProps) {
+  const { isIndonesian } = useLanguage();
   const [monthlyBurn, setMonthlyBurn] = useState<number>(
     Math.max(1000000, defaultMonthlyBurnRate || 3500000)
   );
@@ -63,35 +65,45 @@ export function FirePlannerSheet({
     {
       type: "lean",
       title: "Lean FIRE",
-      desc: "Covers non-negotiable living essentials (food, shelter, basic utilities at 70%).",
+      desc: isIndonesian
+        ? "Mencakup kebutuhan pokok tak terelakkan (pangan, tempat tinggal, utilitas dasar pada 70%)."
+        : "Covers non-negotiable living essentials (food, shelter, basic utilities at 70%).",
       target: leanFireTarget,
       isMet: currentCapital >= leanFireTarget,
     },
     {
       type: "barista",
       title: "Barista FIRE",
-      desc: "Portfolio covers 60% of lifestyle; light flexible/passion work covers the rest.",
+      desc: isIndonesian
+        ? "Portofolio menanggung 60% gaya hidup; pekerjaan paruh waktu/passion menutup sisanya."
+        : "Portfolio covers 60% of lifestyle; light flexible/passion work covers the rest.",
       target: baristaFireTarget,
       isMet: currentCapital >= baristaFireTarget,
     },
     {
       type: "standard",
       title: "Standard FIRE",
-      desc: "100% full financial independence maintaining your existing quality of life.",
+      desc: isIndonesian
+        ? "Kemandirian finansial 100% penuh mempertahankan kualitas hidup saat ini."
+        : "100% full financial independence maintaining your existing quality of life.",
       target: standardFireTarget,
       isMet: currentCapital >= standardFireTarget,
     },
     {
       type: "fat",
       title: "Fat FIRE",
-      desc: "Generous abundance buffer (140%) enabling luxury travel, family care & contingencies.",
+      desc: isIndonesian
+        ? "Buffer kemakmuran melimpah (140%) memungkinkan perjalanan mewah, perawatan keluarga & dana tak terduga."
+        : "Generous abundance buffer (140%) enabling luxury travel, family care & contingencies.",
       target: fatFireTarget,
       isMet: currentCapital >= fatFireTarget,
     },
     {
       type: "coast",
       title: "Coast FIRE",
-      desc: "Net capital needed today that will grow to Standard FIRE in 15 years with zero added savings.",
+      desc: isIndonesian
+        ? "Modal bersih yang dibutuhkan hari ini untuk tumbuh menjadi Standard FIRE dalam 15 tahun tanpa tambahan tabungan."
+        : "Net capital needed today that will grow to Standard FIRE in 15 years with zero added savings.",
       target: coastFireTarget,
       isMet: currentCapital >= coastFireTarget,
     },
@@ -127,7 +139,7 @@ export function FirePlannerSheet({
                   className="font-semibold text-[16px] tracking-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  FIRE Retirement Planner
+                  {isIndonesian ? "Perencana Pensiun FIRE" : "FIRE Retirement Planner"}
                 </h3>
                 <span
                   className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
@@ -137,14 +149,16 @@ export function FirePlannerSheet({
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  Independence
+                  {isIndonesian ? "Kemandirian" : "Independence"}
                 </span>
               </div>
               <p
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Safe withdrawal rates, milestone countdown & portfolio runway
+                {isIndonesian
+                  ? "Laju penarikan aman, hitung mundur tonggak & ketahanan portofolio"
+                  : "Safe withdrawal rates, milestone countdown & portfolio runway"}
               </p>
             </div>
           </div>
@@ -157,7 +171,7 @@ export function FirePlannerSheet({
               border: "1px solid var(--glass-border)",
               color: "var(--text-secondary)",
             }}
-            title="Reset to Actuals"
+            title={isIndonesian ? "Reset ke Angka Riil" : "Reset to Actuals"}
           >
             <RotateCcw size={13} />
           </button>
@@ -175,7 +189,7 @@ export function FirePlannerSheet({
           <div className="flex justify-between items-start">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                Standard FIRE Goal
+                {isIndonesian ? "Target Standard FIRE" : "Standard FIRE Goal"}
               </p>
               <p className="text-[26px] font-semibold tracking-tight mt-0.5 text-[var(--text-primary)]">
                 {hideBalance ? "••••••" : formatRupiah(standardFireTarget)}
@@ -183,10 +197,18 @@ export function FirePlannerSheet({
             </div>
             <div className="text-right">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                Timeline
+                {isIndonesian ? "Estimasi Waktu" : "Timeline"}
               </span>
               <p className="text-[15px] font-semibold text-[var(--text-primary)] mt-0.5">
-                {yearsToFire === 0 ? "Goal Met" : yearsToFire !== null ? `~${yearsToFire} Years` : "—"}
+                {yearsToFire === 0
+                  ? isIndonesian
+                    ? "Tercapai"
+                    : "Goal Met"
+                  : yearsToFire !== null
+                    ? isIndonesian
+                      ? `~${yearsToFire} Tahun`
+                      : `~${yearsToFire} Years`
+                    : "—"}
               </p>
             </div>
           </div>
@@ -205,8 +227,13 @@ export function FirePlannerSheet({
           </div>
 
           <div className="flex justify-between items-center text-[10px] mt-2 text-[var(--text-secondary)]">
-            <span>Net Worth: {hideBalance ? "••••••" : formatRupiah(currentCapital)}</span>
-            <span className="font-bold text-[var(--text-primary)]">{standardProgress}% Funded</span>
+            <span>
+              {isIndonesian ? "Kekayaan Bersih:" : "Net Worth:"}{" "}
+              {hideBalance ? "••••••" : formatRupiah(currentCapital)}
+            </span>
+            <span className="font-bold text-[var(--text-primary)]">
+              {standardProgress}% {isIndonesian ? "Tercapai" : "Funded"}
+            </span>
           </div>
         </div>
 
@@ -219,15 +246,18 @@ export function FirePlannerSheet({
           }}
         >
           <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
-            Plan Parameters
+            {isIndonesian ? "Parameter Perencanaan" : "Plan Parameters"}
           </span>
 
           {/* Monthly Living Spend */}
           <div>
             <div className="flex justify-between text-[11px] font-semibold mb-1">
-              <span style={{ color: "var(--text-secondary)" }}>Monthly Living Expenses</span>
+              <span style={{ color: "var(--text-secondary)" }}>
+                {isIndonesian ? "Pengeluaran Hidup Bulanan" : "Monthly Living Expenses"}
+              </span>
               <span className="font-bold" style={{ color: "var(--text-primary)" }}>
-                {hideBalance ? "••••••" : formatRupiah(monthlyBurn)} / mo
+                {hideBalance ? "••••••" : formatRupiah(monthlyBurn)}{" "}
+                {isIndonesian ? "/ bln" : "/ mo"}
               </span>
             </div>
             <input
@@ -244,9 +274,12 @@ export function FirePlannerSheet({
           {/* Monthly Savings */}
           <div>
             <div className="flex justify-between text-[11px] font-semibold mb-1">
-              <span style={{ color: "var(--text-secondary)" }}>Monthly Savings Contribution</span>
+              <span style={{ color: "var(--text-secondary)" }}>
+                {isIndonesian ? "Kontribusi Tabungan Bulanan" : "Monthly Savings Contribution"}
+              </span>
               <span className="font-bold" style={{ color: "var(--text-primary)" }}>
-                {hideBalance ? "••••••" : formatRupiah(monthlySavings)} / mo
+                {hideBalance ? "••••••" : formatRupiah(monthlySavings)}{" "}
+                {isIndonesian ? "/ bln" : "/ mo"}
               </span>
             </div>
             <input
@@ -263,7 +296,7 @@ export function FirePlannerSheet({
           {/* Safe Withdrawal Rate Selector */}
           <div className="pt-2 border-t border-[var(--glass-border)] flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-              Safe Withdrawal Rate (SWR)
+              {isIndonesian ? "Laju Penarikan Aman (SWR)" : "Safe Withdrawal Rate (SWR)"}
             </span>
             <div className="flex items-center gap-1.5">
               {[0.03, 0.035, 0.04, 0.045].map((rate) => (
@@ -290,7 +323,7 @@ export function FirePlannerSheet({
         {/* 5 Milestones Matrix */}
         <div className="space-y-2.5">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] px-1 block">
-            Milestone Matrix
+            {isIndonesian ? "Matriks Tonggak Pencapaian" : "Milestone Matrix"}
           </span>
 
           {milestones.map((m) => {
@@ -318,7 +351,7 @@ export function FirePlannerSheet({
                           border: "1px solid var(--glass-border)",
                         }}
                       >
-                        <CheckCircle2 size={10} /> Met
+                        <CheckCircle2 size={10} /> {isIndonesian ? "Tercapai" : "Met"}
                       </span>
                     )}
                   </div>
@@ -344,8 +377,12 @@ export function FirePlannerSheet({
                   />
                 </div>
                 <div className="flex justify-between text-[10px] text-[var(--text-secondary)] mt-1.5 font-medium">
-                  <span>Current: {pct}%</span>
-                  <span>Multiplier: {(1 / swr).toFixed(0)}× annual spend</span>
+                  <span>{isIndonesian ? "Saat Ini: " : "Current: "}{pct}%</span>
+                  <span>
+                    {isIndonesian ? "Pengali: " : "Multiplier: "}
+                    {(1 / swr).toFixed(0)}
+                    {isIndonesian ? "× pengeluaran tahunan" : "× annual spend"}
+                  </span>
                 </div>
               </div>
             );
@@ -362,8 +399,9 @@ export function FirePlannerSheet({
         >
           <ShieldCheck size={16} className="text-[var(--text-secondary)] shrink-0 mt-0.5" />
           <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)]">
-            The 4% Safe Withdrawal Rule (Trinity Study) indicates that withdrawing 4% of your initial retirement portfolio
-            (adjusted annually for inflation) provides an exceptionally high survival probability over a 30-year horizon.
+            {isIndonesian
+              ? "Aturan Penarikan Aman 4% (Trinity Study) menunjukkan bahwa menarik 4% dari portofolio awal pensiun (disesuaikan inflasi tahunan) memberikan probabilitas kelangsungan portofolio yang sangat tinggi selama rentang 30 tahun."
+              : "The 4% Safe Withdrawal Rule (Trinity Study) indicates that withdrawing 4% of your initial retirement portfolio (adjusted annually for inflation) provides an exceptionally high survival probability over a 30-year horizon."}
           </p>
         </div>
       </div>

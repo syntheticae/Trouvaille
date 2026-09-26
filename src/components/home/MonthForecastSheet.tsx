@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, type PanInfo, useDragControls } from "framer-motion";
@@ -8,6 +8,7 @@ import type { Transaction } from "../../lib/types";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface MonthForecastSheetProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export function MonthForecastSheet({
   const navigate = useNavigate();
   const dragControls = useDragControls();
   const { theme } = useTheme();
+  const { isIndonesian } = useLanguage();
   const isDark = theme !== "light";
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const chartRef = useRef<SVGSVGElement | null>(null);
@@ -125,11 +127,15 @@ export function MonthForecastSheet({
 
   const maxVal = Math.max(effectiveProjectedTotal, effectiveTotalExpense, 1) * 1.08;
 
-  const getX = (d: number) =>
-    padLeft + ((d - 1) / Math.max(1, totalDays - 1)) * plotWidth;
+  const getX = useCallback(
+    (d: number) => padLeft + ((d - 1) / Math.max(1, totalDays - 1)) * plotWidth,
+    [padLeft, totalDays, plotWidth]
+  );
 
-  const getY = (v: number) =>
-    padTop + plotHeight - (Math.max(0, v) / maxVal) * plotHeight;
+  const getY = useCallback(
+    (v: number) => padTop + plotHeight - (Math.max(0, v) / maxVal) * plotHeight,
+    [padTop, plotHeight, maxVal]
+  );
 
   // Solid Actual Path
   const actualPath = useMemo(() => {
@@ -141,7 +147,7 @@ export function MonthForecastSheet({
       dStr += ` L ${x} ${y}`;
     }
     return dStr;
-  }, [daysElapsed, actualCumulative, maxVal]);
+  }, [daysElapsed, actualCumulative, getX, getY]);
 
   // Area Fill under Solid Actual Path
   const actualAreaPath = useMemo(() => {
@@ -150,7 +156,7 @@ export function MonthForecastSheet({
     const xFirst = getX(1);
     const yBase = getY(0);
     return `${actualPath} L ${xLast} ${yBase} L ${xFirst} ${yBase} Z`;
-  }, [actualPath, daysElapsed, maxVal]);
+  }, [actualPath, daysElapsed, getX, getY]);
 
   // Dashed Forecast Path (from daysElapsed to totalDays)
   const forecastPath = useMemo(() => {
@@ -160,7 +166,7 @@ export function MonthForecastSheet({
     const xEnd = getX(totalDays);
     const yEnd = getY(forecastCumulative.get(totalDays) || effectiveProjectedTotal);
     return `M ${xStart} ${yStart} L ${xEnd} ${yEnd}`;
-  }, [daysElapsed, totalDays, forecastCumulative, effectiveTotalExpense, effectiveProjectedTotal, maxVal]);
+  }, [daysElapsed, totalDays, forecastCumulative, effectiveTotalExpense, effectiveProjectedTotal, getX, getY]);
 
   // Pointer interactions for scrubber
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -276,7 +282,7 @@ export function MonthForecastSheet({
               className="text-[15px] font-semibold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              Month Forecast
+              {isIndonesian ? "Prakiraan Akhir Bulan" : "Month Forecast"}
             </h2>
             <button
               type="button"
@@ -290,8 +296,8 @@ export function MonthForecastSheet({
                 border: "1px solid var(--glass-border)",
                 color: "var(--text-secondary)",
               }}
-              title="Close"
-              aria-label="Close"
+              title={isIndonesian ? "Tutup" : "Close"}
+              aria-label={isIndonesian ? "Tutup" : "Close"}
             >
               <X size={15} />
             </button>
@@ -312,11 +318,13 @@ export function MonthForecastSheet({
             >
               {activeInspectDay !== null ? (
                 <span>
-                  Day {activeInspectDay} of {totalDays}{" "}
-                  {isHoverActual ? "(Actual)" : "(Forecast)"}
+                  {isIndonesian ? `Hari ke-${activeInspectDay} dari ${totalDays} ` : `Day ${activeInspectDay} of ${totalDays} `}
+                  {isHoverActual
+                    ? (isIndonesian ? "(Aktual)" : "(Actual)")
+                    : (isIndonesian ? "(Prakiraan)" : "(Forecast)")}
                 </span>
               ) : (
-                <span>{daysElapsed} of {totalDays} days</span>
+                <span>{isIndonesian ? `${daysElapsed} dari ${totalDays} hari` : `${daysElapsed} of ${totalDays} days`}</span>
               )}
             </p>
 
@@ -324,7 +332,9 @@ export function MonthForecastSheet({
               className="text-[12px] max-w-[270px] mx-auto mt-2 leading-relaxed font-normal"
               style={{ color: "var(--text-tertiary)" }}
             >
-              If you keep spending at the same pace, here is what the full month will look like.
+              {isIndonesian
+                ? "Jika laju pengeluaran stabil pada ritme ini, berikut estimasi total akhir bulan."
+                : "If you keep spending at the same pace, here is what the full month will look like."}
             </p>
           </div>
 
@@ -498,7 +508,7 @@ export function MonthForecastSheet({
                   className="w-4 h-[2px] rounded-full"
                   style={{ background: "var(--text-primary)" }}
                 />
-                <span>Spent</span>
+                <span>{isIndonesian ? "Terpakai" : "Spent"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span
@@ -508,7 +518,7 @@ export function MonthForecastSheet({
                     borderColor: "var(--text-tertiary)",
                   }}
                 />
-                <span>Forecast</span>
+                <span>{isIndonesian ? "Prakiraan" : "Forecast"}</span>
               </div>
             </div>
           </div>
@@ -526,7 +536,7 @@ export function MonthForecastSheet({
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Spent so far
+                {isIndonesian ? "Terpakai sejauh ini" : "Spent so far"}
               </span>
               <p
                 className="text-[17px] font-semibold amount mt-1"
@@ -547,7 +557,7 @@ export function MonthForecastSheet({
                 className="text-[11px] font-medium"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Daily average
+                {isIndonesian ? "Rata-rata harian" : "Daily average"}
               </span>
               <p
                 className="text-[17px] font-semibold amount mt-1"
@@ -572,10 +582,10 @@ export function MonthForecastSheet({
               border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
-            title="View Calendar & Daily Runway"
+            title={isIndonesian ? "Lihat Kalender & Runway Harian" : "View Calendar & Daily Runway"}
           >
             <CalendarDays size={14} strokeWidth={1.75} />
-            <span>View Calendar & Daily Runway</span>
+            <span>{isIndonesian ? "Lihat Kalender & Runway Harian" : "View Calendar & Daily Runway"}</span>
           </button>
         </div>
       </motion.div>

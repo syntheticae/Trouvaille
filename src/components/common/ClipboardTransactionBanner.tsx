@@ -95,7 +95,7 @@ export function ClipboardTransactionBanner({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -20, scale: 0.96 }}
         transition={{ type: "spring", stiffness: 380, damping: 28 }}
-        className="w-full mb-3 select-none"
+        className="w-full mb-3 select-none pointer-events-auto"
       >
         <div
           className="p-3.5 rounded-[22px] glass-surface backdrop-blur-2xl flex items-center justify-between gap-3"

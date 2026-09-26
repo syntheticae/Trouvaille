@@ -7,7 +7,6 @@ import {
   ArrowDownRight,
   X,
   Search,
-  ChevronRight,
   TrendingUp,
   ShieldCheck,
   Sparkles,
@@ -25,6 +24,7 @@ import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   useWallets,
   saveWalletClassification,
@@ -50,83 +50,31 @@ import {
   deleteHolding,
   calculateHoldingValuation,
   calculatePortfolioSummary,
-  calculateAssetDepreciation,
   fetchHoldingsFromSupabase,
   refreshAllPortfolioPrices,
   USD_IDR_ESTIMATE,
 } from "../../lib/marketPriceService";
 import type { InvestmentHolding, AssetType } from "../../lib/types";
 import type { UsdtValuationPref } from "../../lib/marketPriceService";
+import {
+  PRESET_ASSETS,
+  type PresetAsset,
+  type PresetCategory,
+} from "../../lib/assetPresets";
 
-// ─── Asset Presets ─────────────────────────────────────────────────────────────
-
-interface AssetPreset {
-  symbol: string;
-  name: string;
-  type: AssetType;
-}
-
-const ASSET_PRESETS: AssetPreset[] = [
-  // Fixed Assets (Property & Vehicles)
-  { symbol: "PROPERTY", name: "Residential House / Property", type: "fixed_asset" },
-  { symbol: "APARTMENT", name: "Apartment / Condominium", type: "fixed_asset" },
-  { symbol: "LAND", name: "Land Plot / Tanah", type: "fixed_asset" },
-  { symbol: "VEHICLE", name: "Car / Automobile", type: "fixed_asset" },
-  { symbol: "MOTORCYCLE", name: "Motorcycle", type: "fixed_asset" },
-  { symbol: "WATCH", name: "Luxury Watch / Collectible", type: "fixed_asset" },
-
-  // IDX Blue-chip Stocks
-  { symbol: "BBCA.JK", name: "Bank Central Asia", type: "stock" },
-  { symbol: "BBRI.JK", name: "Bank Rakyat Indonesia", type: "stock" },
-  { symbol: "BMRI.JK", name: "Bank Mandiri", type: "stock" },
-  { symbol: "TLKM.JK", name: "Telkom Indonesia", type: "stock" },
-  { symbol: "ASII.JK", name: "Astra International", type: "stock" },
-  { symbol: "ANTM.JK", name: "Aneka Tambang", type: "stock" },
-  { symbol: "GOTO.JK", name: "GoTo Gojek Tokopedia", type: "stock" },
-  { symbol: "MDKA.JK", name: "Merdeka Copper Gold", type: "stock" },
-  { symbol: "ICBP.JK", name: "Indofood CBP Sukses", type: "stock" },
-  { symbol: "ADRO.JK", name: "Adaro Energy", type: "stock" },
-  { symbol: "PTBA.JK", name: "Bukit Asam", type: "stock" },
-  { symbol: "UNVR.JK", name: "Unilever Indonesia", type: "stock" },
-
-  // US Equities
-  { symbol: "AAPL", name: "Apple Inc.", type: "stock" },
-  { symbol: "MSFT", name: "Microsoft Corporation", type: "stock" },
-  { symbol: "NVDA", name: "NVIDIA Corporation", type: "stock" },
-  { symbol: "GOOGL", name: "Alphabet Inc.", type: "stock" },
-  { symbol: "TSLA", name: "Tesla, Inc.", type: "stock" },
-
-  // Crypto
-  { symbol: "BTC", name: "Bitcoin", type: "crypto" },
-  { symbol: "ETH", name: "Ethereum", type: "crypto" },
-  { symbol: "USDT", name: "Tether USD", type: "crypto" },
-  { symbol: "SOL", name: "Solana", type: "crypto" },
-  { symbol: "BNB", name: "BNB (Binance)", type: "crypto" },
-  { symbol: "XRP", name: "Ripple XRP", type: "crypto" },
-  { symbol: "DOGE", name: "Dogecoin", type: "crypto" },
-
-  // Gold & Metals
-  { symbol: "ANTAM-LM", name: "Logam Mulia Antam 24K", type: "gold" },
-  { symbol: "UBS-GOLD", name: "UBS Gold 24K", type: "gold" },
-  { symbol: "GOLD-SPOT", name: "Spot Gold (Gram)", type: "gold" },
-
-  // Mutual Funds & Government Bonds
-  { symbol: "BIBIT-RD", name: "Mutual Fund (Bibit)", type: "mutual_fund" },
-  { symbol: "AJAIB-RD", name: "Mutual Fund (Ajaib)", type: "mutual_fund" },
-  { symbol: "BAREKSA-RD", name: "Mutual Fund (Bareksa)", type: "mutual_fund" },
-  { symbol: "SBN-ORI", name: "Obligasi Negara Ritel (ORI)", type: "bond" },
-  { symbol: "SBN-SR", name: "Sukuk Ritel (SR)", type: "bond" },
-  { symbol: "SBN-FR", name: "Fixed Rate Government Bond (FR)", type: "bond" },
-];
-
-const TYPE_LABELS: Record<string, string> = {
-  all: "All",
-  fixed_asset: "Fixed Asset",
-  stock: "Stocks",
-  crypto: "Crypto",
-  gold: "Gold",
-  mutual_fund: "Funds",
-  bond: "Bonds",
+const getTypeLabel = (type: string, isIndonesian: boolean): string => {
+  const labels: Record<string, { en: string; id: string }> = {
+    all: { en: "All", id: "Semua" },
+    fixed_asset: { en: "Fixed Asset", id: "Aset Tetap" },
+    stock: { en: "Stocks", id: "Saham" },
+    crypto: { en: "Crypto", id: "Kripto" },
+    gold: { en: "Gold", id: "Emas" },
+    mutual_fund: { en: "Funds", id: "Reksadana" },
+    bond: { en: "Bonds", id: "Obligasi" },
+  };
+  const item = labels[type];
+  if (!item) return type.replace("_", " ");
+  return isIndonesian ? item.id : item.en;
 };
 
 interface AssetValuationSheetProps {
@@ -138,6 +86,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { showToast } = useToast();
+  const { isIndonesian } = useLanguage();
   const { data: wallets = [], refetch: refetchWallets } = useWallets();
   const { balancesByName } = useWalletBalances();
   const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
@@ -163,6 +112,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
   // USDT Valuation State (Scoped to current user)
   const [usdtPref, setUsdtPref] = useState<UsdtValuationPref>(() => getSavedUsdtPref(user?.id));
+  const [holdings, setHoldings] = useState<InvestmentHolding[]>(() => getSavedHoldings(user?.id));
 
   // Sync state when user changes
   useEffect(() => {
@@ -219,7 +169,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   // Audit discrepancy between transactions and USDT units
   const reconciliationAudit = useMemo(() => {
     return auditUsdtReconciliation(allTxs, wallets, user?.id);
-  }, [allTxs, wallets, user?.id, usdtPref.units, usdtPref.rate]);
+  }, [allTxs, wallets, user?.id]);
 
   // Handle applying reconciliation
   const handleApplyReconciliation = () => {
@@ -238,20 +188,17 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   // Staking Yield Quick Modal State
   const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
 
-  // Other Market Holdings & Fixed Assets
-  const [holdings, setHoldings] = useState<InvestmentHolding[]>(() => getSavedHoldings(user?.id));
-
   // ── Add Holding: Two-Phase Flow ──────────────────────────────────────────────
   // Phase 0 = closed, Phase 1 = searchable picker, Phase 2 = confirmation form
   const [addPhase, setAddPhase] = useState<0 | 1 | 2>(0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<AssetType | "all">("all");
-  // selectedPreset removed
+  const [presetCategory, setPresetCategory] = useState<PresetCategory>("all");
   const [formSymbol, setFormSymbol] = useState("");
   const [formName, setFormName] = useState("");
   const [formType, setFormType] = useState<AssetType>("stock");
+  const [formCurrency, setFormCurrency] = useState<"IDR" | "USD">("IDR");
+  const [formPlatform, setFormPlatform] = useState<string>("");
   const [formUnits, setFormUnits] = useState("1");
-  const [formInvestedAmount, setFormInvestedAmount] = useState("");
   const [formBuyPrice, setFormBuyPrice] = useState("");
   const [formCurrentPrice, setFormCurrentPrice] = useState("");
   const [selectedDetailHolding, setSelectedDetailHolding] = useState<InvestmentHolding | null>(null);
@@ -259,95 +206,59 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   const [formIcon, setFormIcon] = useState("TrendingUp");
   const [hasCustomPickedAssetIcon, setHasCustomPickedAssetIcon] = useState(false);
   const [isAssetIconPickerOpen, setIsAssetIconPickerOpen] = useState(false);
-  const [formAnnualRate, setFormAnnualRate] = useState<string>("");
-  const [formAnnualRateSign, setFormAnnualRateSign] = useState<"+" | "-">("-");
   const [formPurchaseDate, setFormPurchaseDate] = useState<string>(() =>
     format(new Date(), "yyyy-MM-dd")
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Live calculation of compound depreciation / appreciation
-  const dynamicValuationPreview = useMemo(() => {
-    const buy = parseFloat(formBuyPrice);
-    const rate = parseFloat(formAnnualRate);
-    if (isNaN(buy) || buy <= 0 || isNaN(rate) || !formPurchaseDate) {
-      return null;
+  // Focus search on open
+  useEffect(() => {
+    if (addPhase === 1) {
+      setTimeout(() => searchInputRef.current?.focus(), 150);
     }
-    const signedRate = formAnnualRateSign === "-" ? -Math.abs(rate) : Math.abs(rate);
-    return calculateAssetDepreciation(buy, signedRate, formPurchaseDate);
-  }, [formBuyPrice, formAnnualRate, formAnnualRateSign, formPurchaseDate]);
+  }, [addPhase]);
 
   // Open asset picker (Phase 1)
   const openAssetPicker = () => {
     triggerHaptic("light");
     setSearchQuery("");
-    setFilterType("all");
-    
+    setPresetCategory("all");
     setAddPhase(1);
-    setTimeout(() => searchInputRef.current?.focus(), 150);
   };
 
   // Select a preset → move to Phase 2 confirmation
-  const handleSelectPreset = async (preset: AssetPreset) => {
-    triggerHaptic("light");
-    
+  const handleSelectPreset = async (preset: PresetAsset) => {
+    triggerHaptic("medium");
     setFormSymbol(preset.symbol);
     setFormName(preset.name);
     setFormType(preset.type);
+    setFormIcon(preset.icon || "TrendingUp");
+    setFormCurrency(preset.suggestedCurrency || "IDR");
+    setFormPlatform("");
     setFormUnits(preset.type === "fixed_asset" ? "1" : "");
     setFormBuyPrice("");
     setFormCurrentPrice("");
-    const defaultIcon =
-      preset.symbol === "VEHICLE" || preset.symbol === "MOTORCYCLE"
-        ? "Car"
-        : preset.symbol === "PROPERTY" ||
-          preset.symbol === "APARTMENT" ||
-          preset.symbol === "LAND"
-        ? "Home"
-        : preset.symbol === "WATCH"
-        ? "Watch"
-        : preset.type === "crypto"
-        ? "Coins"
-        : preset.type === "gold"
-        ? "Landmark"
-        : preset.type === "bond"
-        ? "FileText"
-        : "TrendingUp";
-    setFormIcon(defaultIcon);
-    setHasCustomPickedAssetIcon(false);
-    setFormPurchaseDate(format(new Date(), "yyyy-MM-dd"));
-    if (preset.type === "fixed_asset") {
-      if (preset.symbol === "VEHICLE" || preset.symbol === "MOTORCYCLE") {
-        setFormAnnualRateSign("-");
-        setFormAnnualRate("15");
-      } else if (
-        preset.symbol === "PROPERTY" ||
-        preset.symbol === "APARTMENT" ||
-        preset.symbol === "LAND"
-      ) {
-        setFormAnnualRateSign("+");
-        setFormAnnualRate("5");
-      } else {
-        setFormAnnualRateSign("-");
-        setFormAnnualRate("");
-      }
-    } else {
-      setFormAnnualRateSign("+");
-      setFormAnnualRate("");
-    }
+    setFormPurchaseDate(new Date().toISOString().split("T")[0]);
     setAddPhase(2);
 
     if (preset.type !== "fixed_asset") {
       setIsFetchingCurrentPrice(true);
       try {
-        let price: number | null = null;
+        let livePrice: number | null = null;
         if (preset.type === "crypto") {
-          price = await fetchCryptoPriceInIDR(preset.symbol);
+          livePrice = await fetchCryptoPriceInIDR(preset.symbol);
         } else if (preset.type === "stock") {
-          price = await fetchStockPriceInIDR(preset.symbol);
+          livePrice = await fetchStockPriceInIDR(preset.symbol);
         }
-        if (price && price > 0) {
-          setFormCurrentPrice(String(price));
+        if (livePrice && livePrice > 0) {
+          if (preset.suggestedCurrency === "USD" && usdtPref.rate > 0) {
+            const usdPrice = parseFloat((livePrice / usdtPref.rate).toFixed(2));
+            setFormCurrentPrice(String(usdPrice));
+            setFormBuyPrice(String(usdPrice));
+          } else {
+            setFormCurrentPrice(String(livePrice));
+            setFormBuyPrice(String(livePrice));
+          }
         }
       } catch {
         // silently fallback
@@ -359,32 +270,17 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
   // Direct Custom Asset Entry (Can be Fixed Asset, Stock, Crypto, etc.)
   const handleCustomAssetEntry = (type: AssetType = "fixed_asset") => {
-    triggerHaptic("light");
-    
+    triggerHaptic("medium");
     setFormType(type);
     setFormSymbol(type === "fixed_asset" ? `FIXED-${Date.now().toString().slice(-4)}` : searchQuery.trim().toUpperCase() || "CUSTOM");
     setFormName(searchQuery.trim() || "");
-    setFormUnits(type === "fixed_asset" ? "1" : "1");
+    setFormCurrency("IDR");
+    setFormPlatform("");
+    setFormIcon(type === "fixed_asset" ? "Home" : "TrendingUp");
+    setFormUnits(type === "fixed_asset" ? "1" : "");
     setFormBuyPrice("");
     setFormCurrentPrice("");
-    setFormPurchaseDate(format(new Date(), "yyyy-MM-dd"));
-    if (type === "fixed_asset") {
-      setFormAnnualRateSign("-");
-      setFormAnnualRate("10");
-    } else {
-      setFormAnnualRateSign("+");
-      setFormAnnualRate("");
-    }
-    const defaultIcon =
-      type === "fixed_asset"
-        ? "Home"
-        : type === "crypto"
-        ? "Coins"
-        : type === "gold"
-        ? "Landmark"
-        : "TrendingUp";
-    setFormIcon(defaultIcon);
-    setHasCustomPickedAssetIcon(false);
+    setFormPurchaseDate(new Date().toISOString().split("T")[0]);
     setAddPhase(2);
   };
 
@@ -395,23 +291,23 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setFormIcon("TrendingUp");
     setHasCustomPickedAssetIcon(false);
     setEditingHoldingId(null);
-    setFormAnnualRate("");
-    setFormAnnualRateSign("-");
+    setFormPlatform("");
+    setFormCurrency("IDR");
     setFormPurchaseDate(format(new Date(), "yyyy-MM-dd"));
   };
 
   // Filtered presets for picker list
   const filteredPresets = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return ASSET_PRESETS.filter((p) => {
-      const matchType = filterType === "all" || p.type === filterType;
-      const matchSearch =
-        !q ||
-        p.symbol.toLowerCase().includes(q) ||
-        p.name.toLowerCase().includes(q);
-      return matchType && matchSearch;
+    return PRESET_ASSETS.filter((preset) => {
+      const matchCategory =
+        presetCategory === "all" || preset.category === presetCategory;
+      const matchQuery =
+        !searchQuery ||
+        preset.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        preset.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCategory && matchQuery;
     });
-  }, [searchQuery, filterType]);
+  }, [searchQuery, presetCategory]);
 
 
   // Calculations for USDT
@@ -548,28 +444,37 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
   // Save New or Edited Generic Holding / Fixed Asset
   const handleSaveNewHolding = () => {
     if (!formName.trim()) {
-      showToast("Asset name is required", "delete", () => {});
+      showToast(
+        isIndonesian ? "Masukkan nama aset" : "Asset name is required",
+        "delete",
+        () => {},
+      );
       return;
     }
 
     const units = formType === "fixed_asset" ? 1 : parseFloat(formUnits);
-    const buyPrice = parseFloat(formBuyPrice);
-    const currentPrice = parseFloat(formCurrentPrice) || buyPrice;
+    const rawBuy = parseFloat(formBuyPrice);
+    const rawCurrent = parseFloat(formCurrentPrice) || rawBuy;
 
-    if (isNaN(units) || units <= 0 || isNaN(buyPrice) || buyPrice <= 0) {
-      showToast("Please enter valid amounts", "delete", () => {});
+    if (isNaN(units) || units <= 0 || isNaN(rawBuy) || rawBuy <= 0) {
+      showToast(
+        isIndonesian ? "Masukkan nominal yang valid" : "Please enter valid amounts",
+        "delete",
+        () => {},
+      );
       return;
     }
 
-    const symbol = formSymbol.trim() || (formType === "fixed_asset" ? "ASSET" : formName.slice(0, 5).toUpperCase());
+    const liveRate = usdtPref.rate > 0 ? usdtPref.rate : 16000;
+    const buyPrice = formCurrency === "USD" ? rawBuy * liveRate : rawBuy;
+    const currentPrice =
+      formCurrency === "USD" ? rawCurrent * liveRate : rawCurrent;
 
-    const rawRate = parseFloat(formAnnualRate);
-    const signedRate =
-      !isNaN(rawRate) && rawRate !== 0
-        ? formAnnualRateSign === "-"
-          ? -Math.abs(rawRate)
-          : Math.abs(rawRate)
-        : undefined;
+    const symbol =
+      formSymbol.trim() ||
+      (formType === "fixed_asset"
+        ? "ASSET"
+        : formName.slice(0, 5).toUpperCase());
 
     if (symbol.toUpperCase() === "USDT") {
       const updatedPref: UsdtValuationPref = {
@@ -581,7 +486,11 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
       saveUsdtPref(updatedPref, user?.id);
       closeAddFlow();
       triggerHaptic("medium");
-      showToast("USDT holding saved successfully", "add", () => {});
+      showToast(
+        isIndonesian ? "Holding USDT berhasil disimpan" : "USDT holding saved successfully",
+        "add",
+        () => {},
+      );
       return;
     }
 
@@ -593,10 +502,11 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
       units,
       avg_buy_price: buyPrice,
       current_price: currentPrice,
+      currency: formCurrency,
       last_price_updated_at: new Date().toISOString(),
       icon: formIcon,
-      annual_rate: signedRate,
       purchase_date: formPurchaseDate || undefined,
+      notes: formPlatform ? `Platform: ${formPlatform}` : undefined,
     };
 
     const updated = upsertHolding(newH, user?.id);
@@ -604,7 +514,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     closeAddFlow();
     triggerHaptic("medium");
     showToast(
-      `${newH.name} ${editingHoldingId ? "updated" : "added"} successfully`,
+      isIndonesian ? "Aset berhasil disimpan" : "Asset saved successfully",
       "add",
       () => {},
     );
@@ -617,18 +527,13 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
     setFormName(h.name);
     setFormType(h.asset_type);
     setFormUnits(String(h.units));
-    const invested = Math.round(h.units * h.avg_buy_price);
-    setFormInvestedAmount(invested > 0 ? String(invested) : "");
-    setFormBuyPrice(String(h.avg_buy_price));
-    setFormCurrentPrice(String(h.current_price || h.avg_buy_price));
+    const isUsd = h.currency === "USD";
+    const liveRate = usdtPref.rate > 0 ? usdtPref.rate : 16000;
+    setFormCurrency(isUsd ? "USD" : "IDR");
+    setFormBuyPrice(isUsd ? String(parseFloat((h.avg_buy_price / liveRate).toFixed(2))) : String(h.avg_buy_price));
+    setFormCurrentPrice(isUsd ? String(parseFloat(((h.current_price || h.avg_buy_price) / liveRate).toFixed(2))) : String(h.current_price || h.avg_buy_price));
     setFormIcon(h.icon || getDefaultAssetIconName(h.asset_type));
-    if (typeof h.annual_rate === "number" && h.annual_rate !== 0) {
-      setFormAnnualRateSign(h.annual_rate >= 0 ? "+" : "-");
-      setFormAnnualRate(String(Math.abs(h.annual_rate)));
-    } else {
-      setFormAnnualRateSign("+");
-      setFormAnnualRate("");
-    }
+    setFormPlatform(h.notes?.startsWith("Platform: ") ? h.notes.replace("Platform: ", "") : "");
     setFormPurchaseDate(h.purchase_date || "");
     setAddPhase(2);
   };
@@ -788,7 +693,13 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 };
                 setUsdtPref(updated);
                 saveUsdtPref(updated, user?.id);
-                showToast(`Linked ${suggestedUsdtUnits} USDT to portfolio`, "add", () => {});
+                showToast(
+                  isIndonesian
+                    ? `Berhasil menghubungkan ${suggestedUsdtUnits} USDT ke portofolio`
+                    : `Linked ${suggestedUsdtUnits} USDT to portfolio`,
+                  "add",
+                  () => {},
+                );
               }}
               className="px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 active:scale-95 transition-all cursor-pointer shadow-sm"
               style={{
@@ -796,7 +707,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 color: "var(--accent-ink)",
               }}
             >
-              Link Units
+              {isIndonesian ? "Hubungkan Unit" : "Link Units"}
             </button>
           </div>
         )}
@@ -807,7 +718,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
             className="text-[12px] font-bold uppercase tracking-wider"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Holdings ({((usdtPref.units > 0 || recordedCryptoBalance > 0) ? 1 : 0) + holdings.length})
+            {isIndonesian ? "Kepemilikan" : "Holdings"} ({((usdtPref.units > 0 || recordedCryptoBalance > 0) ? 1 : 0) + holdings.length})
           </span>
           <div className="flex items-center gap-1.5">
             <button
@@ -820,10 +731,10 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 border: "1px solid var(--glass-border)",
                 color: "var(--text-secondary)",
               }}
-              title="Refresh live exchange rate"
+              title={isIndonesian ? "Perbarui kurs langsung" : "Refresh live exchange rate"}
             >
               <RefreshCw size={11} className={isFetchingRate ? "animate-spin" : ""} />
-              <span>{isFetchingRate ? "Fetching..." : "Live FX"}</span>
+              <span>{isFetchingRate ? (isIndonesian ? "Memuat..." : "Fetching...") : (isIndonesian ? "Kurs Langsung" : "Live FX")}</span>
             </button>
             {addPhase === 0 && (
               <button
@@ -836,557 +747,11 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 }}
               >
                 <Plus size={11} />
-                <span>Add Asset</span>
+                <span>{isIndonesian ? "Tambah Aset" : "Add Asset"}</span>
               </button>
             )}
           </div>
         </div>
-
-        {/* ── Phase 1: Searchable & Categorized Asset Picker ───────────────── */}
-        {addPhase === 1 && (
-          <div
-            className="rounded-2xl overflow-hidden animate-fadeIn space-y-2 p-3"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <span className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>
-                Select or Create Asset
-              </span>
-              <button
-                type="button"
-                onClick={closeAddFlow}
-                className="w-6 h-6 rounded-full flex items-center justify-center active:scale-90 cursor-pointer"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-              >
-                <X size={12} style={{ color: "var(--text-tertiary)" }} />
-              </button>
-            </div>
-
-            {/* Search Input */}
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-            >
-              <Search size={13} style={{ color: "var(--text-tertiary)" }} />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search symbol, property, or custom name..."
-                className="flex-1 bg-transparent outline-none text-[12px] font-medium"
-                style={{ color: "var(--text-primary)" }}
-              />
-              {searchQuery && (
-                <button type="button" onClick={() => setSearchQuery("")} className="cursor-pointer">
-                  <X size={11} style={{ color: "var(--text-tertiary)" }} />
-                </button>
-              )}
-            </div>
-
-            {/* Quick Action Pills: Fixed Asset & Custom Entry */}
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
-              <button
-                type="button"
-                onClick={() => handleCustomAssetEntry("fixed_asset")}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold active:scale-95 cursor-pointer shrink-0"
-                style={{
-                  background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <IconRenderer icon="Home" size="w-3 h-3" />
-                <span>+ Real Estate / Vehicle</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleCustomAssetEntry("stock")}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold active:scale-95 cursor-pointer shrink-0"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                <Plus size={12} />
-                <span>+ Custom Asset</span>
-              </button>
-            </div>
-
-            {/* Category Filter Pills */}
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-1">
-              {(["all", "fixed_asset", "stock", "crypto", "gold", "mutual_fund", "bond"] as const).map((t) => {
-                const isActive = filterType === t;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setFilterType(t);
-                    }}
-                    className="px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer shrink-0"
-                    style={{
-                      background: isActive ? "var(--text-primary)" : "var(--glass-fill)",
-                      color: isActive ? "var(--bg-base)" : "var(--text-tertiary)",
-                      border: isActive ? "1px solid transparent" : "1px solid var(--glass-border)",
-                    }}
-                  >
-                    {TYPE_LABELS[t]}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Preset Items List */}
-            <div className="overflow-y-auto no-scrollbar space-y-1 pt-1" style={{ maxHeight: "220px" }}>
-              {filteredPresets.map((preset) => (
-                <button
-                  key={preset.symbol}
-                  type="button"
-                  onClick={() => handleSelectPreset(preset)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl active:scale-[0.99] transition-all cursor-pointer text-left"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: "var(--bg-elevated)" }}
-                    >
-                      <IconRenderer icon={getDefaultAssetIconName(preset.type)} size="w-3.5 h-3.5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-bold leading-snug" style={{ color: "var(--text-primary)" }}>
-                        {preset.name}
-                      </p>
-                      <p className="text-[10px] font-mono" style={{ color: "var(--text-tertiary)" }}>
-                        {preset.symbol}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    <span
-                      className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
-                      style={{
-                        background: "var(--bg-elevated)",
-                        color: "var(--text-tertiary)",
-                      }}
-                    >
-                      {TYPE_LABELS[preset.type]}
-                    </span>
-                    <ChevronRight size={13} style={{ color: "var(--text-tertiary)" }} />
-                  </div>
-                </button>
-              ))}
-
-              {filteredPresets.length === 0 && (
-                <div className="py-6 text-center">
-                  <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                    No presets found for "{searchQuery}".
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => handleCustomAssetEntry("fixed_asset")}
-                    className="mt-2 px-3 py-1.5 rounded-xl text-[11px] font-bold active:scale-95 cursor-pointer"
-                    style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
-                  >
-                    Add as Custom Asset
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── Phase 2: Confirmation / Custom Asset Form ───────────────────── */}
-        {addPhase === 2 && (
-          <div
-            className="p-4 rounded-2xl space-y-3 animate-fadeIn"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
-                  {formType === "fixed_asset" ? "Add Fixed Asset" : "Add Market Holding"}
-                </p>
-                <p className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                  {formType === "fixed_asset" ? "Real estate, vehicle, land, or collectibles" : "Stock, crypto, gold, or fund position"}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  {TYPE_LABELS[formType]}
-                </span>
-                <button
-                  type="button"
-                  onClick={closeAddFlow}
-                  className="w-6 h-6 rounded-full flex items-center justify-center active:scale-90 cursor-pointer"
-                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
-                >
-                  <X size={11} style={{ color: "var(--text-tertiary)" }} />
-                </button>
-              </div>
-            </div>
-
-            {/* Asset Name & Type */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-medium block" style={{ color: "var(--text-tertiary)" }}>
-                Asset Icon & Name
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setIsAssetIconPickerOpen(true);
-                  }}
-                  className="w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                  title="Choose Icon"
-                >
-                  <IconRenderer icon={formIcon} size="w-4 h-4" />
-                  <span className="text-[8px] font-bold mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    Change
-                  </span>
-                </button>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFormName(val);
-                    if (!hasCustomPickedAssetIcon) {
-                      const suggested = autoSuggestIcon(val);
-                      if (suggested) setFormIcon(suggested);
-                    }
-                  }}
-                  placeholder={formType === "fixed_asset" ? "e.g. Rumah BSD, Honda Civic 2023" : "e.g. Bank Central Asia"}
-                  className="w-full px-3 py-2 rounded-xl text-[12px] font-bold outline-none"
-                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                />
-              </div>
-            </div>
-
-            {/* For market securities, show Ticker and Units */}
-            {formType !== "fixed_asset" && (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                      Symbol / Ticker
-                    </label>
-                    <input
-                      type="text"
-                      value={formSymbol}
-                      onChange={(e) => setFormSymbol(e.target.value.toUpperCase())}
-                      placeholder="BBCA.JK"
-                      className="w-full px-2.5 py-1.5 rounded-xl text-[12px] font-bold outline-none font-mono"
-                      style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                      Invested Amount (IDR)
-                    </label>
-                    <input
-                      type="number"
-                      value={formInvestedAmount}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFormInvestedAmount(val);
-                        const nominal = parseFloat(val);
-                        const price = parseFloat(formBuyPrice) || parseFloat(formCurrentPrice);
-                        if (!isNaN(nominal) && nominal > 0 && price > 0) {
-                          const dec = formType === "crypto" ? 8 : formType === "gold" ? 4 : 2;
-                          setFormUnits(Number((nominal / price).toFixed(dec)).toString());
-                        }
-                      }}
-                      placeholder="e.g. 500000"
-                      className="w-full px-2.5 py-1.5 rounded-xl text-[12px] font-bold outline-none font-mono"
-                      style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                    />
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                      Estimated Received Units / Shares
-                    </label>
-                    <span className="text-[9px] font-mono text-[var(--text-tertiary)]">
-                      Auto-calculated
-                    </span>
-                  </div>
-                  <input
-                    type="number"
-                    step="any"
-                    value={formUnits}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setFormUnits(val);
-                      const units = parseFloat(val);
-                      const price = parseFloat(formBuyPrice) || parseFloat(formCurrentPrice);
-                      if (!isNaN(units) && units > 0 && price > 0) {
-                        setFormInvestedAmount(String(Math.round(units * price)));
-                      }
-                    }}
-                    placeholder="e.g. 0.05"
-                    className="w-full px-2.5 py-1.5 rounded-xl text-[12px] font-bold outline-none font-mono"
-                    style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Acquisition Date & Cost */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                  Purchase / Acquired Date
-                </label>
-                <input
-                  type="date"
-                  value={formPurchaseDate}
-                  onChange={(e) => setFormPurchaseDate(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl text-[12px] font-semibold outline-none"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                  {formType === "fixed_asset" ? "Acquisition Cost (Rp)" : "Buy Price / Unit (Rp)"}
-                </label>
-                <input
-                  type="number"
-                  value={formBuyPrice}
-                  onChange={(e) => setFormBuyPrice(e.target.value)}
-                  placeholder="1000000"
-                  className="w-full px-2.5 py-2 rounded-xl text-[12px] font-bold outline-none"
-                  style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-primary)" }}
-                />
-              </div>
-            </div>
-
-            {/* Annual Depreciation or Growth Rate */}
-            <div className="p-3 rounded-2xl space-y-2" style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}>
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-semibold block" style={{ color: "var(--text-primary)" }}>
-                  Annual Depreciation / Growth Rate
-                </label>
-                {dynamicValuationPreview && (
-                  <span className="text-[10px] font-mono font-medium text-[var(--text-tertiary)]">
-                    {dynamicValuationPreview.yearsElapsed.toFixed(1)} yrs holding
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                {/* Sign Selector */}
-                <div
-                  className="flex items-center p-0.5 rounded-xl shrink-0"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setFormAnnualRateSign("-");
-                    }}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
-                      formAnnualRateSign === "-"
-                        ? "bg-white text-black shadow-sm"
-                        : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                    }`}
-                  >
-                    - Deprec.
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setFormAnnualRateSign("+");
-                    }}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
-                      formAnnualRateSign === "+"
-                        ? "bg-white text-black shadow-sm"
-                        : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                    }`}
-                  >
-                    + Growth
-                  </button>
-                </div>
-
-                {/* Percentage input */}
-                <div className="relative flex-1">
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={formAnnualRate}
-                    onChange={(e) => setFormAnnualRate(e.target.value)}
-                    placeholder="e.g. 15"
-                    className="w-full pl-2.5 pr-7 py-1.5 rounded-xl text-[12px] font-bold outline-none font-mono"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  />
-                  <span
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-[var(--text-tertiary)]"
-                  >
-                    %/yr
-                  </span>
-                </div>
-              </div>
-
-              {/* Preset Rate Chips */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
-                {[
-                  { label: "-15% Vehicle", rate: "15", sign: "-" as const },
-                  { label: "-20% Tech", rate: "20", sign: "-" as const },
-                  { label: "+5% House", rate: "5", sign: "+" as const },
-                  { label: "+8% Land", rate: "8", sign: "+" as const },
-                  { label: "0% Fixed", rate: "0", sign: "-" as const },
-                ].map((p) => {
-                  const isActive = formAnnualRate === p.rate && formAnnualRateSign === p.sign;
-                  return (
-                    <button
-                      key={p.label}
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setFormAnnualRateSign(p.sign);
-                        setFormAnnualRate(p.rate);
-                      }}
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 transition-all cursor-pointer border ${
-                        isActive
-                          ? "bg-white text-black font-semibold border-white"
-                          : "bg-white/[0.04] text-[var(--text-secondary)] border-white/[0.08] hover:bg-white/[0.08]"
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Dynamic Compound Valuation Result */}
-              {dynamicValuationPreview && (
-                <div
-                  className="mt-2 p-2 rounded-xl text-[11px] space-y-1 border border-white/[0.08]"
-                  style={{ background: "var(--bg-elevated)" }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-[var(--text-tertiary)]">Estimated Value Today:</span>
-                    <span className="font-mono font-semibold text-[var(--text-primary)]">
-                      {formatRupiah(dynamicValuationPreview.currentPrice)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-[var(--text-tertiary)]">Total Valuation Drift:</span>
-                    <span className="font-mono font-medium text-[var(--text-secondary)]">
-                      {dynamicValuationPreview.totalChange >= 0 ? "+" : ""}
-                      {formatRupiah(dynamicValuationPreview.totalChange)} (
-                      {dynamicValuationPreview.totalChangePct >= 0 ? "+" : ""}
-                      {dynamicValuationPreview.totalChangePct.toFixed(1)}%)
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setFormCurrentPrice(String(dynamicValuationPreview.currentPrice));
-                    }}
-                    className="w-full mt-1 py-1 rounded-lg text-[10px] font-semibold text-center cursor-pointer transition-all active:scale-98"
-                    style={{
-                      background: "var(--glass-fill-strong)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    Apply Compound Price to Field
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Current Price / Valuation Input */}
-            <div>
-              <label className="text-[10px] font-medium block mb-1" style={{ color: "var(--text-tertiary)" }}>
-                {formType === "fixed_asset" ? "Current Estimated Valuation (Rp)" : "Current Price per Unit (Rp)"}
-                {isFetchingCurrentPrice && <RefreshCw size={9} className="inline ml-1 animate-spin" />}
-              </label>
-              <input
-                type="number"
-                value={formCurrentPrice}
-                onChange={(e) => setFormCurrentPrice(e.target.value)}
-                placeholder={
-                  dynamicValuationPreview
-                    ? String(dynamicValuationPreview.currentPrice)
-                    : isFetchingCurrentPrice
-                    ? "Fetching..."
-                    : "1200000"
-                }
-                disabled={isFetchingCurrentPrice}
-                className="w-full px-2.5 py-2 rounded-xl text-[12px] font-bold outline-none"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: isFetchingCurrentPrice ? "var(--text-tertiary)" : "var(--text-primary)",
-                }}
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={closeAddFlow}
-                className="flex-1 py-2 rounded-xl text-[11px] font-bold active:scale-95 cursor-pointer"
-                style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)", color: "var(--text-tertiary)" }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveNewHolding}
-                className="flex-[2] py-2 rounded-xl text-[11px] font-semibold active:scale-95 cursor-pointer"
-                style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
-              >
-                Save Holding
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* 3. Holdings Sections Deck */}
         <div className="space-y-4">
@@ -1397,7 +762,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 <div className="flex items-center gap-1.5">
                   <TrendingUp size={13} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
                   <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
-                    Liquid Portfolios
+                    {isIndonesian ? "Portofolio Likuid" : "Liquid Portfolios"}
                   </h4>
                   <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)]">
                     {liquidSubtotal.count}
@@ -1441,7 +806,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                           className="text-[11px] font-medium truncate mt-1 leading-tight"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          {usdtPref.units > 0 ? "Tether USD" : `Wallet linked · ${suggestedUsdtUnits} USDT`}
+                          {usdtPref.units > 0 ? "Tether USD" : (isIndonesian ? `Dompet terhubung · ${suggestedUsdtUnits} USDT` : `Wallet linked · ${suggestedUsdtUnits} USDT`)}
                         </p>
                       </div>
                     </div>
@@ -1457,7 +822,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                       >
                         {usdtPref.units > 0
                           ? `${usdtFloatingPnL >= 0 ? "+" : ""}${formatRupiah(usdtFloatingPnL)} (${usdtFloatingPnLPct >= 0 ? "+" : ""}${usdtFloatingPnLPct.toFixed(1)}%)`
-                          : `Tap to calibrate (${suggestedUsdtUnits} USDT)`}
+                          : (isIndonesian ? `Ketuk untuk kalibrasi (${suggestedUsdtUnits} USDT)` : `Tap to calibrate (${suggestedUsdtUnits} USDT)`)}
                       </span>
                     </div>
                   </div>
@@ -1477,11 +842,13 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                           <div className="flex items-center gap-1.5">
                             <Sparkles size={13} style={{ color: "var(--text-primary)" }} />
                             <span className="text-[11px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-                              Recent P2P Transfer Sync
+                              {isIndonesian ? "Sinkronisasi Transfer P2P Terbaru" : "Recent P2P Transfer Sync"}
                             </span>
                           </div>
                           <p className="text-[10px] leading-tight" style={{ color: "var(--text-secondary)" }}>
-                            Recent P2P withdrawal ({reconciliationAudit.unreconciledTxs[0]?.date || "Sep 18"} · {formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) has not been deducted from holding units yet.
+                            {isIndonesian
+                              ? `Penarikan P2P terbaru (${reconciliationAudit.unreconciledTxs[0]?.date || "18 Sep"} · ${formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) belum dikurangkan dari unit kepemilikan.`
+                              : `Recent P2P withdrawal (${reconciliationAudit.unreconciledTxs[0]?.date || "Sep 18"} · ${formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) has not been deducted from holding units yet.`}
                           </p>
                         </div>
                         <button
@@ -1494,7 +861,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                             }
                           }}
                           className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-0.5 transition-colors cursor-pointer"
-                          title="Dismiss"
+                          title={isIndonesian ? "Tutup" : "Dismiss"}
                         >
                           <X size={12} strokeWidth={2} />
                         </button>
@@ -1502,10 +869,10 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
 
                       <div className="flex items-center justify-between text-[11px] font-mono pt-1 border-t border-[var(--glass-border)]/40">
                         <span style={{ color: "var(--text-tertiary)" }}>
-                          Current: <span style={{ color: "var(--text-primary)" }}>{reconciliationAudit.currentUnits} USDT</span>
+                          {isIndonesian ? "Saat Ini:" : "Current:"} <span style={{ color: "var(--text-primary)" }}>{reconciliationAudit.currentUnits} USDT</span>
                         </span>
                         <span style={{ color: "var(--text-primary)" }}>
-                          → Reconcile: {reconciliationAudit.suggestedReconciledUnits} USDT
+                          {isIndonesian ? "→ Rekonsiliasi:" : "→ Reconcile:"} {reconciliationAudit.suggestedReconciledUnits} USDT
                         </span>
                       </div>
 
@@ -1519,7 +886,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                         }}
                       >
                         <CheckCircle2 size={12} strokeWidth={2} />
-                        <span>Adjust to {reconciliationAudit.suggestedReconciledUnits} USDT</span>
+                        <span>{isIndonesian ? `Sesuaikan ke ${reconciliationAudit.suggestedReconciledUnits} USDT` : `Adjust to ${reconciliationAudit.suggestedReconciledUnits} USDT`}</span>
                       </button>
                     </div>
                   )}
@@ -1540,17 +907,19 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                       }}
                     >
                       <Plus size={12} strokeWidth={2} />
-                      <span>Staking Yield</span>
+                      <span>{isIndonesian ? "Imbal Hasil Staking" : "Staking Yield"}</span>
                     </button>
 
                     {/* Apple Luxury Switch for Liquid Cash */}
                     <div
                       onClick={handleToggleCryptoLiquid}
                       className="flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform"
-                      title="Toggle counting USDT as liquid operating cash"
+                      title={isIndonesian ? "Alihkan USDT sebagai kas likuid operasional" : "Toggle counting USDT as liquid operating cash"}
                     >
                       <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-                        {isCryptoLiquid ? "Liquid Cash: On" : "Liquid Cash: Off"}
+                        {isIndonesian
+                          ? (isCryptoLiquid ? "Kas Likuid: Aktif" : "Kas Likuid: Nonaktif")
+                          : (isCryptoLiquid ? "Liquid Cash: On" : "Liquid Cash: Off")}
                       </span>
                       <div onClick={(e) => e.stopPropagation()}>
                         <ToggleSwitch
@@ -1597,7 +966,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                             {h.symbol}
                           </span>
                           <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.05] text-[var(--text-tertiary)]">
-                            {TYPE_LABELS[h.asset_type] || h.asset_type}
+                            {getTypeLabel(h.asset_type, isIndonesian)}
                           </span>
                         </div>
                         <p
@@ -1635,7 +1004,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck size={13} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
                   <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
-                    Fixed &amp; Tangible Assets
+                    {isIndonesian ? "Aset Tetap & Berwujud" : "Fixed & Tangible Assets"}
                   </h4>
                   <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)]">
                     {fixedHoldings.length}
@@ -1679,7 +1048,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                             {h.symbol}
                           </span>
                           <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.05] text-[var(--text-tertiary)]">
-                            {TYPE_LABELS[h.asset_type] || h.asset_type}
+                            {getTypeLabel(h.asset_type, isIndonesian)}
                           </span>
                         </div>
                         <p
@@ -1716,10 +1085,12 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 <Coins size={18} strokeWidth={1.5} />
               </div>
               <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                No Asset Holdings Tracked
+                {isIndonesian ? "Belum Ada Aset yang Dilacak" : "No Asset Holdings Tracked"}
               </p>
               <p className="text-[11px] text-[var(--text-tertiary)] max-w-[240px] mx-auto leading-relaxed">
-                Your portfolio is currently empty. Tap &ldquo;+ Add Asset&rdquo; above to track USDT, stocks, funds, gold, or property.
+                {isIndonesian
+                  ? "Portofolio Anda saat ini kosong. Ketuk \"+ Tambah Aset\" di atas untuk melacak USDT, saham, reksadana, emas, atau properti."
+                  : "Your portfolio is currently empty. Tap \"+ Add Asset\" above to track USDT, stocks, funds, gold, or property."}
               </p>
             </div>
           )}
@@ -1738,7 +1109,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
             color: "var(--bg-base)",
           }}
         >
-          Done
+          {isIndonesian ? "Selesai" : "Done"}
         </button>
       </div>
 
@@ -1751,7 +1122,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           setFormIcon(iconName);
           setHasCustomPickedAssetIcon(true);
         }}
-        title="Choose Asset Icon"
+        title={isIndonesian ? "Pilih Ikon Aset" : "Choose Asset Icon"}
       />
 
       {/* ── Trouvaille Investment Ecosystem: Modern Asset Detail Sheet ──── */}
@@ -1813,6 +1184,459 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
           setUsdtPref(freshUsdt);
         }}
       />
+      {/* ── Preset Picker Sheet (Standard BottomSheet) ─────────────────── */}
+      <BottomSheet
+        isOpen={addPhase === 1}
+        onClose={closeAddFlow}
+        title={
+          isIndonesian ? "Pilih Aset Investasi" : "Select Investment Asset"
+        }
+      >
+        <div className="p-5 space-y-4 select-none">
+          {/* Search Bar */}
+          <div
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border border-[var(--glass-border)]"
+            style={{ background: "var(--glass-fill)" }}
+          >
+            <Search
+              size={15}
+              className="text-[var(--text-tertiary)] shrink-0"
+            />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                isIndonesian
+                  ? "Cari simbol atau nama (BTC, AAPL, BBCA, Emas)..."
+                  : "Search symbol or name (BTC, AAPL, BBCA, Gold)..."
+              }
+              className="flex-1 bg-transparent text-[13px] outline-none font-medium"
+              style={{ color: "var(--text-primary)" }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Category Chips Carousel */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            {(
+              [
+                { key: "all", label: isIndonesian ? "Semua" : "All" },
+                { key: "crypto", label: "Crypto" },
+                {
+                  key: "stock_us",
+                  label: isIndonesian ? "Saham AS" : "US Stocks",
+                },
+                {
+                  key: "stock_id",
+                  label: isIndonesian ? "Saham IDX" : "IDX Stocks",
+                },
+                { key: "gold", label: isIndonesian ? "Emas" : "Gold" },
+                {
+                  key: "mutual_fund",
+                  label: isIndonesian ? "Reksa Dana" : "Mutual Funds",
+                },
+                {
+                  key: "fixed_asset",
+                  label: isIndonesian ? "Aset Fisik" : "Fixed Assets",
+                },
+              ] as const
+            ).map((cat) => {
+              const isActive = presetCategory === cat.key;
+              return (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setPresetCategory(cat.key);
+                  }}
+                  style={
+                    isActive
+                      ? {
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.10)"
+                            : "rgba(0, 0, 0, 0.08)",
+                          borderColor: isDark
+                            ? "rgba(255, 255, 255, 0.18)"
+                            : "rgba(0, 0, 0, 0.14)",
+                          boxShadow: isDark
+                            ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25)"
+                            : "0 1px 2px rgba(0, 0, 0, 0.05)",
+                          color: "var(--text-primary)",
+                        }
+                      : {
+                          background: "var(--glass-fill)",
+                          borderColor: "var(--glass-border)",
+                          color: "var(--text-tertiary)",
+                          opacity: 0.7,
+                        }
+                  }
+                  className="px-3 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer border hover:opacity-100 hover:text-[var(--text-primary)]"
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Presets List */}
+          <div className="space-y-1.5 pb-6">
+            {filteredPresets.map((preset) => (
+              <button
+                key={preset.symbol}
+                type="button"
+                onClick={() => handleSelectPreset(preset)}
+                className="w-full p-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] flex items-center justify-between active:scale-[0.99] hover:border-white/20 transition-all cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-white/[0.08] flex items-center justify-center shrink-0">
+                    <IconRenderer
+                      icon={preset.icon || "TrendingUp"}
+                      size="w-4.5 h-4.5"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-[13px] text-[var(--text-primary)]">
+                        {preset.symbol}
+                      </span>
+                      {preset.suggestedCurrency && (
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded font-semibold bg-white/[0.08] text-[var(--text-secondary)]">
+                          {preset.suggestedCurrency}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-[var(--text-tertiary)] truncate block mt-0.5">
+                      {preset.name}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-lg bg-white/[0.06] text-[var(--text-tertiary)]">
+                  {getTypeLabel(preset.type, isIndonesian)}
+                </span>
+              </button>
+            ))}
+
+            {filteredPresets.length === 0 && (
+              <p className="text-center text-[12px] text-[var(--text-tertiary)] py-6">
+                {isIndonesian
+                  ? "Tidak ada preset yang cocok"
+                  : "No presets matched your search"}
+              </p>
+            )}
+          </div>
+
+          {/* Quick Custom Actions */}
+          <div className="pt-2 border-t border-[var(--glass-border)] space-y-2">
+            <p className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+              {isIndonesian ? "Aset Lainnya / Kustom" : "Custom Assets"}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleCustomAssetEntry("fixed_asset")}
+                className="flex-1 py-2.5 px-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11.5px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer text-center"
+              >
+                {isIndonesian ? "+ Properti / Fisik" : "+ Fixed Asset"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCustomAssetEntry("stock")}
+                className="flex-1 py-2.5 px-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11.5px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer text-center"
+              >
+                {isIndonesian ? "+ Saham / Kripto Kustom" : "+ Custom Asset"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </BottomSheet>
+
+      {/* ── Asset Details Form Sheet (Standard BottomSheet) ───────────── */}
+      <BottomSheet
+        isOpen={addPhase === 2}
+        onClose={closeAddFlow}
+        title={formName || (isIndonesian ? "Detail Aset" : "Asset Details")}
+      >
+        <div className="p-5 space-y-4 select-none relative">
+          {/* Currency Toggle */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+              {isIndonesian ? "Mata Uang Input" : "Input Currency"}
+            </label>
+            <div className="flex items-center gap-1 p-1 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setFormCurrency("IDR");
+                }}
+                style={
+                  formCurrency === "IDR"
+                    ? {
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.12)"
+                          : "rgba(0, 0, 0, 0.08)",
+                        borderColor: isDark
+                          ? "rgba(255, 255, 255, 0.20)"
+                          : "rgba(0, 0, 0, 0.14)",
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 rgba(255, 255, 255, 0.10)"
+                          : "0 1px 2px rgba(0,0,0,0.05)",
+                        color: "var(--text-primary)",
+                      }
+                    : {
+                        color: "var(--text-tertiary)",
+                      }
+                }
+                className="flex-1 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer hover:text-[var(--text-primary)]"
+              >
+                IDR (Rp)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setFormCurrency("USD");
+                }}
+                style={
+                  formCurrency === "USD"
+                    ? {
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.12)"
+                          : "rgba(0, 0, 0, 0.08)",
+                        borderColor: isDark
+                          ? "rgba(255, 255, 255, 0.20)"
+                          : "rgba(0, 0, 0, 0.14)",
+                        boxShadow: isDark
+                          ? "inset 0 1px 0 rgba(255, 255, 255, 0.10)"
+                          : "0 1px 2px rgba(0,0,0,0.05)",
+                        color: "var(--text-primary)",
+                      }
+                    : {
+                        color: "var(--text-tertiary)",
+                      }
+                }
+                className="flex-1 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer hover:text-[var(--text-primary)]"
+              >
+                USD ($)
+              </button>
+            </div>
+          </div>
+
+          {/* Inputs: Symbol & Name */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10.5px] font-semibold uppercase text-[var(--text-tertiary)] block mb-1">
+                {isIndonesian ? "Simbol" : "Symbol"}
+              </label>
+              <input
+                type="text"
+                value={formSymbol}
+                onChange={(e) => setFormSymbol(e.target.value.toUpperCase())}
+                placeholder="BTC"
+                className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-[10.5px] font-semibold uppercase text-[var(--text-tertiary)] block mb-1">
+                {isIndonesian ? "Nama Aset" : "Asset Name"}
+              </label>
+              <input
+                type="text"
+                value={formName}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormName(val);
+                  if (!hasCustomPickedAssetIcon) {
+                    const suggested = autoSuggestIcon(val);
+                    if (suggested) setFormIcon(suggested);
+                  }
+                }}
+                placeholder="Bitcoin / Apple"
+                className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
+              />
+            </div>
+          </div>
+
+          {/* Platform / Custodian Tag Selector */}
+          <div className="space-y-1.5">
+            <label className="text-[10.5px] font-semibold uppercase text-[var(--text-tertiary)] block">
+              {isIndonesian ? "Platform / Kustodian" : "Platform / Custodian"}
+            </label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                "Binance",
+                "Indodax",
+                "Ajaib",
+                "Stockbit",
+                "Bibit",
+                "Bank",
+                "Fisik/Brankas",
+              ].map((plat) => {
+                const isSelected = formPlatform === plat;
+                return (
+                  <button
+                    key={plat}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setFormPlatform(isSelected ? "" : plat);
+                    }}
+                    style={
+                      isSelected
+                        ? {
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.10)"
+                              : "rgba(0, 0, 0, 0.08)",
+                            borderColor: isDark
+                              ? "rgba(255, 255, 255, 0.18)"
+                              : "rgba(0, 0, 0, 0.14)",
+                            boxShadow: isDark
+                              ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25)"
+                              : "0 1px 2px rgba(0, 0, 0, 0.05)",
+                            color: "var(--text-primary)",
+                          }
+                        : {
+                            background: "var(--glass-fill)",
+                            borderColor: "var(--glass-border)",
+                            color: "var(--text-tertiary)",
+                            opacity: 0.7,
+                          }
+                    }
+                    className="px-3 py-1 rounded-xl text-[11px] font-semibold border transition-all cursor-pointer hover:opacity-100 hover:text-[var(--text-primary)]"
+                  >
+                    {plat}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Units & Buy Price */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10.5px] font-semibold uppercase text-[var(--text-tertiary)] block mb-1">
+                {isIndonesian ? "Jumlah / Unit" : "Units / Amount"}
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={formUnits}
+                onChange={(e) =>
+                  setFormUnits(e.target.value.replace(/[^0-9.]/g, ""))
+                }
+                placeholder="100"
+                className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
+              />
+            </div>
+            <div>
+              <label className="text-[10.5px] font-semibold uppercase text-[var(--text-tertiary)] block mb-1 truncate">
+                {isIndonesian
+                  ? `Harga Beli (${formCurrency})`
+                  : `Buy Price (${formCurrency})`}
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={formBuyPrice}
+                onChange={(e) =>
+                  setFormBuyPrice(e.target.value.replace(/[^0-9.]/g, ""))
+                }
+                placeholder={formCurrency === "USD" ? "$0.00" : "Rp"}
+                className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
+              />
+              {formCurrency === "USD" && formBuyPrice && (
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
+                  ≈{" "}
+                  {formatRupiah(
+                    parseFloat(formBuyPrice || "0") * usdtPref.rate,
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Current Market Price */}
+          <div>
+            <label className="text-[10.5px] font-semibold uppercase text-[var(--text-tertiary)] block mb-1">
+              {isIndonesian
+                ? `Harga Pasar Terkini (${formCurrency})`
+                : `Current Market Price (${formCurrency})`}
+            </label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={formCurrentPrice}
+              onChange={(e) =>
+                setFormCurrentPrice(e.target.value.replace(/[^0-9.]/g, ""))
+              }
+              placeholder={
+                isFetchingCurrentPrice
+                  ? isIndonesian
+                    ? "Mengambil harga live..."
+                    : "Fetching live price..."
+                  : formCurrency === "USD"
+                    ? "$0.00"
+                    : "Rp"
+              }
+              className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
+            />
+            {formCurrency === "USD" && formCurrentPrice && (
+              <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
+                ≈{" "}
+                {formatRupiah(
+                  parseFloat(formCurrentPrice || "0") * usdtPref.rate,
+                )}
+              </p>
+            )}
+          </div>
+
+          {/* Bottom Action Dock */}
+          <div
+            className="sticky bottom-0 left-0 right-0 pt-3 pb-[calc(16px+env(safe-area-inset-bottom,16px))] -mx-5 px-5 flex gap-2.5 z-20 mt-6"
+            style={{
+              background: isDark
+                ? "var(--bg-base)"
+                : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, #fcfcfd 100%)",
+              borderTop: "1px solid var(--glass-border)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={closeAddFlow}
+              className="flex-1 py-3 rounded-2xl text-[12.5px] font-semibold border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer text-center"
+            >
+              {isIndonesian ? "Batal" : "Cancel"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveNewHolding}
+              className="flex-2 py-3 rounded-2xl text-[12.5px] font-semibold bg-[var(--text-primary)] text-[var(--bg-base)] active:scale-95 transition-all cursor-pointer shadow-lg text-center"
+            >
+              {editingHoldingId
+                ? isIndonesian
+                  ? "Perbarui Aset"
+                  : "Update Holding"
+                : isIndonesian
+                  ? "Simpan Aset"
+                  : "Save Holding"}
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
+
     </BottomSheet>
   );
 }

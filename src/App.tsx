@@ -432,7 +432,7 @@ function AppShell() {
     >
       {/* Floating Smart Clipboard Notification Sniffer */}
       <div
-        className="fixed left-4 right-4 z-[75] max-w-md mx-auto pointer-events-auto"
+        className="fixed left-4 right-4 z-[75] max-w-md mx-auto pointer-events-none"
         style={{ top: "max(calc(env(safe-area-inset-top, 0px) + 18px), 28px)" }}
       >
         <ClipboardTransactionBanner

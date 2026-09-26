@@ -1,28 +1,23 @@
 // ======================================================================
 // TROUVAILLE INFLOW VS OUTFLOW TREND CARD
-// Bi-directional bar chart comparing operational inflows and outflows
-// Strictly compliant with GEMINI.md: Monochrome Apple Luxury Theme
+// Apple Stocks Smooth Spline Trajectory with cubic Bézier curve & baseline
+// Strictly compliant with GEMINI.md: Monochrome Apple Luxury Theme (No font-mono)
 // ======================================================================
 
-import React from "react";
-import { ChevronDown } from "lucide-react";
-import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
-import { motion, AnimatePresence } from "framer-motion";
-import { triggerHaptic } from "../../lib/haptics";
+import React, { useMemo } from "react";
+import { ResponsiveContainer, AreaChart, Area, Tooltip, ReferenceLine } from "recharts";
+import { TrendingUp } from "lucide-react";
 import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface InflowOutflowTrendCardProps {
   rangeTitle: string;
   trendData: any[];
   range: string;
-  longitudinal: any;
-  inflowOutflowExpanded: boolean;
-  setInflowOutflowExpanded: React.Dispatch<React.SetStateAction<boolean>>;
-  colors: {
-    barHigh: string;
-    barMid: string;
-    barLow: string;
-    cursorFill: string;
+  colors?: {
+    barHigh?: string;
+    barMid?: string;
+    barLow?: string;
+    cursorFill?: string;
     [key: string]: any;
   };
   isDark: boolean;
@@ -33,177 +28,207 @@ interface InflowOutflowTrendCardProps {
 export function InflowOutflowTrendCard({
   rangeTitle,
   trendData,
-  range,
-  longitudinal,
-  inflowOutflowExpanded,
-  setInflowOutflowExpanded,
-  colors,
+  range: _range,
+  colors: _colors,
   isDark,
   isIndonesian,
   GlassTooltip,
 }: InflowOutflowTrendCardProps) {
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
+
+  const processedData = useMemo(() => {
+    return (trendData || []).map((d) => {
+      const income = Number(d.income || 0);
+      const expense = Number(d.expense || 0);
+      const net = income - expense;
+      return {
+        ...d,
+        income,
+        expense,
+        net,
+      };
+    });
+  }, [trendData]);
+
+  const peakIndex = useMemo(() => {
+    if (!processedData.length) return -1;
+    let maxIdx = 0;
+    let maxVal = processedData[0].net;
+    processedData.forEach((d, idx) => {
+      if (d.net > maxVal) {
+        maxVal = d.net;
+        maxIdx = idx;
+      }
+    });
+    return maxIdx;
+  }, [processedData]);
+
+  const startLabel = processedData[0]?.label || (isIndonesian ? "Awal" : "Start");
+  const endLabel =
+    processedData[processedData.length - 1]?.label ||
+    (isIndonesian ? "Akhir" : "End");
 
   return (
-    <div className="p-4 rounded-[22px] glass-surface">
-      <div
-        className="flex items-center justify-between cursor-pointer select-none"
-        onClick={() => {
-          setInflowOutflowExpanded((v) => !v);
-          triggerHaptic("light");
-        }}
-      >
-        <div>
-          <h2
-            className="text-[13px] font-semibold tracking-tight"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {isIndonesian ? "Tren Masuk vs Keluar" : "Inflow vs Outflow Trend"}
-          </h2>
-          <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-            {isIndonesian ? `Perbandingan ${rangeTitle}` : `${rangeTitle} comparison`}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex items-center gap-1.5 text-[10px] font-medium"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              <div
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: colors.barHigh }}
-              />
-              {isIndonesian ? "Pemasukan" : "Inflow"}
-            </div>
-            <div
-              className="flex items-center gap-1.5 text-[10px] font-medium"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              <div
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: colors.barMid }}
-              />
-              {isIndonesian ? "Pengeluaran" : "Outflow"}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer active:scale-90 shrink-0"
+    <div
+      className="p-5 rounded-[24px] select-none space-y-3"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
+      {/* 1-Line Header with Vector Icon */}
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
               background: "var(--glass-fill)",
               border: "1px solid var(--glass-border)",
-              color: "var(--text-secondary)",
+              color: "var(--text-primary)",
             }}
-            aria-label={inflowOutflowExpanded ? (isIndonesian ? "Lipat" : "Collapse") : (isIndonesian ? "Bentangkan" : "Expand")}
-            title={inflowOutflowExpanded ? (isIndonesian ? "Lipat" : "Collapse") : (isIndonesian ? "Bentangkan" : "Expand")}
           >
-            <motion.div
-              animate={{ rotate: inflowOutflowExpanded ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex items-center justify-center"
+            <TrendingUp size={16} strokeWidth={1.75} />
+          </div>
+          <div className="min-w-0">
+            <h2
+              className="text-[13px] font-semibold tracking-tight truncate"
+              style={{ color: "var(--text-primary)" }}
             >
-              <ChevronDown size={14} strokeWidth={1.75} />
-            </motion.div>
-          </button>
+              {isIndonesian ? "Lintasan Tren Arus Kas" : "Inflow vs Outflow Trend"}
+            </h2>
+            <p
+              className="text-[11px] truncate"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {isIndonesian
+                ? `Ritme saldo bersih kas · ${rangeTitle}`
+                : `Net cash pace trajectory · ${rangeTitle}`}
+            </p>
+          </div>
+        </div>
+
+        <div
+          className="px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1.5"
+          style={{
+            background: "var(--glass-fill)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: isDark ? "#FFFFFF" : "#18181B" }}
+          />
+          <span
+            className="text-[11px] font-semibold tabular-nums"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {peakIndex >= 0 && processedData[peakIndex]
+              ? `${isIndonesian ? "Puncak" : "Peak"}: ${processedData[peakIndex].label}`
+              : isIndonesian
+                ? "Net Dinamis"
+                : "Dynamic Net"}
+          </span>
         </div>
       </div>
 
-      <AnimatePresence initial={false}>
-        {inflowOutflowExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden pt-3"
-          >
-            <div className="h-[145px] -mx-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={trendData}
-                  margin={{ top: 2, right: 0, left: 0, bottom: 0 }}
-                  barSize={range === "year" || range === "all" ? 5 : 6}
-                  barGap={2}
-                >
-                  <defs>
-                    <linearGradient id="inflowG" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="0%"
-                        stopColor={colors.barHigh}
-                        stopOpacity={0.95}
+      {/* Apple Stocks Smooth Spline Chart */}
+      <div
+        className="p-3 rounded-2xl space-y-1.5"
+        style={{
+          background: "var(--glass-fill)",
+          border: "1px solid var(--glass-border)",
+        }}
+      >
+        <div className="h-[72px] -mx-1 pt-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={processedData}
+              margin={{ top: 6, right: 10, left: 10, bottom: 2 }}
+            >
+              <defs>
+                <linearGradient id="cfSplineGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={isDark ? "#FFFFFF" : "#18181B"}
+                    stopOpacity={isDark ? 0.25 : 0.15}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={isDark ? "#FFFFFF" : "#18181B"}
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+              <ReferenceLine
+                y={0}
+                stroke={
+                  isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)"
+                }
+                strokeDasharray="3 3"
+              />
+              <Tooltip
+                content={<GlassTooltip />}
+                cursor={{
+                  stroke: isDark
+                    ? "rgba(255, 255, 255, 0.2)"
+                    : "rgba(0, 0, 0, 0.15)",
+                  strokeWidth: 1,
+                  strokeDasharray: "2 2",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="net"
+                name="net"
+                stroke={isDark ? "#FFFFFF" : "#18181B"}
+                strokeWidth={2}
+                fill="url(#cfSplineGrad)"
+                dot={(props: any) => {
+                  if (props.index === peakIndex) {
+                    return (
+                      <circle
+                        key={props.key || props.index}
+                        cx={props.cx}
+                        cy={props.cy}
+                        r={4}
+                        fill={isDark ? "#FFFFFF" : "#18181B"}
+                        stroke={isDark ? "#09090c" : "#FFFFFF"}
+                        strokeWidth={2}
                       />
-                      <stop
-                        offset="100%"
-                        stopColor={colors.barMid}
-                        stopOpacity={0.7}
-                      />
-                    </linearGradient>
-                    <linearGradient id="outflowG" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="0%"
-                        stopColor={colors.barMid}
-                        stopOpacity={0.8}
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor={colors.barLow}
-                        stopOpacity={0.5}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    strokeDasharray="2 2"
-                    stroke={isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)"}
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tick={{
-                      fontSize: 9.5,
-                      fill: "var(--text-tertiary)",
-                      fontWeight: 500,
-                    }}
-                    axisLine={false}
-                    tickLine={false}
-                    dy={4}
-                  />
-                  <YAxis hide />
-                  <Tooltip
-                    content={<GlassTooltip />}
-                    cursor={{ fill: colors.cursorFill, radius: 4 }}
-                  />
-                  <Bar
-                    dataKey="income"
-                    name="income"
-                    fill="url(#inflowG)"
-                    radius={[3, 3, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="expense"
-                    name="expense"
-                    fill="url(#outflowG)"
-                    radius={[3, 3, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+                    );
+                  }
+                  return <circle key={props.key || props.index} r={0} />;
+                }}
+                activeDot={{
+                  r: 4.5,
+                  stroke: isDark ? "#FFFFFF" : "#18181B",
+                  strokeWidth: 2,
+                  fill: isDark ? "#09090c" : "#FFFFFF",
+                }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
 
-            {/* Longitudinal Trajectory Factual Interpretation */}
-            {(range === "year" || range === "all") && longitudinal?.trajectoryInterpretation && (
-              <div className="mt-3.5 pt-3 border-t border-[var(--glass-border)] text-center">
-                <p
-                  className="text-[11px] leading-relaxed"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {longitudinal.trajectoryInterpretation}
-                </p>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+        <div
+          className="flex items-center justify-between text-[10px] tabular-nums pt-1 border-t border-[var(--glass-border)]"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          <span>{startLabel}</span>
+          <span
+            className="font-medium truncate px-2 text-center"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            {peakIndex >= 0 && processedData[peakIndex]?.net > 0
+              ? `${isIndonesian ? "Surplus Maksimum" : "Max Surplus"} (${formatWithPreferred(processedData[peakIndex].net)})`
+              : isIndonesian
+                ? "Lintasan Arus Seimbang"
+                : "Balanced Trajectory"}
+          </span>
+          <span>{endLabel}</span>
+        </div>
+      </div>
     </div>
   );
 }

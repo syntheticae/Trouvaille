@@ -167,6 +167,8 @@ export function GoalManagementSheets({
           </div>
           <input
             type="number"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={goalTarget}
             onChange={(e) => setGoalTarget(e.target.value)}
             placeholder="Target Amount (IDR)"
@@ -179,6 +181,8 @@ export function GoalManagementSheets({
           />
           <input
             type="number"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={goalSaved}
             onChange={(e) => setGoalSaved(e.target.value)}
             placeholder="Already Saved (IDR)"

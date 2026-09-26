@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { X, Coins, Sparkles, Calendar, Wallet as WalletIcon } from "lucide-react";
 import { GlassSelect, type GlassSelectOption } from "../ui/GlassSelect";
 import { formatRupiah } from "../../lib/utils";
@@ -51,19 +51,18 @@ export function StakingYieldModal({
   const [isYesterday, setIsYesterday] = useState(false);
 
   // Default target wallet to USDT / crypto wallet
-  useEffect(() => {
-    if (defaultWalletId) {
-      setSelectedWalletId(defaultWalletId);
-    } else {
-      const cryptoW = wallets.find(
-        (w) =>
-          w.name.toLowerCase().includes("usdt") ||
-          w.name.toLowerCase().includes("crypto") ||
-          w.classification === "investment",
-      );
-      setSelectedWalletId(cryptoW?.id || wallets[0]?.id || "");
-    }
+  const defaultCryptoWalletId = useMemo(() => {
+    if (defaultWalletId) return defaultWalletId;
+    const cryptoW = wallets.find(
+      (w) =>
+        w.name.toLowerCase().includes("usdt") ||
+        w.name.toLowerCase().includes("crypto") ||
+        w.classification === "investment",
+    );
+    return cryptoW?.id || wallets[0]?.id || "";
   }, [defaultWalletId, wallets]);
+
+  const activeWalletId = selectedWalletId || defaultCryptoWalletId;
 
   // Wallet options for luxury GlassSelect
   const walletOptions: GlassSelectOption[] = useMemo(() => {
@@ -148,7 +147,7 @@ export function StakingYieldModal({
     const txPayload = {
       id: newTxId,
       user_id: userId || "",
-      wallet_id: selectedWalletId,
+      wallet_id: activeWalletId,
       category_id: incomeCat?.id || null,
       type: "income" as const,
       amount: finalIdr,
@@ -160,7 +159,7 @@ export function StakingYieldModal({
 
     // 1. Record income transaction in the ledger
     addTx.mutate({
-      wallet_id: selectedWalletId,
+      wallet_id: activeWalletId,
       category_id: incomeCat?.id || null,
       type: "income",
       amount: finalIdr,
@@ -390,7 +389,7 @@ export function StakingYieldModal({
             <span>{isIndonesian ? "Dompet Penerima" : "Credited Wallet"}</span>
           </label>
           <GlassSelect
-            value={selectedWalletId}
+            value={activeWalletId}
             onChange={(val) => setSelectedWalletId(val)}
             options={walletOptions}
             placeholder={isIndonesian ? "Pilih Dompet" : "Select Wallet"}

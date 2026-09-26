@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { Compass, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react";
+import { Compass, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PersonalBaselineResult } from "../../lib/financialMath";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
-import { IconRenderer } from "../ui/IconRenderer";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface PersonalBaselineSectionProps {
   baselines: PersonalBaselineResult;
@@ -17,320 +16,306 @@ export function PersonalBaselineSection({
   baselines,
   onCategoryClick,
 }: PersonalBaselineSectionProps) {
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const { isIndonesian } = useLanguage();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+  const [showCategoryDetails, setShowCategoryDetails] = useState(false);
 
   if (baselines.status === "insufficient") {
     return (
       <section
-        className="glass-surface rounded-[24px] p-4"
+        className="glass-surface rounded-[24px] p-5 border select-none"
         style={{
-          border: "1px solid var(--glass-border)",
+          borderColor: "var(--glass-border)",
           background: "var(--bg-elevated)",
           boxShadow: "var(--shadow-card)",
         }}
       >
-        <div className="flex items-center gap-2.5 mb-2">
+        <div className="flex items-center gap-3 mb-2">
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill-strong)",
+              background: "var(--glass-fill)",
               border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
           >
-            <Compass size={13} />
+            <Compass size={18} strokeWidth={1.75} />
           </div>
           <div>
             <span
-              className="text-[10px] font-semibold uppercase tracking-wider"
+              className="text-[11px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
               {isIndonesian ? "Garis Dasar Personal" : "Personal Baseline"}
             </span>
-            <p
-              className="text-[13px] font-bold mt-0.5"
+            <h3
+              className="text-[14px] font-bold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
-              {isIndonesian ? "Menunggu Siklus Historis" : "Awaiting Historical Cycles"}
-            </p>
+              {isIndonesian ? "Mengumpulkan Siklus Historis" : "Building Baseline History"}
+            </h3>
           </div>
         </div>
-        <p
-          className="text-[11px] leading-relaxed"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          {baselines.message ||
-            (isIndonesian
-              ? "Kumpulkan riwayat transaksi minimal 2 siklus bulanan penuh untuk menetapkan garis dasar historis Anda."
-              : "Build more history across at least two full monthly cycles to establish your personal historical baseline.")}
+        <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
+          {isIndonesian
+            ? "Perlu minimal 2 siklus bulanan penuh untuk mengukur rentang belanja normal Anda."
+            : "Requires at least 2 full monthly cycles to compute your historical normal spending range."}
         </p>
       </section>
     );
   }
 
-  const minRangeStr = formatRupiah(baselines.typicalExpenseRange[0]);
-  const maxRangeStr = formatRupiah(baselines.typicalExpenseRange[1]);
+  const [minRange, maxRange] = baselines.typicalExpenseRange;
+  const current = baselines.currentMonthExpense;
   const isAbove = baselines.currentMonthStatus === "above_range";
   const isBelow = baselines.currentMonthStatus === "below_range";
 
+  // Position calculation for visual range bar (0 to 100%)
+  const span = maxRange - minRange || 1;
+  const rawPct = ((current - minRange) / span) * 100;
+  const markerPct = Math.max(4, Math.min(96, rawPct));
+
   return (
     <section
-      className="glass-surface rounded-[24px] overflow-hidden transition-all"
+      className="glass-surface rounded-[24px] p-5 transition-all select-none space-y-4"
       style={{
         border: "1px solid var(--glass-border)",
         background: "var(--bg-elevated)",
         boxShadow: "var(--shadow-card)",
       }}
     >
-      {/* Trigger */}
-      <button
-        type="button"
-        onClick={() => {
-          setIsExpanded(!isExpanded);
-          triggerHaptic("light");
-        }}
-        className="w-full p-4 flex items-center justify-between text-left select-none active:bg-black/5 dark:active:bg-white/5 transition-colors"
-      >
-        <div className="flex items-center gap-2.5">
+      {/* ── 1. Header ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center"
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "var(--glass-fill-strong)",
+              background: "var(--glass-fill)",
               border: "1px solid var(--glass-border)",
               color: "var(--text-primary)",
             }}
           >
-            <Compass size={13} />
+            <Compass size={16} strokeWidth={1.75} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span
-                className="text-[10px] font-semibold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Garis Dasar Personal" : "Personal Baseline"}
-              </span>
-              <span
-                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
-                style={{
-                  background: "var(--glass-fill)",
-                  color: "var(--text-secondary)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                {baselines.historicalMonthsCount} {isIndonesian ? "Siklus Aktif" : "Cycles Active"}
-              </span>
-            </div>
-            <p
-              className="text-[13px] font-bold mt-0.5"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {isIndonesian ? "Rentang Tipikal: " : "Typical Range: "}{minRangeStr} – {maxRangeStr}
+          <div className="min-w-0">
+            <h3 className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+              {isIndonesian ? "Garis Dasar Personal" : "Personal Baseline"}
+            </h3>
+            <p className="text-[11px] truncate" style={{ color: "var(--text-tertiary)" }}>
+              {isIndonesian ? "Tolok Ukur Belanja" : "Spending Norms"}
             </p>
           </div>
         </div>
 
-        <motion.div
-          animate={{ rotate: isExpanded ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          style={{ color: "var(--text-secondary)" }}
+        {/* Status Badge (Monochrome) */}
+        <div
+          className="text-right px-2.5 py-1 rounded-xl shrink-0"
+          style={{
+            background: isDark
+              ? "rgba(255, 255, 255, 0.05)"
+              : "rgba(0, 0, 0, 0.04)",
+            border: "1px solid var(--glass-border)",
+          }}
         >
-          <ChevronDown size={18} />
-        </motion.div>
-      </button>
-
-      {/* Content */}
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="overflow-hidden"
+          <span
+            className="text-[9px] font-medium uppercase tracking-wider block"
+            style={{ color: "var(--text-tertiary)" }}
           >
-            <div className="p-4 pt-1 space-y-3.5 border-t border-[var(--glass-border)] text-[12px]">
-              {/* Status Banner */}
-              <div
-                className="p-3 rounded-2xl flex items-start gap-2.5"
-                style={{
-                  background: isAbove
-                    ? "rgba(255, 255, 255, 0.08)"
-                    : "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                {isAbove ? (
-                  <AlertCircle
-                    size={15}
-                    className="mt-0.5 flex-shrink-0"
-                    style={{ color: "var(--text-primary)" }}
-                  />
-                ) : (
-                  <CheckCircle2
-                    size={15}
-                    className="mt-0.5 flex-shrink-0"
-                    style={{ color: "var(--text-primary)" }}
-                  />
-                )}
-                <div className="space-y-0.5">
-                  <p
-                    className="text-[12px] font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isAbove
-                      ? (isIndonesian ? "Di atas rentang bulanan biasa Anda" : "Above your usual monthly range")
-                      : isBelow
-                        ? (isIndonesian ? "Di bawah rentang bulanan biasa Anda" : "Below your typical monthly range")
-                        : (isIndonesian ? "Dalam batas normal historis Anda" : "Within your historical normal band")}
-                  </p>
-                  <p
-                    className="text-[11px]"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian
-                      ? `Pengeluaran bulan terpilih (${formatRupiah(baselines.currentMonthExpense)}) adalah ${Math.abs(baselines.currentMonthDeviationPct)}% ${baselines.currentMonthDeviationPct >= 0 ? "di atas" : "di bawah"} median historis Anda (${formatRupiah(baselines.medianExpense)}).`
-                      : `Selected month outflow (${formatRupiah(baselines.currentMonthExpense)}) is ${Math.abs(baselines.currentMonthDeviationPct)}% ${baselines.currentMonthDeviationPct >= 0 ? "above" : "below"} your historical median of ${formatRupiah(baselines.medianExpense)}.`}
-                  </p>
-                </div>
-              </div>
+            {isIndonesian ? "Status" : "Status"}
+          </span>
+          <span
+            className="text-[12px] font-semibold tabular-nums"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {isAbove
+              ? isIndonesian
+                ? "Di Atas Normal"
+                : "Above Band"
+              : isBelow
+                ? isIndonesian
+                  ? "Di Bawah Normal"
+                  : "Below Band"
+                : isIndonesian
+                  ? "Rentang Wajar"
+                  : "Normal Band"}
+          </span>
+        </div>
+      </div>
 
-              {/* Baseline Metrics Grid */}
-              <div className="grid grid-cols-2 gap-2">
-                <div
-                  className="p-2.5 rounded-xl"
-                  style={{ background: "var(--glass-fill)" }}
-                >
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian ? "Median Pengeluaran" : "Median Outflow"}
-                  </p>
-                  <p
-                    className="amount text-[14px] font-semibold mt-0.5"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {formatRupiah(baselines.medianExpense)}
-                  </p>
-                  <p
-                    className="text-[10px] mt-0.5"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    ~{baselines.monthlyTxFrequency} {isIndonesian ? "transaksi / bln" : "transactions / mo"}
-                  </p>
-                </div>
+      {/* ── 2. Visual Range Gauge Chart ────────────────────────────────────── */}
+      <div
+        className="p-3.5 rounded-2xl space-y-3 border"
+        style={{
+          background: "var(--glass-fill)",
+          borderColor: "var(--glass-border)",
+        }}
+      >
+        <div className="flex items-center justify-between text-[11px] font-medium">
+          <span style={{ color: "var(--text-tertiary)" }}>
+            {isIndonesian ? "Pengeluaran Bulan Ini" : "Current Month Outflow"}
+          </span>
+          <span className="tabular-nums font-bold text-[13px]" style={{ color: "var(--text-primary)" }}>
+            {formatWithPreferred(current)}
+          </span>
+        </div>
 
-                <div
-                  className="p-2.5 rounded-xl"
-                  style={{ background: "var(--glass-fill)" }}
-                >
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian ? "Ukuran Rata-rata" : "Typical Ticket Size"}
-                  </p>
-                  <p
-                    className="amount text-[14px] font-semibold mt-0.5"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {formatRupiah(baselines.medianTxSize)}
-                  </p>
-                  <p
-                    className="text-[10px] mt-0.5"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian ? "Median transaksi tunggal" : "Median single expense"}
-                  </p>
-                </div>
-              </div>
+        {/* Range Gauge Track */}
+        <div className="relative pt-2 pb-1">
+          {/* Base Track */}
+          <div className="h-2 w-full rounded-full bg-white/[0.06] relative overflow-hidden flex">
+            {/* Normal Band Highlight (20% to 80%) */}
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: "100%",
+                background: isDark
+                  ? "linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.08) 100%)"
+                  : "linear-gradient(90deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.06) 100%)",
+              }}
+            />
+          </div>
 
-              {/* Category Baselines */}
-              {baselines.categoryBaselines.length > 0 && (
-                <div className="space-y-2 pt-1">
-                  <div
-                    className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider px-0.5"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    <span>{isIndonesian ? "Rentang Normal Kategori" : "Category Normal Bands"}</span>
-                    <span>{isIndonesian ? "Aktual vs Normal" : "Current vs Normal"}</span>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {baselines.categoryBaselines.slice(0, 4).map((cat) => {
-                      const isCatAbove = cat.currentStatus === "above_range";
-                      const catMin = formatRupiah(cat.typicalMonthlyRange[0]);
-                      const catMax = formatRupiah(cat.typicalMonthlyRange[1]);
-
-                      return (
-                        <div
-                          key={cat.categoryId}
-                          onClick={() => onCategoryClick?.(cat.name)}
-                          className="p-2 rounded-xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform"
-                          style={{
-                            background: "var(--glass-fill)",
-                            border: "1px solid var(--glass-border)",
-                          }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                              style={{
-                                background: "rgba(255, 255, 255, 0.06)",
-                                border: "1px solid var(--glass-border)",
-                              }}
-                            >
-                              <IconRenderer icon={cat.emoji} size="w-4 h-4" />
-                            </div>
-                            <div>
-                              <p
-                                className="text-[11px] font-bold"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {cat.name}
-                              </p>
-                              <p
-                                className="text-[9px]"
-                                style={{ color: "var(--text-secondary)" }}
-                              >
-                                {isIndonesian ? "Tipikal: " : "Typical: "}{catMin} – {catMax}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="text-right">
-                            <p
-                              className="amount text-[11px] font-semibold"
-                              style={{ color: "var(--text-primary)" }}
-                            >
-                              {formatRupiah(cat.currentMonthTotal)}
-                            </p>
-                            <span
-                              className="text-[9px] font-bold"
-                              style={{
-                                color: isCatAbove
-                                  ? "var(--text-primary)"
-                                  : "var(--text-tertiary)",
-                              }}
-                            >
-                              {isCatAbove
-                                ? (isIndonesian ? "↑ Di atas normal" : "↑ Above normal")
-                                : (isIndonesian ? "Dalam normal" : "Within normal")}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+          {/* Marker Knob with Position Indicator */}
+          <motion.div
+            initial={{ left: "50%" }}
+            animate={{ left: `${markerPct}%` }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="absolute top-1 -translate-x-1/2 flex flex-col items-center"
+          >
+            <div
+              className="w-4 h-4 rounded-full shadow-lg border-2 border-[var(--bg-elevated)]"
+              style={{
+                background: isDark ? "#ffffff" : "#18181b",
+              }}
+            />
           </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+
+        {/* Min, Median, Max Range Footers */}
+        <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] pt-1 tabular-nums">
+          <div>
+            <span className="block opacity-60 uppercase tracking-wider text-[8.5px]">Min</span>
+            <span>{formatWithPreferred(minRange)}</span>
+          </div>
+          <div className="text-center">
+            <span className="block opacity-60 uppercase tracking-wider text-[8.5px]">Median</span>
+            <span className="text-[var(--text-primary)] font-bold">
+              {formatWithPreferred(baselines.medianExpense)}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="block opacity-60 uppercase tracking-wider text-[8.5px]">Max</span>
+            <span>{formatWithPreferred(maxRange)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. Executive Insight ────────────────────────────────────────────── */}
+      <div
+        className="p-3 rounded-2xl flex items-center justify-between border text-[11px]"
+        style={{
+          background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+          borderColor: "var(--glass-border)",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          {isAbove ? (
+            <AlertCircle size={14} className="text-[var(--text-tertiary)] shrink-0" />
+          ) : (
+            <CheckCircle2 size={14} className="text-[var(--text-primary)] shrink-0" />
+          )}
+          <span style={{ color: "var(--text-secondary)" }}>
+            {isIndonesian
+              ? `Pengeluaran Anda berdeviasi ${Math.abs(baselines.currentMonthDeviationPct)}% ${
+                  baselines.currentMonthDeviationPct >= 0 ? "di atas" : "di bawah"
+                } median historis (${baselines.historicalMonthsCount} siklus).`
+              : `Current outflow is ${Math.abs(baselines.currentMonthDeviationPct)}% ${
+                  baselines.currentMonthDeviationPct >= 0 ? "above" : "below"
+                } your median baseline across ${baselines.historicalMonthsCount} cycles.`}
+          </span>
+        </div>
+      </div>
+
+      {/* ── 4. Optional Category Details Toggle ─────────────────────────────── */}
+      {baselines.categoryBaselines && baselines.categoryBaselines.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              setShowCategoryDetails(!showCategoryDetails);
+            }}
+            className="w-full pt-1 flex items-center justify-center gap-1 text-[11px] font-semibold cursor-pointer transition-colors"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            <span>
+              {showCategoryDetails
+                ? isIndonesian
+                  ? "Sembunyikan Pos Kategori"
+                  : "Hide Category Norms"
+                : isIndonesian
+                  ? "Lihat Garis Dasar Per Kategori"
+                  : "View Category Norms"}
+            </span>
+            <ChevronDown
+              size={13}
+              className={`transition-transform duration-200 ${
+                showCategoryDetails ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          <AnimatePresence>
+            {showCategoryDetails && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden space-y-1.5 pt-2"
+              >
+                {baselines.categoryBaselines.map((cat, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      onCategoryClick?.(cat.name);
+                    }}
+                    className="w-full p-2.5 rounded-xl border flex items-center justify-between text-left active:scale-[0.99] transition-all cursor-pointer"
+                    style={{
+                      background: "var(--glass-fill)",
+                      borderColor: "var(--glass-border)",
+                    }}
+                  >
+                    <div>
+                      <span className="font-bold text-[11.5px] text-[var(--text-primary)] block">
+                        {cat.name}
+                      </span>
+                      <span className="text-[9.5px] text-[var(--text-tertiary)] tabular-nums">
+                        Median: {formatWithPreferred(cat.medianMonthlyTotal)}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold tabular-nums text-[11.5px] text-[var(--text-primary)] block">
+                        {formatWithPreferred(cat.currentMonthTotal)}
+                      </span>
+                      <span
+                        className="text-[9.5px] tabular-nums text-[var(--text-secondary)]"
+                      >
+                        {cat.deviationPct >= 0 ? "+" : ""}
+                        {cat.deviationPct.toFixed(0)}%
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </section>
   );
 }

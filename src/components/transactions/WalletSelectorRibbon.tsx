@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { IconRenderer } from "../ui/IconRenderer";
 import { triggerHaptic } from "../../lib/haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import type { Wallet, TransactionType } from "../../lib/types";
 
 export interface WalletSelectorRibbonProps {
@@ -27,6 +28,7 @@ export function WalletSelectorRibbon({
 }: WalletSelectorRibbonProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const { isIndonesian } = useLanguage();
 
   const getChipStyle = (isSelected: boolean) => ({
     background: isSelected
@@ -57,7 +59,7 @@ export function WalletSelectorRibbon({
               className="text-[11px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              From Account
+              {isIndonesian ? "Dari Akun" : "From Account"}
             </span>
             <button
               type="button"
@@ -68,7 +70,7 @@ export function WalletSelectorRibbon({
               className="text-[11px] font-medium flex items-center gap-0.5 active:opacity-70 transition-opacity cursor-pointer"
               style={{ color: "var(--text-secondary)" }}
             >
-              <span>All</span>
+              <span>{isIndonesian ? "Semua" : "All"}</span>
               <ChevronRight size={13} strokeWidth={1.75} />
             </button>
           </div>
@@ -106,7 +108,7 @@ export function WalletSelectorRibbon({
                 color: "var(--text-tertiary)",
               }}
             >
-              <span>+ More</span>
+              <span>{isIndonesian ? "+ Lainnya" : "+ More"}</span>
             </button>
           </div>
         </div>
@@ -118,7 +120,7 @@ export function WalletSelectorRibbon({
               className="text-[11px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              To Account
+              {isIndonesian ? "Ke Akun" : "To Account"}
             </span>
             <button
               type="button"
@@ -129,7 +131,7 @@ export function WalletSelectorRibbon({
               className="text-[11px] font-medium flex items-center gap-0.5 active:opacity-70 transition-opacity cursor-pointer"
               style={{ color: "var(--text-secondary)" }}
             >
-              <span>All</span>
+              <span>{isIndonesian ? "Semua" : "All"}</span>
               <ChevronRight size={13} strokeWidth={1.75} />
             </button>
           </div>
@@ -167,7 +169,7 @@ export function WalletSelectorRibbon({
                 color: "var(--text-tertiary)",
               }}
             >
-              <span>+ More</span>
+              <span>{isIndonesian ? "+ Lainnya" : "+ More"}</span>
             </button>
           </div>
         </div>
@@ -182,7 +184,7 @@ export function WalletSelectorRibbon({
           className="text-[11px] font-semibold uppercase tracking-wider"
           style={{ color: "var(--text-tertiary)" }}
         >
-          Account
+          {isIndonesian ? "Akun" : "Account"}
         </span>
         <button
           type="button"
@@ -193,7 +195,7 @@ export function WalletSelectorRibbon({
           className="text-[11px] font-medium flex items-center gap-0.5 active:opacity-70 transition-opacity cursor-pointer"
           style={{ color: "var(--text-secondary)" }}
         >
-          <span>All</span>
+          <span>{isIndonesian ? "Semua" : "All"}</span>
           <ChevronRight size={13} strokeWidth={1.75} />
         </button>
       </div>
@@ -231,7 +233,7 @@ export function WalletSelectorRibbon({
             color: "var(--text-tertiary)",
           }}
         >
-          <span>+ More</span>
+          <span>{isIndonesian ? "+ Lainnya" : "+ More"}</span>
         </button>
       </div>
     </div>

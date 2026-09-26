@@ -25,6 +25,11 @@ export function LiquidityHorizonCard({ liquidityHorizon, hideBalance = false }: 
       case "comfortable": return "Aman & Nyaman"
       case "watch": return "Perlu Pemantauan"
       case "critical": return "Kritis"
+      case "low": return "Rendah"
+      case "moderate": return "Moderat"
+      case "healthy": return "Sehat"
+      case "strong": return "Kuat"
+      case "exceptional": return "Sangat Tangguh"
       default: return tier
     }
   }

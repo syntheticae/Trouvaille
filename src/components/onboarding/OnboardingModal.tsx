@@ -7,8 +7,9 @@ import {
   Banknote,
   Landmark,
   Smartphone,
-  PiggyBank,
   TrendingUp,
+  Globe,
+  Coins,
   X,
 } from "lucide-react";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
@@ -39,44 +40,122 @@ interface AccountOption {
   name: string;
   sub: string;
   icon: any;
+  iconName: string;
   classification: "liquid" | "investment";
+  region: "local" | "global";
 }
 
 const ACCOUNT_OPTIONS: AccountOption[] = [
+  // --- LOKAL (IDR) ---
   {
     id: "cash",
     name: "Physical Cash",
-    sub: "Everyday physical currency",
+    sub: "Uang tunai & dompet fisik",
     icon: Banknote,
+    iconName: "Banknote",
     classification: "liquid",
+    region: "local",
   },
   {
-    id: "bank",
-    name: "Checking & Bank",
-    sub: "Direct deposit & checking accounts",
+    id: "bca",
+    name: "BCA",
+    sub: "Rekening perbankan & operasional harian",
     icon: Landmark,
+    iconName: "Landmark",
     classification: "liquid",
+    region: "local",
   },
   {
-    id: "ewallet",
-    name: "Digital E-Wallet",
-    sub: "Mobile QR & digital payments",
+    id: "mandiri",
+    name: "Bank Mandiri / BNI",
+    sub: "Rekening payroll & transfer nasional",
+    icon: Landmark,
+    iconName: "Landmark",
+    classification: "liquid",
+    region: "local",
+  },
+  {
+    id: "jago",
+    name: "Bank Jago / SeaBank",
+    sub: "Bank digital & kantong bunga harian",
+    icon: Landmark,
+    iconName: "Landmark",
+    classification: "liquid",
+    region: "local",
+  },
+  {
+    id: "gopay",
+    name: "GoPay",
+    sub: "Transaksi QRIS & kebutuhan harian",
     icon: Smartphone,
+    iconName: "Smartphone",
     classification: "liquid",
+    region: "local",
   },
   {
-    id: "savings",
-    name: "Savings & Reserve",
-    sub: "Emergency buffer cushion",
-    icon: PiggyBank,
+    id: "dana_ovo",
+    name: "DANA / OVO",
+    sub: "Dompet digital & marketplace belanja",
+    icon: Smartphone,
+    iconName: "Smartphone",
     classification: "liquid",
+    region: "local",
   },
   {
-    id: "invest",
-    name: "Investments & Assets",
-    sub: "Stocks, funds, crypto & bullion",
+    id: "saham_idx",
+    name: "Saham IDX & Reksa Dana",
+    sub: "Investasi pasar modal domestik (Bibit/Ajaib)",
     icon: TrendingUp,
+    iconName: "TrendingUp",
     classification: "investment",
+    region: "local",
+  },
+
+  // --- GLOBAL & MULTI-CURRENCY (USD/EUR/SGD) ---
+  {
+    id: "wise",
+    name: "Wise",
+    sub: "Multi-currency borderless account (USD/EUR/SGD)",
+    icon: Globe,
+    iconName: "Globe",
+    classification: "liquid",
+    region: "global",
+  },
+  {
+    id: "paypal",
+    name: "PayPal",
+    sub: "Global checkout & freelance earnings",
+    icon: Smartphone,
+    iconName: "Smartphone",
+    classification: "liquid",
+    region: "global",
+  },
+  {
+    id: "revolut",
+    name: "Revolut",
+    sub: "Global card, travel spending & foreign exchange",
+    icon: Globe,
+    iconName: "Globe",
+    classification: "liquid",
+    region: "global",
+  },
+  {
+    id: "global_broker",
+    name: "Global Brokerage",
+    sub: "US Equities, ETFs & Index funds (IBKR / Schwab)",
+    icon: TrendingUp,
+    iconName: "TrendingUp",
+    classification: "investment",
+    region: "global",
+  },
+  {
+    id: "crypto_vault",
+    name: "Crypto / USDT Vault",
+    sub: "Binance, Web3 vault & stablecoins",
+    icon: Coins,
+    iconName: "Coins",
+    classification: "investment",
+    region: "global",
   },
 ];
 
@@ -98,13 +177,21 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   });
   const [presetMode, setPresetMode] = useState<"default" | "custom">("default");
 
-  // Step 3: Accounts
+  // Step 3: Accounts & Region Tab
+  const [accountRegionTab, setAccountRegionTab] = useState<"local" | "global">("local");
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, boolean>>({
     cash: true,
-    bank: true,
-    ewallet: true,
-    savings: false,
-    invest: false,
+    bca: true,
+    gopay: true,
+    mandiri: false,
+    jago: false,
+    dana_ovo: false,
+    saham_idx: false,
+    wise: false,
+    paypal: false,
+    revolut: false,
+    global_broker: false,
+    crypto_vault: false,
   });
 
   // Step 4: Starting Balance
@@ -145,10 +232,17 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       if (presetMode === "default") {
         setSelectedAccounts({
           cash: true,
-          bank: true,
-          ewallet: true,
-          savings: false,
-          invest: false,
+          bca: true,
+          gopay: true,
+          mandiri: false,
+          jago: false,
+          dana_ovo: false,
+          saham_idx: false,
+          wise: false,
+          paypal: false,
+          revolut: false,
+          global_broker: false,
+          crypto_vault: false,
         });
         setStep(4);
       } else {
@@ -180,15 +274,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       (acc) => selectedAccounts[acc.id],
     ).map((acc) => ({
       name: acc.name,
-      icon: acc.name.includes("Cash")
-        ? "Banknote"
-        : acc.name.includes("Bank")
-        ? "Landmark"
-        : acc.name.includes("Wallet")
-        ? "Smartphone"
-        : acc.name.includes("Savings")
-        ? "PiggyBank"
-        : "TrendingUp",
+      icon: acc.iconName,
       classification: acc.classification,
     }));
 
@@ -493,13 +579,13 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                         Physical Cash
                       </span>
                       <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
-                        Checking & Bank
+                        BCA (Bank)
                       </span>
                       <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
-                        Digital E-Wallet
+                        GoPay (E-Wallet)
                       </span>
                       <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
-                        +8 Core Categories
+                        +14 Core Categories
                       </span>
                     </div>
                   </div>
@@ -614,9 +700,47 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 </p>
               </div>
 
+              {/* Regional Tabs: Lokal (IDR) vs Global (USD/EUR) */}
+              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] w-full">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setAccountRegionTab("local");
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-[12px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    accountRegionTab === "local"
+                      ? "bg-white/[0.12] text-white shadow-sm border border-white/20"
+                      : "text-white/50 hover:text-white/80"
+                  }`}
+                >
+                  <span>Lokal (IDR)</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-white/70">
+                    {ACCOUNT_OPTIONS.filter((a) => a.region === "local" && selectedAccounts[a.id]).length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setAccountRegionTab("global");
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-[12px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    accountRegionTab === "global"
+                      ? "bg-white/[0.12] text-white shadow-sm border border-white/20"
+                      : "text-white/50 hover:text-white/80"
+                  }`}
+                >
+                  <span>Global (USD/EUR)</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-white/70">
+                    {ACCOUNT_OPTIONS.filter((a) => a.region === "global" && selectedAccounts[a.id]).length}
+                  </span>
+                </button>
+              </div>
+
               {/* Open, unboxed vertical list with hairline dividers */}
               <div className="divide-y divide-white/[0.07] border-y border-white/[0.08]">
-                {ACCOUNT_OPTIONS.map((acc) => {
+                {ACCOUNT_OPTIONS.filter((acc) => acc.region === accountRegionTab).map((acc) => {
                   const isChecked = Boolean(selectedAccounts[acc.id]);
                   const Icon = acc.icon;
                   return (
@@ -710,6 +834,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                     <input
                       type="text"
                       inputMode="numeric"
+                      pattern="[0-9]*"
                       value={startingBalance === 0 ? "" : startingBalance.toLocaleString("id-ID")}
                       onChange={(e) => {
                         const raw = e.target.value.replace(/[^0-9]/g, "");

@@ -16,39 +16,32 @@ import {
   type SankeyNode,
   type SankeyLink,
 } from "../../lib/sankeyEngine";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { IconRenderer } from "../ui/IconRenderer";
 import { BottomSheet } from "../ui/BottomSheet";
-
-function formatCompactRp(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000_000) {
-    return `Rp ${(abs / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
-  }
-  if (abs >= 1_000_000) {
-    return `Rp ${(abs / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  }
-  if (abs >= 1_000) {
-    return `Rp ${(abs / 1_000).toFixed(0)}K`;
-  }
-  return `Rp ${abs.toLocaleString("id-ID")}`;
-}
 
 interface CashflowSankeySectionProps {
   transactions: Transaction[];
   categories: Category[];
   wallets?: Wallet[];
   periodLabel?: string;
+  className?: string;
+  hideTitle?: boolean;
 }
 
 export function CashflowSankeySection({
   transactions,
   categories,
   periodLabel = "Current Period",
+  className = "",
+  hideTitle = false,
 }: CashflowSankeySectionProps) {
   const { theme } = useTheme();
+  const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, formatCompactWithPreferred } = useCurrency();
   const isDark = theme !== "light";
 
   const [mode, setMode] = useState<"macro" | "category">("macro");
@@ -62,8 +55,9 @@ export function CashflowSankeySection({
       height: 520,
       mode,
       maxExpenseNodes: 7,
+      language: isIndonesian ? "id" : "en",
     });
-  }, [transactions, categories, mode]);
+  }, [transactions, categories, mode, isIndonesian]);
 
   const { nodes, links, telemetry, viewBox } = sankeyData;
 
@@ -121,79 +115,137 @@ export function CashflowSankeySection({
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-4 ${className}`}>
       {/* Header & Granularity Mode Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2
-              className="text-[18px] font-semibold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
+      {!hideTitle ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2
+                className="text-[17px] font-semibold tracking-tight"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {isIndonesian ? "Alokasi Arus Kas" : "Cashflow Allocation"}
+              </h2>
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                Sankey
+              </span>
+            </div>
+            <p
+              className="text-[12px] font-medium mt-0.5"
+              style={{ color: "var(--text-tertiary)" }}
             >
-              Cashflow Allocation
-            </h2>
-            <span
-              className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              Sankey
-            </span>
+              {isIndonesian
+                ? "Distribusi transmisi pemasukan ke pos beban, utang, dan tabungan."
+                : "Inflow distribution to expenses, debt, and retained capital."}
+            </p>
           </div>
+
+          {/* Granularity Toggle Pill */}
+          <div
+            className="flex p-1 rounded-2xl glass-surface shrink-0 self-start sm:self-auto"
+            style={{ border: "1px solid var(--glass-border)" }}
+          >
+            <button
+              onClick={() => {
+                setMode("macro");
+                triggerHaptic("light");
+                setSelectedNodeId(null);
+                setSelectedLinkId(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                mode === "macro"
+                  ? isDark
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "bg-zinc-900 text-white shadow-sm"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              <Layers size={12} strokeWidth={1.75} />
+              {isIndonesian ? "Grup Makro" : "By Macro Group"}
+            </button>
+            <button
+              onClick={() => {
+                setMode("category");
+                triggerHaptic("light");
+                setSelectedNodeId(null);
+                setSelectedLinkId(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                mode === "category"
+                  ? isDark
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "bg-zinc-900 text-white shadow-sm"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              <PieChart size={12} strokeWidth={1.75} />
+              {isIndonesian ? "Kategori" : "By Category"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
           <p
-            className="text-[12px] font-medium mt-0.5"
+            className="text-[12px] font-medium"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Inflow distribution to expenses, debt, and retained capital.
+            {isIndonesian
+              ? `Transmisi alur dana · ${periodLabel}`
+              : `Fund flow pathways · ${periodLabel}`}
           </p>
-        </div>
 
-        {/* Granularity Toggle Pill */}
-        <div
-          className="flex p-1 rounded-2xl glass-surface shrink-0 self-start sm:self-auto"
-          style={{ border: "1px solid var(--glass-border)" }}
-        >
-          <button
-            onClick={() => {
-              setMode("macro");
-              triggerHaptic("light");
-              setSelectedNodeId(null);
-              setSelectedLinkId(null);
-            }}
-            className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-              mode === "macro"
-                ? isDark
-                  ? "bg-white/10 text-white shadow-sm"
-                  : "bg-zinc-900 text-white shadow-sm"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-            }`}
+          {/* Granularity Toggle Pill */}
+          <div
+            className="flex p-1 rounded-2xl glass-surface shrink-0 self-start sm:self-auto"
+            style={{ border: "1px solid var(--glass-border)" }}
           >
-            <Layers size={12} strokeWidth={1.75} />
-            By Macro Group
-          </button>
-          <button
-            onClick={() => {
-              setMode("category");
-              triggerHaptic("light");
-              setSelectedNodeId(null);
-              setSelectedLinkId(null);
-            }}
-            className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-              mode === "category"
-                ? isDark
-                  ? "bg-white/10 text-white shadow-sm"
-                  : "bg-zinc-900 text-white shadow-sm"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-            }`}
-          >
-            <PieChart size={12} strokeWidth={1.75} />
-            By Category
-          </button>
+            <button
+              onClick={() => {
+                setMode("macro");
+                triggerHaptic("light");
+                setSelectedNodeId(null);
+                setSelectedLinkId(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                mode === "macro"
+                  ? isDark
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "bg-zinc-900 text-white shadow-sm"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              <Layers size={12} strokeWidth={1.75} />
+              {isIndonesian ? "Grup Makro" : "By Macro Group"}
+            </button>
+            <button
+              onClick={() => {
+                setMode("category");
+                triggerHaptic("light");
+                setSelectedNodeId(null);
+                setSelectedLinkId(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                mode === "category"
+                  ? isDark
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "bg-zinc-900 text-white shadow-sm"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              <PieChart size={12} strokeWidth={1.75} />
+              {isIndonesian ? "Kategori" : "By Category"}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Cashflow Telemetry Bento Banner */}
       <div className="grid grid-cols-3 gap-2">
@@ -211,24 +263,28 @@ export function CashflowSankeySection({
               className="text-[10px] font-bold uppercase tracking-wider truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Retention
+              {isIndonesian ? "Retensi Kas" : "Retention"}
             </span>
             <ShieldCheck size={12} className="shrink-0" style={{ color: "var(--text-secondary)" }} />
           </div>
           <div className="min-w-0">
             <p
-              className="text-[13px] font-semibold tracking-tight truncate"
+              className="text-[13px] font-semibold tracking-tight truncate tabular-nums"
               style={{ color: "var(--text-primary)" }}
             >
-              {telemetry.isDeficit ? "Deficit" : `${telemetry.savingsRatePct}% Saved`}
+              {telemetry.isDeficit
+                ? isIndonesian
+                  ? "Defisit"
+                  : "Deficit"
+                : `${telemetry.savingsRatePct}% ${isIndonesian ? "Tersimpan" : "Saved"}`}
             </p>
             <p
-              className="text-[10px] mt-0.5 font-medium truncate"
+              className="text-[10px] mt-0.5 font-medium truncate tabular-nums"
               style={{ color: "var(--text-tertiary)" }}
             >
               {telemetry.isDeficit
-                ? `${formatCompactRp(telemetry.netSavings)} over`
-                : `${formatCompactRp(telemetry.netSavings)} saved`}
+                ? `${formatCompactWithPreferred(telemetry.netSavings)} ${isIndonesian ? "defisit" : "over"}`
+                : `${formatCompactWithPreferred(telemetry.netSavings)} ${isIndonesian ? "tersimpan" : "saved"}`}
             </p>
           </div>
         </div>
@@ -247,22 +303,22 @@ export function CashflowSankeySection({
               className="text-[10px] font-bold uppercase tracking-wider truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Needs / Wants
+              {isIndonesian ? "Kebutuhan / Gaya" : "Needs / Wants"}
             </span>
             <Scale size={12} className="shrink-0" style={{ color: "var(--text-secondary)" }} />
           </div>
           <div className="min-w-0">
             <p
-              className="text-[13px] font-semibold tracking-tight truncate"
+              className="text-[13px] font-semibold tracking-tight truncate tabular-nums"
               style={{ color: "var(--text-primary)" }}
             >
               {telemetry.essentialPct}% · {telemetry.discretionaryPct}%
             </p>
             <p
-              className="text-[10px] mt-0.5 font-medium truncate"
+              className="text-[10px] mt-0.5 font-medium truncate tabular-nums"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {formatCompactRp(telemetry.essentialAmount)} needs
+              {formatCompactWithPreferred(telemetry.essentialAmount)} {isIndonesian ? "primer" : "needs"}
             </p>
           </div>
         </div>
@@ -281,7 +337,7 @@ export function CashflowSankeySection({
               className="text-[10px] font-bold uppercase tracking-wider truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Top Sink
+              {isIndonesian ? "Pos Terbesar" : "Top Sink"}
             </span>
             <TrendingDown size={12} className="shrink-0" style={{ color: "var(--text-secondary)" }} />
           </div>
@@ -291,13 +347,13 @@ export function CashflowSankeySection({
               style={{ color: "var(--text-primary)" }}
               title={telemetry.topDestinationName}
             >
-              {telemetry.topDestinationName || "None"}
+              {telemetry.topDestinationName || (isIndonesian ? "Tidak Ada" : "None")}
             </p>
             <p
-              className="text-[10px] mt-0.5 font-medium truncate"
+              className="text-[10px] mt-0.5 font-medium truncate tabular-nums"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {formatCompactRp(telemetry.topDestinationAmount)} · {telemetry.topDestinationPct}%
+              {formatCompactWithPreferred(telemetry.topDestinationAmount)} · {telemetry.topDestinationPct}%
             </p>
           </div>
         </div>
@@ -321,45 +377,77 @@ export function CashflowSankeySection({
         >
           <Sparkles size={14} style={{ color: "var(--text-primary)" }} />
         </div>
-        <div className="space-y-0.5">
+        <div className="space-y-0.5 min-w-0">
           <h4
             className="text-[12px] font-bold tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
-            Flow Summary
+            {isIndonesian ? "Ringkasan Alur Dana" : "Flow Summary"}
           </h4>
           <p
             className="text-[11px] leading-relaxed"
             style={{ color: "var(--text-secondary)" }}
           >
             {telemetry.totalInflow > 0 ? (
-              <>
-                From total income of{" "}
-                <span className="font-semibold text-[var(--text-primary)]">
-                  {formatRupiah(telemetry.totalInflow)}
-                </span>
-                ,{" "}
-                <span className="font-semibold text-[var(--text-primary)]">
-                  {telemetry.essentialPct}%
-                </span>{" "}
-                routes to essentials,{" "}
-                <span className="font-semibold text-[var(--text-primary)]">
-                  {telemetry.discretionaryPct}%
-                </span>{" "}
-                to discretionary, and{" "}
-                <span className="font-semibold text-[var(--text-primary)]">
-                  {telemetry.savingsRatePct}% ({formatRupiah(Math.max(0, telemetry.netSavings))})
-                </span>{" "}
-                is retained as net savings.
-              </>
+              isIndonesian ? (
+                <>
+                  Dari total pemasukan{" "}
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {formatWithPreferred(telemetry.totalInflow)}
+                  </span>
+                  ,{" "}
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {telemetry.essentialPct}%
+                  </span>{" "}
+                  teralokasi untuk kebutuhan primer,{" "}
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {telemetry.discretionaryPct}%
+                  </span>{" "}
+                  untuk kebutuhan fleksibel, dan{" "}
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {telemetry.savingsRatePct}% ({formatWithPreferred(Math.max(0, telemetry.netSavings))})
+                  </span>{" "}
+                  berhasil dipertahankan sebagai saldo bersih.
+                </>
+              ) : (
+                <>
+                  From total income of{" "}
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {formatWithPreferred(telemetry.totalInflow)}
+                  </span>
+                  ,{" "}
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {telemetry.essentialPct}%
+                  </span>{" "}
+                  routes to essentials,{" "}
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {telemetry.discretionaryPct}%
+                  </span>{" "}
+                  to discretionary, and{" "}
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {telemetry.savingsRatePct}% ({formatWithPreferred(Math.max(0, telemetry.netSavings))})
+                  </span>{" "}
+                  is retained as net savings.
+                </>
+              )
             ) : (
-              <>
-                Period expenditure of{" "}
-                <span className="font-semibold text-[var(--text-primary)]">
-                  {formatRupiah(telemetry.totalOutflow)}
-                </span>{" "}
-                is funded from available liquidity reserves.
-              </>
+              isIndonesian ? (
+                <>
+                  Pengeluaran periode sebesar{" "}
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {formatWithPreferred(telemetry.totalOutflow)}
+                  </span>{" "}
+                  didanai dari cadangan likuiditas kas yang tersedia.
+                </>
+              ) : (
+                <>
+                  Period expenditure of{" "}
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {formatWithPreferred(telemetry.totalOutflow)}
+                  </span>{" "}
+                  is funded from available liquidity reserves.
+                </>
+              )
             )}
           </p>
         </div>
@@ -377,9 +465,9 @@ export function CashflowSankeySection({
       >
         {/* Sub-header step labels */}
         <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] mb-4 px-2">
-          <span>1. Inflow</span>
-          <span>2. Allocation</span>
-          <span>3. Expenses & Savings</span>
+          <span>{isIndonesian ? "1. Pemasukan" : "1. Inflow"}</span>
+          <span>{isIndonesian ? "2. Alokasi" : "2. Allocation"}</span>
+          <span>{isIndonesian ? "3. Beban & Retensi" : "3. Expenses & Savings"}</span>
         </div>
 
         {/* SVG Viewport */}
@@ -525,7 +613,7 @@ export function CashflowSankeySection({
                           fontWeight="600"
                           fill={isDark ? "#A1A1AA" : "#71717A"}
                         >
-                          {formatRupiah(node.amount)}
+                          {formatWithPreferred(node.amount)}
                         </text>
                       )}
 
@@ -587,12 +675,12 @@ export function CashflowSankeySection({
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {activeLink
-                      ? `${activeLink.percentage}% of gross cashflow`
+                      ? `${activeLink.percentage}% ${isIndonesian ? "dari arus kas bruto" : "of gross cashflow"}`
                       : activeNode?.isSavings
-                      ? "Net surplus retained in liquid wealth"
+                      ? isIndonesian ? "Surplus bersih disimpan sebagai aset likuid" : "Net surplus retained in liquid wealth"
                       : activeNode?.isDeficit
-                      ? "Excess spending funded from reserves"
-                      : `${activeNode?.percentage}% of total allocations`}
+                      ? isIndonesian ? "Pengeluaran berlebih didanai dari cadangan" : "Excess spending funded from reserves"
+                      : `${activeNode?.percentage}% ${isIndonesian ? "dari total alokasi" : "of total allocations"}`}
                   </p>
                 </div>
               </div>
@@ -601,7 +689,7 @@ export function CashflowSankeySection({
                   className="text-[14px] font-semibold amount"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {formatRupiah(activeLink ? activeLink.value : activeNode?.amount ?? 0)}
+                  {formatWithPreferred(activeLink ? activeLink.value : activeNode?.amount ?? 0)}
                 </p>
               </div>
             </motion.div>
@@ -623,7 +711,7 @@ export function CashflowSankeySection({
               className="text-[13px] font-bold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Capital Allocation Breakdown
+              {isIndonesian ? "Rincian Alokasi Modal" : "Capital Allocation Breakdown"}
             </h3>
             <button
               type="button"
@@ -632,7 +720,7 @@ export function CashflowSankeySection({
                 triggerHaptic("light");
               }}
               className="w-5 h-5 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors active:scale-90 cursor-pointer"
-              title="View all allocations"
+              title={isIndonesian ? "Lihat semua alokasi" : "View all allocations"}
             >
               <Info size={13} />
             </button>
@@ -689,10 +777,10 @@ export function CashflowSankeySection({
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {item.column === 0
-                      ? "Inflow Stream"
+                      ? isIndonesian ? "Aliran Pemasukan" : "Inflow Stream"
                       : item.isSavings
-                      ? "Wealth Retention"
-                      : "Outflow Allocation"}
+                      ? isIndonesian ? "Retensi Kekayaan" : "Wealth Retention"
+                      : isIndonesian ? "Alokasi Pengeluaran" : "Outflow Allocation"}
                   </span>
                 </div>
               </div>
@@ -709,7 +797,7 @@ export function CashflowSankeySection({
                   }}
                 >
                   {item.column === 0 || item.isSavings ? "+" : "-"}
-                  {formatRupiah(item.amount)}
+                  {formatWithPreferred(item.amount)}
                 </p>
                 <span
                   className="text-[10px] font-semibold"
@@ -738,7 +826,7 @@ export function CashflowSankeySection({
             }}
           >
             <Info size={13} />
-            <span>View All ({allocationNodes.length}) Allocations</span>
+            <span>{isIndonesian ? `Lihat Semua (${allocationNodes.length}) Alokasi` : `View All (${allocationNodes.length}) Allocations`}</span>
           </button>
         )}
       </div>
@@ -755,13 +843,15 @@ export function CashflowSankeySection({
                 className="font-semibold text-lg"
                 style={{ color: "var(--text-primary)" }}
               >
-                Capital Allocation Breakdown
+                {isIndonesian ? "Rincian Alokasi Modal" : "Capital Allocation Breakdown"}
               </h3>
               <p
                 className="text-[12px] font-medium mt-0.5"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {allocationNodes.length} allocation streams · {periodLabel}
+                {isIndonesian
+                  ? `${allocationNodes.length} aliran alokasi · ${periodLabel}`
+                  : `${allocationNodes.length} allocation streams · ${periodLabel}`}
               </p>
             </div>
           </div>
@@ -806,10 +896,10 @@ export function CashflowSankeySection({
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       {item.column === 0
-                        ? "Inflow Stream"
+                        ? isIndonesian ? "Aliran Pemasukan" : "Inflow Stream"
                         : item.isSavings
-                        ? "Wealth Retention"
-                        : "Outflow Allocation"}
+                        ? isIndonesian ? "Retensi Kekayaan" : "Wealth Retention"
+                        : isIndonesian ? "Alokasi Pengeluaran" : "Outflow Allocation"}
                     </span>
                   </div>
                 </div>
@@ -824,7 +914,7 @@ export function CashflowSankeySection({
                     }}
                   >
                     {item.column === 0 || item.isSavings ? "+" : "-"}
-                    {formatRupiah(item.amount)}
+                    {formatWithPreferred(item.amount)}
                   </p>
                   <span
                     className="text-[10px] font-semibold"

@@ -85,61 +85,87 @@ export async function syncBillNotifications(bills: Bill[]): Promise<void> {
 }
 
 export const DAILY_REMINDER_NOTIFICATION_ID = 99999;
+export const DAILY_REMINDER_TIME_KEY = "trouvaille_daily_reminder_time";
 
-export async function cancelDailyStreakReminder(): Promise<void> {
+export function getDailyStreakReminderTime(): string {
   try {
-    const pending = await LocalNotifications.getPending()
-    const exists = pending.notifications.some((n) => n.id === DAILY_REMINDER_NOTIFICATION_ID)
-    if (exists) {
-      await LocalNotifications.cancel({ notifications: [{ id: DAILY_REMINDER_NOTIFICATION_ID }] })
-    }
-  } catch (e) {
-    console.warn('Failed to cancel daily streak reminder:', e)
+    return localStorage.getItem(DAILY_REMINDER_TIME_KEY) || "20:00";
+  } catch {
+    return "20:00";
   }
 }
 
-export async function syncDailyStreakReminder(hasLoggedToday: boolean): Promise<void> {
+export function setDailyStreakReminderTime(timeStr: string): void {
+  try {
+    localStorage.setItem(DAILY_REMINDER_TIME_KEY, timeStr);
+  } catch (e) {
+    console.warn("Failed to set daily streak reminder time:", e);
+  }
+}
+
+export async function cancelDailyStreakReminder(): Promise<void> {
+  try {
+    const pending = await LocalNotifications.getPending();
+    const exists = pending.notifications.some(
+      (n) => n.id === DAILY_REMINDER_NOTIFICATION_ID,
+    );
+    if (exists) {
+      await LocalNotifications.cancel({
+        notifications: [{ id: DAILY_REMINDER_NOTIFICATION_ID }],
+      });
+    }
+  } catch (e) {
+    console.warn("Failed to cancel daily streak reminder:", e);
+  }
+}
+
+export async function syncDailyStreakReminder(
+  hasLoggedToday: boolean = false,
+): Promise<void> {
   try {
     // Check if user disabled daily streak reminders in settings (default true)
-    if (localStorage.getItem('trouvaille_daily_reminder_enabled') === 'false') {
-      await cancelDailyStreakReminder()
-      return
+    if (localStorage.getItem("trouvaille_daily_reminder_enabled") === "false") {
+      await cancelDailyStreakReminder();
+      return;
     }
 
-    const granted = await requestNotificationPermission()
-    if (!granted) return
+    const granted = await requestNotificationPermission();
+    if (!granted) return;
 
-    // If user already logged today, streak is already safe!
-    if (hasLoggedToday) {
-      await cancelDailyStreakReminder()
-      return
+    // Parse customized reminder hour and minute (defaults to 20:00)
+    const timeStr = getDailyStreakReminderTime();
+    const [hStr, mStr] = timeStr.split(":");
+    const hour = parseInt(hStr, 10) || 20;
+    const minute = parseInt(mStr, 10) || 0;
+
+    await cancelDailyStreakReminder();
+
+    const now = new Date();
+    const scheduledTime = new Date();
+    scheduledTime.setHours(hour, minute, 0, 0);
+
+    // If already logged today or if time has already passed today, start from tomorrow
+    if (hasLoggedToday || scheduledTime <= now) {
+      scheduledTime.setDate(scheduledTime.getDate() + 1);
     }
-
-    const now = new Date()
-    const scheduledTime = new Date()
-    scheduledTime.setHours(20, 0, 0, 0)
-
-    // If already past 20:00 today, do not schedule for the past
-    if (scheduledTime <= now) {
-      await cancelDailyStreakReminder()
-      return
-    }
-
-    await cancelDailyStreakReminder()
 
     await LocalNotifications.schedule({
       notifications: [
         {
           id: DAILY_REMINDER_NOTIFICATION_ID,
-          title: 'Maintain Your Financial Streak',
-          body: 'No transactions recorded today. Log your expenses now to keep your consistency streak active!',
-          schedule: { at: scheduledTime },
-          sound: 'default',
+          title: "Maintain Your Financial Streak",
+          body: "No transactions recorded today. Log your expenses now to keep your consistency streak active!",
+          schedule: {
+            at: scheduledTime,
+            every: "day",
+            allowWhileIdle: true,
+          },
+          sound: "default",
         },
       ],
-    })
+    });
   } catch (e) {
-    console.warn('Failed to sync daily streak reminder:', e)
+    console.warn("Failed to sync daily streak reminder:", e);
   }
 }
 

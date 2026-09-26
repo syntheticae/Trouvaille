@@ -404,7 +404,7 @@ export function PortfolioInsightCards({
             </p>
             <p className="text-[9.5px] text-[var(--text-tertiary)]">
               {totalMarketValuation > 0
-                ? `${((liquidCash / totalMarketValuation) * 100).toFixed(1)}% portfolio`
+                ? `${((liquidCash / totalMarketValuation) * 100).toFixed(1)}${isIndonesian ? "% portofolio" : "% portfolio"}`
                 : "0%"}
             </p>
           </div>
@@ -430,7 +430,7 @@ export function PortfolioInsightCards({
             </p>
             <p className="text-[9.5px] text-[var(--text-tertiary)]">
               {totalMarketValuation > 0
-                ? `${(((totalMarketValuation - liquidCash) / totalMarketValuation) * 100).toFixed(1)}% portfolio`
+                ? `${(((totalMarketValuation - liquidCash) / totalMarketValuation) * 100).toFixed(1)}${isIndonesian ? "% portofolio" : "% portfolio"}`
                 : "0%"}
             </p>
           </div>
@@ -456,8 +456,12 @@ export function PortfolioInsightCards({
               style={{ background: isDark ? "#FFFFFF" : "#09090C" }}
             />
             <p className="text-[var(--text-secondary)]">
-              <strong className="text-[var(--text-primary)]">Currency Resilience:</strong> USDT & foreign-denominated holdings comprise{" "}
-              {allocation.categories.find((c) => c.id === "crypto")?.sharePct.toFixed(1) || 0}% of your total portfolio, providing hedge stability against local volatility.
+              <strong className="text-[var(--text-primary)]">
+                {isIndonesian ? "Ketahanan Valuta:" : "Currency Resilience:"}
+              </strong>{" "}
+              {isIndonesian
+                ? `Kepemilikan USDT & berdenominasi asing mencakup ${allocation.categories.find((c) => c.id === "crypto")?.sharePct.toFixed(1) || 0}% dari total portofolio Anda, memberi stabilitas lindung nilai terhadap volatilitas lokal.`
+                : `USDT & foreign-denominated holdings comprise ${allocation.categories.find((c) => c.id === "crypto")?.sharePct.toFixed(1) || 0}% of your total portfolio, providing hedge stability against local volatility.`}
             </p>
           </div>
 
@@ -467,8 +471,12 @@ export function PortfolioInsightCards({
               style={{ background: isDark ? "#FFFFFF" : "#09090C" }}
             />
             <p className="text-[var(--text-secondary)]">
-              <strong className="text-[var(--text-primary)]">Capital Agility:</strong> Your liquid reserves provide{" "}
-              {monthlyBurnRate > 0 ? (liquidCash / monthlyBurnRate).toFixed(1) : "12.0"} months of resilient defense without forced liquidation of market holdings.
+              <strong className="text-[var(--text-primary)]">
+                {isIndonesian ? "Ketangkasan Modal:" : "Capital Agility:"}
+              </strong>{" "}
+              {isIndonesian
+                ? `Cadangan likuid Anda menyediakan ${monthlyBurnRate > 0 ? (liquidCash / monthlyBurnRate).toFixed(1) : "12.0"} bulan pertahanan tangguh tanpa perlu likuidasi paksa aset pasar.`
+                : `Your liquid reserves provide ${monthlyBurnRate > 0 ? (liquidCash / monthlyBurnRate).toFixed(1) : "12.0"} months of resilient defense without forced liquidation of market holdings.`}
             </p>
           </div>
 
@@ -478,10 +486,16 @@ export function PortfolioInsightCards({
               style={{ background: isDark ? "#FFFFFF" : "#09090C" }}
             />
             <p className="text-[var(--text-secondary)]">
-              <strong className="text-[var(--text-primary)]">Strategic Allocation:</strong>{" "}
-              {diversification.status === "Overexposed"
-                ? "Your capital is heavily concentrated in a single asset. Consider systematically spreading into secondary asset classes (equities, cash reserves, gold)."
-                : "Your capital allocation is well balanced. Continue regular DCA discipline into core assets."}
+              <strong className="text-[var(--text-primary)]">
+                {isIndonesian ? "Alokasi Strategis:" : "Strategic Allocation:"}
+              </strong>{" "}
+              {isIndonesian
+                ? diversification.status === "Overexposed"
+                  ? "Modal Anda sangat terkonsentrasi pada satu aset. Pertimbangkan untuk mendiversifikasi secara sistematis ke kelas aset sekunder (saham, cadangan kas, emas)."
+                  : "Alokasi modal Anda seimbang dengan baik. Lanjutkan disiplin DCA rutin ke aset-aset inti."
+                : diversification.status === "Overexposed"
+                  ? "Your capital is heavily concentrated in a single asset. Consider systematically spreading into secondary asset classes (equities, cash reserves, gold)."
+                  : "Your capital allocation is well balanced. Continue regular DCA discipline into core assets."}
             </p>
           </div>
         </div>

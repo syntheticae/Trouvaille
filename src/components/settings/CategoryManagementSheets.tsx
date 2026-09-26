@@ -6,6 +6,7 @@ import {
   X,
   ChevronRight,
   ChevronLeft,
+  Target,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -20,6 +21,20 @@ import {
 } from "../../hooks/useCategories";
 import { formatRupiah } from "../../lib/utils";
 import { useToast } from "../../contexts/ToastContext";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+
+function formatShortRupiah(num?: number | null, isIndonesian = false) {
+  if (!num || num <= 0) return isIndonesian ? "Tanpa Batas" : "No Limit";
+  if (num >= 1_000_000) {
+    const val = (num / 1_000_000).toFixed(1).replace(".0", "");
+    return isIndonesian ? `Rp ${val} Jt` : `Rp ${val}M`;
+  }
+  if (num >= 1_000) {
+    return `Rp ${num / 1_000}k`;
+  }
+  return `Rp ${num.toLocaleString("id-ID")}`;
+}
 
 interface CategoryManagementSheetsProps {
   isOpen: boolean;
@@ -35,6 +50,9 @@ export function CategoryManagementSheets({
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
   const { showToast } = useToast();
+  const { theme } = useTheme();
+  const { isIndonesian } = useLanguage();
+  const isDark = theme !== "light";
 
   const [viewMode, setViewMode] = useState<"list" | "edit" | "add">("list");
   const [manageCatTab, setManageCatTab] = useState<"expense" | "income">("expense");
@@ -53,29 +71,51 @@ export function CategoryManagementSheets({
     type?: string;
   } | null>(null);
   const [editCategoryBudget, setEditCategoryBudget] = useState("");
+  const [catBudget, setCatBudget] = useState("");
+
+  const [quickBudgetCategory, setQuickBudgetCategory] = useState<{
+    id: string;
+    name: string;
+    emoji: string;
+    budget_amount?: number | null;
+  } | null>(null);
+  const [quickBudgetValue, setQuickBudgetValue] = useState("");
 
   const handleCloseAll = () => {
     setViewMode("list");
     setEditCategory(null);
+    setQuickBudgetCategory(null);
+    setQuickBudgetValue("");
+    setCatBudget("");
     onClose();
   };
 
   const handleSaveCategory = () => {
     if (!catName.trim()) return;
     const finalIcon = catIcon || autoSuggestIcon(catName) || "Tag";
+    const numBudget = catBudget.trim()
+      ? Number(catBudget.replace(/\D/g, ""))
+      : undefined;
     addCategory.mutate(
-      { name: catName.trim(), emoji: finalIcon, type: catType },
+      {
+        name: catName.trim(),
+        emoji: finalIcon,
+        type: catType,
+        budget_amount: numBudget,
+      },
       {
         onSuccess: () => {
           setViewMode("list");
           setCatName("");
+          setCatBudget("");
           setCatIcon("Tag");
           setHasCustomPickedAddIcon(false);
-          showToast("Category created", "add", () => {});
+          showToast(isIndonesian ? "Kategori dibuat" : "Category created", "add", () => {});
         },
       },
     );
   };
+
 
   const handleUpdateCategory = () => {
     if (!editCategory?.name.trim()) return;
@@ -93,24 +133,68 @@ export function CategoryManagementSheets({
         onSuccess: () => {
           setViewMode("list");
           setEditCategory(null);
-          showToast("Category updated", "update", () => {});
+          showToast(isIndonesian ? "Kategori diperbarui" : "Category updated", "update", () => {});
+        },
+      },
+    );
+  };
+
+  const handleOpenQuickBudget = (cat: {
+    id: string;
+    name: string;
+    emoji: string;
+    budget_amount?: number | null;
+  }) => {
+    triggerHaptic("light");
+    setQuickBudgetCategory(cat);
+    setQuickBudgetValue(cat.budget_amount ? String(cat.budget_amount) : "");
+  };
+
+  const handleSaveQuickBudget = () => {
+    if (!quickBudgetCategory) return;
+    const numBudget = quickBudgetValue.trim()
+      ? Number(quickBudgetValue.replace(/\D/g, ""))
+      : null;
+    updateCategory.mutate(
+      {
+        id: quickBudgetCategory.id,
+        name: quickBudgetCategory.name,
+        budget_amount: numBudget,
+        emoji: quickBudgetCategory.emoji || "Tag",
+      },
+      {
+        onSuccess: () => {
+          setQuickBudgetCategory(null);
+          setQuickBudgetValue("");
+          showToast(isIndonesian ? "Batas bulanan diperbarui" : "Monthly limit updated", "update", () => {});
         },
       },
     );
   };
 
   const handleDeleteCategory = (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"?`)) return;
+    triggerHaptic("medium");
+    const confirmMsg = isIndonesian
+      ? `Hapus "${name}"? Transaksi yang menggunakan kategori ini akan menjadi tanpa kategori.`
+      : `Delete "${name}"? Transactions assigned to this category will become uncategorized.`;
+    if (!confirm(confirmMsg)) return;
     deleteCategory.mutate(id, {
       onSuccess: () => {
         if (editCategory?.id === id) {
           setViewMode("list");
           setEditCategory(null);
         }
-        showToast("Category deleted", "delete", () => {});
+        if (quickBudgetCategory?.id === id) {
+          setQuickBudgetCategory(null);
+        }
+        showToast(isIndonesian ? "Kategori dihapus" : "Category deleted", "delete", () => {});
       },
       onError: (error: any) => {
-        showToast(error?.message || "Failed to delete category", "delete", () => {});
+        showToast(
+          error?.message || (isIndonesian ? "Gagal menghapus kategori" : "Failed to delete category"),
+          "delete",
+          () => {},
+        );
       },
     });
   };
@@ -121,7 +205,13 @@ export function CategoryManagementSheets({
   return (
     <>
       <BottomSheet isOpen={isOpen} onClose={handleCloseAll}>
-        <div className="p-5 pb-10 space-y-4">
+        <div
+          className="p-5 space-y-4"
+          style={{
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 32px)",
+          }}
+        >
           {/* Header Bar */}
           {viewMode === "list" ? (
             <div className="flex items-center justify-between">
@@ -130,13 +220,13 @@ export function CategoryManagementSheets({
                   className="font-semibold text-base tracking-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Categories
+                  {isIndonesian ? "Kategori" : "Categories"}
                 </h3>
                 <p
                   className="text-[12px] mt-0.5"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  {categories.length} total categories · Tap to edit
+                  {categories.length} {isIndonesian ? "total kategori · kapsul 2-kolom" : "total categories · 2-grid capsules"}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -155,7 +245,7 @@ export function CategoryManagementSheets({
                     background: "var(--accent)",
                     color: "var(--accent-ink)",
                   }}
-                  title="Add Category"
+                  title={isIndonesian ? "Tambah Kategori" : "Add Category"}
                 >
                   <Plus size={16} strokeWidth={2} />
                 </button>
@@ -163,7 +253,7 @@ export function CategoryManagementSheets({
                   type="button"
                   onClick={handleCloseAll}
                   className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] active:scale-95 transition-colors"
-                  title="Close"
+                  title={isIndonesian ? "Tutup" : "Close"}
                 >
                   <X size={15} strokeWidth={1.75} />
                 </button>
@@ -180,19 +270,21 @@ export function CategoryManagementSheets({
                 className="flex items-center gap-1 py-1 px-2 -ml-2 rounded-xl text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer"
               >
                 <ChevronLeft size={16} strokeWidth={2} />
-                <span>Categories</span>
+                <span>{isIndonesian ? "Kategori" : "Categories"}</span>
               </button>
               <h3
                 className="font-semibold text-base tracking-tight"
                 style={{ color: "var(--text-primary)" }}
               >
-                {viewMode === "edit" ? "Edit Category" : "New Category"}
+                {viewMode === "edit"
+                  ? (isIndonesian ? "Edit Kategori" : "Edit Category")
+                  : (isIndonesian ? "Kategori Baru" : "New Category")}
               </h3>
               <button
                 type="button"
                 onClick={handleCloseAll}
                 className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] active:scale-95 transition-colors"
-                title="Close"
+                title={isIndonesian ? "Tutup" : "Close"}
               >
                 <X size={15} strokeWidth={1.75} />
               </button>
@@ -213,7 +305,7 @@ export function CategoryManagementSheets({
                   type="text"
                   value={categorySearch}
                   onChange={(e) => setCategorySearch(e.target.value)}
-                  placeholder="Search category name..."
+                  placeholder={isIndonesian ? "Cari nama kategori..." : "Search category name..."}
                   className="bg-transparent text-[13px] font-medium flex-1 outline-none min-w-0"
                   style={{ color: "var(--text-primary)" }}
                 />
@@ -244,7 +336,7 @@ export function CategoryManagementSheets({
                       : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
-                  Expense ({expenseCategories.length})
+                  {isIndonesian ? "Pengeluaran" : "Expense"} ({expenseCategories.length})
                 </button>
                 <button
                   type="button"
@@ -258,13 +350,13 @@ export function CategoryManagementSheets({
                       : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
-                  Income ({incomeCategories.length})
+                  {isIndonesian ? "Pemasukan" : "Income"} ({incomeCategories.length})
                 </button>
               </div>
 
-              {/* Apple iOS Inset Grouped Table */}
-              <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] divide-y divide-[var(--glass-border)] overflow-hidden shadow-sm">
-                {categories
+              {/* 2-Column Luxury Pill Grid (Milky Glass in Light Mode, Obsidian in Dark Mode) */}
+              {(() => {
+                const filtered = categories
                   .filter((c) => c.type === manageCatTab)
                   .filter(
                     (c) =>
@@ -272,70 +364,179 @@ export function CategoryManagementSheets({
                       c.name
                         .toLowerCase()
                         .includes(categorySearch.toLowerCase().trim()),
-                  )
-                  .map((cat) => (
-                    <div
-                      key={cat.id}
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setEditCategory({
-                          id: cat.id,
-                          name: cat.name,
-                          emoji: cat.emoji || "Tag",
-                          budget_amount: cat.budget_amount,
-                          type: cat.type,
-                        });
-                        setEditCategoryBudget(
-                          cat.budget_amount ? String(cat.budget_amount) : "",
-                        );
-                        setViewMode("edit");
-                      }}
-                      className="flex items-center justify-between py-2.5 px-3.5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] active:bg-black/[0.04] dark:active:bg-white/[0.04] transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
+                  );
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-12 text-center space-y-2">
+                      <p
+                        className="text-[12px] font-medium"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {categorySearch.trim()
+                          ? (isIndonesian
+                              ? `Tidak ada kategori yang cocok dengan "${categorySearch}"`
+                              : `No categories found matching "${categorySearch}"`)
+                          : (isIndonesian
+                              ? `Belum ada kategori ${manageCatTab === "expense" ? "pengeluaran" : "pemasukan"}`
+                              : `No ${manageCatTab} categories yet`)}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setCatName(categorySearch.trim());
+                          setCatType(manageCatTab);
+                          setCatIcon("Tag");
+                          setHasCustomPickedAddIcon(false);
+                          setViewMode("add");
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--accent)] hover:border-[var(--accent)] active:scale-95 transition-all cursor-pointer"
+                      >
+                        <Plus size={13} strokeWidth={2} />
+                        <span>{isIndonesian ? "Tambah Kategori" : "Add Category"}</span>
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {filtered.map((cat) => {
+                      const hasBudget =
+                        cat.budget_amount && cat.budget_amount > 0;
+                      return (
                         <div
-                          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border border-[var(--glass-border)] bg-[var(--glass-fill)]"
+                          key={cat.id}
+                          onClick={() => {
+                            triggerHaptic("light");
+                            setEditCategory({
+                              id: cat.id,
+                              name: cat.name,
+                              emoji: cat.emoji || "Tag",
+                              budget_amount: cat.budget_amount,
+                              type: cat.type,
+                            });
+                            setEditCategoryBudget(
+                              cat.budget_amount ? String(cat.budget_amount) : "",
+                            );
+                            setViewMode("edit");
+                          }}
+                          className="group relative min-w-0 p-3 rounded-[20px] transition-all cursor-pointer flex flex-col justify-between gap-2.5 active:scale-[0.98] select-none"
+                          style={{
+                            background: isDark
+                              ? "linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.028) 100%)"
+                              : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.88) 48%, rgba(244,245,247,0.94) 100%)",
+                            border: isDark
+                              ? "1px solid rgba(255,255,255,0.09)"
+                              : "1px solid rgba(255,255,255,0.94)",
+                            boxShadow: isDark
+                              ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.18)"
+                              : "inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(15,23,42,0.05)",
+                            backdropFilter: "blur(18px) saturate(155%)",
+                            WebkitBackdropFilter: "blur(18px) saturate(155%)",
+                          }}
                         >
-                          <IconRenderer icon={cat.emoji} size="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p
-                            className="font-medium text-[13px] truncate"
-                            style={{ color: "var(--text-primary)" }}
+                          {/* Top Tier: Icon Avatar & Category Name & Discrete Trash Icon */}
+                          <div className="flex items-start justify-between gap-1.5 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <div
+                                className={`w-7.5 h-7.5 rounded-xl flex items-center justify-center shrink-0 transition-transform ${
+                                  isDark
+                                    ? "bg-white/[0.08] border border-white/10"
+                                    : "bg-white/90 border border-black/[0.06] shadow-sm"
+                                }`}
+                              >
+                                <IconRenderer
+                                  icon={cat.emoji || "Tag"}
+                                  size="w-3.5 h-3.5"
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className="font-semibold text-[12.5px] leading-tight truncate"
+                                  style={{ color: "var(--text-primary)" }}
+                                  title={cat.name}
+                                >
+                                  {cat.name}
+                                </p>
+                                <p className="text-[9.5px] text-[var(--text-tertiary)] uppercase tracking-wider mt-0.5">
+                                  {cat.type === "expense"
+                                    ? (isIndonesian ? "Pengeluaran" : "expense")
+                                    : (isIndonesian ? "Pemasukan" : "income")}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Discrete Delete Button with StopPropagation */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCategory(cat.id, cat.name);
+                              }}
+                              className="w-6 h-6 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 active:scale-90 transition-all cursor-pointer shrink-0"
+                              title={isIndonesian ? "Hapus Kategori" : "Delete Category"}
+                            >
+                              <Trash2 size={12} strokeWidth={1.75} />
+                            </button>
+                          </div>
+
+                          {/* Bottom Tier: Budget Limit Micro-Pill & Edit Indicator */}
+                          <div
+                            className="flex items-center justify-between pt-2 border-t gap-1 text-[10.5px]"
+                            style={{ borderColor: "var(--glass-border)" }}
                           >
-                            {cat.name}
-                          </p>
-                          <p className="text-[11px] mt-0.5 truncate">
-                            {cat.budget_amount && cat.budget_amount > 0 ? (
-                              <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-                                Limit {formatRupiah(cat.budget_amount)}
-                              </span>
+                            {cat.type === "expense" ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenQuickBudget(cat);
+                                }}
+                                className="font-mono text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 active:scale-95 transition-all truncate cursor-pointer"
+                                style={{
+                                  background: hasBudget
+                                    ? isDark
+                                      ? "rgba(255, 255, 255, 0.06)"
+                                      : "rgba(0, 0, 0, 0.04)"
+                                    : "transparent",
+                                  border: hasBudget
+                                    ? "1px solid var(--glass-border)"
+                                    : "1px dashed var(--glass-border)",
+                                  color: hasBudget
+                                    ? "var(--text-secondary)"
+                                    : "var(--text-tertiary)",
+                                }}
+                                title={isIndonesian ? "Ketuk untuk mengatur batas anggaran bulanan" : "Tap to set monthly budget limit"}
+                              >
+                                <Target
+                                  size={10}
+                                  strokeWidth={2}
+                                  className="opacity-70 shrink-0"
+                                />
+                                <span className="truncate">
+                                  {hasBudget
+                                    ? formatShortRupiah(cat.budget_amount, isIndonesian)
+                                    : (isIndonesian ? "+ Batas" : "+ Limit")}
+                                </span>
+                              </button>
                             ) : (
-                              <span style={{ color: "var(--text-tertiary)" }}>
-                                No monthly limit
+                              <span className="text-[9.5px] font-mono text-[var(--text-tertiary)]">
+                                {isIndonesian ? "Pemasukan" : "Inflow"}
                               </span>
                             )}
-                          </p>
-                        </div>
-                      </div>
 
-                      <div
-                        className="flex items-center gap-2 shrink-0 ml-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 active:scale-90 transition-all cursor-pointer"
-                          title="Delete Category"
-                        >
-                          <Trash2 size={13} strokeWidth={1.5} />
-                        </button>
-                        <ChevronRight size={14} className="text-[var(--text-tertiary)] opacity-60" />
-                      </div>
-                    </div>
-                  ))}
-              </div>
+                            <div className="flex items-center text-[var(--text-tertiary)] opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0">
+                              <ChevronRight size={13} strokeWidth={2} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -351,7 +552,7 @@ export function CategoryManagementSheets({
                     className="text-[10px] font-semibold uppercase tracking-wider block"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Icon & Name
+                    {isIndonesian ? "Ikon & Nama" : "Icon & Name"}
                   </label>
                   <div className="flex items-center gap-3">
                     <button
@@ -361,7 +562,7 @@ export function CategoryManagementSheets({
                         setIconPickerTarget("edit");
                       }}
                       className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:border-black/20 dark:hover:border-white/25"
-                      title="Change Icon"
+                      title={isIndonesian ? "Ubah Ikon" : "Change Icon"}
                     >
                       <IconRenderer icon={editCategory.emoji || "Tag"} size="w-5 h-5" />
                     </button>
@@ -374,7 +575,7 @@ export function CategoryManagementSheets({
                             prev ? { ...prev, name: e.target.value } : null,
                           )
                         }
-                        placeholder="Category Name"
+                        placeholder={isIndonesian ? "Nama Kategori" : "Category Name"}
                         className="w-full min-w-0 px-3.5 py-2.5 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors"
                         style={{ color: "var(--text-primary)" }}
                       />
@@ -389,10 +590,12 @@ export function CategoryManagementSheets({
                       className="text-[10px] font-semibold uppercase tracking-wider block"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Monthly Budget Limit (Optional)
+                      {isIndonesian ? "Batas Anggaran Bulanan (Opsional)" : "Monthly Budget Limit (Optional)"}
                     </label>
                     <input
                       type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={
                         editCategoryBudget
                           ? formatRupiah(
@@ -403,8 +606,8 @@ export function CategoryManagementSheets({
                       onChange={(e) =>
                         setEditCategoryBudget(e.target.value.replace(/\D/g, ""))
                       }
-                      placeholder="e.g. Rp 1.000.000 (leave blank for no limit)"
-                      className="w-full min-w-0 px-3.5 py-2.5 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors font-mono"
+                      placeholder={isIndonesian ? "cth. Rp 1.000.000 (kosongkan jika tanpa batas)" : "e.g. Rp 1.000.000 (leave blank for no limit)"}
+                      className="w-full min-w-0 px-3.5 py-2.5 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors"
                       style={{ color: "var(--text-primary)" }}
                     />
                   </div>
@@ -422,7 +625,7 @@ export function CategoryManagementSheets({
                     color: "var(--bg-base)",
                   }}
                 >
-                  Save Changes
+                  {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
                 </button>
                 <button
                   type="button"
@@ -430,7 +633,7 @@ export function CategoryManagementSheets({
                   className="w-full h-10 rounded-xl font-semibold text-[12px] active:scale-[0.98] transition-all cursor-pointer border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center gap-1.5"
                 >
                   <Trash2 size={13} strokeWidth={1.5} />
-                  <span>Delete Category</span>
+                  <span>{isIndonesian ? "Hapus Kategori" : "Delete Category"}</span>
                 </button>
               </div>
             </div>
@@ -448,7 +651,7 @@ export function CategoryManagementSheets({
                     className="text-[10px] font-semibold uppercase tracking-wider block"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Classification
+                    {isIndonesian ? "Klasifikasi" : "Classification"}
                   </label>
                   <div className="flex p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
                     {(["expense", "income"] as const).map((t) => (
@@ -462,7 +665,9 @@ export function CategoryManagementSheets({
                             : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                         }`}
                       >
-                        {t === "expense" ? "Expense" : "Income"}
+                        {t === "expense"
+                          ? (isIndonesian ? "Pengeluaran" : "Expense")
+                          : (isIndonesian ? "Pemasukan" : "Income")}
                       </button>
                     ))}
                   </div>
@@ -474,7 +679,7 @@ export function CategoryManagementSheets({
                     className="text-[10px] font-semibold uppercase tracking-wider block"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Icon & Name
+                    {isIndonesian ? "Ikon & Nama" : "Icon & Name"}
                   </label>
                   <div className="flex items-center gap-3">
                     <button
@@ -484,7 +689,7 @@ export function CategoryManagementSheets({
                         setIconPickerTarget("add");
                       }}
                       className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:border-black/20 dark:hover:border-white/25"
-                      title="Tap to change icon"
+                      title={isIndonesian ? "Ketuk untuk mengubah ikon" : "Tap to change icon"}
                     >
                       <IconRenderer icon={catIcon} size="w-5 h-5" />
                     </button>
@@ -500,14 +705,42 @@ export function CategoryManagementSheets({
                             if (suggested) setCatIcon(suggested);
                           }
                         }}
-                        placeholder="e.g. Coffee, Streaming, Groceries"
+                        placeholder={isIndonesian ? "cth. Kopi, Langganan, Belanja" : "e.g. Coffee, Streaming, Groceries"}
                         className="w-full min-w-0 px-3.5 py-2.5 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors"
                         style={{ color: "var(--text-primary)" }}
                       />
                     </div>
                   </div>
                 </div>
+
+                {catType === "expense" && (
+                  <div className="p-3.5 space-y-1.5">
+                    <label
+                      className="text-[10px] font-semibold uppercase tracking-wider block"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian ? "Batas Anggaran Bulanan (Opsional)" : "Monthly Budget Limit (Optional)"}
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={
+                        catBudget
+                          ? formatRupiah(Number(catBudget.replace(/\D/g, "")))
+                          : ""
+                      }
+                      onChange={(e) =>
+                        setCatBudget(e.target.value.replace(/\D/g, ""))
+                      }
+                      placeholder={isIndonesian ? "cth. Rp 1.000.000 (kosongkan jika tanpa batas)" : "e.g. Rp 1.000.000 (leave blank for no limit)"}
+                      className="w-full min-w-0 px-3.5 py-2.5 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors"
+                      style={{ color: "var(--text-primary)" }}
+                    />
+                  </div>
+                )}
               </div>
+
 
               {/* Primary Action Button */}
               <button
@@ -520,10 +753,169 @@ export function CategoryManagementSheets({
                   color: "var(--bg-base)",
                 }}
               >
-                Create Category
+                {isIndonesian ? "Buat Kategori" : "Create Category"}
               </button>
             </div>
           )}
+        </div>
+      </BottomSheet>
+
+      {/* Quick Budget Limit Adjuster Sheet */}
+      <BottomSheet
+        isOpen={quickBudgetCategory !== null}
+        onClose={() => {
+          setQuickBudgetCategory(null);
+          setQuickBudgetValue("");
+        }}
+      >
+        <div
+          className="p-5 space-y-4"
+          style={{
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 32px)",
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  isDark
+                    ? "bg-white/[0.08] border border-white/10"
+                    : "bg-white/90 border border-black/[0.06] shadow-sm"
+                }`}
+              >
+                <IconRenderer
+                  icon={quickBudgetCategory?.emoji || "Tag"}
+                  size="w-4.5 h-4.5"
+                />
+              </div>
+              <div className="min-w-0">
+                <h3
+                  className="font-semibold text-base tracking-tight truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {quickBudgetCategory?.name}
+                </h3>
+                <p
+                  className="text-[11px] truncate"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "Batas anggaran amplop bulanan" : "Monthly envelope budget limit"}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setQuickBudgetCategory(null);
+                setQuickBudgetValue("");
+              }}
+              className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] active:scale-95 transition-colors"
+              title={isIndonesian ? "Tutup" : "Close"}
+            >
+              <X size={15} strokeWidth={1.75} />
+            </button>
+          </div>
+
+          {/* Input Container (Milky Glass in Light Mode, Obsidian in Dark Mode) */}
+          <div
+            className="p-4 rounded-2xl border space-y-3"
+            style={{
+              background: isDark
+                ? "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)"
+                : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.88) 48%, rgba(244,245,247,0.94) 100%)",
+              borderColor: "var(--glass-border)",
+              boxShadow: isDark
+                ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.18)"
+                : "inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(15,23,42,0.05)",
+            }}
+          >
+            <label
+              className="text-[10px] font-semibold uppercase tracking-wider block"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {isIndonesian ? "Nominal Batas Bulanan" : "Monthly Limit Amount"}
+            </label>
+            <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
+              <span className="text-[12px] font-mono font-semibold text-[var(--text-tertiary)]">
+                Rp
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={
+                  quickBudgetValue
+                    ? formatRupiah(
+                        Number(quickBudgetValue.replace(/\D/g, "")),
+                      ).replace("Rp ", "")
+                    : ""
+                }
+                onChange={(e) =>
+                  setQuickBudgetValue(e.target.value.replace(/\D/g, ""))
+                }
+                placeholder={isIndonesian ? "0 (kosongkan jika tanpa batas)" : "0 (leave empty for no cap)"}
+                className="w-full min-w-0 bg-transparent outline-none font-mono font-medium text-[14px]"
+                style={{ color: "var(--text-primary)" }}
+                autoFocus
+              />
+            </div>
+
+            {/* Quick Presets */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+              {[
+                { label: "500k", val: 500000 },
+                { label: "1M", val: 1000000 },
+                { label: "2.5M", val: 2500000 },
+                { label: "5M", val: 5000000 },
+                { label: isIndonesian ? "Hapus" : "Clear", val: 0 },
+              ].map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setQuickBudgetValue(p.val === 0 ? "" : String(p.val));
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-[10.5px] font-mono border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:border-black/20 dark:hover:border-white/20 active:scale-95 transition-all cursor-pointer"
+                  style={{
+                    color:
+                      p.val === 0
+                        ? "var(--text-tertiary)"
+                        : "var(--text-secondary)",
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setQuickBudgetCategory(null);
+                setQuickBudgetValue("");
+              }}
+              className="flex-1 h-11 rounded-xl font-semibold text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] active:scale-[0.98] transition-all cursor-pointer"
+            >
+              {isIndonesian ? "Batal" : "Cancel"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveQuickBudget}
+              className="flex-1 h-11 rounded-xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer shadow-sm flex items-center justify-center"
+              style={{
+                background: "var(--text-primary)",
+                color: "var(--bg-base)",
+              }}
+            >
+              {isIndonesian ? "Simpan Batas" : "Save Limit"}
+            </button>
+          </div>
         </div>
       </BottomSheet>
 
@@ -546,8 +938,8 @@ export function CategoryManagementSheets({
         }}
         title={
           iconPickerTarget === "add"
-            ? "Choose Category Icon"
-            : "Edit Category Icon"
+            ? (isIndonesian ? "Pilih Ikon Kategori" : "Choose Category Icon")
+            : (isIndonesian ? "Edit Ikon Kategori" : "Edit Category Icon")
         }
       />
     </>

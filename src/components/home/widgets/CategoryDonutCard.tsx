@@ -223,7 +223,7 @@ export function CategoryDonutCard({
                     {c.name}
                   </span>
                   {c.count && (
-                    <span className="text-[9px] text-[var(--text-tertiary)] font-mono">
+                    <span className="text-[9px] text-[var(--text-tertiary)] font-medium">
                       ({c.count} {isIndonesian ? "trx" : "tx"})
                     </span>
                   )}
@@ -232,7 +232,7 @@ export function CategoryDonutCard({
                   <span className="font-semibold amount text-[var(--text-primary)]">
                     {formatRupiah(c.amount)}
                   </span>
-                  <span className="text-[10px] text-[var(--text-tertiary)] ml-1 font-mono">
+                  <span className="text-[10px] text-[var(--text-tertiary)] ml-1 font-medium">
                     {c.pct.toFixed(0)}%
                   </span>
                 </div>

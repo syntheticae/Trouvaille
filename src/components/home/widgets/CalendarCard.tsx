@@ -16,7 +16,7 @@ export function CalendarCard({
   size?: WidgetSize;
   onOpenDetail?: () => void;
 }) {
-  const { t, isIndonesian } = useLanguage();
+  const { isIndonesian } = useLanguage();
   const now = new Date();
   const locale = isIndonesian ? idLocale : undefined;
   const dayStr = format(now, "EEE, d MMM", { locale });
@@ -55,7 +55,7 @@ export function CalendarCard({
               className="text-[11px] mt-0.5 truncate leading-tight"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {monthTransactionsCount} {t("calendar.recordedTransactions", "transactions this month")}
+              {monthTransactionsCount} {isIndonesian ? "transaksi bulan ini" : "transactions this month"}
             </p>
           </div>
         </div>
@@ -69,7 +69,7 @@ export function CalendarCard({
               border: "1px solid var(--glass-border)",
             }}
           >
-            {activeDaysCount}d {t("calendar.activeDays", "Active")}
+            {activeDaysCount} {isIndonesian ? "Hari Aktif" : "d Active"}
           </span>
           <div
             className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] shrink-0"
@@ -86,7 +86,7 @@ export function CalendarCard({
   }
 
   return (
-    <CompactShell title={t("calendar.title", "Calendar")} onOpenDetail={onOpenDetail}>
+    <CompactShell title={isIndonesian ? "Kalender" : "Calendar"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex flex-col justify-center py-1">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-medium text-[var(--text-tertiary)] truncate">
@@ -100,13 +100,13 @@ export function CalendarCard({
               border: "1px solid var(--glass-border)",
             }}
           >
-            {activeDaysCount}d {t("calendar.activeDays", "Active")}
+            {activeDaysCount} {isIndonesian ? "Hari Aktif" : "d Active"}
           </span>
         </div>
         <p className="text-[18px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight mt-0.5 truncate">
           {monthTransactionsCount}{" "}
           <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
-            {t("calendar.entries", "Entries")}
+            {isIndonesian ? "Transaksi" : "Entries"}
           </span>
         </p>
       </div>
@@ -117,7 +117,7 @@ export function CalendarCard({
           <span className="truncate">{monthName}</span>
         </div>
         <span className="text-[9px] font-medium text-[var(--text-secondary)] opacity-80 shrink-0">
-          {t("calendar.tapToView", "Overview")}
+          {isIndonesian ? "Ringkasan" : "Overview"}
         </span>
       </div>
     </CompactShell>

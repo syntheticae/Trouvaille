@@ -582,7 +582,15 @@ export function ExecutiveWalletCard({
                 borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.1)",
                 color: isDark ? "var(--text-secondary)" : "var(--text-primary)",
               }}
-              title={isStealthMode ? "Show Balance" : "Hide Balance"}
+              title={
+                isStealthMode
+                  ? isIndonesian
+                    ? "Tampilkan Saldo"
+                    : "Show Balance"
+                  : isIndonesian
+                    ? "Sembunyikan Saldo"
+                    : "Hide Balance"
+              }
             >
               {isStealthMode ? <EyeOff size={11.5} /> : <Eye size={11.5} />}
             </button>

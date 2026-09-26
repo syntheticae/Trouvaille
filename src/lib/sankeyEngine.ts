@@ -60,6 +60,7 @@ export interface SankeyEngineOptions {
   height?: number;
   mode?: "macro" | "category";
   maxExpenseNodes?: number;
+  language?: "id" | "en";
 }
 
 const ESSENTIAL_PARENTS = new Set([
@@ -98,6 +99,7 @@ export function calculateSankeyFlow(
   const height = options.height ?? 500;
   const mode = options.mode ?? "macro";
   const maxExpenseNodes = options.maxExpenseNodes ?? 6;
+  const isId = options.language === "id";
 
   // 1. Filter out internal transfers
   const validTxs = transactions.filter((t) => t.type !== "transfer");
@@ -113,7 +115,7 @@ export function calculateSankeyFlow(
       if (amt <= 0) return;
       totalInflow += amt;
       const resolved = resolveTransactionCategory(t, categories);
-      const name = resolved.name || "General Income";
+      const name = resolved.name || (isId ? "Pemasukan Umum" : "General Income");
       const ex = incomeMap.get(name) || { label: name, amount: 0, emoji: resolved.emoji };
       ex.amount += amt;
       incomeMap.set(name, ex);
@@ -172,7 +174,7 @@ export function calculateSankeyFlow(
   if (totalInflow === 0) {
     rawSources.push({
       id: "src-reserves",
-      label: "Cash Reserves",
+      label: isId ? "Cadangan Kas" : "Cash Reserves",
       amount: totalFlow,
     });
   } else {
@@ -191,7 +193,7 @@ export function calculateSankeyFlow(
     if (isDeficit) {
       rawSources.push({
         id: "src-deficit-cushion",
-        label: "Reserves Cushion",
+        label: isId ? "Bantalan Cadangan" : "Reserves Cushion",
         amount: Math.abs(netSavings),
         isDeficit: true,
       });
@@ -201,7 +203,7 @@ export function calculateSankeyFlow(
   // 5. Build Hub (Column 1)
   const rawHub: RawNodeItem = {
     id: "hub-inflow",
-    label: "Total Cashflow",
+    label: isId ? "Total Arus Kas" : "Total Cashflow",
     amount: totalFlow,
     isHub: true,
   };
@@ -235,7 +237,7 @@ export function calculateSankeyFlow(
     if (otherAmt > 0) {
       rawDestinations.push({
         id: "dest-other",
-        label: "Other Outflow",
+        label: isId ? "Beban Lainnya" : "Other Outflow",
         amount: otherAmt,
       });
     }
@@ -245,7 +247,7 @@ export function calculateSankeyFlow(
   if (netSavings > 0) {
     rawDestinations.push({
       id: "dest-savings",
-      label: "Retained Savings",
+      label: isId ? "Tabungan Disimpan" : "Retained Savings",
       amount: netSavings,
       isSavings: true,
     });
@@ -253,7 +255,7 @@ export function calculateSankeyFlow(
 
   // Top destination telemetry
   const topDest = [...sortedExpenses][0];
-  const topDestinationName = topDest ? topDest.label : "None";
+  const topDestinationName = topDest ? topDest.label : (isId ? "Tidak Ada" : "None");
   const topDestinationAmount = topDest ? topDest.amount : 0;
   const topDestinationPct = totalOutflow > 0 && topDest ? Math.round((topDest.amount / totalOutflow) * 100) : 0;
 

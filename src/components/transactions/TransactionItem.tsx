@@ -9,6 +9,7 @@ import { triggerHaptic } from "../../lib/haptics";
 import type { Transaction, Category } from "../../lib/types";
 import { isCorrectionTx } from "../../lib/financialMath";
 import { usePrivacy } from "../../contexts/PrivacyContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface TransactionItemProps {
   tx: Transaction;
@@ -42,6 +43,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
   onLongPress,
 }) => {
   const { isStealthMode } = usePrivacy();
+  const { isIndonesian } = useLanguage();
   const isIncome = tx.type === "income";
   const isTransfer = tx.type === "transfer";
   const isCorrection = isCorrectionTx(tx);
@@ -122,12 +124,12 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
           {/* Left Side: Duplicate (revealed on swipe right) */}
           <div className="flex items-center gap-1.5 text-blue-400 font-semibold text-[12px]">
             <Copy size={16} />
-            <span>Duplicate</span>
+            <span>{isIndonesian ? "Duplikasi" : "Duplicate"}</span>
           </div>
 
           {/* Right Side: Delete (revealed on swipe left) */}
           <div className="flex items-center gap-1.5 text-red-500 font-semibold text-[12px]">
-            <span>Delete</span>
+            <span>{isIndonesian ? "Hapus" : "Delete"}</span>
             <Trash2 size={16} />
           </div>
         </div>
@@ -242,9 +244,12 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
                 style={{ color: "var(--text-primary)" }}
               >
                 {isCorrection
-                  ? tx.note || `Correction (${fromWalletName})`
+                  ? tx.note ||
+                    (isIndonesian
+                      ? `Koreksi (${fromWalletName})`
+                      : `Correction (${fromWalletName})`)
                   : isTransfer
-                    ? `${fromWalletName} to ${toWalletName}`
+                    ? `${fromWalletName} ${isIndonesian ? "ke" : "to"} ${toWalletName}`
                     : categoryDisplayName}
               </p>
               {isUnusual && (
@@ -256,7 +261,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  Higher than usual
+                  {isIndonesian ? "Lebih tinggi dari biasa" : "Higher than usual"}
                 </span>
               )}
             </div>
@@ -316,12 +321,18 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
             style={{ color: "var(--text-tertiary)" }}
           >
             {isCorrection
-              ? "Correction"
+              ? isIndonesian
+                ? "Koreksi"
+                : "Correction"
               : isTransfer
                 ? "Transfer"
                 : isIncome
-                  ? "Inflow"
-                  : "Outflow"}
+                  ? isIndonesian
+                    ? "Pemasukan"
+                    : "Inflow"
+                  : isIndonesian
+                    ? "Pengeluaran"
+                    : "Outflow"}
           </div>
         </div>
       </motion.div>
