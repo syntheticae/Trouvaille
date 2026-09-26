@@ -64,8 +64,24 @@ describe("DeepLink & iOS Shortcuts URL Scheme Handler", () => {
     expect(result.prefilledValues?.amount).toBe(75000);
     expect(result.prefilledValues?.note).toBe("Lunch Padang");
     expect(result.prefilledValues?.category_id).toBe("c-food");
+    expect(result.prefilledValues?.categoryId).toBe("c-food");
     expect(result.prefilledValues?.wallet_id).toBe("w-bca");
+    expect(result.prefilledValues?.walletId).toBe("w-bca");
     expect(result.prefilledValues?.type).toBe("expense");
+  });
+
+  it("parses full Back Tap structured query with date, time, and account alias", () => {
+    const url =
+      "trouvaille://add?amount=125000&category=Makanan&account=BCA&date=2026-09-26&time=14:30&note=Sushi%20Tei";
+    const result = parseDeepLink(url, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.prefilledValues?.amount).toBe(125000);
+    expect(result.prefilledValues?.note).toBe("Sushi Tei");
+    expect(result.prefilledValues?.categoryId).toBe("c-food");
+    expect(result.prefilledValues?.walletId).toBe("w-bca");
+    expect(result.prefilledValues?.date).toBeInstanceOf(Date);
+    expect(result.prefilledValues?.time).toBe("14:30");
   });
 
   it("parses natural language text (e.g. voice or typed text) when not formal bank format", () => {

@@ -7,7 +7,11 @@ export interface DeepLinkPrefill {
   type?: TransactionType;
   note?: string;
   category_id?: string;
+  categoryId?: string;
   wallet_id?: string;
+  walletId?: string;
+  date?: Date;
+  time?: string;
 }
 
 export interface DeepLinkResult {
@@ -64,8 +68,17 @@ export function parseDeepLink(
     const directAmount = params.get("amount");
     const directNote = params.get("note");
     const directType = params.get("type") as TransactionType | null;
-    const directCategory = params.get("category");
-    const directWallet = params.get("wallet");
+    const directCategory =
+      params.get("category") ||
+      params.get("category_id") ||
+      params.get("categoryId");
+    const directWallet =
+      params.get("wallet") ||
+      params.get("wallet_id") ||
+      params.get("walletId") ||
+      params.get("account");
+    const directDate = params.get("date") || params.get("datetime");
+    const directTime = params.get("time");
 
     // Case A: Direct structured parameters (e.g. from Siri Shortcuts with ask for input)
     if (directAmount) {
@@ -74,8 +87,9 @@ export function parseDeepLink(
       if (directCategory) {
         const cat = categories.find(
           (c) =>
-            c.id === directCategory ||
-            c.name.toLowerCase().includes(directCategory.toLowerCase())
+            c.id.toLowerCase() === directCategory.toLowerCase() ||
+            c.name.toLowerCase().includes(directCategory.toLowerCase()) ||
+            directCategory.toLowerCase().includes(c.name.toLowerCase())
         );
         if (cat) matchedCatId = cat.id;
       }
@@ -84,10 +98,19 @@ export function parseDeepLink(
       if (directWallet) {
         const wal = wallets.find(
           (w) =>
-            w.id === directWallet ||
-            w.name.toLowerCase().includes(directWallet.toLowerCase())
+            w.id.toLowerCase() === directWallet.toLowerCase() ||
+            w.name.toLowerCase().includes(directWallet.toLowerCase()) ||
+            directWallet.toLowerCase().includes(w.name.toLowerCase())
         );
         if (wal) matchedWalletId = wal.id;
+      }
+
+      let parsedDate: Date | undefined;
+      if (directDate) {
+        const d = new Date(directDate);
+        if (!isNaN(d.getTime())) {
+          parsedDate = d;
+        }
       }
 
       return {
@@ -97,7 +120,11 @@ export function parseDeepLink(
           note: directNote || "",
           type: directType === "income" ? "income" : "expense",
           category_id: matchedCatId || undefined,
+          categoryId: matchedCatId || undefined,
           wallet_id: matchedWalletId || undefined,
+          walletId: matchedWalletId || undefined,
+          date: parsedDate,
+          time: directTime || undefined,
         },
       };
     }
@@ -116,7 +143,9 @@ export function parseDeepLink(
             type: bankResult.type,
             note: bankResult.merchantOrNote,
             category_id: bankResult.suggestedCategoryId,
+            categoryId: bankResult.suggestedCategoryId,
             wallet_id: bankResult.suggestedWalletId,
+            walletId: bankResult.suggestedWalletId,
           },
         };
       }
@@ -131,7 +160,9 @@ export function parseDeepLink(
             type: nlpResult.type || "expense",
             note: nlpResult.note || trimmedText.slice(0, 40),
             category_id: nlpResult.categoryId || undefined,
+            categoryId: nlpResult.categoryId || undefined,
             wallet_id: nlpResult.walletId || undefined,
+            walletId: nlpResult.walletId || undefined,
           },
         };
       }

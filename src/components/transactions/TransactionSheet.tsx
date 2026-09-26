@@ -71,9 +71,12 @@ interface TransactionSheetProps {
     type?: TransactionType;
     amount?: number;
     categoryId?: string | null;
+    category_id?: string | null;
     walletId?: string | null;
+    wallet_id?: string | null;
     toWalletId?: string | null;
     date?: Date;
+    time?: string;
     note?: string;
   } | null;
   onOpenScan?: () => void;
@@ -645,15 +648,19 @@ export function TransactionSheet({
         setAmountInput(initAmtInput);
         setNote(initNote);
         setDate(initDate);
-        setTime(format(new Date(), "HH:mm"));
+        setTime(initialValues?.time || format(new Date(), "HH:mm"));
         const defaultCatId =
           initialValues?.categoryId !== undefined
             ? initialValues.categoryId
+            : initialValues?.category_id !== undefined
+            ? initialValues.category_id
             : suggestedCategories[0]?.id ||
               (categories.length > 0 ? categories[0].id : null);
         const defaultFromId =
           initialValues?.walletId !== undefined
             ? initialValues.walletId
+            : initialValues?.wallet_id !== undefined
+            ? initialValues.wallet_id
             : suggestedFromWallets[0]?.id ||
               (wallets.length > 0 ? wallets[0].id : null);
         const defaultToId =
