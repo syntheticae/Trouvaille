@@ -243,6 +243,36 @@ describe("Bifocal Liquidity Segmentation Rules", () => {
     expect(result.liquidCapital).toBe(14_860_559 + 203_000);
     expect(result.marketAccounts.length).toBe(0);
   });
+
+  it("includes receivable (piutang) in liquidAccounts and liquidCapital", () => {
+    const wallets: (Wallet & { balance: number })[] = [
+      {
+        id: "w-cash",
+        user_id: "u1",
+        name: "Cash",
+        icon: "/icons/cash.png",
+        created_at: new Date().toISOString(),
+        balance: 14_620_412,
+        classification: "liquid",
+      },
+      {
+        id: "w-piutang",
+        user_id: "u1",
+        name: "Piutang",
+        icon: "/icons/Budgets/Piutang.png",
+        created_at: new Date().toISOString(),
+        balance: 264_000,
+        classification: "receivable",
+      },
+    ];
+
+    const result = calculateWalletBalances([], wallets);
+
+    expect(result.liquidAccounts.length).toBe(2);
+    expect(result.liquidCapital).toBe(14_884_412);
+    expect(result.netWorth).toBe(14_884_412);
+    expect(result.totalAssets).toBe(14_884_412);
+  });
 });
 
 describe("DCA Position Management & History Curves", () => {

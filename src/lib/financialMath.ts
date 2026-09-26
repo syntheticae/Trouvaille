@@ -372,7 +372,6 @@ const OPENING_BALANCE_PATTERNS = [
 const NON_LIQUID_WALLET_NAMES = new Set([
   "crypto",
   "saham",
-  "piutang",
   "liabilities",
   "usdt",
   "tether",
@@ -444,6 +443,13 @@ export function isFixedAssetName(name: string): boolean {
 
 export function isCreditOrDebtName(name: string): boolean {
   const n = name.trim().toLowerCase();
+  if (
+    n.includes("piutang") ||
+    n.includes("receivable") ||
+    n.includes("pinjaman teman")
+  ) {
+    return false;
+  }
   return (
     n.includes("credit") ||
     n.includes("kredit") ||
@@ -635,6 +641,7 @@ export function calculateWalletBalances(
       return;
     }
     if (cls === "receivable") {
+      liquidAccounts.push(a);
       return;
     }
 
@@ -644,6 +651,12 @@ export function calculateWalletBalances(
       fixedAssetAccounts.push(a);
     } else if (isMarketInvestmentName(n)) {
       marketAccounts.push(a);
+    } else if (
+      n.includes("piutang") ||
+      n.includes("receivable") ||
+      n.includes("pinjaman teman")
+    ) {
+      liquidAccounts.push(a);
     } else if (n.includes("kpr") || n.includes("loan") || n.includes("pinjaman")) {
       loanAccounts.push(a);
     } else if (isCreditOrDebtName(n) || a.balance < 0) {
