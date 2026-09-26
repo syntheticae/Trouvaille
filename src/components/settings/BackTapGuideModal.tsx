@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface BackTapGuideModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface BackTapGuideModalProps {
 
 export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
   const { showToast } = useToast();
+  const { isIndonesian } = useLanguage();
   const [copiedScheme, setCopiedScheme] = useState(false);
 
   const urlSchemeExample = "trouvaille://add?text=";
@@ -23,7 +25,11 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
   const handleCopyScheme = () => {
     navigator.clipboard.writeText(urlSchemeExample);
     setCopiedScheme(true);
-    showToast("URL Scheme copied to clipboard", "add", () => {});
+    showToast(
+      isIndonesian ? "Skema URL berhasil disalin" : "URL Scheme copied to clipboard",
+      "add",
+      () => {}
+    );
     setTimeout(() => setCopiedScheme(false), 2000);
   };
 
@@ -34,20 +40,21 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
         <div className="space-y-1.5 text-left">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.04] text-[11px] font-medium tracking-wide text-[var(--text-secondary)] mb-1">
             <Smartphone size={13} strokeWidth={1.5} />
-            <span>iOS Native Automation</span>
+            <span>{isIndonesian ? "Otomatisasi Bawaan iOS" : "iOS Native Automation"}</span>
           </div>
           <h3
             className="text-xl font-bold tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
-            iPhone Back Tap & Shortcuts
+            {isIndonesian ? "Ketuk Belakang & Pintasan iPhone" : "iPhone Back Tap & Shortcuts"}
           </h3>
           <p
             className="text-[13px] leading-relaxed font-normal"
-            style={{ color: "var(--text-tertiary)" }}
+            style={{ color: "var(--text-secondary)" }}
           >
-            Record transactions in under one second by double-tapping the back of
-            your iPhone on any m-Banking receipt or QRIS screen.
+            {isIndonesian
+              ? "Catat transaksi dalam waktu singkat dengan mengetuk dua kali bodi belakang iPhone Anda pada bukti transfer perbankan atau layar QRIS."
+              : "Record transactions in under one second by double-tapping the back of your iPhone on any m-Banking receipt or QRIS screen."}
           </p>
         </div>
 
@@ -63,7 +70,7 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
             className="text-[11px] font-semibold uppercase tracking-wider block"
             style={{ color: "var(--text-tertiary)" }}
           >
-            The 3-Step Apple Shortcut Recipe
+            {isIndonesian ? "Resep Pintasan Apple 3 Langkah" : "The 3-Step Apple Shortcut Recipe"}
           </span>
 
           {/* Step 1 */}
@@ -83,13 +90,15 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
                 className="text-[13px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
-                Take Screenshot
+                {isIndonesian ? "Ambil Tangkapan Layar" : "Take Screenshot"}
               </p>
               <p
                 className="text-[11px] leading-relaxed"
-                style={{ color: "var(--text-tertiary)" }}
+                style={{ color: "var(--text-secondary)" }}
               >
-                Action: <span className="font-mono">Ambil Tangkapan Layar</span>. Captures your current banking receipt.
+                {isIndonesian
+                  ? "Tindakan: Ambil Tangkapan Layar. Mengambil gambar layar bukti pembayaran Anda."
+                  : "Action: Take Screenshot. Captures your current banking receipt."}
               </p>
             </div>
           </div>
@@ -111,13 +120,15 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
                 className="text-[13px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
-                Extract Text with Apple Vision
+                {isIndonesian ? "Ekstrak Teks dengan Apple Vision" : "Extract Text with Apple Vision"}
               </p>
               <p
                 className="text-[11px] leading-relaxed"
-                style={{ color: "var(--text-tertiary)" }}
+                style={{ color: "var(--text-secondary)" }}
               >
-                Action: <span className="font-mono">Ekstrak Teks dari Gambar</span>. 100% on-device OCR, instantaneous (&lt;0.2s) and private.
+                {isIndonesian
+                  ? "Tindakan: Ekstrak Teks dari Gambar. Pemindaian OCR instan di perangkat tanpa internet."
+                  : "Action: Extract Text from Image. 100% on-device OCR, instantaneous (<0.2s) and private."}
               </p>
             </div>
           </div>
@@ -139,13 +150,15 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
                 className="text-[13px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
-                Open Trouvaille URL Scheme
+                {isIndonesian ? "Buka Skema URL Trouvaille" : "Open Trouvaille URL Scheme"}
               </p>
               <p
                 className="text-[11px] leading-relaxed"
-                style={{ color: "var(--text-tertiary)" }}
+                style={{ color: "var(--text-secondary)" }}
               >
-                Action: <span className="font-mono">Open URL</span> with the target scheme below.
+                {isIndonesian
+                  ? "Tindakan: Buka URL dengan skema tujuan di bawah."
+                  : "Action: Open URL with the target scheme below."}
               </p>
             </div>
           </div>
@@ -164,26 +177,27 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
               className="text-[12px] font-semibold"
               style={{ color: "var(--text-primary)" }}
             >
-              Shortcut Target URL
+              {isIndonesian ? "Skema URL Sasaran" : "Shortcut Target URL"}
             </span>
             <button
+              type="button"
               onClick={handleCopyScheme}
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-medium transition-all active:scale-95 cursor-pointer border"
               style={{
-                background: copiedScheme ? "var(--accent)" : "var(--bg-elevated)",
-                color: copiedScheme ? "var(--accent-ink)" : "var(--text-primary)",
+                background: copiedScheme ? "var(--text-primary)" : "var(--bg-elevated)",
+                color: copiedScheme ? "var(--bg-canvas)" : "var(--text-primary)",
                 borderColor: "var(--glass-border)",
               }}
             >
               {copiedScheme ? (
                 <>
                   <Check size={12} strokeWidth={2} />
-                  <span>Copied</span>
+                  <span>{isIndonesian ? "Disalin" : "Copied"}</span>
                 </>
               ) : (
                 <>
                   <Copy size={12} strokeWidth={1.5} />
-                  <span>Copy</span>
+                  <span>{isIndonesian ? "Salin" : "Copy"}</span>
                 </>
               )}
             </button>
@@ -202,7 +216,9 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
             className="text-[11px] leading-relaxed"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Replace <span className="font-mono">[Text]</span> with the magic variable from the Extract Text action.
+            {isIndonesian
+              ? "Ganti [Text] dengan variabel dinamis dari tindakan Ekstrak Teks."
+              : "Replace [Text] with the magic variable from the Extract Text action."}
           </p>
         </div>
 
@@ -220,16 +236,26 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
               className="text-[12px] font-semibold"
               style={{ color: "var(--text-primary)" }}
             >
-              How to enable iPhone Back Tap
+              {isIndonesian ? "Cara Mengaktifkan Ketuk Belakang iPhone" : "How to enable iPhone Back Tap"}
             </span>
           </div>
           <ol
             className="text-[12px] space-y-1.5 list-decimal list-inside leading-relaxed"
             style={{ color: "var(--text-secondary)" }}
           >
-            <li>Open iPhone <span className="font-semibold text-[var(--text-primary)]">Settings</span> &gt; <span className="font-semibold text-[var(--text-primary)]">Accessibility</span>.</li>
-            <li>Tap <span className="font-semibold text-[var(--text-primary)]">Touch</span>, then scroll down to <span className="font-semibold text-[var(--text-primary)]">Back Tap</span>.</li>
-            <li>Select <span className="font-semibold text-[var(--text-primary)]">Double Tap</span> and pick your created shortcut!</li>
+            {isIndonesian ? (
+              <>
+                <li>Buka iPhone <span className="font-semibold text-[var(--text-primary)]">Pengaturan</span> &gt; <span className="font-semibold text-[var(--text-primary)]">Aksesibilitas</span>.</li>
+                <li>Ketuk <span className="font-semibold text-[var(--text-primary)]">Sentuh</span>, lalu gulir ke bawah ke <span className="font-semibold text-[var(--text-primary)]">Ketuk Bagian Belakang</span>.</li>
+                <li>Pilih <span className="font-semibold text-[var(--text-primary)]">Ketuk Dua Kali</span> dan tentukan pintasan yang telah dibuat!</li>
+              </>
+            ) : (
+              <>
+                <li>Open iPhone <span className="font-semibold text-[var(--text-primary)]">Settings</span> &gt; <span className="font-semibold text-[var(--text-primary)]">Accessibility</span>.</li>
+                <li>Tap <span className="font-semibold text-[var(--text-primary)]">Touch</span>, then scroll down to <span className="font-semibold text-[var(--text-primary)]">Back Tap</span>.</li>
+                <li>Select <span className="font-semibold text-[var(--text-primary)]">Double Tap</span> and pick your created shortcut!</li>
+              </>
+            )}
           </ol>
         </div>
 
@@ -237,7 +263,9 @@ export function BackTapGuideModal({ isOpen, onClose }: BackTapGuideModalProps) {
         <div className="flex items-start gap-2.5 px-2 text-[11px] leading-relaxed text-[var(--text-tertiary)]">
           <Info size={14} strokeWidth={1.5} className="shrink-0 mt-0.5" />
           <span>
-            Trouvaille automatically detects amounts, merchants (BCA, Mandiri, GoPay, QRIS, etc.), and categories without sending your data to any external server.
+            {isIndonesian
+              ? "Trouvaille secara cerdas mendeteksi nominal transaksi, merchant (BCA, Mandiri, GoPay, QRIS, dll.), dan kategori secara privat langsung di perangkat."
+              : "Trouvaille automatically detects amounts, merchants (BCA, Mandiri, GoPay, QRIS, etc.), and categories without sending your data to any external server."}
           </span>
         </div>
       </div>

@@ -542,19 +542,19 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   // Section 3: Automations & Siri (4 Distinct Sub-sections)
   const showBackTap = matches(
     "Back Tap Glass & Voice Log",
-    "ios accessibility double tap shortcut back tap siri dynamic island glass modal",
+    "ios accessibility double tap shortcut back tap siri dynamic island glass modal ketuk belakang kaca suara",
   );
   const showActionButton = matches(
     "Action Button Shortcut",
-    "iphone 15 pro 16 pro hardware button action button",
+    "iphone 15 pro 16 pro hardware button action button tombol aksi tindakan",
   );
   const showShortcuts = matches(
     "Quick-Add Shortcuts",
-    "fast entry quick voice 1-tap presets",
+    "fast entry quick voice 1-tap presets pintasan cepat preset bawaan",
   );
   const showApplePay = matches(
     "Apple Pay Automations",
-    "apple pay nfc contactless card tap automation transaction",
+    "apple pay nfc contactless card tap automation transaction otomatisasi kartu tap",
   );
   const hasAutomations =
     showBackTap || showActionButton || showShortcuts || showApplePay;
@@ -608,10 +608,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           className="text-[22px] font-semibold tracking-tight"
           style={{ color: "var(--text-primary)" }}
         >
-          Settings
+          {isIndonesian ? "Pengaturan" : "Settings"}
         </h1>
         <p className="text-[12px] font-medium" style={{ color: "var(--text-secondary)" }}>
-          Preferences, financial architecture & security
+          {isIndonesian
+            ? "Preferensi, arsitektur keuangan & keamanan"
+            : "Preferences, financial architecture & security"}
         </p>
       </div>
 
@@ -628,7 +630,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search settings, shortcuts & security..."
+          placeholder={isIndonesian ? "Cari pengaturan, pintasan & keamanan..." : "Search settings, shortcuts & security..."}
           className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--text-tertiary)]"
           style={{ color: "var(--text-primary)" }}
         />
@@ -1362,12 +1364,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Pintasan Back Tap (Glass & Suara)"
+                        ? "Pintasan Ketuk Belakang (Kaca & Dikte)"
                         : "Back Tap (Glass Dialog & Voice)"}
                     </span>
                     <span className="text-[11px] text-[var(--text-tertiary)] truncate block">
                       {isIndonesian
-                        ? "Ketuk 2x belakang iPhone & modal Dynamic Island"
+                        ? "Ketuk 2x bodi belakang iPhone & dialog Dynamic Island"
                         : "Double-tap iPhone back & Dynamic Island dialog"}
                     </span>
                   </div>
@@ -1381,7 +1383,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       background: "var(--bg-elevated)",
                     }}
                   >
-                    Glass UI
+                    {isIndonesian ? "Kaca" : "Glass UI"}
                   </span>
                   <ChevronRight
                     size={15}
@@ -1415,12 +1417,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Pintasan Action Button"
+                        ? "Pintasan Tombol Aksi"
                         : "Action Button Shortcut"}
                     </span>
                     <span className="text-[11px] text-[var(--text-tertiary)] truncate block">
                       {isIndonesian
-                        ? "iPhone 15 / 16 Pro hardware button"
+                        ? "Tombol fisik iPhone 15 / 16 Pro"
                         : "iPhone 15 / 16 Pro hardware button"}
                     </span>
                   </div>
@@ -1434,7 +1436,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       background: "var(--bg-elevated)",
                     }}
                   >
-                    1-Tap
+                    {isIndonesian ? "1-Ketuk" : "1-Tap"}
                   </span>
                   <ChevronRight
                     size={15}
@@ -1468,7 +1470,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Pintasan Cepat (Quick-Add)"
+                        ? "Preset Pintasan Cepat"
                         : "Quick-Add Shortcuts"}
                     </span>
                     <span className="text-[11px] text-[var(--text-tertiary)] truncate block">
@@ -1483,7 +1485,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[12px] font-mono"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    {shortcuts.length} presets
+                    {isIndonesian ? `${shortcuts.length} preset` : `${shortcuts.length} presets`}
                   </span>
                   <ChevronRight
                     size={15}
@@ -1522,7 +1524,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     </span>
                     <span className="text-[11px] text-[var(--text-tertiary)] truncate block">
                       {isIndonesian
-                        ? "Auto-catat saat tap kartu / contactless"
+                        ? "Pencatatan otomatis saat transaksi kartu tap"
                         : "Auto-log on card tap & terminal pay"}
                     </span>
                   </div>
@@ -1536,7 +1538,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       background: "var(--bg-elevated)",
                     }}
                   >
-                    Auto
+                    {isIndonesian ? "Otomatis" : "Auto"}
                   </span>
                   <ChevronRight
                     size={15}
@@ -1898,7 +1900,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                         className="text-[13px] font-semibold truncate"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {securitySettings.hasPin ? "Change Backup PIN" : "Setup Backup PIN"}
+                        {isIndonesian
+                          ? (securitySettings.hasPin ? "Ubah PIN Cadangan" : "Atur PIN Cadangan")
+                          : (securitySettings.hasPin ? "Change Backup PIN" : "Setup Backup PIN")}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -1910,7 +1914,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                           color: "var(--text-secondary)",
                         }}
                       >
-                        {securitySettings.hasPin ? "Configured" : "Setup"}
+                        {isIndonesian
+                          ? (securitySettings.hasPin ? "Terkonfigurasi" : "Belum Diatur")
+                          : (securitySettings.hasPin ? "Configured" : "Setup")}
                       </span>
                       <ChevronRight
                         size={15}

@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Plus, Trash2, MoreHorizontal, Smartphone, ChevronRight } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
-import { BackTapGuideModal } from "./BackTapGuideModal";
+import { AppleShortcutsGuideModal } from "./AppleShortcutsGuideModal";
 import { useShortcuts } from "../../hooks/useShortcuts";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
 import { formatRupiah } from "../../lib/utils";
 import { useToast } from "../../contexts/ToastContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface ShortcutManagementSheetsProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function ShortcutManagementSheets({
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
   const { showToast } = useToast();
+  const { isIndonesian } = useLanguage();
 
   const [addShortcutOpen, setAddShortcutOpen] = useState(false);
   const [shortcutTitle, setShortcutTitle] = useState("");
@@ -40,7 +42,11 @@ export function ShortcutManagementSheets({
       !shortcutCategoryId ||
       !shortcutWalletId
     ) {
-      showToast("Please fill all fields", "delete", () => {});
+      showToast(
+        isIndonesian ? "Harap lengkapi semua kolom" : "Please fill all fields",
+        "delete",
+        () => {}
+      );
       return;
     }
     saveShortcut({
@@ -57,7 +63,11 @@ export function ShortcutManagementSheets({
     setShortcutAmount("");
     setShortcutCategoryId("");
     setShortcutWalletId("");
-    showToast("Shortcut added", "add", () => {});
+    showToast(
+      isIndonesian ? "Preset pintasan ditambahkan" : "Shortcut added",
+      "add",
+      () => {}
+    );
   };
 
   return (
@@ -72,7 +82,7 @@ export function ShortcutManagementSheets({
                   className="font-semibold text-lg"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Quick-Add Shortcuts
+                  {isIndonesian ? "Preset Pintasan Cepat" : "Quick-Add Shortcuts"}
                 </h3>
                 <button
                   onClick={() => {
@@ -92,7 +102,9 @@ export function ShortcutManagementSheets({
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Tap chips on transaction form for fast entry
+                {isIndonesian
+                  ? "Ketuk chip di formulir transaksi untuk pengisian instan"
+                  : "Tap chips on transaction form for fast entry"}
               </p>
             </div>
           </div>
@@ -121,13 +133,13 @@ export function ShortcutManagementSheets({
                   className="text-[13px] font-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  iPhone Back Tap Automation
+                  {isIndonesian ? "Pintasan Ketuk Belakang iPhone" : "iPhone Back Tap Automation"}
                 </p>
                 <p
                   className="text-[11px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Double-tap back of iPhone to log m-Banking
+                  {isIndonesian ? "Ketuk 2x bodi belakang iPhone untuk catat transaksi" : "Double-tap back of iPhone to log transactions"}
                 </p>
               </div>
             </div>
@@ -154,9 +166,9 @@ export function ShortcutManagementSheets({
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => deleteShortcut(s.id)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
-                  style={{ color: "#ef4444" }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -167,7 +179,9 @@ export function ShortcutManagementSheets({
                 className="text-[12px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                No shortcuts yet. (Default ones apply if cleared)
+                {isIndonesian
+                  ? "Belum ada preset pintasan. (Preset bawaan akan aktif jika dikosongkan)"
+                  : "No shortcuts yet. (Default ones apply if cleared)"}
               </p>
             )}
           </div>
@@ -184,7 +198,7 @@ export function ShortcutManagementSheets({
             className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
-            Add Shortcut
+            {isIndonesian ? "Tambah Preset Pintasan" : "Add Shortcut"}
           </h3>
 
           <div
@@ -197,18 +211,21 @@ export function ShortcutManagementSheets({
             {(["expense", "income"] as const).map((t) => (
               <button
                 key={t}
+                type="button"
                 onClick={() => setShortcutType(t)}
                 className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer"
                 style={{
                   background:
-                    shortcutType === t ? "var(--accent)" : "transparent",
+                    shortcutType === t ? "var(--text-primary)" : "transparent",
                   color:
                     shortcutType === t
-                      ? "var(--accent-ink)"
+                      ? "var(--bg-canvas)"
                       : "var(--text-tertiary)",
                 }}
               >
-                {t === "expense" ? "Expense" : "Income"}
+                {t === "expense"
+                  ? (isIndonesian ? "Pengeluaran" : "Expense")
+                  : (isIndonesian ? "Pemasukan" : "Income")}
               </button>
             ))}
           </div>
@@ -218,13 +235,13 @@ export function ShortcutManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Shortcut Title
+              {isIndonesian ? "Judul Pintasan" : "Shortcut Title"}
             </label>
             <input
               type="text"
               value={shortcutTitle}
               onChange={(e) => setShortcutTitle(e.target.value)}
-              placeholder="e.g. Coffee"
+              placeholder={isIndonesian ? "Contoh: Kopi Pagi" : "e.g. Coffee"}
               className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[15px]"
               style={{
                 background: "var(--bg-elevated)",
@@ -239,7 +256,7 @@ export function ShortcutManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Nominal Amount (IDR)
+              {isIndonesian ? "Nominal Transaksi (IDR)" : "Nominal Amount (IDR)"}
             </label>
             <input
               type="text"
@@ -266,14 +283,15 @@ export function ShortcutManagementSheets({
                 className="text-[11px] font-bold uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Category
+                {isIndonesian ? "Kategori" : "Category"}
               </label>
               <button
+                type="button"
                 onClick={() => setShortcutMoreCatOpen(true)}
                 className="text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 cursor-pointer"
                 style={{ color: "var(--text-secondary)" }}
               >
-                More <MoreHorizontal size={12} />
+                {isIndonesian ? "Lainnya" : "More"} <MoreHorizontal size={12} />
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2 pb-1">
@@ -283,6 +301,7 @@ export function ShortcutManagementSheets({
                 .map((cat) => (
                   <button
                     key={cat.id}
+                    type="button"
                     onClick={() => setShortcutCategoryId(cat.id)}
                     className="flex items-center gap-1.5 px-2.5 py-2 rounded-2xl transition-all active:scale-95 cursor-pointer"
                     style={{
@@ -322,20 +341,22 @@ export function ShortcutManagementSheets({
                 className="text-[11px] font-bold uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Account / Wallet
+                {isIndonesian ? "Akun / Dompet" : "Account / Wallet"}
               </label>
               <button
+                type="button"
                 onClick={() => setShortcutMoreWalletOpen(true)}
                 className="text-[11px] font-semibold flex items-center gap-0.5 active:scale-95 cursor-pointer"
                 style={{ color: "var(--text-secondary)" }}
               >
-                More <MoreHorizontal size={12} />
+                {isIndonesian ? "Lainnya" : "More"} <MoreHorizontal size={12} />
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2 pb-1">
               {wallets.slice(0, 3).map((w) => (
                 <button
                   key={w.id}
+                  type="button"
                   onClick={() => setShortcutWalletId(w.id)}
                   className="flex items-center gap-1.5 px-2.5 py-2 rounded-2xl transition-all active:scale-95 cursor-pointer"
                   style={{
@@ -370,11 +391,12 @@ export function ShortcutManagementSheets({
           </div>
 
           <button
+            type="button"
             onClick={handleSave}
             className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg mt-2 cursor-pointer"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            style={{ background: "var(--text-primary)", color: "var(--bg-canvas)" }}
           >
-            Save Shortcut
+            {isIndonesian ? "Simpan Preset Pintasan" : "Save Shortcut"}
           </button>
         </div>
       </BottomSheet>
@@ -389,7 +411,7 @@ export function ShortcutManagementSheets({
             className="font-semibold text-lg mb-3"
             style={{ color: "var(--text-primary)" }}
           >
-            Select Category
+            {isIndonesian ? "Pilih Kategori" : "Select Category"}
           </h3>
           <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
             {categories
@@ -399,6 +421,7 @@ export function ShortcutManagementSheets({
                 return (
                   <button
                     key={cat.id}
+                    type="button"
                     onClick={() => {
                       setShortcutCategoryId(cat.id);
                       setShortcutMoreCatOpen(false);
@@ -445,7 +468,7 @@ export function ShortcutManagementSheets({
             className="font-semibold text-lg mb-3"
             style={{ color: "var(--text-primary)" }}
           >
-            Select Account
+            {isIndonesian ? "Pilih Akun / Dompet" : "Select Account"}
           </h3>
           <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
             {wallets.map((w) => {
@@ -453,6 +476,7 @@ export function ShortcutManagementSheets({
               return (
                 <button
                   key={w.id}
+                  type="button"
                   onClick={() => {
                     setShortcutWalletId(w.id);
                     setShortcutMoreWalletOpen(false);
@@ -489,9 +513,10 @@ export function ShortcutManagementSheets({
         </div>
       </BottomSheet>
 
-      <BackTapGuideModal
+      <AppleShortcutsGuideModal
         isOpen={guideOpen}
         onClose={() => setGuideOpen(false)}
+        initialTab="back_tap"
       />
     </>
   );

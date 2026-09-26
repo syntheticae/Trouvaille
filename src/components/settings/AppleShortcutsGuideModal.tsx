@@ -91,20 +91,20 @@ export function AppleShortcutsGuideModal({
         <div className="space-y-1.5 text-left">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.04] text-[11px] font-medium tracking-wide text-[var(--text-secondary)] mb-1">
             <Smartphone size={13} strokeWidth={1.5} />
-            <span>Apple iOS Ecosystem Integration</span>
+            <span>{isIndonesian ? "Integrasi Ekosistem Apple iOS" : "Apple iOS Ecosystem Integration"}</span>
           </div>
           <h3
             className="text-xl font-semibold tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
-            {isIndonesian ? "Back Tap & iOS Shortcuts" : "Back Tap & iOS Shortcuts"}
+            {isIndonesian ? "Ketuk Belakang & Pintasan iOS" : "Back Tap & iOS Shortcuts"}
           </h3>
           <p
             className="text-[13px] leading-relaxed font-normal"
             style={{ color: "var(--text-secondary)" }}
           >
             {isIndonesian
-              ? "Catat transaksi instan dengan mengetuk 2x belakang iPhone (Back Tap), dialog frosted glass Dynamic Island, dikte suara, Action Button, atau otomatisasi Apple Pay."
+              ? "Catat transaksi instan dengan mengetuk 2x bodi belakang iPhone, dialog kaca Dynamic Island, dikte suara, Tombol Aksi, atau otomatisasi Apple Pay."
               : "Instantly record expenses by double-tapping the back of your iPhone, Dynamic Island frosted glass dialogs, voice dictation, Action Button, or Apple Pay automations."}
           </p>
         </div>
@@ -129,7 +129,7 @@ export function AppleShortcutsGuideModal({
                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             }`}
           >
-            Back Tap
+            {isIndonesian ? "Ketuk Belakang" : "Back Tap"}
           </button>
           <button
             type="button"
@@ -143,7 +143,7 @@ export function AppleShortcutsGuideModal({
                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             }`}
           >
-            Action Btn
+            {isIndonesian ? "Tombol Aksi" : "Action Btn"}
           </button>
           <button
             type="button"
@@ -157,7 +157,7 @@ export function AppleShortcutsGuideModal({
                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             }`}
           >
-            {isIndonesian ? "Metode" : "Ways"}
+            {isIndonesian ? "Metode Catat" : "Ways"}
           </button>
           <button
             type="button"
@@ -171,7 +171,7 @@ export function AppleShortcutsGuideModal({
                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             }`}
           >
-            Apple Pay
+            {isIndonesian ? "Otomatisasi" : "Apple Pay"}
           </button>
         </div>
 
@@ -198,7 +198,7 @@ export function AppleShortcutsGuideModal({
                     : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 }`}
               >
-                {isIndonesian ? "Dialog Glass (5 Langkah)" : "Glass Dialog (5 Steps)"}
+                {isIndonesian ? "Dialog Kaca (5 Langkah)" : "Glass Dialog (5 Steps)"}
               </button>
               <button
                 type="button"
@@ -213,7 +213,7 @@ export function AppleShortcutsGuideModal({
                 }`}
               >
                 <Volume2 size={12} strokeWidth={1.5} />
-                <span>{isIndonesian ? "Versi Suara" : "Voice / Speak"}</span>
+                <span>{isIndonesian ? "Dikte Suara" : "Voice / Speak"}</span>
               </button>
               <button
                 type="button"
@@ -227,7 +227,7 @@ export function AppleShortcutsGuideModal({
                     : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 }`}
               >
-                Native Swift
+                {isIndonesian ? "Modul Native Swift" : "Native Swift"}
               </button>
             </div>
 
@@ -248,7 +248,7 @@ export function AppleShortcutsGuideModal({
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Cara Buat Shortcut Dialog Glass (Sesuai Video Showcase)"
+                        ? "Cara Buat Pintasan Dialog Kaca (Sesuai Video Showcase)"
                         : "How to Build the Glass Dialog Shortcut (Showcase Style)"}
                     </h4>
                   </div>
@@ -257,7 +257,7 @@ export function AppleShortcutsGuideModal({
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {isIndonesian
-                      ? "Buka aplikasi Shortcuts (Pintasan) di iPhone, ketuk tanda '+' untuk membuat Shortcut baru bernama 'Catat Trouvaille', lalu susun 6 aksi berikut:"
+                      ? "Buka aplikasi Pintasan (Shortcuts) di iPhone, ketuk tanda '+' untuk membuat pintasan baru bernama 'Catat Trouvaille', lalu susun 6 tindakan berikut:"
                       : "Open Apple Shortcuts app on your iPhone, tap '+' to create a new shortcut named 'Trouvaille Quick Log', then arrange these 6 actions:"}
                   </p>
                 </div>
@@ -278,16 +278,16 @@ export function AppleShortcutsGuideModal({
                           1
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          Ask for Input (Nominal)
+                          {isIndonesian ? "Minta Masukan (Nominal)" : "Ask for Input (Amount)"}
                         </span>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-tertiary)]">
-                        Number
+                        {isIndonesian ? "Angka" : "Number"}
                       </span>
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7">
                       {isIndonesian
-                        ? "Pilih aksi 'Ask for Input', ubah tipe jadi 'Number' dengan teks prompt: \"How much was it?\" atau \"Berapa nominalnya?\""
+                        ? "Pilih tindakan 'Ask for Input' (Minta Masukan), atur tipe ke 'Number' (Angka) dengan teks perintah: \"Berapa nominalnya?\""
                         : "Add action 'Ask for Input', set input type to 'Number' with prompt text: \"How much was it?\""}
                     </p>
                   </div>
@@ -306,14 +306,14 @@ export function AppleShortcutsGuideModal({
                           2
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          Choose from List (Kategori)
+                          {isIndonesian ? "Pilih dari Daftar (Kategori)" : "Choose from List (Category)"}
                         </span>
                       </div>
                       <ListFilter size={13} className="text-[var(--text-tertiary)]" />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7">
                       {isIndonesian
-                        ? "Tambahkan aksi 'List' lalu isi daftar kategori pengeluaran Anda. Sambungkan dengan aksi 'Choose from List' dengan prompt: \"What kind of expense is it?\""
+                        ? "Tambahkan tindakan 'List' (Daftar) lalu isi daftar kategori pengeluaran Anda. Sambungkan dengan tindakan 'Choose from List' (Pilih dari Daftar) dengan perintah: \"Kategori pengeluaran apa?\""
                         : "Add a 'List' action filled with your categories. Follow with 'Choose from List' action with prompt: \"What kind of expense is it?\""}
                     </p>
                     <div className="pl-7">
@@ -323,7 +323,7 @@ export function AppleShortcutsGuideModal({
                         className="py-1 px-2.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[10px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
                         {copiedKey === (isIndonesian ? "Daftar Kategori" : "Category List") ? (
-                          <Check size={11} className="text-emerald-500" />
+                          <Check size={11} className="text-[var(--text-primary)]" />
                         ) : (
                           <Copy size={11} />
                         )}
@@ -346,14 +346,14 @@ export function AppleShortcutsGuideModal({
                           3
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          Choose from List (Akun / Dompet)
+                          {isIndonesian ? "Pilih dari Daftar (Akun / Dompet)" : "Choose from List (Account / Wallet)"}
                         </span>
                       </div>
                       <CreditCard size={13} className="text-[var(--text-tertiary)]" />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7">
                       {isIndonesian
-                        ? "Tambahkan aksi 'List' berisi nama dompet/rekening Anda (misal BCA, GoPay, Cash). Sambungkan dengan 'Choose from List' dengan prompt: \"Which account or wallet?\""
+                        ? "Tambahkan tindakan 'List' (Daftar) berisi nama dompet atau rekening Anda (misal BCA, Mandiri, Tunai). Sambungkan dengan 'Choose from List' (Pilih dari Daftar) dengan perintah: \"Akun atau dompet yang mana?\""
                         : "Add a 'List' action containing your accounts (e.g. BCA, GoPay, Cash). Follow with 'Choose from List' with prompt: \"Which account or wallet?\""}
                     </p>
                     <div className="pl-7">
@@ -363,7 +363,7 @@ export function AppleShortcutsGuideModal({
                         className="py-1 px-2.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[10px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
                         {copiedKey === (isIndonesian ? "Daftar Akun / Dompet" : "Wallet List") ? (
-                          <Check size={11} className="text-emerald-500" />
+                          <Check size={11} className="text-[var(--text-primary)]" />
                         ) : (
                           <Copy size={11} />
                         )}
@@ -386,14 +386,14 @@ export function AppleShortcutsGuideModal({
                           4
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          Ask for Input (Tanggal & Waktu)
+                          {isIndonesian ? "Minta Masukan (Tanggal & Waktu)" : "Ask for Input (Date & Time)"}
                         </span>
                       </div>
                       <Calendar size={13} className="text-[var(--text-tertiary)]" />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7">
                       {isIndonesian
-                        ? "Tambahkan aksi 'Ask for Input', pilih tipe 'Date and Time' dengan prompt: \"What day was it?\" — ini akan menampilkan kalender glass native iOS."
+                        ? "Tambahkan tindakan 'Ask for Input' (Minta Masukan), pilih tipe 'Date and Time' (Tanggal dan Waktu) dengan perintah: \"Kapan transaksi terjadi?\" — tindakan ini memunculkan kalender kaca bawaan iOS."
                         : "Add 'Ask for Input', select type 'Date and Time' with prompt: \"What day was it?\" — this displays the native iOS frosted calendar sheet."}
                     </p>
                   </div>
@@ -412,14 +412,14 @@ export function AppleShortcutsGuideModal({
                           5
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          Ask for Input (Catatan / Note)
+                          {isIndonesian ? "Minta Masukan (Catatan)" : "Ask for Input (Note / Description)"}
                         </span>
                       </div>
                       <FileText size={13} className="text-[var(--text-tertiary)]" />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7">
                       {isIndonesian
-                        ? "Tambahkan aksi 'Ask for Input', pilih tipe 'Text' dengan prompt: \"What did you buy?\" untuk mencatat nama barang/merchant."
+                        ? "Tambahkan tindakan 'Ask for Input' (Minta Masukan), pilih tipe 'Text' (Teks) dengan perintah: \"Catatan transaksi apa?\" untuk mencatat rincian atau merchant belanja."
                         : "Add 'Ask for Input', select type 'Text' with prompt: \"What did you buy?\" to record merchant or description."}
                     </p>
                   </div>
@@ -438,14 +438,14 @@ export function AppleShortcutsGuideModal({
                           6
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          Open URLs (Kirim ke Trouvaille)
+                          {isIndonesian ? "Buka URL (Kirim ke Trouvaille)" : "Open URLs (Send to Trouvaille)"}
                         </span>
                       </div>
-                      <Zap size={13} className="text-amber-500" />
+                      <Zap size={13} className="text-[var(--text-primary)]" />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Tambahkan aksi 'Open URLs' lalu masukkan URL Scheme di bawah ini dengan menyematkan variabel dari aksi 1 hingga 5:"
+                        ? "Tambahkan tindakan 'Open URLs' (Buka URL) lalu masukkan skema URL di bawah ini dengan menyematkan variabel dari langkah 1 hingga 5:"
                         : "Add action 'Open URLs' and paste the URL Scheme below, inserting variables from steps 1 to 5:"}
                     </p>
                     <div className="pl-7 space-y-2">
@@ -454,7 +454,7 @@ export function AppleShortcutsGuideModal({
                         style={{
                           background: "var(--bg-base)",
                           borderColor: "var(--glass-border)",
-                          color: "var(--accent)",
+                          color: "var(--text-primary)",
                         }}
                       >
                         {glassSchemeTemplate}
@@ -462,15 +462,15 @@ export function AppleShortcutsGuideModal({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => copyToClipboard(glassSchemeTemplate, "Glass Scheme Template")}
+                          onClick={() => copyToClipboard(glassSchemeTemplate, isIndonesian ? "Templat Skema URL Kaca" : "Glass Scheme Template")}
                           className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
-                          {copiedKey === "Glass Scheme Template" ? (
-                            <Check size={12} className="text-emerald-500" />
+                          {copiedKey === (isIndonesian ? "Templat Skema URL Kaca" : "Glass Scheme Template") ? (
+                            <Check size={12} className="text-[var(--text-primary)]" />
                           ) : (
                             <Copy size={12} />
                           )}
-                          <span>{isIndonesian ? "Salin Template URL" : "Copy Scheme Template"}</span>
+                          <span>{isIndonesian ? "Salin Templat URL" : "Copy Scheme Template"}</span>
                         </button>
                         <button
                           type="button"
@@ -486,7 +486,7 @@ export function AppleShortcutsGuideModal({
                           className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
                           <Zap size={11} />
-                          <span>{isIndonesian ? "Tes Link" : "Test Link"}</span>
+                          <span>{isIndonesian ? "Uji Tautan" : "Test Link"}</span>
                         </button>
                       </div>
                     </div>
@@ -511,7 +511,7 @@ export function AppleShortcutsGuideModal({
                       className="text-[13px] font-semibold tracking-tight"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Versi Dikte Suara (Speak Quick-Add)" : "Voice Dictation Quick-Add"}
+                      {isIndonesian ? "Dikte Suara Cepat (Dikte & Catat)" : "Voice Dictation Quick-Add"}
                     </h4>
                   </div>
                   <p
@@ -519,7 +519,7 @@ export function AppleShortcutsGuideModal({
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {isIndonesian
-                      ? "Cukup ketuk 2x belakang iPhone lalu langsung ucapkan transaksi Anda tanpa mengetik. AI Trouvaille membedah nominal, dompet, dan kategori secara otomatis!"
+                      ? "Cukup ketuk 2x bodi belakang iPhone lalu ucapkan transaksi Anda tanpa mengetik. Kecerdasan buatan Trouvaille mengenali nominal, dompet, dan kategori secara otomatis!"
                       : "Double tap your iPhone back and speak your expense naturally without typing. Trouvaille AI parses amount, wallet, and category automatically!"}
                   </p>
                 </div>
@@ -539,14 +539,14 @@ export function AppleShortcutsGuideModal({
                           1
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          Aksi 'Dictate Text' (Diktekan Teks)
+                          {isIndonesian ? "Tindakan 'Dictate Text' (Diktekan Teks)" : "Action 'Dictate Text' (Speech Recognition)"}
                         </span>
                       </div>
                       <Mic size={13} className="text-[var(--text-tertiary)]" />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Di Shortcuts iPhone, tambahkan aksi 'Dictate Text' (Diktekan Teks). Atur bahasa ke Bahasa Indonesia atau English. Mic Siri akan mendengar saat bodi iPhone diketuk."
+                        ? "Di aplikasi Pintasan iPhone, tambahkan tindakan 'Dictate Text' (Diktekan Teks). Atur bahasa ke Bahasa Indonesia atau English. Mikrofon Siri akan langsung mendengar saat bodi iPhone diketuk."
                         : "In Apple Shortcuts, add 'Dictate Text' action. Set language to English or Indonesian. Siri microphone listens immediately upon back-tap."}
                     </p>
                   </div>
@@ -565,14 +565,14 @@ export function AppleShortcutsGuideModal({
                           2
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          Aksi 'Open URLs' (Kirim ke AI Parser)
+                          {isIndonesian ? "Tindakan 'Open URLs' (Kirim ke Pengurai AI)" : "Action 'Open URLs' (Send to AI Parser)"}
                         </span>
                       </div>
-                      <Zap size={13} className="text-amber-500" />
+                      <Zap size={13} className="text-[var(--text-primary)]" />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Tambahkan aksi 'Open URLs' dengan skema berikut dan masukkan variabel 'Dictated Text':"
+                        ? "Tambahkan tindakan 'Open URLs' (Buka URL) dengan skema berikut dan masukkan variabel 'Dictated Text' (Teks yang Didiktekan):"
                         : "Add 'Open URLs' action with the following scheme using the 'Dictated Text' variable:"}
                     </p>
                     <div className="pl-7 space-y-2">
@@ -581,7 +581,7 @@ export function AppleShortcutsGuideModal({
                         style={{
                           background: "var(--bg-base)",
                           borderColor: "var(--glass-border)",
-                          color: "var(--accent)",
+                          color: "var(--text-primary)",
                         }}
                       >
                         {voiceSchemeTemplate}
@@ -589,11 +589,11 @@ export function AppleShortcutsGuideModal({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => copyToClipboard(voiceSchemeTemplate, "Voice Scheme Template")}
+                          onClick={() => copyToClipboard(voiceSchemeTemplate, isIndonesian ? "Templat Skema Suara" : "Voice Scheme Template")}
                           className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
-                          {copiedKey === "Voice Scheme Template" ? (
-                            <Check size={12} className="text-emerald-500" />
+                          {copiedKey === (isIndonesian ? "Templat Skema Suara" : "Voice Scheme Template") ? (
+                            <Check size={12} className="text-[var(--text-primary)]" />
                           ) : (
                             <Copy size={12} />
                           )}
@@ -605,7 +605,7 @@ export function AppleShortcutsGuideModal({
                           className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
                           <Zap size={11} />
-                          <span>{isIndonesian ? "Tes Contoh" : "Test Sample"}</span>
+                          <span>{isIndonesian ? "Uji Contoh" : "Test Sample"}</span>
                         </button>
                       </div>
                     </div>
@@ -623,10 +623,21 @@ export function AppleShortcutsGuideModal({
                       {isIndonesian ? "Contoh Kalimat yang Dikenali:" : "Supported Voice Phrases:"}
                     </p>
                     <ul className="space-y-1 text-[var(--text-secondary)] pl-2">
-                      <li>• "Kopi tuku 25 ribu pakai BCA"</li>
-                      <li>• "Makan siang 50000 bayar GoPay"</li>
-                      <li>• "Beli bensin 100rb Cash"</li>
-                      <li>• "Dinner with friends 150k"</li>
+                      {isIndonesian ? (
+                        <>
+                          <li>• "Kopi kenangan 25 ribu pakai BCA"</li>
+                          <li>• "Makan siang 50000 bayar GoPay"</li>
+                          <li>• "Beli bensin 100rb Tunai"</li>
+                          <li>• "Makan malam bersama 150 ribu"</li>
+                        </>
+                      ) : (
+                        <>
+                          <li>• "Coffee 25k using Cash"</li>
+                          <li>• "Lunch 50000 with Apple Pay"</li>
+                          <li>• "Gasoline 100k checking account"</li>
+                          <li>• "Dinner with friends 150k"</li>
+                        </>
+                      )}
                     </ul>
                   </div>
                 </div>
@@ -644,12 +655,12 @@ export function AppleShortcutsGuideModal({
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <ShieldCheck size={14} className="text-emerald-500" />
+                    <ShieldCheck size={14} className="text-[var(--text-primary)]" />
                     <h4
                       className="text-[13px] font-semibold tracking-tight"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Native iOS 16+ App Intent & Shortcuts Provider" : "Native iOS 16+ App Intent & Shortcuts Provider"}
+                      {isIndonesian ? "Penyedia Pintasan & App Intent Native iOS 16+" : "Native iOS 16+ App Intent & Shortcuts Provider"}
                     </h4>
                   </div>
                   <p
@@ -657,7 +668,7 @@ export function AppleShortcutsGuideModal({
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {isIndonesian
-                      ? "Untuk build native iOS (Xcode/TestFlight), Trouvaille telah dilengkapi modul QuickLogIntent.swift yang otomatis mendaftarkan App Shortcuts tanpa perlu perakitan manual."
+                      ? "Untuk build native iOS (Xcode/TestFlight), Trouvaille telah dilengkapi modul QuickLogIntent.swift yang otomatis mendaftarkan Pintasan Aplikasi tanpa perlu perakitan manual."
                       : "For native iOS builds (Xcode/TestFlight), Trouvaille includes QuickLogIntent.swift which automatically registers App Shortcuts without manual assembly."}
                   </p>
                 </div>
@@ -670,25 +681,25 @@ export function AppleShortcutsGuideModal({
                   }}
                 >
                   <p className="font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Fitur Native Intent:" : "Native Intent Features:"}
+                    {isIndonesian ? "Fitur Intent Native:" : "Native Intent Features:"}
                   </p>
                   <ul className="space-y-1.5 text-[var(--text-secondary)]">
                     <li className="flex items-start gap-1.5">
-                      <span className="text-emerald-500 font-bold">•</span>
+                      <span className="text-[var(--text-primary)] font-bold">•</span>
                       <span>
                         <strong>openAppWhenRun = false:</strong> {isIndonesian ? "Berjalan 100% di latar belakang daemon iOS tanpa membuka jendela aplikasi penuh." : "Executes 100% in background iOS daemon without launching the full web window."}
                       </span>
                     </li>
                     <li className="flex items-start gap-1.5">
-                      <span className="text-emerald-500 font-bold">•</span>
+                      <span className="text-[var(--text-primary)] font-bold">•</span>
                       <span>
-                        <strong>App Group Storage:</strong> {isIndonesian ? "Tersimpan aman di shared UserDefaults untuk disinkronkan langsung ke database saat Trouvaille aktif." : "Securely buffered in shared UserDefaults and synced directly upon app resume."}
+                        <strong>{isIndonesian ? "Penyimpanan App Group" : "App Group Storage"}:</strong> {isIndonesian ? "Tersimpan aman di memori lokal bersama (UserDefaults) untuk disinkronkan langsung ke basis data saat Trouvaille dibuka." : "Securely buffered in shared UserDefaults and synced directly upon app resume."}
                       </span>
                     </li>
                     <li className="flex items-start gap-1.5">
-                      <span className="text-emerald-500 font-bold">•</span>
+                      <span className="text-[var(--text-primary)] font-bold">•</span>
                       <span>
-                        <strong>Auto Siri Registration:</strong> {isIndonesian ? "Langsung dapat dipanggil via 'Hey Siri, Quick log in Trouvaille'." : "Can be invoked immediately via 'Hey Siri, Quick log in Trouvaille'."}
+                        <strong>{isIndonesian ? "Registrasi Siri Otomatis" : "Auto Siri Registration"}:</strong> {isIndonesian ? "Langsung dapat dipanggil via suara: 'Hai Siri, Catat cepat di Trouvaille'." : "Can be invoked immediately via 'Hey Siri, Quick log in Trouvaille'."}
                       </span>
                     </li>
                   </ul>
@@ -710,7 +721,7 @@ export function AppleShortcutsGuideModal({
                   className="text-[13px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {isIndonesian ? "Cara Pasang ke Back Tap iPhone" : "Assign to iPhone Back Tap"}
+                  {isIndonesian ? "Cara Menghubungkan ke Ketuk Belakang iPhone" : "Assign to iPhone Back Tap"}
                 </h4>
               </div>
 
@@ -721,7 +732,7 @@ export function AppleShortcutsGuideModal({
                   </span>
                   <span>
                     {isIndonesian
-                      ? "Buka aplikasi Pengaturan (Settings) di iPhone Anda."
+                      ? "Buka aplikasi Pengaturan di iPhone Anda."
                       : "Open the Settings app on your iPhone."}
                   </span>
                 </div>
@@ -731,7 +742,7 @@ export function AppleShortcutsGuideModal({
                   </span>
                   <span>
                     {isIndonesian
-                      ? "Masuk ke menu Aksesibilitas (Accessibility) > Sentuh (Touch)."
+                      ? "Masuk ke menu Aksesibilitas > Sentuh."
                       : "Navigate to Accessibility > Touch."}
                   </span>
                 </div>
@@ -741,7 +752,7 @@ export function AppleShortcutsGuideModal({
                   </span>
                   <span>
                     {isIndonesian
-                      ? "Gulir ke bawah dan ketuk Ketuk Bagian Belakang (Back Tap)."
+                      ? "Gulir ke bawah dan ketuk opsi Ketuk Bagian Belakang."
                       : "Scroll to the bottom and tap Back Tap."}
                   </span>
                 </div>
@@ -751,7 +762,7 @@ export function AppleShortcutsGuideModal({
                   </span>
                   <span>
                     {isIndonesian
-                      ? "Pilih Ketuk Dua Kali (Double Tap) atau Ketuk Tiga Kali (Triple Tap)."
+                      ? "Pilih Ketuk Dua Kali atau Ketuk Tiga Kali."
                       : "Select Double Tap or Triple Tap."}
                   </span>
                 </div>
@@ -761,7 +772,7 @@ export function AppleShortcutsGuideModal({
                   </span>
                   <span>
                     {isIndonesian
-                      ? "Gulir ke bawah ke bagian Pintasan (Shortcuts), lalu pilih Shortcut yang telah Anda buat ('Catat Trouvaille')."
+                      ? "Gulir ke bawah ke bagian Pintasan, lalu pilih pintasan yang telah Anda buat ('Catat Trouvaille')."
                       : "Scroll down to the Shortcuts section and select your created shortcut ('Trouvaille Quick Log')."}
                   </span>
                 </div>
@@ -786,13 +797,13 @@ export function AppleShortcutsGuideModal({
                   className="text-[11px] font-semibold uppercase tracking-wider block"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  {isIndonesian ? "Action Button (iPhone 15 / 16 Pro)" : "Action Button Setup (iPhone 15 / 16 Pro)"}
+                  {isIndonesian ? "Konfigurasi Tombol Aksi (iPhone 15 / 16 Pro)" : "Action Button Setup (iPhone 15 / 16 Pro)"}
                 </span>
               </div>
 
               <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                 {isIndonesian
-                  ? "Action Button di sisi kiri iPhone dapat dihubungkan ke Shortcut Trouvaille untuk mencatat pengeluaran dalam satu kali tekan fisik dari aplikasi mana pun."
+                  ? "Tombol Aksi di sisi kiri iPhone dapat dihubungkan ke Pintasan Trouvaille untuk mencatat pengeluaran dalam satu kali pencetan fisik dari layar mana pun."
                   : "The Action Button on the left side of your iPhone can be linked to a Trouvaille shortcut to log transactions in a single physical press from anywhere."}
               </p>
 
@@ -810,11 +821,11 @@ export function AppleShortcutsGuideModal({
                 </div>
                 <div className="space-y-1">
                   <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Buka Pengaturan Action Button" : "Open Action Button Settings"}
+                    {isIndonesian ? "Buka Pengaturan Tombol Tindakan" : "Open Action Button Settings"}
                   </p>
                   <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                     {isIndonesian
-                      ? "Buka Settings (Pengaturan) di iPhone > Action Button. Geser menu hingga menemukan opsi 'Shortcut' (Pintasan)."
+                      ? "Buka aplikasi Pengaturan di iPhone > Tombol Tindakan. Geser opsi hingga menemukan 'Pintasan'."
                       : "Go to Settings on iPhone > Action Button. Swipe through the options to find 'Shortcut'."}
                   </p>
                 </div>
@@ -838,7 +849,7 @@ export function AppleShortcutsGuideModal({
                   </p>
                   <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                     {isIndonesian
-                      ? "Ketuk tombol pemilih shortcut di bawahnya, lalu pilih shortcut Trouvaille yang telah Anda buat (misalnya 'Catat Trouvaille' atau 'Voice Quick-Add')."
+                      ? "Ketuk tombol pemilih pintasan di bawahnya, lalu pilih pintasan Trouvaille yang telah Anda buat (misalnya 'Catat Trouvaille' atau 'Dikte Suara Cepat')."
                       : "Tap the shortcut selector button below and choose your Trouvaille shortcut (e.g. 'Trouvaille Quick Log' or 'Voice Quick-Add')."}
                   </p>
                 </div>
@@ -862,7 +873,7 @@ export function AppleShortcutsGuideModal({
                   </p>
                   <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                     {isIndonesian
-                      ? "Cukup tekan dan tahan Action Button saat sedang bertransaksi di kasir, bayar QRIS, atau selesai makan. Dialog pencatatan langsung muncul seketika!"
+                      ? "Cukup tekan dan tahan Tombol Tindakan saat berada di kasir, bayar QRIS, atau selesai makan. Jendela pencatatan langsung muncul seketika!"
                       : "Simply press and hold the Action Button at checkout, QRIS payment, or after dining. The logging modal appears instantly!"}
                   </p>
                 </div>
@@ -882,7 +893,7 @@ export function AppleShortcutsGuideModal({
                 }}
               >
                 <Mic size={14} />
-                <span>{isIndonesian ? "Tes Voice Action" : "Test Voice Action"}</span>
+                <span>{isIndonesian ? "Uji Aksi Suara" : "Test Voice Action"}</span>
               </button>
               <button
                 type="button"
@@ -895,7 +906,7 @@ export function AppleShortcutsGuideModal({
                 }}
               >
                 <Camera size={14} />
-                <span>{isIndonesian ? "Tes Scan Action" : "Test Scan Action"}</span>
+                <span>{isIndonesian ? "Uji Aksi Pemindai" : "Test Scan Action"}</span>
               </button>
             </div>
           </div>
@@ -908,17 +919,17 @@ export function AppleShortcutsGuideModal({
               {
                 num: "1",
                 icon: Mic,
-                title: isIndonesian ? "Voice Quick-Add (Siri)" : "Voice Quick-Add (Siri)",
+                title: isIndonesian ? "Pencatatan Suara Cepat (Siri)" : "Voice Quick-Add (Siri)",
                 desc: isIndonesian
                   ? "Bicara santai tanpa mengetik, contoh: 'Kopi 35 ribu pakai BCA'."
                   : "Speak naturally without typing, e.g., 'Coffee 35k with BCA'.",
                 scheme: "trouvaille://voice",
                 steps: isIndonesian
                   ? [
-                      "Buka aplikasi Shortcuts di iPhone, lalu ketuk tanda '+' untuk membuat Shortcut baru.",
+                      "Buka aplikasi Pintasan di iPhone, lalu ketuk tanda '+' untuk membuat pintasan baru.",
                       "Cari tindakan 'Open URL' (Buka URL), lalu masukkan skema 'trouvaille://voice'.",
-                      "Beri nama shortcut 'Catat Pengeluaran' atau 'Trouvaille Voice'.",
-                      "Kini cukup ucapkan 'Hey Siri, Catat Pengeluaran' — mic langsung aktif mendengar!",
+                      "Beri nama pintasan 'Catat Pengeluaran' atau 'Suara Trouvaille'.",
+                      "Kini cukup ucapkan 'Hai Siri, Catat Pengeluaran' — mikrofon langsung aktif mendengar!",
                     ]
                   : [
                       "Open the Apple Shortcuts app on iPhone, then tap '+' to create a new Shortcut.",
@@ -930,16 +941,16 @@ export function AppleShortcutsGuideModal({
               {
                 num: "2",
                 icon: Zap,
-                title: isIndonesian ? "Apple Shortcuts & Lock Screen" : "Apple Shortcuts & Lock Screen",
+                title: isIndonesian ? "Pintasan Apple & Layar Terkunci" : "Apple Shortcuts & Lock Screen",
                 desc: isIndonesian
-                  ? "Buka jendela pencatatan instan dari Lock Screen atau Control Center."
+                  ? "Buka jendela pencatatan instan dari Layar Terkunci atau Pusat Kontrol."
                   : "Trigger the instant logging modal directly from Lock Screen or Control Center.",
                 scheme: "trouvaille://add",
                 steps: isIndonesian
                   ? [
-                      "Buat Shortcut baru dengan tindakan 'Open URL', lalu masukkan 'trouvaille://add'.",
-                      "Tambahkan widget Shortcuts ke Lock Screen atau Home Screen iPhone Anda.",
-                      "Ketuk widget satu kali kapan pun ingin membuka modal pencatatan tanpa navigasi manual.",
+                      "Buat pintasan baru dengan tindakan 'Open URL', lalu masukkan 'trouvaille://add'.",
+                      "Tambahkan widget Pintasan ke Layar Terkunci atau Layar Utama iPhone Anda.",
+                      "Ketuk widget satu kali kapan pun ingin membuka modal pencatatan tanpa navigasi berbelit.",
                     ]
                   : [
                       "Create a new Shortcut with 'Open URL' action pointing to 'trouvaille://add'.",
@@ -950,15 +961,15 @@ export function AppleShortcutsGuideModal({
               {
                 num: "3",
                 icon: Camera,
-                title: isIndonesian ? "AI Receipt Scanner (Struk Fisik)" : "AI Receipt Scanner (Paper Receipts)",
+                title: isIndonesian ? "Pemindai Struk AI (Struk Fisik)" : "AI Receipt Scanner (Paper Receipts)",
                 desc: isIndonesian
-                  ? "Foto struk kasir atau barcode QRIS; AI membedah item & nominal otomatis."
+                  ? "Foto struk kasir atau struk QRIS; AI membedah rincian & nominal secara otomatis."
                   : "Snap physical receipts or QRIS slips; AI extracts items and amounts automatically.",
                 scheme: "trouvaille://scan",
                 steps: isIndonesian
                   ? [
-                      "Buat Shortcut baru dengan tindakan 'Open URL' dan skema 'trouvaille://scan'.",
-                      "Pasang shortcut ini di menu Back Tap (Ketuk Belakang) atau Action Button.",
+                      "Buat pintasan baru dengan tindakan 'Open URL' dan skema 'trouvaille://scan'.",
+                      "Pasang pintasan ini di menu Ketuk Bagian Belakang atau Tombol Tindakan.",
                       "Arahkan kamera ke struk belanja; AI Trouvaille memproses merchant dan nominal belanja.",
                     ]
                   : [
@@ -970,15 +981,15 @@ export function AppleShortcutsGuideModal({
               {
                 num: "4",
                 icon: Layers,
-                title: isIndonesian ? "Screenshot Mutasi & Bukti Transfer" : "Screenshot & Transfer Proof",
+                title: isIndonesian ? "Tangkapan Layar & Bukti Transfer" : "Screenshot & Transfer Proof",
                 desc: isIndonesian
                   ? "Ekstrak bukti pembayaran m-banking langsung dari galeri foto iPhone."
                   : "Extract m-banking transaction confirmations directly from photo library.",
                 scheme: "trouvaille://scan",
                 steps: isIndonesian
                   ? [
-                      "Setelah transfer di BCA, Mandiri, atau GoPay, simpan screenshot bukti pembayaran.",
-                      "Gunakan skema 'trouvaille://scan' untuk langsung melompat ke pemindai screenshot.",
+                      "Setelah transfer di BCA, Mandiri, atau GoPay, simpan tangkapan layar bukti pembayaran.",
+                      "Gunakan skema 'trouvaille://scan' untuk langsung membuka pemindai tangkapan layar.",
                       "Pilih foto dari galeri; OCR AI mengekstrak nominal dan tanggal dalam hitungan detik.",
                     ]
                   : [
@@ -990,16 +1001,16 @@ export function AppleShortcutsGuideModal({
               {
                 num: "5",
                 icon: Share2,
-                title: isIndonesian ? "iOS Share Sheet (Bagikan Teks)" : "iOS Share Sheet (Direct Text)",
+                title: isIndonesian ? "Lembar Berbagi iOS (Teks Langsung)" : "iOS Share Sheet (Direct Text)",
                 desc: isIndonesian
                   ? "Bagikan teks tagihan dari WhatsApp atau SMS perbankan ke Trouvaille."
                   : "Share transaction text from WhatsApp or SMS banking directly to Trouvaille.",
                 scheme: "trouvaille://add?text=",
                 steps: isIndonesian
                   ? [
-                      "Di detail Shortcut, aktifkan toggle 'Show in Share Sheet' (Tampilkan di Lembar Berbagi).",
-                      "Konfigurasikan aksi URL: 'trouvaille://add?text=[Shortcut Input]'.",
-                      "Saat menerima pesan tagihan atau mutasi, pilih Bagikan > Trouvaille untuk auto-parse.",
+                      "Di rincian pintasan, aktifkan opsi 'Show in Share Sheet' (Tampilkan di Lembar Berbagi).",
+                      "Konfigurasikan tindakan URL: 'trouvaille://add?text=[Shortcut Input]'.",
+                      "Saat menerima pesan tagihan atau mutasi, pilih Bagikan > Trouvaille untuk penguraian instan.",
                     ]
                   : [
                       "In Shortcut details, enable 'Show in Share Sheet'.",
@@ -1010,15 +1021,15 @@ export function AppleShortcutsGuideModal({
               {
                 num: "6",
                 icon: PlusCircle,
-                title: isIndonesian ? "Numpad Ergonomis & Kalkulator" : "Ergonomic Numpad & Math Calc",
+                title: isIndonesian ? "Papan Angka Ergonomis & Kalkulator" : "Ergonomic Numpad & Math Calc",
                 desc: isIndonesian
-                  ? "Keypad monokrom dengan tombol 000 dan perhitungan matematika in-line."
+                  ? "Papan angka monokrom dengan tombol 000 dan perhitungan matematika langsung di kolom."
                   : "Monochrome keypad with triple-zero 000 and in-line mathematical calculation.",
                 scheme: "trouvaille://add",
                 steps: isIndonesian
                   ? [
-                      "Buka Trouvaille di Safari iOS, lalu pilih 'Add to Home Screen' untuk mode PWA fullscreen.",
-                      "Gunakan tombol '+' di navbar bawah atau panggil via skema 'trouvaille://add'.",
+                      "Buka Trouvaille di Safari iOS, lalu pilih 'Tambah ke Layar Utama' untuk mode aplikasi layar penuh.",
+                      "Gunakan tombol '+' di bilah navigasi bawah atau buka melalui skema 'trouvaille://add'.",
                       "Ketik nominal dengan bantuan tombol '000' dan operator '+' atau '-' langsung di kolom.",
                     ]
                   : [
@@ -1092,13 +1103,13 @@ export function AppleShortcutsGuideModal({
                       >
                         {copiedKey === item.title ? (
                           <>
-                            <Check size={12} className="text-emerald-500" />
-                            <span>{isIndonesian ? "URL Tersalin!" : "Scheme Copied!"}</span>
+                            <Check size={12} className="text-[var(--text-primary)]" />
+                            <span>{isIndonesian ? "Skema Disalin!" : "Scheme Copied!"}</span>
                           </>
                         ) : (
                           <>
                             <Copy size={12} />
-                            <span>{isIndonesian ? "Salin URL Scheme" : "Copy URL Scheme"}</span>
+                            <span>{isIndonesian ? "Salin Skema URL" : "Copy URL Scheme"}</span>
                           </>
                         )}
                       </button>
@@ -1109,7 +1120,7 @@ export function AppleShortcutsGuideModal({
                         title={isIndonesian ? "Uji coba buka deep link langsung" : "Test trigger deep link"}
                       >
                         <Zap size={11} />
-                        <span>{isIndonesian ? "Tes Link" : "Test Link"}</span>
+                        <span>{isIndonesian ? "Uji Tautan" : "Test Link"}</span>
                       </button>
                     </div>
                   </div>
@@ -1133,7 +1144,7 @@ export function AppleShortcutsGuideModal({
                 className="text-[11px] font-semibold uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Apple Pay Tap Automation
+                {isIndonesian ? "Otomatisasi Ketukan Apple Pay" : "Apple Pay Tap Automation"}
               </span>
 
               <div className="space-y-3 text-[12px]">
@@ -1150,11 +1161,11 @@ export function AppleShortcutsGuideModal({
                   </div>
                   <div>
                     <p className="font-semibold text-[13px] text-[var(--text-primary)]">
-                      Open Shortcuts &gt; Automation
+                      {isIndonesian ? "Buka Pintasan > Otomatisasi" : "Open Shortcuts > Automation"}
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                       {isIndonesian
-                        ? "Ketuk Otomatisasi Baru (New Automation), lalu pilih Transaksi (Transaction) atau Kartu Dompet."
+                        ? "Ketuk Otomatisasi Baru (+), lalu pilih 'Transaksi' atau 'Saat Saya Mengetuk Kartu Dompet'."
                         : "Tap New Automation, then choose Transaction or When I Tap a Wallet Card."}
                     </p>
                   </div>
@@ -1173,11 +1184,11 @@ export function AppleShortcutsGuideModal({
                   </div>
                   <div>
                     <p className="font-semibold text-[13px] text-[var(--text-primary)]">
-                      Set to Run Immediately
+                      {isIndonesian ? "Atur Jalankan Segera" : "Set to Run Immediately"}
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                       {isIndonesian
-                        ? "Pilih kartu Anda, lalu aktifkan 'Jalankan Segera' (Run Immediately) agar otomatis berjalan tanpa konfirmasi."
+                        ? "Pilih kartu utama Anda, lalu aktifkan 'Jalankan Segera' agar otomatis diproses di latar belakang tanpa pertanyaan konfirmasi."
                         : "Select your primary cards, then select Run Immediately so it executes automatically in the background."}
                     </p>
                   </div>
@@ -1196,10 +1207,14 @@ export function AppleShortcutsGuideModal({
                   </div>
                   <div>
                     <p className="font-semibold text-[13px] text-[var(--text-primary)]">
-                      Open Trouvaille URL
+                      {isIndonesian ? "Buka Skema URL Trouvaille" : "Open Trouvaille URL"}
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                      Add the action <em>Open URL</em> with <code>trouvaille://add?text=Shortcut Input</code>.
+                      {isIndonesian ? (
+                        <>Tambahkan tindakan <em>Open URL</em> (Buka URL) dengan alamat <code>trouvaille://add?text=Shortcut Input</code>.</>
+                      ) : (
+                        <>Add the action <em>Open URL</em> with <code>trouvaille://add?text=Shortcut Input</code>.</>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -1208,11 +1223,11 @@ export function AppleShortcutsGuideModal({
 
             <button
               type="button"
-              onClick={() => copyToClipboard("trouvaille://add?text=", "URL Template")}
+              onClick={() => copyToClipboard("trouvaille://add?text=", isIndonesian ? "Skema Otomatisasi URL" : "URL Template")}
               className="w-full py-3 px-4 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] text-[var(--text-primary)] transition-colors cursor-pointer"
             >
-              {copiedKey === "URL Template" ? (
-                <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
+              {copiedKey === (isIndonesian ? "Skema Otomatisasi URL" : "URL Template") ? (
+                <Check size={14} className="text-[var(--text-primary)]" />
               ) : (
                 <Copy size={14} />
               )}

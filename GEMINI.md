@@ -142,3 +142,42 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
     `paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px)"` (or `pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),20px)]`).
   - The bottommost action buttons, pills, or cards must never be clipped, obstructed, or placed flush against the bottom edge of mobile displays.
 
+---
+
+## 6. Strict Non-Mixed Localization Rule (STRICT)
+
+> [!IMPORTANT]
+> **ZERO BILINGUAL MIXING ("NO GADO-GADO" LOCALIZATION)**
+> The application must be 100% pure Indonesian when `isIndonesian === true` and 100% pure English when `isIndonesian === false`.
+
+### Localization Guidelines:
+- **No Mixed Phrasing**: Never mix English terms into Indonesian sentences or badges (e.g. DO NOT write "Pintasan Back Tap (Glass UI)", "1-Tap", "Setup", "Auto", "Number", "Text", "presets", "Done" alongside Indonesian text).
+- **Comprehensive Conditional Branching**: Every user-facing string, pill label, button, modal title, placeholder, tooltip, and instructional step MUST conditionally branch:
+  `{isIndonesian ? "Terjemahan Bahasa Indonesia Baku" : "Pure English Formulation"}`
+- **Standardized Terminology**:
+  - *Shortcuts*: Pintasan
+  - *Presets*: Preset bawaan / Preset tersimpan
+  - *Number*: Angka / Nominal
+  - *Text*: Teks / Catatan
+  - *Done*: Selesai
+  - *Setup*: Atur / Konfigurasi
+  - *1-Tap*: 1-Ketukan
+  - *Auto*: Otomatis
+  - *Voice*: Suara / Dikte
+  - *Ways to Add*: Metode Pencatatan
+
+---
+
+## 7. Strict Monochrome Luxury Color Invariant (STRICT)
+
+> [!IMPORTANT]
+> **NO VIBRANT / RAINBOW COLORS (NO EMERALD, AMBER, BLUE, PURPLE, ORANGE) IN UI CONTROLS & MODALS**
+> UI controls, icons, checkmarks, badges, status pills, and instructional text MUST remain strictly monochrome luxury glassmorphism.
+
+### Palette Guidelines:
+- **Zero Colored Utility Classes**: Never use `text-emerald-500`, `text-amber-500`, `text-blue-500`, `bg-emerald-500`, `text-yellow-500`, etc., for icons, checkmarks, buttons, step numbers, or badges.
+- **Monochrome Success & Status**: Success checkmarks must inherit `text-[var(--text-primary)]`, `text-white`, or `text-zinc-400`.
+- **System Variables Only**: All elements must use `var(--text-primary)`, `var(--text-secondary)`, `var(--text-tertiary)`, `var(--glass-border)`, and `var(--glass-fill)`.
+- **Sole Exception**: Positive financial inflow in cashflow charts / balance metrics (`var(--accent)`), never on buttons, icons, or badges in setting sheets.
+
+
