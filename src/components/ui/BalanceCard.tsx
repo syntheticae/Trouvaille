@@ -44,9 +44,8 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   const { isIndonesian } = useLanguage();
   useCurrency();
   const {
-    allAccounts,
-    positiveAccounts: posAccs,
-    totalAssets: totalAssetsSum,
+    liquidAccounts,
+    liquidCapital,
     allTxs,
   } = useWalletBalances();
   const { data: bills = [] } = useBills();
@@ -57,16 +56,21 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
     () => unpaidBills.reduce((s, b) => s + Number(b.amount || 0), 0),
     [unpaidBills],
   );
-  const safeToSpend = Math.max(0, totalAssetsSum - committedAmount);
+  const safeToSpend = Math.max(0, liquidCapital - committedAmount);
 
   const isDark = theme !== "light";
   const SEGMENT_COLORS = isDark ? SEGMENT_COLORS_DARK : SEGMENT_COLORS_LIGHT;
 
-  const { items, accounts, totalAssets, isEmpty } = useMemo(() => {
-    const effectiveTotal = totalAssetsSum > 0 ? totalAssetsSum : 1;
+  const posLiquidAccs = useMemo(
+    () => liquidAccounts.filter((a) => a.balance > 0),
+    [liquidAccounts],
+  );
+
+  const { items, accounts, totalLiquidCapital, isEmpty } = useMemo(() => {
+    const effectiveTotal = liquidCapital > 0 ? liquidCapital : 1;
 
     if (allTxs.length === 0) {
-      const emptyAccounts = allAccounts.map((acc) => ({
+      const emptyAccounts = liquidAccounts.map((acc) => ({
         ...acc,
         percent: 0,
         color: SEGMENT_COLORS[0],
@@ -74,13 +78,13 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
       return {
         items: [],
         accounts: emptyAccounts,
-        totalAssets: 0,
+        totalLiquidCapital: 0,
         isEmpty: true,
       };
     }
 
     // Largest Remainder Method for exact 100% chart segments
-    const rawItems = posAccs.map((acc, idx) => {
+    const rawItems = posLiquidAccs.map((acc, idx) => {
       const raw = (acc.balance / effectiveTotal) * 100;
       const floored = Math.floor(raw);
       return {
@@ -120,7 +124,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
       .sort((a, b) => b.percent - a.percent);
 
     // Formatted accounts with percentage
-    const formattedAccounts = allAccounts.map((acc, idx) => {
+    const formattedAccounts = liquidAccounts.map((acc, idx) => {
       const pct = acc.balance > 0 ? (acc.balance / effectiveTotal) * 100 : 0;
       return {
         ...acc,
@@ -132,10 +136,10 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
     return {
       items: chartItems,
       accounts: formattedAccounts,
-      totalAssets: totalAssetsSum,
+      totalLiquidCapital: liquidCapital,
       isEmpty: false,
     };
-  }, [allAccounts, posAccs, totalAssetsSum, allTxs, SEGMENT_COLORS]);
+  }, [liquidAccounts, posLiquidAccs, liquidCapital, allTxs, SEGMENT_COLORS]);
 
   const sortedPositiveAccounts = useMemo(() => {
     return [...accounts.filter((a) => a.balance > 0)].sort(
@@ -349,7 +353,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                 className="amount text-[16px] font-semibold leading-tight mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
-                {hideBalance ? "Rp ••••••••" : formatRupiah(totalAssets)}
+                {hideBalance ? "Rp ••••••••" : formatRupiah(totalLiquidCapital)}
               </p>
             </div>
           </div>
