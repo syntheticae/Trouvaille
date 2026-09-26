@@ -115,7 +115,7 @@ export function runMonteCarloSimulation(
   const realAnnualReturn = (1 + expectedAnnualReturn) / (1 + annualInflation) - 1;
 
   // Monthly parameters for Geometric Brownian Motion
-  const monthlyDrift = (realAnnualReturn - 0.5 * annualVolatility * annualVolatility) / 12;
+  const monthlyDrift = (Math.log(1 + realAnnualReturn) - 0.5 * annualVolatility * annualVolatility) / 12;
   const monthlyVol = annualVolatility / Math.sqrt(12);
 
   // Pre-allocate paths matrix: [iteration][year]

@@ -16,6 +16,9 @@ export interface DeepLinkPrefill {
 
 export interface DeepLinkResult {
   action: "transaction" | "voice" | "scan" | "import" | "none";
+  autoSave?: boolean;
+  matchedCategoryName?: string;
+  matchedWalletName?: string;
   prefilledValues?: DeepLinkPrefill;
 }
 
@@ -61,48 +64,52 @@ export function parseDeepLink(
     // 2. Extract potential parameter tokens
     const rawText =
       params.get("text") ||
+      params.get("teks") ||
       params.get("title") ||
       params.get("q") ||
       params.get("ocr") ||
       params.get("content");
-    const directAmount = params.get("amount");
-    const directNote = params.get("note");
-    const directType = params.get("type") as TransactionType | null;
+    const directAmount = params.get("amount") || params.get("nominal");
+    const directNote = params.get("note") || params.get("catatan") || params.get("deskripsi");
+    const directType = (params.get("type") || params.get("tipe")) as TransactionType | null;
     const directCategory =
       params.get("category") ||
+      params.get("kategori") ||
       params.get("category_id") ||
       params.get("categoryId");
     const directWallet =
       params.get("wallet") ||
+      params.get("rekening") ||
+      params.get("dompet") ||
       params.get("wallet_id") ||
       params.get("walletId") ||
       params.get("account");
-    const directDate = params.get("date") || params.get("datetime");
-    const directTime = params.get("time");
+    const directDate = params.get("date") || params.get("tanggal") || params.get("datetime");
+    const directTime = params.get("time") || params.get("waktu");
 
     // Case A: Direct structured parameters (e.g. from Siri Shortcuts with ask for input)
     if (directAmount) {
       const cleanNum = parseFloat(directAmount.replace(/[^\d.]/g, ""));
-      let matchedCatId = "";
-      if (directCategory) {
-        const cat = categories.find(
-          (c) =>
-            c.id.toLowerCase() === directCategory.toLowerCase() ||
-            c.name.toLowerCase().includes(directCategory.toLowerCase()) ||
-            directCategory.toLowerCase().includes(c.name.toLowerCase())
-        );
-        if (cat) matchedCatId = cat.id;
+      let matchedCat = categories.find(
+        (c) =>
+          (directCategory && c.id.toLowerCase() === directCategory.toLowerCase()) ||
+          (directCategory && c.name.toLowerCase() === directCategory.toLowerCase()) ||
+          (directCategory && c.name.toLowerCase().includes(directCategory.toLowerCase())) ||
+          (directCategory && directCategory.toLowerCase().includes(c.name.toLowerCase()))
+      );
+      if (!matchedCat && categories.length > 0) {
+        matchedCat = categories.find((c) => c.type !== "income") || categories[0];
       }
 
-      let matchedWalletId = "";
-      if (directWallet) {
-        const wal = wallets.find(
-          (w) =>
-            w.id.toLowerCase() === directWallet.toLowerCase() ||
-            w.name.toLowerCase().includes(directWallet.toLowerCase()) ||
-            directWallet.toLowerCase().includes(w.name.toLowerCase())
-        );
-        if (wal) matchedWalletId = wal.id;
+      let matchedWal = wallets.find(
+        (w) =>
+          (directWallet && w.id.toLowerCase() === directWallet.toLowerCase()) ||
+          (directWallet && w.name.toLowerCase() === directWallet.toLowerCase()) ||
+          (directWallet && w.name.toLowerCase().includes(directWallet.toLowerCase())) ||
+          (directWallet && directWallet.toLowerCase().includes(w.name.toLowerCase()))
+      );
+      if (!matchedWal && wallets.length > 0) {
+        matchedWal = wallets[0];
       }
 
       let parsedDate: Date | undefined;
@@ -113,17 +120,24 @@ export function parseDeepLink(
         }
       }
 
+      const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
+      // Auto-save if cleanNum > 0 unless explicitly disabled via autosave=false
+      const shouldAutoSave = autoParam !== "false" && !isNaN(cleanNum) && cleanNum > 0;
+
       return {
         action: "transaction",
+        autoSave: shouldAutoSave,
+        matchedCategoryName: matchedCat?.name,
+        matchedWalletName: matchedWal?.name,
         prefilledValues: {
           amount: isNaN(cleanNum) ? undefined : cleanNum,
           note: directNote || "",
           type: directType === "income" ? "income" : "expense",
-          category_id: matchedCatId || undefined,
-          categoryId: matchedCatId || undefined,
-          wallet_id: matchedWalletId || undefined,
-          walletId: matchedWalletId || undefined,
-          date: parsedDate,
+          category_id: matchedCat?.id,
+          categoryId: matchedCat?.id,
+          wallet_id: matchedWal?.id,
+          walletId: matchedWal?.id,
+          date: parsedDate || new Date(),
           time: directTime || undefined,
         },
       };
@@ -132,12 +146,19 @@ export function parseDeepLink(
     // Case B: Raw text provided (from iOS Back Tap OCR / Share Sheet / Web Share Target)
     if (rawText) {
       const trimmedText = rawText.trim();
+      const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
+      const isAutoRequested = autoParam === "true" || autoParam === "1";
 
       // B1: Try Indonesian Bank / E-Wallet notification parser
       const bankResult = parseBankNotification(trimmedText, categories, wallets);
       if (bankResult && bankResult.amount > 0) {
+        const matchedCat = categories.find(c => c.id === bankResult.suggestedCategoryId);
+        const matchedWal = wallets.find(w => w.id === bankResult.suggestedWalletId);
         return {
           action: "transaction",
+          autoSave: isAutoRequested,
+          matchedCategoryName: matchedCat?.name,
+          matchedWalletName: matchedWal?.name,
           prefilledValues: {
             amount: bankResult.amount,
             type: bankResult.type,
@@ -146,6 +167,7 @@ export function parseDeepLink(
             categoryId: bankResult.suggestedCategoryId,
             wallet_id: bankResult.suggestedWalletId,
             walletId: bankResult.suggestedWalletId,
+            date: new Date(),
           },
         };
       }
@@ -153,16 +175,22 @@ export function parseDeepLink(
       // B2: Try Natural Language Transaction parser (e.g., "Kopi tuku 25rb pakai gopay")
       const nlpResult = parseNaturalTransaction(trimmedText, categories, wallets);
       if (nlpResult && nlpResult.amount && nlpResult.amount > 0) {
+        const matchedCat = categories.find(c => c.id === nlpResult.categoryId) || categories[0];
+        const matchedWal = wallets.find(w => w.id === nlpResult.walletId) || wallets[0];
         return {
           action: "transaction",
+          autoSave: isAutoRequested,
+          matchedCategoryName: matchedCat?.name,
+          matchedWalletName: matchedWal?.name,
           prefilledValues: {
             amount: nlpResult.amount,
             type: nlpResult.type || "expense",
             note: nlpResult.note || trimmedText.slice(0, 40),
-            category_id: nlpResult.categoryId || undefined,
-            categoryId: nlpResult.categoryId || undefined,
-            wallet_id: nlpResult.walletId || undefined,
-            walletId: nlpResult.walletId || undefined,
+            category_id: nlpResult.categoryId || matchedCat?.id,
+            categoryId: nlpResult.categoryId || matchedCat?.id,
+            wallet_id: nlpResult.walletId || matchedWal?.id,
+            walletId: nlpResult.walletId || matchedWal?.id,
+            date: new Date(),
           },
         };
       }
@@ -170,6 +198,7 @@ export function parseDeepLink(
       // B3: Fallback if amount couldn't be extracted, still open with note
       return {
         action: "transaction",
+        autoSave: false,
         prefilledValues: {
           note: trimmedText.slice(0, 60),
           type: "expense",

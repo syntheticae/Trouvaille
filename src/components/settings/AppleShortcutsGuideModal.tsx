@@ -10,13 +10,9 @@ import {
   PlusCircle,
   Zap,
   Sparkles,
-  Volume2,
-  Calendar,
-  ListFilter,
-  CreditCard,
-  FileText,
   SlidersHorizontal,
   ShieldCheck,
+  AlertCircle,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
@@ -26,7 +22,7 @@ import { useWallets } from "../../hooks/useWallets";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 
 export type TabType = "back_tap" | "action_button" | "ways_to_add" | "automation";
-type BackTapSubMode = "glass_dialog" | "voice_speak" | "app_intent";
+type BackTapSubMode = "instant_sheet" | "smart_nlp" | "glass_dialog";
 
 interface AppleShortcutsGuideModalProps {
   isOpen: boolean;
@@ -45,7 +41,7 @@ export function AppleShortcutsGuideModal({
   const { data: wallets = [] } = useWallets();
 
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
-  const [backTapMode, setBackTapMode] = useState<BackTapSubMode>("glass_dialog");
+  const [backTapMode, setBackTapMode] = useState<BackTapSubMode>("instant_sheet");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -80,9 +76,13 @@ export function AppleShortcutsGuideModal({
     copyToClipboard(list || "BCA\nMandiri\nGoPay\nTunai", isIndonesian ? "Daftar Akun / Dompet" : "Wallet List");
   };
 
-  const glassSchemeTemplate =
-    "trouvaille://add?amount=[Provided Input 1]&category=[Chosen Category]&wallet=[Chosen Wallet]&date=[Provided Date]&note=[Provided Note]";
-  const voiceSchemeTemplate = "trouvaille://add?text=[Dictated Text]";
+  const instantSchemeTemplate = "trouvaille://add";
+  const smartNlpSchemeTemplate = isIndonesian
+    ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
+    : "trouvaille://add?text=[URL Encoded Text]&autosave=true";
+  const glassSchemeTemplate = isIndonesian
+    ? "trouvaille://add?nominal=[Nominal]&kategori=[Kategori]&rekening=[Rekening]&tanggal=[Tanggal]&catatan=[Teks Terenkode]&autosave=true"
+    : "trouvaille://add?amount=[Amount]&category=[Category]&wallet=[Wallet]&date=[Date]&note=[URL Encoded Text]&autosave=true";
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
@@ -190,48 +190,354 @@ export function AppleShortcutsGuideModal({
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
+                  setBackTapMode("instant_sheet");
+                }}
+                className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
+                  backTapMode === "instant_sheet"
+                    ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
+                    : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                <Zap size={12} strokeWidth={1.5} />
+                <span>{isIndonesian ? "1 Tindakan" : "1 Action"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setBackTapMode("smart_nlp");
+                }}
+                className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
+                  backTapMode === "smart_nlp"
+                    ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
+                    : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                <Sparkles size={12} strokeWidth={1.5} />
+                <span>{isIndonesian ? "Kalimat Cerdas" : "Smart Sentence"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
                   setBackTapMode("glass_dialog");
                 }}
-                className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center ${
+                className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
                   backTapMode === "glass_dialog"
                     ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
                     : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 }`}
               >
-                {isIndonesian ? "Dialog Kaca (5 Langkah)" : "Glass Dialog (5 Steps)"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setBackTapMode("voice_speak");
-                }}
-                className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
-                  backTapMode === "voice_speak"
-                    ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
-                    : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                <Volume2 size={12} strokeWidth={1.5} />
-                <span>{isIndonesian ? "Dikte Suara" : "Voice / Speak"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setBackTapMode("app_intent");
-                }}
-                className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center ${
-                  backTapMode === "app_intent"
-                    ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
-                    : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                {isIndonesian ? "Modul Native Swift" : "Native Swift"}
+                <SlidersHorizontal size={12} strokeWidth={1.5} />
+                <span>{isIndonesian ? "Dialog Bertingkat" : "Step Dialog"}</span>
               </button>
             </div>
 
-            {/* SUB-MODE 1: 5-STEP GLASS DIALOG */}
+            {/* SUB-MODE 1: INSTANT SHEET (1 ACTION) */}
+            {backTapMode === "instant_sheet" && (
+              <div className="space-y-3">
+                <div
+                  className="p-3.5 rounded-2xl border space-y-2"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    borderColor: "var(--glass-border)",
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Zap size={14} className="text-[var(--text-primary)]" />
+                    <h4
+                      className="text-[13px] font-semibold tracking-tight"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Metode Paling Praktis: Buka Lembar Transaksi Cepat"
+                        : "Most Practical: Instant Transaction Sheet"}
+                    </h4>
+                  </div>
+                  <p
+                    className="text-[11px] leading-relaxed"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {isIndonesian
+                      ? "Cuma butuh 1 tindakan sederhana di aplikasi Pintasan iPhone! Saat bodi iPhone diketuk atau Tombol Aksi ditekan, Trouvaille seketika terbuka dengan lembar transaksi dan papan tombol angka siap diketik."
+                      : "Requires only 1 single action in Apple Shortcuts! Tapping your iPhone or pressing the Action Button immediately opens Trouvaille with the numeric keypad ready."}
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  {/* Step 1: Open URLs */}
+                  <div
+                    className="p-3 rounded-2xl border space-y-2"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
+                          1
+                        </span>
+                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                          {isIndonesian ? "Tindakan Buka URL" : "Open URLs Action"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                        URL
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
+                      {isIndonesian
+                        ? "Buka aplikasi Pintasan di iPhone, buat pintasan baru (+), lalu tambahkan satu tindakan saja yaitu 'Buka URL' dengan alamat tautan berikut:"
+                        : "Open Apple Shortcuts app, create a new shortcut (+), and add just one action 'Open URLs' pointing to this address:"}
+                    </p>
+                    <div className="pl-7 space-y-2">
+                      <code
+                        className="block p-2 rounded-xl text-[11px] font-mono border break-all"
+                        style={{
+                          background: "var(--bg-base)",
+                          borderColor: "var(--glass-border)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        {instantSchemeTemplate}
+                      </code>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(instantSchemeTemplate, isIndonesian ? "Tautan Buka Lembar" : "Instant Sheet URL")}
+                          className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          {copiedKey === (isIndonesian ? "Tautan Buka Lembar" : "Instant Sheet URL") ? (
+                            <Check size={12} className="text-[var(--text-primary)]" />
+                          ) : (
+                            <Copy size={12} />
+                          )}
+                          <span>{isIndonesian ? "Salin Tautan" : "Copy URL"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleTestDeepLink(instantSchemeTemplate)}
+                          className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <Zap size={11} />
+                          <span>{isIndonesian ? "Uji Buka Lembar" : "Test Open"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Assign to Back Tap */}
+                  <div
+                    className="p-3 rounded-2xl border space-y-1.5"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
+                          2
+                        </span>
+                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                          {isIndonesian ? "Tautkan ke Ketuk Belakang iPhone" : "Assign to iPhone Back Tap"}
+                        </span>
+                      </div>
+                      <Smartphone size={13} className="text-[var(--text-tertiary)]" />
+                    </div>
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
+                      {isIndonesian
+                        ? "Buka Pengaturan iPhone > Aksesibilitas > Sentuh > Ketuk Bagian Belakang > Ketuk Dua Kali > Pilih pintasan yang baru Anda buat. Selesai! Cukup ketuk bodi belakang iPhone 2 kali kapan saja untuk langsung mencatat."
+                        : "Open iPhone Settings > Accessibility > Touch > Back Tap > Double Tap > Select your shortcut. Done! Double-tap your phone back anytime to open the keypad."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-MODE 2: SMART NLP SENTENCE & VOICE (2 ACTIONS) */}
+            {backTapMode === "smart_nlp" && (
+              <div className="space-y-3">
+                <div
+                  className="p-3.5 rounded-2xl border space-y-2"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    borderColor: "var(--glass-border)",
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={14} className="text-[var(--text-primary)]" />
+                    <h4
+                      className="text-[13px] font-semibold tracking-tight"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Pencatatan Cerdas 1 Kalimat (Ketik atau Suara)"
+                        : "Smart 1-Sentence Logging (Text or Voice)"}
+                    </h4>
+                  </div>
+                  <p
+                    className="text-[11px] leading-relaxed"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {isIndonesian
+                      ? "Tidak perlu memilih kategori atau rekening satu per satu! Cukup masukkan satu kalimat alami (misal: 'Kopi 25rb BCA' atau 'Makan siang 50000 GoPay'). Mesin cerdas Trouvaille otomatis mendeteksi nominal, kategori, dan rekening, lalu langsung menyimpannya."
+                      : "No need to pick categories or wallets manually! Type or dictate a single natural phrase (e.g. 'Coffee 25k BCA' or 'Lunch 50000 Cash'). Trouvaille automatically detects the amount, category, and wallet, and saves immediately."}
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  {/* Action 1 */}
+                  <div
+                    className="p-3 rounded-2xl border space-y-1.5"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
+                          1
+                        </span>
+                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                          {isIndonesian ? "Minta Masukan (atau Diktekan Teks)" : "Ask for Input (or Dictate Text)"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                        Input
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
+                      {isIndonesian
+                        ? "Tambahkan tindakan 'Minta Masukan' dengan jenis Teks (atau tindakan 'Diktekan Teks' untuk suara). Tulis pertanyaan misalnya: \"Catat apa? (Contoh: Kopi 25rb BCA)\"."
+                        : "Add 'Ask for Input' with Text type (or 'Dictate Text' for speech). Prompt: \"What did you spend? (e.g. Coffee 25k Cash)\"."}
+                    </p>
+                  </div>
+
+                  {/* Action 2 */}
+                  <div
+                    className="p-3 rounded-2xl border space-y-1.5"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
+                          2
+                        </span>
+                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                          {isIndonesian ? "Enkode URL" : "URL Encode"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                        URL Encoded
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
+                      {isIndonesian
+                        ? "Tambahkan tindakan 'Enkode URL' dan masukkan teks dari tindakan sebelumnya agar spasi dan tanda baca aman."
+                        : "Add 'URL Encode' action and pass the previous text input to safely encode spaces and symbols."}
+                    </p>
+                  </div>
+
+                  {/* Action 3 */}
+                  <div
+                    className="p-3.5 rounded-2xl border space-y-2"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
+                          3
+                        </span>
+                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                          {isIndonesian ? "Buka URL & Simpan Otomatis" : "Open URLs & Direct Auto-Save"}
+                        </span>
+                      </div>
+                      <Zap size={13} className="text-[var(--text-primary)]" />
+                    </div>
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
+                      {isIndonesian
+                        ? "Tambahkan tindakan 'Buka URL' dengan templat tautan berikut dan masukkan variabel hasil enkode URL:"
+                        : "Add 'Open URLs' action with the following template using the URL encoded variable:"}
+                    </p>
+                    <div className="pl-7 space-y-2">
+                      <code
+                        className="block p-2 rounded-xl text-[10px] font-mono border break-all"
+                        style={{
+                          background: "var(--bg-base)",
+                          borderColor: "var(--glass-border)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        {smartNlpSchemeTemplate}
+                      </code>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(smartNlpSchemeTemplate, isIndonesian ? "Templat Kalimat Cerdas" : "Smart Sentence Template")}
+                          className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          {copiedKey === (isIndonesian ? "Templat Kalimat Cerdas" : "Smart Sentence Template") ? (
+                            <Check size={12} className="text-[var(--text-primary)]" />
+                          ) : (
+                            <Copy size={12} />
+                          )}
+                          <span>{isIndonesian ? "Salin Templat Tautan" : "Copy Scheme Template"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleTestDeepLink("trouvaille://add?text=Kopi%20susu%2025rb%20pakai%20BCA&autosave=true")}
+                          className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <Zap size={11} />
+                          <span>{isIndonesian ? "Uji Simpan Otomatis" : "Test Auto-Save"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Examples */}
+                  <div
+                    className="p-3 rounded-2xl border space-y-1.5 text-[11px]"
+                    style={{
+                      background: "var(--bg-base)",
+                      borderColor: "var(--glass-border)",
+                    }}
+                  >
+                    <p className="font-semibold text-[var(--text-primary)]">
+                      {isIndonesian ? "Contoh Kalimat yang Dikenali Otomatis:" : "Supported Sentence Examples:"}
+                    </p>
+                    <ul className="space-y-1 text-[var(--text-secondary)] pl-2">
+                      {isIndonesian ? (
+                        <>
+                          <li>• "Kopi 25 ribu pakai BCA" ➔ Rp 25.000, Kategori Makanan & Minuman, Rekening BCA</li>
+                          <li>• "Makan siang 50000 bayar GoPay" ➔ Rp 50.000, Kategori Makanan, Rekening GoPay</li>
+                          <li>• "Beli bensin 100rb Tunai" ➔ Rp 100.000, Kategori Transportasi, Rekening Tunai</li>
+                          <li>• "Makan malam bersama 150 ribu" ➔ Rp 150.000, Kategori Makanan, Rekening Utama</li>
+                        </>
+                      ) : (
+                        <>
+                          <li>• "Coffee 25k using Cash" ➔ 25,000, Food & Drinks, Cash</li>
+                          <li>• "Lunch 50000 with Apple Pay" ➔ 50,000, Food, Apple Pay</li>
+                          <li>• "Gasoline 100k checking account" ➔ 100,000, Transport, Bank</li>
+                          <li>• "Dinner with friends 150k" ➔ 150,000, Food, Default Wallet</li>
+                        </>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-MODE 3: REVISED FAST GLASS DIALOG */}
             {backTapMode === "glass_dialog" && (
               <div className="space-y-3">
                 <div
@@ -248,8 +554,8 @@ export function AppleShortcutsGuideModal({
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Cara Buat Pintasan Dialog Kaca (Sesuai Video Showcase)"
-                        : "How to Build the Glass Dialog Shortcut (Showcase Style)"}
+                        ? "Panduan Pintasan Dialog Bertingkat Sistem"
+                        : "System Step-by-Step Dialog Guide"}
                     </h4>
                   </div>
                   <p
@@ -257,12 +563,31 @@ export function AppleShortcutsGuideModal({
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {isIndonesian
-                      ? "Buka aplikasi Pintasan (Shortcuts) di iPhone, ketuk tanda '+' untuk membuat pintasan baru bernama 'Catat Trouvaille', lalu susun 6 tindakan berikut:"
-                      : "Open Apple Shortcuts app on your iPhone, tap '+' to create a new shortcut named 'Trouvaille Quick Log', then arrange these 6 actions:"}
+                      ? "Metode teks balok: Menggunakan tindakan Teks dan Pisahkan Teks agar Anda dapat menempel seluruh daftar kategori dan rekening sekaligus tanpa perlu menekan tombol tambah berulang kali."
+                      : "Bulk text method: Uses Text and Split Text actions so you can paste all categories and accounts at once without repeatedly tapping add item."}
                   </p>
                 </div>
 
-                {/* 5 Actions Cards */}
+                {/* Important Renaming Notice Box */}
+                <div
+                  className="p-3 rounded-2xl border text-[11px] space-y-1"
+                  style={{
+                    background: "var(--bg-base)",
+                    borderColor: "var(--glass-border)",
+                  }}
+                >
+                  <div className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
+                    <Sparkles size={12} strokeWidth={1.5} />
+                    <span>{isIndonesian ? "Petunjuk Penting: Ganti Nama Variabel" : "Critical Tip: Rename Variables"}</span>
+                  </div>
+                  <p className="text-[var(--text-secondary)] leading-relaxed">
+                    {isIndonesian
+                      ? "Agar tidak tertukar pada langkah akhir, ketuk setiap variabel biru pada papan ketik iOS lalu pilih opsi 'Ganti Nama' sesuai urutan: Nominal, Kategori, Rekening, Tanggal, Catatan."
+                      : "To avoid ambiguous variables, tap each blue variable on iOS keyboard and choose 'Rename' to: Amount, Category, Wallet, Date, Note."}
+                  </p>
+                </div>
+
+                {/* 8 Action Cards */}
                 <div className="space-y-2.5">
                   {/* Action 1: Ask for Number */}
                   <div
@@ -278,21 +603,21 @@ export function AppleShortcutsGuideModal({
                           1
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Minta Masukan (Nominal)" : "Ask for Input (Amount)"}
+                          {isIndonesian ? "Minta Masukan Nominal" : "Ask for Input (Amount)"}
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-tertiary)]">
-                        {isIndonesian ? "Angka" : "Number"}
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                        {isIndonesian ? "Nominal" : "Amount"}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7">
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Pilih tindakan 'Ask for Input' (Minta Masukan), atur tipe ke 'Number' (Angka) dengan teks perintah: \"Berapa nominalnya?\""
-                        : "Add action 'Ask for Input', set input type to 'Number' with prompt text: \"How much was it?\""}
+                        ? "Tambahkan tindakan 'Minta Masukan', atur jenis masukan ke 'Angka' dengan pertanyaan: \"Berapa nominalnya?\". Ketuk variabel hasilnya lalu pilih opsi 'Ganti Nama' menjadi 'Nominal'."
+                        : "Add action 'Ask for Input', set type to 'Number' with prompt: \"How much was it?\". Tap the output variable and select 'Rename' to 'Amount'."}
                     </p>
                   </div>
 
-                  {/* Action 2: Choose from List - Kategori */}
+                  {/* Action 2: Text + Split Text + Choose from List - Kategori */}
                   <div
                     className="p-3 rounded-2xl border space-y-2"
                     style={{
@@ -306,16 +631,33 @@ export function AppleShortcutsGuideModal({
                           2
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Pilih dari Daftar (Kategori)" : "Choose from List (Category)"}
+                          {isIndonesian ? "Teks & Pisahkan Teks Kategori" : "Text & Split Text (Category)"}
                         </span>
                       </div>
-                      <ListFilter size={13} className="text-[var(--text-tertiary)]" />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                        {isIndonesian ? "Kategori" : "Category"}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7">
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Tambahkan tindakan 'List' (Daftar) lalu isi daftar kategori pengeluaran Anda. Sambungkan dengan tindakan 'Choose from List' (Pilih dari Daftar) dengan perintah: \"Kategori pengeluaran apa?\""
-                        : "Add a 'List' action filled with your categories. Follow with 'Choose from List' action with prompt: \"What kind of expense is it?\""}
+                        ? "Susun tiga tindakan berurutan berikut untuk memilih kategori:"
+                        : "Arrange these 3 consecutive actions to select category:"}
                     </p>
+                    <div className="pl-7 space-y-1 text-[11px] text-[var(--text-secondary)] font-mono">
+                      {isIndonesian ? (
+                        <>
+                          <div>a. <strong>Teks</strong> ➔ Tempel daftar kategori Anda di bawah</div>
+                          <div>b. <strong>Pisahkan Teks</strong> ➔ Berdasarkan 'Baris Baru'</div>
+                          <div>c. <strong>Pilih dari Daftar</strong> ➔ Pilih dari 'Teks Terpisah', pertanyaan: "Kategori apa?"</div>
+                        </>
+                      ) : (
+                        <>
+                          <div>a. <strong>Text</strong> ➔ Paste your category list below</div>
+                          <div>b. <strong>Split Text</strong> ➔ By 'New Lines'</div>
+                          <div>c. <strong>Choose from List</strong> ➔ Select from 'Split Text', prompt: "Which category?"</div>
+                        </>
+                      )}
+                    </div>
                     <div className="pl-7">
                       <button
                         type="button"
@@ -330,9 +672,14 @@ export function AppleShortcutsGuideModal({
                         <span>{isIndonesian ? "Salin Daftar Kategori Saya" : "Copy My Categories"}</span>
                       </button>
                     </div>
+                    <p className="text-[10px] text-[var(--text-tertiary)] pl-7">
+                      {isIndonesian
+                        ? "Penting: Ketuk variabel 'Item yang Dipilih' lalu pilih opsi 'Ganti Nama' menjadi 'Kategori'."
+                        : "Important: Tap 'Chosen Item' variable and select 'Rename' to 'Category'."}
+                    </p>
                   </div>
 
-                  {/* Action 3: Choose from List - Akun / Dompet */}
+                  {/* Action 3: Text + Split Text + Choose from List - Akun / Dompet */}
                   <div
                     className="p-3 rounded-2xl border space-y-2"
                     style={{
@@ -346,16 +693,33 @@ export function AppleShortcutsGuideModal({
                           3
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Pilih dari Daftar (Akun / Dompet)" : "Choose from List (Account / Wallet)"}
+                          {isIndonesian ? "Teks & Pisahkan Teks Rekening" : "Text & Split Text (Wallet)"}
                         </span>
                       </div>
-                      <CreditCard size={13} className="text-[var(--text-tertiary)]" />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                        {isIndonesian ? "Rekening" : "Wallet"}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7">
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Tambahkan tindakan 'List' (Daftar) berisi nama dompet atau rekening Anda (misal BCA, Mandiri, Tunai). Sambungkan dengan 'Choose from List' (Pilih dari Daftar) dengan perintah: \"Akun atau dompet yang mana?\""
-                        : "Add a 'List' action containing your accounts (e.g. BCA, GoPay, Cash). Follow with 'Choose from List' with prompt: \"Which account or wallet?\""}
+                        ? "Sama seperti kategori, susun tiga tindakan berurutan berikut untuk rekening atau dompet:"
+                        : "Just like category, arrange these 3 consecutive actions for wallets:"}
                     </p>
+                    <div className="pl-7 space-y-1 text-[11px] text-[var(--text-secondary)] font-mono">
+                      {isIndonesian ? (
+                        <>
+                          <div>a. <strong>Teks</strong> ➔ Tempel daftar rekening Anda di bawah</div>
+                          <div>b. <strong>Pisahkan Teks</strong> ➔ Berdasarkan 'Baris Baru'</div>
+                          <div>c. <strong>Pilih dari Daftar</strong> ➔ Pilih dari 'Teks Terpisah', pertanyaan: "Rekening mana?"</div>
+                        </>
+                      ) : (
+                        <>
+                          <div>a. <strong>Text</strong> ➔ Paste your wallet list below</div>
+                          <div>b. <strong>Split Text</strong> ➔ By 'New Lines'</div>
+                          <div>c. <strong>Choose from List</strong> ➔ Select from 'Split Text', prompt: "Which wallet?"</div>
+                        </>
+                      )}
+                    </div>
                     <div className="pl-7">
                       <button
                         type="button"
@@ -370,6 +734,11 @@ export function AppleShortcutsGuideModal({
                         <span>{isIndonesian ? "Salin Daftar Akun Saya" : "Copy My Wallets"}</span>
                       </button>
                     </div>
+                    <p className="text-[10px] text-[var(--text-tertiary)] pl-7">
+                      {isIndonesian
+                        ? "Penting: Ketuk variabel 'Item yang Dipilih' lalu pilih opsi 'Ganti Nama' menjadi 'Rekening'."
+                        : "Important: Tap 'Chosen Item' variable and select 'Rename' to 'Wallet'."}
+                    </p>
                   </div>
 
                   {/* Action 4: Ask for Date and Time */}
@@ -386,15 +755,17 @@ export function AppleShortcutsGuideModal({
                           4
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Minta Masukan (Tanggal & Waktu)" : "Ask for Input (Date & Time)"}
+                          {isIndonesian ? "Minta Masukan Tanggal & Waktu" : "Ask for Input (Date & Time)"}
                         </span>
                       </div>
-                      <Calendar size={13} className="text-[var(--text-tertiary)]" />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                        {isIndonesian ? "Tanggal" : "Date"}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7">
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Tambahkan tindakan 'Ask for Input' (Minta Masukan), pilih tipe 'Date and Time' (Tanggal dan Waktu) dengan perintah: \"Kapan transaksi terjadi?\" — tindakan ini memunculkan kalender kaca bawaan iOS."
-                        : "Add 'Ask for Input', select type 'Date and Time' with prompt: \"What day was it?\" — this displays the native iOS frosted calendar sheet."}
+                        ? "Tambahkan tindakan 'Minta Masukan', atur jenis masukan ke 'Tanggal dan Waktu' dengan pertanyaan: \"Kapan transaksi terjadi?\". Ketuk variabel hasilnya lalu pilih opsi 'Ganti Nama' menjadi 'Tanggal'."
+                        : "Add action 'Ask for Input', set type to 'Date and Time' with prompt: \"When was the transaction?\". Tap the variable and select 'Rename' to 'Date'."}
                     </p>
                   </div>
 
@@ -412,21 +783,23 @@ export function AppleShortcutsGuideModal({
                           5
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Minta Masukan (Catatan)" : "Ask for Input (Note / Description)"}
+                          {isIndonesian ? "Minta Masukan Catatan" : "Ask for Input (Note / Description)"}
                         </span>
                       </div>
-                      <FileText size={13} className="text-[var(--text-tertiary)]" />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                        {isIndonesian ? "Catatan" : "Note"}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7">
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Tambahkan tindakan 'Ask for Input' (Minta Masukan), pilih tipe 'Text' (Teks) dengan perintah: \"Catatan transaksi apa?\" untuk mencatat rincian atau merchant belanja."
-                        : "Add 'Ask for Input', select type 'Text' with prompt: \"What did you buy?\" to record merchant or description."}
+                        ? "Tambahkan tindakan 'Minta Masukan', atur jenis masukan ke 'Teks' dengan pertanyaan: \"Catatan transaksi apa?\". Ketuk variabel hasilnya lalu pilih opsi 'Ganti Nama' menjadi 'Catatan'."
+                        : "Add action 'Ask for Input', set type to 'Text' with prompt: \"What was this transaction for?\". Tap variable and select 'Rename' to 'Note'."}
                     </p>
                   </div>
 
-                  {/* Action 6: Open URL */}
+                  {/* Action 6: URL Encode for Note */}
                   <div
-                    className="p-3.5 rounded-2xl border space-y-2"
+                    className="p-3 rounded-2xl border space-y-1.5"
                     style={{
                       background: "var(--bg-elevated)",
                       borderColor: "var(--glass-border)",
@@ -438,17 +811,77 @@ export function AppleShortcutsGuideModal({
                           6
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Buka URL (Kirim ke Trouvaille)" : "Open URLs (Send to Trouvaille)"}
+                          {isIndonesian ? "Enkode URL Catatan" : "URL Encode (Sanitize Note Text)"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                        {isIndonesian ? "Teks Terenkode" : "URL Encoded Text"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
+                      {isIndonesian
+                        ? "Tambahkan tindakan 'Enkode URL' lalu masukkan variabel 'Catatan'. Tindakan ini memastikan spasi dan tanda baca aman agar tautan tidak terpotong."
+                        : "Add action 'URL Encode' and pass the 'Note' variable. This safely escapes spaces and symbols so the URL never breaks."}
+                    </p>
+                  </div>
+
+                  {/* Action 7: Open URLs */}
+                  <div
+                    className="p-3.5 rounded-2xl border space-y-2.5"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
+                          7
+                        </span>
+                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                          {isIndonesian ? "Buka URL & Simpan Otomatis" : "Open URLs (Direct Auto-Save)"}
                         </span>
                       </div>
                       <Zap size={13} className="text-[var(--text-primary)]" />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Tambahkan tindakan 'Open URLs' (Buka URL) lalu masukkan skema URL di bawah ini dengan menyematkan variabel dari langkah 1 hingga 5:"
-                        : "Add action 'Open URLs' and paste the URL Scheme below, inserting variables from steps 1 to 5:"}
+                        ? "Tambahkan tindakan 'Buka URL' lalu masukkan templat skema berikut dengan menyematkan variabel dari papan ketik:"
+                        : "Add action 'Open URLs' and paste the URL scheme template below, inserting Magic Variables from your keyboard:"}
                     </p>
-                    <div className="pl-7 space-y-2">
+
+                    {/* Variable Badges Breakdown */}
+                    <div className="pl-7 space-y-1.5">
+                      <div
+                        className="p-2.5 rounded-xl border text-[11px] space-y-1"
+                        style={{
+                          background: "var(--bg-base)",
+                          borderColor: "var(--glass-border)",
+                        }}
+                      >
+                        <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] block">
+                          {isIndonesian ? "Panduan Variabel Papan Ketik (Bukan Ketik Manual):" : "Keyboard Variable Picker Mapping:"}
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
+                          <div>• {isIndonesian ? "nominal=" : "amount="} ➔ <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">{isIndonesian ? "Nominal" : "Amount"}</span></div>
+                          <div>• {isIndonesian ? "&kategori=" : "&category="} ➔ <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">{isIndonesian ? "Kategori" : "Category"}</span></div>
+                          <div>• {isIndonesian ? "&rekening=" : "&wallet="} ➔ <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">{isIndonesian ? "Rekening" : "Wallet"}</span></div>
+                          <div>• {isIndonesian ? "&tanggal=" : "&date="} ➔ <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">{isIndonesian ? "Tanggal" : "Date"}</span></div>
+                          <div className="sm:col-span-2">• {isIndonesian ? "&catatan=" : "&note="} ➔ <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">{isIndonesian ? "Teks Terenkode" : "URL Encoded Text"}</span></div>
+                          <div className="sm:col-span-2">• &autosave=true ➔ <span className="text-[var(--text-secondary)]">{isIndonesian ? "Teks biasa (simpan langsung)" : "Plain text (instant auto-save)"}</span></div>
+                        </div>
+                      </div>
+
+                      {/* Explicit Warning */}
+                      <div className="flex items-start gap-1.5 p-2 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[10px] text-[var(--text-secondary)] leading-relaxed">
+                        <AlertCircle size={13} className="shrink-0 mt-0.5 text-[var(--text-primary)]" strokeWidth={1.75} />
+                        <span>
+                          {isIndonesian
+                            ? "PERHATIAN: Jangan ketik tanda kurung siku '[ ]' secara manual! Tanda kurung siku menunjukkan variabel yang harus dipilih dari menu bilah papan ketik iPhone."
+                            : "NOTE: Do not type square brackets '[ ]' manually! They represent dynamic Magic Variables to select from the iOS keyboard picker."}
+                        </span>
+                      </div>
+
                       <code
                         className="block p-2 rounded-xl text-[10px] font-mono border break-all"
                         style={{
@@ -462,10 +895,10 @@ export function AppleShortcutsGuideModal({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => copyToClipboard(glassSchemeTemplate, isIndonesian ? "Templat Skema URL Kaca" : "Glass Scheme Template")}
+                          onClick={() => copyToClipboard(glassSchemeTemplate, isIndonesian ? "Templat Skema URL" : "Scheme Template")}
                           className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
-                          {copiedKey === (isIndonesian ? "Templat Skema URL Kaca" : "Glass Scheme Template") ? (
+                          {copiedKey === (isIndonesian ? "Templat Skema URL" : "Scheme Template") ? (
                             <Check size={12} className="text-[var(--text-primary)]" />
                           ) : (
                             <Copy size={12} />
@@ -476,56 +909,23 @@ export function AppleShortcutsGuideModal({
                           type="button"
                           onClick={() =>
                             handleTestDeepLink(
-                              `trouvaille://add?amount=50000&category=${encodeURIComponent(
+                              `trouvaille://add?${isIndonesian ? "nominal" : "amount"}=50000&${isIndonesian ? "kategori" : "category"}=${encodeURIComponent(
                                 categories[0]?.name || "Makanan"
-                              )}&wallet=${encodeURIComponent(
+                              )}&${isIndonesian ? "rekening" : "wallet"}=${encodeURIComponent(
                                 wallets[0]?.name || "BCA"
-                              )}&note=Test%20Back%20Tap`
+                              )}&${isIndonesian ? "catatan" : "note"}=Makan%20Siang&autosave=true`
                             )
                           }
                           className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
                           <Zap size={11} />
-                          <span>{isIndonesian ? "Uji Tautan" : "Test Link"}</span>
+                          <span>{isIndonesian ? "Uji Simpan Otomatis" : "Test Auto-Save"}</span>
                         </button>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
 
-            {/* SUB-MODE 2: VOICE / SPEAK BACK TAP */}
-            {backTapMode === "voice_speak" && (
-              <div className="space-y-3">
-                <div
-                  className="p-3.5 rounded-2xl border space-y-2"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Mic size={14} className="text-[var(--text-primary)]" />
-                    <h4
-                      className="text-[13px] font-semibold tracking-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian ? "Dikte Suara Cepat (Dikte & Catat)" : "Voice Dictation Quick-Add"}
-                    </h4>
-                  </div>
-                  <p
-                    className="text-[11px] leading-relaxed"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian
-                      ? "Cukup ketuk 2x bodi belakang iPhone lalu ucapkan transaksi Anda tanpa mengetik. Kecerdasan buatan Trouvaille mengenali nominal, dompet, dan kategori secara otomatis!"
-                      : "Double tap your iPhone back and speak your expense naturally without typing. Trouvaille AI parses amount, wallet, and category automatically!"}
-                  </p>
-                </div>
-
-                <div className="space-y-2.5">
-                  {/* Step 1: Dictate Text */}
+                  {/* Action 8: Show Notification */}
                   <div
                     className="p-3 rounded-2xl border space-y-1.5"
                     style={{
@@ -536,173 +936,20 @@ export function AppleShortcutsGuideModal({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          1
+                          8
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Tindakan 'Dictate Text' (Diktekan Teks)" : "Action 'Dictate Text' (Speech Recognition)"}
+                          {isIndonesian ? "Tampilkan Pemberitahuan" : "Show Notification"}
                         </span>
                       </div>
-                      <Mic size={13} className="text-[var(--text-tertiary)]" />
+                      <ShieldCheck size={13} className="text-[var(--text-tertiary)]" />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Di aplikasi Pintasan iPhone, tambahkan tindakan 'Dictate Text' (Diktekan Teks). Atur bahasa ke Bahasa Indonesia atau English. Mikrofon Siri akan langsung mendengar saat bodi iPhone diketuk."
-                        : "In Apple Shortcuts, add 'Dictate Text' action. Set language to English or Indonesian. Siri microphone listens immediately upon back-tap."}
+                        ? "Tambahkan tindakan 'Tampilkan Pemberitahuan'. Judul: 'Trouvaille', Pesan: \"Transaksi Dicatat: Rp [Nominal] • [Kategori] • [Rekening]\". Banner notifikasi iOS akan muncul mengonfirmasi pencatatan transaksi secara instan."
+                        : "Add action 'Show Notification'. Title: 'Trouvaille', Body: \"Transaction Recorded: Rp [Amount] • [Category] • [Wallet]\". This delivers an instant iOS notification confirmation banner."}
                     </p>
                   </div>
-
-                  {/* Step 2: Open URLs */}
-                  <div
-                    className="p-3.5 rounded-2xl border space-y-2"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          2
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Tindakan 'Open URLs' (Kirim ke Pengurai AI)" : "Action 'Open URLs' (Send to AI Parser)"}
-                        </span>
-                      </div>
-                      <Zap size={13} className="text-[var(--text-primary)]" />
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Tambahkan tindakan 'Open URLs' (Buka URL) dengan skema berikut dan masukkan variabel 'Dictated Text' (Teks yang Didiktekan):"
-                        : "Add 'Open URLs' action with the following scheme using the 'Dictated Text' variable:"}
-                    </p>
-                    <div className="pl-7 space-y-2">
-                      <code
-                        className="block p-2 rounded-xl text-[10px] font-mono border break-all"
-                        style={{
-                          background: "var(--bg-base)",
-                          borderColor: "var(--glass-border)",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        {voiceSchemeTemplate}
-                      </code>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(voiceSchemeTemplate, isIndonesian ? "Templat Skema Suara" : "Voice Scheme Template")}
-                          className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          {copiedKey === (isIndonesian ? "Templat Skema Suara" : "Voice Scheme Template") ? (
-                            <Check size={12} className="text-[var(--text-primary)]" />
-                          ) : (
-                            <Copy size={12} />
-                          )}
-                          <span>{isIndonesian ? "Salin Skema Suara" : "Copy Voice Scheme"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleTestDeepLink("trouvaille://add?text=Kopi%20susu%2025rb%20pakai%20BCA")}
-                          className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          <Zap size={11} />
-                          <span>{isIndonesian ? "Uji Contoh" : "Test Sample"}</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Examples */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-1.5 text-[11px]"
-                    style={{
-                      background: "var(--bg-base)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <p className="font-semibold text-[var(--text-primary)]">
-                      {isIndonesian ? "Contoh Kalimat yang Dikenali:" : "Supported Voice Phrases:"}
-                    </p>
-                    <ul className="space-y-1 text-[var(--text-secondary)] pl-2">
-                      {isIndonesian ? (
-                        <>
-                          <li>• "Kopi kenangan 25 ribu pakai BCA"</li>
-                          <li>• "Makan siang 50000 bayar GoPay"</li>
-                          <li>• "Beli bensin 100rb Tunai"</li>
-                          <li>• "Makan malam bersama 150 ribu"</li>
-                        </>
-                      ) : (
-                        <>
-                          <li>• "Coffee 25k using Cash"</li>
-                          <li>• "Lunch 50000 with Apple Pay"</li>
-                          <li>• "Gasoline 100k checking account"</li>
-                          <li>• "Dinner with friends 150k"</li>
-                        </>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* SUB-MODE 3: NATIVE SWIFT APP INTENT */}
-            {backTapMode === "app_intent" && (
-              <div className="space-y-3">
-                <div
-                  className="p-3.5 rounded-2xl border space-y-2"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={14} className="text-[var(--text-primary)]" />
-                    <h4
-                      className="text-[13px] font-semibold tracking-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian ? "Penyedia Pintasan & App Intent Native iOS 16+" : "Native iOS 16+ App Intent & Shortcuts Provider"}
-                    </h4>
-                  </div>
-                  <p
-                    className="text-[11px] leading-relaxed"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian
-                      ? "Untuk build native iOS (Xcode/TestFlight), Trouvaille telah dilengkapi modul QuickLogIntent.swift yang otomatis mendaftarkan Pintasan Aplikasi tanpa perlu perakitan manual."
-                      : "For native iOS builds (Xcode/TestFlight), Trouvaille includes QuickLogIntent.swift which automatically registers App Shortcuts without manual assembly."}
-                  </p>
-                </div>
-
-                <div
-                  className="p-3.5 rounded-2xl border space-y-2 text-[11px]"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <p className="font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Fitur Intent Native:" : "Native Intent Features:"}
-                  </p>
-                  <ul className="space-y-1.5 text-[var(--text-secondary)]">
-                    <li className="flex items-start gap-1.5">
-                      <span className="text-[var(--text-primary)] font-bold">•</span>
-                      <span>
-                        <strong>openAppWhenRun = false:</strong> {isIndonesian ? "Berjalan 100% di latar belakang daemon iOS tanpa membuka jendela aplikasi penuh." : "Executes 100% in background iOS daemon without launching the full web window."}
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-1.5">
-                      <span className="text-[var(--text-primary)] font-bold">•</span>
-                      <span>
-                        <strong>{isIndonesian ? "Penyimpanan App Group" : "App Group Storage"}:</strong> {isIndonesian ? "Tersimpan aman di memori lokal bersama (UserDefaults) untuk disinkronkan langsung ke basis data saat Trouvaille dibuka." : "Securely buffered in shared UserDefaults and synced directly upon app resume."}
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-1.5">
-                      <span className="text-[var(--text-primary)] font-bold">•</span>
-                      <span>
-                        <strong>{isIndonesian ? "Registrasi Siri Otomatis" : "Auto Siri Registration"}:</strong> {isIndonesian ? "Langsung dapat dipanggil via suara: 'Hai Siri, Catat cepat di Trouvaille'." : "Can be invoked immediately via 'Hey Siri, Quick log in Trouvaille'."}
-                      </span>
-                    </li>
-                  </ul>
                 </div>
               </div>
             )}
@@ -927,7 +1174,7 @@ export function AppleShortcutsGuideModal({
                 steps: isIndonesian
                   ? [
                       "Buka aplikasi Pintasan di iPhone, lalu ketuk tanda '+' untuk membuat pintasan baru.",
-                      "Cari tindakan 'Open URL' (Buka URL), lalu masukkan skema 'trouvaille://voice'.",
+                      "Cari tindakan 'Buka URL', lalu masukkan skema 'trouvaille://voice'.",
                       "Beri nama pintasan 'Catat Pengeluaran' atau 'Suara Trouvaille'.",
                       "Kini cukup ucapkan 'Hai Siri, Catat Pengeluaran' — mikrofon langsung aktif mendengar!",
                     ]
@@ -948,7 +1195,7 @@ export function AppleShortcutsGuideModal({
                 scheme: "trouvaille://add",
                 steps: isIndonesian
                   ? [
-                      "Buat pintasan baru dengan tindakan 'Open URL', lalu masukkan 'trouvaille://add'.",
+                      "Buat pintasan baru dengan tindakan 'Buka URL', lalu masukkan 'trouvaille://add'.",
                       "Tambahkan widget Pintasan ke Layar Terkunci atau Layar Utama iPhone Anda.",
                       "Ketuk widget satu kali kapan pun ingin membuka modal pencatatan tanpa navigasi berbelit.",
                     ]
@@ -968,7 +1215,7 @@ export function AppleShortcutsGuideModal({
                 scheme: "trouvaille://scan",
                 steps: isIndonesian
                   ? [
-                      "Buat pintasan baru dengan tindakan 'Open URL' dan skema 'trouvaille://scan'.",
+                      "Buat pintasan baru dengan tindakan 'Buka URL' dan skema 'trouvaille://scan'.",
                       "Pasang pintasan ini di menu Ketuk Bagian Belakang atau Tombol Tindakan.",
                       "Arahkan kamera ke struk belanja; AI Trouvaille memproses merchant dan nominal belanja.",
                     ]
@@ -1005,17 +1252,17 @@ export function AppleShortcutsGuideModal({
                 desc: isIndonesian
                   ? "Bagikan teks tagihan dari WhatsApp atau SMS perbankan ke Trouvaille."
                   : "Share transaction text from WhatsApp or SMS banking directly to Trouvaille.",
-                scheme: "trouvaille://add?text=",
+                scheme: "trouvaille://add?text=[Shortcut Input]&autosave=true",
                 steps: isIndonesian
                   ? [
-                      "Di rincian pintasan, aktifkan opsi 'Show in Share Sheet' (Tampilkan di Lembar Berbagi).",
-                      "Konfigurasikan tindakan URL: 'trouvaille://add?text=[Shortcut Input]'.",
-                      "Saat menerima pesan tagihan atau mutasi, pilih Bagikan > Trouvaille untuk penguraian instan.",
+                      "Di rincian pintasan, aktifkan opsi 'Tampilkan di Lembar Berbagi'.",
+                      "Konfigurasikan tindakan URL: 'trouvaille://add?text=[Shortcut Input]&autosave=true'.",
+                      "Saat menerima pesan tagihan atau mutasi, pilih Bagikan > Trouvaille untuk penguraian instan & simpan otomatis.",
                     ]
                   : [
                       "In Shortcut details, enable 'Show in Share Sheet'.",
-                      "Configure the URL action as: 'trouvaille://add?text=[Shortcut Input]'.",
-                      "When receiving an SMS or message, tap Share > Trouvaille for instant auto-parse.",
+                      "Configure the URL action as: 'trouvaille://add?text=[Shortcut Input]&autosave=true'.",
+                      "When receiving an SMS or message, tap Share > Trouvaille for instant auto-parse & auto-save.",
                     ],
               },
               {
@@ -1211,9 +1458,9 @@ export function AppleShortcutsGuideModal({
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                       {isIndonesian ? (
-                        <>Tambahkan tindakan <em>Open URL</em> (Buka URL) dengan alamat <code>trouvaille://add?text=Shortcut Input</code>.</>
+                        <>Tambahkan tindakan <em>Buka URL</em> dengan alamat <code>trouvaille://add?text=Shortcut Input&amp;autosave=true</code>.</>
                       ) : (
-                        <>Add the action <em>Open URL</em> with <code>trouvaille://add?text=Shortcut Input</code>.</>
+                        <>Add the action <em>Open URL</em> with <code>trouvaille://add?text=Shortcut Input&amp;autosave=true</code>.</>
                       )}
                     </p>
                   </div>
@@ -1223,7 +1470,7 @@ export function AppleShortcutsGuideModal({
 
             <button
               type="button"
-              onClick={() => copyToClipboard("trouvaille://add?text=", isIndonesian ? "Skema Otomatisasi URL" : "URL Template")}
+              onClick={() => copyToClipboard("trouvaille://add?text=[Shortcut Input]&autosave=true", isIndonesian ? "Skema Otomatisasi URL" : "URL Template")}
               className="w-full py-3 px-4 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] text-[var(--text-primary)] transition-colors cursor-pointer"
             >
               {copiedKey === (isIndonesian ? "Skema Otomatisasi URL" : "URL Template") ? (

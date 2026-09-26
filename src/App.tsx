@@ -12,12 +12,19 @@ import {
   useWallets,
   walletKeys,
 } from "./hooks/useWallets";
-import { useAllTransactions, transactionKeys } from "./hooks/useTransactions";
+import { useAllTransactions, useAddTransaction, transactionKeys } from "./hooks/useTransactions";
 import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen";
 import { ClipboardTransactionBanner } from "./components/common/ClipboardTransactionBanner";
 import { App as CapApp } from "@capacitor/app";
 import { parseDeepLink } from "./lib/deepLinkHandler";
+import { useLanguage } from "./contexts/LanguageContext";
+import { triggerSuccessHaptic } from "./lib/haptics";
+import { format } from "date-fns";
+import {
+  ShortcutSuccessDialog,
+  type ShortcutRecordedTxData,
+} from "./components/transactions/ShortcutSuccessDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchAllTransactionsFromSupabase } from "./hooks/useTransactions";
 import { supabase } from "./lib/supabase";
@@ -125,6 +132,9 @@ function AppShell() {
   const [isPrivacyShieldActive, setIsPrivacyShieldActive] = useState(false);
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
+  const addTxMutation = useAddTransaction();
+  const { isIndonesian } = useLanguage();
+  const [recordedShortcutTx, setRecordedShortcutTx] = useState<ShortcutRecordedTxData | null>(null);
 
   // Handle iOS Custom URL Scheme (trouvaille://...), Back Tap Shortcuts, and Web Share Target
   useEffect(() => {
@@ -132,10 +142,65 @@ function AppShell() {
       if (!rawUrl) return;
       const res = parseDeepLink(rawUrl, categories, wallets);
       if (res.action === "transaction") {
-        if (res.prefilledValues) {
-          setPrefilledValues(res.prefilledValues);
+        if (res.autoSave && res.prefilledValues?.amount && res.prefilledValues.amount > 0) {
+          const targetAmount = res.prefilledValues.amount;
+          const targetType: "income" | "expense" | "transfer" =
+            res.prefilledValues.type === "income"
+              ? "income"
+              : res.prefilledValues.type === "transfer"
+              ? "transfer"
+              : "expense";
+          const targetCatId =
+            res.prefilledValues.category_id ||
+            categories.find((c) => c.type !== "income")?.id ||
+            categories[0]?.id ||
+            "";
+          const targetWalletId =
+            res.prefilledValues.wallet_id || wallets[0]?.id || "";
+          const txDate = res.prefilledValues.date || new Date();
+          const occurred_on = format(txDate, "yyyy-MM-dd");
+          const note = res.prefilledValues.note || "";
+
+          addTxMutation.mutate(
+            {
+              amount: targetAmount,
+              type: targetType,
+              category_id: targetCatId,
+              wallet_id: targetWalletId,
+              occurred_on,
+              note: note || undefined,
+            },
+            {
+              onSuccess: () => {
+                triggerSuccessHaptic();
+                const catObj = categories.find((c) => c.id === targetCatId);
+                const walObj = wallets.find((w) => w.id === targetWalletId);
+                setRecordedShortcutTx({
+                  amount: targetAmount,
+                  type: targetType,
+                  categoryName:
+                    catObj?.name || res.matchedCategoryName || (isIndonesian ? "Pengeluaran" : "Expense"),
+                  walletName:
+                    walObj?.name || res.matchedWalletName || (isIndonesian ? "Dompet Utama" : "Default Wallet"),
+                  date: format(txDate, "d MMM yyyy"),
+                  note: note,
+                });
+              },
+              onError: (err) => {
+                console.error("Auto-save failed, fallback to modal:", err);
+                if (res.prefilledValues) {
+                  setPrefilledValues(res.prefilledValues);
+                }
+                setAddSheetOpen(true);
+              },
+            }
+          );
+        } else {
+          if (res.prefilledValues) {
+            setPrefilledValues(res.prefilledValues);
+          }
+          setAddSheetOpen(true);
         }
-        setAddSheetOpen(true);
       } else if (res.action === "voice") {
         setVoiceModalOpen(true);
       } else if (res.action === "scan") {
@@ -173,7 +238,7 @@ function AppShell() {
         urlListenerHandle.remove();
       }
     };
-  }, [categories, wallets]);
+  }, [categories, wallets, addTxMutation, isIndonesian]);
 
   useEffect(() => {
     if (!isPrivacyShieldEnabled) {
@@ -574,6 +639,23 @@ function AppShell() {
           />
         </Suspense>
       )}
+
+      {/* Luxury Confirmation Modal for Auto-saved Shortcut Transactions */}
+      <ShortcutSuccessDialog
+        data={recordedShortcutTx}
+        onClose={() => setRecordedShortcutTx(null)}
+        onEdit={() => {
+          if (recordedShortcutTx) {
+            setPrefilledValues({
+              amount: recordedShortcutTx.amount,
+              type: recordedShortcutTx.type,
+              note: recordedShortcutTx.note,
+            });
+            setRecordedShortcutTx(null);
+            setAddSheetOpen(true);
+          }
+        }}
+      />
 
 
       {/* iOS App Switcher / Multitasking Privacy Screen Shield */}

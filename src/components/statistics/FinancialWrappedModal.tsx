@@ -12,6 +12,8 @@ import {
   Activity,
   Loader2,
   Pause,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import { toBlob } from "html-to-image";
 import html2canvas from "html2canvas";
@@ -31,7 +33,6 @@ import {
   buildRunwayProjection,
 } from "../../lib/wrappedAnalytics";
 import { useCurrency } from "../../contexts/CurrencyContext";
-import { useAuth } from "../../contexts/AuthContext";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 
 interface TopCategoryStat {
@@ -62,15 +63,21 @@ export function FinancialWrappedModal({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { formatWithPreferred, formatCompactWithPreferred } = useCurrency();
-  const { session } = useAuth();
-  const { liquidCapital, marketAssets, fixedAssets, totalAssets } = useWalletBalances();
+  const { liquidCapital, marketAssets, fixedAssets, totalAssets } =
+    useWalletBalances();
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState<number>(1);
   const [isPaused, setIsPaused] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const totalSlides = 11;
+  const [sharePreviewData, setSharePreviewData] = useState<{
+    url: string;
+    file: File;
+    blob: Blob;
+  } | null>(null);
+  const [isPreviewCopied, setIsPreviewCopied] = useState(false);
+  const totalSlides = 10;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slideContainerRef = useRef<HTMLDivElement>(null);
   const pointerDownTime = useRef<number>(0);
@@ -98,54 +105,6 @@ export function FinancialWrappedModal({
     triggerHaptic("light");
     setIsPaused((p) => !p);
   };
-
-  const displayName =
-    session?.user?.user_metadata?.display_name ||
-    session?.user?.email?.split("@")[0] ||
-    localStorage.getItem("trouvaille_display_name") ||
-    (isIndonesian ? "Pengguna" : "User");
-
-  const avatarUrl =
-    session?.user?.user_metadata?.avatar_url ||
-    localStorage.getItem("trouvaille_avatar") ||
-    null;
-
-  const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!avatarUrl) {
-      setAvatarDataUrl(null);
-      return;
-    }
-    if (avatarUrl.startsWith("data:")) {
-      setAvatarDataUrl(avatarUrl);
-      return;
-    }
-    let isMounted = true;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth || 64;
-        canvas.height = img.naturalHeight || 64;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          const data = canvas.toDataURL("image/png");
-          if (isMounted) setAvatarDataUrl(data);
-        }
-      } catch {
-        // Fallback gracefully
-      }
-    };
-    img.src = avatarUrl;
-    return () => {
-      isMounted = false;
-    };
-  }, [avatarUrl]);
-
-  const avatarInitial = displayName.charAt(0).toUpperCase();
 
   const totalAssetVal =
     totalAssets > 0 ? totalAssets : liquidCapital + marketAssets + fixedAssets;
@@ -207,8 +166,8 @@ export function FinancialWrappedModal({
           locale: isIndonesian ? idLocale : undefined,
         })
       : isIndonesian
-      ? `Tahun ${targetYear}`
-      : `Year ${targetYear}`;
+        ? `Tahun ${targetYear}`
+        : `Year ${targetYear}`;
 
   const periodTxs = useMemo(() => {
     return transactions.filter((t) => {
@@ -415,7 +374,9 @@ export function FinancialWrappedModal({
 
     // Financial Archetype
     let persona = isIndonesian ? "Pencapai Seimbang" : "The Balanced Achiever";
-    let personaTag = isIndonesian ? "EKUILIBRIUM MODAL OPTIMAL" : "OPTIMAL CAPITAL EQUILIBRIUM";
+    let personaTag = isIndonesian
+      ? "EKUILIBRIUM MODAL OPTIMAL"
+      : "OPTIMAL CAPITAL EQUILIBRIUM";
     let personaDesc = isIndonesian
       ? "Anda mempertahankan gaya hidup yang nyaman dengan disiplin terukur, secara konsisten menjaga bantalan modal positif untuk ekspansi masa depan."
       : "You sustain an enjoyable lifestyle with measured discipline, consistently maintaining a positive capital cushion for future expansion.";
@@ -424,7 +385,9 @@ export function FinancialWrappedModal({
 
     if (savingsRate >= 35 && totalExpense > 0) {
       persona = isIndonesian ? "Arsitek Modal" : "The Capital Architect";
-      personaTag = isIndonesian ? "RETENSI MODAL TINGKAT BENTENG" : "FORTRESS-TIER CAPITAL RETENTION";
+      personaTag = isIndonesian
+        ? "RETENSI MODAL TINGKAT BENTENG"
+        : "FORTRESS-TIER CAPITAL RETENTION";
       personaDesc = isIndonesian
         ? "Tingkat retensi Anda melampaui 35%. Akumulasi kekayaan beroperasi di bawah disiplin finansial ketat dan keseimbangan multi-aset strategis."
         : "Your retention rate exceeds 35%. Wealth accumulation operates under rigorous financial discipline and strategic multi-asset balance.";
@@ -432,7 +395,9 @@ export function FinancialWrappedModal({
       efficiencyGrade = "A+";
     } else if (totalExpense > totalIncome * 1.15 && totalIncome > 0) {
       persona = isIndonesian ? "Alokator Dinamis" : "The Dynamic Allocator";
-      personaTag = isIndonesian ? "SIKLUS EKSPANSI & REINVESTASI" : "EXPANSION & REINVESTMENT CYCLE";
+      personaTag = isIndonesian
+        ? "SIKLUS EKSPANSI & REINVESTASI"
+        : "EXPANSION & REINVESTMENT CYCLE";
       personaDesc = isIndonesian
         ? "Fase alokasi modal aktif dengan pengeluaran yang meningkat. Kecepatan kas tinggi, meletakkan fondasi bagi siklus kekayaan berikutnya."
         : "An active capital deployment phase with elevated outflow. Cash velocity is high, laying ground for subsequent wealth cycles.";
@@ -448,7 +413,9 @@ export function FinancialWrappedModal({
       efficiencyGrade = "A+";
     } else if (savingsRate >= 15) {
       persona = isIndonesian ? "Pembangun Mantap" : "The Steady Builder";
-      personaTag = isIndonesian ? "PEMBENTUKAN KONSISTEN" : "CONSISTENT COMPOUNDING";
+      personaTag = isIndonesian
+        ? "PEMBENTUKAN KONSISTEN"
+        : "CONSISTENT COMPOUNDING";
       personaDesc = isIndonesian
         ? "Arus kas terkendali dengan baik, marjin bulanan yang dapat diprediksi, dan stabilitas surplus yang andal."
         : "Well-controlled cashflow with predictable monthly margins and dependable surplus stability.";
@@ -472,7 +439,11 @@ export function FinancialWrappedModal({
     );
 
     // Spending Heatmap (Monthly Matrix for month mode, Full 52-Week 365-day Matrix for year mode)
-    const monthlyHeatmap = buildSpendingHeatmap(periodTxs, targetYear, targetMonth);
+    const monthlyHeatmap = buildSpendingHeatmap(
+      periodTxs,
+      targetYear,
+      targetMonth,
+    );
     const annualHeatmap = buildAnnualSpendingHeatmap(transactions, targetYear);
 
     // Multi-horizon Runway Projection (bklit projection curve)
@@ -515,67 +486,15 @@ export function FinancialWrappedModal({
       heatmap: monthlyHeatmap,
       runway,
     };
-  }, [transactions, periodTxs, categories, targetYear, targetMonth, mode, isIndonesian]);
-
-  const cushionMonths = useMemo(() => {
-    const monthlyBurn =
-      mode === "year" ? stats.totalExpense / 12 : stats.totalExpense;
-    if (monthlyBurn <= 0) return "12+";
-    const mos = liquidCapital / monthlyBurn;
-    return mos > 99 ? "99+" : mos.toFixed(1);
-  }, [liquidCapital, stats.totalExpense, mode]);
-
-  const healthScore = useMemo(() => {
-    const inc = stats.totalIncome;
-    const exp = stats.totalExpense;
-    if (inc === 0 && exp === 0) return 75;
-    if (inc > 0 && exp === 0) return 100;
-    if (inc === 0 && exp > 0) {
-      if (exp < 1_000_000) return 65;
-      if (exp < 5_000_000) return 50;
-      return 35;
-    }
-    const ratio = exp / inc;
-    if (ratio >= 2.0) return 20;
-    if (ratio >= 1.5)
-      return Math.max(20, Math.round(35 - (ratio - 1.5) * 30));
-    if (ratio > 1.0) return Math.round(55 - (ratio - 1.0) * 40);
-    if (ratio >= 0.8) return Math.round(65 + (1.0 - ratio) * 50);
-    if (ratio >= 0.4) return Math.round(75 + (0.8 - ratio) * 35);
-    return Math.min(100, Math.round(90 + (0.4 - ratio) * 25));
-  }, [stats.totalIncome, stats.totalExpense]);
-
-  const healthRating = useMemo(() => {
-    if (healthScore >= 75) {
-      return {
-        label: isIndonesian ? "di atas rata-rata" : "above average",
-        headline: isIndonesian
-          ? "Performa Sangat Kuat"
-          : "Strong Financial Health",
-        subtext: isIndonesian
-          ? `Surplus modal stabil, tabungan mencapai ${stats.savingsRate}% dari arus masuk.`
-          : `Capital accumulation is steady, savings rate reached ${stats.savingsRate}%.`,
-      };
-    }
-    if (healthScore >= 50) {
-      return {
-        label: isIndonesian ? "seimbang & stabil" : "stable & balanced",
-        headline: isIndonesian ? "Kondisi Seimbang" : "Stable Trajectory",
-        subtext: isIndonesian
-          ? `Arus kas berada pada kisaran seimbang dengan rasio tabungan ${stats.savingsRate}%.`
-          : `Cashflow remains balanced with a ${stats.savingsRate}% savings rate.`,
-      };
-    }
-    return {
-      label: isIndonesian ? "perlu optimasi" : "needs attention",
-      headline: isIndonesian
-        ? "Perlu Penyesuaian"
-        : "Optimization Needed",
-      subtext: isIndonesian
-        ? "Pengeluaran mendekati atau melampaui pemasukan periode ini."
-        : "Outflow is outpacing inflows for this period.",
-    };
-  }, [healthScore, isIndonesian, stats.savingsRate]);
+  }, [
+    transactions,
+    periodTxs,
+    categories,
+    targetYear,
+    targetMonth,
+    mode,
+    isIndonesian,
+  ]);
 
   const handleNext = useCallback(() => {
     triggerHaptic("light");
@@ -643,8 +562,17 @@ export function FinancialWrappedModal({
       setCurrentSlide(0);
       setDirection(1);
       setIsCopied(false);
+      setSharePreviewData(null);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (sharePreviewData?.url) {
+        URL.revokeObjectURL(sharePreviewData.url);
+      }
+    };
+  }, [sharePreviewData]);
 
   const handleShare = async () => {
     triggerHaptic("medium");
@@ -665,6 +593,8 @@ export function FinancialWrappedModal({
           quality: 0.95,
           pixelRatio: 2,
           backgroundColor: isDark ? "#0A0A0D" : "#F5F5F7",
+          fontEmbedCSS: "", // Skip remote font scans so capture completes in ~200ms
+          skipFonts: true,
           filter: (node) => {
             if (
               node instanceof HTMLElement &&
@@ -677,7 +607,10 @@ export function FinancialWrappedModal({
           },
         });
       } catch (toBlobErr) {
-        console.warn("html-to-image toBlob error, falling back to html2canvas:", toBlobErr);
+        console.warn(
+          "html-to-image toBlob error, falling back to html2canvas:",
+          toBlobErr,
+        );
         const canvas = await html2canvas(element, {
           scale: 2,
           useCORS: true,
@@ -696,21 +629,20 @@ export function FinancialWrappedModal({
       const file = new File([blob], fileName, { type: "image/png" });
 
       let shared = false;
-      // 1. Mobile Web Share API with photo (opens device's native share sheet: Simpan Foto, WhatsApp, etc.)
+      // 1. Mobile Web Share API with photo (opens device's native share sheet: Simpan Foto, WhatsApp, AirDrop, etc.)
       if (
+        typeof navigator !== "undefined" &&
         typeof navigator.share === "function" &&
         typeof navigator.canShare === "function" &&
         navigator.canShare({ files: [file] })
       ) {
         try {
+          // Note: On iOS WebKit, do NOT pass text alongside files as it causes native share sheets to fail
           await navigator.share({
             files: [file],
             title: isIndonesian
               ? "Kilas Balik Finansial Trouvaille"
               : "Trouvaille Financial Wrapped",
-            text: isIndonesian
-              ? `Kilas Balik Finansial ${periodTitle} · Slide ${currentSlide + 1}`
-              : `Financial Wrapped ${periodTitle} · Slide ${currentSlide + 1}`,
           });
           shared = true;
         } catch (shareErr: any) {
@@ -719,19 +651,32 @@ export function FinancialWrappedModal({
             setIsExporting(false);
             return;
           }
+          console.warn("Direct navigator.share error or gesture expired:", shareErr);
         }
       }
 
+      const isMobileDevice =
+        typeof navigator !== "undefined" &&
+        (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+          (typeof window !== "undefined" && window.innerWidth < 768));
+
       if (!shared) {
-        // 2. Laptop / Desktop fallback: Download image file directly
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        if (isMobileDevice) {
+          // On mobile phones: if direct share failed or gesture timed out, present the instant share preview sheet.
+          // Tapping "Buka Menu Berbagi" in this sheet has a 100% fresh user gesture with the pre-rendered file!
+          const previewUrl = URL.createObjectURL(blob);
+          setSharePreviewData({ url: previewUrl, file, blob });
+        } else {
+          // 2. Laptop / Desktop fallback: Download image file directly
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
 
         // Also copy image to clipboard if ClipboardItem supported
         if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
@@ -753,7 +698,6 @@ export function FinancialWrappedModal({
       setIsExporting(false);
     }
   };
-
 
   const slideVariants: Variants = {
     enter: (dir: number) => ({
@@ -916,21 +860,32 @@ export function FinancialWrappedModal({
                       ? "bg-white/[0.08] border-white/15 text-white/90 hover:text-white hover:bg-white/[0.14] shadow-[0_2px_10px_rgba(0,0,0,0.3)]"
                       : "bg-black/[0.05] border-black/10 text-black/90 hover:text-black hover:bg-black/[0.09] shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
                   }`}
-                  title={isIndonesian ? "Bagikan Foto Slide" : "Share Slide Photo"}
+                  title={
+                    isIndonesian ? "Bagikan Foto Slide" : "Share Slide Photo"
+                  }
                 >
                   {isExporting ? (
                     <Loader2 size={12} className="animate-spin" />
                   ) : isCopied ? (
-                    <Check size={12} className={isDark ? "text-white" : "text-black"} />
+                    <Check
+                      size={12}
+                      className={isDark ? "text-white" : "text-black"}
+                    />
                   ) : (
                     <Share2 size={12} />
                   )}
                   <span>
                     {isExporting
-                      ? (isIndonesian ? "Menyimpan..." : "Capturing...")
+                      ? isIndonesian
+                        ? "Menyimpan..."
+                        : "Capturing..."
                       : isCopied
-                        ? (isIndonesian ? "Tersimpan" : "Saved")
-                        : (isIndonesian ? "Bagikan" : "Share")}
+                        ? isIndonesian
+                          ? "Tersimpan"
+                          : "Saved"
+                        : isIndonesian
+                          ? "Bagikan"
+                          : "Share"}
                   </span>
                 </button>
 
@@ -961,9 +916,24 @@ export function FinancialWrappedModal({
               <motion.div
                 data-html2canvas-ignore="true"
                 data-ignore-export="true"
-                initial={{ opacity: 0, scale: 0.65, y: "-35%", filter: "blur(10px)" }}
-                animate={{ opacity: 1, scale: 1, y: "-50%", filter: "blur(0px)" }}
-                exit={{ opacity: 0, scale: 0.75, y: "-40%", filter: "blur(8px)" }}
+                initial={{
+                  opacity: 0,
+                  scale: 0.65,
+                  y: "-35%",
+                  filter: "blur(10px)",
+                }}
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                  y: "-50%",
+                  filter: "blur(0px)",
+                }}
+                exit={{
+                  opacity: 0,
+                  scale: 0.75,
+                  y: "-40%",
+                  filter: "blur(8px)",
+                }}
                 transition={{ type: "spring", damping: 25, stiffness: 350 }}
                 className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none select-none flex flex-col items-center justify-center gap-2 px-6 py-4 rounded-[26px]"
                 style={{
@@ -983,7 +953,9 @@ export function FinancialWrappedModal({
               >
                 <div
                   className={`w-11 h-11 rounded-full flex items-center justify-center ${
-                    isDark ? "bg-white/15 text-white" : "bg-black/5 text-[#09090b]"
+                    isDark
+                      ? "bg-white/15 text-white"
+                      : "bg-black/5 text-[#09090b]"
                   }`}
                   style={{
                     boxShadow: isDark
@@ -1019,7 +991,11 @@ export function FinancialWrappedModal({
             {/* Left Zone: Previous Slide */}
             <div
               className="w-[33%] h-full cursor-pointer select-none"
-              title={isIndonesian ? "Klik untuk slide sebelumnya" : "Click for previous slide"}
+              title={
+                isIndonesian
+                  ? "Klik untuk slide sebelumnya"
+                  : "Click for previous slide"
+              }
               onClick={(e) => {
                 e.stopPropagation();
                 handlePrev();
@@ -1029,7 +1005,11 @@ export function FinancialWrappedModal({
             {/* Center Zone: Pause / Resume Slide */}
             <div
               className="w-[34%] h-full cursor-pointer select-none flex items-center justify-center"
-              title={isIndonesian ? "Klik untuk jeda / lanjutkan" : "Click to pause / resume"}
+              title={
+                isIndonesian
+                  ? "Klik untuk jeda / lanjutkan"
+                  : "Click to pause / resume"
+              }
               onPointerDown={handleCenterPointerDown}
               onPointerUp={handleCenterPointerUp}
               onClick={handleCenterClick}
@@ -1038,7 +1018,11 @@ export function FinancialWrappedModal({
             {/* Right Zone: Next Slide */}
             <div
               className="w-[33%] h-full cursor-pointer select-none"
-              title={isIndonesian ? "Klik untuk slide berikutnya" : "Click for next slide"}
+              title={
+                isIndonesian
+                  ? "Klik untuk slide berikutnya"
+                  : "Click for next slide"
+              }
               onClick={(e) => {
                 e.stopPropagation();
                 handleNext();
@@ -1051,18 +1035,12 @@ export function FinancialWrappedModal({
           {/* ============================================================ */}
           <div
             ref={slideContainerRef}
-            className={`flex-1 flex flex-col justify-center ${
-              currentSlide === 1 ? "px-0 pb-0" : "px-6"
-            } relative z-20 max-w-lg mx-auto w-full h-full min-h-0 overflow-hidden`}
+            className="flex-1 flex flex-col justify-center px-6 relative z-20 max-w-lg mx-auto w-full h-full min-h-0 overflow-hidden"
             style={{
               paddingTop:
-                currentSlide === 1
-                  ? 0
-                  : "max(calc(env(safe-area-inset-top, 0px) + 56px), 108px)",
+                "max(calc(env(safe-area-inset-top, 0px) + 56px), 108px)",
               paddingBottom:
-                currentSlide === 1
-                  ? 0
-                  : "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 36px)",
+                "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 36px)",
             }}
           >
             <AnimatePresence mode="wait" custom={direction} initial={false}>
@@ -1086,14 +1064,15 @@ export function FinancialWrappedModal({
                         isDark ? "text-zinc-400" : "text-zinc-600"
                       }`}
                     >
-                      {isIndonesian ? "ARSIP.SISTEM" : "SYS.ARCHIVE"} // {periodTitle.toUpperCase()}
+                      {isIndonesian ? "ARSIP.SISTEM" : "SYS.ARCHIVE"} //{" "}
+                      {periodTitle.toUpperCase()}
                     </span>
                     <span
                       className={`text-[11px] font-mono font-medium ${
                         isDark ? "text-white/40" : "text-black/40"
                       }`}
                     >
-                      [01 / 11]
+                      [01 / 10]
                     </span>
                   </div>
 
@@ -1105,10 +1084,18 @@ export function FinancialWrappedModal({
                       }`}
                     >
                       {mode === "month"
-                        ? (isIndonesian ? "KILAS BALIK" : "MONTHLY")
-                        : (isIndonesian ? "KILAS BALIK" : "ANNUAL")}
+                        ? isIndonesian
+                          ? "KILAS BALIK"
+                          : "MONTHLY"
+                        : isIndonesian
+                          ? "KILAS BALIK"
+                          : "ANNUAL"}
                       <span className="block font-semibold mt-1">
-                        {isIndonesian ? (mode === "month" ? "BULANAN." : "TAHUNAN.") : "WRAPPED."}
+                        {isIndonesian
+                          ? mode === "month"
+                            ? "BULANAN."
+                            : "TAHUNAN."
+                          : "WRAPPED."}
                       </span>
                     </h1>
                     <p
@@ -1130,7 +1117,9 @@ export function FinancialWrappedModal({
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
-                        {isIndonesian ? "TOTAL PERPUTARAN MODAL" : "TOTAL CAPITAL TURNOVER"}
+                        {isIndonesian
+                          ? "TOTAL PERPUTARAN MODAL"
+                          : "TOTAL CAPITAL TURNOVER"}
                       </span>
                       <span
                         className={`text-[11px] font-mono ${
@@ -1179,14 +1168,17 @@ export function FinancialWrappedModal({
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
-                        {isIndonesian ? "EFISIENSI RETENSI" : "RETENTION EFFICIENCY"}
+                        {isIndonesian
+                          ? "EFISIENSI RETENSI"
+                          : "RETENTION EFFICIENCY"}
                       </span>
                       <span
                         className={`text-[15px] font-medium mt-1 block ${
                           isDark ? "text-white" : "text-[#09090B]"
                         }`}
                       >
-                        {stats.savingsRate}% {isIndonesian ? "Tersimpan" : "Retained"}
+                        {stats.savingsRate}%{" "}
+                        {isIndonesian ? "Tersimpan" : "Retained"}
                       </span>
                     </div>
                   </div>
@@ -1204,392 +1196,42 @@ export function FinancialWrappedModal({
                           : "bg-black/[0.04] border-black/10 text-zinc-700"
                       }`}
                     >
-                      <span>{isIndonesian ? "PERINGKAT" : "TIER"}: {stats.efficiencyGrade}</span>
-                      <span className={isDark ? "text-white/20" : "text-black/20"}>|</span>
-                      <span>{isIndonesian ? "DISIPLIN" : "DISCIPLINE"}: {stats.disciplineScore}%</span>
+                      <span>
+                        {isIndonesian ? "PERINGKAT" : "TIER"}:{" "}
+                        {stats.efficiencyGrade}
+                      </span>
+                      <span
+                        className={isDark ? "text-white/20" : "text-black/20"}
+                      >
+                        |
+                      </span>
+                      <span>
+                        {isIndonesian ? "DISIPLIN" : "DISCIPLINE"}:{" "}
+                        {stats.disciplineScore}%
+                      </span>
                     </div>
                     <div
                       className={`flex items-center gap-1 text-[11px] font-light tracking-wider ${
                         isDark ? "text-zinc-400" : "text-zinc-600"
                       }`}
                     >
-                      <span>{isIndonesian ? "Lihat perjalanan Anda" : "Let's see your journey"}</span>
+                      <span>
+                        {isIndonesian
+                          ? "Lihat perjalanan Anda"
+                          : "Let's see your journey"}
+                      </span>
                     </div>
                   </div>
                 </motion.div>
               )}
 
               {/* -------------------------------------------------------- */}
-              {/* SLIDE 1: Executive Health & Greeting (3-Block Stack)     */}
+              {/* -------------------------------------------------------- */}
+              {/* SLIDE 1: Multiple-Series Periodic Cashflow Bar Chart     */}
               {/* -------------------------------------------------------- */}
               {currentSlide === 1 && (
                 <motion.div
                   key="slide-1"
-                  custom={direction}
-                  variants={slideVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  className="w-full h-full flex flex-col gap-2 p-0 m-0 overflow-hidden select-none bg-transparent"
-                >
-                  {/* BLOCK 1: 56% Height (Atas Full di Belakang Komponen Atas, Bawah Rounded & Berbayang Kontras Mewah) */}
-                  <div
-                    className={`w-full rounded-t-none rounded-b-[26px] px-5 sm:px-6 pb-3 sm:pb-3.5 flex flex-col justify-between transition-all duration-300 relative z-20 shrink-0 ${
-                      isDark ? "text-white" : "text-[#09090B]"
-                    }`}
-                    style={{
-                      height: "calc(56% - 6px)",
-                      minHeight: 0,
-                      paddingTop:
-                        "max(calc(env(safe-area-inset-top, 0px) + 72px), 94px)",
-                      background: isDark
-                        ? "#181922"
-                        : "linear-gradient(160deg, #d8dae4 0%, #c9ccd8 100%)",
-                      borderBottom: isDark
-                        ? "1.5px solid rgba(255, 255, 255, 0.16)"
-                        : "1.5px solid rgba(255, 255, 255, 0.9)",
-                      boxShadow: isDark
-                        ? "0 20px 48px -4px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
-                        : "0 16px 36px -4px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95)",
-                    }}
-                  >
-                    {/* Guaranteed 1-Line Technical Header */}
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span
-                        className={`text-[10px] sm:text-[11px] font-mono tracking-wider uppercase truncate pr-2 ${
-                          isDark ? "text-zinc-400" : "text-black/60"
-                        }`}
-                      >
-                        {isIndonesian
-                          ? "SYS.HEALTH // SKOR KESEHATAN"
-                          : "SYS.HEALTH // HEALTH PULSE"}
-                      </span>
-                      <span
-                        className={`text-[10px] sm:text-[11px] font-mono tracking-wider font-semibold opacity-60 shrink-0 ${
-                          isDark ? "text-zinc-400" : "text-black/60"
-                        }`}
-                      >
-                        [02 / 11]
-                      </span>
-                    </div>
-
-                    {/* Greeting section: STATISTIK is directly above Hello User */}
-                    <div className="my-auto py-0.5">
-                      <span
-                        className={`text-[11px] font-semibold tracking-wider uppercase block mb-1 ${
-                          isDark ? "text-white/60" : "text-black/60"
-                        }`}
-                      >
-                        {isIndonesian ? "Statistik" : "Statistics"}
-                      </span>
-
-                      <h2
-                        className={`tracking-tight leading-[1.15] ${
-                          isDark ? "text-white" : "text-[#09090B]"
-                        }`}
-                      >
-                        {/* Baris 1: Halo (italic biasa) + Nama User (semibold) + Foto Profil User */}
-                        <div className="flex items-center gap-2 whitespace-nowrap text-[29px] sm:text-[35px] lg:text-[39px]">
-                          <span>
-                            <span className="italic font-normal">
-                              {isIndonesian ? "Halo" : "Hello"}
-                            </span>
-                            <span className="font-semibold underline decoration-current/30 underline-offset-4 ml-1.5">
-                              {displayName}
-                            </span>
-                          </span>
-                          <div
-                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full ${
-                              isDark ? "bg-white/15 text-white" : "bg-black/[0.08] text-[#09090B]"
-                            } border ${
-                              isDark ? "border-white/20" : "border-black/15"
-                            } shrink-0 overflow-hidden flex items-center justify-center font-semibold text-xs shadow-xs`}
-                          >
-                            {avatarUrl ? (
-                              <img
-                                crossOrigin="anonymous"
-                                src={avatarDataUrl || avatarUrl}
-                                alt={displayName}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span>{avatarInitial}</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Baris 2: skor keseluruhan (font biasa) */}
-                        <div className="font-normal whitespace-nowrap my-0.5 text-[25px] sm:text-[29px] lg:text-[33px]">
-                          {isIndonesian ? "skor keseluruhan" : "your overall score is"}
-                        </div>
-
-                        {/* Baris 3: hasil skor (semibold italic) */}
-                        <div className="whitespace-nowrap font-semibold italic tracking-tight text-[29px] sm:text-[35px] lg:text-[39px]">
-                          {healthRating.label}
-                        </div>
-                      </h2>
-                    </div>
-
-                    {/* Bottom of Block 1: Chips Row + Micro-Metrics under Hairline Divider */}
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div
-                          className={`px-3 py-1 rounded-full border flex items-center gap-1.5 text-[11px] sm:text-xs font-bold ${
-                            isDark
-                              ? "bg-white/10 border-white/20 text-white"
-                              : "bg-black/[0.06] border-black/10 text-[#09090B]"
-                          }`}
-                        >
-                          <TrendingUp size={12} strokeWidth={2.5} />
-                          <span>
-                            {isIndonesian ? "Tabungan" : "Savings Rate"}: {stats.savingsRate}%
-                          </span>
-                        </div>
-
-                        <div
-                          className={`px-3 py-1 rounded-full border flex items-center gap-1.5 text-[11px] sm:text-xs font-bold ${
-                            isDark
-                              ? "bg-white/10 border-white/20 text-white"
-                              : "bg-black/[0.06] border-black/10 text-[#09090B]"
-                          }`}
-                        >
-                          <Activity size={12} strokeWidth={2.5} />
-                          <span>
-                            {isIndonesian ? "Disiplin" : "Discipline"}: {stats.disciplineScore}/100
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Additional Micro-Metrics under hairline divider */}
-                      <div
-                        className={`pt-1.5 border-t grid grid-cols-3 gap-2 text-[11px] ${
-                          isDark ? "border-white/12" : "border-black/10"
-                        }`}
-                      >
-                        <div>
-                          <span className={`block text-[9px] uppercase font-mono tracking-wider ${isDark ? "text-white/60" : "text-black/60"}`}>
-                            {isIndonesian ? "Disiplin" : "Discipline"}
-                          </span>
-                          <span
-                            className={`font-bold text-xs sm:text-sm block mt-0.5 ${
-                              isDark ? "text-white" : "text-[#09090B]"
-                            }`}
-                          >
-                            {stats.disciplineScore}/100 ·{" "}
-                            {stats.disciplineScore >= 85
-                              ? "A+"
-                              : stats.disciplineScore >= 75
-                              ? "A"
-                              : "B"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className={`block text-[9px] uppercase font-mono tracking-wider ${isDark ? "text-white/60" : "text-black/60"}`}>
-                            {isIndonesian ? "Ketahanan" : "Cushion"}
-                          </span>
-                          <span
-                            className={`font-bold text-xs sm:text-sm block mt-0.5 ${
-                              isDark ? "text-white" : "text-[#09090B]"
-                            }`}
-                          >
-                            {cushionMonths} {isIndonesian ? "Bulan" : "Mos"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className={`block text-[9px] uppercase font-mono tracking-wider ${isDark ? "text-white/60" : "text-black/60"}`}>
-                            {isIndonesian ? "Arus Bersih" : "Net Flow"}
-                          </span>
-                          <span
-                            className={`font-bold text-xs sm:text-sm block mt-0.5 truncate ${
-                              isDark ? "text-white" : "text-[#09090B]"
-                            }`}
-                          >
-                            {stats.netCashflow >= 0 ? "+" : ""}
-                            {formatCompactWithPreferred(stats.netCashflow)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* BLOCK 2: 11% Height (Milky Glass Pewter di Light Mode, Solid Obsidian Slate di Dark Mode) */}
-                  <div
-                    className={`w-full rounded-[20px] px-5 sm:px-6 flex items-center justify-between gap-3 transition-all duration-300 shrink-0 relative z-10 ${
-                      isDark ? "text-white" : "text-[#09090B]"
-                    }`}
-                    style={{
-                      height: "calc(11% - 4px)",
-                      minHeight: "48px",
-                      background: isDark
-                        ? "#181922"
-                        : "linear-gradient(160deg, #d8dae4 0%, #c9ccd8 100%)",
-                      border: isDark
-                        ? "1.5px solid rgba(255, 255, 255, 0.16)"
-                        : "1.5px solid rgba(255, 255, 255, 0.9)",
-                      boxShadow: isDark
-                        ? "0 16px 36px -3px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
-                        : "0 10px 26px -3px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95)",
-                    }}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 shadow-xs ${
-                          isDark
-                            ? "bg-white/15 text-white border border-white/20"
-                            : "bg-black/[0.08] text-[#09090B] border border-black/10"
-                        }`}
-                      >
-                        <ShieldCheck size={14} strokeWidth={2} />
-                      </div>
-                      <div className="text-xs sm:text-sm leading-tight min-w-0 truncate">
-                        <span className="font-bold block truncate">
-                          {isIndonesian
-                            ? "Tolok Ukur Ketahanan Modal"
-                            : "Capital Resilience Benchmark"}
-                        </span>
-                        <span className={`text-[11px] block truncate ${isDark ? "text-white/70" : "text-black/60"}`}>
-                          {isIndonesian
-                            ? `Cadangan kas mencakup ${cushionMonths} bulan operasional`
-                            : `Cash cushion covers ${cushionMonths} months runway`}
-                        </span>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-[10px] sm:text-xs font-mono font-bold px-2.5 py-1 rounded-full shrink-0 shadow-xs border ${
-                        isDark
-                          ? "bg-white/20 text-white border-white/25"
-                          : "bg-black/[0.08] text-[#09090B] border-black/10"
-                      }`}
-                    >
-                      {stats.savingsRate >= 40
-                        ? "TOP 10%"
-                        : stats.savingsRate >= 20
-                        ? "TOP 25%"
-                        : "STABLE"}
-                    </span>
-                  </div>
-
-                  {/* BLOCK 3: 33% Height (Full Sampai Bawah Screen, Milky Glass Pewter di Light Mode, Solid Obsidian Slate di Dark Mode) */}
-                  <div
-                    className={`w-full rounded-t-[28px] sm:rounded-t-[32px] rounded-b-none px-5 sm:px-6 pt-3.5 sm:pt-4 flex flex-col justify-between relative overflow-hidden transition-all duration-300 shrink-0 ${
-                      isDark ? "text-white" : "text-[#09090B]"
-                    }`}
-                    style={{
-                      height: "calc(33% - 6px)",
-                      minHeight: "160px",
-                      paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
-                      background: isDark
-                        ? "#181922"
-                        : "linear-gradient(160deg, #d8dae4 0%, #c9ccd8 100%)",
-                      borderTop: isDark
-                        ? "1.5px solid rgba(255, 255, 255, 0.16)"
-                        : "1.5px solid rgba(255, 255, 255, 0.9)",
-                      borderBottom: "none",
-                      boxShadow: isDark
-                        ? "0 -16px 44px -4px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
-                        : "0 -10px 30px -4px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95)",
-                    }}
-                  >
-                    {/* Top Controls in Block 3: Trouvaille Vector SVG Logo */}
-                    <div className="flex items-center justify-between">
-                      <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center p-1.5 shadow-xs overflow-hidden border ${
-                          isDark
-                            ? "bg-white/10 text-white border-white/15"
-                            : "bg-black/[0.08] text-[#09090B] border-black/10"
-                        }`}
-                      >
-                        <svg viewBox="150 79 327 452" className="w-full h-full text-current" fill="currentColor">
-                          <path d="M 244 91 Q 244 91 257.0 91.5 Q 270 92 279.5 96.0 Q 289 100 297.5 107.5 Q 306 115 309.5 120.5 Q 313 126 316.0 135.0 Q 319 144 319.5 153.5 Q 320 163 318.5 170.5 Q 317 178 312.0 187.5 Q 307 197 301.0 203.0 Q 295 209 286.5 214.0 Q 278 219 270.5 221.0 Q 263 223 252.0 223.0 Q 241 223 232.5 220.5 Q 224 218 218.0 214.5 Q 212 211 206.0 205.5 Q 200 200 196.5 195.0 Q 193 190 189.5 181.0 Q 186 172 185.5 160.5 Q 185 149 187.0 141.5 Q 189 134 191.5 129.0 Q 194 124 199.0 117.5 Q 204 111 211.0 105.5 Q 218 100 226.0 96.5 Q 234 93 238.5 92.5 Z" />
-                          <path d="M 184 202 Q 184 202 188.5 202.5 Q 193 203 199.5 209.0 Q 206 215 213.0 220.0 Q 220 225 227.0 228.5 Q 234 232 243.5 235.0 Q 253 238 266.5 240.0 Q 280 242 294.0 242.0 Q 308 242 308.5 241.5 Q 309 241 329.0 240.0 Q 349 239 357.5 240.0 Q 366 241 375.0 243.5 Q 384 246 390.0 249.5 Q 396 253 398.0 255.0 Q 400 257 402.0 261.0 Q 404 265 404.0 269.0 Q 404 273 400.5 279.5 Q 397 286 389.0 294.0 Q 381 302 371.0 309.5 Q 361 317 352.0 322.5 Q 343 328 329.5 334.0 Q 316 340 309.5 342.0 Q 303 344 294.5 345.5 Q 286 347 273.0 347.0 Q 260 347 248.0 344.0 Q 236 341 225.5 335.5 Q 215 330 207.0 323.5 Q 199 317 191.5 308.0 Q 184 299 177.5 286.0 Q 171 273 169.0 263.5 Q 167 254 167.5 241.0 Q 168 228 170.5 220.5 Q 173 213 175.0 210.0 Q 177 207 180.0 205.0 Z" />
-                          <path d="M 419 292 Q 419 292 424.0 292.5 Q 429 293 431.5 294.0 Q 434 295 437.5 297.5 Q 441 300 445.5 305.5 Q 450 311 455.0 322.5 Q 460 334 462.0 344.0 Q 464 354 464.0 360.0 Q 464 366 464.5 366.5 Q 465 367 464.0 380.0 Q 463 393 459.0 407.0 Q 455 421 448.0 434.5 Q 441 448 431.5 460.0 Q 422 472 408.0 483.5 Q 394 495 385.0 500.0 Q 376 505 364.0 509.5 Q 352 514 339.0 516.5 Q 326 519 309.0 519.0 Q 292 519 283.0 517.5 Q 274 516 262.5 512.5 Q 251 509 241.5 504.5 Q 232 500 224.0 495.0 Q 216 490 206.0 481.5 Q 196 473 189.5 465.5 Q 183 458 177.5 450.0 Q 172 442 168.5 434.5 Q 165 427 163.5 420.0 Q 162 413 163.0 407.5 Q 164 402 166.0 398.5 Q 168 395 171.5 391.5 Q 175 388 182.5 384.0 Q 190 380 204.5 376.0 Q 219 372 230.5 370.5 Q 242 369 261.5 365.0 Q 281 361 297.5 355.5 Q 314 350 328.5 343.0 Q 343 336 371.0 317.5 Q 399 299 406.0 296.0 Q 413 293 415.5 293.0 Z" />
-                        </svg>
-                      </div>
-
-                      <div
-                        className={`flex p-0.5 rounded-full text-xs font-medium ${
-                          isDark ? "bg-white/10 text-white" : "bg-black/[0.06] text-[#09090B]"
-                        }`}
-                      >
-                        <span
-                          className={`px-3 py-0.5 rounded-full font-bold text-[11px] ${
-                            isDark ? "bg-white text-black" : "bg-[#09090B] text-white"
-                          }`}
-                        >
-                          {mode === "year"
-                            ? isIndonesian
-                              ? "Tahunan"
-                              : "Annual"
-                            : isIndonesian
-                            ? "Bulanan"
-                            : "Monthly"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Content Row in Block 3 */}
-                    <div className="flex items-end justify-between gap-4 my-auto py-0.5">
-                      <div className="min-w-0">
-                        <span className="text-[10px] uppercase font-bold tracking-wider block opacity-70 mb-0.5">
-                          {isIndonesian ? "Progres Finansial" : "Your progress"}
-                        </span>
-                        <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight truncate">
-                          {healthRating.headline}
-                        </h3>
-                        <p className={`text-[11px] mt-0.5 max-w-[210px] leading-tight ${isDark ? "text-white/70" : "text-black/70"}`}>
-                          {healthRating.subtext}
-                        </p>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <span className="text-5xl sm:text-6xl font-light tracking-tighter block leading-none">
-                          {healthScore}%
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Micro Metrics in Block 3 */}
-                    <div
-                      className={`grid grid-cols-3 gap-2 pt-1.5 border-t text-[11px] ${
-                        isDark ? "border-white/12" : "border-black/10"
-                      }`}
-                    >
-                      <div>
-                        <span className={`block text-[9px] uppercase font-mono tracking-wider ${isDark ? "text-white/60" : "text-black/60"}`}>
-                          {isIndonesian ? "Arus Bersih" : "Net Flow"}
-                        </span>
-                        <span className="font-bold text-xs sm:text-sm block mt-0.5 truncate">
-                          {stats.netCashflow >= 0 ? "+" : ""}
-                          {formatCompactWithPreferred(stats.netCashflow)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className={`block text-[9px] uppercase font-mono tracking-wider ${isDark ? "text-white/60" : "text-black/60"}`}>
-                          {isIndonesian ? "Turnover" : "Turnover"}
-                        </span>
-                        <span className="font-bold text-xs sm:text-sm block mt-0.5 truncate">
-                          {formatCompactWithPreferred(stats.turnover)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className={`block text-[9px] uppercase font-mono tracking-wider ${isDark ? "text-white/60" : "text-black/60"}`}>
-                          {isIndonesian ? "Efisiensi" : "Retention"}
-                        </span>
-                        <span className="font-bold text-xs sm:text-sm block mt-0.5">
-                          {stats.efficiencyGrade} · {stats.savingsRate}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* -------------------------------------------------------- */}
-              {/* SLIDE 2: Multiple-Series Periodic Cashflow Bar Chart     */}
-              {/* -------------------------------------------------------- */}
-              {currentSlide === 2 && (
-                <motion.div
-                  key="slide-2"
                   custom={direction}
                   variants={slideVariants}
                   initial="enter"
@@ -1604,7 +1246,9 @@ export function FinancialWrappedModal({
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
-                        {isIndonesian ? "Seri Arus Kas · [03 / 11]" : "Cashflow Series · [03 / 11]"}
+                        {isIndonesian
+                          ? "Seri Arus Kas · [02 / 10]"
+                          : "Cashflow Series · [02 / 10]"}
                       </span>
                       <span
                         className={`text-[10px] font-normal px-2.5 py-0.5 rounded-full border ${
@@ -1627,7 +1271,9 @@ export function FinancialWrappedModal({
                         isDark ? "text-white" : "text-[#09090B]"
                       }`}
                     >
-                      {isIndonesian ? "Dinamika Arus Masuk & Keluar" : "Inflow & Outflow Dynamics"}
+                      {isIndonesian
+                        ? "Dinamika Arus Masuk & Keluar"
+                        : "Inflow & Outflow Dynamics"}
                     </h2>
                     <p
                       className={`text-[12px] font-light mt-0.5 ${
@@ -1648,9 +1294,15 @@ export function FinancialWrappedModal({
                   <div className="relative py-2">
                     {/* Background guidelines */}
                     <div className="absolute inset-x-0 inset-y-3 pointer-events-none flex flex-col justify-between opacity-15">
-                      <div className={`border-b border-dashed ${isDark ? "border-white" : "border-black"}`} />
-                      <div className={`border-b border-dashed ${isDark ? "border-white" : "border-black"}`} />
-                      <div className={`border-b border-dashed ${isDark ? "border-white" : "border-black"}`} />
+                      <div
+                        className={`border-b border-dashed ${isDark ? "border-white" : "border-black"}`}
+                      />
+                      <div
+                        className={`border-b border-dashed ${isDark ? "border-white" : "border-black"}`}
+                      />
+                      <div
+                        className={`border-b border-dashed ${isDark ? "border-white" : "border-black"}`}
+                      />
                     </div>
 
                     {/* Bars Grid */}
@@ -1688,7 +1340,10 @@ export function FinancialWrappedModal({
                                       : "bg-[#18181b]"
                                   }`}
                                   style={{
-                                    height: pt.inflow > 0 ? `${inflowHeightPct}%` : "2px",
+                                    height:
+                                      pt.inflow > 0
+                                        ? `${inflowHeightPct}%`
+                                        : "2px",
                                     opacity: pt.inflow > 0 ? 1 : 0.2,
                                   }}
                                   title={`${isIndonesian ? "Pemasukan" : "Inflow"}: +${formatRupiah(pt.inflow)}`}
@@ -1702,7 +1357,10 @@ export function FinancialWrappedModal({
                                       : "bg-black/30 border-t border-black/40"
                                   }`}
                                   style={{
-                                    height: pt.outflow > 0 ? `${outflowHeightPct}%` : "2px",
+                                    height:
+                                      pt.outflow > 0
+                                        ? `${outflowHeightPct}%`
+                                        : "2px",
                                     opacity: pt.outflow > 0 ? 1 : 0.2,
                                   }}
                                   title={`${isIndonesian ? "Pengeluaran" : "Outflow"}: -${formatRupiah(pt.outflow)}`}
@@ -1743,7 +1401,10 @@ export function FinancialWrappedModal({
                             isDark ? "bg-white" : "bg-[#18181b]"
                           }`}
                         />
-                        <span>{isIndonesian ? "Pemasukan: +" : "Inflow: +"}{formatRupiah(stats.totalIncome)}</span>
+                        <span>
+                          {isIndonesian ? "Pemasukan: +" : "Inflow: +"}
+                          {formatRupiah(stats.totalIncome)}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span
@@ -1751,7 +1412,10 @@ export function FinancialWrappedModal({
                             isDark ? "bg-white/35" : "bg-black/30"
                           }`}
                         />
-                        <span>{isIndonesian ? "Pengeluaran: -" : "Outflow: -"}{formatRupiah(stats.totalExpense)}</span>
+                        <span>
+                          {isIndonesian ? "Pengeluaran: -" : "Outflow: -"}
+                          {formatRupiah(stats.totalExpense)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1785,8 +1449,9 @@ export function FinancialWrappedModal({
                       >
                         {(() => {
                           const peakP =
-                            stats.periodicCashflow.find((p) => p.isPeakOutflow) ||
-                            stats.periodicCashflow[0];
+                            stats.periodicCashflow.find(
+                              (p) => p.isPeakOutflow,
+                            ) || stats.periodicCashflow[0];
                           return `${peakP?.label} (${
                             mode === "year"
                               ? isIndonesian
@@ -1802,7 +1467,13 @@ export function FinancialWrappedModal({
                         isDark ? "text-white" : "text-[#09090B]"
                       }`}
                     >
-                      -{formatRupiah(Math.max(...stats.periodicCashflow.map((p) => p.outflow), 0))}
+                      -
+                      {formatRupiah(
+                        Math.max(
+                          ...stats.periodicCashflow.map((p) => p.outflow),
+                          0,
+                        ),
+                      )}
                     </p>
                   </div>
 
@@ -1812,7 +1483,11 @@ export function FinancialWrappedModal({
                       isDark ? "text-zinc-300" : "text-zinc-700"
                     }`}
                   >
-                    <span>{isIndonesian ? "Surplus Retensi Bersih:" : "Net Retention Surplus:"}</span>
+                    <span>
+                      {isIndonesian
+                        ? "Surplus Retensi Bersih:"
+                        : "Net Retention Surplus:"}
+                    </span>
                     <span
                       className={`font-semibold ${
                         isDark ? "text-white" : "text-[#09090B]"
@@ -1826,11 +1501,11 @@ export function FinancialWrappedModal({
               )}
 
               {/* -------------------------------------------------------- */}
-              {/* SLIDE 3: Key Numbers Editorial Prospectus (Reference)   */}
+              {/* SLIDE 2: Key Numbers Editorial Prospectus (Reference)   */}
               {/* -------------------------------------------------------- */}
-              {currentSlide === 3 && (
+              {currentSlide === 2 && (
                 <motion.div
-                  key="slide-3"
+                  key="slide-2"
                   custom={direction}
                   variants={slideVariants}
                   initial="enter"
@@ -1846,7 +1521,7 @@ export function FinancialWrappedModal({
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
-                        SYS.METRICS // PROSPECTUS · [04 / 11]
+                        SYS.METRICS // PROSPECTUS · [03 / 10]
                       </span>
                       <h2
                         className={`text-3xl sm:text-4xl font-light tracking-tight ${
@@ -1897,7 +1572,9 @@ export function FinancialWrappedModal({
                           >
                             →
                           </span>
-                          {isIndonesian ? "Perputaran Modal Bersih" : "Net Capital Turnover"}
+                          {isIndonesian
+                            ? "Perputaran Modal Bersih"
+                            : "Net Capital Turnover"}
                           <sup
                             className={`text-[9px] ml-0.5 ${
                               isDark ? "text-zinc-400" : "text-zinc-500"
@@ -1935,7 +1612,9 @@ export function FinancialWrappedModal({
                           >
                             →
                           </span>
-                          {isIndonesian ? "Surplus Modal Tersimpan" : "Retained Capital Surplus"}
+                          {isIndonesian
+                            ? "Surplus Modal Tersimpan"
+                            : "Retained Capital Surplus"}
                           <sup
                             className={`text-[9px] ml-0.5 ${
                               isDark ? "text-zinc-400" : "text-zinc-500"
@@ -1972,7 +1651,9 @@ export function FinancialWrappedModal({
                           >
                             →
                           </span>
-                          {isIndonesian ? "Bantalan Operasional Bersih" : "Net Operating Cushion"}
+                          {isIndonesian
+                            ? "Bantalan Operasional Bersih"
+                            : "Net Operating Cushion"}
                           <sup
                             className={`text-[9px] ml-0.5 ${
                               isDark ? "text-zinc-400" : "text-zinc-500"
@@ -1990,7 +1671,9 @@ export function FinancialWrappedModal({
                         >
                           {stats.netCashflow >= 0 ? "+" : "-"}
                           {Math.abs(stats.netCashflow) >= 1_000_000
-                            ? formatCompactWithPreferred(Math.abs(stats.netCashflow))
+                            ? formatCompactWithPreferred(
+                                Math.abs(stats.netCashflow),
+                              )
                             : formatWithPreferred(Math.abs(stats.netCashflow))}
                         </span>
                       </div>
@@ -2011,7 +1694,9 @@ export function FinancialWrappedModal({
                           >
                             →
                           </span>
-                          {isIndonesian ? "Indeks Alokasi Pokok" : "Essential Allocation Index"}
+                          {isIndonesian
+                            ? "Indeks Alokasi Pokok"
+                            : "Essential Allocation Index"}
                           <sup
                             className={`text-[9px] ml-0.5 ${
                               isDark ? "text-zinc-400" : "text-zinc-500"
@@ -2048,7 +1733,9 @@ export function FinancialWrappedModal({
                           >
                             →
                           </span>
-                          {isIndonesian ? "Disiplin & Konsistensi" : "Discipline & Consistency"}
+                          {isIndonesian
+                            ? "Disiplin & Konsistensi"
+                            : "Discipline & Consistency"}
                           <sup
                             className={`text-[9px] ml-0.5 ${
                               isDark ? "text-zinc-400" : "text-zinc-500"
@@ -2078,37 +1765,85 @@ export function FinancialWrappedModal({
                     }`}
                   >
                     <p>
-                      <span className={isDark ? "font-mono text-zinc-500" : "font-mono text-zinc-500"}>1)</span>{" "}
+                      <span
+                        className={
+                          isDark
+                            ? "font-mono text-zinc-500"
+                            : "font-mono text-zinc-500"
+                        }
+                      >
+                        1)
+                      </span>{" "}
                       {isIndonesian
                         ? `Indikator kinerja privat yang diaudit pada buku kas internal Trouvaille untuk ${periodTitle}.`
                         : `Audited private performance indicators across internal Trouvaille ledger for ${periodTitle}.`}
                     </p>
                     <p>
-                      <span className={isDark ? "font-mono text-zinc-500" : "font-mono text-zinc-500"}>2)</span>{" "}
+                      <span
+                        className={
+                          isDark
+                            ? "font-mono text-zinc-500"
+                            : "font-mono text-zinc-500"
+                        }
+                      >
+                        2)
+                      </span>{" "}
                       {isIndonesian
                         ? "Agregat perputaran transaksi bruto yang tercatat di seluruh akun aktif."
                         : "Aggregate gross transaction turnover recorded across active accounts."}
                     </p>
                     <p>
-                      <span className={isDark ? "font-mono text-zinc-500" : "font-mono text-zinc-500"}>3)</span>{" "}
+                      <span
+                        className={
+                          isDark
+                            ? "font-mono text-zinc-500"
+                            : "font-mono text-zinc-500"
+                        }
+                      >
+                        3)
+                      </span>{" "}
                       {isIndonesian
                         ? "Surplus likuid bersih yang tersimpan relatif terhadap total pemasukan periode."
                         : "Net liquid surplus retained relative to total period income."}
                     </p>
                     <p>
-                      <span className={isDark ? "font-mono text-zinc-500" : "font-mono text-zinc-500"}>4)</span>{" "}
+                      <span
+                        className={
+                          isDark
+                            ? "font-mono text-zinc-500"
+                            : "font-mono text-zinc-500"
+                        }
+                      >
+                        4)
+                      </span>{" "}
                       {isIndonesian
                         ? "Bantalan operasional kumulatif yang dipertahankan setelah komitmen hidup."
                         : "Cumulative operational cushion preserved post living commitments."}
                     </p>
                     <p>
-                      <span className={isDark ? "font-mono text-zinc-500" : "font-mono text-zinc-500"}>5)</span>{" "}
+                      <span
+                        className={
+                          isDark
+                            ? "font-mono text-zinc-500"
+                            : "font-mono text-zinc-500"
+                        }
+                      >
+                        5)
+                      </span>{" "}
                       {isIndonesian
                         ? "Indeks pengeluaran pokok non-diskresioner (makanan, tempat tinggal, utilitas, mobilitas)."
                         : "Non-discretionary baseline spending index (food, housing, utilities, mobility)."}
                     </p>
                     <p>
-                      <span className={isDark ? "font-mono text-zinc-500" : "font-mono text-zinc-500"}>6)</span>{" "}
+                      <span
+                        className={
+                          isDark
+                            ? "font-mono text-zinc-500"
+                            : "font-mono text-zinc-500"
+                        }
+                      >
+                        6)
+                      </span>{" "}
                       {isIndonesian
                         ? "Komposit kepatuhan perilaku yang memperhitungkan volatilitas pengeluaran dan target anggaran."
                         : "Behavioral adherence composite factoring spending volatility and budget targets."}
@@ -2118,11 +1853,11 @@ export function FinancialWrappedModal({
               )}
 
               {/* -------------------------------------------------------- */}
-              {/* SLIDE 4: Asset Valuation & Portfolio Proportion          */}
+              {/* SLIDE 3: Asset Valuation & Portfolio Proportion          */}
               {/* -------------------------------------------------------- */}
-              {currentSlide === 4 && (
+              {currentSlide === 3 && (
                 <motion.div
-                  key="slide-4"
+                  key="slide-3"
                   custom={direction}
                   variants={slideVariants}
                   initial="enter"
@@ -2138,13 +1873,19 @@ export function FinancialWrappedModal({
                         }`}
                       >
                         {isIndonesian
-                          ? "SYS.ASET // VALUASI · [05 / 11]"
-                          : "SYS.ASSET // VALUATION · [05 / 11]"}
+                          ? "SYS.ASET // VALUASI · [04 / 10]"
+                          : "SYS.ASSET // VALUATION · [04 / 10]"}
                       </span>
                       <div className="w-6 h-4 flex flex-col justify-between items-end cursor-pointer">
-                        <span className={`w-6 h-0.5 ${isDark ? "bg-white" : "bg-black"}`} />
-                        <span className={`w-4 h-0.5 ${isDark ? "bg-white" : "bg-black"}`} />
-                        <span className={`w-5 h-0.5 ${isDark ? "bg-white" : "bg-black"}`} />
+                        <span
+                          className={`w-6 h-0.5 ${isDark ? "bg-white" : "bg-black"}`}
+                        />
+                        <span
+                          className={`w-4 h-0.5 ${isDark ? "bg-white" : "bg-black"}`}
+                        />
+                        <span
+                          className={`w-5 h-0.5 ${isDark ? "bg-white" : "bg-black"}`}
+                        />
                       </div>
                     </div>
 
@@ -2153,7 +1894,9 @@ export function FinancialWrappedModal({
                         isDark ? "text-white" : "text-[#09090B]"
                       } leading-tight`}
                     >
-                      {isIndonesian ? "Valuasi Portofolio®" : "Portfolio Assets®"}
+                      {isIndonesian
+                        ? "Valuasi Portofolio®"
+                        : "Portfolio Assets®"}
                     </h2>
 
                     <div className="flex items-center gap-4 text-xs tracking-wider">
@@ -2193,7 +1936,9 @@ export function FinancialWrappedModal({
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
-                            {isIndonesian ? "TOTAL VALUASI ASET" : "TOTAL ASSET VALUATION"}
+                            {isIndonesian
+                              ? "TOTAL VALUASI ASET"
+                              : "TOTAL ASSET VALUATION"}
                           </span>
                           <span
                             className={`text-2xl sm:text-3xl font-light tracking-tight block mt-1 ${
@@ -2210,7 +1955,9 @@ export function FinancialWrappedModal({
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
-                            {isIndonesian ? "INDEKS DIVERSIFIKASI" : "DIVERSIFICATION SCORE"}
+                            {isIndonesian
+                              ? "INDEKS DIVERSIFIKASI"
+                              : "DIVERSIFICATION SCORE"}
                           </span>
                           <span
                             className={`text-sm sm:text-base font-bold ${
@@ -2222,7 +1969,9 @@ export function FinancialWrappedModal({
                         </div>
                       </div>
 
-                      <div className={`w-full h-px ${isDark ? "bg-white/15" : "bg-black/15"}`} />
+                      <div
+                        className={`w-full h-px ${isDark ? "bg-white/15" : "bg-black/15"}`}
+                      />
 
                       <div className="grid grid-cols-3 gap-2 text-left pt-0.5">
                         <div>
@@ -2418,11 +2167,11 @@ export function FinancialWrappedModal({
               )}
 
               {/* -------------------------------------------------------- */}
-              {/* SLIDE 5: Temporal Spending Heatmap (Month vs Annual Grid) */}
+              {/* SLIDE 4: Temporal Spending Heatmap (Month vs Annual Grid) */}
               {/* -------------------------------------------------------- */}
-              {currentSlide === 5 && (
+              {currentSlide === 4 && (
                 <motion.div
-                  key="slide-5"
+                  key="slide-4"
                   custom={direction}
                   variants={slideVariants}
                   initial="enter"
@@ -2437,7 +2186,9 @@ export function FinancialWrappedModal({
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
-                        {isIndonesian ? "Matriks Temporal · [06 / 11]" : "Temporal Matrix · [06 / 11]"}
+                        {isIndonesian
+                          ? "Matriks Temporal · [05 / 10]"
+                          : "Temporal Matrix · [05 / 10]"}
                       </span>
                       <div
                         className={`inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-0.5 rounded-full border ${
@@ -2463,7 +2214,9 @@ export function FinancialWrappedModal({
                         isDark ? "text-white" : "text-[#09090B]"
                       }`}
                     >
-                      {isIndonesian ? "Peta Panas Pengeluaran" : "Spending Heatmap"}
+                      {isIndonesian
+                        ? "Peta Panas Pengeluaran"
+                        : "Spending Heatmap"}
                     </h2>
                     <p
                       className={`text-[12px] font-light mt-0.5 ${
@@ -2488,8 +2241,34 @@ export function FinancialWrappedModal({
                       {/* Month Headers */}
                       <div className="flex justify-between text-[9px] font-mono px-1 opacity-60">
                         {(isIndonesian
-                          ? ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"]
-                          : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                          ? [
+                              "Jan",
+                              "Feb",
+                              "Mar",
+                              "Apr",
+                              "Mei",
+                              "Jun",
+                              "Jul",
+                              "Agt",
+                              "Sep",
+                              "Okt",
+                              "Nov",
+                              "Des",
+                            ]
+                          : [
+                              "Jan",
+                              "Feb",
+                              "Mar",
+                              "Apr",
+                              "May",
+                              "Jun",
+                              "Jul",
+                              "Aug",
+                              "Sep",
+                              "Oct",
+                              "Nov",
+                              "Dec",
+                            ]
                         ).map((m) => (
                           <span key={m}>{m}</span>
                         ))}
@@ -2498,12 +2277,21 @@ export function FinancialWrappedModal({
                       {/* 52-Week Contribution Grid */}
                       <div className="p-3 rounded-2xl border bg-black/[0.02] dark:bg-white/[0.02] border-black/10 dark:border-white/10 overflow-x-auto no-scrollbar">
                         <div className="flex gap-[3px] min-w-[310px] justify-between">
-                          {Array.from({ length: stats.annualHeatmap.weeksCount }).map((_, wIdx) => {
-                            const weekDays = stats.annualHeatmap.days.filter((d) => d.weekIndex === wIdx);
+                          {Array.from({
+                            length: stats.annualHeatmap.weeksCount,
+                          }).map((_, wIdx) => {
+                            const weekDays = stats.annualHeatmap.days.filter(
+                              (d) => d.weekIndex === wIdx,
+                            );
                             return (
-                              <div key={wIdx} className="flex flex-col gap-[3px] shrink-0">
+                              <div
+                                key={wIdx}
+                                className="flex flex-col gap-[3px] shrink-0"
+                              >
                                 {[0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => {
-                                  const day = weekDays.find((d) => d.weekday === dayOfWeek);
+                                  const day = weekDays.find(
+                                    (d) => d.weekday === dayOfWeek,
+                                  );
                                   if (!day) {
                                     return (
                                       <div
@@ -2546,15 +2334,22 @@ export function FinancialWrappedModal({
                       {/* 12-Month Outflow Distribution Bars */}
                       <div className="pt-2 border-t border-black/10 dark:border-white/10">
                         <div className="flex items-center justify-between text-[10px] font-mono mb-2">
-                          <span className={isDark ? "text-zinc-400" : "text-zinc-600"}>
-                            {isIndonesian ? "Intensitas Bulanan" : "Month-by-Month Intensity"}
+                          <span
+                            className={
+                              isDark ? "text-zinc-400" : "text-zinc-600"
+                            }
+                          >
+                            {isIndonesian
+                              ? "Intensitas Bulanan"
+                              : "Month-by-Month Intensity"}
                           </span>
                           <span
                             className={`font-semibold ${
                               isDark ? "text-white" : "text-black"
                             }`}
                           >
-                            {isIndonesian ? "Puncak:" : "Peak:"} {stats.annualHeatmap.peakMonth?.monthName || "N/A"}
+                            {isIndonesian ? "Puncak:" : "Peak:"}{" "}
+                            {stats.annualHeatmap.peakMonth?.monthName || "N/A"}
                           </span>
                         </div>
 
@@ -2562,7 +2357,10 @@ export function FinancialWrappedModal({
                           {stats.annualHeatmap.monthSummaries.map((ms) => {
                             const isPeak = ms.isPeak;
                             return (
-                              <div key={ms.month} className="flex flex-col items-center gap-1">
+                              <div
+                                key={ms.month}
+                                className="flex flex-col items-center gap-1"
+                              >
                                 <div
                                   className={`w-full rounded-sm flex items-end justify-center transition-all ${
                                     isPeak
@@ -2612,10 +2410,18 @@ export function FinancialWrappedModal({
                         }`}
                       >
                         <span>
-                          {stats.annualHeatmap.activeSpendDaysCount} {isIndonesian ? "hari aktif belanja" : "active spend days"}
+                          {stats.annualHeatmap.activeSpendDaysCount}{" "}
+                          {isIndonesian
+                            ? "hari aktif belanja"
+                            : "active spend days"}
                         </span>
-                        <span className={`font-medium ${isDark ? "text-white" : "text-black"}`}>
-                          {stats.annualHeatmap.zeroSpendDaysCount} {isIndonesian ? "hari tanpa belanja" : "zero-spend days"}
+                        <span
+                          className={`font-medium ${isDark ? "text-white" : "text-black"}`}
+                        >
+                          {stats.annualHeatmap.zeroSpendDaysCount}{" "}
+                          {isIndonesian
+                            ? "hari tanpa belanja"
+                            : "zero-spend days"}
                         </span>
                       </div>
 
@@ -2634,7 +2440,9 @@ export function FinancialWrappedModal({
                                 isDark ? "text-zinc-400" : "text-zinc-600"
                               }`}
                             >
-                              {isIndonesian ? "LONJAKAN INTENSITAS PUNCAK TAHUNAN" : "ANNUAL PEAK INTENSITY SPIKE"}
+                              {isIndonesian
+                                ? "LONJAKAN INTENSITAS PUNCAK TAHUNAN"
+                                : "ANNUAL PEAK INTENSITY SPIKE"}
                             </span>
                             <p
                               className={`text-[12px] font-normal mt-0.5 ${
@@ -2685,7 +2493,8 @@ export function FinancialWrappedModal({
                         {/* Leading blanks for alignment (Monday-first) */}
                         {Array.from({
                           length:
-                            ((stats.monthlyHeatmap.days[0]?.weekday ?? 0) + 6) % 7 || 0,
+                            ((stats.monthlyHeatmap.days[0]?.weekday ?? 0) + 6) %
+                              7 || 0,
                         }).map((_, i) => (
                           <div
                             key={`blank-${i}`}
@@ -2733,15 +2542,29 @@ export function FinancialWrappedModal({
                       >
                         <span>{isIndonesian ? "Intensitas" : "Intensity"}</span>
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                          <span
+                            className={`text-[9px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}
+                          >
                             {isIndonesian ? "Rendah" : "Less"}
                           </span>
-                          <span className={`w-3 h-3 rounded-md ${isDark ? "bg-white/[0.04] border border-white/[0.05]" : "bg-black/[0.04] border border-black/[0.05]"}`} />
-                          <span className={`w-3 h-3 rounded-md ${isDark ? "bg-white/[0.15]" : "bg-black/[0.15]"}`} />
-                          <span className={`w-3 h-3 rounded-md ${isDark ? "bg-white/[0.35]" : "bg-black/[0.35]"}`} />
-                          <span className={`w-3 h-3 rounded-md ${isDark ? "bg-white/[0.6]" : "bg-black/[0.6]"}`} />
-                          <span className={`w-3 h-3 rounded-md ${isDark ? "bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]" : "bg-black shadow-[0_0_6px_rgba(0,0,0,0.3)]"}`} />
-                          <span className={`text-[9px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                          <span
+                            className={`w-3 h-3 rounded-md ${isDark ? "bg-white/[0.04] border border-white/[0.05]" : "bg-black/[0.04] border border-black/[0.05]"}`}
+                          />
+                          <span
+                            className={`w-3 h-3 rounded-md ${isDark ? "bg-white/[0.15]" : "bg-black/[0.15]"}`}
+                          />
+                          <span
+                            className={`w-3 h-3 rounded-md ${isDark ? "bg-white/[0.35]" : "bg-black/[0.35]"}`}
+                          />
+                          <span
+                            className={`w-3 h-3 rounded-md ${isDark ? "bg-white/[0.6]" : "bg-black/[0.6]"}`}
+                          />
+                          <span
+                            className={`w-3 h-3 rounded-md ${isDark ? "bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]" : "bg-black shadow-[0_0_6px_rgba(0,0,0,0.3)]"}`}
+                          />
+                          <span
+                            className={`text-[9px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}
+                          >
                             {isIndonesian ? "Tinggi" : "More"}
                           </span>
                         </div>
@@ -2754,10 +2577,18 @@ export function FinancialWrappedModal({
                         }`}
                       >
                         <span>
-                          {stats.monthlyHeatmap.activeSpendDaysCount} {isIndonesian ? "hari aktif belanja" : "active spend days"}
+                          {stats.monthlyHeatmap.activeSpendDaysCount}{" "}
+                          {isIndonesian
+                            ? "hari aktif belanja"
+                            : "active spend days"}
                         </span>
-                        <span className={`font-medium ${isDark ? "text-white" : "text-black"}`}>
-                          {stats.monthlyHeatmap.zeroSpendDaysCount} {isIndonesian ? "hari tanpa belanja" : "zero-spend days"}
+                        <span
+                          className={`font-medium ${isDark ? "text-white" : "text-black"}`}
+                        >
+                          {stats.monthlyHeatmap.zeroSpendDaysCount}{" "}
+                          {isIndonesian
+                            ? "hari tanpa belanja"
+                            : "zero-spend days"}
                         </span>
                       </div>
 
@@ -2776,7 +2607,9 @@ export function FinancialWrappedModal({
                                 isDark ? "text-zinc-400" : "text-zinc-600"
                               }`}
                             >
-                              {isIndonesian ? "LONJAKAN INTENSITAS PUNCAK" : "PEAK INTENSITY SPIKE"}
+                              {isIndonesian
+                                ? "LONJAKAN INTENSITAS PUNCAK"
+                                : "PEAK INTENSITY SPIKE"}
                             </span>
                             <p
                               className={`text-[12px] font-normal mt-0.5 ${
@@ -2805,11 +2638,11 @@ export function FinancialWrappedModal({
               )}
 
               {/* -------------------------------------------------------- */}
-              {/* SLIDE 6: Vital Efficiency Ratios (Bleeding Stadium Bars) */}
+              {/* SLIDE 5: Vital Efficiency Ratios (Bleeding Stadium Bars) */}
               {/* -------------------------------------------------------- */}
-              {currentSlide === 6 && (
+              {currentSlide === 5 && (
                 <motion.div
-                  key="slide-6"
+                  key="slide-5"
                   custom={direction}
                   variants={slideVariants}
                   initial="enter"
@@ -2824,7 +2657,9 @@ export function FinancialWrappedModal({
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
-                        {isIndonesian ? "Tolok Ukur Modal · [07 / 11]" : "Capital Benchmarks · [07 / 11]"}
+                        {isIndonesian
+                          ? "Tolok Ukur Modal · [06 / 10]"
+                          : "Capital Benchmarks · [06 / 10]"}
                       </span>
                       <div
                         className={`inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-0.5 rounded-full border ${
@@ -2834,7 +2669,9 @@ export function FinancialWrappedModal({
                         }`}
                       >
                         <ShieldCheck size={11} />
-                        <span>{isIndonesian ? "Rasio Vital" : "Vital Ratios"}</span>
+                        <span>
+                          {isIndonesian ? "Rasio Vital" : "Vital Ratios"}
+                        </span>
                       </div>
                     </div>
                     <h2
@@ -2842,7 +2679,9 @@ export function FinancialWrappedModal({
                         isDark ? "text-white" : "text-[#09090B]"
                       }`}
                     >
-                      {isIndonesian ? "Rasio Efisiensi Vital" : "Vital Efficiency Ratios"}
+                      {isIndonesian
+                        ? "Rasio Efisiensi Vital"
+                        : "Vital Efficiency Ratios"}
                     </h2>
                     <p
                       className={`text-[12px] font-light mt-0.5 ${
@@ -2985,11 +2824,11 @@ export function FinancialWrappedModal({
               )}
 
               {/* -------------------------------------------------------- */}
-              {/* SLIDE 7: Multi-Horizon Runway Projection (Line Chart)    */}
+              {/* SLIDE 6: Multi-Horizon Runway Projection (Line Chart)    */}
               {/* -------------------------------------------------------- */}
-              {currentSlide === 7 && (
+              {currentSlide === 6 && (
                 <motion.div
-                  key="slide-7"
+                  key="slide-6"
                   custom={direction}
                   variants={slideVariants}
                   initial="enter"
@@ -3004,7 +2843,9 @@ export function FinancialWrappedModal({
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
-                        {isIndonesian ? "Horizon Runway · [08 / 11]" : "Runway Horizon · [08 / 11]"}
+                        {isIndonesian
+                          ? "Horizon Runway · [07 / 10]"
+                          : "Runway Horizon · [07 / 10]"}
                       </span>
                       <div
                         className={`inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-0.5 rounded-full border ${
@@ -3014,7 +2855,9 @@ export function FinancialWrappedModal({
                         }`}
                       >
                         <TrendingUp size={11} />
-                        <span>{isIndonesian ? "Prakiraan +6 Bln" : "+6 Mo Forecast"}</span>
+                        <span>
+                          {isIndonesian ? "Prakiraan +6 Bln" : "+6 Mo Forecast"}
+                        </span>
                       </div>
                     </div>
                     <h2
@@ -3022,7 +2865,9 @@ export function FinancialWrappedModal({
                         isDark ? "text-white" : "text-[#09090B]"
                       }`}
                     >
-                      {isIndonesian ? "Runway Modal & Prakiraan" : "Capital Runway & Forecast"}
+                      {isIndonesian
+                        ? "Runway Modal & Prakiraan"
+                        : "Capital Runway & Forecast"}
                     </h2>
                     <p
                       className={`text-[12px] font-light mt-0.5 ${
@@ -3121,7 +2966,11 @@ export function FinancialWrappedModal({
                               y1={rPadT + rPlotH}
                               x2={rPadL + rPlotW + 4}
                               y2={rPadT + rPlotH}
-                              stroke={isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}
+                              stroke={
+                                isDark
+                                  ? "rgba(255,255,255,0.15)"
+                                  : "rgba(0,0,0,0.15)"
+                              }
                               strokeWidth="1"
                             />
 
@@ -3201,7 +3050,9 @@ export function FinancialWrappedModal({
                       <span>{isIndonesian ? "Saat Ini" : "Present"}</span>
                       <span>{isIndonesian ? "+2 Bln" : "+2 Mo"}</span>
                       <span>{isIndonesian ? "+4 Bln" : "+4 Mo"}</span>
-                      <span className={`font-medium ${isDark ? "text-white" : "text-black"}`}>
+                      <span
+                        className={`font-medium ${isDark ? "text-white" : "text-black"}`}
+                      >
                         {isIndonesian ? "Horizon +6 Bln" : "+6 Mo Horizon"}
                       </span>
                     </div>
@@ -3219,7 +3070,9 @@ export function FinancialWrappedModal({
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
-                        {isIndonesian ? "LAJU SURPLUS BULANAN" : "MONTHLY SURPLUS PACE"}
+                        {isIndonesian
+                          ? "LAJU SURPLUS BULANAN"
+                          : "MONTHLY SURPLUS PACE"}
                       </span>
                       <p
                         className={`amount text-[15px] font-semibold mt-0.5 ${
@@ -3243,7 +3096,9 @@ export function FinancialWrappedModal({
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
-                        {isIndonesian ? "ESTIMASI BANTALAN 6 BULAN" : "ESTIMATED 6-MO CUSHION"}
+                        {isIndonesian
+                          ? "ESTIMASI BANTALAN 6 BULAN"
+                          : "ESTIMATED 6-MO CUSHION"}
                       </span>
                       <p
                         className={`amount text-[15px] font-semibold mt-0.5 ${
@@ -3287,11 +3142,11 @@ export function FinancialWrappedModal({
               )}
 
               {/* -------------------------------------------------------- */}
-              {/* SLIDE 8: Weekly Rhythm & Outliers (Step Bars)            */}
+              {/* SLIDE 7: Weekly Rhythm & Outliers (Step Bars)            */}
               {/* -------------------------------------------------------- */}
-              {currentSlide === 8 && (
+              {currentSlide === 7 && (
                 <motion.div
-                  key="slide-8"
+                  key="slide-7"
                   custom={direction}
                   variants={slideVariants}
                   initial="enter"
@@ -3306,7 +3161,9 @@ export function FinancialWrappedModal({
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
-                        {isIndonesian ? "Ritme Temporal · [09 / 11]" : "Temporal Rhythm · [09 / 11]"}
+                        {isIndonesian
+                          ? "Ritme Temporal · [08 / 10]"
+                          : "Temporal Rhythm · [08 / 10]"}
                       </span>
                       <span
                         className={`text-[10px] font-normal px-2.5 py-0.5 rounded-full border ${
@@ -3315,7 +3172,9 @@ export function FinancialWrappedModal({
                             : "bg-black/[0.05] text-black/80 border-black/10"
                         }`}
                       >
-                        {isIndonesian ? "Distribusi Hari" : "Weekday Distribution"}
+                        {isIndonesian
+                          ? "Distribusi Hari"
+                          : "Weekday Distribution"}
                       </span>
                     </div>
                     <h2
@@ -3323,7 +3182,9 @@ export function FinancialWrappedModal({
                         isDark ? "text-white" : "text-[#09090B]"
                       }`}
                     >
-                      {isIndonesian ? "Ritme Mingguan & Outlier" : "Weekly Rhythm & Outliers"}
+                      {isIndonesian
+                        ? "Ritme Mingguan & Outlier"
+                        : "Weekly Rhythm & Outliers"}
                     </h2>
                     <p
                       className={`text-[12px] font-light mt-0.5 ${
@@ -3413,7 +3274,9 @@ export function FinancialWrappedModal({
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
-                          {isIndonesian ? "PENGELUARAN TUNGGAL TERBESAR" : "MAX DISRUPTION EVENT"}
+                          {isIndonesian
+                            ? "PENGELUARAN TUNGGAL TERBESAR"
+                            : "MAX DISRUPTION EVENT"}
                         </span>
                         <p
                           className={`text-[13px] font-medium truncate ${
@@ -3458,11 +3321,11 @@ export function FinancialWrappedModal({
               )}
 
               {/* -------------------------------------------------------- */}
-              {/* SLIDE 9: Financial Archetype Persona                     */}
+              {/* SLIDE 8: Financial Archetype Persona                     */}
               {/* -------------------------------------------------------- */}
-              {currentSlide === 9 && (
+              {currentSlide === 8 && (
                 <motion.div
-                  key="slide-9"
+                  key="slide-8"
                   custom={direction}
                   variants={slideVariants}
                   initial="enter"
@@ -3477,7 +3340,9 @@ export function FinancialWrappedModal({
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
-                        {isIndonesian ? "Intelijen Persona · [10 / 11]" : "Persona Intelligence · [10 / 11]"}
+                        {isIndonesian
+                          ? "Intelijen Persona · [09 / 10]"
+                          : "Persona Intelligence · [09 / 10]"}
                       </span>
                       <span
                         className={`text-[10px] font-normal px-2.5 py-0.5 rounded-full border ${
@@ -3486,7 +3351,9 @@ export function FinancialWrappedModal({
                             : "bg-black/[0.05] text-black/80 border-black/10"
                         }`}
                       >
-                        {isIndonesian ? "Profil Eksekutif" : "Executive Profile"}
+                        {isIndonesian
+                          ? "Profil Eksekutif"
+                          : "Executive Profile"}
                       </span>
                     </div>
                     <h2
@@ -3539,7 +3406,8 @@ export function FinancialWrappedModal({
                             isDark ? "text-white" : "text-[#09090B]"
                           }`}
                         >
-                          {stats.savingsRate}% {isIndonesian ? "Tersimpan" : "Saved"}
+                          {stats.savingsRate}%{" "}
+                          {isIndonesian ? "Tersimpan" : "Saved"}
                         </p>
                       </div>
                       <div>
@@ -3548,7 +3416,9 @@ export function FinancialWrappedModal({
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
-                          {isIndonesian ? "INDEKS VOLATILITAS" : "VOLATILITY INDEX"}
+                          {isIndonesian
+                            ? "INDEKS VOLATILITAS"
+                            : "VOLATILITY INDEX"}
                         </p>
                         <p
                           className={`text-[16px] font-medium mt-0.5 ${
@@ -3580,14 +3450,17 @@ export function FinancialWrappedModal({
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
-                          {isIndonesian ? "GRADE EFISIENSI" : "EFFICIENCY GRADE"}
+                          {isIndonesian
+                            ? "GRADE EFISIENSI"
+                            : "EFFICIENCY GRADE"}
                         </p>
                         <p
                           className={`text-[16px] font-medium mt-0.5 ${
                             isDark ? "text-white" : "text-[#09090B]"
                           }`}
                         >
-                          {isIndonesian ? "Tingkat" : "Grade"} {stats.efficiencyGrade}
+                          {isIndonesian ? "Tingkat" : "Grade"}{" "}
+                          {stats.efficiencyGrade}
                         </p>
                       </div>
                     </div>
@@ -3604,11 +3477,11 @@ export function FinancialWrappedModal({
               )}
 
               {/* -------------------------------------------------------- */}
-              {/* SLIDE 10: Shareable Recap Poster                         */}
+              {/* SLIDE 9: Shareable Recap Poster                         */}
               {/* -------------------------------------------------------- */}
-              {currentSlide === 10 && (
+              {currentSlide === 9 && (
                 <motion.div
-                  key="slide-10"
+                  key="slide-9"
                   custom={direction}
                   variants={slideVariants}
                   initial="enter"
@@ -3658,7 +3531,9 @@ export function FinancialWrappedModal({
                             isDark ? "text-white" : "text-[#09090B]"
                           }`}
                         >
-                          {isIndonesian ? "Rekap Eksekutif · [11 / 11]" : "Executive Recap · [11 / 11]"}
+                          {isIndonesian
+                            ? "Rekap Eksekutif · [10 / 10]"
+                            : "Executive Recap · [10 / 10]"}
                         </h4>
                         <p
                           className={`text-[11px] font-light ${
@@ -3718,7 +3593,9 @@ export function FinancialWrappedModal({
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
-                          {isIndonesian ? "Pengeluaran Modal" : "Capital Outflow"}
+                          {isIndonesian
+                            ? "Pengeluaran Modal"
+                            : "Capital Outflow"}
                         </span>
                         <p
                           className={`amount text-[14px] font-medium mt-0.5 ${
@@ -3772,7 +3649,8 @@ export function FinancialWrappedModal({
                             isDark ? "text-white" : "text-[#09090B]"
                           }`}
                         >
-                          {stats.savingsRate}% {isIndonesian ? "Tersimpan" : "Retained"}
+                          {stats.savingsRate}%{" "}
+                          {isIndonesian ? "Tersimpan" : "Retained"}
                         </p>
                       </div>
                     </div>
@@ -3785,8 +3663,16 @@ export function FinancialWrappedModal({
                           : "border-black/[0.08] text-zinc-600"
                       }`}
                     >
-                      <span>{stats.txCount} {isIndonesian ? "operasi tercatat" : "recorded operations"}</span>
-                      <span>{isIndonesian ? "Skor disiplin:" : "Discipline score:"} {stats.disciplineScore}%</span>
+                      <span>
+                        {stats.txCount}{" "}
+                        {isIndonesian
+                          ? "operasi tercatat"
+                          : "recorded operations"}
+                      </span>
+                      <span>
+                        {isIndonesian ? "Skor disiplin:" : "Discipline score:"}{" "}
+                        {stats.disciplineScore}%
+                      </span>
                     </div>
                   </div>
 
@@ -3817,18 +3703,180 @@ export function FinancialWrappedModal({
                           ? "Menyimpan Foto Slide..."
                           : "Capturing Slide Photo..."
                         : isCopied
-                        ? isIndonesian
-                          ? "Foto Tersimpan"
-                          : "Photo Saved"
-                        : isIndonesian
-                        ? "Bagikan Foto Slide"
-                        : "Share Slide Photo"}
+                          ? isIndonesian
+                            ? "Foto Tersimpan"
+                            : "Photo Saved"
+                          : isIndonesian
+                            ? "Bagikan Foto Slide"
+                            : "Share Slide Photo"}
                     </span>
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
+        </motion.div>
+      )}
+
+      {/* Mobile Share Preview Sheet / Fallback Dialog */}
+      {sharePreviewData && (
+        <motion.div
+          key="share-preview-modal"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-4 bg-black/75 backdrop-blur-md"
+          onClick={() => {
+            if (sharePreviewData.url) URL.revokeObjectURL(sharePreviewData.url);
+            setSharePreviewData(null);
+            setIsPreviewCopied(false);
+          }}
+        >
+          <motion.div
+            initial={{ y: 40, opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 40, opacity: 0, scale: 0.95 }}
+            transition={{ type: "spring", damping: 26, stiffness: 320 }}
+            className="w-full max-w-sm rounded-[28px] p-5 border shadow-2xl space-y-3.5 max-h-[90vh] overflow-y-auto"
+            style={{
+              background: "var(--bg-elevated)",
+              borderColor: "var(--glass-border)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] flex items-center justify-center text-[var(--text-primary)]">
+                  <Share2 size={15} strokeWidth={1.75} />
+                </div>
+                <div>
+                  <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
+                    {isIndonesian ? "Bagikan Foto Slide" : "Share Slide Photo"}
+                  </h4>
+                  <p className="text-[10px] text-[var(--text-tertiary)]">
+                    {isIndonesian ? "Kilas Balik Finansial" : "Financial Wrapped"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (sharePreviewData.url) URL.revokeObjectURL(sharePreviewData.url);
+                  setSharePreviewData(null);
+                  setIsPreviewCopied(false);
+                }}
+                className="w-8 h-8 rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* High-res Image Preview */}
+            <div className="rounded-2xl overflow-hidden border border-[var(--glass-border)] bg-black/5 dark:bg-white/5 relative group max-h-[42vh] flex items-center justify-center">
+              <img
+                src={sharePreviewData.url}
+                alt="Slide preview"
+                className="w-full h-auto max-h-[42vh] object-contain rounded-xl select-none"
+              />
+            </div>
+
+            <p className="text-[10px] text-center text-[var(--text-tertiary)] leading-relaxed">
+              {isIndonesian
+                ? "Sentuh & tahan foto di atas untuk 'Simpan ke Foto', atau gunakan opsi di bawah:"
+                : "Tap & hold image above to 'Save to Photos', or use options below:"}
+            </p>
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-1">
+              {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    triggerHaptic("medium");
+                    try {
+                      if (
+                        navigator.canShare &&
+                        navigator.canShare({ files: [sharePreviewData.file] })
+                      ) {
+                        await navigator.share({
+                          files: [sharePreviewData.file],
+                          title: isIndonesian
+                            ? "Kilas Balik Finansial Trouvaille"
+                            : "Trouvaille Financial Wrapped",
+                        });
+                      } else {
+                        await navigator.share({
+                          title: isIndonesian
+                            ? "Kilas Balik Finansial Trouvaille"
+                            : "Trouvaille Financial Wrapped",
+                          text: isIndonesian
+                            ? `Kilas Balik Finansial ${periodTitle}`
+                            : `Financial Wrapped ${periodTitle}`,
+                        });
+                      }
+                    } catch (err: any) {
+                      if (err.name !== "AbortError") {
+                        console.warn("Share retry error:", err);
+                      }
+                    }
+                  }}
+                  className="w-full py-3 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 border active:scale-98 transition-all cursor-pointer"
+                  style={{
+                    background: "var(--text-primary)",
+                    color: "var(--bg-canvas)",
+                    borderColor: "transparent",
+                  }}
+                >
+                  <Share2 size={15} strokeWidth={1.75} />
+                  <span>{isIndonesian ? "Buka Menu Berbagi Bawaan" : "Open System Share"}</span>
+                </button>
+              )}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    triggerHaptic("light");
+                    try {
+                      if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
+                        await navigator.clipboard.write([
+                          new ClipboardItem({ "image/png": sharePreviewData.blob }),
+                        ]);
+                        setIsPreviewCopied(true);
+                        setTimeout(() => setIsPreviewCopied(false), 2000);
+                      }
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[12px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  {isPreviewCopied ? (
+                    <>
+                      <Check size={13} strokeWidth={1.75} />
+                      <span>{isIndonesian ? "Foto Disalin!" : "Copied!"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} strokeWidth={1.75} />
+                      <span>{isIndonesian ? "Salin Foto" : "Copy Photo"}</span>
+                    </>
+                  )}
+                </button>
+
+                <a
+                  href={sharePreviewData.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 py-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[12px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors text-center"
+                >
+                  <ExternalLink size={13} strokeWidth={1.75} />
+                  <span>{isIndonesian ? "Buka Tab Baru" : "Open in Tab"}</span>
+                </a>
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>,

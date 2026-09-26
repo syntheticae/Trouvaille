@@ -152,6 +152,10 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ### Localization Guidelines:
 - **No Mixed Phrasing**: Never mix English terms into Indonesian sentences or badges (e.g. DO NOT write "Pintasan Back Tap (Glass UI)", "1-Tap", "Setup", "Auto", "Number", "Text", "presets", "Done" alongside Indonesian text).
+- **No Parenthetical Bilingual Translations**: Do NOT write dual-language parenthetical phrases inside sentences such as "Ganti Nama (Rename)", "Pisahkan Teks (Split Text)", "Nominal (Amount)", "Enkode URL (URL Encode)". Cleanly branch the entire sentence so Indonesian uses 100% natural Indonesian and English uses 100% natural English.
+- **Tutorials & Step-by-Step Instructions**:
+  - When `isIndonesian === true`, use the official Indonesian Apple iOS interface terminology (e.g., *Pintasan*, *Minta Masukan*, *Teks*, *Pisahkan Teks*, *Pilih dari Daftar*, *Buka URL*, *Enkode URL*, *Tampilkan Pemberitahuan*, *Ganti Nama*). Never inject English prepositions or terms like "by New Lines", "prompt:", "action", or "add item" into Indonesian sentences.
+  - When `isIndonesian === false`, use native English Apple iOS interface terminology throughout (e.g., *Shortcuts*, *Ask for Input*, *Text*, *Split Text*, *Choose from List*, *Open URLs*, *URL Encode*, *Show Notification*, *Rename*).
 - **Comprehensive Conditional Branching**: Every user-facing string, pill label, button, modal title, placeholder, tooltip, and instructional step MUST conditionally branch:
   `{isIndonesian ? "Terjemahan Bahasa Indonesia Baku" : "Pure English Formulation"}`
 - **Standardized Terminology**:
@@ -165,6 +169,14 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   - *Auto*: Otomatis
   - *Voice*: Suara / Dikte
   - *Ways to Add*: Metode Pencatatan
+  - *Action*: Tindakan
+  - *Rename*: Ganti Nama
+  - *Choose from List*: Pilih dari Daftar
+  - *Split Text*: Pisahkan Teks
+  - *Ask for Input*: Minta Masukan
+  - *Open URLs*: Buka URL
+  - *URL Encode*: Enkode URL
+  - *Show Notification*: Tampilkan Pemberitahuan
 
 ---
 
