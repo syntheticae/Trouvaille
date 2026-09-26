@@ -13,10 +13,13 @@ import {
   SlidersHorizontal,
   ShieldCheck,
   AlertCircle,
+  Download,
+  Key,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
@@ -41,13 +44,23 @@ export function AppleShortcutsGuideModal({
 }: AppleShortcutsGuideModalProps) {
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
+  const { session } = useAuth();
+  const userToken = session?.user?.id || "";
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
 
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [backTapMode, setBackTapMode] =
     useState<BackTapSubMode>("instant_sheet");
+  const [glassSaveMethod, setGlassSaveMethod] = useState<
+    "background" | "url_scheme"
+  >("background");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const anonKey =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxamNtcWtncmZtb3B6bnJmaWt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODA0NzcsImV4cCI6MjEwMjg1NjQ3N30.ujfATs0huUkR9tCNB0Rs8JlqJG3dkz13EKtkr-eFiDg";
+  const rpcEndpoint =
+    "https://iqjcmqkgrfmopznrfikx.supabase.co/rest/v1/rpc/quick_add_transaction";
 
   useEffect(() => {
     if (initialTab) {
@@ -128,6 +141,104 @@ export function AppleShortcutsGuideModal({
               ? "Catat transaksi instan dengan mengetuk 2x bodi belakang iPhone, dialog kaca Dynamic Island, dikte suara, Tombol Aksi, atau otomatisasi Apple Pay."
               : "Instantly record expenses by double-tapping the back of your iPhone, Dynamic Island frosted glass dialogs, voice dictation, Action Button, or Apple Pay automations."}
           </p>
+        </div>
+
+        {/* QUICK 1-TAP DOWNLOAD CARD */}
+        <div
+          className="p-4 rounded-2xl border space-y-3.5"
+          style={{
+            background: "var(--bg-elevated)",
+            borderColor: "var(--glass-border)",
+          }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <Download
+                  size={14}
+                  strokeWidth={1.75}
+                  className="text-[var(--text-primary)]"
+                />
+                <h4
+                  className="text-[13px] font-semibold tracking-tight"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian
+                    ? "Unduh File Pintasan Siap Pakai (.shortcut)"
+                    : "Download Ready-to-Use Shortcut (.shortcut)"}
+                </h4>
+              </div>
+              <p
+                className="text-[11px] leading-relaxed"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {isIndonesian
+                  ? "Unduh file pintasan resmi Trouvaille lalu buka di iPhone untuk langsung memasang seluruh urutan dialog kaca tanpa perlu menyusun tindakan manual satu per satu."
+                  : "Download the official Trouvaille shortcut file and open it on your iPhone to install the full glass dialog sequence without manual setup."}
+              </p>
+            </div>
+          </div>
+
+          <a
+            href="/shortcuts/Trouvaille_Glass_Dialog.shortcut"
+            download="Trouvaille_Glass_Dialog.shortcut"
+            className="w-full py-2.5 px-4 rounded-xl border border-[var(--glass-border)] bg-black/[0.05] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.14] text-[12px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
+          >
+            <Download size={14} strokeWidth={1.75} />
+            <span>
+              {isIndonesian
+                ? "Unduh File Pintasan (.shortcut)"
+                : "Download Shortcut File (.shortcut)"}
+            </span>
+          </a>
+
+          {/* User Personal Token */}
+          {userToken && (
+            <div
+              className="p-3 rounded-xl border text-[11px] space-y-1.5"
+              style={{
+                background: "var(--bg-base)",
+                borderColor: "var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
+                  <Key size={12} strokeWidth={1.75} />
+                  <span>
+                    {isIndonesian
+                      ? "Token Pengguna Pribadi Anda"
+                      : "Your Personal User Token"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    copyToClipboard(
+                      userToken,
+                      isIndonesian ? "Token Pengguna" : "User Token",
+                    )
+                  }
+                  className="py-1 px-2.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[10px] font-semibold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  {copiedKey ===
+                  (isIndonesian ? "Token Pengguna" : "User Token") ? (
+                    <Check size={11} className="text-[var(--text-primary)]" />
+                  ) : (
+                    <Copy size={11} />
+                  )}
+                  <span>{isIndonesian ? "Salin Token" : "Copy Token"}</span>
+                </button>
+              </div>
+              <div className="font-mono text-[10px] text-[var(--text-secondary)] truncate select-all">
+                {userToken}
+              </div>
+              <p className="text-[10px] text-[var(--text-tertiary)] leading-normal">
+                {isIndonesian
+                  ? "Digunakan untuk otentikasi penyimpanan latar belakang agar transaksi tersimpan hening tanpa membuka aplikasi."
+                  : "Used for silent background authentication so transactions save without opening the app."}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* 4-Way Segmented Tabs */}
@@ -1003,9 +1114,9 @@ export function AppleShortcutsGuideModal({
                     </p>
                   </div>
 
-                  {/* Action 7: Open URLs */}
+                  {/* Action 7: Save Method (Background RPC vs URL Scheme) */}
                   <div
-                    className="p-3.5 rounded-2xl border space-y-2.5"
+                    className="p-3.5 rounded-2xl border space-y-3"
                     style={{
                       background: "var(--bg-elevated)",
                       borderColor: "var(--glass-border)",
@@ -1017,152 +1128,394 @@ export function AppleShortcutsGuideModal({
                           7
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Buka URL & Simpan Otomatis"
-                            : "Open URLs (Direct Auto-Save)"}
+                          {glassSaveMethod === "background"
+                            ? isIndonesian
+                              ? "Dapatkan Isi URL (Simpan Latar Belakang)"
+                              : "Get Contents of URL (Background Save)"
+                            : isIndonesian
+                              ? "Buka URL & Simpan Otomatis"
+                              : "Open URLs (Direct Auto-Save)"}
                         </span>
                       </div>
-                      <Zap size={13} className="text-[var(--text-primary)]" />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                        {glassSaveMethod === "background" ? "POST API" : "trouvaille://"}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Tambahkan tindakan 'Buka URL' lalu masukkan templat skema berikut dengan menyematkan variabel dari papan ketik:"
-                        : "Add action 'Open URLs' and paste the URL scheme template below, inserting Magic Variables from your keyboard:"}
-                    </p>
 
-                    {/* Variable Badges Breakdown */}
-                    <div className="pl-7 space-y-1.5">
-                      <div
-                        className="p-2.5 rounded-xl border text-[11px] space-y-1"
-                        style={{
-                          background: "var(--bg-base)",
-                          borderColor: "var(--glass-border)",
+                    {/* Method Toggle */}
+                    <div
+                      className="grid grid-cols-2 gap-1 p-1 rounded-xl border text-[11px]"
+                      style={{
+                        background: "var(--bg-base)",
+                        borderColor: "var(--glass-border)",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setGlassSaveMethod("background");
                         }}
+                        className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
+                          glassSaveMethod === "background"
+                            ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
+                            : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                        }`}
                       >
-                        <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] block">
+                        <ShieldCheck size={12} strokeWidth={1.5} />
+                        <span>
                           {isIndonesian
-                            ? "Panduan Variabel Papan Ketik (Bukan Ketik Manual):"
-                            : "Keyboard Variable Picker Mapping:"}
+                            ? "Hening Latar Belakang"
+                            : "Background Silent"}
                         </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
-                          <div>
-                            • {isIndonesian ? "nominal=" : "amount="} ➔{" "}
-                            <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
-                              {isIndonesian ? "Nominal" : "Amount"}
-                            </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setGlassSaveMethod("url_scheme");
+                        }}
+                        className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
+                          glassSaveMethod === "url_scheme"
+                            ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
+                            : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                        }`}
+                      >
+                        <Zap size={12} strokeWidth={1.5} />
+                        <span>
+                          {isIndonesian ? "Skema URL" : "URL Scheme"}
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* METHOD 1: BACKGROUND API (RECOMMENDED) */}
+                    {glassSaveMethod === "background" && (
+                      <div className="space-y-2.5 text-[11px]">
+                        <p className="text-[var(--text-secondary)] pl-7 leading-relaxed">
+                          {isIndonesian
+                            ? "Tambahkan tindakan 'Dapatkan Isi URL'. Metode ini bekerja hening di latar belakang tanpa membuka aplikasi sama sekali, lalu diikuti tindakan notifikasi di bawah."
+                            : "Add action 'Get Contents of URL'. This works silently in the background without opening the app at all, followed by the notification action below."}
+                        </p>
+
+                        <div className="pl-7 space-y-2">
+                          <div
+                            className="p-2.5 rounded-xl border space-y-1.5"
+                            style={{
+                              background: "var(--bg-base)",
+                              borderColor: "var(--glass-border)",
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
+                                {isIndonesian ? "Alamat URL API:" : "API Endpoint URL:"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    rpcEndpoint,
+                                    isIndonesian ? "URL API" : "API URL",
+                                  )
+                                }
+                                className="py-0.5 px-2 rounded-md border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[10px] font-semibold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {copiedKey ===
+                                (isIndonesian ? "URL API" : "API URL") ? (
+                                  <Check
+                                    size={10}
+                                    className="text-[var(--text-primary)]"
+                                  />
+                                ) : (
+                                  <Copy size={10} />
+                                )}
+                                <span>{isIndonesian ? "Salin" : "Copy"}</span>
+                              </button>
+                            </div>
+                            <code className="block text-[10px] font-mono break-all text-[var(--text-primary)]">
+                              {rpcEndpoint}
+                            </code>
                           </div>
-                          <div>
-                            • {isIndonesian ? "&kategori=" : "&category="} ➔{" "}
-                            <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
-                              {isIndonesian ? "Kategori" : "Category"}
-                            </span>
-                          </div>
-                          <div>
-                            • {isIndonesian ? "&rekening=" : "&wallet="} ➔{" "}
-                            <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
-                              {isIndonesian ? "Rekening" : "Wallet"}
-                            </span>
-                          </div>
-                          <div>
-                            • {isIndonesian ? "&tanggal=" : "&date="} ➔{" "}
-                            <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
-                              {isIndonesian ? "Tanggal" : "Date"}
-                            </span>
-                          </div>
-                          <div className="sm:col-span-2">
-                            • {isIndonesian ? "&catatan=" : "&note="} ➔{" "}
-                            <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+
+                          <div
+                            className="p-2.5 rounded-xl border space-y-1.5"
+                            style={{
+                              background: "var(--bg-base)",
+                              borderColor: "var(--glass-border)",
+                            }}
+                          >
+                            <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] block">
                               {isIndonesian
-                                ? "Teks Terenkode"
-                                : "URL Encoded Text"}
+                                ? "Konfigurasi Tindakan di Pintasan:"
+                                : "Shortcut Action Configuration:"}
                             </span>
+                            <div className="space-y-1 text-[11px] text-[var(--text-secondary)]">
+                              <div>
+                                • {isIndonesian ? "Metode:" : "Method:"}{" "}
+                                <span className="font-semibold text-[var(--text-primary)]">
+                                  POST
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                <div>
+                                  • {isIndonesian ? "Tajuk (Headers):" : "Headers:"}{" "}
+                                  <span className="font-mono text-[10px] text-[var(--text-primary)]">
+                                    apikey
+                                  </span>{" "}
+                                  &{" "}
+                                  <span className="font-mono text-[10px] text-[var(--text-primary)]">
+                                    Content-Type: application/json
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    copyToClipboard(
+                                      anonKey,
+                                      isIndonesian ? "Kunci Anon API" : "Anon API Key",
+                                    )
+                                  }
+                                  className="py-0.5 px-2 rounded-md border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[10px] font-semibold text-[var(--text-primary)] shrink-0 flex items-center gap-1 cursor-pointer transition-colors"
+                                >
+                                  {copiedKey ===
+                                  (isIndonesian
+                                    ? "Kunci Anon API"
+                                    : "Anon API Key") ? (
+                                    <Check
+                                      size={10}
+                                      className="text-[var(--text-primary)]"
+                                    />
+                                  ) : (
+                                    <Copy size={10} />
+                                  )}
+                                  <span>{isIndonesian ? "Salin Kunci" : "Copy Key"}</span>
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                          <div className="sm:col-span-2">
-                            • &autosave=true ➔{" "}
-                            <span className="text-[var(--text-secondary)]">
-                              {isIndonesian
-                                ? "Teks biasa (simpan langsung)"
-                                : "Plain text (instant auto-save)"}
-                            </span>
+
+                          <div
+                            className="p-2.5 rounded-xl border space-y-1.5"
+                            style={{
+                              background: "var(--bg-base)",
+                              borderColor: "var(--glass-border)",
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
+                                {isIndonesian
+                                  ? "Badan Permintaan (JSON):"
+                                  : "Request Body (JSON):"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    JSON.stringify(
+                                      {
+                                        p_user_token: userToken || "TOKEN_PENGGUNA",
+                                        p_amount: 0,
+                                        p_category_name: "Kategori",
+                                        p_wallet_name: "Rekening",
+                                        p_note: "Catatan",
+                                        p_occurred_on: "Tanggal",
+                                      },
+                                      null,
+                                      2,
+                                    ),
+                                    isIndonesian
+                                      ? "Format JSON"
+                                      : "JSON Format",
+                                  )
+                                }
+                                className="py-0.5 px-2 rounded-md border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[10px] font-semibold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {copiedKey ===
+                                (isIndonesian
+                                  ? "Format JSON"
+                                  : "JSON Format") ? (
+                                  <Check
+                                    size={10}
+                                    className="text-[var(--text-primary)]"
+                                  />
+                                ) : (
+                                  <Copy size={10} />
+                                )}
+                                <span>{isIndonesian ? "Salin JSON" : "Copy JSON"}</span>
+                              </button>
+                            </div>
+                            <pre className="p-2 rounded-lg text-[10px] font-mono overflow-x-auto text-[var(--text-secondary)] bg-[var(--glass-fill)] border border-[var(--glass-border)]">
+{`{
+  "p_user_token": "${userToken ? userToken.slice(0, 8) + "..." : "TOKEN_PENGGUNA"}",
+  "p_amount": [Nominal],
+  "p_category_name": "[Kategori]",
+  "p_wallet_name": "[Rekening]",
+  "p_note": "[Catatan]",
+  "p_occurred_on": "[Tanggal]"
+}`}
+                            </pre>
                           </div>
                         </div>
                       </div>
+                    )}
 
-                      {/* Explicit Warning */}
-                      <div className="flex items-start gap-1.5 p-2 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[10px] text-[var(--text-secondary)] leading-relaxed">
-                        <AlertCircle
-                          size={13}
-                          className="shrink-0 mt-0.5 text-[var(--text-primary)]"
-                          strokeWidth={1.75}
-                        />
+                    {/* METHOD 2: URL SCHEME */}
+                    {glassSaveMethod === "url_scheme" && (
+                      <div className="space-y-2.5 text-[11px]">
+                        <p className="text-[var(--text-secondary)] pl-7 leading-relaxed">
+                          {isIndonesian
+                            ? "Tambahkan tindakan 'Buka URL' lalu masukkan templat skema berikut dengan menyematkan variabel dari papan ketik iPhone (Catatan: Tindakan ini membuka Trouvaille ke layar depan saat menyimpan):"
+                            : "Add action 'Open URLs' and paste the URL scheme template below, inserting Magic Variables from your keyboard (Note: This action brings Trouvaille to the foreground upon saving):"}
+                        </p>
+
+                        <div className="pl-7 space-y-1.5">
+                          <div
+                            className="p-2.5 rounded-xl border text-[11px] space-y-1"
+                            style={{
+                              background: "var(--bg-base)",
+                              borderColor: "var(--glass-border)",
+                            }}
+                          >
+                            <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] block">
+                              {isIndonesian
+                                ? "Panduan Variabel Papan Ketik (Bukan Ketik Manual):"
+                                : "Keyboard Variable Picker Mapping:"}
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
+                              <div>
+                                • {isIndonesian ? "nominal=" : "amount="} ➔{" "}
+                                <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+                                  {isIndonesian ? "Nominal" : "Amount"}
+                                </span>
+                              </div>
+                              <div>
+                                • {isIndonesian ? "&kategori=" : "&category="} ➔{" "}
+                                <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+                                  {isIndonesian ? "Kategori" : "Category"}
+                                </span>
+                              </div>
+                              <div>
+                                • {isIndonesian ? "&rekening=" : "&wallet="} ➔{" "}
+                                <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+                                  {isIndonesian ? "Rekening" : "Wallet"}
+                                </span>
+                              </div>
+                              <div>
+                                • {isIndonesian ? "&tanggal=" : "&date="} ➔{" "}
+                                <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+                                  {isIndonesian ? "Tanggal" : "Date"}
+                                </span>
+                              </div>
+                              <div className="sm:col-span-2">
+                                • {isIndonesian ? "&catatan=" : "&note="} ➔{" "}
+                                <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+                                  {isIndonesian
+                                    ? "Teks Terenkode"
+                                    : "URL Encoded Text"}
+                                </span>
+                              </div>
+                              <div className="sm:col-span-2">
+                                • &autosave=true ➔{" "}
+                                <span className="text-[var(--text-secondary)]">
+                                  {isIndonesian
+                                    ? "Teks biasa (simpan langsung)"
+                                    : "Plain text (instant auto-save)"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-1.5 p-2 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[10px] text-[var(--text-secondary)] leading-relaxed">
+                            <AlertCircle
+                              size={13}
+                              className="shrink-0 mt-0.5 text-[var(--text-primary)]"
+                              strokeWidth={1.75}
+                            />
+                            <span>
+                              {isIndonesian
+                                ? "PERHATIAN: Jangan ketik tanda kurung siku '[ ]' secara manual! Tanda kurung siku menunjukkan variabel yang harus dipilih dari menu bilah papan ketik iPhone."
+                                : "NOTE: Do not type square brackets '[ ]' manually! They represent dynamic Magic Variables to select from the iOS keyboard picker."}
+                            </span>
+                          </div>
+
+                          <code
+                            className="block p-2 rounded-xl text-[10px] font-mono border break-all"
+                            style={{
+                              background: "var(--bg-base)",
+                              borderColor: "var(--glass-border)",
+                              color: "var(--text-primary)",
+                            }}
+                          >
+                            {glassSchemeTemplate}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyToClipboard(
+                                glassSchemeTemplate,
+                                isIndonesian
+                                  ? "Templat Skema URL"
+                                  : "Scheme Template",
+                              )
+                            }
+                            className="w-full py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            {copiedKey ===
+                            (isIndonesian
+                              ? "Templat Skema URL"
+                              : "Scheme Template") ? (
+                              <Check
+                                size={12}
+                                className="text-[var(--text-primary)]"
+                              />
+                            ) : (
+                              <Copy size={12} />
+                            )}
+                            <span>
+                              {isIndonesian
+                                ? "Salin Templat URL"
+                                : "Copy Scheme Template"}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Test Button */}
+                    <div className="pl-7 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const testCat =
+                            categories.find((c) => c.type !== "income")?.name ||
+                            categories[0]?.name ||
+                            (isIndonesian ? "Makanan" : "Food");
+                          const testWal =
+                            wallets[0]?.name ||
+                            (isIndonesian ? "Dompet Utama" : "Default Wallet");
+                          const testNote = isIndonesian
+                            ? "Uji Coba Pintasan"
+                            : "Shortcut Test";
+                          handleTestDeepLink(
+                            `trouvaille://add?${
+                              isIndonesian ? "nominal" : "amount"
+                            }=25000&${
+                              isIndonesian ? "kategori" : "category"
+                            }=${encodeURIComponent(testCat)}&${
+                              isIndonesian ? "rekening" : "wallet"
+                            }=${encodeURIComponent(testWal)}&${
+                              isIndonesian ? "catatan" : "note"
+                            }=${encodeURIComponent(testNote)}&autosave=true`,
+                          );
+                        }}
+                        className="w-full py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <Zap size={11} />
                         <span>
                           {isIndonesian
-                            ? "PERHATIAN: Jangan ketik tanda kurung siku '[ ]' secara manual! Tanda kurung siku menunjukkan variabel yang harus dipilih dari menu bilah papan ketik iPhone."
-                            : "NOTE: Do not type square brackets '[ ]' manually! They represent dynamic Magic Variables to select from the iOS keyboard picker."}
+                            ? "Uji Simpan Otomatis (Rp 25.000)"
+                            : "Test Auto-Save (25k)"}
                         </span>
-                      </div>
-
-                      <code
-                        className="block p-2 rounded-xl text-[10px] font-mono border break-all"
-                        style={{
-                          background: "var(--bg-base)",
-                          borderColor: "var(--glass-border)",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        {glassSchemeTemplate}
-                      </code>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            copyToClipboard(
-                              glassSchemeTemplate,
-                              isIndonesian
-                                ? "Templat Skema URL"
-                                : "Scheme Template",
-                            )
-                          }
-                          className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          {copiedKey ===
-                          (isIndonesian
-                            ? "Templat Skema URL"
-                            : "Scheme Template") ? (
-                            <Check
-                              size={12}
-                              className="text-[var(--text-primary)]"
-                            />
-                          ) : (
-                            <Copy size={12} />
-                          )}
-                          <span>
-                            {isIndonesian
-                              ? "Salin Templat URL"
-                              : "Copy Scheme Template"}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleTestDeepLink(
-                              `trouvaille://add?${isIndonesian ? "nominal" : "amount"}=50000&${isIndonesian ? "kategori" : "category"}=${encodeURIComponent(
-                                categories[0]?.name || "Makanan",
-                              )}&${isIndonesian ? "rekening" : "wallet"}=${encodeURIComponent(
-                                wallets[0]?.name || "BCA",
-                              )}&${isIndonesian ? "catatan" : "note"}=Makan%20Siang&autosave=true`,
-                            )
-                          }
-                          className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          <Zap size={11} />
-                          <span>
-                            {isIndonesian
-                              ? "Uji Simpan Otomatis"
-                              : "Test Auto-Save"}
-                          </span>
-                        </button>
-                      </div>
+                      </button>
                     </div>
                   </div>
 
@@ -1192,8 +1545,8 @@ export function AppleShortcutsGuideModal({
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
-                        ? "Tambahkan tindakan 'Tampilkan Pemberitahuan'. Judul: 'Trouvaille', Pesan: \"Transaksi Dicatat: Rp [Nominal] • [Kategori] • [Rekening]\". Banner notifikasi iOS akan muncul mengonfirmasi pencatatan transaksi secara instan."
-                        : "Add action 'Show Notification'. Title: 'Trouvaille', Body: \"Transaction Recorded: Rp [Amount] • [Category] • [Wallet]\". This delivers an instant iOS notification confirmation banner."}
+                        ? "Tambahkan tindakan 'Tampilkan Pemberitahuan'. Judul: 'Trouvaille', Pesan: \"Transaksi Dicatat: Rp [Nominal] • [Kategori] • [Rekening]\". Jika Anda menggunakan metode Hening Latar Belakang (Dapatkan Isi URL), banner notifikasi Apple muncul seketika dan aplikasi Trouvaille tidak akan pernah terbuka kecuali banner tersebut ditekan."
+                        : "Add action 'Show Notification'. Title: 'Trouvaille', Body: \"Transaction Recorded: Rp [Amount] • [Category] • [Wallet]\". When using the Background Silent method (Get Contents of URL), the Apple notification banner appears instantly and Trouvaille will never open unless you tap the banner."}
                     </p>
                   </div>
                 </div>

@@ -60,10 +60,7 @@ import {
   requestNotificationPermission,
   syncBillNotifications,
   cancelAllBillNotifications,
-  syncDailyStreakReminder,
-  cancelDailyStreakReminder,
   getDailyStreakReminderTime,
-  setDailyStreakReminderTime,
 } from "../lib/notifications";
 import { flushPendingMutations } from "../lib/syncEngine";
 import { saveBiometricLoginCredentials } from "../lib/biometricAuth";
@@ -168,6 +165,11 @@ const WebDashboardLinkModal = lazy(() =>
 const DataExportVaultModal = lazy(() =>
   import("../components/settings/DataExportVaultModal").then((m) => ({
     default: m.DataExportVaultModal,
+  })),
+);
+const DailyReminderSheet = lazy(() =>
+  import("../components/settings/DailyReminderSheet").then((m) => ({
+    default: m.DailyReminderSheet,
   })),
 );
 
@@ -345,67 +347,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const [dailyReminderTime, setDailyReminderTime] = useState<string>(() => {
     return getDailyStreakReminderTime();
   });
-
-  const handleReminderTimeChange = async (
-    newTimeOrEvent: string | React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const newTime =
-      typeof newTimeOrEvent === "string"
-        ? newTimeOrEvent
-        : newTimeOrEvent.target.value;
-    if (!newTime) return;
-    setDailyReminderTime(newTime);
-    setDailyStreakReminderTime(newTime);
-    triggerHaptic("light");
-    if (dailyReminderEnabled) {
-      await syncDailyStreakReminder(false);
-      showToast(
-        isIndonesian
-          ? `Pengingat streak diatur ke jam ${newTime}`
-          : `Streak reminder set to ${newTime}`,
-        "update",
-        () => {},
-      );
-    }
-  };
-
-  const handleToggleDailyReminder = async () => {
-    triggerHaptic("light");
-    if (dailyReminderEnabled) {
-      setDailyReminderEnabled(false);
-      localStorage.setItem("trouvaille_daily_reminder_enabled", "false");
-      await cancelDailyStreakReminder();
-      showToast(
-        isIndonesian
-          ? "Pengingat streak harian dinonaktifkan"
-          : "Daily streak reminder turned off",
-        "delete",
-        () => {},
-      );
-    } else {
-      const granted = await requestNotificationPermission();
-      if (granted) {
-        setDailyReminderEnabled(true);
-        localStorage.setItem("trouvaille_daily_reminder_enabled", "true");
-        await syncDailyStreakReminder(false);
-        showToast(
-          isIndonesian
-            ? `Pengingat streak harian aktif (${dailyReminderTime})`
-            : `Daily streak reminder enabled (${dailyReminderTime})`,
-          "add",
-          () => {},
-        );
-      } else {
-        showToast(
-          isIndonesian
-            ? "Izin notifikasi belum diberikan"
-            : "Notification permission denied",
-          "delete",
-          () => {},
-        );
-      }
-    }
-  };
+  const [dailyReminderSheetOpen, setDailyReminderSheetOpen] = useState(false);
 
   // Safe Sync state
   const [syncStatus, setSyncStatus] = useState<
@@ -1446,138 +1388,74 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             Notifications
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
-            {/* Daily Streak Reminder Toggle */}
+            {/* Daily Streak Reminder Button (Opens DailyReminderSheet) */}
             {showDailyReminder && (
-              <div className="divide-y divide-[var(--glass-border)]">
-                <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{
-                        background: "var(--bg-elevated)",
-                        border: "1px solid var(--glass-border)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      <BellRing size={14} strokeWidth={1.75} />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span
-                        className="text-[13px] font-semibold truncate"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian
-                          ? "Pengingat Streak Harian"
-                          : "Daily Streak Reminder"}
-                      </span>
-                    </div>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setDailyReminderSheetOpen(true);
+                }}
+                className="w-full flex items-center justify-between py-2.5 px-3.5 min-h-[52px] text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <BellRing size={14} strokeWidth={1.75} />
                   </div>
-                  <ToggleSwitch
-                    checked={dailyReminderEnabled}
-                    onChange={handleToggleDailyReminder}
-                    ariaLabel="Toggle daily streak reminder"
-                  />
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Pengingat Streak Harian"
+                        : "Daily Streak Reminder"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {dailyReminderEnabled
+                        ? isIndonesian
+                          ? `Aktif · Setiap pukul ${dailyReminderTime}`
+                          : `Active · Daily at ${dailyReminderTime}`
+                        : isIndonesian
+                          ? "Nonaktif"
+                          : "Disabled"}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Dedicated Time Selector & Quick Presets when enabled */}
-                {dailyReminderEnabled && (
-                  <div className="py-3 px-3.5 space-y-2.5 bg-black/[0.015] dark:bg-white/[0.02]">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Clock
-                          size={13}
-                          strokeWidth={1.75}
-                          className="text-[var(--text-tertiary)]"
-                        />
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Pilih Jam Pengingat"
-                            : "Choose Reminder Time"}
-                        </span>
-                      </div>
-
-                      {/* Interactive Time Input Box */}
-                      <label className="relative inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] cursor-pointer transition-colors shadow-xs">
-                        <input
-                          type="time"
-                          value={dailyReminderTime}
-                          onChange={handleReminderTimeChange}
-                          onClick={(e) => {
-                            try {
-                              (e.target as HTMLInputElement).showPicker?.();
-                            } catch {
-                              // Fallback for older browsers
-                            }
-                          }}
-                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
-                          aria-label={
-                            isIndonesian
-                              ? "Pilih Jam Pengingat"
-                              : "Select Reminder Time"
-                          }
-                        />
-                        <span className="font-mono text-[13px] font-bold text-[var(--text-primary)] tracking-wider">
-                          {dailyReminderTime}
-                        </span>
-                        <ChevronRight
-                          size={13}
-                          className="text-[var(--text-tertiary)]"
-                        />
-                      </label>
-                    </div>
-
-                    {/* Quick Preset Buttons */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-tertiary)] mr-0.5">
-                        {isIndonesian ? "Preset:" : "Presets:"}
-                      </span>
-                      {[
-                        {
-                          time: "08:00",
-                          label: isIndonesian ? "Pagi 08:00" : "08:00 AM",
-                        },
-                        {
-                          time: "12:30",
-                          label: isIndonesian ? "Siang 12:30" : "12:30 PM",
-                        },
-                        {
-                          time: "20:00",
-                          label: isIndonesian ? "20:00 (Bawaan)" : "08:00 PM",
-                        },
-                        {
-                          time: "21:30",
-                          label: isIndonesian ? "Larut 21:30" : "09:30 PM",
-                        },
-                      ].map((preset) => {
-                        const isActive = dailyReminderTime === preset.time;
-                        return (
-                          <button
-                            key={preset.time}
-                            type="button"
-                            onClick={() =>
-                              handleReminderTimeChange(preset.time)
-                            }
-                            className="px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer border"
-                            style={{
-                              background: isActive
-                                ? "var(--text-primary)"
-                                : "var(--bg-elevated)",
-                              color: isActive
-                                ? "var(--bg-canvas)"
-                                : "var(--text-secondary)",
-                              borderColor: isActive
-                                ? "var(--text-primary)"
-                                : "var(--glass-border)",
-                            }}
-                          >
-                            {preset.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+                <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                  <span
+                    className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full border"
+                    style={{
+                      borderColor: "var(--glass-border)",
+                      color: dailyReminderEnabled
+                        ? "var(--text-primary)"
+                        : "var(--text-tertiary)",
+                      background: "var(--bg-elevated)",
+                    }}
+                  >
+                    {dailyReminderEnabled
+                      ? dailyReminderTime
+                      : isIndonesian
+                        ? "Nonaktif"
+                        : "Off"}
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </div>
+              </button>
             )}
 
             {/* Bill Reminders Toggle */}
@@ -2299,6 +2177,15 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           onOpenVaultRestore={() => {
             setVaultDefaultTab("restore");
             setVaultModalOpen(true);
+          }}
+        />
+
+        <DailyReminderSheet
+          isOpen={dailyReminderSheetOpen}
+          onClose={() => setDailyReminderSheetOpen(false)}
+          onSaved={(enabled, time) => {
+            setDailyReminderEnabled(enabled);
+            setDailyReminderTime(time);
           }}
         />
       </Suspense>
