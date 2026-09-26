@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Smartphone,
   Copy,
@@ -25,26 +25,34 @@ import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 
+export type TabType = "back_tap" | "action_button" | "ways_to_add" | "automation";
+type BackTapSubMode = "glass_dialog" | "voice_speak" | "app_intent";
+
 interface AppleShortcutsGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: TabType;
 }
-
-type TabType = "back_tap" | "ways_to_add" | "automation";
-type BackTapSubMode = "glass_dialog" | "voice_speak" | "app_intent";
 
 export function AppleShortcutsGuideModal({
   isOpen,
   onClose,
+  initialTab = "back_tap",
 }: AppleShortcutsGuideModalProps) {
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
 
-  const [activeTab, setActiveTab] = useState<TabType>("back_tap");
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [backTapMode, setBackTapMode] = useState<BackTapSubMode>("glass_dialog");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   const copyToClipboard = (text: string, label: string) => {
     triggerSuccessHaptic();
@@ -96,14 +104,14 @@ export function AppleShortcutsGuideModal({
             style={{ color: "var(--text-secondary)" }}
           >
             {isIndonesian
-              ? "Catat transaksi instan dengan mengetuk 2x belakang iPhone (Back Tap), dialog frosted glass Dynamic Island, dikte suara, atau Action Button."
-              : "Instantly record expenses by double-tapping the back of your iPhone, Dynamic Island frosted glass dialogs, voice dictation, or Action Button."}
+              ? "Catat transaksi instan dengan mengetuk 2x belakang iPhone (Back Tap), dialog frosted glass Dynamic Island, dikte suara, Action Button, atau otomatisasi Apple Pay."
+              : "Instantly record expenses by double-tapping the back of your iPhone, Dynamic Island frosted glass dialogs, voice dictation, Action Button, or Apple Pay automations."}
           </p>
         </div>
 
-        {/* 3-Way Segmented Tabs */}
+        {/* 4-Way Segmented Tabs */}
         <div
-          className="flex items-center p-1 rounded-2xl border"
+          className="grid grid-cols-4 p-1 rounded-2xl border text-center gap-1"
           style={{
             background: "var(--bg-base)",
             borderColor: "var(--glass-border)",
@@ -115,13 +123,27 @@ export function AppleShortcutsGuideModal({
               triggerHaptic("light");
               setActiveTab("back_tap");
             }}
-            className={`flex-1 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
+            className={`py-2 px-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer truncate ${
               activeTab === "back_tap"
                 ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             }`}
           >
-            {isIndonesian ? "Back Tap Glass" : "Back Tap Glass"}
+            Back Tap
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              setActiveTab("action_button");
+            }}
+            className={`py-2 px-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer truncate ${
+              activeTab === "action_button"
+                ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
+                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+            }`}
+          >
+            Action Btn
           </button>
           <button
             type="button"
@@ -129,13 +151,13 @@ export function AppleShortcutsGuideModal({
               triggerHaptic("light");
               setActiveTab("ways_to_add");
             }}
-            className={`flex-1 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
+            className={`py-2 px-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer truncate ${
               activeTab === "ways_to_add"
                 ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             }`}
           >
-            {isIndonesian ? "Semua Skema" : "All Schemes"}
+            {isIndonesian ? "Metode" : "Ways"}
           </button>
           <button
             type="button"
@@ -143,7 +165,7 @@ export function AppleShortcutsGuideModal({
               triggerHaptic("light");
               setActiveTab("automation");
             }}
-            className={`flex-1 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
+            className={`py-2 px-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer truncate ${
               activeTab === "automation"
                 ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
@@ -153,7 +175,7 @@ export function AppleShortcutsGuideModal({
           </button>
         </div>
 
-        {/* TAB 1: BACK TAP GLASS DIALOG TUTORIAL & VOICE */}
+        {/* SECTION 1: BACK TAP GLASS DIALOG TUTORIAL & VOICE */}
         {activeTab === "back_tap" && (
           <div className="space-y-4">
             {/* Mode Switcher */}
@@ -748,7 +770,138 @@ export function AppleShortcutsGuideModal({
           </div>
         )}
 
-        {/* TAB 2: WAYS TO ADD TRANSACTIONS */}
+        {/* SECTION 2: ACTION BUTTON */}
+        {activeTab === "action_button" && (
+          <div className="space-y-4">
+            <div
+              className="p-4 rounded-2xl border space-y-3"
+              style={{
+                background: "var(--bg-elevated)",
+                borderColor: "var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <Smartphone size={14} className="text-[var(--text-primary)]" />
+                <span
+                  className="text-[11px] font-semibold uppercase tracking-wider block"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "Action Button (iPhone 15 / 16 Pro)" : "Action Button Setup (iPhone 15 / 16 Pro)"}
+                </span>
+              </div>
+
+              <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
+                {isIndonesian
+                  ? "Action Button di sisi kiri iPhone dapat dihubungkan ke Shortcut Trouvaille untuk mencatat pengeluaran dalam satu kali tekan fisik dari aplikasi mana pun."
+                  : "The Action Button on the left side of your iPhone can be linked to a Trouvaille shortcut to log transactions in a single physical press from anywhere."}
+              </p>
+
+              {/* Step 1 */}
+              <div className="flex items-start gap-3 pt-1">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold border"
+                  style={{
+                    background: "var(--bg-base)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  1
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[13px] font-semibold text-[var(--text-primary)]">
+                    {isIndonesian ? "Buka Pengaturan Action Button" : "Open Action Button Settings"}
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
+                    {isIndonesian
+                      ? "Buka Settings (Pengaturan) di iPhone > Action Button. Geser menu hingga menemukan opsi 'Shortcut' (Pintasan)."
+                      : "Go to Settings on iPhone > Action Button. Swipe through the options to find 'Shortcut'."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex items-start gap-3 pt-2">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold border"
+                  style={{
+                    background: "var(--bg-base)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  2
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[13px] font-semibold text-[var(--text-primary)]">
+                    {isIndonesian ? "Pilih Pintasan Trouvaille" : "Assign Trouvaille Shortcut"}
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
+                    {isIndonesian
+                      ? "Ketuk tombol pemilih shortcut di bawahnya, lalu pilih shortcut Trouvaille yang telah Anda buat (misalnya 'Catat Trouvaille' atau 'Voice Quick-Add')."
+                      : "Tap the shortcut selector button below and choose your Trouvaille shortcut (e.g. 'Trouvaille Quick Log' or 'Voice Quick-Add')."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex items-start gap-3 pt-2">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold border"
+                  style={{
+                    background: "var(--bg-base)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  3
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[13px] font-semibold text-[var(--text-primary)]">
+                    {isIndonesian ? "Tekan & Tahan Kapan Saja" : "Press & Hold Anytime"}
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
+                    {isIndonesian
+                      ? "Cukup tekan dan tahan Action Button saat sedang bertransaksi di kasir, bayar QRIS, atau selesai makan. Dialog pencatatan langsung muncul seketika!"
+                      : "Simply press and hold the Action Button at checkout, QRIS payment, or after dining. The logging modal appears instantly!"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Test Links */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleTestDeepLink("trouvaille://voice")}
+                className="flex-1 py-3 px-3 rounded-xl border text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                style={{
+                  background: "var(--bg-elevated)",
+                  borderColor: "var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <Mic size={14} />
+                <span>{isIndonesian ? "Tes Voice Action" : "Test Voice Action"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTestDeepLink("trouvaille://scan")}
+                className="flex-1 py-3 px-3 rounded-xl border text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                style={{
+                  background: "var(--bg-elevated)",
+                  borderColor: "var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <Camera size={14} />
+                <span>{isIndonesian ? "Tes Scan Action" : "Test Scan Action"}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* SECTION 3: WAYS TO ADD TRANSACTIONS */}
         {activeTab === "ways_to_add" && (
           <div className="space-y-3">
             {[
@@ -966,7 +1119,7 @@ export function AppleShortcutsGuideModal({
           </div>
         )}
 
-        {/* TAB 3: APPLE PAY AUTOMATION */}
+        {/* SECTION 4: APPLE PAY AUTOMATION */}
         {activeTab === "automation" && (
           <div className="space-y-4">
             <div

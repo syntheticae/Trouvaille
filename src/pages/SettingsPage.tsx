@@ -83,6 +83,7 @@ const LanguageSwitcherSheet = lazy(() =>
     default: m.LanguageSwitcherSheet,
   }))
 );
+import type { TabType } from "../components/settings/AppleShortcutsGuideModal";
 const AppleShortcutsGuideModal = lazy(() =>
   import("../components/settings/AppleShortcutsGuideModal").then((m) => ({
     default: m.AppleShortcutsGuideModal,
@@ -279,6 +280,13 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const [budgetTargetOpen, setBudgetTargetOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [backTapGuideOpen, setBackTapGuideOpen] = useState(false);
+  const [shortcutsGuideTab, setShortcutsGuideTab] =
+    useState<TabType>("back_tap");
+
+  const openShortcutsWithTab = (tab: TabType) => {
+    setShortcutsGuideTab(tab);
+    setBackTapGuideOpen(true);
+  };
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
   const [vaultDefaultTab, setVaultDefaultTab] = useState<"export" | "restore">(
@@ -531,13 +539,25 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const showSaveAttachments = matches("Save Attachment Files", "receipts camera slip images photos");
   const hasPreferences = showTheme || showKeypad || showTags || showSaveAttachments;
 
-  // Section 3: Automations & Siri
-  const showShortcuts = matches("Quick-Add Shortcuts", "fast entry quick voice 1-tap presets");
+  // Section 3: Automations & Siri (4 Distinct Sub-sections)
   const showBackTap = matches(
-    "Apple Shortcuts & iOS Automations",
-    "ios accessibility double tap shortcut back tap siri action button apple pay automations",
+    "Back Tap Glass & Voice Log",
+    "ios accessibility double tap shortcut back tap siri dynamic island glass modal",
   );
-  const hasAutomations = showShortcuts || showBackTap;
+  const showActionButton = matches(
+    "Action Button Shortcut",
+    "iphone 15 pro 16 pro hardware button action button",
+  );
+  const showShortcuts = matches(
+    "Quick-Add Shortcuts",
+    "fast entry quick voice 1-tap presets",
+  );
+  const showApplePay = matches(
+    "Apple Pay Automations",
+    "apple pay nfc contactless card tap automation transaction",
+  );
+  const hasAutomations =
+    showBackTap || showActionButton || showShortcuts || showApplePay;
 
   // Section 4: Notifications
   const showDailyReminder = matches("Daily Streak Reminder", "streak 20:00 night notification alert");
@@ -1315,10 +1335,116 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             className="text-[11px] font-bold uppercase tracking-wider px-1"
             style={{ color: "var(--text-secondary)" }}
           >
-            Automations & Shortcuts
+            {isIndonesian ? "Otomatisasi & Pintasan" : "Automations & Shortcuts"}
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
-            {/* Quick-Add Shortcuts */}
+            {/* 1. Back Tap Glass & Voice Log */}
+            {showBackTap && (
+              <button
+                type="button"
+                onClick={() => openShortcutsWithTab("back_tap")}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Smartphone size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Pintasan Back Tap (Glass & Suara)"
+                        : "Back Tap (Glass Dialog & Voice)"}
+                    </span>
+                    <span className="text-[11px] text-[var(--text-tertiary)] truncate block">
+                      {isIndonesian
+                        ? "Ketuk 2x belakang iPhone & modal Dynamic Island"
+                        : "Double-tap iPhone back & Dynamic Island dialog"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                  <span
+                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                    style={{
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-secondary)",
+                      background: "var(--bg-elevated)",
+                    }}
+                  >
+                    Glass UI
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
+            {/* 2. Action Button Shortcut */}
+            {showActionButton && (
+              <button
+                type="button"
+                onClick={() => openShortcutsWithTab("action_button")}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <SlidersHorizontal size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Pintasan Action Button"
+                        : "Action Button Shortcut"}
+                    </span>
+                    <span className="text-[11px] text-[var(--text-tertiary)] truncate block">
+                      {isIndonesian
+                        ? "iPhone 15 / 16 Pro hardware button"
+                        : "iPhone 15 / 16 Pro hardware button"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                  <span
+                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                    style={{
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-secondary)",
+                      background: "var(--bg-elevated)",
+                    }}
+                  >
+                    1-Tap
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
+            {/* 3. Quick-Add Presets */}
             {showShortcuts && (
               <button
                 type="button"
@@ -1336,14 +1462,23 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   >
                     <Zap size={14} strokeWidth={1.75} />
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Quick-Add Shortcuts
-                  </span>
+                  <div className="min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Pintasan Cepat (Quick-Add)"
+                        : "Quick-Add Shortcuts"}
+                    </span>
+                    <span className="text-[11px] text-[var(--text-tertiary)] truncate block">
+                      {isIndonesian
+                        ? "Preset pengeluaran rutin 1-ketukan"
+                        : "Routine 1-tap expense presets"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0 pl-2">
                   <span
                     className="text-[12px] font-mono"
                     style={{ color: "var(--text-secondary)" }}
@@ -1358,11 +1493,11 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
               </button>
             )}
 
-            {/* Apple Shortcuts & iOS Automations */}
-            {showBackTap && (
+            {/* 4. Apple Pay Automations */}
+            {showApplePay && (
               <button
                 type="button"
-                onClick={() => setBackTapGuideOpen(true)}
+                onClick={() => openShortcutsWithTab("automation")}
                 className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -1374,16 +1509,25 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Smartphone size={14} strokeWidth={1.75} />
+                    <CreditCard size={14} strokeWidth={1.75} />
                   </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Apple Shortcuts & iOS Automations
-                  </span>
+                  <div className="min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate block"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Otomatisasi Apple Pay"
+                        : "Apple Pay Automations"}
+                    </span>
+                    <span className="text-[11px] text-[var(--text-tertiary)] truncate block">
+                      {isIndonesian
+                        ? "Auto-catat saat tap kartu / contactless"
+                        : "Auto-log on card tap & terminal pay"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0 pl-2">
                   <span
                     className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
                     style={{
@@ -1392,7 +1536,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       background: "var(--bg-elevated)",
                     }}
                   >
-                    Setup
+                    Auto
                   </span>
                   <ChevronRight
                     size={15}
@@ -2235,6 +2379,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
         <AppleShortcutsGuideModal
           isOpen={backTapGuideOpen}
           onClose={() => setBackTapGuideOpen(false)}
+          initialTab={shortcutsGuideTab}
         />
 
         <PinSetupModal
