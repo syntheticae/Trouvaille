@@ -15,6 +15,8 @@ import {
   AlertCircle,
   Download,
   Key,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
@@ -56,6 +58,7 @@ export function AppleShortcutsGuideModal({
     "background" | "url_scheme"
   >("background");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [showManualSteps, setShowManualSteps] = useState<boolean>(false);
 
   const anonKey =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxamNtcWtncmZtb3B6bnJmaWt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODA0NzcsImV4cCI6MjEwMjg1NjQ3N30.ujfATs0huUkR9tCNB0Rs8JlqJG3dkz13EKtkr-eFiDg";
@@ -789,31 +792,98 @@ export function AppleShortcutsGuideModal({
                   </p>
                 </div>
 
-                {/* Important Renaming Notice Box */}
+                {/* 1-Tap Download Card for Glass Dialog */}
                 <div
-                  className="p-3 rounded-2xl border text-[11px] space-y-1"
+                  className="p-3.5 rounded-2xl border space-y-2.5"
                   style={{
                     background: "var(--bg-base)",
                     borderColor: "var(--glass-border)",
                   }}
                 >
-                  <div className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
-                    <Sparkles size={12} strokeWidth={1.5} />
-                    <span>
-                      {isIndonesian
-                        ? "Petunjuk Penting: Ganti Nama Variabel"
-                        : "Critical Tip: Rename Variables"}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-semibold text-[12px] text-[var(--text-primary)]">
+                      <Download size={13} strokeWidth={1.75} />
+                      <span>
+                        {isIndonesian
+                          ? "Pasang 1-Ketukan (.shortcut) — Rekomendasi Utama"
+                          : "1-Tap Install (.shortcut) — Recommended"}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
+                      .shortcut
                     </span>
                   </div>
-                  <p className="text-[var(--text-secondary)] leading-relaxed">
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
                     {isIndonesian
-                      ? "Agar tidak tertukar pada langkah akhir, ketuk setiap variabel biru pada papan ketik iOS lalu pilih opsi 'Ganti Nama' sesuai urutan: Nominal, Kategori, Rekening, Tanggal, Catatan."
-                      : "To avoid ambiguous variables, tap each blue variable on iOS keyboard and choose 'Rename' to: Amount, Category, Wallet, Date, Note."}
+                      ? "Tidak perlu repot menyusun 8 tindakan manual! Cukup unduh file pintasan resmi Trouvaille lalu buka di iPhone untuk langsung menggunakannya."
+                      : "Skip building 8 manual actions! Download the official Trouvaille shortcut file and open it on iPhone to use it immediately."}
                   </p>
+                  <a
+                    href="/shortcuts/Trouvaille_Glass_Dialog.shortcut"
+                    download="Trouvaille_Glass_Dialog.shortcut"
+                    className="w-full py-2 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.05] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.14] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
+                  >
+                    <Download size={13} strokeWidth={1.75} />
+                    <span>
+                      {isIndonesian
+                        ? "Unduh Pintasan Dialog Kaca"
+                        : "Download Glass Dialog Shortcut"}
+                    </span>
+                  </a>
                 </div>
 
-                {/* 8 Action Cards */}
-                <div className="space-y-2.5">
+                {/* Collapsible Manual Steps Toggle */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setShowManualSteps((prev) => !prev);
+                  }}
+                  className="w-full py-2.5 px-3.5 rounded-xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-between cursor-pointer transition-colors shadow-xs"
+                >
+                  <span>
+                    {showManualSteps
+                      ? isIndonesian
+                        ? "Sembunyikan Panduan Manual Teknis (8 Tindakan)"
+                        : "Hide Technical Manual Steps (8 Actions)"
+                      : isIndonesian
+                        ? "Lihat Panduan Manual (Jika Ingin Merakit Sendiri)"
+                        : "View Manual Steps (For Custom Assembly)"}
+                  </span>
+                  {showManualSteps ? (
+                    <ChevronUp size={14} className="text-[var(--text-tertiary)]" />
+                  ) : (
+                    <ChevronDown size={14} className="text-[var(--text-tertiary)]" />
+                  )}
+                </button>
+
+                {showManualSteps && (
+                  <div className="space-y-2.5 pt-1">
+                    {/* Important Renaming Notice Box */}
+                    <div
+                      className="p-3 rounded-2xl border text-[11px] space-y-1"
+                      style={{
+                        background: "var(--bg-base)",
+                        borderColor: "var(--glass-border)",
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
+                        <Sparkles size={12} strokeWidth={1.5} />
+                        <span>
+                          {isIndonesian
+                            ? "Petunjuk Penting: Ganti Nama Variabel"
+                            : "Critical Tip: Rename Variables"}
+                        </span>
+                      </div>
+                      <p className="text-[var(--text-secondary)] leading-relaxed">
+                        {isIndonesian
+                          ? "Agar tidak tertukar pada langkah akhir, ketuk setiap variabel biru pada papan ketik iOS lalu pilih opsi 'Ganti Nama' sesuai urutan: Nominal, Kategori, Rekening, Tanggal, Catatan."
+                          : "To avoid ambiguous variables, tap each blue variable on iOS keyboard and choose 'Rename' to: Amount, Category, Wallet, Date, Note."}
+                      </p>
+                    </div>
+
+                    {/* 8 Action Cards */}
+                    <div className="space-y-2.5">
                   {/* Action 1: Ask for Number */}
                   <div
                     className="p-3 rounded-2xl border space-y-1.5"
@@ -1552,6 +1622,8 @@ export function AppleShortcutsGuideModal({
                 </div>
               </div>
             )}
+          </div>
+        )}
 
             {/* HOW TO ASSIGN TO IPHONE BACK TAP */}
             <div

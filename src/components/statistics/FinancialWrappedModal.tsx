@@ -82,6 +82,7 @@ export function FinancialWrappedModal({
   const slideContainerRef = useRef<HTMLDivElement>(null);
   const pointerDownTime = useRef<number>(0);
   const wasHolding = useRef<boolean>(false);
+  const cachedSlideFilesRef = useRef<Map<number, File>>(new Map());
 
   const handleCenterPointerDown = () => {
     pointerDownTime.current = Date.now();
@@ -565,6 +566,7 @@ export function FinancialWrappedModal({
       setDirection(1);
       setIsCopied(false);
       setSharePreviewData(null);
+      cachedSlideFilesRef.current.clear();
     }
   }, [isOpen]);
 
@@ -576,9 +578,74 @@ export function FinancialWrappedModal({
     };
   }, [sharePreviewData]);
 
+  // Pre-render current slide image in background so direct navigator.share has zero delay on tap
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(async () => {
+      const element = slideContainerRef.current;
+      if (!element || cachedSlideFilesRef.current.has(currentSlide)) return;
+      try {
+        const b = await toBlob(element, {
+          quality: 0.95,
+          pixelRatio: 2,
+          backgroundColor: isDark ? "#0A0A0D" : "#F5F5F7",
+          fontEmbedCSS: "",
+          skipFonts: true,
+          filter: (node) => {
+            if (
+              node instanceof HTMLElement &&
+              (node.dataset.html2canvasIgnore === "true" ||
+                node.getAttribute("data-ignore-export") === "true")
+            ) {
+              return false;
+            }
+            return true;
+          },
+        });
+        if (b) {
+          const fileName = `trouvaille-wrapped-slide-${currentSlide + 1}.png`;
+          const f = new File([b], fileName, { type: "image/png" });
+          cachedSlideFilesRef.current.set(currentSlide, f);
+        }
+      } catch {
+        // Silently ignore background render errors; on-demand handleShare handles fallback
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [currentSlide, isOpen, isDark]);
+
   const handleShare = async () => {
     triggerHaptic("medium");
     if (isExporting) return;
+
+    // Fast-path: If slide was pre-rendered in background, trigger navigator.share synchronously in same tick!
+    const cachedFile = cachedSlideFilesRef.current.get(currentSlide);
+    if (
+      cachedFile &&
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files: [cachedFile] })
+    ) {
+      try {
+        await navigator.share({
+          files: [cachedFile],
+          title: isIndonesian
+            ? "Trouvaille Financial Wrapped"
+            : "Trouvaille Financial Wrapped",
+        });
+        return;
+      } catch (shareErr: any) {
+        if (shareErr.name === "AbortError") {
+          return;
+        }
+        console.warn(
+          "Direct cached share failed, falling back to on-demand export:",
+          shareErr,
+        );
+      }
+    }
 
     setIsExporting(true);
     setIsPaused(true);
@@ -629,6 +696,7 @@ export function FinancialWrappedModal({
 
       const fileName = `trouvaille-wrapped-slide-${currentSlide + 1}.png`;
       const file = new File([blob], fileName, { type: "image/png" });
+      cachedSlideFilesRef.current.set(currentSlide, file);
 
       let shared = false;
       // 1. Mobile Web Share API with photo (opens device's native share sheet: Simpan Foto, WhatsApp, AirDrop, etc.)
