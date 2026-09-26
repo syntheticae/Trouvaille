@@ -374,12 +374,8 @@ export function StatisticsPage() {
   const [customizeStatsOpen, setCustomizeStatsOpen] = useState(false);
 
   const visibleReportCards = useMemo(() => {
-    const reportIds = new Set([
-      "financial_report",
-    ]);
-    const reportOrder = [
-      "financial_report",
-    ];
+    const reportIds = new Set(["financial_report"]);
+    const reportOrder = ["financial_report"];
     return visibleStatsCards
       .filter((c) => reportIds.has(c.id))
       .sort((a, b) => reportOrder.indexOf(a.id) - reportOrder.indexOf(b.id));
@@ -401,7 +397,9 @@ export function StatisticsPage() {
 
     const cards = visibleStatsCards.filter((c) => intelligenceIds.has(c.id));
     const hasHealthScore = cards.some((c) => c.id === "health_score");
-    const isHealthScoreHidden = hiddenStatsCards.some((c) => c.id === "health_score");
+    const isHealthScoreHidden = hiddenStatsCards.some(
+      (c) => c.id === "health_score",
+    );
 
     if (!hasHealthScore && !isHealthScoreHidden) {
       cards.unshift({
@@ -417,7 +415,9 @@ export function StatisticsPage() {
       });
     }
 
-    return cards.sort((a, b) => storyOrder.indexOf(a.id) - storyOrder.indexOf(b.id));
+    return cards.sort(
+      (a, b) => storyOrder.indexOf(a.id) - storyOrder.indexOf(b.id),
+    );
   }, [visibleStatsCards, hiddenStatsCards]);
 
   const visibleCashflowCards = useMemo(() => {
@@ -711,8 +711,7 @@ export function StatisticsPage() {
     }
     const primaryGoal = goals[0];
     const planning = intel.getGoalPlanning(primaryGoal);
-    const required =
-      formatWithPreferred(planning.requiredMonthlyContribution);
+    const required = formatWithPreferred(planning.requiredMonthlyContribution);
     const statusText = isIndonesian
       ? planning.trajectoryStatus === "ON TRACK"
         ? "SESUAI TARGET"
@@ -1459,14 +1458,24 @@ export function StatisticsPage() {
                   style={{ color: "var(--text-primary)" }}
                 >
                   {healthScore >= 85
-                    ? isIndonesian ? "Prima (AAA)" : "Excellent (AAA)"
+                    ? isIndonesian
+                      ? "Prima (AAA)"
+                      : "Excellent (AAA)"
                     : healthScore >= 70
-                      ? isIndonesian ? "Sehat (AA)" : "Good (AA)"
+                      ? isIndonesian
+                        ? "Sehat (AA)"
+                        : "Good (AA)"
                       : healthScore >= 50
-                        ? isIndonesian ? "Moderat (A)" : "Moderate (A)"
+                        ? isIndonesian
+                          ? "Moderat (A)"
+                          : "Moderate (A)"
                         : healthScore >= 16
-                          ? isIndonesian ? "Defisit (BB)" : "Deficit (BB)"
-                          : isIndonesian ? "Kritis (C)" : "Critical (C)"}
+                          ? isIndonesian
+                            ? "Defisit (BB)"
+                            : "Deficit (BB)"
+                          : isIndonesian
+                            ? "Kritis (C)"
+                            : "Critical (C)"}
                 </span>
               </div>
             </div>
@@ -1497,7 +1506,9 @@ export function StatisticsPage() {
                 className="flex items-center gap-1 text-[11px] font-semibold cursor-pointer transition-colors hover:text-[var(--text-primary)]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                <span>{isIndonesian ? "Buka Diagnostik" : "View Diagnostic"}</span>
+                <span>
+                  {isIndonesian ? "Buka Diagnostik" : "View Diagnostic"}
+                </span>
                 <ChevronRight size={13} />
               </button>
             </div>
@@ -1582,7 +1593,9 @@ export function StatisticsPage() {
                   className="text-[12px] font-bold tabular-nums block mt-0.5"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {intel.expenseStructure ? `${intel.expenseStructure.committedPercentage.toFixed(0)}%` : "0%"}
+                  {intel.expenseStructure
+                    ? `${intel.expenseStructure.committedPercentage.toFixed(0)}%`
+                    : "0%"}
                 </span>
               </div>
             </div>
@@ -1682,14 +1695,19 @@ export function StatisticsPage() {
                     className="text-[13px] font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {isIndonesian ? "Kepadatan & Matriks Pengeluaran" : "Spending Density & Heatmap"}
+                    {isIndonesian
+                      ? "Kepadatan & Matriks Pengeluaran"
+                      : "Spending Density & Heatmap"}
                   </h2>
                 </div>
                 <p
                   className="text-[11px]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  {isIndonesian ? "Bukti empiris ritme belanja harian" : "Daily expense rhythm matrix"} · {rangeTitle}
+                  {isIndonesian
+                    ? "Bukti empiris ritme belanja harian"
+                    : "Daily expense rhythm matrix"}{" "}
+                  · {rangeTitle}
                 </p>
               </div>
 
@@ -1718,7 +1736,10 @@ export function StatisticsPage() {
                   {isIndonesian ? "Hari Hemat" : "Zero Spend"}
                 </div>
                 <div className="text-[13px] font-semibold text-[var(--text-primary)]">
-                  {noSpendDays} <span className="text-[10px] font-normal text-[var(--text-tertiary)]">{isIndonesian ? "hari" : "days"}</span>
+                  {noSpendDays}{" "}
+                  <span className="text-[10px] font-normal text-[var(--text-tertiary)]">
+                    {isIndonesian ? "hari" : "days"}
+                  </span>
                 </div>
               </div>
 
@@ -1733,7 +1754,10 @@ export function StatisticsPage() {
                   {isIndonesian ? "Hari Belanja" : "Active Days"}
                 </div>
                 <div className="text-[13px] font-semibold text-[var(--text-primary)]">
-                  {activeSpendDays} <span className="text-[10px] font-normal text-[var(--text-tertiary)]">{isIndonesian ? "hari" : "days"}</span>
+                  {activeSpendDays}{" "}
+                  <span className="text-[10px] font-normal text-[var(--text-tertiary)]">
+                    {isIndonesian ? "hari" : "days"}
+                  </span>
                 </div>
               </div>
 
@@ -1875,7 +1899,9 @@ export function StatisticsPage() {
                       : "rgba(0,0,0,0.2)",
                   }}
                 />
-                {isIndonesian ? `Hemat (${formatWithPreferred(0)})` : "No Spend"}
+                {isIndonesian
+                  ? `Hemat (${formatWithPreferred(0)})`
+                  : "No Spend"}
               </span>
 
               <div className="flex items-center gap-2">
@@ -2570,7 +2596,9 @@ export function StatisticsPage() {
                         }}
                         className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
                         style={{ color: "var(--text-secondary)" }}
-                        title={isIndonesian ? "Bulan Sebelumnya" : "Previous Month"}
+                        title={
+                          isIndonesian ? "Bulan Sebelumnya" : "Previous Month"
+                        }
                       >
                         <ChevronLeft size={14} />
                       </button>
@@ -2798,8 +2826,8 @@ export function StatisticsPage() {
               style={{ color: "var(--text-tertiary)" }}
             >
               {isIndonesian
-                ? `Kilas balik finansial sinematik ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy", { locale: idLocale })} · 9 babak interaktif`
-                : `Your financial story for ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy")} in one place · 9 chapters`}
+                ? `Kilas balik finansial ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy", { locale: idLocale })}`
+                : `Your financial recap for ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy")} `}
             </p>
           </div>
         </div>

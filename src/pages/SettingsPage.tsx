@@ -72,106 +72,104 @@ import { saveBiometricLoginCredentials } from "../lib/biometricAuth";
 const CurrencySwitcherSheet = lazy(() =>
   import("../components/currency/CurrencySwitcherSheet").then((m) => ({
     default: m.CurrencySwitcherSheet,
-  }))
+  })),
 );
 const LanguageSwitcherSheet = lazy(() =>
   import("../components/settings/LanguageSwitcherSheet").then((m) => ({
     default: m.LanguageSwitcherSheet,
-  }))
+  })),
 );
 import type { TabType } from "../components/settings/AppleShortcutsGuideModal";
 const AppleShortcutsGuideModal = lazy(() =>
   import("../components/settings/AppleShortcutsGuideModal").then((m) => ({
     default: m.AppleShortcutsGuideModal,
-  }))
+  })),
 );
 const ResetTransactionsSheet = lazy(() =>
   import("../components/settings/ResetTransactionsSheet").then((m) => ({
     default: m.ResetTransactionsSheet,
-  }))
+  })),
 );
 const LuxuryReportExportSheet = lazy(() =>
   import("../components/export/LuxuryReportExportSheet").then((m) => ({
     default: m.LuxuryReportExportSheet,
-  }))
+  })),
 );
 const EncryptedVaultModal = lazy(() =>
   import("../components/security/EncryptedVaultModal").then((m) => ({
     default: m.EncryptedVaultModal,
-  }))
+  })),
 );
 const ProfileSheet = lazy(() =>
   import("../components/settings/ProfileSheet").then((m) => ({
     default: m.ProfileSheet,
-  }))
+  })),
 );
 const BillManagementSheets = lazy(() =>
   import("../components/settings/BillManagementSheets").then((m) => ({
     default: m.BillManagementSheets,
-  }))
+  })),
 );
 const CategoryManagementSheets = lazy(() =>
   import("../components/settings/CategoryManagementSheets").then((m) => ({
     default: m.CategoryManagementSheets,
-  }))
+  })),
 );
 const WalletManagementSheets = lazy(() =>
   import("../components/settings/WalletManagementSheets").then((m) => ({
     default: m.WalletManagementSheets,
-  }))
+  })),
 );
 const GoalManagementSheets = lazy(() =>
   import("../components/settings/GoalManagementSheets").then((m) => ({
     default: m.GoalManagementSheets,
-  }))
+  })),
 );
 const ShortcutManagementSheets = lazy(() =>
   import("../components/settings/ShortcutManagementSheets").then((m) => ({
     default: m.ShortcutManagementSheets,
-  }))
+  })),
 );
 const PinSetupModal = lazy(() =>
   import("../components/settings/PinSetupModal").then((m) => ({
     default: m.PinSetupModal,
-  }))
+  })),
 );
 const BudgetTargetSheet = lazy(() =>
   import("../components/settings/BudgetTargetSheet").then((m) => ({
     default: m.BudgetTargetSheet,
-  }))
+  })),
 );
 const MediaPermissionsSheet = lazy(() =>
   import("../components/settings/MediaPermissionsSheet").then((m) => ({
     default: m.MediaPermissionsSheet,
-  }))
+  })),
 );
 const AssetValuationSheet = lazy(() =>
   import("../components/settings/AssetValuationSheet").then((m) => ({
     default: m.AssetValuationSheet,
-  }))
+  })),
 );
 const ManageLedgersSheet = lazy(() =>
   import("../components/settings/ManageLedgersSheet").then((m) => ({
     default: m.ManageLedgersSheet,
-  }))
+  })),
 );
 const DeleteAccountModal = lazy(() =>
   import("../components/settings/DeleteAccountModal").then((m) => ({
     default: m.DeleteAccountModal,
-  }))
+  })),
 );
 const WebDashboardLinkModal = lazy(() =>
   import("../components/settings/WebDashboardLinkModal").then((m) => ({
     default: m.WebDashboardLinkModal,
-  }))
+  })),
 );
 const DataExportVaultModal = lazy(() =>
   import("../components/settings/DataExportVaultModal").then((m) => ({
     default: m.DataExportVaultModal,
-  }))
+  })),
 );
-
-
 
 interface SettingsPageProps {
   onOpenImport?: () => void;
@@ -186,8 +184,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const { session, signOut, isGuest, exitGuestMode } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
-  const { budgetTarget, setBudgetTarget, budgetPeriodStart, setBudgetPeriodStart } =
-    useBudgetTarget();
+  const {
+    budgetTarget,
+    setBudgetTarget,
+    budgetPeriodStart,
+    setBudgetPeriodStart,
+  } = useBudgetTarget();
   const {
     securitySettings,
     updateSettings: updateSecuritySettings,
@@ -219,10 +221,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   };
 
   // Save Attachments toggle
-  const [saveAttachmentsEnabled, setSaveAttachmentsEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem("trouvaille_save_attachments");
-    return saved !== null ? saved === "true" : false;
-  });
+  const [saveAttachmentsEnabled, setSaveAttachmentsEnabled] = useState<boolean>(
+    () => {
+      const saved = localStorage.getItem("trouvaille_save_attachments");
+      return saved !== null ? saved === "true" : false;
+    },
+  );
 
   const handleToggleSaveAttachments = () => {
     const next = !saveAttachmentsEnabled;
@@ -238,10 +242,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   };
 
   // Liquid Glass Custom Keypad toggle
-  const [customKeypadEnabled, setCustomKeypadEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem("trouvaille_keypad_mode");
-    return saved !== "system";
-  });
+  const [customKeypadEnabled, setCustomKeypadEnabled] = useState<boolean>(
+    () => {
+      const saved = localStorage.getItem("trouvaille_keypad_mode");
+      return saved !== "system";
+    },
+  );
 
   const handleToggleCustomKeypad = () => {
     const next = !customKeypadEnabled;
@@ -306,7 +312,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
   // Notification toggles
   const [billRemindersEnabled, setBillRemindersEnabled] = useState(() => {
-    return localStorage.getItem("trouvaille_bill_reminders_enabled") !== "false";
+    return (
+      localStorage.getItem("trouvaille_bill_reminders_enabled") !== "false"
+    );
   });
 
   const handleToggleBillReminders = async () => {
@@ -330,7 +338,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   };
 
   const [dailyReminderEnabled, setDailyReminderEnabled] = useState(() => {
-    return localStorage.getItem("trouvaille_daily_reminder_enabled") !== "false";
+    return (
+      localStorage.getItem("trouvaille_daily_reminder_enabled") !== "false"
+    );
   });
   const [dailyReminderTime, setDailyReminderTime] = useState<string>(() => {
     return getDailyStreakReminderTime();
@@ -518,14 +528,38 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   };
 
   // Section 1: Financial Architecture
-  const showCategories = matches("Manage Categories", "expense income groups classifications");
-  const showWallets = matches("Account & Wallets", "bank cash balance cards accounts");
-  const showBudget = matches("Monthly Budget Target", "spending limit monthly budget");
-  const showBills = matches("Recurring Bills", "subscriptions commitments due dates bills");
-  const showGoals = matches("Financial Goals", "savings target milestone progress goals");
-  const showValuation = matches("Asset Valuation", "crypto stock usdt holdings investment");
-  const showCurrency = matches("Base Currency", "rates exchange valuation usd idr forex");
-  const showLanguage = matches("App Language", "language bahasa indonesia english locale localization");
+  const showCategories = matches(
+    "Manage Categories",
+    "expense income groups classifications",
+  );
+  const showWallets = matches(
+    "Account & Wallets",
+    "bank cash balance cards accounts",
+  );
+  const showBudget = matches(
+    "Monthly Budget Target",
+    "spending limit monthly budget",
+  );
+  const showBills = matches(
+    "Recurring Bills",
+    "subscriptions commitments due dates bills",
+  );
+  const showGoals = matches(
+    "Financial Goals",
+    "savings target milestone progress goals",
+  );
+  const showValuation = matches(
+    "Asset Valuation",
+    "crypto stock usdt holdings investment",
+  );
+  const showCurrency = matches(
+    "Base Currency",
+    "rates exchange valuation usd idr forex",
+  );
+  const showLanguage = matches(
+    "App Language",
+    "language bahasa indonesia english locale localization",
+  );
   const hasArchitecture =
     showCategories ||
     showWallets ||
@@ -537,11 +571,24 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     showLanguage;
 
   // Section 2: Preferences
-  const showTheme = matches("Light Appearance", "dark light obsidian theme appearance color");
-  const showKeypad = matches("Liquid Numeric Keypad", "keypad keyboard input calculator custom number pad");
-  const showTags = matches("Transaction Tags (#)", "tags hashtag work reimburse personal");
-  const showSaveAttachments = matches("Save Attachment Files", "receipts camera slip images photos");
-  const hasPreferences = showTheme || showKeypad || showTags || showSaveAttachments;
+  const showTheme = matches(
+    "Light Appearance",
+    "dark light obsidian theme appearance color",
+  );
+  const showKeypad = matches(
+    "Liquid Numeric Keypad",
+    "keypad keyboard input calculator custom number pad",
+  );
+  const showTags = matches(
+    "Transaction Tags (#)",
+    "tags hashtag work reimburse personal",
+  );
+  const showSaveAttachments = matches(
+    "Save Attachment Files",
+    "receipts camera slip images photos",
+  );
+  const hasPreferences =
+    showTheme || showKeypad || showTags || showSaveAttachments;
 
   // Section 3: Automations & Shortcuts (Unified Single Setting)
   const showAutomations = matches(
@@ -551,16 +598,37 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const hasAutomations = showAutomations;
 
   // Section 4: Notifications
-  const showDailyReminder = matches("Daily Streak Reminder", "streak 20:00 night notification alert");
-  const showBillReminders = matches("Bill Due Alerts", "bill reminders scheduled commit due");
+  const showDailyReminder = matches(
+    "Daily Streak Reminder",
+    "streak 20:00 night notification alert",
+  );
+  const showBillReminders = matches(
+    "Bill Due Alerts",
+    "bill reminders scheduled commit due",
+  );
   const hasNotifications = showDailyReminder || showBillReminders;
 
   // Section 5: Security & Privacy
-  const showPrivacyShield = matches("Privacy Shield", "mask hide numbers balance monetary figures");
-  const showFaceID = matches("Require Face ID / PIN", "biometrics face id touch pin lock resume");
-  const showTimeout = matches("Lock Timeout", "inactivity duration delay minutes");
-  const showBackupPin = matches("Backup PIN Option", "passcode fallback pin change");
-  const showMedia = matches("Camera & Photos Access", "permissions receipt scanner gallery");
+  const showPrivacyShield = matches(
+    "Privacy Shield",
+    "mask hide numbers balance monetary figures",
+  );
+  const showFaceID = matches(
+    "Require Face ID / PIN",
+    "biometrics face id touch pin lock resume",
+  );
+  const showTimeout = matches(
+    "Lock Timeout",
+    "inactivity duration delay minutes",
+  );
+  const showBackupPin = matches(
+    "Backup PIN Option",
+    "passcode fallback pin change",
+  );
+  const showMedia = matches(
+    "Camera & Photos Access",
+    "permissions receipt scanner gallery",
+  );
   const hasSecurity =
     showPrivacyShield ||
     showFaceID ||
@@ -569,16 +637,19 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     showMedia;
 
   // Section 6: Data & Vault
-  const showCloudSync = matches("Cloud Sync", "backup database synchronization live");
-  const showWebDashboard = matches("Web Dashboard", "link web scan qr desktop laptop browser workstation tautkan");
+  const showCloudSync = matches(
+    "Cloud Sync",
+    "backup database synchronization live",
+  );
+  const showWebDashboard = matches(
+    "Web Dashboard",
+    "link web scan qr desktop laptop browser workstation tautkan",
+  );
   const showExportVault = matches(
     "Report Export & Data Vault",
     "csv excel pdf statement tax ledger json aes-256 file backup export restore offline brankas laporan cadangan ekspor",
   );
-  const hasDataVault =
-    showCloudSync ||
-    showWebDashboard ||
-    showExportVault;
+  const hasDataVault = showCloudSync || showWebDashboard || showExportVault;
 
   const hasAnyMatch =
     hasArchitecture ||
@@ -598,7 +669,10 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
         >
           {isIndonesian ? "Pengaturan" : "Settings"}
         </h1>
-        <p className="text-[12px] font-medium" style={{ color: "var(--text-secondary)" }}>
+        <p
+          className="text-[12px] font-medium"
+          style={{ color: "var(--text-secondary)" }}
+        >
           {isIndonesian
             ? "Preferensi, arsitektur keuangan & keamanan"
             : "Preferences, financial architecture & security"}
@@ -618,7 +692,11 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={isIndonesian ? "Cari pengaturan, pintasan & keamanan..." : "Search settings, shortcuts & security..."}
+          placeholder={
+            isIndonesian
+              ? "Cari pengaturan, pintasan & keamanan..."
+              : "Search settings, shortcuts & security..."
+          }
           className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--text-tertiary)]"
           style={{ color: "var(--text-primary)" }}
         />
@@ -1175,14 +1253,6 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     >
                       {isIndonesian ? "Tampilan Terang" : "Light Appearance"}
                     </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian
-                        ? "Gunakan estetika monokrom alabaster"
-                        : "Use clean alabaster luxury monochrome"}
-                    </span>
                   </div>
                 </div>
                 <ToggleSwitch
@@ -1215,15 +1285,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Papan Tombol Angka Kustom" : "Liquid Numeric Keypad"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
                       {isIndonesian
-                        ? "Keypad floating haptik khusus input nominal"
-                        : "Tactile haptic numpad for seamless transaction entry"}
+                        ? "Liquid Numeric Keypad"
+                        : "Liquid Numeric Keypad"}
                     </span>
                   </div>
                 </div>
@@ -1254,15 +1318,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Label Transaksi (#)" : "Transaction Tags (#)"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
                       {isIndonesian
-                        ? "Kelompokkan transaksi dengan tagar kustom"
-                        : "Organize transactions with multi-tag hashtags"}
+                        ? "Label Transaksi (#)"
+                        : "Transaction Tags (#)"}
                     </span>
                   </div>
                 </div>
@@ -1293,15 +1351,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Simpan File Lampiran" : "Save Attachment Files"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
                       {isIndonesian
-                        ? "Simpan foto struk langsung ke penyimpanan lokal"
-                        : "Store receipt photo attachments locally on device"}
+                        ? "Simpan File Lampiran"
+                        : "Save Attachment Files"}
                     </span>
                   </div>
                 </div>
@@ -1325,7 +1377,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             className="text-[11px] font-bold uppercase tracking-wider px-1"
             style={{ color: "var(--text-secondary)" }}
           >
-            {isIndonesian ? "Otomatisasi & Pintasan" : "Automations & Shortcuts"}
+            {isIndonesian
+              ? "Otomatisasi & Pintasan"
+              : "Automations & Shortcuts"}
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
             {/* Apple Shortcuts & Automations (Unified Single Setting) */}
@@ -1356,11 +1410,6 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     {isIndonesian
                       ? "Pintasan Apple & Otomatisasi"
                       : "Apple Shortcuts & Automations"}
-                  </span>
-                  <span className="text-[11px] text-[var(--text-tertiary)] truncate block">
-                    {isIndonesian
-                      ? "Ketuk Belakang, Tombol Aksi, Preset Cepat & Apple Pay"
-                      : "Back Tap, Action Button, Quick Presets & Apple Pay"}
                   </span>
                 </div>
               </div>
@@ -1417,15 +1466,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                         className="text-[13px] font-semibold truncate"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {isIndonesian ? "Pengingat Streak Harian" : "Daily Streak Reminder"}
-                      </span>
-                      <span
-                        className="text-[11px] truncate"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
                         {isIndonesian
-                          ? `Notifikasi harian pukul ${dailyReminderTime} untuk konsistensi kas`
-                          : `Daily reminder at ${dailyReminderTime} to keep your ledger active`}
+                          ? "Pengingat Streak Harian"
+                          : "Daily Streak Reminder"}
                       </span>
                     </div>
                   </div>
@@ -1441,9 +1484,15 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   <div className="py-3 px-3.5 space-y-2.5 bg-black/[0.015] dark:bg-white/[0.02]">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <Clock size={13} strokeWidth={1.75} className="text-[var(--text-tertiary)]" />
+                        <Clock
+                          size={13}
+                          strokeWidth={1.75}
+                          className="text-[var(--text-tertiary)]"
+                        />
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Pilih Jam Pengingat" : "Choose Reminder Time"}
+                          {isIndonesian
+                            ? "Pilih Jam Pengingat"
+                            : "Choose Reminder Time"}
                         </span>
                       </div>
 
@@ -1461,12 +1510,19 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                             }
                           }}
                           className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
-                          aria-label={isIndonesian ? "Pilih Jam Pengingat" : "Select Reminder Time"}
+                          aria-label={
+                            isIndonesian
+                              ? "Pilih Jam Pengingat"
+                              : "Select Reminder Time"
+                          }
                         />
                         <span className="font-mono text-[13px] font-bold text-[var(--text-primary)] tracking-wider">
                           {dailyReminderTime}
                         </span>
-                        <ChevronRight size={13} className="text-[var(--text-tertiary)]" />
+                        <ChevronRight
+                          size={13}
+                          className="text-[var(--text-tertiary)]"
+                        />
                       </label>
                     </div>
 
@@ -1476,18 +1532,31 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                         {isIndonesian ? "Preset:" : "Presets:"}
                       </span>
                       {[
-                        { time: "08:00", label: isIndonesian ? "Pagi 08:00" : "08:00 AM" },
-                        { time: "12:30", label: isIndonesian ? "Siang 12:30" : "12:30 PM" },
-                        { time: "19:00", label: isIndonesian ? "Malam 19:00" : "07:00 PM" },
-                        { time: "20:00", label: isIndonesian ? "20:00 (Bawaan)" : "08:00 PM" },
-                        { time: "21:30", label: isIndonesian ? "Larut 21:30" : "09:30 PM" },
+                        {
+                          time: "08:00",
+                          label: isIndonesian ? "Pagi 08:00" : "08:00 AM",
+                        },
+                        {
+                          time: "12:30",
+                          label: isIndonesian ? "Siang 12:30" : "12:30 PM",
+                        },
+                        {
+                          time: "20:00",
+                          label: isIndonesian ? "20:00 (Bawaan)" : "08:00 PM",
+                        },
+                        {
+                          time: "21:30",
+                          label: isIndonesian ? "Larut 21:30" : "09:30 PM",
+                        },
                       ].map((preset) => {
                         const isActive = dailyReminderTime === preset.time;
                         return (
                           <button
                             key={preset.time}
                             type="button"
-                            onClick={() => handleReminderTimeChange(preset.time)}
+                            onClick={() =>
+                              handleReminderTimeChange(preset.time)
+                            }
                             className="px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer border"
                             style={{
                               background: isActive
@@ -1530,15 +1599,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Peringatan Tagihan Jatuh Tempo" : "Bill Due Alerts"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
                       {isIndonesian
-                        ? "Peringatan proaktif sebelum tanggal tagihan rutin"
-                        : "Proactive reminders before recurring payment due dates"}
+                        ? "Peringatan Tagihan Jatuh Tempo"
+                        : "Bill Due Alerts"}
                     </span>
                   </div>
                 </div>
@@ -1584,15 +1647,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Perisai Privasi (Sensor Saldo)" : "Privacy Shield (Mask Balances)"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
                       {isIndonesian
-                        ? "Samarkan angka saldo di seluruh kartu dan laporan"
-                        : "Obfuscate currency balances across cards and reports"}
+                        ? "Perisai Privasi (Sensor Saldo)"
+                        : "Privacy Shield (Mask Balances)"}
                     </span>
                   </div>
                 </div>
@@ -1602,8 +1659,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     togglePrivacyShield();
                     showToast(
                       isPrivacyShieldEnabled
-                        ? (isIndonesian ? "Perisai Privasi dinonaktifkan" : "Privacy Shield disabled")
-                        : (isIndonesian ? "Perisai Privasi diaktifkan" : "Privacy Shield enabled"),
+                        ? isIndonesian
+                          ? "Perisai Privasi dinonaktifkan"
+                          : "Privacy Shield disabled"
+                        : isIndonesian
+                          ? "Perisai Privasi diaktifkan"
+                          : "Privacy Shield enabled",
                       "update",
                       () => {},
                     );
@@ -1632,15 +1693,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Kunci Aplikasi (Biometrik / PIN)" : "Require Face ID / PIN"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
                       {isIndonesian
-                        ? "Wajibkan otentikasi biometrik atau PIN saat membuka aplikasi"
-                        : "Enforce biometric verification or passcode on launch"}
+                        ? "Kunci Aplikasi (Biometrik / PIN)"
+                        : "Require Face ID / PIN"}
                     </span>
                   </div>
                 </div>
@@ -1659,9 +1714,14 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                         return;
                       }
 
-                      if (isBiometricSupported && !securitySettings.hasBiometric) {
+                      if (
+                        isBiometricSupported &&
+                        !securitySettings.hasBiometric
+                      ) {
                         try {
-                          await enrollBiometric(session?.user?.email || undefined);
+                          await enrollBiometric(
+                            session?.user?.email || undefined,
+                          );
                           if (session) {
                             saveBiometricLoginCredentials(
                               session.user?.email || "",
@@ -1736,7 +1796,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                             key={opt.value}
                             type="button"
                             onClick={() => {
-                              updateSecuritySettings({ timeoutMinutes: opt.value });
+                              updateSecuritySettings({
+                                timeoutMinutes: opt.value,
+                              });
                               triggerHaptic("light");
                             }}
                             className="py-1 px-2 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
@@ -1785,8 +1847,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                         style={{ color: "var(--text-primary)" }}
                       >
                         {isIndonesian
-                          ? (securitySettings.hasPin ? "Ubah PIN Cadangan" : "Atur PIN Cadangan")
-                          : (securitySettings.hasPin ? "Change Backup PIN" : "Setup Backup PIN")}
+                          ? securitySettings.hasPin
+                            ? "Ubah PIN Cadangan"
+                            : "Atur PIN Cadangan"
+                          : securitySettings.hasPin
+                            ? "Change Backup PIN"
+                            : "Setup Backup PIN"}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -1799,8 +1865,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                         }}
                       >
                         {isIndonesian
-                          ? (securitySettings.hasPin ? "Terkonfigurasi" : "Belum Diatur")
-                          : (securitySettings.hasPin ? "Configured" : "Setup")}
+                          ? securitySettings.hasPin
+                            ? "Terkonfigurasi"
+                            : "Belum Diatur"
+                          : securitySettings.hasPin
+                            ? "Configured"
+                            : "Setup"}
                       </span>
                       <ChevronRight
                         size={15}
@@ -1952,15 +2022,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       className="text-[13px] font-semibold block truncate leading-tight"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Tautkan Web Dashboard" : "Link Web Dashboard"}
-                    </span>
-                    <span
-                      className="text-[10px] font-normal block truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
                       {isIndonesian
-                        ? "Pindai QR untuk masuk di Mac atau PC"
-                        : "Scan QR code to log in on Mac or PC"}
+                        ? "Tautkan Web Dashboard"
+                        : "Link Web Dashboard"}
                     </span>
                   </div>
                 </div>
@@ -2011,16 +2075,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Ekspor Laporan & Cadangan Vault"
-                        : "Report Export & Data Vault"}
-                    </span>
-                    <span
-                      className="text-[10px] font-normal block truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian
-                        ? "PDF, CSV, Laporan Pajak & Cadangan Terenkripsi AES-256"
-                        : "PDF, CSV, Tax Reports & AES-256 Encrypted Vault"}
+                        ? "Laporan & Cadangan Vault"
+                        : "Report & Data Vault"}
                     </span>
                   </div>
                 </div>
@@ -2076,7 +2132,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[12px]"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    BCA / CSV
+                    Bank / CSV
                   </span>
                   <ChevronRight
                     size={15}

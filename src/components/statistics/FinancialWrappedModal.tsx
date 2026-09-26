@@ -373,7 +373,9 @@ export function FinancialWrappedModal({
     }
 
     // Financial Archetype
-    let persona = isIndonesian ? "Pencapai Seimbang" : "The Balanced Achiever";
+    let persona = isIndonesian
+      ? "The Balanced Achiever"
+      : "The Balanced Achiever";
     let personaTag = isIndonesian
       ? "EKUILIBRIUM MODAL OPTIMAL"
       : "OPTIMAL CAPITAL EQUILIBRIUM";
@@ -384,9 +386,9 @@ export function FinancialWrappedModal({
     let efficiencyGrade = "A-";
 
     if (savingsRate >= 35 && totalExpense > 0) {
-      persona = isIndonesian ? "Arsitek Modal" : "The Capital Architect";
+      persona = isIndonesian ? "Arsitek Kapital" : "The Capital Architect";
       personaTag = isIndonesian
-        ? "RETENSI MODAL TINGKAT BENTENG"
+        ? "RETENSI MODAL SECARA KOKOH"
         : "FORTRESS-TIER CAPITAL RETENTION";
       personaDesc = isIndonesian
         ? "Tingkat retensi Anda melampaui 35%. Akumulasi kekayaan beroperasi di bawah disiplin finansial ketat dan keseimbangan multi-aset strategis."
@@ -412,7 +414,7 @@ export function FinancialWrappedModal({
       volatilityLabel = isIndonesian ? "MINIMAL" : "MINIMAL";
       efficiencyGrade = "A+";
     } else if (savingsRate >= 15) {
-      persona = isIndonesian ? "Pembangun Mantap" : "The Steady Builder";
+      persona = isIndonesian ? "Pembangun Handal" : "The Steady Builder";
       personaTag = isIndonesian
         ? "PEMBENTUKAN KONSISTEN"
         : "CONSISTENT COMPOUNDING";
@@ -641,7 +643,7 @@ export function FinancialWrappedModal({
           await navigator.share({
             files: [file],
             title: isIndonesian
-              ? "Kilas Balik Finansial Trouvaille"
+              ? "Trouvaille Financial Wrapped"
               : "Trouvaille Financial Wrapped",
           });
           shared = true;
@@ -651,7 +653,10 @@ export function FinancialWrappedModal({
             setIsExporting(false);
             return;
           }
-          console.warn("Direct navigator.share error or gesture expired:", shareErr);
+          console.warn(
+            "Direct navigator.share error or gesture expired:",
+            shareErr,
+          );
         }
       }
 
@@ -842,7 +847,7 @@ export function FinancialWrappedModal({
                     }`}
                   />
                   <span className="text-[11px] font-bold tracking-wider uppercase whitespace-nowrap truncate max-w-[170px] sm:max-w-xs">
-                    {isIndonesian ? "Kilas Balik" : "Wrapped"} · {periodTitle}
+                    {isIndonesian ? "Wrapped" : "Wrapped"} · {periodTitle}
                   </span>
                 </div>
               </div>
@@ -935,11 +940,11 @@ export function FinancialWrappedModal({
                   filter: "blur(8px)",
                 }}
                 transition={{ type: "spring", damping: 25, stiffness: 350 }}
-                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none select-none flex flex-col items-center justify-center gap-2 px-6 py-4 rounded-[26px]"
+                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none select-none flex flex-col items-center justify-center gap-2 px-4 py-2 rounded-[20px]"
                 style={{
                   background: isDark
                     ? "linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%)"
-                    : "linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)",
+                    : "linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%)",
                   backdropFilter: "blur(32px) saturate(190%)",
                   WebkitBackdropFilter: "blur(32px) saturate(190%)",
                   border: isDark
@@ -1285,7 +1290,7 @@ export function FinancialWrappedModal({
                           ? "Volume modal komparatif bulanan sepanjang tahun"
                           : "Monthly comparative capital volume across the year"
                         : isIndonesian
-                          ? "Volume modal komparatif mingguan sepanjang bulan pelaporan"
+                          ? "Volume modal komparatif sepanjang bulan pelaporan"
                           : "Weekly comparative capital volume across the reporting month"}
                     </p>
                   </div>
@@ -1521,7 +1526,7 @@ export function FinancialWrappedModal({
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
-                        SYS.METRICS // PROSPECTUS · [03 / 10]
+                        PROSPECTUS · [03 / 10]
                       </span>
                       <h2
                         className={`text-3xl sm:text-4xl font-light tracking-tight ${
@@ -1545,7 +1550,7 @@ export function FinancialWrappedModal({
                           : "bg-black/[0.05] text-black/80 border-black/10"
                       }`}
                     >
-                      {isIndonesian ? "Audit Pribadi" : "Private Audit"}
+                      {isIndonesian ? "Trouvaille" : "Trouvaille"}
                     </span>
                   </div>
 
@@ -1876,39 +1881,20 @@ export function FinancialWrappedModal({
                           ? "SYS.ASET // VALUASI · [04 / 10]"
                           : "SYS.ASSET // VALUATION · [04 / 10]"}
                       </span>
-                      <div className="w-6 h-4 flex flex-col justify-between items-end cursor-pointer">
-                        <span
-                          className={`w-6 h-0.5 ${isDark ? "bg-white" : "bg-black"}`}
-                        />
-                        <span
-                          className={`w-4 h-0.5 ${isDark ? "bg-white" : "bg-black"}`}
-                        />
-                        <span
-                          className={`w-5 h-0.5 ${isDark ? "bg-white" : "bg-black"}`}
-                        />
-                      </div>
                     </div>
 
                     <h2
-                      className={`text-3xl sm:text-4xl lg:text-[38px] font-semibold tracking-tight ${
+                      className={`text-4xl sm:text-4xl lg:text-[40px] font-bold uppercase tracking-tighter ${
                         isDark ? "text-white" : "text-[#09090B]"
                       } leading-tight`}
                     >
-                      {isIndonesian
-                        ? "Valuasi Portofolio®"
-                        : "Portfolio Assets®"}
+                      {isIndonesian ? "Valuasi Portofolio" : "Portfolio Assets"}
                     </h2>
 
-                    <div className="flex items-center gap-4 text-xs tracking-wider">
-                      <span className="opacity-40 uppercase font-medium">
-                        {isIndonesian ? "LIKUID" : "LIQUID"}
-                      </span>
-                      <span className="opacity-40 uppercase font-medium">
-                        {isIndonesian ? "PASAR" : "MARKETS"}
-                      </span>
-                      <span className="uppercase font-bold tracking-wider">
-                        {isIndonesian ? "HASIL VALUASI" : "RESULTS"}
-                      </span>
+                    <div className="text-xs italic opacity-80 max-w-md border-l-2 border-neutral-400 pl-3 py-0.5">
+                      {isIndonesian
+                        ? '"Dum spiro, Spero." — Cicero'
+                        : '"Dum spiro, Spero." — Cicero'}
                     </div>
 
                     <p
@@ -3524,7 +3510,7 @@ export function FinancialWrappedModal({
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
-                          Trouvaille Financial Intelligence
+                          Trouvaille
                         </p>
                         <h4
                           className={`text-xl font-medium tracking-tight mt-0.5 ${
@@ -3532,8 +3518,8 @@ export function FinancialWrappedModal({
                           }`}
                         >
                           {isIndonesian
-                            ? "Rekap Eksekutif · [10 / 10]"
-                            : "Executive Recap · [10 / 10]"}
+                            ? "Wrapped · [10 / 10]"
+                            : "Wrapped · [10 / 10]"}
                         </h4>
                         <p
                           className={`text-[11px] font-light ${
@@ -3755,14 +3741,17 @@ export function FinancialWrappedModal({
                     {isIndonesian ? "Bagikan Foto Slide" : "Share Slide Photo"}
                   </h4>
                   <p className="text-[10px] text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Kilas Balik Finansial" : "Financial Wrapped"}
+                    {isIndonesian
+                      ? "Kilas Balik Finansial"
+                      : "Financial Wrapped"}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => {
-                  if (sharePreviewData.url) URL.revokeObjectURL(sharePreviewData.url);
+                  if (sharePreviewData.url)
+                    URL.revokeObjectURL(sharePreviewData.url);
                   setSharePreviewData(null);
                   setIsPreviewCopied(false);
                 }}
@@ -3789,49 +3778,54 @@ export function FinancialWrappedModal({
 
             {/* Action Buttons */}
             <div className="space-y-2 pt-1">
-              {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    triggerHaptic("medium");
-                    try {
-                      if (
-                        navigator.canShare &&
-                        navigator.canShare({ files: [sharePreviewData.file] })
-                      ) {
-                        await navigator.share({
-                          files: [sharePreviewData.file],
-                          title: isIndonesian
-                            ? "Kilas Balik Finansial Trouvaille"
-                            : "Trouvaille Financial Wrapped",
-                        });
-                      } else {
-                        await navigator.share({
-                          title: isIndonesian
-                            ? "Kilas Balik Finansial Trouvaille"
-                            : "Trouvaille Financial Wrapped",
-                          text: isIndonesian
-                            ? `Kilas Balik Finansial ${periodTitle}`
-                            : `Financial Wrapped ${periodTitle}`,
-                        });
+              {typeof navigator !== "undefined" &&
+                typeof navigator.share === "function" && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      triggerHaptic("medium");
+                      try {
+                        if (
+                          navigator.canShare &&
+                          navigator.canShare({ files: [sharePreviewData.file] })
+                        ) {
+                          await navigator.share({
+                            files: [sharePreviewData.file],
+                            title: isIndonesian
+                              ? "Kilas Balik Finansial Trouvaille"
+                              : "Trouvaille Financial Wrapped",
+                          });
+                        } else {
+                          await navigator.share({
+                            title: isIndonesian
+                              ? "Kilas Balik Finansial Trouvaille"
+                              : "Trouvaille Financial Wrapped",
+                            text: isIndonesian
+                              ? `Kilas Balik Finansial ${periodTitle}`
+                              : `Financial Wrapped ${periodTitle}`,
+                          });
+                        }
+                      } catch (err: any) {
+                        if (err.name !== "AbortError") {
+                          console.warn("Share retry error:", err);
+                        }
                       }
-                    } catch (err: any) {
-                      if (err.name !== "AbortError") {
-                        console.warn("Share retry error:", err);
-                      }
-                    }
-                  }}
-                  className="w-full py-3 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 border active:scale-98 transition-all cursor-pointer"
-                  style={{
-                    background: "var(--text-primary)",
-                    color: "var(--bg-canvas)",
-                    borderColor: "transparent",
-                  }}
-                >
-                  <Share2 size={15} strokeWidth={1.75} />
-                  <span>{isIndonesian ? "Buka Menu Berbagi Bawaan" : "Open System Share"}</span>
-                </button>
-              )}
+                    }}
+                    className="w-full py-3 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 border active:scale-98 transition-all cursor-pointer"
+                    style={{
+                      background: "var(--text-primary)",
+                      color: "var(--bg-canvas)",
+                      borderColor: "transparent",
+                    }}
+                  >
+                    <Share2 size={15} strokeWidth={1.75} />
+                    <span>
+                      {isIndonesian
+                        ? "Buka Menu Berbagi Bawaan"
+                        : "Open System Share"}
+                    </span>
+                  </button>
+                )}
 
               <div className="flex items-center gap-2">
                 <button
@@ -3839,9 +3833,14 @@ export function FinancialWrappedModal({
                   onClick={async () => {
                     triggerHaptic("light");
                     try {
-                      if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
+                      if (
+                        navigator.clipboard &&
+                        typeof ClipboardItem !== "undefined"
+                      ) {
                         await navigator.clipboard.write([
-                          new ClipboardItem({ "image/png": sharePreviewData.blob }),
+                          new ClipboardItem({
+                            "image/png": sharePreviewData.blob,
+                          }),
                         ]);
                         setIsPreviewCopied(true);
                         setTimeout(() => setIsPreviewCopied(false), 2000);

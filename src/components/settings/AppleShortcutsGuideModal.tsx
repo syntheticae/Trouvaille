@@ -21,7 +21,11 @@ import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 
-export type TabType = "back_tap" | "action_button" | "ways_to_add" | "automation";
+export type TabType =
+  | "back_tap"
+  | "action_button"
+  | "ways_to_add"
+  | "automation";
 type BackTapSubMode = "instant_sheet" | "smart_nlp" | "glass_dialog";
 
 interface AppleShortcutsGuideModalProps {
@@ -41,7 +45,8 @@ export function AppleShortcutsGuideModal({
   const { data: wallets = [] } = useWallets();
 
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
-  const [backTapMode, setBackTapMode] = useState<BackTapSubMode>("instant_sheet");
+  const [backTapMode, setBackTapMode] =
+    useState<BackTapSubMode>("instant_sheet");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,7 +59,11 @@ export function AppleShortcutsGuideModal({
     triggerSuccessHaptic();
     navigator.clipboard.writeText(text);
     setCopiedKey(label);
-    showToast(`${label} ${isIndonesian ? "berhasil disalin" : "copied to clipboard"}`, "add", () => {});
+    showToast(
+      `${label} ${isIndonesian ? "berhasil disalin" : "copied to clipboard"}`,
+      "add",
+      () => {},
+    );
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
@@ -68,12 +77,18 @@ export function AppleShortcutsGuideModal({
       .filter((c) => c.type !== "income")
       .map((c) => c.name)
       .join("\n");
-    copyToClipboard(list || "Makanan\nTransportasi\nBelanja\nHiburan\nTagihan", isIndonesian ? "Daftar Kategori" : "Category List");
+    copyToClipboard(
+      list || "Makanan\nTransportasi\nBelanja\nHiburan\nTagihan",
+      isIndonesian ? "Daftar Kategori" : "Category List",
+    );
   };
 
   const copyWalletList = () => {
     const list = wallets.map((w) => w.name).join("\n");
-    copyToClipboard(list || "BCA\nMandiri\nGoPay\nTunai", isIndonesian ? "Daftar Akun / Dompet" : "Wallet List");
+    copyToClipboard(
+      list || "BCA\nMandiri\nGoPay\nTunai",
+      isIndonesian ? "Daftar Akun / Dompet" : "Wallet List",
+    );
   };
 
   const instantSchemeTemplate = "trouvaille://add";
@@ -91,13 +106,19 @@ export function AppleShortcutsGuideModal({
         <div className="space-y-1.5 text-left">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.04] text-[11px] font-medium tracking-wide text-[var(--text-secondary)] mb-1">
             <Smartphone size={13} strokeWidth={1.5} />
-            <span>{isIndonesian ? "Integrasi Ekosistem Apple iOS" : "Apple iOS Ecosystem Integration"}</span>
+            <span>
+              {isIndonesian
+                ? "Integrasi Ekosistem Apple iOS"
+                : "Apple iOS Ecosystem Integration"}
+            </span>
           </div>
           <h3
             className="text-xl font-semibold tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
-            {isIndonesian ? "Ketuk Belakang & Pintasan iOS" : "Back Tap & iOS Shortcuts"}
+            {isIndonesian
+              ? "Ketuk Belakang & Pintasan iOS"
+              : "Back Tap & iOS Shortcuts"}
           </h3>
           <p
             className="text-[13px] leading-relaxed font-normal"
@@ -214,7 +235,7 @@ export function AppleShortcutsGuideModal({
                 }`}
               >
                 <Sparkles size={12} strokeWidth={1.5} />
-                <span>{isIndonesian ? "Kalimat Cerdas" : "Smart Sentence"}</span>
+                <span>{isIndonesian ? "Kalimat Cerdas" : "Sentence"}</span>
               </button>
               <button
                 type="button"
@@ -229,7 +250,9 @@ export function AppleShortcutsGuideModal({
                 }`}
               >
                 <SlidersHorizontal size={12} strokeWidth={1.5} />
-                <span>{isIndonesian ? "Dialog Bertingkat" : "Step Dialog"}</span>
+                <span>
+                  {isIndonesian ? "Dialog Bertingkat" : "Dialog Glass"}
+                </span>
               </button>
             </div>
 
@@ -279,7 +302,9 @@ export function AppleShortcutsGuideModal({
                           1
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Tindakan Buka URL" : "Open URLs Action"}
+                          {isIndonesian
+                            ? "Tindakan Buka URL"
+                            : "Open URLs Action"}
                         </span>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
@@ -305,23 +330,42 @@ export function AppleShortcutsGuideModal({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => copyToClipboard(instantSchemeTemplate, isIndonesian ? "Tautan Buka Lembar" : "Instant Sheet URL")}
+                          onClick={() =>
+                            copyToClipboard(
+                              instantSchemeTemplate,
+                              isIndonesian
+                                ? "Tautan Buka Lembar"
+                                : "Instant Sheet URL",
+                            )
+                          }
                           className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
-                          {copiedKey === (isIndonesian ? "Tautan Buka Lembar" : "Instant Sheet URL") ? (
-                            <Check size={12} className="text-[var(--text-primary)]" />
+                          {copiedKey ===
+                          (isIndonesian
+                            ? "Tautan Buka Lembar"
+                            : "Instant Sheet URL") ? (
+                            <Check
+                              size={12}
+                              className="text-[var(--text-primary)]"
+                            />
                           ) : (
                             <Copy size={12} />
                           )}
-                          <span>{isIndonesian ? "Salin Tautan" : "Copy URL"}</span>
+                          <span>
+                            {isIndonesian ? "Salin Tautan" : "Copy URL"}
+                          </span>
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleTestDeepLink(instantSchemeTemplate)}
+                          onClick={() =>
+                            handleTestDeepLink(instantSchemeTemplate)
+                          }
                           className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
                           <Zap size={11} />
-                          <span>{isIndonesian ? "Uji Buka Lembar" : "Test Open"}</span>
+                          <span>
+                            {isIndonesian ? "Uji Buka Lembar" : "Test Open"}
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -341,10 +385,15 @@ export function AppleShortcutsGuideModal({
                           2
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Tautkan ke Ketuk Belakang iPhone" : "Assign to iPhone Back Tap"}
+                          {isIndonesian
+                            ? "Tautkan ke Ketuk Belakang iPhone"
+                            : "Assign to iPhone Back Tap"}
                         </span>
                       </div>
-                      <Smartphone size={13} className="text-[var(--text-tertiary)]" />
+                      <Smartphone
+                        size={13}
+                        className="text-[var(--text-tertiary)]"
+                      />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
@@ -367,7 +416,10 @@ export function AppleShortcutsGuideModal({
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <Sparkles size={14} className="text-[var(--text-primary)]" />
+                    <Sparkles
+                      size={14}
+                      className="text-[var(--text-primary)]"
+                    />
                     <h4
                       className="text-[13px] font-semibold tracking-tight"
                       style={{ color: "var(--text-primary)" }}
@@ -402,7 +454,9 @@ export function AppleShortcutsGuideModal({
                           1
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Minta Masukan (atau Diktekan Teks)" : "Ask for Input (or Dictate Text)"}
+                          {isIndonesian
+                            ? "Minta Masukan (atau Diktekan Teks)"
+                            : "Ask for Input (or Dictate Text)"}
                         </span>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
@@ -458,7 +512,9 @@ export function AppleShortcutsGuideModal({
                           3
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Buka URL & Simpan Otomatis" : "Open URLs & Direct Auto-Save"}
+                          {isIndonesian
+                            ? "Buka URL & Simpan Otomatis"
+                            : "Open URLs & Direct Auto-Save"}
                         </span>
                       </div>
                       <Zap size={13} className="text-[var(--text-primary)]" />
@@ -482,23 +538,48 @@ export function AppleShortcutsGuideModal({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => copyToClipboard(smartNlpSchemeTemplate, isIndonesian ? "Templat Kalimat Cerdas" : "Smart Sentence Template")}
+                          onClick={() =>
+                            copyToClipboard(
+                              smartNlpSchemeTemplate,
+                              isIndonesian
+                                ? "Templat Kalimat Cerdas"
+                                : "Smart Sentence Template",
+                            )
+                          }
                           className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
-                          {copiedKey === (isIndonesian ? "Templat Kalimat Cerdas" : "Smart Sentence Template") ? (
-                            <Check size={12} className="text-[var(--text-primary)]" />
+                          {copiedKey ===
+                          (isIndonesian
+                            ? "Templat Kalimat Cerdas"
+                            : "Smart Sentence Template") ? (
+                            <Check
+                              size={12}
+                              className="text-[var(--text-primary)]"
+                            />
                           ) : (
                             <Copy size={12} />
                           )}
-                          <span>{isIndonesian ? "Salin Templat Tautan" : "Copy Scheme Template"}</span>
+                          <span>
+                            {isIndonesian
+                              ? "Salin Templat Tautan"
+                              : "Copy Scheme Template"}
+                          </span>
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleTestDeepLink("trouvaille://add?text=Kopi%20susu%2025rb%20pakai%20BCA&autosave=true")}
+                          onClick={() =>
+                            handleTestDeepLink(
+                              "trouvaille://add?text=Kopi%20susu%2025rb%20pakai%20BCA&autosave=true",
+                            )
+                          }
                           className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
                           <Zap size={11} />
-                          <span>{isIndonesian ? "Uji Simpan Otomatis" : "Test Auto-Save"}</span>
+                          <span>
+                            {isIndonesian
+                              ? "Uji Simpan Otomatis"
+                              : "Test Auto-Save"}
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -513,22 +594,48 @@ export function AppleShortcutsGuideModal({
                     }}
                   >
                     <p className="font-semibold text-[var(--text-primary)]">
-                      {isIndonesian ? "Contoh Kalimat yang Dikenali Otomatis:" : "Supported Sentence Examples:"}
+                      {isIndonesian
+                        ? "Contoh Kalimat yang Dikenali Otomatis:"
+                        : "Supported Sentence Examples:"}
                     </p>
                     <ul className="space-y-1 text-[var(--text-secondary)] pl-2">
                       {isIndonesian ? (
                         <>
-                          <li>• "Kopi 25 ribu pakai BCA" ➔ Rp 25.000, Kategori Makanan & Minuman, Rekening BCA</li>
-                          <li>• "Makan siang 50000 bayar GoPay" ➔ Rp 50.000, Kategori Makanan, Rekening GoPay</li>
-                          <li>• "Beli bensin 100rb Tunai" ➔ Rp 100.000, Kategori Transportasi, Rekening Tunai</li>
-                          <li>• "Makan malam bersama 150 ribu" ➔ Rp 150.000, Kategori Makanan, Rekening Utama</li>
+                          <li>
+                            • "Kopi 25 ribu pakai BCA" ➔ Rp 25.000, Kategori
+                            Makanan & Minuman, Rekening BCA
+                          </li>
+                          <li>
+                            • "Makan siang 50000 bayar GoPay" ➔ Rp 50.000,
+                            Kategori Makanan, Rekening GoPay
+                          </li>
+                          <li>
+                            • "Beli bensin 100rb Tunai" ➔ Rp 100.000, Kategori
+                            Transportasi, Rekening Tunai
+                          </li>
+                          <li>
+                            • "Makan malam bersama 150 ribu" ➔ Rp 150.000,
+                            Kategori Makanan, Rekening Utama
+                          </li>
                         </>
                       ) : (
                         <>
-                          <li>• "Coffee 25k using Cash" ➔ 25,000, Food & Drinks, Cash</li>
-                          <li>• "Lunch 50000 with Apple Pay" ➔ 50,000, Food, Apple Pay</li>
-                          <li>• "Gasoline 100k checking account" ➔ 100,000, Transport, Bank</li>
-                          <li>• "Dinner with friends 150k" ➔ 150,000, Food, Default Wallet</li>
+                          <li>
+                            • "Coffee 25k using Cash" ➔ 25,000, Food & Drinks,
+                            Cash
+                          </li>
+                          <li>
+                            • "Lunch 50000 with Apple Pay" ➔ 50,000, Food, Apple
+                            Pay
+                          </li>
+                          <li>
+                            • "Gasoline 100k checking account" ➔ 100,000,
+                            Transport, Bank
+                          </li>
+                          <li>
+                            • "Dinner with friends 150k" ➔ 150,000, Food,
+                            Default Wallet
+                          </li>
                         </>
                       )}
                     </ul>
@@ -548,7 +655,10 @@ export function AppleShortcutsGuideModal({
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <Sparkles size={14} className="text-[var(--text-primary)]" />
+                    <Sparkles
+                      size={14}
+                      className="text-[var(--text-primary)]"
+                    />
                     <h4
                       className="text-[13px] font-semibold tracking-tight"
                       style={{ color: "var(--text-primary)" }}
@@ -578,7 +688,11 @@ export function AppleShortcutsGuideModal({
                 >
                   <div className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
                     <Sparkles size={12} strokeWidth={1.5} />
-                    <span>{isIndonesian ? "Petunjuk Penting: Ganti Nama Variabel" : "Critical Tip: Rename Variables"}</span>
+                    <span>
+                      {isIndonesian
+                        ? "Petunjuk Penting: Ganti Nama Variabel"
+                        : "Critical Tip: Rename Variables"}
+                    </span>
                   </div>
                   <p className="text-[var(--text-secondary)] leading-relaxed">
                     {isIndonesian
@@ -603,7 +717,9 @@ export function AppleShortcutsGuideModal({
                           1
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Minta Masukan Nominal" : "Ask for Input (Amount)"}
+                          {isIndonesian
+                            ? "Minta Masukan Nominal"
+                            : "Ask for Input (Amount)"}
                         </span>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
@@ -631,7 +747,9 @@ export function AppleShortcutsGuideModal({
                           2
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Teks & Pisahkan Teks Kategori" : "Text & Split Text (Category)"}
+                          {isIndonesian
+                            ? "Teks & Pisahkan Teks Kategori"
+                            : "Text & Split Text (Category)"}
                         </span>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
@@ -646,15 +764,32 @@ export function AppleShortcutsGuideModal({
                     <div className="pl-7 space-y-1 text-[11px] text-[var(--text-secondary)] font-mono">
                       {isIndonesian ? (
                         <>
-                          <div>a. <strong>Teks</strong> ➔ Tempel daftar kategori Anda di bawah</div>
-                          <div>b. <strong>Pisahkan Teks</strong> ➔ Berdasarkan 'Baris Baru'</div>
-                          <div>c. <strong>Pilih dari Daftar</strong> ➔ Pilih dari 'Teks Terpisah', pertanyaan: "Kategori apa?"</div>
+                          <div>
+                            a. <strong>Teks</strong> ➔ Tempel daftar kategori
+                            Anda di bawah
+                          </div>
+                          <div>
+                            b. <strong>Pisahkan Teks</strong> ➔ Berdasarkan
+                            'Baris Baru'
+                          </div>
+                          <div>
+                            c. <strong>Pilih dari Daftar</strong> ➔ Pilih dari
+                            'Teks Terpisah', pertanyaan: "Kategori apa?"
+                          </div>
                         </>
                       ) : (
                         <>
-                          <div>a. <strong>Text</strong> ➔ Paste your category list below</div>
-                          <div>b. <strong>Split Text</strong> ➔ By 'New Lines'</div>
-                          <div>c. <strong>Choose from List</strong> ➔ Select from 'Split Text', prompt: "Which category?"</div>
+                          <div>
+                            a. <strong>Text</strong> ➔ Paste your category list
+                            below
+                          </div>
+                          <div>
+                            b. <strong>Split Text</strong> ➔ By 'New Lines'
+                          </div>
+                          <div>
+                            c. <strong>Choose from List</strong> ➔ Select from
+                            'Split Text', prompt: "Which category?"
+                          </div>
                         </>
                       )}
                     </div>
@@ -664,12 +799,20 @@ export function AppleShortcutsGuideModal({
                         onClick={copyCategoryList}
                         className="py-1 px-2.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[10px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
-                        {copiedKey === (isIndonesian ? "Daftar Kategori" : "Category List") ? (
-                          <Check size={11} className="text-[var(--text-primary)]" />
+                        {copiedKey ===
+                        (isIndonesian ? "Daftar Kategori" : "Category List") ? (
+                          <Check
+                            size={11}
+                            className="text-[var(--text-primary)]"
+                          />
                         ) : (
                           <Copy size={11} />
                         )}
-                        <span>{isIndonesian ? "Salin Daftar Kategori Saya" : "Copy My Categories"}</span>
+                        <span>
+                          {isIndonesian
+                            ? "Salin Daftar Kategori Saya"
+                            : "Copy My Categories"}
+                        </span>
                       </button>
                     </div>
                     <p className="text-[10px] text-[var(--text-tertiary)] pl-7">
@@ -693,7 +836,9 @@ export function AppleShortcutsGuideModal({
                           3
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Teks & Pisahkan Teks Rekening" : "Text & Split Text (Wallet)"}
+                          {isIndonesian
+                            ? "Teks & Pisahkan Teks Rekening"
+                            : "Text & Split Text (Wallet)"}
                         </span>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
@@ -708,15 +853,32 @@ export function AppleShortcutsGuideModal({
                     <div className="pl-7 space-y-1 text-[11px] text-[var(--text-secondary)] font-mono">
                       {isIndonesian ? (
                         <>
-                          <div>a. <strong>Teks</strong> ➔ Tempel daftar rekening Anda di bawah</div>
-                          <div>b. <strong>Pisahkan Teks</strong> ➔ Berdasarkan 'Baris Baru'</div>
-                          <div>c. <strong>Pilih dari Daftar</strong> ➔ Pilih dari 'Teks Terpisah', pertanyaan: "Rekening mana?"</div>
+                          <div>
+                            a. <strong>Teks</strong> ➔ Tempel daftar rekening
+                            Anda di bawah
+                          </div>
+                          <div>
+                            b. <strong>Pisahkan Teks</strong> ➔ Berdasarkan
+                            'Baris Baru'
+                          </div>
+                          <div>
+                            c. <strong>Pilih dari Daftar</strong> ➔ Pilih dari
+                            'Teks Terpisah', pertanyaan: "Rekening mana?"
+                          </div>
                         </>
                       ) : (
                         <>
-                          <div>a. <strong>Text</strong> ➔ Paste your wallet list below</div>
-                          <div>b. <strong>Split Text</strong> ➔ By 'New Lines'</div>
-                          <div>c. <strong>Choose from List</strong> ➔ Select from 'Split Text', prompt: "Which wallet?"</div>
+                          <div>
+                            a. <strong>Text</strong> ➔ Paste your wallet list
+                            below
+                          </div>
+                          <div>
+                            b. <strong>Split Text</strong> ➔ By 'New Lines'
+                          </div>
+                          <div>
+                            c. <strong>Choose from List</strong> ➔ Select from
+                            'Split Text', prompt: "Which wallet?"
+                          </div>
                         </>
                       )}
                     </div>
@@ -726,12 +888,22 @@ export function AppleShortcutsGuideModal({
                         onClick={copyWalletList}
                         className="py-1 px-2.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[10px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
-                        {copiedKey === (isIndonesian ? "Daftar Akun / Dompet" : "Wallet List") ? (
-                          <Check size={11} className="text-[var(--text-primary)]" />
+                        {copiedKey ===
+                        (isIndonesian
+                          ? "Daftar Akun / Dompet"
+                          : "Wallet List") ? (
+                          <Check
+                            size={11}
+                            className="text-[var(--text-primary)]"
+                          />
                         ) : (
                           <Copy size={11} />
                         )}
-                        <span>{isIndonesian ? "Salin Daftar Akun Saya" : "Copy My Wallets"}</span>
+                        <span>
+                          {isIndonesian
+                            ? "Salin Daftar Akun Saya"
+                            : "Copy My Wallets"}
+                        </span>
                       </button>
                     </div>
                     <p className="text-[10px] text-[var(--text-tertiary)] pl-7">
@@ -755,7 +927,9 @@ export function AppleShortcutsGuideModal({
                           4
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Minta Masukan Tanggal & Waktu" : "Ask for Input (Date & Time)"}
+                          {isIndonesian
+                            ? "Minta Masukan Tanggal & Waktu"
+                            : "Ask for Input (Date & Time)"}
                         </span>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
@@ -783,7 +957,9 @@ export function AppleShortcutsGuideModal({
                           5
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Minta Masukan Catatan" : "Ask for Input (Note / Description)"}
+                          {isIndonesian
+                            ? "Minta Masukan Catatan"
+                            : "Ask for Input (Note / Description)"}
                         </span>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
@@ -811,7 +987,9 @@ export function AppleShortcutsGuideModal({
                           6
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Enkode URL Catatan" : "URL Encode (Sanitize Note Text)"}
+                          {isIndonesian
+                            ? "Enkode URL Catatan"
+                            : "URL Encode (Sanitize Note Text)"}
                         </span>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
@@ -839,7 +1017,9 @@ export function AppleShortcutsGuideModal({
                           7
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Buka URL & Simpan Otomatis" : "Open URLs (Direct Auto-Save)"}
+                          {isIndonesian
+                            ? "Buka URL & Simpan Otomatis"
+                            : "Open URLs (Direct Auto-Save)"}
                         </span>
                       </div>
                       <Zap size={13} className="text-[var(--text-primary)]" />
@@ -860,21 +1040,61 @@ export function AppleShortcutsGuideModal({
                         }}
                       >
                         <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] block">
-                          {isIndonesian ? "Panduan Variabel Papan Ketik (Bukan Ketik Manual):" : "Keyboard Variable Picker Mapping:"}
+                          {isIndonesian
+                            ? "Panduan Variabel Papan Ketik (Bukan Ketik Manual):"
+                            : "Keyboard Variable Picker Mapping:"}
                         </span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
-                          <div>• {isIndonesian ? "nominal=" : "amount="} ➔ <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">{isIndonesian ? "Nominal" : "Amount"}</span></div>
-                          <div>• {isIndonesian ? "&kategori=" : "&category="} ➔ <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">{isIndonesian ? "Kategori" : "Category"}</span></div>
-                          <div>• {isIndonesian ? "&rekening=" : "&wallet="} ➔ <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">{isIndonesian ? "Rekening" : "Wallet"}</span></div>
-                          <div>• {isIndonesian ? "&tanggal=" : "&date="} ➔ <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">{isIndonesian ? "Tanggal" : "Date"}</span></div>
-                          <div className="sm:col-span-2">• {isIndonesian ? "&catatan=" : "&note="} ➔ <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">{isIndonesian ? "Teks Terenkode" : "URL Encoded Text"}</span></div>
-                          <div className="sm:col-span-2">• &autosave=true ➔ <span className="text-[var(--text-secondary)]">{isIndonesian ? "Teks biasa (simpan langsung)" : "Plain text (instant auto-save)"}</span></div>
+                          <div>
+                            • {isIndonesian ? "nominal=" : "amount="} ➔{" "}
+                            <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+                              {isIndonesian ? "Nominal" : "Amount"}
+                            </span>
+                          </div>
+                          <div>
+                            • {isIndonesian ? "&kategori=" : "&category="} ➔{" "}
+                            <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+                              {isIndonesian ? "Kategori" : "Category"}
+                            </span>
+                          </div>
+                          <div>
+                            • {isIndonesian ? "&rekening=" : "&wallet="} ➔{" "}
+                            <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+                              {isIndonesian ? "Rekening" : "Wallet"}
+                            </span>
+                          </div>
+                          <div>
+                            • {isIndonesian ? "&tanggal=" : "&date="} ➔{" "}
+                            <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+                              {isIndonesian ? "Tanggal" : "Date"}
+                            </span>
+                          </div>
+                          <div className="sm:col-span-2">
+                            • {isIndonesian ? "&catatan=" : "&note="} ➔{" "}
+                            <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
+                              {isIndonesian
+                                ? "Teks Terenkode"
+                                : "URL Encoded Text"}
+                            </span>
+                          </div>
+                          <div className="sm:col-span-2">
+                            • &autosave=true ➔{" "}
+                            <span className="text-[var(--text-secondary)]">
+                              {isIndonesian
+                                ? "Teks biasa (simpan langsung)"
+                                : "Plain text (instant auto-save)"}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
                       {/* Explicit Warning */}
                       <div className="flex items-start gap-1.5 p-2 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[10px] text-[var(--text-secondary)] leading-relaxed">
-                        <AlertCircle size={13} className="shrink-0 mt-0.5 text-[var(--text-primary)]" strokeWidth={1.75} />
+                        <AlertCircle
+                          size={13}
+                          className="shrink-0 mt-0.5 text-[var(--text-primary)]"
+                          strokeWidth={1.75}
+                        />
                         <span>
                           {isIndonesian
                             ? "PERHATIAN: Jangan ketik tanda kurung siku '[ ]' secara manual! Tanda kurung siku menunjukkan variabel yang harus dipilih dari menu bilah papan ketik iPhone."
@@ -895,31 +1115,52 @@ export function AppleShortcutsGuideModal({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => copyToClipboard(glassSchemeTemplate, isIndonesian ? "Templat Skema URL" : "Scheme Template")}
+                          onClick={() =>
+                            copyToClipboard(
+                              glassSchemeTemplate,
+                              isIndonesian
+                                ? "Templat Skema URL"
+                                : "Scheme Template",
+                            )
+                          }
                           className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
-                          {copiedKey === (isIndonesian ? "Templat Skema URL" : "Scheme Template") ? (
-                            <Check size={12} className="text-[var(--text-primary)]" />
+                          {copiedKey ===
+                          (isIndonesian
+                            ? "Templat Skema URL"
+                            : "Scheme Template") ? (
+                            <Check
+                              size={12}
+                              className="text-[var(--text-primary)]"
+                            />
                           ) : (
                             <Copy size={12} />
                           )}
-                          <span>{isIndonesian ? "Salin Templat URL" : "Copy Scheme Template"}</span>
+                          <span>
+                            {isIndonesian
+                              ? "Salin Templat URL"
+                              : "Copy Scheme Template"}
+                          </span>
                         </button>
                         <button
                           type="button"
                           onClick={() =>
                             handleTestDeepLink(
                               `trouvaille://add?${isIndonesian ? "nominal" : "amount"}=50000&${isIndonesian ? "kategori" : "category"}=${encodeURIComponent(
-                                categories[0]?.name || "Makanan"
+                                categories[0]?.name || "Makanan",
                               )}&${isIndonesian ? "rekening" : "wallet"}=${encodeURIComponent(
-                                wallets[0]?.name || "BCA"
-                              )}&${isIndonesian ? "catatan" : "note"}=Makan%20Siang&autosave=true`
+                                wallets[0]?.name || "BCA",
+                              )}&${isIndonesian ? "catatan" : "note"}=Makan%20Siang&autosave=true`,
                             )
                           }
                           className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                         >
                           <Zap size={11} />
-                          <span>{isIndonesian ? "Uji Simpan Otomatis" : "Test Auto-Save"}</span>
+                          <span>
+                            {isIndonesian
+                              ? "Uji Simpan Otomatis"
+                              : "Test Auto-Save"}
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -939,10 +1180,15 @@ export function AppleShortcutsGuideModal({
                           8
                         </span>
                         <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Tampilkan Pemberitahuan" : "Show Notification"}
+                          {isIndonesian
+                            ? "Tampilkan Pemberitahuan"
+                            : "Show Notification"}
                         </span>
                       </div>
-                      <ShieldCheck size={13} className="text-[var(--text-tertiary)]" />
+                      <ShieldCheck
+                        size={13}
+                        className="text-[var(--text-tertiary)]"
+                      />
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
                       {isIndonesian
@@ -963,12 +1209,17 @@ export function AppleShortcutsGuideModal({
               }}
             >
               <div className="flex items-center gap-2">
-                <SlidersHorizontal size={14} className="text-[var(--text-primary)]" />
+                <SlidersHorizontal
+                  size={14}
+                  className="text-[var(--text-primary)]"
+                />
                 <h4
                   className="text-[13px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {isIndonesian ? "Cara Menghubungkan ke Ketuk Belakang iPhone" : "Assign to iPhone Back Tap"}
+                  {isIndonesian
+                    ? "Cara Menghubungkan ke Ketuk Belakang iPhone"
+                    : "Assign to iPhone Back Tap"}
                 </h4>
               </div>
 
@@ -1044,7 +1295,9 @@ export function AppleShortcutsGuideModal({
                   className="text-[11px] font-semibold uppercase tracking-wider block"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  {isIndonesian ? "Konfigurasi Tombol Aksi (iPhone 15 / 16 Pro)" : "Action Button Setup (iPhone 15 / 16 Pro)"}
+                  {isIndonesian
+                    ? "Konfigurasi Tombol Aksi (iPhone 15 / 16 Pro)"
+                    : "Action Button Setup (iPhone 15 / 16 Pro)"}
                 </span>
               </div>
 
@@ -1068,7 +1321,9 @@ export function AppleShortcutsGuideModal({
                 </div>
                 <div className="space-y-1">
                   <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Buka Pengaturan Tombol Tindakan" : "Open Action Button Settings"}
+                    {isIndonesian
+                      ? "Buka Pengaturan Tombol Tindakan"
+                      : "Open Action Button Settings"}
                   </p>
                   <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                     {isIndonesian
@@ -1092,7 +1347,9 @@ export function AppleShortcutsGuideModal({
                 </div>
                 <div className="space-y-1">
                   <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Pilih Pintasan Trouvaille" : "Assign Trouvaille Shortcut"}
+                    {isIndonesian
+                      ? "Pilih Pintasan Trouvaille"
+                      : "Assign Trouvaille Shortcut"}
                   </p>
                   <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                     {isIndonesian
@@ -1116,7 +1373,9 @@ export function AppleShortcutsGuideModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Tekan & Tahan Kapan Saja" : "Press & Hold Anytime"}
+                    {isIndonesian
+                      ? "Tekan & Tahan Kapan Saja"
+                      : "Press & Hold Anytime"}
                   </p>
                   <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                     {isIndonesian
@@ -1140,7 +1399,9 @@ export function AppleShortcutsGuideModal({
                 }}
               >
                 <Mic size={14} />
-                <span>{isIndonesian ? "Uji Aksi Suara" : "Test Voice Action"}</span>
+                <span>
+                  {isIndonesian ? "Uji Aksi Suara" : "Test Voice Action"}
+                </span>
               </button>
               <button
                 type="button"
@@ -1153,7 +1414,9 @@ export function AppleShortcutsGuideModal({
                 }}
               >
                 <Camera size={14} />
-                <span>{isIndonesian ? "Uji Aksi Pemindai" : "Test Scan Action"}</span>
+                <span>
+                  {isIndonesian ? "Uji Aksi Pemindai" : "Test Scan Action"}
+                </span>
               </button>
             </div>
           </div>
@@ -1166,7 +1429,9 @@ export function AppleShortcutsGuideModal({
               {
                 num: "1",
                 icon: Mic,
-                title: isIndonesian ? "Pencatatan Suara Cepat (Siri)" : "Voice Quick-Add (Siri)",
+                title: isIndonesian
+                  ? "Pencatatan Suara Cepat (Siri)"
+                  : "Voice Quick-Add (Siri)",
                 desc: isIndonesian
                   ? "Bicara santai tanpa mengetik, contoh: 'Kopi 35 ribu pakai BCA'."
                   : "Speak naturally without typing, e.g., 'Coffee 35k with BCA'.",
@@ -1188,7 +1453,9 @@ export function AppleShortcutsGuideModal({
               {
                 num: "2",
                 icon: Zap,
-                title: isIndonesian ? "Pintasan Apple & Layar Terkunci" : "Apple Shortcuts & Lock Screen",
+                title: isIndonesian
+                  ? "Pintasan Apple & Layar Terkunci"
+                  : "Apple Shortcuts & Lock Screen",
                 desc: isIndonesian
                   ? "Buka jendela pencatatan instan dari Layar Terkunci atau Pusat Kontrol."
                   : "Trigger the instant logging modal directly from Lock Screen or Control Center.",
@@ -1208,7 +1475,9 @@ export function AppleShortcutsGuideModal({
               {
                 num: "3",
                 icon: Camera,
-                title: isIndonesian ? "Pemindai Struk AI (Struk Fisik)" : "AI Receipt Scanner (Paper Receipts)",
+                title: isIndonesian
+                  ? "Pemindai Struk AI (Struk Fisik)"
+                  : "AI Receipt Scanner (Paper Receipts)",
                 desc: isIndonesian
                   ? "Foto struk kasir atau struk QRIS; AI membedah rincian & nominal secara otomatis."
                   : "Snap physical receipts or QRIS slips; AI extracts items and amounts automatically.",
@@ -1228,7 +1497,9 @@ export function AppleShortcutsGuideModal({
               {
                 num: "4",
                 icon: Layers,
-                title: isIndonesian ? "Tangkapan Layar & Bukti Transfer" : "Screenshot & Transfer Proof",
+                title: isIndonesian
+                  ? "Tangkapan Layar & Bukti Transfer"
+                  : "Screenshot & Transfer Proof",
                 desc: isIndonesian
                   ? "Ekstrak bukti pembayaran m-banking langsung dari galeri foto iPhone."
                   : "Extract m-banking transaction confirmations directly from photo library.",
@@ -1248,7 +1519,9 @@ export function AppleShortcutsGuideModal({
               {
                 num: "5",
                 icon: Share2,
-                title: isIndonesian ? "Lembar Berbagi iOS (Teks Langsung)" : "iOS Share Sheet (Direct Text)",
+                title: isIndonesian
+                  ? "Lembar Berbagi iOS (Teks Langsung)"
+                  : "iOS Share Sheet (Direct Text)",
                 desc: isIndonesian
                   ? "Bagikan teks tagihan dari WhatsApp atau SMS perbankan ke Trouvaille."
                   : "Share transaction text from WhatsApp or SMS banking directly to Trouvaille.",
@@ -1268,7 +1541,9 @@ export function AppleShortcutsGuideModal({
               {
                 num: "6",
                 icon: PlusCircle,
-                title: isIndonesian ? "Papan Angka Ergonomis & Kalkulator" : "Ergonomic Numpad & Math Calc",
+                title: isIndonesian
+                  ? "Papan Angka Ergonomis & Kalkulator"
+                  : "Ergonomic Numpad & Math Calc",
                 desc: isIndonesian
                   ? "Papan angka monokrom dengan tombol 000 dan perhitungan matematika langsung di kolom."
                   : "Monochrome keypad with triple-zero 000 and in-line mathematical calculation.",
@@ -1331,10 +1606,15 @@ export function AppleShortcutsGuideModal({
                   {/* Step-by-Step Instructions */}
                   <div className="pt-2 border-t border-[var(--glass-border)] space-y-1.5">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                      {isIndonesian ? "Panduan Langkah demi Langkah" : "Step-by-Step Setup Guide"}
+                      {isIndonesian
+                        ? "Panduan Langkah demi Langkah"
+                        : "Step-by-Step Setup Guide"}
                     </p>
                     {item.steps.map((st, sIdx) => (
-                      <div key={sIdx} className="flex items-start gap-2 text-[11px] text-[var(--text-secondary)]">
+                      <div
+                        key={sIdx}
+                        className="flex items-start gap-2 text-[11px] text-[var(--text-secondary)]"
+                      >
                         <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)] mt-0.5">
                           {sIdx + 1}
                         </span>
@@ -1350,13 +1630,24 @@ export function AppleShortcutsGuideModal({
                       >
                         {copiedKey === item.title ? (
                           <>
-                            <Check size={12} className="text-[var(--text-primary)]" />
-                            <span>{isIndonesian ? "Skema Disalin!" : "Scheme Copied!"}</span>
+                            <Check
+                              size={12}
+                              className="text-[var(--text-primary)]"
+                            />
+                            <span>
+                              {isIndonesian
+                                ? "Skema Disalin!"
+                                : "Scheme Copied!"}
+                            </span>
                           </>
                         ) : (
                           <>
                             <Copy size={12} />
-                            <span>{isIndonesian ? "Salin Skema URL" : "Copy URL Scheme"}</span>
+                            <span>
+                              {isIndonesian
+                                ? "Salin Skema URL"
+                                : "Copy URL Scheme"}
+                            </span>
                           </>
                         )}
                       </button>
@@ -1364,7 +1655,11 @@ export function AppleShortcutsGuideModal({
                         type="button"
                         onClick={() => handleTestDeepLink(item.scheme)}
                         className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] active:scale-95 text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        title={isIndonesian ? "Uji coba buka deep link langsung" : "Test trigger deep link"}
+                        title={
+                          isIndonesian
+                            ? "Uji coba buka deep link langsung"
+                            : "Test trigger deep link"
+                        }
                       >
                         <Zap size={11} />
                         <span>{isIndonesian ? "Uji Tautan" : "Test Link"}</span>
@@ -1391,7 +1686,9 @@ export function AppleShortcutsGuideModal({
                 className="text-[11px] font-semibold uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {isIndonesian ? "Otomatisasi Ketukan Apple Pay" : "Apple Pay Tap Automation"}
+                {isIndonesian
+                  ? "Otomatisasi Ketukan Apple Pay"
+                  : "Apple Pay Tap Automation"}
               </span>
 
               <div className="space-y-3 text-[12px]">
@@ -1408,7 +1705,9 @@ export function AppleShortcutsGuideModal({
                   </div>
                   <div>
                     <p className="font-semibold text-[13px] text-[var(--text-primary)]">
-                      {isIndonesian ? "Buka Pintasan > Otomatisasi" : "Open Shortcuts > Automation"}
+                      {isIndonesian
+                        ? "Buka Pintasan > Otomatisasi"
+                        : "Open Shortcuts > Automation"}
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                       {isIndonesian
@@ -1431,7 +1730,9 @@ export function AppleShortcutsGuideModal({
                   </div>
                   <div>
                     <p className="font-semibold text-[13px] text-[var(--text-primary)]">
-                      {isIndonesian ? "Atur Jalankan Segera" : "Set to Run Immediately"}
+                      {isIndonesian
+                        ? "Atur Jalankan Segera"
+                        : "Set to Run Immediately"}
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                       {isIndonesian
@@ -1454,13 +1755,29 @@ export function AppleShortcutsGuideModal({
                   </div>
                   <div>
                     <p className="font-semibold text-[13px] text-[var(--text-primary)]">
-                      {isIndonesian ? "Buka Skema URL Trouvaille" : "Open Trouvaille URL"}
+                      {isIndonesian
+                        ? "Buka Skema URL Trouvaille"
+                        : "Open Trouvaille URL"}
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                       {isIndonesian ? (
-                        <>Tambahkan tindakan <em>Buka URL</em> dengan alamat <code>trouvaille://add?text=Shortcut Input&amp;autosave=true</code>.</>
+                        <>
+                          Tambahkan tindakan <em>Buka URL</em> dengan alamat{" "}
+                          <code>
+                            trouvaille://add?text=Shortcut
+                            Input&amp;autosave=true
+                          </code>
+                          .
+                        </>
                       ) : (
-                        <>Add the action <em>Open URL</em> with <code>trouvaille://add?text=Shortcut Input&amp;autosave=true</code>.</>
+                        <>
+                          Add the action <em>Open URL</em> with{" "}
+                          <code>
+                            trouvaille://add?text=Shortcut
+                            Input&amp;autosave=true
+                          </code>
+                          .
+                        </>
                       )}
                     </p>
                   </div>
@@ -1470,15 +1787,25 @@ export function AppleShortcutsGuideModal({
 
             <button
               type="button"
-              onClick={() => copyToClipboard("trouvaille://add?text=[Shortcut Input]&autosave=true", isIndonesian ? "Skema Otomatisasi URL" : "URL Template")}
+              onClick={() =>
+                copyToClipboard(
+                  "trouvaille://add?text=[Shortcut Input]&autosave=true",
+                  isIndonesian ? "Skema Otomatisasi URL" : "URL Template",
+                )
+              }
               className="w-full py-3 px-4 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] text-[var(--text-primary)] transition-colors cursor-pointer"
             >
-              {copiedKey === (isIndonesian ? "Skema Otomatisasi URL" : "URL Template") ? (
+              {copiedKey ===
+              (isIndonesian ? "Skema Otomatisasi URL" : "URL Template") ? (
                 <Check size={14} className="text-[var(--text-primary)]" />
               ) : (
                 <Copy size={14} />
               )}
-              <span>{isIndonesian ? "Salin Skema Otomatisasi URL" : "Copy Automation URL Scheme"}</span>
+              <span>
+                {isIndonesian
+                  ? "Salin Skema Otomatisasi URL"
+                  : "Copy Automation URL Scheme"}
+              </span>
             </button>
           </div>
         )}
