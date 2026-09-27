@@ -32,6 +32,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>trouvaille</string>
+				<string>com.alhafidz.trouvaille</string>
 			</array>
 		</dict>
 	</array>

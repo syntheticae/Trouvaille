@@ -105,6 +105,11 @@ const JoinLedgerModal = lazy(() =>
     default: module.JoinLedgerModal,
   })),
 );
+const ResetPasswordModal = lazy(() =>
+  import("./components/auth/ResetPasswordModal").then((module) => ({
+    default: module.ResetPasswordModal,
+  })),
+);
 
 import { useTheme } from "./contexts/ThemeContext";
 
@@ -1102,7 +1107,7 @@ function AppShell() {
 import { BiometricLockOverlay } from "./components/security/BiometricLockOverlay";
 
 export default function App() {
-  const { session, loading, isGuest } = useAuth();
+  const { session, loading, isGuest, isPasswordRecovery, setIsPasswordRecovery } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
@@ -1112,6 +1117,10 @@ export default function App() {
     return (
       <Suspense fallback={<LoadingScreen />}>
         <LoginPage />
+        <ResetPasswordModal
+          isOpen={isPasswordRecovery}
+          onClose={() => setIsPasswordRecovery(false)}
+        />
       </Suspense>
     );
   }
@@ -1119,6 +1128,12 @@ export default function App() {
     <>
       <AppShell />
       <BiometricLockOverlay />
+      <Suspense fallback={null}>
+        <ResetPasswordModal
+          isOpen={isPasswordRecovery}
+          onClose={() => setIsPasswordRecovery(false)}
+        />
+      </Suspense>
     </>
   );
 }

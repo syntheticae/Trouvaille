@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { App as CapApp } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
 import { supabase } from "../lib/supabase";
 import {
   savePersistentSession,
@@ -25,6 +27,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isGuest: boolean;
+  isPasswordRecovery: boolean;
+  setIsPasswordRecovery: (value: boolean) => void;
   setSession: (session: Session | null) => void;
   signOut: () => Promise<void>;
   continueAsGuest: () => void;
@@ -36,6 +40,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   isGuest: false,
+  isPasswordRecovery: false,
+  setIsPasswordRecovery: () => {},
   setSession: () => {},
   signOut: async () => {},
   continueAsGuest: () => {},
@@ -66,6 +72,7 @@ function getStoredSupabaseSession(): Session | null {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [isGuest, setIsGuest] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("trouvaille_guest_mode") === "true";
@@ -90,11 +97,131 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
+    const handleAuthDeepLink = async (rawUrl: string) => {
+      try {
+        if (!rawUrl) return;
+        const isAuthTarget =
+          rawUrl.includes("auth-callback") ||
+          rawUrl.includes("reset-password") ||
+          rawUrl.includes("access_token=") ||
+          rawUrl.includes("refresh_token=") ||
+          rawUrl.includes("type=recovery") ||
+          rawUrl.includes("code=");
+
+        if (!isAuthTarget) return;
+
+        // Dismiss external in-app browser if still open
+        try {
+          await Browser.close();
+        } catch {}
+
+        const hashIndex = rawUrl.indexOf("#");
+        const queryIndex = rawUrl.indexOf("?");
+        const fragment =
+          hashIndex !== -1
+            ? rawUrl.substring(hashIndex + 1)
+            : queryIndex !== -1
+              ? rawUrl.substring(queryIndex + 1)
+              : "";
+        const params = new URLSearchParams(fragment);
+
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+        const code = params.get("code");
+        const type = params.get("type");
+
+        if (accessToken && refreshToken) {
+          const { data } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (data?.session && isMounted) {
+            savePersistentSession(data.session);
+            setSession(data.session);
+            setIsGuest(false);
+            localStorage.removeItem("trouvaille_guest_mode");
+          }
+        } else if (code) {
+          const { data } = await supabase.auth.exchangeCodeForSession(code);
+          if (data?.session && isMounted) {
+            savePersistentSession(data.session);
+            setSession(data.session);
+            setIsGuest(false);
+            localStorage.removeItem("trouvaille_guest_mode");
+          }
+        }
+
+        if (type === "recovery" || rawUrl.includes("reset-password")) {
+          if (isMounted) {
+            setIsPasswordRecovery(true);
+          }
+        }
+      } catch (err) {
+        console.warn("[AuthContext] Failed handling native deep link:", err);
+      }
+    };
+
+    let urlListenerHandle: { remove: () => void } | null = null;
+    CapApp.addListener("appUrlOpen", (event) => {
+      if (isMounted && event?.url) {
+        handleAuthDeepLink(event.url);
+      }
+    })
+      .then((handle) => {
+        urlListenerHandle = handle;
+      })
+      .catch(() => {});
+
+    CapApp.getLaunchUrl()
+      .then((launch) => {
+        if (launch?.url) {
+          handleAuthDeepLink(launch.url);
+        }
+      })
+      .catch(() => {});
+
     async function initAuth() {
       try {
         const storedIsGuest =
           typeof window !== "undefined" &&
           localStorage.getItem("trouvaille_guest_mode") === "true";
+
+        if (typeof window !== "undefined") {
+          const fullUrl = window.location.href;
+          if (
+            fullUrl.includes("type=recovery") ||
+            fullUrl.includes("reset-password") ||
+            window.location.hash.includes("type=recovery") ||
+            window.location.search.includes("type=recovery")
+          ) {
+            setIsPasswordRecovery(true);
+          }
+
+          if (window.location.hash.includes("access_token=")) {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const aToken = hashParams.get("access_token");
+            const rToken = hashParams.get("refresh_token");
+            const type = hashParams.get("type");
+            if (aToken && rToken) {
+              try {
+                const { data } = await supabase.auth.setSession({
+                  access_token: aToken,
+                  refresh_token: rToken,
+                });
+                if (data?.session && isMounted) {
+                  savePersistentSession(data.session);
+                  setSession(data.session);
+                  setIsGuest(false);
+                  localStorage.removeItem("trouvaille_guest_mode");
+                }
+              } catch {}
+            }
+            if (type === "recovery") {
+              setIsPasswordRecovery(true);
+            }
+          }
+        }
+
         if (storedIsGuest) {
           if (!isMounted) return;
           setIsGuest(true);
@@ -172,6 +299,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!isMounted) return;
 
+      if (event === "PASSWORD_RECOVERY") {
+        if (newSession) {
+          savePersistentSession(newSession);
+          setSession(newSession);
+        }
+        setIsPasswordRecovery(true);
+        setLoading(false);
+        return;
+      }
+
       if (event === "SIGNED_OUT") {
         clearPersistentSession();
         clearBiometricLoginCredentials();
@@ -216,6 +353,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
       subscription.unsubscribe();
       window.removeEventListener("online", handleOnline);
+      urlListenerHandle?.remove();
     };
   }, []);
 
@@ -245,6 +383,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user: effectiveUser,
         loading,
         isGuest,
+        isPasswordRecovery,
+        setIsPasswordRecovery,
         setSession: (s) => {
           if (s) {
             setIsGuest(false);

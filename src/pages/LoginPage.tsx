@@ -20,6 +20,8 @@ import {
   Check,
   Sparkles,
 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -824,14 +826,34 @@ export function LoginPage() {
     setMessage(null);
     triggerHaptic("medium");
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo:
-            typeof window !== "undefined" ? window.location.origin : undefined,
-        },
-      });
-      if (error) setError(error.message);
+      const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
+      const redirectUri = isNative
+        ? "com.alhafidz.trouvaille://auth-callback"
+        : typeof window !== "undefined"
+          ? window.location.origin
+          : undefined;
+
+      if (isNative) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: redirectUri,
+            skipBrowserRedirect: true,
+          },
+        });
+        if (error) throw error;
+        if (data?.url) {
+          await Browser.open({ url: data.url, windowName: "_system" });
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: redirectUri,
+          },
+        });
+        if (error) throw error;
+      }
     } catch (err: any) {
       setError(err?.message || (isIndonesian ? `Gagal masuk dengan ${provider}.` : `Failed to sign in with ${provider}.`));
     } finally {
@@ -864,8 +886,15 @@ export function LoginPage() {
     setError(null);
     setMessage(null);
     try {
+      const resetRedirectUri =
+        typeof window !== "undefined" && Capacitor.isNativePlatform()
+          ? "com.alhafidz.trouvaille://reset-password"
+          : typeof window !== "undefined"
+            ? `${window.location.origin}/?type=recovery`
+            : undefined;
+
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        redirectTo: resetRedirectUri,
       });
       if (error) throw error;
       setMessage(
