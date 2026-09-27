@@ -44,9 +44,11 @@ interface SpaceContextValue {
   activeSpace: MoneySpace;
   spaces: MoneySpace[];
   ledgers: MoneySpace[];
+  defaultSpaceId: string;
   isSharedSpace: boolean;
   currentUserRole: LedgerMemberRole;
   setActiveSpaceId: (id: string) => void;
+  setDefaultLedger: (id: string) => Promise<void>;
   addCustomSpace: (space: CreateSpaceInput) => MoneySpace;
   updateCustomSpace: (id: string, space: Partial<CreateSpaceInput>) => void;
   deleteCustomSpace: (id: string, reassignToId?: string) => void;
@@ -62,11 +64,22 @@ interface SpaceContextValue {
 
 const SpaceContext = createContext<SpaceContextValue | undefined>(undefined);
 
+const DEFAULT_LEDGER_KEY = "trouvaille_default_ledger_id";
+
 export function SpaceProvider({ children }: { children: React.ReactNode }) {
+  const [defaultSpaceId, setDefaultSpaceIdState] = useState<string>(() => {
+    try {
+      return localStorage.getItem(DEFAULT_LEDGER_KEY) || "personal";
+    } catch {
+      return "personal";
+    }
+  });
+
   const [activeSpaceId, setActiveSpaceIdState] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(ACTIVE_SPACE_KEY);
-      return saved || "personal";
+      const def = localStorage.getItem(DEFAULT_LEDGER_KEY);
+      return saved || def || "personal";
     } catch {
       return "personal";
     }
@@ -122,6 +135,15 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (rawData.length > 0) {
+        // Extract default ledger from cloud if designated
+        const defaultRow = rawData.find((row: any) => Boolean(row.is_default));
+        if (defaultRow) {
+          setDefaultSpaceIdState(defaultRow.id);
+          try {
+            localStorage.setItem(DEFAULT_LEDGER_KEY, defaultRow.id);
+          } catch {}
+        }
+
         const cloudSpaces: MoneySpace[] = rawData
           .filter((row: any) => row.id !== "personal" && row.id !== "all")
           .map((row: any) => {
@@ -130,6 +152,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
               ? row.ledger_members.find((m: any) => m.user_id === session.user.id)
               : null;
             const role: LedgerMemberRole = isOwner ? "owner" : (myMembership?.role || "editor");
+            const isDef = Boolean(row.is_default);
 
             return {
               id: row.id,
@@ -138,8 +161,8 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
               description: row.description || "",
               icon: row.icon || (row.is_shared ? "Users" : "BookOpen"),
               currency: row.currency || "IDR",
-              isDefault: Boolean(row.is_default),
-              is_default: Boolean(row.is_default),
+              isDefault: isDef,
+              is_default: isDef,
               is_shared: Boolean(row.is_shared),
               invite_code: row.invite_code || null,
               role,
@@ -178,13 +201,20 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
   }, [syncFromCloud]);
 
   const spaces = useMemo(() => {
+    const isPersonalDefault = defaultSpaceId === "personal";
     const defaultPersonal: MoneySpace = {
       ...DEFAULT_MONEY_SPACES[0],
+      isDefault: isPersonalDefault,
+      is_default: isPersonalDefault,
       ...personalOverride,
     };
-    const cleanCustom = customSpaces.filter(
-      (s) => s.id !== "personal" && s.id !== "all",
-    );
+    const cleanCustom = customSpaces
+      .filter((s) => s.id !== "personal" && s.id !== "all")
+      .map((s) => ({
+        ...s,
+        isDefault: s.id === defaultSpaceId,
+        is_default: s.id === defaultSpaceId,
+      }));
     const list: MoneySpace[] = [defaultPersonal, ...cleanCustom];
     if (cleanCustom.length > 0 && !list.some((s) => s.id === "all")) {
       list.push({
@@ -197,11 +227,61 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
       });
     }
     return list;
-  }, [customSpaces, personalOverride]);
+  }, [customSpaces, personalOverride, defaultSpaceId]);
 
   const activeSpace = useMemo(() => {
     return spaces.find((s) => s.id === activeSpaceId) || DEFAULT_MONEY_SPACES[0];
   }, [spaces, activeSpaceId]);
+
+  const setDefaultLedger = useCallback(async (targetId: string) => {
+    setDefaultSpaceIdState(targetId);
+    try {
+      localStorage.setItem(DEFAULT_LEDGER_KEY, targetId);
+    } catch {}
+
+    setCustomSpaces((prev) => {
+      const updated = prev.map((s) => ({
+        ...s,
+        isDefault: s.id === targetId,
+        is_default: s.id === targetId,
+      }));
+      try {
+        localStorage.setItem(CUSTOM_SPACES_KEY, JSON.stringify(updated));
+        localStorage.setItem(LEDGERS_STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    setPersonalOverride((prev) => {
+      const updated = {
+        ...prev,
+        isDefault: targetId === "personal",
+        is_default: targetId === "personal",
+      };
+      try {
+        localStorage.setItem("trouvaille_personal_ledger_override_v1", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id && session.user.id !== "guest_local_user") {
+        await supabase
+          .from("ledgers")
+          .update({ is_default: false })
+          .eq("user_id", session.user.id);
+
+        await supabase
+          .from("ledgers")
+          .update({ is_default: true })
+          .eq("id", targetId)
+          .eq("user_id", session.user.id);
+      }
+    } catch (err) {
+      console.warn("[setDefaultLedger] Cloud sync failed, local copy preserved:", err);
+    }
+  }, []);
 
   const setActiveSpaceId = useCallback((id: string) => {
     setActiveSpaceIdState(id);
@@ -594,7 +674,9 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
         ledgers: spaces,
         isSharedSpace,
         currentUserRole,
+        defaultSpaceId,
         setActiveSpaceId,
+        setDefaultLedger,
         addCustomSpace,
         updateCustomSpace,
         deleteCustomSpace,

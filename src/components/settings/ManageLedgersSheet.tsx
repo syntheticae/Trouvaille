@@ -21,11 +21,13 @@ import {
   Users,
   QrCode,
   Share2,
+  Star,
+  ArrowLeft,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { SharedLedgerDetailSheet } from "./SharedLedgerDetailSheet";
-import { JoinLedgerModal } from "./JoinLedgerModal";
+import { JoinLedgerContent } from "./JoinLedgerModal";
 import { useSpace, type MoneySpace } from "../../contexts/SpaceContext";
 import { useAllTransactions } from "../../hooks/useTransactions";
 import type { Transaction } from "../../types";
@@ -59,7 +61,9 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
   const {
     activeSpaceId,
     spaces,
+    defaultSpaceId,
     setActiveSpaceId,
+    setDefaultLedger,
     addCustomSpace,
     updateCustomSpace,
     deleteCustomSpace,
@@ -69,7 +73,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
 
-  const [viewState, setViewState] = useState<"list" | "create" | "edit" | "delete_confirm">("list");
+  const [viewState, setViewState] = useState<"list" | "create" | "edit" | "delete_confirm" | "join">("list");
   const [selectedLedger, setSelectedLedger] = useState<MoneySpace | null>(null);
 
   // Form State
@@ -78,11 +82,11 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
   const [formIcon, setFormIcon] = useState("BookOpen");
   const [formCurrency, setFormCurrency] = useState("IDR");
   const [formIsShared, setFormIsShared] = useState(false);
+  const [formIsDefault, setFormIsDefault] = useState(false);
   const [reassignToPersonal, setReassignToPersonal] = useState(true);
 
   // Collaboration sheets state
   const [sharedDetailOpen, setSharedDetailOpen] = useState(false);
-  const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [targetSharedLedger, setTargetSharedLedger] = useState<MoneySpace | null>(null);
 
   // Calculate transaction count per ledger
@@ -119,6 +123,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
     setFormIcon("Briefcase");
     setFormCurrency("IDR");
     setFormIsShared(false);
+    setFormIsDefault(false);
     setViewState("create");
   };
 
@@ -131,7 +136,21 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
     setFormIcon(ledger.icon || "BookOpen");
     setFormCurrency(ledger.currency || "IDR");
     setFormIsShared(Boolean(ledger.is_shared));
+    setFormIsDefault(ledger.id === defaultSpaceId);
     setViewState("edit");
+  };
+
+  const handleSetDefault = async (ledgerId: string, ledgerName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    triggerHaptic("medium");
+    await setDefaultLedger(ledgerId);
+    showToast(
+      isIndonesian
+        ? `"${ledgerName}" dijadikan buku kas utama bawaan.`
+        : `"${ledgerName}" set as default ledger.`,
+      "update",
+      () => {},
+    );
   };
 
   const handleOpenDelete = (ledger: MoneySpace, e: React.MouseEvent) => {
@@ -169,7 +188,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
     setSharedDetailOpen(true);
   };
 
-  const handleSaveCreate = (e: React.FormEvent) => {
+  const handleSaveCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
       showToast(
@@ -189,6 +208,10 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
       is_shared: formIsShared,
     });
 
+    if (formIsDefault) {
+      await setDefaultLedger(created.id);
+    }
+
     setActiveSpaceId(created.id);
     setViewState("list");
     showToast(
@@ -200,7 +223,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
     );
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLedger || !formName.trim()) return;
 
@@ -212,6 +235,12 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
       currency: formCurrency,
       is_shared: formIsShared,
     });
+
+    if (formIsDefault && selectedLedger.id !== defaultSpaceId) {
+      await setDefaultLedger(selectedLedger.id);
+    } else if (!formIsDefault && selectedLedger.id === defaultSpaceId) {
+      await setDefaultLedger("personal");
+    }
 
     setViewState("list");
     setSelectedLedger(null);
@@ -265,13 +294,17 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
             ? isIndonesian
               ? "Edit Buku Kas"
               : "Edit Ledger"
-            : viewState === "delete_confirm"
+            : viewState === "join"
               ? isIndonesian
-                ? "Konfirmasi Hapus"
-                : "Delete Confirmation"
-              : isIndonesian
-                ? "Kelola Buku Kas"
-                : "Financial Ledgers"
+                ? "Gabung Buku Kas Bersama"
+                : "Join Shared Ledger"
+              : viewState === "delete_confirm"
+                ? isIndonesian
+                  ? "Konfirmasi Hapus"
+                  : "Delete Confirmation"
+                : isIndonesian
+                  ? "Kelola Buku Kas"
+                  : "Financial Ledgers"
       }
     >
       <div className="px-5 sm:px-6 space-y-5 pb-[calc(env(safe-area-inset-bottom,16px)+28px)] pt-1 select-none">
@@ -291,7 +324,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
             <div className="space-y-2.5">
               {spaces.map((ledger) => {
                 const isActive = ledger.id === activeSpaceId;
-                const isDefault = ledger.isDefault || ledger.is_default || ledger.id === "personal";
+                const isDefault = ledger.id === defaultSpaceId;
                 const isConsolidated = ledger.id === "all";
                 const txCount = isConsolidated
                   ? transactions.length
@@ -301,7 +334,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                   <div
                     key={ledger.id}
                     onClick={() => handleSelectLedger(ledger.id)}
-                    className={`p-3.5 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition-all select-none border ${
+                    className={`p-3.5 rounded-2xl flex items-center justify-between gap-2.5 cursor-pointer transition-all select-none border ${
                       isActive
                         ? "bg-white/[0.06] dark:bg-white/[0.08] border-[var(--text-primary)]"
                         : "bg-[var(--glass-fill)] border-[var(--glass-border)] hover:opacity-90"
@@ -312,7 +345,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                         : "var(--shadow-card)",
                     }}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       {/* Squircle Vector Icon */}
                       <div
                         className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
@@ -324,24 +357,25 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                         {renderIcon(ledger.icon, 16)}
                       </div>
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[13.5px] font-semibold text-[var(--text-primary)] leading-tight">
                             {ledger.name}
                           </span>
+                          {isDefault && (
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-mono font-medium bg-white/[0.08] text-[var(--text-primary)] border border-[var(--glass-border)] inline-flex items-center gap-1 shrink-0">
+                              <Star size={9} className="fill-current" />
+                              <span>{isIndonesian ? "Bawaan" : "Default"}</span>
+                            </span>
+                          )}
                           {ledger.is_shared && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.08] text-[var(--text-secondary)] border border-[var(--glass-border)] flex items-center gap-1">
-                              <Users size={10} strokeWidth={2} />
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-medium bg-white/[0.06] text-[var(--text-secondary)] border border-[var(--glass-border)] inline-flex items-center gap-1 shrink-0">
+                              <Users size={9} strokeWidth={2} />
                               <span>{isIndonesian ? "Bersama" : "Shared"}</span>
                             </span>
                           )}
-                          {isDefault && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)]">
-                              {isIndonesian ? "Bawaan" : "Default"}
-                            </span>
-                          )}
                           {isConsolidated && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)]">
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-mono font-medium bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)] shrink-0">
                               {isIndonesian ? "Terkonsolidasi" : "Consolidated"}
                             </span>
                           )}
@@ -356,37 +390,60 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                     </div>
 
                     {/* Actions / Active Status */}
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-0.5 shrink-0">
                       {!isConsolidated && (
                         <>
+                          {/* Toggle Default Ledger Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleSetDefault(ledger.id, ledger.name, e)}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                              isDefault
+                                ? "text-[var(--text-primary)] bg-white/[0.08]"
+                                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06]"
+                            }`}
+                            title={
+                              isDefault
+                                ? (isIndonesian ? "Buku Kas Bawaan Utama" : "Default Ledger")
+                                : (isIndonesian ? "Jadikan Buku Kas Bawaan" : "Set as Default Ledger")
+                            }
+                          >
+                            <Star size={14} className={isDefault ? "fill-current" : ""} strokeWidth={1.75} />
+                          </button>
+
+                          {/* Share Ledger Trigger */}
                           <button
                             type="button"
                             onClick={(e) => handleShareLedger(ledger, e)}
-                            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
                               ledger.is_shared
                                 ? "text-[var(--text-primary)] bg-white/[0.08]"
                                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06]"
                             }`}
                             title={isIndonesian ? "Bagikan Buku Kas" : "Share Ledger"}
                           >
-                            <Share2 size={15} strokeWidth={1.75} />
+                            <Share2 size={14} strokeWidth={1.75} />
                           </button>
+
+                          {/* Edit Ledger Trigger */}
                           <button
                             type="button"
                             onClick={(e) => handleOpenEdit(ledger, e)}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] transition-colors cursor-pointer"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] transition-colors cursor-pointer"
                             title={isIndonesian ? "Edit Buku Kas" : "Edit Ledger"}
                           >
-                            <Edit3 size={15} strokeWidth={1.75} />
+                            <Edit3 size={14} strokeWidth={1.75} />
                           </button>
-                          {!isDefault && (
+
+                          {/* Delete Ledger Trigger */}
+                          {!isDefault && ledger.id !== "personal" && (
                             <button
                               type="button"
                               onClick={(e) => handleOpenDelete(ledger, e)}
-                              className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-tertiary)] hover:text-rose-400 hover:bg-white/[0.06] transition-colors cursor-pointer"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-rose-400 hover:bg-white/[0.06] transition-colors cursor-pointer"
                               title={isIndonesian ? "Hapus Buku Kas" : "Delete Ledger"}
                             >
-                              <Trash2 size={15} strokeWidth={1.75} />
+                              <Trash2 size={14} strokeWidth={1.75} />
                             </button>
                           )}
                         </>
@@ -394,13 +451,13 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
 
                       {/* Active Indicator Radio/Check */}
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ml-1 ${
+                        className={`w-5.5 h-5.5 rounded-full flex items-center justify-center border transition-all ml-1.5 ${
                           isActive
                             ? "border-[var(--text-primary)] bg-[var(--text-primary)] text-[var(--bg-elevated)]"
                             : "border-[var(--glass-border)] bg-transparent opacity-40"
                         }`}
                       >
-                        {isActive && <Check size={13} strokeWidth={2.5} />}
+                        {isActive && <Check size={12} strokeWidth={2.5} />}
                       </div>
                     </div>
                   </div>
@@ -422,7 +479,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
-                  setJoinModalOpen(true);
+                  setViewState("join");
                 }}
                 className="py-3 px-3 rounded-2xl flex items-center justify-center gap-1.5 border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:bg-white/[0.06] active:scale-[0.99] transition-all cursor-pointer font-semibold text-[12.5px] shadow-sm"
               >
@@ -499,6 +556,27 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                   );
                 })}
               </div>
+            </div>
+
+            {/* Default Ledger Toggle (Rule 3 layout) */}
+            <div className="p-3.5 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] flex items-center justify-between gap-3">
+              <div className="space-y-0.5 min-w-0">
+                <div className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--text-primary)]">
+                  <Star size={14} className={formIsDefault ? "fill-current" : ""} strokeWidth={1.75} />
+                  <span>{isIndonesian ? "Buku Kas Bawaan (Utama)" : "Default Ledger"}</span>
+                </div>
+                <p className="text-[11px] text-[var(--text-tertiary)] leading-tight">
+                  {isIndonesian
+                    ? "Buka buku kas ini secara otomatis saat aplikasi pertama kali dijalankan."
+                    : "Automatically open this ledger whenever the app starts up."}
+                </p>
+              </div>
+              <ToggleSwitch
+                checked={formIsDefault}
+                onChange={(val) => {
+                  setFormIsDefault(val);
+                }}
+              />
             </div>
 
             {/* Shared Ledger Toggle (Rule 3 layout) */}
@@ -578,29 +656,29 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <ArrowRightLeft size={15} strokeWidth={1.75} className="text-[var(--text-secondary)] shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
-                    {isIndonesian ? "Pindahkan ke Personal Ledger" : "Move to Personal Ledger"}
-                  </p>
-                  <p className="text-[10px] text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Direkomendasikan agar tidak ada catatan yang hilang" : "Recommended to prevent orphan data"}
-                  </p>
+                <div>
+                  <span className="text-[12.5px] font-medium text-[var(--text-primary)] block">
+                    {isIndonesian ? "Pindahkan ke Buku Kas Pribadi" : "Reassign to Personal Ledger"}
+                  </span>
+                  <span className="text-[11px] text-[var(--text-tertiary)] block">
+                    {isIndonesian
+                      ? "Transaksi tidak dihapus, hanya dialihkan ke Personal."
+                      : "Transactions will be preserved in your Personal domain."}
+                  </span>
                 </div>
               </div>
-
               <div
-                className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
+                className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
                   reassignToPersonal
-                    ? "bg-[var(--text-primary)] border-[var(--text-primary)] text-[var(--bg-elevated)]"
+                    ? "border-[var(--text-primary)] bg-[var(--text-primary)] text-[var(--bg-elevated)]"
                     : "border-[var(--glass-border)] bg-transparent opacity-40"
                 }`}
               >
-                {reassignToPersonal && <Check size={12} strokeWidth={2.5} />}
+                {reassignToPersonal && <Check size={11} strokeWidth={2.5} />}
               </div>
             </div>
 
-            {/* Delete Buttons */}
-            <div className="flex items-center gap-3 pt-4">
+            <div className="flex items-center gap-3 pt-3">
               <button
                 type="button"
                 onClick={handleBackToList}
@@ -611,11 +689,35 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="flex-1 py-3 px-4 rounded-xl text-[13px] font-semibold bg-rose-600 text-white hover:bg-rose-700 active:scale-[0.99] transition-all cursor-pointer shadow-sm"
+                className="flex-1 py-3 px-4 rounded-xl text-[13px] font-semibold bg-rose-500 text-white hover:bg-rose-600 active:scale-[0.99] transition-all cursor-pointer shadow-sm"
               >
-                {isIndonesian ? "Hapus Sekarang" : "Delete Ledger"}
+                {isIndonesian ? "Hapus Sekarang" : "Confirm Delete"}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* VIEW 5: JOIN SHARED LEDGER VIEW */}
+        {/* ============================================================ */}
+        {viewState === "join" && (
+          <div className="space-y-4 pt-1">
+            <button
+              type="button"
+              onClick={handleBackToList}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            >
+              <ArrowLeft size={14} strokeWidth={2} />
+              <span>{isIndonesian ? "Kembali ke Daftar Buku Kas" : "Back to Ledgers List"}</span>
+            </button>
+            <JoinLedgerContent
+              onSuccess={() => {
+                setViewState("list");
+              }}
+              onCancel={handleBackToList}
+              onOpenLogin={onOpenLogin}
+              hideHeaderCapsule
+            />
           </div>
         )}
       </div>
@@ -637,15 +739,9 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
         setFormIcon(l.icon || "BookOpen");
         setFormCurrency(l.currency || "IDR");
         setFormIsShared(Boolean(l.is_shared));
+        setFormIsDefault(l.id === defaultSpaceId);
         setViewState("edit");
       }}
-    />
-
-    {/* Join Ledger Modal */}
-    <JoinLedgerModal
-      isOpen={joinModalOpen}
-      onClose={() => setJoinModalOpen(false)}
-      onOpenLogin={onOpenLogin}
     />
     </>
   );
