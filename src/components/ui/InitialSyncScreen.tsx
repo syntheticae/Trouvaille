@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Check, Sparkles, ShieldCheck, X } from "lucide-react";
+import { motion } from "framer-motion";
+import { Check, ShieldCheck, X, Lock, RotateCcw, Sparkles } from "lucide-react";
 import { preloadAllIcons } from "../../lib/assetPreloader";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { EncryptedText } from "./EncryptedText";
 
 interface InitialSyncScreenProps {
   onComplete?: () => void;
@@ -14,345 +15,472 @@ interface InitialSyncScreenProps {
   isPreview?: boolean;
 }
 
-const ROTATING_TIPS_EN = [
-  "Private & Offline-first: Your data remains encrypted on this device.",
-  "Monochrome clarity: Zero distractions, pure financial telemetry.",
-  "Fast capture: Record expenses via voice NLP or camera scan in seconds.",
-  "Daily streak discipline: Consistent logging transforms wealth clarity.",
-];
+interface StepItem {
+  id: string;
+  titleEn: string;
+  titleId: string;
+  subtitleEn: (count: number) => string;
+  subtitleId: (count: number) => string;
+}
 
-const ROTATING_TIPS_ID = [
-  "Privat & Mengutamakan Mode Luring: Data finansial Anda tetap terenkripsi di perangkat ini.",
-  "Kejernihan Monokrom: Tanpa distraksi warna, murni telemetri finansial.",
-  "Pencatatan Cepat: Catat transaksi lewat dikte suara atau pemindaian struk dalam hitungan detik.",
-  "Disiplin Runtun Harian: Konsistensi pencatatan membentuk kejernihan finansial jangka panjang.",
+const SYNC_STEPS: StepItem[] = [
+  {
+    id: "vault",
+    titleEn: "Initializing Client Cryptographic Vault",
+    titleId: "Inisialisasi Brankas Kriptografi Klien",
+    subtitleEn: () => "Zero-knowledge local memory allocation",
+    subtitleId: () => "Alokasi memori lokal nir-pengetahuan",
+  },
+  {
+    id: "assets",
+    titleEn: "Preloading Vector Assets & Interface Telemetry",
+    titleId: "Pra-muat Aset Antarmuka & Telemetri",
+    subtitleEn: () => "Calibrating luxury monochrome icons & typography",
+    subtitleId: () => "Menyelaraskan ikon monokrom & tipografi",
+  },
+  {
+    id: "ledgers",
+    titleEn: "Resolving Ledgers & Multi-Wallet State",
+    titleId: "Penyelarasan Buku Kas & Multi-Dompet",
+    subtitleEn: () => "Connecting balance ledgers & active vaults",
+    subtitleId: () => "Menghubungkan buku kas saldo & brankas aktif",
+  },
+  {
+    id: "entries",
+    titleEn: "Synchronizing Financial Entries & Vault Records",
+    titleId: "Sinkronisasi Catatan & Integritas Entri",
+    subtitleEn: (count) =>
+      count > 0
+        ? `${count.toLocaleString()} encrypted entries calibrated`
+        : "Calibrating encrypted ledger records",
+    subtitleId: (count) =>
+      count > 0
+        ? `${count.toLocaleString()} catatan terenkripsi dikalibrasi`
+        : "Mengalibrasi catatan buku kas terenkripsi",
+  },
+  {
+    id: "integrity",
+    titleEn: "Verifying Ledger Integrity & Zero-Knowledge",
+    titleId: "Verifikasi Keamanan Zero-Knowledge",
+    subtitleEn: () => "End-to-end client encryption hash verified",
+    subtitleId: () => "Hash enkripsi klien ujung-ke-ujung terverifikasi",
+  },
+  {
+    id: "ready",
+    titleEn: "Vault Ready · Unlocking Dashboard",
+    titleId: "Brankas Siap · Membuka Dashboard",
+    subtitleEn: () => "Private financial telemetry initialized",
+    subtitleId: () => "Telemetri finansial privat siap digunakan",
+  },
 ];
 
 export function InitialSyncScreen({
   onComplete,
   totalCount = 0,
   isDataReady = false,
-  progress: externalProgress,
-  statusText: externalStatusText,
   isPreview = false,
 }: InitialSyncScreenProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isIndonesian } = useLanguage();
 
-  const [internalProgress, setInternalProgress] = useState(isPreview ? 20 : 25);
-  const [internalStatusText, setInternalStatusText] = useState(
-    isIndonesian
-      ? "Menginisialisasi brankas enkripsi privat..."
-      : "Initializing private encryption vault..."
-  );
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
-  const [tipIndex, setTipIndex] = useState(0);
+  const [isCompletedAll, setIsCompletedAll] = useState(false);
 
-  const displayProgress =
-    externalProgress !== undefined ? externalProgress : internalProgress;
-  const displayStatus = externalStatusText || internalStatusText;
-
-  // Rotate micro-tips every 2.4 seconds
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTipIndex((prev) => (prev + 1) % ROTATING_TIPS_EN.length);
-    }, 2400);
-    return () => clearInterval(timer);
-  }, []);
-
-  // In preview mode: smoothly step up progress to showcase all states
-  useEffect(() => {
-    if (!isPreview) return;
-
-    const timer1 = setTimeout(() => {
-      setInternalProgress(55);
-      setInternalStatusText(
-        isIndonesian
-          ? "Mengalibrasi telemetri keuangan & dompet..."
-          : "Calibrating financial telemetry & accounts..."
-      );
-    }, 1200);
-
-    const timer2 = setTimeout(() => {
-      setInternalProgress(88);
-      setInternalStatusText(
-        isIndonesian
-          ? "Menyelaraskan buku kas & model finansial..."
-          : "Synchronizing ledger & financial models..."
-      );
-    }, 2400);
-
-    const timer3 = setTimeout(() => {
-      setInternalProgress(100);
-      setInternalStatusText(
-        isIndonesian
-          ? "Sinkronisasi selesai · Brankas siap"
-          : "Synchronization complete · Vault ready"
-      );
-    }, 3600);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-    };
-  }, [isPreview, isIndonesian]);
-
+  // Preload real icons
   useEffect(() => {
     let isMounted = true;
-
     preloadAllIcons()
       .then(() => {
         if (!isMounted) return;
         setIsAssetsLoaded(true);
-        if (!isPreview) {
-          setInternalProgress((prev) => Math.max(prev, 55));
-          setInternalStatusText(
-            isIndonesian
-              ? "Mengalibrasi telemetri keuangan & dompet..."
-              : "Calibrating financial telemetry & accounts..."
-          );
-        }
       })
       .catch(() => {
         if (!isMounted) return;
         setIsAssetsLoaded(true);
-        if (!isPreview) {
-          setInternalProgress((prev) => Math.max(prev, 55));
-        }
       });
-
     return () => {
       isMounted = false;
     };
-  }, [isPreview, isIndonesian]);
+  }, []);
 
-  // Standard completion when data is ready and progress reaches 100% (non-preview)
+  // Adaptive luxury step progression
+  useEffect(() => {
+    if (isCompletedAll) return;
+
+    // Minimum pacing per step: 650ms for elegant cipher readability
+    const timer = setTimeout(() => {
+      setActiveStepIndex((prev) => {
+        const next = prev + 1;
+        // Step 0 to 4 advance sequentially
+        if (next < SYNC_STEPS.length - 1) {
+          return next;
+        }
+
+        // Before entering final step ("Vault Ready"), wait for assets & data readiness if in real sync
+        if (!isPreview && (!isAssetsLoaded || !isDataReady)) {
+          return prev; // hold at step 4 until assets & data are confirmed
+        }
+
+        if (next === SYNC_STEPS.length - 1) {
+          return next;
+        }
+
+        // Finished all steps
+        setIsCompletedAll(true);
+        return prev;
+      });
+    }, 680);
+
+    return () => clearTimeout(timer);
+  }, [activeStepIndex, isAssetsLoaded, isDataReady, isPreview, isCompletedAll]);
+
+  // If in real sync: when reached final step and finished, smoothly complete
   useEffect(() => {
     if (isPreview) return;
-    if (displayProgress >= 100 && isAssetsLoaded && isDataReady) {
-      const t = setTimeout(() => {
-        onComplete?.();
-      }, 500);
-      return () => clearTimeout(t);
-    }
-  }, [displayProgress, isAssetsLoaded, isDataReady, onComplete, isPreview]);
 
-  // Safety fallback: prevents infinite spinning if network drops or offline (non-preview)
-  useEffect(() => {
-    if (isPreview) return;
-    if (isDataReady) {
-      const fallback = setTimeout(() => {
-        onComplete?.();
-      }, 1400);
-      return () => clearTimeout(fallback);
+    if (activeStepIndex === SYNC_STEPS.length - 1) {
+      const exitTimer = setTimeout(() => {
+        setIsCompletedAll(true);
+        const finishTimer = setTimeout(() => {
+          onComplete?.();
+        }, 500);
+        return () => clearTimeout(finishTimer);
+      }, 900);
+      return () => clearTimeout(exitTimer);
     }
-  }, [isDataReady, onComplete, isPreview]);
+  }, [activeStepIndex, isPreview, onComplete]);
+
+  // Overall progress percentage based on step completion
+  const progressPercent = Math.min(
+    100,
+    Math.round(((activeStepIndex + (isCompletedAll ? 1 : 0.4)) / SYNC_STEPS.length) * 100)
+  );
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center select-none px-6 relative overflow-hidden pt-[env(safe-area-inset-top,0px)] pb-[calc(env(safe-area-inset-bottom,0px)+24px)] transition-colors duration-300"
+      className="fixed inset-0 z-50 flex flex-col justify-between select-none px-6 sm:px-12 relative overflow-hidden transition-colors duration-500"
       style={{
         backgroundColor: isDark ? "#08080a" : "#f4f4f7",
         color: isDark ? "#ffffff" : "#09090c",
         fontFamily: "'Urbanist', sans-serif",
+        paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 20px), 24px)",
+        paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 24px)",
       }}
     >
-      {/* 1. ATMOSPHERIC CINEMATIC MONOCHROME AURORA BLOOM */}
+      {/* 1. ATMOSPHERIC MONOCHROME CINEMATIC AURORA LAYER (NO CARDS) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Soft Fluid Mesh Blobs */}
         <div
-          className={`absolute top-1/3 -left-32 w-88 h-88 rounded-full blur-[140px] ${
-            isDark ? "bg-white/[0.04]" : "bg-black/[0.03]"
-          }`}
-        />
-        <div
-          className={`absolute bottom-1/3 -right-32 w-88 h-88 rounded-full blur-[130px] ${
+          className={`absolute top-1/4 -left-36 w-96 h-96 rounded-full blur-[140px] transition-opacity duration-700 ${
             isDark ? "bg-white/[0.035]" : "bg-black/[0.025]"
           }`}
         />
         <div
-          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] rounded-full blur-[160px] ${
-            isDark ? "bg-white/[0.02]" : "bg-black/[0.02]"
+          className={`absolute bottom-1/4 -right-36 w-96 h-96 rounded-full blur-[140px] transition-opacity duration-700 ${
+            isDark ? "bg-white/[0.03]" : "bg-black/[0.02]"
+          }`}
+        />
+        <div
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full blur-[170px] ${
+            isDark ? "bg-white/[0.02]" : "bg-black/[0.015]"
           }`}
         />
 
-        {/* Fluted glass radial lines */}
+        {/* Fluted Fractal Ribbed Texture */}
         <div
           className="absolute inset-0 opacity-[0.25]"
           style={{
             backgroundImage: isDark
-              ? "radial-gradient(circle at 50% 45%, rgba(255,255,255,0.05) 0%, transparent 60%)"
-              : "radial-gradient(circle at 50% 45%, rgba(0,0,0,0.04) 0%, transparent 60%)",
+              ? "repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 40px)"
+              : "repeating-linear-gradient(90deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 40px)",
           }}
         />
       </div>
 
-      {/* Preview Dismiss Button */}
-      {isPreview && (
-        <button
-          type="button"
-          onClick={onComplete}
-          className={`absolute right-4 sm:right-6 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold backdrop-blur-xl transition-all active:scale-95 cursor-pointer z-20 ${
-            isDark
-              ? "bg-white/[0.08] hover:bg-white/[0.14] text-white/80 border border-white/12"
-              : "bg-black/[0.05] hover:bg-black/[0.09] text-zinc-800 border border-black/10"
-          }`}
-          style={{
-            top: "max(calc(env(safe-area-inset-top, 0px) + 16px), 20px)",
-          }}
-        >
-          <X size={12} strokeWidth={2} />
-          <span>{isIndonesian ? "Tutup Pratinjau" : "Close Preview"}</span>
-        </button>
-      )}
-
-      {/* 2. LIQUID GLASS HERO CONTAINER */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: "easeOut" }}
-        className={`w-full max-w-[340px] p-6.5 rounded-[32px] text-center relative z-10 flex flex-col items-center space-y-5 backdrop-blur-2xl transition-all ${
-          isDark
-            ? "bg-white/[0.03] border border-white/[0.12] shadow-[0_24px_60px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.2)]"
-            : "bg-white/90 border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)]"
-        }`}
-      >
-        {/* Animated Refraction Orb */}
-        <div className="relative flex items-center justify-center">
-          <motion.div
-            animate={{
-              scale: [1, 1.15, 1],
-              opacity: [0.3, 0.65, 0.3],
-            }}
-            transition={{
-              duration: 2.2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="absolute w-18 h-18 rounded-full"
-            style={{
-              background: isDark
-                ? "radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%)"
-                : "radial-gradient(circle, rgba(0,0,0,0.12) 0%, transparent 70%)",
-            }}
-          />
-
+      {/* 2. TOP TELEMETRY HEADER */}
+      <div className="relative z-10 w-full max-w-xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
           <div
-            className={`w-14 h-14 rounded-[22px] flex items-center justify-center relative border transition-colors ${
+            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
               isDark
-                ? "bg-white/[0.06] border-white/[0.18] text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]"
-                : "bg-black/[0.04] border-black/[0.1] text-zinc-950 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                ? "bg-white/[0.06] border border-white/10 text-white"
+                : "bg-black/[0.04] border border-black/8 text-zinc-900"
             }`}
           >
-            {displayProgress >= 100 ? (
-              <Check size={22} strokeWidth={2} />
-            ) : (
-              <Sparkles size={20} strokeWidth={1.75} />
-            )}
+            <Lock size={14} strokeWidth={1.75} />
           </div>
-        </div>
-
-        {/* Text & Status */}
-        <div className="space-y-1 w-full">
-          <h2
-            className={`text-[17px] font-semibold tracking-tight leading-snug ${
-              isDark ? "text-white" : "text-zinc-950"
-            }`}
-          >
-            Trouvaille
-          </h2>
-          <p
-            className={`text-[12px] font-medium line-clamp-1 h-5 ${
-              isDark ? "text-white/60" : "text-zinc-600"
-            }`}
-          >
-            {displayStatus}
-          </p>
-          {totalCount > 0 && (
+          <div>
+            <h1
+              className={`text-[16px] font-bold tracking-tight leading-none ${
+                isDark ? "text-white" : "text-zinc-950"
+              }`}
+            >
+              Trouvaille
+            </h1>
             <p
-              className={`text-[10px] font-semibold amount mt-0.5 ${
+              className={`text-[10.5px] font-medium tracking-wide mt-0.5 ${
                 isDark ? "text-white/40" : "text-zinc-500"
               }`}
             >
-              {isIndonesian
-                ? `${totalCount.toLocaleString()} catatan tersinkronisasi`
-                : `${totalCount.toLocaleString()} records synchronized`}
+              {isIndonesian ? "Telemetri Brankas Privat" : "Private Vault Telemetry"}
             </p>
-          )}
+          </div>
         </div>
 
-        {/* Liquid Glass Progress Bar */}
-        <div className="w-full space-y-2 pt-1">
+        {/* Action Controls & Preview Capsule */}
+        <div className="flex items-center gap-2">
+          {isPreview && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveStepIndex(0);
+                  setIsCompletedAll(false);
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium backdrop-blur-xl transition-all active:scale-95 cursor-pointer ${
+                  isDark
+                    ? "bg-white/[0.06] hover:bg-white/[0.1] text-white/70 border border-white/10"
+                    : "bg-black/[0.04] hover:bg-black/[0.08] text-zinc-700 border border-black/8"
+                }`}
+                title={isIndonesian ? "Putar Ulang" : "Replay"}
+              >
+                <RotateCcw size={11} strokeWidth={1.75} />
+                <span>{isIndonesian ? "Putar Ulang" : "Replay"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onComplete}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold backdrop-blur-xl transition-all active:scale-95 cursor-pointer ${
+                  isDark
+                    ? "bg-white/[0.1] hover:bg-white/[0.16] text-white border border-white/15"
+                    : "bg-zinc-950 text-white hover:bg-zinc-800"
+                }`}
+              >
+                <X size={12} strokeWidth={2} />
+                <span>{isIndonesian ? "Tutup Pratinjau" : "Close Preview"}</span>
+              </button>
+            </>
+          )}
+
+          {!isPreview && (
+            <div
+              className={`px-3 py-1 rounded-full text-[11px] font-mono tracking-wider transition-colors ${
+                isDark
+                  ? "bg-white/[0.05] border border-white/10 text-white/60"
+                  : "bg-black/[0.04] border border-black/8 text-zinc-700"
+              }`}
+            >
+              {progressPercent}%
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 3. CENTER: IMMERSIVE FULL-SCREEN VERTICAL MULTI-STEP TIMELINE (NO CARD) */}
+      <div className="relative z-10 w-full max-w-xl mx-auto my-auto py-8 sm:py-12">
+        <div className="space-y-0 relative">
+          {SYNC_STEPS.map((step, index) => {
+            const isCompleted = isCompletedAll || activeStepIndex > index;
+            const isActive = !isCompletedAll && activeStepIndex === index;
+            const isLast = index === SYNC_STEPS.length - 1;
+
+            const title = isIndonesian ? step.titleId : step.titleEn;
+            const subtitle = isIndonesian
+              ? step.subtitleId(totalCount)
+              : step.subtitleEn(totalCount);
+
+            return (
+              <div key={step.id} className="relative flex items-start gap-4 sm:gap-5 group">
+                {/* Vertical Rail + Step Squircle Indicator */}
+                <div className="flex flex-col items-center shrink-0">
+                  <div className="relative flex items-center justify-center">
+                    {/* Active Pulse Ring */}
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeRing"
+                        className="absolute -inset-1.5 rounded-[18px] pointer-events-none"
+                        initial={{ opacity: 0, scale: 0.85 }}
+                        animate={{
+                          opacity: [0.35, 0.7, 0.35],
+                          scale: [0.95, 1.08, 0.95],
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                        style={{
+                          border: isDark
+                            ? "1px solid rgba(255, 255, 255, 0.35)"
+                            : "1px solid rgba(0, 0, 0, 0.25)",
+                        }}
+                      />
+                    )}
+
+                    {/* Step Squircle Container */}
+                    <div
+                      className={`w-9 h-9 sm:w-10 sm:h-10 rounded-[14px] flex items-center justify-center transition-all duration-300 relative z-10 ${
+                        isCompleted
+                          ? isDark
+                            ? "bg-white text-zinc-950 shadow-[0_0_16px_rgba(255,255,255,0.2)]"
+                            : "bg-zinc-950 text-white shadow-md"
+                          : isActive
+                          ? isDark
+                            ? "bg-white/[0.12] border border-white/30 text-white"
+                            : "bg-black/[0.08] border border-black/20 text-zinc-950"
+                          : isDark
+                          ? "bg-white/[0.03] border border-white/[0.08] text-white/25"
+                          : "bg-black/[0.02] border border-black/[0.06] text-zinc-400/40"
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <Check size={16} strokeWidth={2.5} />
+                      ) : isActive ? (
+                        <Sparkles size={16} strokeWidth={1.75} className="animate-spin-slow" />
+                      ) : (
+                        <span className="text-[11px] font-mono font-medium">
+                          0{index + 1}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Vertical Connecting Line Rail */}
+                  {!isLast && (
+                    <div
+                      className={`w-[1.5px] h-8 sm:h-10 my-1 transition-all duration-500 ${
+                        isCompleted
+                          ? isDark
+                            ? "bg-white/40 shadow-[0_0_8px_rgba(255,255,255,0.4)]"
+                            : "bg-zinc-900/40"
+                          : isDark
+                          ? "bg-white/[0.06]"
+                          : "bg-black/[0.06]"
+                      }`}
+                    />
+                  )}
+                </div>
+
+                {/* Step Text Block with EncryptedText Decoder */}
+                <div
+                  className={`flex-1 pt-1.5 pb-3 transition-opacity duration-300 ${
+                    isActive
+                      ? "opacity-100"
+                      : isCompleted
+                      ? "opacity-85"
+                      : "opacity-35"
+                  }`}
+                >
+                  <h3
+                    className={`text-[14.5px] sm:text-[16px] tracking-tight leading-snug transition-colors ${
+                      isActive
+                        ? isDark
+                          ? "text-white font-semibold"
+                          : "text-zinc-950 font-semibold"
+                        : isCompleted
+                        ? isDark
+                          ? "text-white/80 font-medium"
+                          : "text-zinc-900 font-medium"
+                        : isDark
+                        ? "text-white/30 font-light"
+                        : "text-zinc-500 font-light"
+                    }`}
+                  >
+                    <EncryptedText
+                      text={title}
+                      isActive={isActive}
+                      isCompleted={isCompleted}
+                      revealDelayMs={28}
+                      encryptedClassName={
+                        isDark
+                          ? "text-white/40 font-mono tracking-wider"
+                          : "text-zinc-950/40 font-mono tracking-wider"
+                      }
+                      revealedClassName={
+                        isActive
+                          ? isDark
+                            ? "text-white font-semibold"
+                            : "text-zinc-950 font-semibold"
+                          : isDark
+                          ? "text-white/85 font-medium"
+                          : "text-zinc-900 font-medium"
+                      }
+                    />
+                  </h3>
+
+                  <p
+                    className={`text-[11.5px] sm:text-[12px] font-normal mt-0.5 leading-relaxed transition-colors ${
+                      isActive
+                        ? isDark
+                          ? "text-white/60"
+                          : "text-zinc-600"
+                        : isCompleted
+                        ? isDark
+                          ? "text-white/40"
+                          : "text-zinc-500"
+                        : isDark
+                        ? "text-white/20"
+                        : "text-zinc-400"
+                    }`}
+                  >
+                    {subtitle}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4. BOTTOM TELEMETRY FOOTER & PROGRESS RAIL */}
+      <div className="relative z-10 w-full max-w-xl mx-auto space-y-4">
+        {/* Minimalist Liquid Progress Track */}
+        <div className="w-full space-y-1.5">
           <div
-            className={`w-full h-1.5 rounded-full overflow-hidden relative p-[0.5px] ${
-              isDark
-                ? "bg-white/[0.08] border border-white/[0.08]"
-                : "bg-black/[0.06] border border-black/[0.06]"
+            className={`w-full h-1 rounded-full overflow-hidden relative ${
+              isDark ? "bg-white/[0.06]" : "bg-black/[0.05]"
             }`}
           >
             <motion.div
-              className={`h-full rounded-full relative ${
-                isDark ? "bg-white" : "bg-zinc-950"
+              className={`h-full rounded-full transition-all duration-300 ${
+                isDark
+                  ? "bg-white shadow-[0_0_12px_rgba(255,255,255,0.7)]"
+                  : "bg-zinc-950 shadow-[0_0_8px_rgba(0,0,0,0.3)]"
               }`}
-              initial={{ width: "15%" }}
-              animate={{
-                width: `${Math.min(100, Math.max(10, displayProgress))}%`,
-              }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
-              style={{
-                boxShadow: isDark
-                  ? "0 0 12px rgba(255, 255, 255, 0.6)"
-                  : "0 0 10px rgba(0, 0, 0, 0.25)",
-              }}
+              initial={{ width: "10%" }}
+              animate={{ width: `${progressPercent}%` }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
             />
           </div>
 
           <div
-            className={`flex justify-between items-center text-[10px] font-medium px-0.5 ${
-              isDark ? "text-white/40" : "text-zinc-500"
+            className={`flex justify-between items-center text-[10px] font-mono tracking-wider ${
+              isDark ? "text-white/35" : "text-zinc-500"
             }`}
           >
             <span>
-              {isIndonesian ? "Keamanan Terverifikasi" : "Security Verified"}
+              {isIndonesian ? "STATUS KEAMANAN AKTIF" : "SECURITY PROTOCOL ACTIVE"}
             </span>
-            <span className="amount">{Math.round(displayProgress)}%</span>
+            <span>{progressPercent}%</span>
           </div>
         </div>
 
-        {/* Rotating Micro-Telemetry Tip */}
-        <div className="h-9 flex items-center justify-center w-full px-2">
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={tipIndex}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.25 }}
-              className={`text-[10.5px] font-normal text-center leading-tight line-clamp-2 ${
-                isDark ? "text-white/45" : "text-zinc-500"
-              }`}
-            >
-              {isIndonesian
-                ? ROTATING_TIPS_ID[tipIndex]
-                : ROTATING_TIPS_EN[tipIndex]}
-            </motion.p>
-          </AnimatePresence>
+        {/* Floating Trust Badge */}
+        <div
+          className={`flex items-center justify-center gap-1.5 text-[11px] font-medium pt-1 ${
+            isDark ? "text-white/35" : "text-zinc-500"
+          }`}
+        >
+          <ShieldCheck size={13} strokeWidth={1.5} />
+          <span>
+            {isIndonesian
+              ? "Enkripsi Klien Ujung-ke-Ujung · Nir-Pengetahuan"
+              : "End-to-End Client Encryption · Zero-Knowledge"}
+          </span>
         </div>
-      </motion.div>
-
-      {/* Floating Trust Badge */}
-      <div
-        className={`absolute bottom-[calc(env(safe-area-inset-bottom,0px)+16px)] flex items-center gap-1.5 text-[11px] font-medium ${
-          isDark ? "text-white/35" : "text-zinc-500"
-        }`}
-      >
-        <ShieldCheck size={12} strokeWidth={1.5} />
-        <span>
-          {isIndonesian
-            ? "Enkripsi Klien Ujung-ke-Ujung"
-            : "End-to-End Client Encryption"}
-        </span>
       </div>
     </div>
   );
