@@ -143,9 +143,6 @@ export const translations = {
       healthScore: "Financial Health Score",
       liquidRunway: "Liquidity Runway",
       savingsTelemetry: "Savings Telemetry",
-      splitBill: "Split Bill & Receivables",
-      sharedBalances: "Shared Balances",
-      sharedSettlements: "Shared Settlements",
       customizeLayout: "Customize Layout",
       presets: {
         minimal: "Minimal",
@@ -439,9 +436,6 @@ export const translations = {
       healthScore: "Skor Kesehatan Finansial",
       liquidRunway: "Ketahanan Dana Likuid",
       savingsTelemetry: "Telemetri Tabungan",
-      splitBill: "Patungan & Piutang",
-      sharedBalances: "Saldo Bersama",
-      sharedSettlements: "Penyelesaian Bersama",
       customizeLayout: "Kustomisasi Tampilan",
       presets: {
         minimal: "Minimal",

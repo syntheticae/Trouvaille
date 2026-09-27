@@ -66,37 +66,73 @@ export async function preprocessReceiptImage(
         const data = imgData.data;
         const len = data.length;
 
-        // 1. Calculate average luminance for adaptive threshold baseline
-        let sumLuminance = 0;
-        const step = 4 * 4; // Sample every 4th pixel for speed
-        let sampledCount = 0;
+        // 1. Convert to grayscale 1D array
+        const totalPixels = targetWidth * targetHeight;
+        const grayscale = new Uint8ClampedArray(totalPixels);
+        let sumLum = 0;
 
-        for (let i = 0; i < len; i += step) {
-          const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-          sumLuminance += lum;
-          sampledCount++;
+        for (let i = 0, p = 0; i < len; i += 4, p++) {
+          const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+          grayscale[p] = gray;
+          sumLum += gray;
+        }
+        const globalMean = sumLum / totalPixels;
+
+        // 2. Build 2D Integral Image (Summed-Area Table) for O(1) window queries
+        const integral = new Uint32Array(totalPixels);
+
+        for (let y = 0; y < targetHeight; y++) {
+          let lineSum = 0;
+          const rowOffset = y * targetWidth;
+          const prevRowOffset = (y - 1) * targetWidth;
+          for (let x = 0; x < targetWidth; x++) {
+            lineSum += grayscale[rowOffset + x];
+            if (y === 0) {
+              integral[rowOffset + x] = lineSum;
+            } else {
+              integral[rowOffset + x] = integral[prevRowOffset + x] + lineSum;
+            }
+          }
         }
 
-        const avgLuminance = sampledCount > 0 ? sumLuminance / sampledCount : 128;
-        // Adaptive threshold with slight bias towards text clarity
-        const threshold = Math.min(Math.max(avgLuminance * 0.92, 90), 170);
+        // 3. Adaptive Local-Window Thresholding (Bradley-Roth Algorithm)
+        // Window size S = width / 8 (clamped between 16 and 64 for thermal print size)
+        const S = Math.min(64, Math.max(16, Math.floor(targetWidth / 8)));
+        const sHalf = Math.floor(S / 2);
+        const T = 0.13; // 13% darker than local mean denotes ink
 
-        // 2. High-contrast thresholding with edge preservation
-        for (let i = 0; i < len; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
+        for (let y = 0; y < targetHeight; y++) {
+          const y1 = Math.max(0, y - sHalf);
+          const y2 = Math.min(targetHeight - 1, y + sHalf);
+          const rowOffset = y * targetWidth;
 
-          // Standard ITU-R BT.601 perceptual grayscale
-          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          for (let x = 0; x < targetWidth; x++) {
+            const x1 = Math.max(0, x - sHalf);
+            const x2 = Math.min(targetWidth - 1, x + sHalf);
 
-          // Contrast curve
-          const val = gray < threshold ? Math.max(0, gray * 0.45) : Math.min(255, 255 - (255 - gray) * 0.5);
+            const count = (x2 - x1 + 1) * (y2 - y1 + 1);
 
-          data[i] = val;
-          data[i + 1] = val;
-          data[i + 2] = val;
-          // Keep original alpha
+            let sum = integral[y2 * targetWidth + x2];
+            if (x1 > 0) sum -= integral[y2 * targetWidth + (x1 - 1)];
+            if (y1 > 0) sum -= integral[(y1 - 1) * targetWidth + x2];
+            if (x1 > 0 && y1 > 0) sum += integral[(y1 - 1) * targetWidth + (x1 - 1)];
+
+            const pixelIdx = rowOffset + x;
+            const pixelVal = grayscale[pixelIdx];
+            const dataIdx = pixelIdx * 4;
+
+            // Ink test: pixelVal * count <= sum * (1 - T)
+            const isDarkText = pixelVal * count <= sum * (1 - T);
+
+            // Handle dark-mode digital receipts vs physical white receipts
+            const outputVal = globalMean < 90
+              ? (isDarkText ? 255 : 0)
+              : (isDarkText ? 0 : 255);
+
+            data[dataIdx] = outputVal;
+            data[dataIdx + 1] = outputVal;
+            data[dataIdx + 2] = outputVal;
+          }
         }
 
         ctx.putImageData(imgData, 0, 0);

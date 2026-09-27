@@ -5,7 +5,6 @@ import { useGoals } from "../hooks/useGoals";
 import { useWallets } from "../hooks/useWallets";
 import { useBills, getDaysUntilDue } from "../hooks/useBills";
 import { triggerHaptic } from "../lib/haptics";
-import { SplitBillSheet } from "../components/tools/SplitBillSheet";
 import { syncDailyStreakReminder } from "../lib/notifications";
 import { resolveTransactionCategory } from "../lib/categoryResolver";
 import { useNavigate } from "react-router-dom";
@@ -25,7 +24,6 @@ import {
   CompactGoalsHalf,
   CompactBillsHalf,
   CompactTopCategoriesHalf,
-  CompactSplitBillHalf,
   SavingsRingCard,
   SpendingVelocityBarCard,
   CategoryDonutCard,
@@ -64,7 +62,6 @@ import {
   Check,
   SlidersHorizontal,
   X,
-  Users,
   CalendarDays,
   Target,
   Moon,
@@ -85,7 +82,6 @@ import {
 } from "recharts";
 import {
   useAllTransactions,
-  useAddTransaction,
 } from "../hooks/useTransactions";
 import {
   useUpcomingBills,
@@ -144,7 +140,6 @@ type ActiveHomeModal =
   | "profileMenu"
   | "profileSheet"
   | "nfc"
-  | "splitBill"
   | "webDashboard"
   | "customizeHome";
 
@@ -285,13 +280,9 @@ export function HomePage({
   const nfcModalOpen = activeModal === "nfc";
   const setNfcModalOpen = (open: boolean) =>
     setActiveModal(open ? "nfc" : null);
-  const splitBillSheetOpen = activeModal === "splitBill";
-  const setSplitBillSheetOpen = (open: boolean) =>
-    setActiveModal(open ? "splitBill" : null);
   const webDashboardOpen = activeModal === "webDashboard";
   const setWebDashboardOpen = (open: boolean) =>
     setActiveModal(open ? "webDashboard" : null);
-  const addTx = useAddTransaction();
 
   const {
     widgets,
@@ -2001,90 +1992,6 @@ export function HomePage({
           </section>
         );
 
-      case "split_bill":
-        if (size === "half") {
-          return (
-            <CompactSplitBillHalf
-              onOpenDetail={() => {
-                triggerHaptic("light");
-                setSplitBillSheetOpen(true);
-              }}
-            />
-          );
-        }
-        return (
-          <section className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h3
-                className="text-[13px] font-semibold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {isIndonesian
-                  ? "Bagi Tagihan & Piutang"
-                  : "Split Bill & Receivables"}
-              </h3>
-              <span
-                className="text-[11px] font-medium"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Saldo Bersama" : "Shared Balances"}
-              </span>
-            </div>
-            <div
-              className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] flex items-center justify-between"
-              style={{
-                background: "var(--bg-elevated)",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Users size={16} />
-                </div>
-                <div className="min-w-0">
-                  <p
-                    className="text-[13px] font-semibold leading-tight truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian
-                      ? "Patungan & Penyelesaian"
-                      : "Shared Settlements"}
-                  </p>
-                  <p
-                    className="text-[11px] mt-0.5 truncate"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian
-                      ? "Pantau tagihan teman & penyelesaian tertunda"
-                      : "Track friend shares & pending settlements"}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setSplitBillSheetOpen(true);
-                }}
-                className="text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0 ml-2"
-                style={{
-                  background: "var(--text-primary)",
-                  color: "var(--bg-base)",
-                }}
-              >
-                {isIndonesian ? "Bagi Tagihan" : "Split Bill"}
-              </button>
-            </div>
-          </section>
-        );
-
       case "savings_ring":
         return (
           <SavingsRingCard
@@ -2710,28 +2617,36 @@ export function HomePage({
         </div>
       </BottomSheet>
 
-      <NotificationSheet
-        isOpen={notifOpen}
-        onClose={() => setNotifOpen(false)}
-      />
-      <GoalDetailModal
-        goal={selectedGoal}
-        isOpen={!!selectedGoal}
-        onClose={() => setSelectedGoal(null)}
-        onDeposit={depositToGoal}
-        onUpdate={updateGoal}
-        onDelete={deleteGoal}
-      />
-      <MetricDrillDownSheet
-        isOpen={!!metricDrillDown}
-        onClose={() => setMetricDrillDown(null)}
-        type={metricDrillDown?.type || null}
-        data={metricDrillDown?.data || null}
-      />
-      <BillManagementSheets
-        isOpen={billManagementOpen}
-        onClose={() => setBillManagementOpen(false)}
-      />
+      {notifOpen && (
+        <NotificationSheet
+          isOpen={notifOpen}
+          onClose={() => setNotifOpen(false)}
+        />
+      )}
+      {selectedGoal && (
+        <GoalDetailModal
+          goal={selectedGoal}
+          isOpen={!!selectedGoal}
+          onClose={() => setSelectedGoal(null)}
+          onDeposit={depositToGoal}
+          onUpdate={updateGoal}
+          onDelete={deleteGoal}
+        />
+      )}
+      {metricDrillDown && (
+        <MetricDrillDownSheet
+          isOpen={!!metricDrillDown}
+          onClose={() => setMetricDrillDown(null)}
+          type={metricDrillDown?.type || null}
+          data={metricDrillDown?.data || null}
+        />
+      )}
+      {billManagementOpen && (
+        <BillManagementSheets
+          isOpen={billManagementOpen}
+          onClose={() => setBillManagementOpen(false)}
+        />
+      )}
       {payingBill && (
         <PayBillModal
           isOpen={!!payingBill}
@@ -2767,14 +2682,18 @@ export function HomePage({
           }}
         />
       )}
-      <SpaceSwitcherSheet
-        isOpen={spaceSwitcherOpen}
-        onClose={() => setSpaceSwitcherOpen(false)}
-      />
-      <NfcCardReaderModal
-        isOpen={nfcModalOpen}
-        onClose={() => setNfcModalOpen(false)}
-      />
+      {spaceSwitcherOpen && (
+        <SpaceSwitcherSheet
+          isOpen={spaceSwitcherOpen}
+          onClose={() => setSpaceSwitcherOpen(false)}
+        />
+      )}
+      {nfcModalOpen && (
+        <NfcCardReaderModal
+          isOpen={nfcModalOpen}
+          onClose={() => setNfcModalOpen(false)}
+        />
+      )}
 
       {/* CUSTOMIZE HOME WIDGETS MODAL (Compact 2-Column Minimalist Grid) */}
       {customizeHomeOpen && (
@@ -2994,42 +2913,28 @@ export function HomePage({
         onUnhideCard={toggleCardVisibility}
       />
 
-      {/* Gen Z Social Split Bill Sheet */}
-      <SplitBillSheet
-        isOpen={splitBillSheetOpen}
-        onClose={() => setSplitBillSheetOpen(false)}
-        onRecordTransaction={(data) => {
-          addTx.mutate({
-            type: "expense",
-            amount: data.myShare,
-            note: data.note,
-            occurred_on: format(new Date(), "yyyy-MM-dd"),
-            created_at: new Date().toISOString(),
-            category_id: categories.length > 0 ? categories[0].id : null,
-            wallet_id: _walletsData.length > 0 ? _walletsData[0].id : null,
-            to_wallet_id: null,
-          });
-        }}
-      />
-
       {/* Profile Sheet */}
-      <ProfileSheet
-        isOpen={profileSheetOpen}
-        onClose={() => setProfileSheetOpen(false)}
-        avatarUrl={avatarUrl}
-        setAvatarUrl={(url) => setCustomAvatarUrl(url)}
-        displayName={displayName}
-        setDisplayName={(name) => setCustomDisplayName(name)}
-        onOpenDeleteAccount={() => {
-          setProfileSheetOpen(false);
-          navigate("/settings");
-        }}
-      />
+      {profileSheetOpen && (
+        <ProfileSheet
+          isOpen={profileSheetOpen}
+          onClose={() => setProfileSheetOpen(false)}
+          avatarUrl={avatarUrl}
+          setAvatarUrl={(url) => setCustomAvatarUrl(url)}
+          displayName={displayName}
+          setDisplayName={(name) => setCustomDisplayName(name)}
+          onOpenDeleteAccount={() => {
+            setProfileSheetOpen(false);
+            navigate("/settings");
+          }}
+        />
+      )}
 
-      <WebDashboardLinkModal
-        isOpen={webDashboardOpen}
-        onClose={() => setWebDashboardOpen(false)}
-      />
+      {webDashboardOpen && (
+        <WebDashboardLinkModal
+          isOpen={webDashboardOpen}
+          onClose={() => setWebDashboardOpen(false)}
+        />
+      )}
     </div>
   );
 }

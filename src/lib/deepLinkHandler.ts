@@ -50,15 +50,18 @@ export function parseDeepLink(
     const actionPath = parsed.pathname.replace(/^\/+/, "").toLowerCase();
     const params = parsed.searchParams;
 
-    // 1. Direct modal routing actions
-    if (actionPath === "voice" || params.get("mode") === "voice") {
+    // 1. Direct modal routing actions (via path, ?mode=, or ?action= from PWA manifest shortcuts)
+    if (actionPath === "voice" || params.get("mode") === "voice" || params.get("action") === "voice") {
       return { action: "voice" };
     }
-    if (actionPath === "scan" || params.get("mode") === "scan") {
+    if (actionPath === "scan" || params.get("mode") === "scan" || params.get("action") === "scan") {
       return { action: "scan" };
     }
-    if (actionPath === "import" || params.get("mode") === "import") {
+    if (actionPath === "import" || params.get("mode") === "import" || params.get("action") === "import") {
       return { action: "import" };
+    }
+    if (params.get("action") === "add") {
+      return { action: "transaction" };
     }
 
     // 2. Extract potential parameter tokens

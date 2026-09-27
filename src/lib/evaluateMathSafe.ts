@@ -33,6 +33,12 @@ export function evaluateMathSafe(expr: string): number {
     }
     if (numBuffer) tokens.push(numBuffer);
 
+    // Strip trailing dangling operators during live typing (e.g. "50000 *" shouldn't multiply by 0)
+    while (tokens.length > 0 && "+-*/".includes(tokens[tokens.length - 1])) {
+      tokens.pop();
+    }
+    if (tokens.length === 0) return 0;
+
     let index = 0;
 
     function parseFactor(): number {

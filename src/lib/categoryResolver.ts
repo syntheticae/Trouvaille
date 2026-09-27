@@ -1,4 +1,5 @@
 import type { Transaction, Category, TransactionType } from "./types";
+import { classifySemanticCategory } from "./semanticClassifier";
 
 export interface ResolvedCategoryInfo {
   id?: string | null;
@@ -115,7 +116,18 @@ export function resolveTransactionCategory(
       };
     }
 
-    // High frequency financial keywords
+    // Unified Semantic Taxonomy Engine (25+ Concepts, 600+ bilingual keywords)
+    const semantic = classifySemanticCategory(tx.note, categories);
+    if (semantic.category) {
+      return {
+        id: semantic.category.id,
+        name: semantic.category.name,
+        emoji: semantic.category.emoji || defaultFallback.emoji,
+        type: semantic.category.type,
+      };
+    }
+
+    // High frequency financial keywords fallback
     if (
       noteLower.includes("makan") ||
       noteLower.includes("lunch") ||

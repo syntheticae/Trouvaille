@@ -2,27 +2,7 @@ import { describe, it, expect } from "vitest";
 import { FINANCIAL_GLOSSARY } from "../src/components/common/FinancialGlossaryTooltip";
 import { format, subDays } from "date-fns";
 
-describe("Split Bill & Gamification Calculations", () => {
-  it("calculates subtotal, tax, service, and equal share correctly", () => {
-    const subtotal = 200000;
-    const taxPct = 10;
-    const servicePct = 5;
-    const discount = 20000;
-    const peopleCount = 4;
-
-    const taxAmount = Math.round((subtotal * taxPct) / 100);
-    const serviceAmount = Math.round((subtotal * servicePct) / 100);
-    const totalBeforeDiscount = subtotal + taxAmount + serviceAmount;
-    const grandTotal = Math.max(0, totalBeforeDiscount - discount);
-    const perPerson = Math.round(grandTotal / peopleCount);
-
-    expect(taxAmount).toBe(20000);
-    expect(serviceAmount).toBe(10000);
-    expect(totalBeforeDiscount).toBe(230000);
-    expect(grandTotal).toBe(210000);
-    expect(perPerson).toBe(52500);
-  });
-
+describe("Gamification & Financial Glossary", () => {
   it("calculates logging streak correctly with consecutive transaction days", () => {
     const now = new Date();
     const todayStr = format(now, "yyyy-MM-dd");

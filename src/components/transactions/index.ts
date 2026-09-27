@@ -5,6 +5,5 @@ export * from "./TransactionItem";
 export * from "./TransactionKeypadSheet";
 export * from "./CategorySelectorRibbon";
 export * from "./WalletSelectorRibbon";
-export * from "./SplitTransactionSection";
 export * from "./TransactionSheet";
 export * from "./VoiceQuickAddModal";

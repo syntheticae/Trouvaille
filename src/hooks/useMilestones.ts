@@ -55,10 +55,6 @@ export function calculateMilestones({
         ? 12
         : 0;
 
-  const hasSplitBillTx = transactions.some((tx) =>
-    tx.note ? /split bill|patungan/i.test(tx.note) : false,
-  );
-
   const hasActiveGoalDeposit = goals.some((g) => (g.currentAmount ?? 0) > 0);
 
   const milestones: Milestone[] = [
@@ -133,18 +129,6 @@ export function calculateMilestones({
       currentValueText: `${savingsRate.toFixed(0)}%`,
       targetValueText: "20%",
       iconName: "TrendingUp",
-    },
-    {
-      id: "split_bill",
-      title: "Split Bill Pro",
-      category: "lifestyle",
-      description: "Use the bill split calculator or log a shared expense.",
-      criteria: "1 Split Bill Transaction",
-      isUnlocked: hasSplitBillTx,
-      progressPct: hasSplitBillTx ? 100 : 0,
-      currentValueText: hasSplitBillTx ? "Recorded" : "None",
-      targetValueText: "1 Time",
-      iconName: "Users",
     },
     {
       id: "goal_setter",

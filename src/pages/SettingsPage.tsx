@@ -123,11 +123,7 @@ const GoalManagementSheets = lazy(() =>
     default: m.GoalManagementSheets,
   })),
 );
-const ShortcutManagementSheets = lazy(() =>
-  import("../components/settings/ShortcutManagementSheets").then((m) => ({
-    default: m.ShortcutManagementSheets,
-  })),
-);
+
 const PinSetupModal = lazy(() =>
   import("../components/settings/PinSetupModal").then((m) => ({
     default: m.PinSetupModal,
@@ -288,7 +284,6 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const [billListOpen, setBillListOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [budgetTargetOpen, setBudgetTargetOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [backTapGuideOpen, setBackTapGuideOpen] = useState(false);
   const [shortcutsGuideTab, setShortcutsGuideTab] =
     useState<TabType>("back_tap");
@@ -1370,7 +1365,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     background: "var(--bg-elevated)",
                   }}
                 >
-                  {isIndonesian ? "4 Mode" : "4 Modes"}
+                  {isIndonesian ? "5 Mode" : "5 Modes"}
                 </span>
                 <ChevronRight
                   size={15}
@@ -2105,10 +2100,6 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           onClose={() => setBudgetsOpen(false)}
         />
 
-        <ShortcutManagementSheets
-          isOpen={shortcutsOpen}
-          onClose={() => setShortcutsOpen(false)}
-        />
 
         <AppleShortcutsGuideModal
           isOpen={backTapGuideOpen}

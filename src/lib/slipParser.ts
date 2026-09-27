@@ -6,6 +6,7 @@
 import { format } from "date-fns";
 import type { Category, Wallet, TransactionType } from "./types";
 import { formatRupiah } from "./utils";
+import { classifySemanticCategory } from "./semanticClassifier";
 
 export interface ParsedSlipResult {
   amount: number | null;
@@ -417,16 +418,67 @@ export function parseSlipText(
           score -= 80;
         }
         if (contextLower.includes("subtotal") || contextLower.includes("sub total")) {
-          score -= 40;
+          score -= 50;
         }
         if (isAdminFeeLine) {
           score -= 100;
         }
-        if (contextLower.includes("kembalian") || contextLower.includes("kembali") || contextLower.includes("change")) {
-          score -= 90;
+
+        // Tax / PPN / PB1 / Service Charge penalty
+        if (
+          contextLower.includes("pajak") ||
+          contextLower.includes("ppn") ||
+          contextLower.includes("pb1") ||
+          contextLower.includes("pb 1") ||
+          contextLower.includes("service charge") ||
+          contextLower.includes("tax") ||
+          contextLower.includes("pjk")
+        ) {
+          score -= 250;
+        }
+
+        // Cash / Tunai tendered penalty (unless nontunai / non-tunai)
+        if (
+          (contextLower.includes("tunai") ||
+            contextLower.includes("cash") ||
+            contextLower.includes("uang diterima") ||
+            contextLower.includes("dibayar") ||
+            contextLower.includes("tendered")) &&
+          !contextLower.includes("non tunai") &&
+          !contextLower.includes("nontunai")
+        ) {
+          score -= 150;
+        }
+
+        if (
+          contextLower.includes("kembalian") ||
+          contextLower.includes("kembali") ||
+          contextLower.includes("change")
+        ) {
+          score -= 280;
         }
 
         candidateAmounts.push({ amount: amt, score, line });
+      }
+    }
+  }
+
+  // Cross-validation: Check if any candidate equals Cash - Change
+  const cashCandidate = candidateAmounts.find(
+    (c) =>
+      (c.line.toLowerCase().includes("tunai") || c.line.toLowerCase().includes("cash")) &&
+      !c.line.toLowerCase().includes("non"),
+  );
+  const changeCandidate = candidateAmounts.find(
+    (c) =>
+      c.line.toLowerCase().includes("kembali") || c.line.toLowerCase().includes("change"),
+  );
+  if (cashCandidate && changeCandidate) {
+    const diff = cashCandidate.amount - changeCandidate.amount;
+    if (diff > 0) {
+      const match = candidateAmounts.find((c) => c.amount === diff);
+      if (match) {
+        match.score += 350; // Absolute mathematical confirmation of Grand Total
       }
     }
   }
@@ -691,12 +743,22 @@ export function parseSlipText(
     }
   }
 
-  // 6. Match Category against User's Categories (Using CATEGORY_SYNONYMS)
+  // 6. Match Category against User's Categories (Using Unified Semantic Taxonomy Engine)
   let matchedCategory: Category | null = null;
   let detectedCategory: string | undefined = undefined;
 
+  // Semantic Classifier check on merchant name or receipt text
+  const semanticClass = classifySemanticCategory(
+    merchantOrRecipient || rawText,
+    userCategories,
+  );
+  if (semanticClass.category) {
+    matchedCategory = semanticClass.category;
+    detectedCategory = semanticClass.category.name;
+  }
+
   // Priority 1: Category from recognized merchant brand
-  if (detectedCategoryFromMerchant) {
+  if (!matchedCategory && detectedCategoryFromMerchant) {
     const grp = CATEGORY_SYNONYMS[detectedCategoryFromMerchant];
     if (grp) {
       detectedCategory = grp.targetKeys[0].charAt(0).toUpperCase() + grp.targetKeys[0].slice(1);

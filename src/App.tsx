@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import { BottomTabBar } from "./components/layout/BottomTabBar";
 import { useAuth } from "./contexts/AuthContext";
@@ -141,6 +141,8 @@ function AppShell() {
   const addTxMutation = useAddTransaction();
   const { isIndonesian } = useLanguage();
   const [recordedShortcutTx, setRecordedShortcutTx] = useState<ShortcutRecordedTxData | null>(null);
+  // Queue for deep links that arrive before categories/wallets have loaded (cold-launch race condition fix)
+  const pendingDeepLinkRef = useRef<string | null>(null);
   const [showGuestMigrationModal, setShowGuestMigrationModal] = useState(false);
   const [isPreviewingInitialSync, setIsPreviewingInitialSync] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -158,9 +160,16 @@ function AppShell() {
     };
   }, []);
 
+
   // Handle iOS Custom URL Scheme (trouvaille://...), Back Tap Shortcuts, and Web Share Target
+  // Two-stage design to fix cold-launch race condition:
+  //   Stage 1 (this effect): register listeners, queue URL if categories/wallets not yet loaded
+  //   Stage 2 (next effect): drain the queue once data is ready
+  const handleUrlDispatch = useRef<((rawUrl: string) => void) | null>(null);
+
   useEffect(() => {
-    const handleUrlDispatch = (rawUrl: string) => {
+    // Keep the dispatch function up-to-date with fresh categories/wallets/state closures
+    handleUrlDispatch.current = (rawUrl: string) => {
       if (!rawUrl) return;
       const res = parseDeepLink(rawUrl, categories, wallets);
       if (res.action === "transaction") {
@@ -231,10 +240,30 @@ function AppShell() {
         setStatementImportOpen(true);
       }
     };
+  }, [
+    categories,
+    wallets,
+    addTxMutation,
+    isIndonesian,
+  ]);
+
+  // Stage 1: Register Capacitor URL listener + handle web params on load
+  // Queues URL if categories/wallets are not yet loaded; otherwise dispatches immediately.
+  useEffect(() => {
+    const tryDispatch = (rawUrl: string) => {
+      if (categories.length > 0 || wallets.length > 0) {
+        // Data is ready — process now
+        pendingDeepLinkRef.current = null;
+        handleUrlDispatch.current?.(rawUrl);
+      } else {
+        // Data not ready yet — queue for Stage 2
+        pendingDeepLinkRef.current = rawUrl;
+      }
+    };
 
     // 1. Web / PWA URL params on load (e.g. ?text=...)
     if (window.location.search) {
-      handleUrlDispatch(window.location.href);
+      tryDispatch(window.location.href);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
@@ -245,7 +274,7 @@ function AppShell() {
 
     CapApp.addListener("appUrlOpen", (event) => {
       if (isSubscribed && event?.url) {
-        handleUrlDispatch(event.url);
+        tryDispatch(event.url);
       }
     })
       .then((handle) => {
@@ -323,8 +352,6 @@ function AppShell() {
   }, [
     categories,
     wallets,
-    addTxMutation,
-    isIndonesian,
     statementImportOpen,
     receiptScanOpen,
     voiceModalOpen,
@@ -333,6 +360,17 @@ function AppShell() {
     showGuestMigrationModal,
     isPreviewingInitialSync,
   ]);
+
+  // Stage 2: Drain queued deep link once categories/wallets have loaded
+  useEffect(() => {
+    if (categories.length > 0 && pendingDeepLinkRef.current) {
+      const queued = pendingDeepLinkRef.current;
+      pendingDeepLinkRef.current = null;
+      handleUrlDispatch.current?.(queued);
+    }
+  }, [categories, wallets]);
+
+
 
   // Flush pending offline mutations when user returns to active app from privacy shield
   useEffect(() => {
@@ -732,6 +770,7 @@ function AppShell() {
                 <TransactionsPage
                   onOpenScan={() => setReceiptScanOpen(true)}
                   onOpenImport={() => setStatementImportOpen(true)}
+                  onOpenVoiceAdd={() => setVoiceModalOpen(true)}
                 />
               }
             />
@@ -741,6 +780,7 @@ function AppShell() {
                 <TransactionsPage
                   onOpenScan={() => setReceiptScanOpen(true)}
                   onOpenImport={() => setStatementImportOpen(true)}
+                  onOpenVoiceAdd={() => setVoiceModalOpen(true)}
                 />
               }
             />
@@ -830,6 +870,10 @@ function AppShell() {
             onOpenScan={() => {
               setAddSheetOpen(false);
               setReceiptScanOpen(true);
+            }}
+            onOpenVoiceAdd={() => {
+              setAddSheetOpen(false);
+              setVoiceModalOpen(true);
             }}
           />
         </Suspense>

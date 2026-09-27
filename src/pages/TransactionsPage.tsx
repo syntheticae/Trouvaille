@@ -161,11 +161,13 @@ const MONTHS_LIST = [
 interface TransactionsPageProps {
   onOpenScan?: () => void;
   onOpenImport?: () => void;
+  onOpenVoiceAdd?: () => void;
 }
 
 export function TransactionsPage({
   onOpenScan: _onOpenScan,
   onOpenImport: _onOpenImport,
+  onOpenVoiceAdd: _onOpenVoiceAdd,
 }: TransactionsPageProps = {}) {
   const { isStealthMode, toggleStealthMode } = usePrivacy();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -283,6 +285,18 @@ export function TransactionsPage({
       setSelectedTxIds(new Set([tx.id]));
     }
   }, []);
+
+  const handleItemClick = useCallback(
+    (t: Transaction) => {
+      if (isSelectMode) {
+        handleToggleSelect(t);
+      } else {
+        setEditingTx(t);
+        setSheetOpen(true);
+      }
+    },
+    [isSelectMode, handleToggleSelect],
+  );
 
   const handleExitSelectMode = useCallback(() => {
     setIsSelectMode(false);
@@ -1371,14 +1385,7 @@ export function TransactionsPage({
                     isUnusual={isUnusual}
                     isSelectMode={isSelectMode}
                     isSelected={selectedTxIds.has(tx.id)}
-                    onClick={(t) => {
-                      if (isSelectMode) {
-                        handleToggleSelect(t);
-                      } else {
-                        setEditingTx(t);
-                        setSheetOpen(true);
-                      }
-                    }}
+                    onClick={handleItemClick}
                     onDelete={handleDeleteTransaction}
                     onDuplicate={handleDuplicateTransaction}
                     onToggleSelect={handleToggleSelect}
@@ -1628,14 +1635,22 @@ export function TransactionsPage({
         </div>
       </BottomSheet>
 
-      <TransactionSheet
-        isOpen={sheetOpen}
-        onClose={() => {
-          setSheetOpen(false);
-          setEditingTx(null);
-        }}
-        transaction={editingTx}
-      />
+      {sheetOpen && (
+        <TransactionSheet
+          isOpen={sheetOpen}
+          onClose={() => {
+            setSheetOpen(false);
+            setEditingTx(null);
+          }}
+          transaction={editingTx}
+          onOpenScan={_onOpenScan}
+          onOpenVoiceAdd={() => {
+            setSheetOpen(false);
+            setEditingTx(null);
+            _onOpenVoiceAdd?.();
+          }}
+        />
+      )}
 
       {/* Account Picker Glass Sheet */}
       <BottomSheet

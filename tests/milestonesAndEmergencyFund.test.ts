@@ -26,7 +26,7 @@ describe("Milestones Evaluation Engine", () => {
       isCertifiedBalanced: false,
     });
 
-    expect(res.totalMilestones).toBe(9);
+    expect(res.totalMilestones).toBe(8);
     expect(res.totalUnlocked).toBe(0);
     expect(res.completionPct).toBe(0);
 
@@ -129,26 +129,6 @@ describe("Milestones Evaluation Engine", () => {
     const saver = resSaving.milestones.find((m) => m.id === "savings_master");
     expect(saver?.isUnlocked).toBe(true);
     expect(saver?.progressPct).toBe(100);
-  });
-
-  it("unlocks split bill milestone when split transaction is recorded", () => {
-    const splitTx: Transaction = {
-      ...dummyTx,
-      id: "tx-split",
-      note: "Makan Siang (Split Bill 4 orang)",
-    };
-
-    const res = calculateMilestones({
-      transactions: [splitTx],
-      streak: 1,
-      liquidAssets: 0,
-      monthlyBurn: 0,
-      savingsRate: 0,
-      goals: [],
-    });
-
-    const splitMilestone = res.milestones.find((m) => m.id === "split_bill");
-    expect(splitMilestone?.isUnlocked).toBe(true);
   });
 
   it("unlocks goal setter when goal has active deposit", () => {

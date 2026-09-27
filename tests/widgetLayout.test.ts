@@ -98,10 +98,10 @@ describe("Widget Layout Engine", () => {
 
   it("reorders widgets accurately based on id sequence", () => {
     const widgets = [...DEFAULT_HOME_WIDGETS];
-    const newOrder = ["split_bill", "upcoming_bills", "net_portfolio"];
+    const newOrder = ["savings_ring", "upcoming_bills", "net_portfolio"];
     
     const reordered = reorderWidgets(widgets, newOrder);
-    expect(reordered[0].id).toBe("split_bill");
+    expect(reordered[0].id).toBe("savings_ring");
     expect(reordered[1].id).toBe("upcoming_bills");
     expect(reordered[2].id).toBe("net_portfolio");
   });

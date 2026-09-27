@@ -1,6 +1,7 @@
 import { subDays } from "date-fns";
 import type { Category, Wallet, TransactionType } from "./types";
 import { formatRupiah } from "./utils";
+import { classifySemanticCategory } from "./semanticClassifier";
 
 export interface ParsedTransactionResult {
   amount: number | null;
@@ -955,7 +956,25 @@ export function parseNaturalTransaction(
     }
   }
 
-  // C. Alias matching (if no direct category name or stem match)
+  // C. Unified Semantic Taxonomy Engine (25+ Concepts, 600+ keywords, colloquial food & items)
+  if (!detectedCategoryId) {
+    const semanticResult = classifySemanticCategory(
+      text,
+      targetCategories.length > 0 ? targetCategories : categories,
+    );
+    if (semanticResult.category) {
+      detectedCategoryId = semanticResult.category.id;
+      detectedCategoryName = semanticResult.category.name;
+      detectedCategoryEmoji = semanticResult.category.emoji;
+      matchedTokens.categoryToken = semanticResult.matchedKeyword || semanticResult.category.name;
+      confidence += Math.max(0.25, semanticResult.confidence * 0.4);
+      if (semanticResult.matchedKeyword) {
+        text = text.replace(new RegExp(`\\b${semanticResult.matchedKeyword}\\b`, "i"), " ");
+      }
+    }
+  }
+
+  // D. Legacy alias matching fallback
   if (!detectedCategoryId) {
     for (const [canonKey, aliasList] of Object.entries(CATEGORY_ALIASES)) {
       const foundAlias = aliasList.find((alias) =>

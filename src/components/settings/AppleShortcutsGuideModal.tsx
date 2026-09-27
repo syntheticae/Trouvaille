@@ -1,42 +1,74 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
-  Smartphone,
   Copy,
   Check,
-  Mic,
-  Camera,
-  Layers,
-  Share2,
-  PlusCircle,
   Zap,
-  Sparkles,
+  Mic,
   SlidersHorizontal,
-  ShieldCheck,
-  AlertCircle,
-  Download,
-  Key,
-  ChevronDown,
-  ChevronUp,
+  Sparkles,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  MessageSquare,
+  Link as LinkIcon,
+  Calendar,
+  FileText,
+  Search,
+  RotateCcw,
+  Play,
+  Scissors,
+  ScanLine,
+  Bell,
+  Camera,
+  Coffee,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 
+// Legacy TabType preserved for SettingsPage.tsx compatibility
 export type TabType =
   | "back_tap"
   | "action_button"
   | "ways_to_add"
-  | "automation";
-type BackTapSubMode = "instant_sheet" | "smart_nlp" | "glass_dialog";
+  | "automation"
+  | "screen_scan"
+  | "notification_reader";
+
+type InternalTab = "pindai" | "notifikasi" | "instan" | "suara" | "dialog";
+
+function mapTab(t: TabType): InternalTab {
+  if (t === "screen_scan") return "pindai";
+  if (t === "notification_reader" || t === "automation") return "notifikasi";
+  if (t === "ways_to_add") return "suara";
+  if (t === "action_button") return "instan";
+  if (t === "back_tap") return "pindai";
+  return "pindai";
+}
 
 interface AppleShortcutsGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: TabType;
+}
+
+interface SlideData {
+  isHero?: boolean;
+  stepNum?: number;
+  title: string;
+  desc: string;
+  actionType?: "test_url" | "copy" | "info";
+  scheme?: string;
+  copyText?: string;
+  copyLabel?: string;
+  btnText?: string;
+  noteText?: string;
 }
 
 export function AppleShortcutsGuideModal({
@@ -46,30 +78,34 @@ export function AppleShortcutsGuideModal({
 }: AppleShortcutsGuideModalProps) {
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   const { session } = useAuth();
   const userToken = session?.user?.id || "";
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
 
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
-  const [backTapMode, setBackTapMode] =
-    useState<BackTapSubMode>("instant_sheet");
-  const [glassSaveMethod, setGlassSaveMethod] = useState<
-    "background" | "url_scheme"
-  >("background");
+  const [activeTab, setActiveTab] = useState<InternalTab>(() => mapTab(initialTab));
+  const [currentSlide, setCurrentSlide] = useState(0);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [showManualSteps, setShowManualSteps] = useState<boolean>(false);
 
-  const anonKey =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxamNtcWtncmZtb3B6bnJmaWt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODA0NzcsImV4cCI6MjEwMjg1NjQ3N30.ujfATs0huUkR9tCNB0Rs8JlqJG3dkz13EKtkr-eFiDg";
-  const rpcEndpoint =
-    "https://iqjcmqkgrfmopznrfikx.supabase.co/rest/v1/rpc/quick_add_transaction";
+  // Touch swipe tracking
+  const touchStartXRef = useRef<number>(0);
+  const touchEndXRef = useRef<number>(0);
 
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(initialTab);
+      setActiveTab(mapTab(initialTab));
+      setCurrentSlide(0);
     }
   }, [initialTab]);
+
+  const handleTabChange = (tab: InternalTab) => {
+    triggerHaptic("light");
+    setActiveTab(tab);
+    setCurrentSlide(0);
+  };
 
   const copyToClipboard = (text: string, label: string) => {
     triggerSuccessHaptic();
@@ -88,2168 +124,1992 @@ export function AppleShortcutsGuideModal({
     window.location.href = scheme;
   };
 
-  const copyCategoryList = () => {
-    const list = categories
+  const categoryListText =
+    categories
       .filter((c) => c.type !== "income")
       .map((c) => c.name)
-      .join("\n");
-    copyToClipboard(
-      list || "Makanan\nTransportasi\nBelanja\nHiburan\nTagihan",
-      isIndonesian ? "Daftar Kategori" : "Category List",
-    );
+      .join("\n") ||
+    (isIndonesian
+      ? "Makanan\nTransportasi\nBelanja\nHiburan\nTagihan\nLainnya"
+      : "Food\nTransport\nShopping\nEntertainment\nBills\nOther");
+
+  const walletListText =
+    wallets.map((w) => w.name).join("\n") ||
+    (isIndonesian
+      ? "Cash\nBCA\nMandiri\nGoPay\nOVO\nShopeePay"
+      : "Cash\nChecking\nCredit Card\nSavings");
+
+  const userIdText = userToken || "00000000-0000-0000-0000-000000000000";
+
+  // Slide content matrix with pure non-mixed localization
+  const slides: Record<InternalTab, SlideData[]> = {
+    pindai: [
+      {
+        isHero: true,
+        title: isIndonesian ? "Pindai Layar Resi Otomatis (Back Tap)" : "Auto Screen Receipt Scanner (Back Tap)",
+        desc: isIndonesian
+          ? "Saat berada di layar bukti pembayaran apa pun (BCA, Livin, GoPay, QRIS, dll.), ketuk 2x bodi belakang iPhone Anda. Pintasan otomatis menjepret layar, membaca teks resi via Live Text OCR, lalu menyimpannya langsung ke Trouvaille tanpa jeda."
+          : "While viewing any payment receipt screen (BCA, Livin, GoPay, QRIS, etc.), double tap the back of your iPhone. Shortcuts automatically captures the screen, reads receipt text via Live Text OCR, and logs it directly into Trouvaille.",
+        actionType: "test_url",
+        scheme: "trouvaille://add?text=Pembayaran%20QRIS%20Kopi%20Kenangan%20Rp%2075.000%20berhasil&autosave=true",
+        btnText: isIndonesian ? "Uji Buka URL Sekarang" : "Test Open URL Now",
+      },
+      {
+        stepNum: 1,
+        title: isIndonesian ? "Langkah 1: Jepret Layar & Ekstrak Teks" : "Step 1: Take Screenshot & Extract Text",
+        desc: isIndonesian
+          ? "Buka aplikasi Pintasan › Ketuk (+) › Ganti nama menjadi 'Pindai Resi'.\n1. Tambah tindakan 'Ambil Jepretan Layar'.\n2. Tambah tindakan 'Ekstrak Teks dari Gambar' (otomatis terhubung ke Jepretan Layar)."
+          : "Open Shortcuts app › Tap (+) › Rename to 'Scan Receipt'.\n1. Add 'Take Screenshot' action.\n2. Add 'Extract Text from Image' action (automatically connects to Screenshot).",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "Fitur Live Text OCR iOS berjalan 100% lokal di perangkat tanpa internet."
+          : "iOS Live Text OCR runs 100% on-device for total privacy.",
+      },
+      {
+        stepNum: 2,
+        title: isIndonesian ? "Langkah 2: Enkode URL & Buka Trouvaille" : "Step 2: URL Encode & Open Trouvaille",
+        desc: isIndonesian
+          ? "1. Tambah tindakan 'Enkode URL' untuk variabel 'Teks dari Gambar'.\n2. Tambah tindakan 'Buka URL' dan tempel skema di bawah, lalu ganti [Teks Terenkode] dengan variabel biru:"
+          : "1. Add 'URL Encode' action for 'Text from Image' variable.\n2. Add 'Open URLs' action and paste the scheme below, replacing [URL Encoded Text] with the blue variable token:",
+        actionType: "copy",
+        copyText: isIndonesian
+          ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
+          : "trouvaille://add?text=[URL Encoded Text]&autosave=true",
+        copyLabel: isIndonesian ? "Skema Pindai Layar" : "Screen Scan Scheme",
+        btnText: isIndonesian ? "Salin Skema Pindai Layar" : "Copy Screen Scan Scheme",
+      },
+      {
+        stepNum: 3,
+        title: isIndonesian ? "Langkah 3: Tautkan ke Ketuk Bagian Belakang" : "Step 3: Link to Back Tap",
+        desc: isIndonesian
+          ? "Buka Pengaturan iOS › Aksesibilitas › Sentuh › Ketuk Bagian Belakang › Ketuk Dua Kali › Gulir ke bagian Pintasan dan pilih 'Pindai Resi'.\n\nTips: Pengguna iPhone 15 Pro / 16 juga dapat menautkannya langsung ke Tombol Tindakan."
+          : "Open iOS Settings › Accessibility › Touch › Back Tap › Double Tap › Scroll to Shortcuts and select 'Scan Receipt'.\n\nTip: iPhone 15 Pro / 16 users can also link this directly to the Action Button.",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "Kini cukup ketuk 2x bodi belakang iPhone saat melihat struk atau resi transfer."
+          : "Now simply double-tap your iPhone back whenever viewing any receipt or payment confirmation.",
+      },
+    ],
+    notifikasi: [
+      {
+        isHero: true,
+        title: isIndonesian ? "Pembaca Notifikasi Bank Otomatis" : "Auto Bank Notification Reader",
+        desc: isIndonesian
+          ? "Setiap kali notifikasi transaksi masuk dari m-Banking atau dompet digital (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, dll.), iPhone otomatis membaca teks notifikasi dan langsung menyimpannya ke Trouvaille di latar belakang tanpa sentuhan manual."
+          : "Whenever a transaction notification arrives from your banking or e-wallet app (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, etc.), your iPhone automatically reads the notification text and saves it directly to Trouvaille in the background without manual touch.",
+        actionType: "copy",
+        copyText: isIndonesian
+          ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
+          : "trouvaille://add?text=[URL Encoded Text]&autosave=true",
+        copyLabel: isIndonesian ? "Skema Notifikasi" : "Notification Scheme",
+        btnText: isIndonesian ? "Salin Skema Notifikasi" : "Copy Notification Scheme",
+      },
+      {
+        stepNum: 1,
+        title: isIndonesian ? "Langkah 1: Buat Automasi Pemberitahuan" : "Step 1: Create Notification Automation",
+        desc: isIndonesian
+          ? "1. Buka aplikasi Pintasan › Ketuk tab 'Automasi' di bagian bawah.\n2. Ketuk (+) › Pilih 'Pemberitahuan' (Notification).\n3. Pilih aplikasi bank/e-wallet Anda (BCA, Livin, GoPay, dll.).\n4. Centang 'Jalankan Segera' (Run Immediately)."
+          : "1. Open Shortcuts app › Tap 'Automation' tab at the bottom.\n2. Tap (+) › Choose 'Notification'.\n3. Select your banking/e-wallet apps (BCA, Livin, GoPay, etc.).\n4. Check 'Run Immediately'.",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "'Jalankan Segera' memastikan automasi bekerja hening tanpa meminta izin berulang."
+          : "'Run Immediately' ensures the automation runs silently without asking permission every time.",
+      },
+      {
+        stepNum: 2,
+        title: isIndonesian ? "Langkah 2: Sambungkan Teks ke Trouvaille" : "Step 2: Connect Text to Trouvaille",
+        desc: isIndonesian
+          ? "1. Tambah tindakan 'Enkode URL' untuk variabel 'Masukan Pintasan'.\n2. Tambah tindakan 'Buka URL' dan masukkan skema di bawah, lalu ganti [Teks Terenkode] dengan variabel biru:"
+          : "1. Add 'URL Encode' action for 'Shortcut Input' variable.\n2. Add 'Open URLs' action and paste the scheme below, replacing [URL Encoded Text] with the blue variable token:",
+        actionType: "copy",
+        copyText: isIndonesian
+          ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
+          : "trouvaille://add?text=[URL Encoded Text]&autosave=true",
+        copyLabel: isIndonesian ? "Skema Automasi" : "Automation Scheme",
+        btnText: isIndonesian ? "Salin Skema Automasi" : "Copy Automation Scheme",
+      },
+      {
+        stepNum: 3,
+        title: isIndonesian ? "Langkah 3: Jalankan Tanpa Gangguan" : "Step 3: Run Silently Without Interruption",
+        desc: isIndonesian
+          ? "Pastikan opsi 'Beri Tahu Saat Dijalankan' dinonaktifkan (Mati). Sekarang, setiap kali Anda bertransaksi di merchant atau menerima transfer, data pengeluaran langsung tercatat secara otomatis!"
+          : "Make sure 'Notify When Run' is toggled OFF. Now, whenever you pay at a merchant or receive a transfer, the transaction is automatically recorded!",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "Parser pintar Trouvaille otomatis memisahkan nominal, merchant, dan rekening dompet."
+          : "Trouvaille's smart parser automatically extracts amount, merchant, and wallet account.",
+      },
+    ],
+    instan: [
+      {
+        isHero: true,
+        title: isIndonesian ? "Pencatatan 1-Ketukan Instan" : "Instant 1-Tap Logging",
+        desc: isIndonesian
+          ? "Ketuk 2x bodi belakang iPhone Anda (Back Tap) untuk langsung membuka lembar input nominal Trouvaille secara instan dari aplikasi apa pun tanpa jeda."
+          : "Double tap the back of your iPhone (Back Tap) to instantly open the Trouvaille amount sheet from anywhere without opening the full app.",
+        actionType: "test_url",
+        scheme: "trouvaille://add",
+        btnText: isIndonesian ? "Uji Buka URL Sekarang" : "Test Open URL Now",
+      },
+      {
+        stepNum: 1,
+        title: isIndonesian ? "Buat Tindakan 'Buka URL'" : "Add 'Open URLs' Action",
+        desc: isIndonesian
+          ? "Buka aplikasi Pintasan > Ketuk tanda (+) > Ganti nama pintasan menjadi 'Catat Pengeluaran' > Tambahkan tindakan 'Buka URL' dan tempel alamat skema berikut:"
+          : "Open Shortcuts > Tap (+) > Rename shortcut to 'Log Expense' > Add 'Open URLs' action and paste the scheme below:",
+        actionType: "copy",
+        copyText: "trouvaille://add",
+        copyLabel: isIndonesian ? "Skema URL" : "URL Scheme",
+        btnText: isIndonesian ? "Salin Skema URL" : "Copy URL Scheme",
+      },
+      {
+        stepNum: 2,
+        title: isIndonesian ? "Tautkan ke Ketuk Bagian Belakang" : "Link to Back Tap",
+        desc: isIndonesian
+          ? "Buka Pengaturan iOS › Aksesibilitas › Sentuh › Ketuk Bagian Belakang › Ketuk Dua Kali › Gulir ke bagian Pintasan dan pilih 'Catat Pengeluaran'.\n\nTips: Pengguna iPhone 15 Pro / 16 juga dapat menautkannya langsung ke Tombol Tindakan."
+          : "Open iOS Settings › Accessibility › Touch › Back Tap › Double Tap › Scroll to Shortcuts and select 'Log Expense'.\n\nTip: iPhone 15 Pro / 16 users can also link this directly to the Action Button.",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "Pengaturan selesai, siap digunakan kapan saja."
+          : "Setup complete, ready to use anytime.",
+      },
+    ],
+    suara: [
+      {
+        isHero: true,
+        title: isIndonesian ? "Pencatatan Suara Otomatis (NLP AI)" : "Automated Voice Logging (NLP AI)",
+        desc: isIndonesian
+          ? "Cukup ucapkan transaksi Anda secara santai (contoh: \"Kopi susu 25 ribu bayar pakai BCA\"). Mesin pintar Trouvaille otomatis mendeteksi nominal, kategori, dan rekening dompet secara instan."
+          : "Simply speak your transaction naturally (e.g. \"Iced coffee 25 thousand paid with BCA\"). Trouvaille automatically parses the amount, category, and wallet account instantly.",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "Mendukung pengucapan langsung via Siri atau pintasan suara."
+          : "Supports direct Siri voice dictation or shortcuts.",
+      },
+      {
+        stepNum: 1,
+        title: isIndonesian ? "Tindakan 1: Minta Masukan" : "Action 1: Ask for Input",
+        desc: isIndonesian
+          ? "Buat pintasan baru bernama 'Catat Transaksi'. Tambah tindakan 'Minta Masukan', atur masukan ke 'Teks', dan isi pertanyaan dengan 'Catat apa?'."
+          : "Create a new shortcut named 'Log Transaction'. Add 'Ask for Input', set input type to 'Text', and set prompt to 'What to log?'.",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "Variabel masukan ini yang akan menangkap kalimat suara Anda."
+          : "This input variable captures your transcribed speech.",
+      },
+      {
+        stepNum: 2,
+        title: isIndonesian ? "Tindakan 2: Enkode URL" : "Action 2: URL Encode",
+        desc: isIndonesian
+          ? "Tambah tindakan 'Enkode URL' tepat di bawahnya. Sambungkan ke variabel 'Teks' agar spasi, koma, dan karakter khusus suara Anda aman saat disematkan ke tautan."
+          : "Add 'URL Encode' action directly below. Connect it to the 'Text' variable so spaces, commas, and punctuation in your voice are safely encoded for web links.",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "Mencegah tautan error akibat spasi atau tanda baca."
+          : "Prevents broken links from spaces and punctuation.",
+      },
+      {
+        stepNum: 3,
+        title: isIndonesian ? "Tindakan 3: Buka URL & Simpan Otomatis" : "Action 3: Open URLs & Autosave",
+        desc: isIndonesian
+          ? "Tambah tindakan 'Buka URL'. Masukkan templat skema di bawah, lalu ganti teks '[Teks Terenkode]' dengan variabel biru dari Langkah 2:"
+          : "Add 'Open URLs' action. Paste the scheme template below, then replace the '[URL Encoded Text]' placeholder with the blue variable token from Step 2:",
+        actionType: "copy",
+        copyText: isIndonesian
+          ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
+          : "trouvaille://add?text=[URL Encoded Text]&autosave=true",
+        copyLabel: isIndonesian ? "Templat Suara" : "Voice Template",
+        btnText: isIndonesian ? "Salin Templat Suara" : "Copy Voice Template",
+      },
+    ],
+    dialog: [
+      {
+        isHero: true,
+        title: isIndonesian ? "Pencatatan Dialog Pop-up Asli iOS" : "Native iOS Dialog Logging",
+        desc: isIndonesian
+          ? "Input transaksi melalui rentetan pop-up dialog resmi iOS satu demi satu. Seluruh data terkirim hening dan tersimpan rapi ke cloud Trouvaille tanpa perlu berpindah aplikasi."
+          : "Log expenses through sequential native iOS dialog pop-ups. All data is silently transmitted and saved to your Trouvaille cloud without opening the app.",
+        actionType: "copy",
+        copyText: userIdText,
+        copyLabel: isIndonesian ? "ID Pengguna" : "User ID",
+        btnText: isIndonesian ? "Salin ID Pengguna" : "Copy User ID",
+      },
+      {
+        stepNum: 1,
+        title: isIndonesian ? "Langkah 1: Minta Masukan Nominal" : "Step 1: Ask for Number (Amount)",
+        desc: isIndonesian
+          ? "Tambah tindakan 'Minta Masukan' › Ubah tipe ke 'Angka' › Pertanyaan: 'Berapa nominalnya?'. Ketuk variabel biru di atas papan ketik lalu ganti nama menjadi 'Nominal'."
+          : "Add 'Ask for Input' › Change type to 'Number' › Prompt: 'How much was it?'. Tap the blue variable above the keyboard and rename it to 'Nominal'.",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "Tipe Angka memastikan papan tombol numerik iOS langsung muncul."
+          : "Number type ensures the native iOS numeric keypad appears immediately.",
+      },
+      {
+        stepNum: 2,
+        title: isIndonesian ? "Langkah 2: Pilihan Kategori Saya" : "Step 2: Category Selection List",
+        desc: isIndonesian
+          ? "1. Tambah tindakan 'Teks' dan tempel daftar kategori di bawah.\n2. Tambah tindakan 'Pisahkan Teks' dengan pemisah 'Baris Baru'.\n3. Tambah tindakan 'Pilih dari Daftar' lalu ganti nama variabel menjadi 'Kategori'."
+          : "1. Add 'Text' action and paste your category list below.\n2. Add 'Split Text' action by 'New Lines'.\n3. Add 'Choose from List' action and rename the variable to 'Category'.",
+        actionType: "copy",
+        copyText: categoryListText,
+        copyLabel: isIndonesian ? "Daftar Kategori" : "Categories",
+        btnText: isIndonesian ? "Salin Daftar Kategori" : "Copy Categories",
+      },
+      {
+        stepNum: 3,
+        title: isIndonesian ? "Langkah 3: Pilihan Rekening Dompet" : "Step 3: Wallet Account Selection",
+        desc: isIndonesian
+          ? "1. Tambah tindakan 'Teks' dan tempel daftar rekening di bawah.\n2. Tambah tindakan 'Pisahkan Teks' dengan pemisah 'Baris Baru'.\n3. Tambah tindakan 'Pilih dari Daftar' lalu ganti nama variabel menjadi 'Rekening'."
+          : "1. Add 'Text' action and paste your wallet list below.\n2. Add 'Split Text' action by 'New Lines'.\n3. Add 'Choose from List' action and rename the variable to 'Wallet'.",
+        actionType: "copy",
+        copyText: walletListText,
+        copyLabel: isIndonesian ? "Daftar Rekening" : "Wallets",
+        btnText: isIndonesian ? "Salin Daftar Rekening" : "Copy Wallets",
+      },
+      {
+        stepNum: 4,
+        title: isIndonesian ? "Langkah 4: Tanggal & Catatan Keterangan" : "Step 4: Date & Notes",
+        desc: isIndonesian
+          ? "1. Tambah tindakan 'Tanggal Saat Ini' atau 'Minta Masukan' Tanggal (beri nama 'Tanggal').\n2. Tambah 'Minta Masukan' Teks dengan pertanyaan: 'Catatan tambahan?' (opsional).\n3. Tambah 'Enkode URL' untuk variabel Catatan tersebut (beri nama 'Catatan')."
+          : "1. Add 'Current Date' action or 'Ask for Input' Date (rename to 'Date').\n2. Add 'Ask for Input' Text with prompt: 'Any notes?' (optional).\n3. Add 'URL Encode' action for notes (rename to 'Notes').",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "Variabel terpisah ini akan dirangkai pada langkah berikutnya."
+          : "These variables will be chained into the final URL scheme in the next step.",
+      },
+      {
+        stepNum: 5,
+        title: isIndonesian ? "Langkah 5: Rangkai Tindakan Buka URL" : "Step 5: Assemble Full 'Open URLs' Scheme",
+        desc: isIndonesian
+          ? "Tambahkan tindakan 'Buka URL' di urutan paling akhir. Tempel templat di bawah, lalu ganti setiap token dalam tanda kurung siku dengan variabel biru yang sudah disiapkan di langkah sebelumnya:"
+          : "Add 'Open URLs' action at the end. Paste the template below, then replace each bracketed token with the corresponding blue variable you configured above:",
+        actionType: "copy",
+        copyText: isIndonesian
+          ? "trouvaille://add?category=[Kategori]&amount=[Nominal]&wallet=[Rekening]&date=[Tanggal]&note=[Catatan]&autosave=true"
+          : "trouvaille://add?category=[Category]&amount=[Amount]&wallet=[Wallet]&date=[Date]&note=[Notes]&autosave=true",
+        copyLabel: isIndonesian ? "Skema URL Lengkap" : "Full URL Scheme",
+        btnText: isIndonesian ? "Salin Skema URL Lengkap" : "Copy Full URL Scheme",
+      },
+    ],
   };
 
-  const copyWalletList = () => {
-    const list = wallets.map((w) => w.name).join("\n");
-    copyToClipboard(
-      list || "BCA\nMandiri\nGoPay\nTunai",
-      isIndonesian ? "Daftar Akun / Dompet" : "Wallet List",
-    );
+  const currentTabSlides = slides[activeTab] || slides.pindai;
+  const activeSlide = currentTabSlides[currentSlide] || currentTabSlides[0];
+
+  const handleNextSlide = () => {
+    if (currentSlide < currentTabSlides.length - 1) {
+      triggerHaptic("light");
+      setCurrentSlide((prev) => prev + 1);
+    }
   };
 
-  const instantSchemeTemplate = "trouvaille://add";
-  const smartNlpSchemeTemplate = isIndonesian
-    ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
-    : "trouvaille://add?text=[URL Encoded Text]&autosave=true";
-  const glassSchemeTemplate = isIndonesian
-    ? "trouvaille://add?nominal=[Nominal]&kategori=[Kategori]&rekening=[Rekening]&tanggal=[Tanggal]&catatan=[Teks Terenkode]&autosave=true"
-    : "trouvaille://add?amount=[Amount]&category=[Category]&wallet=[Wallet]&date=[Date]&note=[URL Encoded Text]&autosave=true";
+  const handlePrevSlide = () => {
+    if (currentSlide > 0) {
+      triggerHaptic("light");
+      setCurrentSlide((prev) => prev - 1);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.changedTouches[0].screenX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    touchEndXRef.current = e.changedTouches[0].screenX;
+    const diff = touchEndXRef.current - touchStartXRef.current;
+    if (Math.abs(diff) > 40) {
+      if (diff < 0) handleNextSlide();
+      else handlePrevSlide();
+    }
+  };
+
+  const tabs: { id: InternalTab; label: string; icon: React.ReactNode }[] = [
+    {
+      id: "pindai",
+      label: isIndonesian ? "Pindai" : "Scan",
+      icon: <ScanLine size={12} strokeWidth={2} />,
+    },
+    {
+      id: "notifikasi",
+      label: "Notif",
+      icon: <Bell size={12} strokeWidth={2} />,
+    },
+    {
+      id: "instan",
+      label: isIndonesian ? "Instan" : "Instant",
+      icon: <Zap size={12} strokeWidth={2} />,
+    },
+    {
+      id: "suara",
+      label: isIndonesian ? "Suara" : "Voice",
+      icon: <Mic size={12} strokeWidth={2} />,
+    },
+    {
+      id: "dialog",
+      label: "Dialog",
+      icon: <SlidersHorizontal size={12} strokeWidth={2} />,
+    },
+  ];
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-6 pb-14 space-y-6 max-w-lg mx-auto">
-        {/* Header */}
-        <div className="space-y-1.5 text-left">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.04] text-[11px] font-medium tracking-wide text-[var(--text-secondary)] mb-1">
-            <Smartphone size={13} strokeWidth={1.5} />
-            <span>
-              {isIndonesian
-                ? "Integrasi Ekosistem Apple iOS"
-                : "Apple iOS Ecosystem Integration"}
-            </span>
-          </div>
+      <div className="px-4 pt-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] max-w-[392px] mx-auto select-none font-sans">
+        
+        {/* Header Title with proper top clearance */}
+        <div className="text-center mt-1 mb-3.5">
+          <p
+            className="text-[10px] font-semibold tracking-wider uppercase mb-1"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            {isIndonesian ? "INTEGRASI APPLE IOS" : "APPLE IOS INTEGRATION"}
+          </p>
           <h3
-            className="text-xl font-semibold tracking-tight"
+            className="text-[17px] font-semibold tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
-            {isIndonesian
-              ? "Ketuk Belakang & Pintasan iOS"
-              : "Back Tap & iOS Shortcuts"}
+            {isIndonesian ? "Pencatatan Otomatis Pintasan" : "Automated Shortcuts Logging"}
           </h3>
-          <p
-            className="text-[13px] leading-relaxed font-normal"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            {isIndonesian
-              ? "Catat transaksi instan dengan mengetuk 2x bodi belakang iPhone, dialog kaca Dynamic Island, dikte suara, Tombol Aksi, atau otomatisasi Apple Pay."
-              : "Instantly record expenses by double-tapping the back of your iPhone, Dynamic Island frosted glass dialogs, voice dictation, Action Button, or Apple Pay automations."}
-          </p>
         </div>
 
-        {/* QUICK 1-TAP DOWNLOAD CARD */}
+        {/* Apple Segmented Control - Light & Dark adaptive */}
         <div
-          className="p-4 rounded-2xl border space-y-3.5"
+          className="w-full flex items-center gap-1 p-1 rounded-full mb-3.5 border transition-colors overflow-x-auto no-scrollbar"
           style={{
-            background: "var(--bg-elevated)",
-            borderColor: "var(--glass-border)",
+            background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+            borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
           }}
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5">
-                <Download
-                  size={14}
-                  strokeWidth={1.75}
-                  className="text-[var(--text-primary)]"
-                />
-                <h4
-                  className="text-[13px] font-semibold tracking-tight"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {isIndonesian
-                    ? "Unduh File Pintasan Siap Pakai (.shortcut)"
-                    : "Download Ready-to-Use Shortcut (.shortcut)"}
-                </h4>
-              </div>
-              <p
-                className="text-[11px] leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id)}
+                className="flex-1 min-w-[58px] py-1.5 px-2 rounded-full text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer whitespace-nowrap"
+                style={{
+                  background: isActive
+                    ? isDark
+                      ? "rgba(255, 255, 255, 0.14)"
+                      : "#ffffff"
+                    : "transparent",
+                  color: isActive
+                    ? "var(--text-primary)"
+                    : isDark
+                    ? "rgba(255, 255, 255, 0.45)"
+                    : "rgba(0, 0, 0, 0.45)",
+                  boxShadow: isActive
+                    ? isDark
+                      ? "0 2px 8px rgba(0,0,0,0.4), inset 0 0.5px 0 rgba(255,255,255,0.2)"
+                      : "0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)"
+                    : "none",
+                }}
               >
-                {isIndonesian
-                  ? "Unduh file pintasan resmi Trouvaille lalu buka di iPhone untuk langsung memasang seluruh urutan dialog kaca tanpa perlu menyusun tindakan manual satu per satu."
-                  : "Download the official Trouvaille shortcut file and open it on your iPhone to install the full glass dialog sequence without manual setup."}
-              </p>
-            </div>
-          </div>
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
-          <a
-            href="/shortcuts/Trouvaille_Glass_Dialog.shortcut"
-            download="Trouvaille_Glass_Dialog.shortcut"
-            className="w-full py-2.5 px-4 rounded-xl border border-[var(--glass-border)] bg-black/[0.05] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.14] text-[12px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
+        {/* 1. Apple Studio Stage (Luxury Phone Carousel - Light & Dark adaptive) */}
+        <div
+          className="relative w-full rounded-[26px] p-3.5 flex flex-col items-center justify-center mb-3 overflow-hidden border transition-all"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          style={{
+            touchAction: "pan-y",
+            background: isDark
+              ? "linear-gradient(180deg, #18181c 0%, #121215 50%, #0c0c0f 100%)"
+              : "linear-gradient(180deg, #f5f5f7 0%, #ebebef 50%, #e2e2e7 100%)",
+            borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)",
+            boxShadow: isDark
+              ? "inset 0 1px 1px rgba(255,255,255,0.1), 0 12px 32px rgba(0,0,0,0.6)"
+              : "inset 0 1px 0 rgba(255,255,255,0.8), 0 8px 24px rgba(0,0,0,0.06)",
+          }}
+        >
+          {/* Ambient Studio Light Reflection */}
+          <div
+            style={{
+              position: "absolute",
+              top: -50,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 240,
+              height: 130,
+              background: isDark
+                ? "radial-gradient(ellipse, rgba(255,255,255,0.06) 0%, transparent 70%)"
+                : "radial-gradient(ellipse, rgba(255,255,255,0.85) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* iPhone 16 Pro Mockup Chassis */}
+          <div
+            style={{
+              width: 204,
+              height: 380,
+              borderRadius: 40,
+              padding: 3,
+              background: "linear-gradient(150deg, #3a3a40 0%, #1a1a1d 35%, #18181b 65%, #34343a 100%)",
+              boxShadow: isDark
+                ? "0 16px 40px -10px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.15), 0 0 0 2px #09090c"
+                : "0 18px 38px -10px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.15), 0 0 0 2px #d4d4d8",
+              position: "relative",
+            }}
           >
-            <Download size={14} strokeWidth={1.75} />
-            <span>
-              {isIndonesian
-                ? "Unduh File Pintasan (.shortcut)"
-                : "Download Shortcut File (.shortcut)"}
-            </span>
-          </a>
+            {/* Flush Micro Side Buttons */}
+            <div style={{ position: "absolute", left: -2.5, top: 68, width: 2.5, height: 18, borderRadius: "2px 0 0 2px", background: "#2f2f35" }} />
+            <div style={{ position: "absolute", left: -2.5, top: 96, width: 2.5, height: 32, borderRadius: "2px 0 0 2px", background: "#2f2f35" }} />
+            <div style={{ position: "absolute", left: -2.5, top: 136, width: 2.5, height: 32, borderRadius: "2px 0 0 2px", background: "#2f2f35" }} />
+            <div style={{ position: "absolute", right: -2.5, top: 108, width: 2.5, height: 48, borderRadius: "0 2px 2px 0", background: "#2f2f35" }} />
 
-          {/* User Personal Token */}
-          {userToken && (
+            {/* OLED Screen Surface - With Strict Radial Hardware Mask to prevent any corner leak */}
             <div
-              className="p-3 rounded-xl border text-[11px] space-y-1.5"
               style={{
-                background: "var(--bg-base)",
-                borderColor: "var(--glass-border)",
+                width: "100%",
+                height: "100%",
+                borderRadius: 37,
+                background: "#000000",
+                overflow: "hidden",
+                position: "relative",
+                WebkitMaskImage: "-webkit-radial-gradient(white, black)",
+                maskImage: "radial-gradient(white, black)",
+                isolation: "isolate",
+                contain: "paint",
+                transform: "translateZ(0)",
               }}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
-                  <Key size={12} strokeWidth={1.75} />
-                  <span>
-                    {isIndonesian
-                      ? "Token Pengguna Pribadi Anda"
-                      : "Your Personal User Token"}
+              {/* Dynamic Island */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 72,
+                  height: 20,
+                  borderRadius: 999,
+                  background: "#000000",
+                  border: "0.5px solid rgba(255,255,255,0.08)",
+                  zIndex: 35,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0 6px",
+                }}
+              >
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#08080a" }} />
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#090e1c", border: "0.5px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 3, height: 3, borderRadius: "50%", background: "#020408" }} />
+                </div>
+              </div>
+
+              {/* iOS Native Status Bar */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 9,
+                  left: 0,
+                  right: 0,
+                  height: 18,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0 15px",
+                  zIndex: 30,
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: "rgba(255,255,255,0.92)",
+                }}
+              >
+                <span>09.33</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 8 }}>
+                    <div style={{ width: 1.5, height: 2.5, background: "white", borderRadius: 0.5 }} />
+                    <div style={{ width: 1.5, height: 4.5, background: "white", borderRadius: 0.5 }} />
+                    <div style={{ width: 1.5, height: 6.5, background: "white", borderRadius: 0.5 }} />
+                    <div style={{ width: 1.5, height: 8, background: "white", borderRadius: 0.5 }} />
+                  </div>
+                  <svg width="9" height="7" viewBox="0 0 24 24" fill="white">
+                    <path d="M1.3 5.1A19.5 19.5 0 0 1 22.7 5.1M5.5 9.4A13 13 0 0 1 18.5 9.4M9.7 13.7A6.5 6.5 0 0 1 14.3 13.7" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                    <circle cx="12" cy="18" r="1.5" fill="white" />
+                  </svg>
+                  <div style={{ width: 16, height: 8.5, borderRadius: 2.5, border: "1px solid rgba(255,255,255,0.45)", padding: 1, display: "flex" }}>
+                    <div style={{ width: "75%", height: "100%", background: "#ffffff", borderRadius: 1 }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* ================= SLIDE SCREENS ================= */}
+
+              {/* --- TAB 1: PINDAI LAYAR (SCREEN SCANNER OCR) --- */}
+
+              {/* PINDAI - SLIDE 0: PAYMENT RECEIPT SHOWCASE + BACK TAP OCR */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "36px 9px 12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  background: "radial-gradient(circle at 50% 20%, #1e1b2e 0%, #09090d 80%)",
+                  opacity: activeTab === "pindai" && currentSlide === 0 ? 1 : 0,
+                  pointerEvents: activeTab === "pindai" && currentSlide === 0 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "pindai" && currentSlide === 0 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                {/* Back Tap Toast Capsule */}
+                <div
+                  style={{
+                    padding: "4.5px 8px",
+                    borderRadius: 12,
+                    background: "rgba(255,255,255,0.08)",
+                    backdropFilter: "blur(16px)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ width: 13, height: 13, borderRadius: "50%", background: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Zap size={7.5} className="text-black fill-black" />
+                    </div>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Ketuk 2x Belakang Terdeteksi" : "Back Tap Detected"}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>Live Text OCR</span>
+                </div>
+
+                {/* Realistic Payment Receipt Card */}
+                <div
+                  style={{
+                    background: "rgba(24,24,30,0.85)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 16,
+                    padding: "10px 10px 8px",
+                    textAlign: "center",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.1)", margin: "0 auto 6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Coffee size={14} className="text-white" />
+                  </div>
+                  <p style={{ fontSize: 9.5, fontWeight: 700, color: "white", marginBottom: 1 }}>
+                    Kopi Kenangan
+                  </p>
+                  <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)", marginBottom: 6 }}>
+                    {isIndonesian ? "Pembayaran QRIS Berhasil" : "QRIS Payment Successful"}
+                  </p>
+
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#ffffff", letterSpacing: -0.5, marginBottom: 6 }}>
+                    Rp 75.000
+                  </div>
+
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 5, display: "flex", flexDirection: "column", gap: 2.5, textAlign: "left", fontSize: 6.5 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "rgba(255,255,255,0.4)" }}>{isIndonesian ? "Waktu" : "Time"}</span>
+                      <span style={{ color: "white", fontWeight: 600 }}>09:33</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "rgba(255,255,255,0.4)" }}>{isIndonesian ? "Rekening" : "Account"}</span>
+                      <span style={{ color: "white", fontWeight: 600 }}>BCA - 8820****</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trouvaille Auto-Save Toast Banner */}
+                <div
+                  style={{
+                    background: "rgba(18,18,22,0.96)",
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    borderRadius: 14,
+                    padding: "6px 8px",
+                    boxShadow: "0 6px 20px rgba(0,0,0,0.6)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                    <Sparkles size={8} className="text-white" />
+                    <span style={{ fontSize: 7.5, fontWeight: 700, color: "white" }}>
+                      Trouvaille • {isIndonesian ? "Tercatat Otomatis ✓" : "Auto Logged ✓"}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.6)" }}>
+                    Rp 75.000 • {isIndonesian ? "Makanan • BCA" : "Food • BCA"}
+                  </p>
+                </div>
+              </div>
+
+              {/* PINDAI - SLIDE 1: SCREENSHOT & LIVE TEXT OCR ACTIONS */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "pindai" && currentSlide === 1 ? 1 : 0,
+                  pointerEvents: activeTab === "pindai" && currentSlide === 1 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "pindai" && currentSlide === 1 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={10} strokeWidth={2.5} />
+                  </div>
+                  <div style={{ width: 16, height: 16, borderRadius: 4, background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <ScanLine size={9} className="text-white" />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Pindai Resi" : "Scan Receipt"}
+                  </span>
+                  <div style={{ marginLeft: "auto", width: 14, height: 14, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "rgba(255,255,255,0.6)" }}>
+                    •••
+                  </div>
+                </div>
+
+                {/* Action 1: Take Screenshot */}
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Camera size={8} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>Take Screenshot</span>
+                    <span style={{ marginLeft: "auto", fontSize: 6.5, color: "rgba(255,255,255,0.4)" }}>➔ Screenshot</span>
+                  </div>
+                </div>
+
+                {/* Connection Line */}
+                <div style={{ width: 1.5, height: 6, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                {/* Action 2: Extract Text from Image */}
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "7px 8px" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3 }}>
+                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <FileText size={8} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Extract Text from</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 4px", fontSize: 7, fontWeight: 600 }}>
+                      Screenshot
+                    </span>
+                  </div>
+                </div>
+
+                {/* Shortcuts Bottom Search Dock */}
+                <div style={{ marginTop: "auto", background: "rgba(28,28,32,0.95)", borderRadius: 18, padding: "6px 9px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: 8 }}>
+                  <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 999, padding: "3px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>Search Actions</span>
+                    <Search size={8} strokeWidth={2} className="text-white/45" />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-around", fontSize: 8, color: "rgba(255,255,255,0.65)" }}>
+                    <RotateCcw size={9} strokeWidth={2} />
+                    <span style={{ transform: "scaleX(-1)", display: "inline-block" }}><RotateCcw size={9} strokeWidth={2} /></span>
+                    <span style={{ fontSize: 8 }}>ⓘ</span>
+                    <Play size={9} strokeWidth={2.5} className="text-[#007aff] fill-[#007aff]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* PINDAI - SLIDE 2: URL ENCODE & OPEN URLS */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "pindai" && currentSlide === 2 ? 1 : 0,
+                  pointerEvents: activeTab === "pindai" && currentSlide === 2 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "pindai" && currentSlide === 2 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={10} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Pindai Resi" : "Scan Receipt"}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    copyToClipboard(
-                      userToken,
-                      isIndonesian ? "Token Pengguna" : "User Token",
-                    )
-                  }
-                  className="py-1 px-2.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[10px] font-semibold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer transition-colors"
+
+                {/* Action 3: URL Encode */}
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3.5 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <LinkIcon size={7} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>URL Encode</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 4px", fontSize: 7, fontWeight: 600 }}>
+                      Text
+                    </span>
+                  </div>
+                </div>
+
+                {/* Connection Line */}
+                <div style={{ width: 1.5, height: 6, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                {/* Action 4: Open URLs */}
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 3 }}>
+                    <div style={{ width: 13, height: 13, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ExternalLink size={7} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Open</span>
+                  </div>
+                  <div style={{ background: "#18181a", borderRadius: 6, padding: "4px 6px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
+                    <span style={{ color: "#2997ff" }}>trouvaille://add?text=</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 3, padding: "0 3px" }}>
+                      URL Encoded Text
+                    </span>
+                    <span style={{ color: "#2997ff" }}>&autosave=true</span>
+                  </div>
+                </div>
+
+                {/* Shortcuts Bottom Search Dock */}
+                <div style={{ marginTop: "auto", background: "rgba(28,28,32,0.95)", borderRadius: 18, padding: "6px 9px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: 8 }}>
+                  <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 999, padding: "3px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>Search Actions</span>
+                    <Search size={8} strokeWidth={2} className="text-white/45" />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-around", fontSize: 8, color: "rgba(255,255,255,0.65)" }}>
+                    <RotateCcw size={9} strokeWidth={2} />
+                    <span style={{ transform: "scaleX(-1)", display: "inline-block" }}><RotateCcw size={9} strokeWidth={2} /></span>
+                    <span style={{ fontSize: 8 }}>ⓘ</span>
+                    <Play size={9} strokeWidth={2.5} className="text-[#007aff] fill-[#007aff]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* PINDAI - SLIDE 3: SETTINGS LINK TO BACK TAP */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "pindai" && currentSlide === 3 ? 1 : 0,
+                  pointerEvents: activeTab === "pindai" && currentSlide === 3 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "pindai" && currentSlide === 3 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 4 }}>
+                  <span style={{ fontSize: 8, color: "#007aff", fontWeight: 500 }}>
+                    {isIndonesian ? "‹ Sentuh" : "‹ Touch"}
+                  </span>
+                  <span style={{ fontSize: 8.5, fontWeight: 700, color: "white", marginLeft: "auto", marginRight: "auto" }}>
+                    {isIndonesian ? "Ketuk Dua Kali" : "Double Tap"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#1c1c1e", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ padding: "5px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 6.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
+                    {isIndonesian ? "Sistem" : "System"}
+                  </div>
+                  <div style={{ padding: "5px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 7.5, color: "rgba(255,255,255,0.7)" }}>
+                    {isIndonesian ? "Jepretan Layar" : "Screenshot"}
+                  </div>
+                  <div style={{ padding: "5px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 6.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginTop: 2 }}>
+                    Shortcuts
+                  </div>
+                  <div style={{ padding: "6px 8px", background: "rgba(0,122,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: "#60a5fa" }}>
+                      {isIndonesian ? "Pindai Resi" : "Scan Receipt"}
+                    </span>
+                    <Check size={9} strokeWidth={3} className="text-[#007aff]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* --- TAB 2: NOTIFIKASI BANK (NOTIFICATION READER) --- */}
+
+              {/* NOTIFIKASI - SLIDE 0: LOCK SCREEN PUSH + AUTO LOG SHOWCASE */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "36px 9px 12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  background: "radial-gradient(circle at 50% 25%, #182236 0%, #080a0f 85%)",
+                  opacity: activeTab === "notifikasi" && currentSlide === 0 ? 1 : 0,
+                  pointerEvents: activeTab === "notifikasi" && currentSlide === 0 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "notifikasi" && currentSlide === 0 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                {/* Big Lockscreen Clock */}
+                <div style={{ textAlign: "center", marginTop: 2 }}>
+                  <p style={{ fontSize: 7, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>
+                    {isIndonesian ? "Kamis, 27 September" : "Thursday, September 27"}
+                  </p>
+                  <p style={{ fontSize: 32, fontWeight: 300, color: "white", letterSpacing: -1, lineHeight: 1.1 }}>
+                    09:33
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+                  {/* Bank Notification Banner */}
+                  <div
+                    style={{
+                      background: "rgba(28,28,34,0.92)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: 14,
+                      padding: "7px 8px",
+                      backdropFilter: "blur(20px)",
+                      boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <div style={{ width: 13, height: 13, borderRadius: 3, background: "#0056b3", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ fontSize: 6.5, fontWeight: 800, color: "white" }}>B</span>
+                        </div>
+                        <span style={{ fontSize: 7.5, fontWeight: 700, color: "white" }}>BCA Mobile</span>
+                      </div>
+                      <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>
+                        {isIndonesian ? "Sekarang" : "Now"}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: 7, color: "rgba(255,255,255,0.85)", lineHeight: 1.3 }}>
+                      {isIndonesian
+                        ? "Pembayaran QRIS Rp 45.000 di RM Padang Sederhana berhasil."
+                        : "QRIS Payment Rp 45,000 at RM Sederhana successful."}
+                    </p>
+                  </div>
+
+                  {/* Trouvaille Auto-Log Capsule */}
+                  <div
+                    style={{
+                      background: "rgba(18,18,22,0.96)",
+                      border: "1px solid rgba(255,255,255,0.16)",
+                      borderRadius: 13,
+                      padding: "6px 8px",
+                      boxShadow: "0 4px 14px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 3.5, marginBottom: 2 }}>
+                      <Sparkles size={8} className="text-white" />
+                      <span style={{ fontSize: 7.5, fontWeight: 700, color: "white" }}>
+                        Trouvaille • {isIndonesian ? "Notifikasi Terproses ✓" : "Notification Processed ✓"}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.6)" }}>
+                      {isIndonesian ? "Tercatat: Rp 45.000 • Makanan • BCA" : "Logged: Rp 45,000 • Food • BCA"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* NOTIFIKASI - SLIDE 1: AUTOMATIONS TRIGGER */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "notifikasi" && currentSlide === 1 ? 1 : 0,
+                  pointerEvents: activeTab === "notifikasi" && currentSlide === 1 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "notifikasi" && currentSlide === 1 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 4 }}>
+                  <span style={{ fontSize: 8, color: "#007aff", fontWeight: 500 }}>‹ Automasi</span>
+                  <span style={{ fontSize: 8.5, fontWeight: 700, color: "white", marginLeft: "auto", marginRight: "auto" }}>
+                    {isIndonesian ? "Automasi Baru" : "New Automation"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", padding: "7px 8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 5, background: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Bell size={10} className="text-white" />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
+                        {isIndonesian ? "Ketika Menerima Notifikasi" : "When Receiving Notification"}
+                      </p>
+                      <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>
+                        BCA, Livin, GoPay
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ background: "#1c1c1e", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", padding: "6px 8px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 7.5, color: "white", fontWeight: 600 }}>
+                      {isIndonesian ? "Jalankan Segera" : "Run Immediately"}
+                    </span>
+                    <div style={{ width: 22, height: 12, borderRadius: 999, background: "#34c759", display: "flex", alignItems: "center", justifyContent: "flex-end", padding: 1.5 }}>
+                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: "white" }} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.6)" }}>
+                      {isIndonesian ? "Beri Tahu Saat Dijalankan" : "Notify When Run"}
+                    </span>
+                    <div style={{ width: 22, height: 12, borderRadius: 999, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", padding: 1.5 }}>
+                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: "white" }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* NOTIFIKASI - SLIDE 2: AUTOMATION ACTIONS */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "notifikasi" && currentSlide === 2 ? 1 : 0,
+                  pointerEvents: activeTab === "notifikasi" && currentSlide === 2 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "notifikasi" && currentSlide === 2 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={10} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Tindakan Automasi" : "Automation Actions"}
+                  </span>
+                </div>
+
+                {/* Action 1: URL Encode */}
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3.5 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <LinkIcon size={7} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>URL Encode</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 4px", fontSize: 7, fontWeight: 600 }}>
+                      Shortcut Input
+                    </span>
+                  </div>
+                </div>
+
+                {/* Connection Line */}
+                <div style={{ width: 1.5, height: 6, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                {/* Action 2: Open URLs */}
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 3 }}>
+                    <div style={{ width: 13, height: 13, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ExternalLink size={7} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Open</span>
+                  </div>
+                  <div style={{ background: "#18181a", borderRadius: 6, padding: "4px 6px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
+                    <span style={{ color: "#2997ff" }}>trouvaille://add?text=</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 3, padding: "0 3px" }}>
+                      URL Encoded Text
+                    </span>
+                    <span style={{ color: "#2997ff" }}>&autosave=true</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* NOTIFIKASI - SLIDE 3: ACTIVE SILENT AUTOMATION */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "notifikasi" && currentSlide === 3 ? 1 : 0,
+                  pointerEvents: activeTab === "notifikasi" && currentSlide === 3 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "notifikasi" && currentSlide === 3 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 4 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>Automasi</span>
+                  <span style={{ fontSize: 11, color: "#007aff", fontWeight: 600 }}>+</span>
+                </div>
+
+                <div style={{ background: "#1c1c1e", borderRadius: 13, border: "1px solid rgba(255,255,255,0.08)", padding: "8px 9px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 5, background: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Bell size={10} className="text-white" />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
+                        {isIndonesian ? "Saat Notifikasi Bank Masuk" : "When Bank Notification Arrives"}
+                      </p>
+                      <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>
+                        Buka URL di Trouvaille
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 999, background: "rgba(52,199,89,0.15)", border: "0.5px solid rgba(52,199,89,0.3)" }}>
+                    <Check size={7} className="text-[#34c759]" />
+                    <span style={{ fontSize: 6.5, fontWeight: 600, color: "#34c759" }}>
+                      {isIndonesian ? "Jalankan Segera • Aktif" : "Run Immediately • Active"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* --- TAB 3: INSTAN (QUICK ADD KEYPAD SHEET) --- */}
+
+              {/* INSTAN - SLIDE 0: QUICK ADD SHEET SHOWCASE */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "36px 0 0",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "flex-end",
+                  height: "100%",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  background: "radial-gradient(circle at 50% 25%, #1d1d24 0%, #08080a 75%)",
+                  opacity: activeTab === "instan" && currentSlide === 0 ? 1 : 0,
+                  pointerEvents: activeTab === "instan" && currentSlide === 0 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "instan" && currentSlide === 0 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                {/* Back Tap Capsule Toast */}
+                <div
+                  style={{
+                    margin: "0 14px 6px",
+                    padding: "4.5px 8px",
+                    borderRadius: 12,
+                    background: "rgba(255,255,255,0.07)",
+                    backdropFilter: "blur(16px)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
                 >
-                  {copiedKey ===
-                  (isIndonesian ? "Token Pengguna" : "User Token") ? (
-                    <Check size={11} className="text-[var(--text-primary)]" />
-                  ) : (
-                    <Copy size={11} />
-                  )}
-                  <span>{isIndonesian ? "Salin Token" : "Copy Token"}</span>
-                </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ width: 13, height: 13, borderRadius: "50%", background: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Zap size={7.5} className="text-black fill-black" />
+                    </div>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Ketuk 2x Belakang Terdeteksi" : "Back Tap Detected"}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>Trouvaille</span>
+                </div>
+
+                {/* Bottom Keypad Sheet */}
+                <div
+                  style={{
+                    background: "rgba(18,18,22,0.98)",
+                    borderTop: "1px solid rgba(255,255,255,0.14)",
+                    borderRadius: "18px 18px 34px 34px",
+                    padding: "5px 12px 14px",
+                    boxShadow: "0 -8px 25px rgba(0,0,0,0.8)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div style={{ width: 20, height: 2, background: "rgba(255,255,255,0.25)", borderRadius: 999, margin: "0 auto 4px" }} />
+                  
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                    <span style={{ fontSize: 6.5, fontWeight: 700, letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
+                      {isIndonesian ? "PENGELUARAN" : "EXPENSE"}
+                    </span>
+                    <span style={{ fontSize: 6.5, fontWeight: 600, color: "white", background: "rgba(255,255,255,0.1)", padding: "1px 4px", borderRadius: 4 }}>
+                      Cash
+                    </span>
+                  </div>
+
+                  <div style={{ marginBottom: 3, textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
+                      <span style={{ fontSize: 8.5, fontWeight: 500, color: "rgba(255,255,255,0.4)" }}>Rp</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: "#ffffff", letterSpacing: "-0.5px" }}>50.000</span>
+                      <span style={{ width: 1.5, height: 12, background: "#ffffff", display: "inline-block", marginLeft: 2 }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
+                    <span style={{ fontSize: 6.5, padding: "1.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.25)", color: "white", fontWeight: 600 }}>
+                      Makanan
+                    </span>
+                    <span style={{ fontSize: 6.5, padding: "1.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.45)" }}>
+                      Transport
+                    </span>
+                    <span style={{ fontSize: 6.5, padding: "1.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.45)" }}>
+                      Kopi
+                    </span>
+                  </div>
+
+                  {/* Compact keypad */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", justifyItems: "center", gap: "3px 4px", marginBottom: 5 }}>
+                    {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((k) => (
+                      <div
+                        key={k}
+                        style={{
+                          width: 25,
+                          height: 25,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.08)",
+                          border: "1px solid rgba(255,255,255,0.09)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: k === "." ? 11 : k === "⌫" ? 8 : 10,
+                          fontWeight: 600,
+                          color: "#ffffff",
+                        }}
+                      >
+                        {k}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ background: "#ffffff", color: "#000000", borderRadius: 7, padding: "4px 0", textAlign: "center", fontSize: 7.5, fontWeight: 700, marginBottom: 3 }}>
+                    {isIndonesian ? "Simpan Transaksi" : "Save Transaction"}
+                  </div>
+                </div>
               </div>
-              <div className="font-mono text-[10px] text-[var(--text-secondary)] truncate select-all">
-                {userToken}
+
+              {/* INSTAN - SLIDE 1: SHORTCUTS 'OPEN URL' SCREEN */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "instan" && currentSlide === 1 ? 1 : 0,
+                  pointerEvents: activeTab === "instan" && currentSlide === 1 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "instan" && currentSlide === 1 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 9 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={10} strokeWidth={2.5} />
+                  </div>
+                  <div style={{ width: 16, height: 16, borderRadius: 4, background: "#3d7af5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Sparkles size={9} className="text-white fill-white" />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white", letterSpacing: -0.2 }}>
+                    {isIndonesian ? "Catat Pengeluaran" : "Log Expense"}
+                  </span>
+                  <div style={{ marginLeft: "auto", width: 14, height: 14, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "rgba(255,255,255,0.6)" }}>
+                    •••
+                  </div>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "7px 9px", boxShadow: "0 3px 10px rgba(0,0,0,0.35)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ExternalLink size={9} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 8.5, fontWeight: 600, color: "white" }}>Open</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
+                      trouvaille://add
+                    </span>
+                    <div style={{ marginLeft: "auto", width: 13, height: 13, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "rgba(255,255,255,0.5)" }}>
+                      ✕
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "auto", background: "rgba(28,28,32,0.95)", borderRadius: 18, padding: "6px 9px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: 10 }}>
+                  <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 999, padding: "3px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>Search Actions</span>
+                    <Search size={8} strokeWidth={2} className="text-white/45" />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-around", fontSize: 8, color: "rgba(255,255,255,0.65)" }}>
+                    <RotateCcw size={9} strokeWidth={2} />
+                    <span style={{ transform: "scaleX(-1)", display: "inline-block" }}><RotateCcw size={9} strokeWidth={2} /></span>
+                    <span style={{ fontSize: 8 }}>ⓘ</span>
+                    <Play size={9} strokeWidth={2.5} className="text-[#007aff] fill-[#007aff]" />
+                  </div>
+                </div>
               </div>
-              <p className="text-[10px] text-[var(--text-tertiary)] leading-normal">
-                {isIndonesian
-                  ? "Digunakan untuk otentikasi penyimpanan latar belakang agar transaksi tersimpan hening tanpa membuka aplikasi."
-                  : "Used for silent background authentication so transactions save without opening the app."}
-              </p>
+
+              {/* INSTAN - SLIDE 2: SETTINGS BACK TAP SCREEN */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "instan" && currentSlide === 2 ? 1 : 0,
+                  pointerEvents: activeTab === "instan" && currentSlide === 2 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "instan" && currentSlide === 2 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 4 }}>
+                  <span style={{ fontSize: 8, color: "#007aff", fontWeight: 500 }}>
+                    {isIndonesian ? "‹ Sentuh" : "‹ Touch"}
+                  </span>
+                  <span style={{ fontSize: 8.5, fontWeight: 700, color: "white", marginLeft: "auto", marginRight: "auto" }}>
+                    {isIndonesian ? "Ketuk Dua Kali" : "Double Tap"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#1c1c1e", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ padding: "5px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 6.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
+                    {isIndonesian ? "Sistem" : "System"}
+                  </div>
+                  <div style={{ padding: "5px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 7.5, color: "rgba(255,255,255,0.7)" }}>
+                    {isIndonesian ? "Jepretan Layar" : "Screenshot"}
+                  </div>
+                  <div style={{ padding: "5px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 6.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginTop: 3 }}>
+                    Shortcuts
+                  </div>
+                  <div style={{ padding: "6px 8px", background: "rgba(0,122,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: "#60a5fa" }}>
+                      {isIndonesian ? "Catat Pengeluaran" : "Log Expense"}
+                    </span>
+                    <Check size={9} strokeWidth={3} className="text-[#007aff]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* --- TAB 4: SUARA (SIRI NLP AI) --- */}
+
+              {/* SUARA - SLIDE 0: SIRI NLP SHOWCASE */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "36px 9px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "suara" && currentSlide === 0 ? 1 : 0,
+                  pointerEvents: activeTab === "suara" && currentSlide === 0 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "suara" && currentSlide === 0 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ background: "rgba(28,28,34,0.95)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "7px 9px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
+                    <Mic size={8} strokeWidth={2.5} className="text-[#2997ff]" />
+                    <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", fontWeight: 700 }}>
+                      Siri
+                    </p>
+                  </div>
+                  <p style={{ fontSize: 8.5, fontStyle: "italic", color: "white", fontWeight: 500 }}>
+                    "{isIndonesian ? "Kopi susu 25 ribu bayar pakai BCA" : "Iced coffee 25 thousand paid with BCA"}"
+                  </p>
+                </div>
+
+                <div style={{ background: "rgba(18,18,22,0.96)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: "white", display: "block", marginBottom: 4 }}>
+                    Trouvaille NLP
+                  </span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "2.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.04)", fontSize: 7 }}>
+                      <span style={{ color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Nominal" : "Amount"}</span>
+                      <span style={{ fontWeight: 700, color: "white" }}>Rp 25.000</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "2.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.04)", fontSize: 7 }}>
+                      <span style={{ color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Kategori" : "Category"}</span>
+                      <span style={{ fontWeight: 700, color: "white" }}>Makanan</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "2.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.04)", fontSize: 7 }}>
+                      <span style={{ color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Rekening" : "Wallet"}</span>
+                      <span style={{ fontWeight: 700, color: "white" }}>BCA</span>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 5, padding: 3.5, borderRadius: 6, background: "rgba(255,255,255,0.1)", textAlign: "center", fontSize: 7, fontWeight: 600, color: "white" }}>
+                    {isIndonesian ? "Tersimpan Otomatis ✓" : "Saved Automatically ✓"}
+                  </div>
+                </div>
+              </div>
+
+              {/* SUARA - SLIDE 1: ASK FOR TEXT */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "suara" && currentSlide === 1 ? 1 : 0,
+                  pointerEvents: activeTab === "suara" && currentSlide === 1 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "suara" && currentSlide === 1 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 9 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={10} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Catat Transaksi" : "Log Transaction"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "7px 9px", boxShadow: "0 3px 10px rgba(0,0,0,0.35)" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3.5 }}>
+                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <MessageSquare size={8} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>Ask for</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
+                      Text
+                    </span>
+                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>with</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
+                      {isIndonesian ? "Catat apa?" : "What to log?"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SUARA - SLIDE 2: URL ENCODE */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "suara" && currentSlide === 2 ? 1 : 0,
+                  pointerEvents: activeTab === "suara" && currentSlide === 2 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "suara" && currentSlide === 2 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={10} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Catat Transaksi" : "Log Transaction"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 8px", opacity: 0.5 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 7.5 }}>
+                    <div style={{ width: 13, height: 13, borderRadius: 3, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <MessageSquare size={7} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span>Ask for Text</span>
+                  </div>
+                </div>
+
+                <div style={{ width: 1.5, height: 7, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "7px 9px", boxShadow: "0 3px 10px rgba(0,0,0,0.35)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <LinkIcon size={8} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>URL Encode</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
+                      Provided Input
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SUARA - SLIDE 3: OPEN URL */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "suara" && currentSlide === 3 ? 1 : 0,
+                  pointerEvents: activeTab === "suara" && currentSlide === 3 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "suara" && currentSlide === 3 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={10} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Catat Transaksi" : "Log Transaction"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "7px 9px", boxShadow: "0 3px 10px rgba(0,0,0,0.35)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ExternalLink size={8} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>Open</span>
+                  </div>
+                  <div style={{ background: "#18181a", borderRadius: 7, padding: "5px 6px", fontSize: 7.5, lineHeight: 1.5, wordBreak: "break-all" }}>
+                    <span style={{ color: "#2997ff" }}>trouvaille://add?text=</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1px 4px", fontSize: 7 }}>
+                      URL Encoded Text
+                    </span>
+                    <span style={{ color: "#2997ff" }}>&autosave=true</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* --- TAB 5: DIALOG POP-UPS ASLI IOS --- */}
+
+              {/* DIALOG - SLIDE 0: NATIVE DIALOG SHOWCASE */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "36px 9px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "dialog" && currentSlide === 0 ? 1 : 0,
+                  pointerEvents: activeTab === "dialog" && currentSlide === 0 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "dialog" && currentSlide === 0 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ background: "rgba(36,36,42,0.96)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 15, padding: 9 }}>
+                  <p style={{ fontSize: 9.5, fontWeight: 700, color: "white", marginBottom: 2 }}>
+                    {isIndonesian ? "Berapa nominalnya?" : "How much was it?"}
+                  </p>
+                  <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.4)", marginBottom: 5 }}>
+                    {isIndonesian ? "Minta Masukan • Angka" : "Ask for Input • Number"}
+                  </p>
+                  <div style={{ background: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 6, padding: "4px 7px", fontSize: 10, fontWeight: 700, color: "white", marginBottom: 6 }}>
+                    50000
+                  </div>
+                  <div style={{ display: "flex", gap: 3.5 }}>
+                    <div style={{ flex: 1, padding: "3.5px 0", borderRadius: 5, background: "rgba(255,255,255,0.08)", fontSize: 7.5, fontWeight: 600, color: "rgba(255,255,255,0.6)", textAlign: "center" }}>
+                      {isIndonesian ? "Batal" : "Cancel"}
+                    </div>
+                    <div style={{ flex: 1, padding: "3.5px 0", borderRadius: 5, background: "white", fontSize: 7.5, fontWeight: 700, color: "black", textAlign: "center" }}>
+                      {isIndonesian ? "Selesai" : "Done"}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ background: "rgba(24,24,28,0.92)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "6px 8px", marginBottom: 4 }}>
+                  <p style={{ fontSize: 7.5, fontWeight: 700, color: "white" }}>
+                    Trouvaille • {isIndonesian ? "Berhasil Disimpan" : "Saved Successfully"}
+                  </p>
+                  <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>
+                    {isIndonesian ? "Rp 50.000 tersimpan hening" : "Rp 50,000 silently logged"}
+                  </p>
+                </div>
+              </div>
+
+              {/* DIALOG - SLIDE 1: NOMINAL */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "dialog" && currentSlide === 1 ? 1 : 0,
+                  pointerEvents: activeTab === "dialog" && currentSlide === 1 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "dialog" && currentSlide === 1 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 9 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={10} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>Trouvaille Dialog</span>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "7px 9px", boxShadow: "0 3px 10px rgba(0,0,0,0.35)" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3.5, fontSize: 8 }}>
+                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <MessageSquare size={7} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ color: "white", fontWeight: 600 }}>Ask for</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
+                      Number
+                    </span>
+                    <span style={{ color: "white", fontWeight: 600 }}>with</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
+                      {isIndonesian ? "Berapa nominalnya?" : "How much was it?"}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 6.5, color: "#60a5fa", marginTop: 4, fontWeight: 600 }}>
+                    ➔ Rename: <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 4px", fontSize: 6.5 }}>Nominal</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* DIALOG - SLIDE 2: KATEGORI */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "dialog" && currentSlide === 2 ? 1 : 0,
+                  pointerEvents: activeTab === "dialog" && currentSlide === 2 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "dialog" && currentSlide === 2 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={9} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Pilihan Kategori" : "Categories"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "5px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7.5, marginBottom: 2 }}>
+                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <FileText size={6} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ color: "white", fontWeight: 600 }}>Text</span>
+                  </div>
+                  <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.7)", lineHeight: 1.2 }}>
+                    {isIndonesian ? "Makanan\nTransport\nBelanja..." : "Food\nTransport\nShopping..."}
+                  </p>
+                </div>
+
+                <div style={{ width: 1.5, height: 7, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "4px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7 }}>
+                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Scissors size={6} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ color: "white" }}>Split</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>Text</span>
+                    <span style={{ color: "white" }}>by</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>New Lines</span>
+                  </div>
+                </div>
+
+                <div style={{ width: 1.5, height: 7, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "4px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7 }}>
+                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <List size={6} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ color: "white" }}>Choose from</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>
+                      {isIndonesian ? "Kategori" : "Category"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DIALOG - SLIDE 3: REKENING */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "dialog" && currentSlide === 3 ? 1 : 0,
+                  pointerEvents: activeTab === "dialog" && currentSlide === 3 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "dialog" && currentSlide === 3 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={9} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Pilihan Rekening" : "Wallets"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "5px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7.5, marginBottom: 2 }}>
+                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <FileText size={6} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ color: "white", fontWeight: 600 }}>Text</span>
+                  </div>
+                  <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.7)", lineHeight: 1.2 }}>
+                    {isIndonesian ? "Cash\nBCA\nMandiri..." : "Cash\nChecking\nCredit Card..."}
+                  </p>
+                </div>
+
+                <div style={{ width: 1.5, height: 7, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "4px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7 }}>
+                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <List size={6} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ color: "white" }}>Choose from</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>
+                      {isIndonesian ? "Rekening" : "Wallet"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DIALOG - SLIDE 4: TANGGAL & CATATAN */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "dialog" && currentSlide === 4 ? 1 : 0,
+                  pointerEvents: activeTab === "dialog" && currentSlide === 4 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "dialog" && currentSlide === 4 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 7 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={9} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Tanggal & Catatan" : "Date & Notes"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3, fontSize: 7.5 }}>
+                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Calendar size={6} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ color: "white" }}>Current Date</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>
+                      {isIndonesian ? "Tanggal" : "Date"}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ width: 1.5, height: 7, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3, fontSize: 7.5 }}>
+                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <MessageSquare size={6} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ color: "white" }}>Ask for Text</span>
+                    <span style={{ color: "white", opacity: 0.6 }}>
+                      {isIndonesian ? "(Catatan)" : "(Notes)"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DIALOG - SLIDE 5: URL SCHEME LENGKAP */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "dialog" && currentSlide === 5 ? 1 : 0,
+                  pointerEvents: activeTab === "dialog" && currentSlide === 5 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "dialog" && currentSlide === 5 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 7 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={9} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Buka URL Skema" : "Open URLs Scheme"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 3 }}>
+                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ExternalLink size={6} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Open</span>
+                    <span style={{ fontSize: 7, color: "#2997ff" }}>trouvaille://add?</span>
+                  </div>
+                  
+                  <div style={{ background: "#18181a", borderRadius: 5, padding: "4px 5px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
+                    <span style={{ color: "#2997ff" }}>category=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Kategori" : "Category"}</span>
+                    <span style={{ color: "#2997ff" }}>&amount=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>Nominal</span>
+                    <span style={{ color: "#2997ff" }}>&wallet=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Rekening" : "Wallet"}</span>
+                    <span style={{ color: "#2997ff" }}>&date=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Tanggal" : "Date"}</span>
+                    <span style={{ color: "#2997ff" }}>&note=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Catatan" : "Notes"}</span>
+                    <span style={{ color: "#2997ff" }}>&autosave=true</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* iOS Home Indicator Bar */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 5,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 60,
+                  height: 3,
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.35)",
+                  zIndex: 40,
+                }}
+              />
             </div>
+          </div>
+        </div>
+
+        {/* 2. Minimalist Apple Pagination Dots - Light & Dark adaptive */}
+        <div className="flex items-center justify-center gap-1.5 mb-3">
+          {currentTabSlides.map((_, idx) => {
+            const isActive = idx === currentSlide;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setCurrentSlide(idx);
+                }}
+                className="h-1.5 rounded-full transition-all cursor-pointer"
+                style={{
+                  width: isActive ? 20 : 6,
+                  background: isActive
+                    ? "var(--text-primary)"
+                    : isDark
+                    ? "rgba(255, 255, 255, 0.2)"
+                    : "rgba(0, 0, 0, 0.18)",
+                  boxShadow: isActive
+                    ? isDark
+                      ? "0 0 10px rgba(255,255,255,0.45)"
+                      : "0 1px 4px rgba(0,0,0,0.2)"
+                    : "none",
+                }}
+                aria-label={`Slide ${idx + 1}`}
+              />
+            );
+          })}
+        </div>
+
+        {/* 3. Focused Step Card (Monveo-Style Apple Luxury - Light & Dark adaptive) */}
+        <div
+          className="w-full rounded-[22px] p-4 mb-3 border transition-colors"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          style={{
+            background: isDark ? "rgba(20, 20, 24, 0.9)" : "var(--bg-elevated)",
+            borderColor: "var(--glass-border)",
+            boxShadow: isDark ? "0 8px 24px rgba(0,0,0,0.4)" : "0 4px 16px rgba(0,0,0,0.04)",
+          }}
+        >
+          <div className="flex items-start gap-3">
+            {/* Step Number or Showcase Icon Badge */}
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold shrink-0 mt-0.5 border transition-colors"
+              style={{
+                background: isDark
+                  ? activeSlide.isHero
+                    ? "rgba(255, 255, 255, 0.15)"
+                    : "rgba(255, 255, 255, 0.1)"
+                  : activeSlide.isHero
+                  ? "rgba(0, 0, 0, 0.08)"
+                  : "rgba(0, 0, 0, 0.05)",
+                borderColor: isDark ? "rgba(255, 255, 255, 0.14)" : "rgba(0, 0, 0, 0.08)",
+                color: "var(--text-primary)",
+              }}
+            >
+              {activeSlide.isHero ? (
+                <Sparkles size={13} strokeWidth={2.5} style={{ color: "var(--text-primary)" }} />
+              ) : (
+                activeSlide.stepNum
+              )}
+            </div>
+
+            {/* Step Text & Action */}
+            <div className="flex-1 min-w-0">
+              <h4
+                className="text-[14px] font-semibold tracking-tight leading-snug"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {activeSlide.title}
+              </h4>
+              <p
+                className="text-[12px] font-normal leading-relaxed mt-1 whitespace-pre-line"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {activeSlide.desc}
+              </p>
+
+              {/* Action Button: Apple High-Contrast Capsule Pill */}
+              {activeSlide.actionType === "test_url" && activeSlide.scheme && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => handleTestDeepLink(activeSlide.scheme!)}
+                    className="font-semibold text-[12.5px] px-4 py-2 rounded-full inline-flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 transition-all"
+                    style={{
+                      background: isDark ? "#ffffff" : "#000000",
+                      color: isDark ? "#000000" : "#ffffff",
+                    }}
+                  >
+                    <ExternalLink size={12} strokeWidth={2.5} />
+                    <span>{activeSlide.btnText}</span>
+                  </button>
+                </div>
+              )}
+
+              {activeSlide.actionType === "copy" && activeSlide.copyText && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(activeSlide.copyText!, activeSlide.copyLabel || "Data")}
+                    className="font-semibold text-[12.5px] px-4 py-2 rounded-full inline-flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 transition-all"
+                    style={{
+                      background: isDark ? "#ffffff" : "#000000",
+                      color: isDark ? "#000000" : "#ffffff",
+                    }}
+                  >
+                    {copiedKey === (activeSlide.copyLabel || "Data") ? (
+                      <>
+                        <Check size={12} strokeWidth={3} />
+                        <span>{isIndonesian ? "Tersalin!" : "Copied!"}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} strokeWidth={2.5} />
+                        <span>{activeSlide.btnText}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {activeSlide.noteText && (
+                <p
+                  className="text-[11.5px] font-normal opacity-85 mt-2.5"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {activeSlide.noteText}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Slide Navigation & Final Done Button - Light & Dark adaptive */}
+        <div className="w-full flex items-center justify-between px-1">
+          {currentSlide === currentTabSlides.length - 1 ? (
+            <>
+              <button
+                type="button"
+                onClick={handlePrevSlide}
+                className="text-[13px] font-semibold transition-colors cursor-pointer py-1.5 flex items-center gap-1"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                <ChevronLeft size={14} strokeWidth={2.5} />
+                <span>{isIndonesian ? "Sebelumnya" : "Previous"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="font-semibold text-[13px] px-5 py-2.5 rounded-full cursor-pointer shadow-md active:scale-95 transition-all"
+                style={{
+                  background: isDark ? "#ffffff" : "#000000",
+                  color: isDark ? "#000000" : "#ffffff",
+                }}
+              >
+                {isIndonesian ? "Selesai" : "Done"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handlePrevSlide}
+                className={`text-[13px] font-semibold transition-colors cursor-pointer py-1.5 flex items-center gap-1 ${
+                  currentSlide === 0 ? "invisible pointer-events-none" : ""
+                }`}
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                <ChevronLeft size={14} strokeWidth={2.5} />
+                <span>{isIndonesian ? "Sebelumnya" : "Previous"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleNextSlide}
+                className="text-[13px] font-semibold transition-colors cursor-pointer py-1.5 flex items-center gap-1"
+                style={{ color: "var(--text-primary)" }}
+              >
+                <span>{isIndonesian ? "Berikutnya" : "Next"}</span>
+                <ChevronRight size={14} strokeWidth={2.5} />
+              </button>
+            </>
           )}
         </div>
 
-        {/* 4-Way Segmented Tabs */}
-        <div
-          className="grid grid-cols-4 p-1 rounded-2xl border text-center gap-1"
-          style={{
-            background: "var(--bg-base)",
-            borderColor: "var(--glass-border)",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              setActiveTab("back_tap");
-            }}
-            className={`py-2 px-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer truncate ${
-              activeTab === "back_tap"
-                ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-            }`}
-          >
-            {isIndonesian ? "Ketuk Belakang" : "Back Tap"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              setActiveTab("action_button");
-            }}
-            className={`py-2 px-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer truncate ${
-              activeTab === "action_button"
-                ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-            }`}
-          >
-            {isIndonesian ? "Tombol Aksi" : "Action Btn"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              setActiveTab("ways_to_add");
-            }}
-            className={`py-2 px-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer truncate ${
-              activeTab === "ways_to_add"
-                ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-            }`}
-          >
-            {isIndonesian ? "Metode Catat" : "Ways"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              setActiveTab("automation");
-            }}
-            className={`py-2 px-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer truncate ${
-              activeTab === "automation"
-                ? "bg-black/[0.08] text-black dark:bg-white/[0.1] dark:text-white shadow-sm border border-black/10 dark:border-white/15"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-            }`}
-          >
-            {isIndonesian ? "Otomatisasi" : "Apple Pay"}
-          </button>
-        </div>
-
-        {/* SECTION 1: BACK TAP GLASS DIALOG TUTORIAL & VOICE */}
-        {activeTab === "back_tap" && (
-          <div className="space-y-4">
-            {/* Mode Switcher */}
-            <div
-              className="grid grid-cols-3 gap-1 p-1 rounded-xl border text-[11px]"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--glass-border)",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setBackTapMode("instant_sheet");
-                }}
-                className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
-                  backTapMode === "instant_sheet"
-                    ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
-                    : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                <Zap size={12} strokeWidth={1.5} />
-                <span>{isIndonesian ? "1 Tindakan" : "1 Action"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setBackTapMode("smart_nlp");
-                }}
-                className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
-                  backTapMode === "smart_nlp"
-                    ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
-                    : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                <Sparkles size={12} strokeWidth={1.5} />
-                <span>{isIndonesian ? "Kalimat Cerdas" : "Sentence"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setBackTapMode("glass_dialog");
-                }}
-                className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
-                  backTapMode === "glass_dialog"
-                    ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
-                    : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                <SlidersHorizontal size={12} strokeWidth={1.5} />
-                <span>
-                  {isIndonesian ? "Dialog Bertingkat" : "Dialog Glass"}
-                </span>
-              </button>
-            </div>
-
-            {/* SUB-MODE 1: INSTANT SHEET (1 ACTION) */}
-            {backTapMode === "instant_sheet" && (
-              <div className="space-y-3">
-                <div
-                  className="p-3.5 rounded-2xl border space-y-2"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Zap size={14} className="text-[var(--text-primary)]" />
-                    <h4
-                      className="text-[13px] font-semibold tracking-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Metode Paling Praktis: Buka Lembar Transaksi Cepat"
-                        : "Most Practical: Instant Transaction Sheet"}
-                    </h4>
-                  </div>
-                  <p
-                    className="text-[11px] leading-relaxed"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian
-                      ? "Cuma butuh 1 tindakan sederhana di aplikasi Pintasan iPhone! Saat bodi iPhone diketuk atau Tombol Aksi ditekan, Trouvaille seketika terbuka dengan lembar transaksi dan papan tombol angka siap diketik."
-                      : "Requires only 1 single action in Apple Shortcuts! Tapping your iPhone or pressing the Action Button immediately opens Trouvaille with the numeric keypad ready."}
-                  </p>
-                </div>
-
-                <div className="space-y-2.5">
-                  {/* Step 1: Open URLs */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-2"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          1
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Tindakan Buka URL"
-                            : "Open URLs Action"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                        URL
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Buka aplikasi Pintasan di iPhone, buat pintasan baru (+), lalu tambahkan satu tindakan saja yaitu 'Buka URL' dengan alamat tautan berikut:"
-                        : "Open Apple Shortcuts app, create a new shortcut (+), and add just one action 'Open URLs' pointing to this address:"}
-                    </p>
-                    <div className="pl-7 space-y-2">
-                      <code
-                        className="block p-2 rounded-xl text-[11px] font-mono border break-all"
-                        style={{
-                          background: "var(--bg-base)",
-                          borderColor: "var(--glass-border)",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        {instantSchemeTemplate}
-                      </code>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            copyToClipboard(
-                              instantSchemeTemplate,
-                              isIndonesian
-                                ? "Tautan Buka Lembar"
-                                : "Instant Sheet URL",
-                            )
-                          }
-                          className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          {copiedKey ===
-                          (isIndonesian
-                            ? "Tautan Buka Lembar"
-                            : "Instant Sheet URL") ? (
-                            <Check
-                              size={12}
-                              className="text-[var(--text-primary)]"
-                            />
-                          ) : (
-                            <Copy size={12} />
-                          )}
-                          <span>
-                            {isIndonesian ? "Salin Tautan" : "Copy URL"}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleTestDeepLink(instantSchemeTemplate)
-                          }
-                          className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          <Zap size={11} />
-                          <span>
-                            {isIndonesian ? "Uji Buka Lembar" : "Test Open"}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Step 2: Assign to Back Tap */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-1.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          2
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Tautkan ke Ketuk Belakang iPhone"
-                            : "Assign to iPhone Back Tap"}
-                        </span>
-                      </div>
-                      <Smartphone
-                        size={13}
-                        className="text-[var(--text-tertiary)]"
-                      />
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Buka Pengaturan iPhone > Aksesibilitas > Sentuh > Ketuk Bagian Belakang > Ketuk Dua Kali > Pilih pintasan yang baru Anda buat. Selesai! Cukup ketuk bodi belakang iPhone 2 kali kapan saja untuk langsung mencatat."
-                        : "Open iPhone Settings > Accessibility > Touch > Back Tap > Double Tap > Select your shortcut. Done! Double-tap your phone back anytime to open the keypad."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* SUB-MODE 2: SMART NLP SENTENCE & VOICE (2 ACTIONS) */}
-            {backTapMode === "smart_nlp" && (
-              <div className="space-y-3">
-                <div
-                  className="p-3.5 rounded-2xl border space-y-2"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Sparkles
-                      size={14}
-                      className="text-[var(--text-primary)]"
-                    />
-                    <h4
-                      className="text-[13px] font-semibold tracking-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Pencatatan Cerdas 1 Kalimat (Ketik atau Suara)"
-                        : "Smart 1-Sentence Logging (Text or Voice)"}
-                    </h4>
-                  </div>
-                  <p
-                    className="text-[11px] leading-relaxed"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian
-                      ? "Tidak perlu memilih kategori atau rekening satu per satu! Cukup masukkan satu kalimat alami (misal: 'Kopi 25rb BCA' atau 'Makan siang 50000 GoPay'). Mesin cerdas Trouvaille otomatis mendeteksi nominal, kategori, dan rekening, lalu langsung menyimpannya."
-                      : "No need to pick categories or wallets manually! Type or dictate a single natural phrase (e.g. 'Coffee 25k BCA' or 'Lunch 50000 Cash'). Trouvaille automatically detects the amount, category, and wallet, and saves immediately."}
-                  </p>
-                </div>
-
-                <div className="space-y-2.5">
-                  {/* Action 1 */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-1.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          1
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Minta Masukan (atau Diktekan Teks)"
-                            : "Ask for Input (or Dictate Text)"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                        Input
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Tambahkan tindakan 'Minta Masukan' dengan jenis Teks (atau tindakan 'Diktekan Teks' untuk suara). Tulis pertanyaan misalnya: \"Catat apa? (Contoh: Kopi 25rb BCA)\"."
-                        : "Add 'Ask for Input' with Text type (or 'Dictate Text' for speech). Prompt: \"What did you spend? (e.g. Coffee 25k Cash)\"."}
-                    </p>
-                  </div>
-
-                  {/* Action 2 */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-1.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          2
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian ? "Enkode URL" : "URL Encode"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                        URL Encoded
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Tambahkan tindakan 'Enkode URL' dan masukkan teks dari tindakan sebelumnya agar spasi dan tanda baca aman."
-                        : "Add 'URL Encode' action and pass the previous text input to safely encode spaces and symbols."}
-                    </p>
-                  </div>
-
-                  {/* Action 3 */}
-                  <div
-                    className="p-3.5 rounded-2xl border space-y-2"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          3
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Buka URL & Simpan Otomatis"
-                            : "Open URLs & Direct Auto-Save"}
-                        </span>
-                      </div>
-                      <Zap size={13} className="text-[var(--text-primary)]" />
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Tambahkan tindakan 'Buka URL' dengan templat tautan berikut dan masukkan variabel hasil enkode URL:"
-                        : "Add 'Open URLs' action with the following template using the URL encoded variable:"}
-                    </p>
-                    <div className="pl-7 space-y-2">
-                      <code
-                        className="block p-2 rounded-xl text-[10px] font-mono border break-all"
-                        style={{
-                          background: "var(--bg-base)",
-                          borderColor: "var(--glass-border)",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        {smartNlpSchemeTemplate}
-                      </code>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            copyToClipboard(
-                              smartNlpSchemeTemplate,
-                              isIndonesian
-                                ? "Templat Kalimat Cerdas"
-                                : "Smart Sentence Template",
-                            )
-                          }
-                          className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          {copiedKey ===
-                          (isIndonesian
-                            ? "Templat Kalimat Cerdas"
-                            : "Smart Sentence Template") ? (
-                            <Check
-                              size={12}
-                              className="text-[var(--text-primary)]"
-                            />
-                          ) : (
-                            <Copy size={12} />
-                          )}
-                          <span>
-                            {isIndonesian
-                              ? "Salin Templat Tautan"
-                              : "Copy Scheme Template"}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleTestDeepLink(
-                              "trouvaille://add?text=Kopi%20susu%2025rb%20pakai%20BCA&autosave=true",
-                            )
-                          }
-                          className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          <Zap size={11} />
-                          <span>
-                            {isIndonesian
-                              ? "Uji Simpan Otomatis"
-                              : "Test Auto-Save"}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Examples */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-1.5 text-[11px]"
-                    style={{
-                      background: "var(--bg-base)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <p className="font-semibold text-[var(--text-primary)]">
-                      {isIndonesian
-                        ? "Contoh Kalimat yang Dikenali Otomatis:"
-                        : "Supported Sentence Examples:"}
-                    </p>
-                    <ul className="space-y-1 text-[var(--text-secondary)] pl-2">
-                      {isIndonesian ? (
-                        <>
-                          <li>
-                            • "Kopi 25 ribu pakai BCA" ➔ Rp 25.000, Kategori
-                            Makanan & Minuman, Rekening BCA
-                          </li>
-                          <li>
-                            • "Makan siang 50000 bayar GoPay" ➔ Rp 50.000,
-                            Kategori Makanan, Rekening GoPay
-                          </li>
-                          <li>
-                            • "Beli bensin 100rb Tunai" ➔ Rp 100.000, Kategori
-                            Transportasi, Rekening Tunai
-                          </li>
-                          <li>
-                            • "Makan malam bersama 150 ribu" ➔ Rp 150.000,
-                            Kategori Makanan, Rekening Utama
-                          </li>
-                        </>
-                      ) : (
-                        <>
-                          <li>
-                            • "Coffee 25k using Cash" ➔ 25,000, Food & Drinks,
-                            Cash
-                          </li>
-                          <li>
-                            • "Lunch 50000 with Apple Pay" ➔ 50,000, Food, Apple
-                            Pay
-                          </li>
-                          <li>
-                            • "Gasoline 100k checking account" ➔ 100,000,
-                            Transport, Bank
-                          </li>
-                          <li>
-                            • "Dinner with friends 150k" ➔ 150,000, Food,
-                            Default Wallet
-                          </li>
-                        </>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* SUB-MODE 3: REVISED FAST GLASS DIALOG */}
-            {backTapMode === "glass_dialog" && (
-              <div className="space-y-3">
-                <div
-                  className="p-3.5 rounded-2xl border space-y-2"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Sparkles
-                      size={14}
-                      className="text-[var(--text-primary)]"
-                    />
-                    <h4
-                      className="text-[13px] font-semibold tracking-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Panduan Pintasan Dialog Bertingkat Sistem"
-                        : "System Step-by-Step Dialog Guide"}
-                    </h4>
-                  </div>
-                  <p
-                    className="text-[11px] leading-relaxed"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian
-                      ? "Metode teks balok: Menggunakan tindakan Teks dan Pisahkan Teks agar Anda dapat menempel seluruh daftar kategori dan rekening sekaligus tanpa perlu menekan tombol tambah berulang kali."
-                      : "Bulk text method: Uses Text and Split Text actions so you can paste all categories and accounts at once without repeatedly tapping add item."}
-                  </p>
-                </div>
-
-                {/* 1-Tap Download Card for Glass Dialog */}
-                <div
-                  className="p-3.5 rounded-2xl border space-y-2.5"
-                  style={{
-                    background: "var(--bg-base)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 font-semibold text-[12px] text-[var(--text-primary)]">
-                      <Download size={13} strokeWidth={1.75} />
-                      <span>
-                        {isIndonesian
-                          ? "Pasang 1-Ketukan (.shortcut) — Rekomendasi Utama"
-                          : "1-Tap Install (.shortcut) — Recommended"}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                      .shortcut
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-                    {isIndonesian
-                      ? "Tidak perlu repot menyusun 8 tindakan manual! Cukup unduh file pintasan resmi Trouvaille lalu buka di iPhone untuk langsung menggunakannya."
-                      : "Skip building 8 manual actions! Download the official Trouvaille shortcut file and open it on iPhone to use it immediately."}
-                  </p>
-                  <a
-                    href="/shortcuts/Trouvaille_Glass_Dialog.shortcut"
-                    download="Trouvaille_Glass_Dialog.shortcut"
-                    className="w-full py-2 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.05] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.14] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
-                  >
-                    <Download size={13} strokeWidth={1.75} />
-                    <span>
-                      {isIndonesian
-                        ? "Unduh Pintasan Dialog Kaca"
-                        : "Download Glass Dialog Shortcut"}
-                    </span>
-                  </a>
-                </div>
-
-                {/* Collapsible Manual Steps Toggle */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setShowManualSteps((prev) => !prev);
-                  }}
-                  className="w-full py-2.5 px-3.5 rounded-xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-between cursor-pointer transition-colors shadow-xs"
-                >
-                  <span>
-                    {showManualSteps
-                      ? isIndonesian
-                        ? "Sembunyikan Panduan Manual Teknis (8 Tindakan)"
-                        : "Hide Technical Manual Steps (8 Actions)"
-                      : isIndonesian
-                        ? "Lihat Panduan Manual (Jika Ingin Merakit Sendiri)"
-                        : "View Manual Steps (For Custom Assembly)"}
-                  </span>
-                  {showManualSteps ? (
-                    <ChevronUp size={14} className="text-[var(--text-tertiary)]" />
-                  ) : (
-                    <ChevronDown size={14} className="text-[var(--text-tertiary)]" />
-                  )}
-                </button>
-
-                {showManualSteps && (
-                  <div className="space-y-2.5 pt-1">
-                    {/* Important Renaming Notice Box */}
-                    <div
-                      className="p-3 rounded-2xl border text-[11px] space-y-1"
-                      style={{
-                        background: "var(--bg-base)",
-                        borderColor: "var(--glass-border)",
-                      }}
-                    >
-                      <div className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
-                        <Sparkles size={12} strokeWidth={1.5} />
-                        <span>
-                          {isIndonesian
-                            ? "Petunjuk Penting: Ganti Nama Variabel"
-                            : "Critical Tip: Rename Variables"}
-                        </span>
-                      </div>
-                      <p className="text-[var(--text-secondary)] leading-relaxed">
-                        {isIndonesian
-                          ? "Agar tidak tertukar pada langkah akhir, ketuk setiap variabel biru pada papan ketik iOS lalu pilih opsi 'Ganti Nama' sesuai urutan: Nominal, Kategori, Rekening, Tanggal, Catatan."
-                          : "To avoid ambiguous variables, tap each blue variable on iOS keyboard and choose 'Rename' to: Amount, Category, Wallet, Date, Note."}
-                      </p>
-                    </div>
-
-                    {/* 8 Action Cards */}
-                    <div className="space-y-2.5">
-                  {/* Action 1: Ask for Number */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-1.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          1
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Minta Masukan Nominal"
-                            : "Ask for Input (Amount)"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                        {isIndonesian ? "Nominal" : "Amount"}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Tambahkan tindakan 'Minta Masukan', atur jenis masukan ke 'Angka' dengan pertanyaan: \"Berapa nominalnya?\". Ketuk variabel hasilnya lalu pilih opsi 'Ganti Nama' menjadi 'Nominal'."
-                        : "Add action 'Ask for Input', set type to 'Number' with prompt: \"How much was it?\". Tap the output variable and select 'Rename' to 'Amount'."}
-                    </p>
-                  </div>
-
-                  {/* Action 2: Text + Split Text + Choose from List - Kategori */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-2"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          2
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Teks & Pisahkan Teks Kategori"
-                            : "Text & Split Text (Category)"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                        {isIndonesian ? "Kategori" : "Category"}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Susun tiga tindakan berurutan berikut untuk memilih kategori:"
-                        : "Arrange these 3 consecutive actions to select category:"}
-                    </p>
-                    <div className="pl-7 space-y-1 text-[11px] text-[var(--text-secondary)] font-mono">
-                      {isIndonesian ? (
-                        <>
-                          <div>
-                            a. <strong>Teks</strong> ➔ Tempel daftar kategori
-                            Anda di bawah
-                          </div>
-                          <div>
-                            b. <strong>Pisahkan Teks</strong> ➔ Berdasarkan
-                            'Baris Baru'
-                          </div>
-                          <div>
-                            c. <strong>Pilih dari Daftar</strong> ➔ Pilih dari
-                            'Teks Terpisah', pertanyaan: "Kategori apa?"
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            a. <strong>Text</strong> ➔ Paste your category list
-                            below
-                          </div>
-                          <div>
-                            b. <strong>Split Text</strong> ➔ By 'New Lines'
-                          </div>
-                          <div>
-                            c. <strong>Choose from List</strong> ➔ Select from
-                            'Split Text', prompt: "Which category?"
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <div className="pl-7">
-                      <button
-                        type="button"
-                        onClick={copyCategoryList}
-                        className="py-1 px-2.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[10px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
-                      >
-                        {copiedKey ===
-                        (isIndonesian ? "Daftar Kategori" : "Category List") ? (
-                          <Check
-                            size={11}
-                            className="text-[var(--text-primary)]"
-                          />
-                        ) : (
-                          <Copy size={11} />
-                        )}
-                        <span>
-                          {isIndonesian
-                            ? "Salin Daftar Kategori Saya"
-                            : "Copy My Categories"}
-                        </span>
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-[var(--text-tertiary)] pl-7">
-                      {isIndonesian
-                        ? "Penting: Ketuk variabel 'Item yang Dipilih' lalu pilih opsi 'Ganti Nama' menjadi 'Kategori'."
-                        : "Important: Tap 'Chosen Item' variable and select 'Rename' to 'Category'."}
-                    </p>
-                  </div>
-
-                  {/* Action 3: Text + Split Text + Choose from List - Akun / Dompet */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-2"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          3
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Teks & Pisahkan Teks Rekening"
-                            : "Text & Split Text (Wallet)"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                        {isIndonesian ? "Rekening" : "Wallet"}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Sama seperti kategori, susun tiga tindakan berurutan berikut untuk rekening atau dompet:"
-                        : "Just like category, arrange these 3 consecutive actions for wallets:"}
-                    </p>
-                    <div className="pl-7 space-y-1 text-[11px] text-[var(--text-secondary)] font-mono">
-                      {isIndonesian ? (
-                        <>
-                          <div>
-                            a. <strong>Teks</strong> ➔ Tempel daftar rekening
-                            Anda di bawah
-                          </div>
-                          <div>
-                            b. <strong>Pisahkan Teks</strong> ➔ Berdasarkan
-                            'Baris Baru'
-                          </div>
-                          <div>
-                            c. <strong>Pilih dari Daftar</strong> ➔ Pilih dari
-                            'Teks Terpisah', pertanyaan: "Rekening mana?"
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            a. <strong>Text</strong> ➔ Paste your wallet list
-                            below
-                          </div>
-                          <div>
-                            b. <strong>Split Text</strong> ➔ By 'New Lines'
-                          </div>
-                          <div>
-                            c. <strong>Choose from List</strong> ➔ Select from
-                            'Split Text', prompt: "Which wallet?"
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <div className="pl-7">
-                      <button
-                        type="button"
-                        onClick={copyWalletList}
-                        className="py-1 px-2.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[10px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
-                      >
-                        {copiedKey ===
-                        (isIndonesian
-                          ? "Daftar Akun / Dompet"
-                          : "Wallet List") ? (
-                          <Check
-                            size={11}
-                            className="text-[var(--text-primary)]"
-                          />
-                        ) : (
-                          <Copy size={11} />
-                        )}
-                        <span>
-                          {isIndonesian
-                            ? "Salin Daftar Akun Saya"
-                            : "Copy My Wallets"}
-                        </span>
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-[var(--text-tertiary)] pl-7">
-                      {isIndonesian
-                        ? "Penting: Ketuk variabel 'Item yang Dipilih' lalu pilih opsi 'Ganti Nama' menjadi 'Rekening'."
-                        : "Important: Tap 'Chosen Item' variable and select 'Rename' to 'Wallet'."}
-                    </p>
-                  </div>
-
-                  {/* Action 4: Ask for Date and Time */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-1.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          4
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Minta Masukan Tanggal & Waktu"
-                            : "Ask for Input (Date & Time)"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                        {isIndonesian ? "Tanggal" : "Date"}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Tambahkan tindakan 'Minta Masukan', atur jenis masukan ke 'Tanggal dan Waktu' dengan pertanyaan: \"Kapan transaksi terjadi?\". Ketuk variabel hasilnya lalu pilih opsi 'Ganti Nama' menjadi 'Tanggal'."
-                        : "Add action 'Ask for Input', set type to 'Date and Time' with prompt: \"When was the transaction?\". Tap the variable and select 'Rename' to 'Date'."}
-                    </p>
-                  </div>
-
-                  {/* Action 5: Ask for Text - Catatan */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-1.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          5
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Minta Masukan Catatan"
-                            : "Ask for Input (Note / Description)"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                        {isIndonesian ? "Catatan" : "Note"}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Tambahkan tindakan 'Minta Masukan', atur jenis masukan ke 'Teks' dengan pertanyaan: \"Catatan transaksi apa?\". Ketuk variabel hasilnya lalu pilih opsi 'Ganti Nama' menjadi 'Catatan'."
-                        : "Add action 'Ask for Input', set type to 'Text' with prompt: \"What was this transaction for?\". Tap variable and select 'Rename' to 'Note'."}
-                    </p>
-                  </div>
-
-                  {/* Action 6: URL Encode for Note */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-1.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          6
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Enkode URL Catatan"
-                            : "URL Encode (Sanitize Note Text)"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                        {isIndonesian ? "Teks Terenkode" : "URL Encoded Text"}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Tambahkan tindakan 'Enkode URL' lalu masukkan variabel 'Catatan'. Tindakan ini memastikan spasi dan tanda baca aman agar tautan tidak terpotong."
-                        : "Add action 'URL Encode' and pass the 'Note' variable. This safely escapes spaces and symbols so the URL never breaks."}
-                    </p>
-                  </div>
-
-                  {/* Action 7: Save Method (Background RPC vs URL Scheme) */}
-                  <div
-                    className="p-3.5 rounded-2xl border space-y-3"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          7
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {glassSaveMethod === "background"
-                            ? isIndonesian
-                              ? "Dapatkan Isi URL (Simpan Latar Belakang)"
-                              : "Get Contents of URL (Background Save)"
-                            : isIndonesian
-                              ? "Buka URL & Simpan Otomatis"
-                              : "Open URLs (Direct Auto-Save)"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-semibold">
-                        {glassSaveMethod === "background" ? "POST API" : "trouvaille://"}
-                      </span>
-                    </div>
-
-                    {/* Method Toggle */}
-                    <div
-                      className="grid grid-cols-2 gap-1 p-1 rounded-xl border text-[11px]"
-                      style={{
-                        background: "var(--bg-base)",
-                        borderColor: "var(--glass-border)",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic("light");
-                          setGlassSaveMethod("background");
-                        }}
-                        className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
-                          glassSaveMethod === "background"
-                            ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
-                            : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                        }`}
-                      >
-                        <ShieldCheck size={12} strokeWidth={1.5} />
-                        <span>
-                          {isIndonesian
-                            ? "Hening Latar Belakang"
-                            : "Background Silent"}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic("light");
-                          setGlassSaveMethod("url_scheme");
-                        }}
-                        className={`py-1.5 px-2 rounded-lg font-semibold transition-all cursor-pointer text-center flex items-center justify-center gap-1 ${
-                          glassSaveMethod === "url_scheme"
-                            ? "bg-black/[0.08] text-black dark:bg-white/[0.12] dark:text-white shadow-xs border border-black/10 dark:border-white/20"
-                            : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                        }`}
-                      >
-                        <Zap size={12} strokeWidth={1.5} />
-                        <span>
-                          {isIndonesian ? "Skema URL" : "URL Scheme"}
-                        </span>
-                      </button>
-                    </div>
-
-                    {/* METHOD 1: BACKGROUND API (RECOMMENDED) */}
-                    {glassSaveMethod === "background" && (
-                      <div className="space-y-2.5 text-[11px]">
-                        <p className="text-[var(--text-secondary)] pl-7 leading-relaxed">
-                          {isIndonesian
-                            ? "Tambahkan tindakan 'Dapatkan Isi URL'. Metode ini bekerja hening di latar belakang tanpa membuka aplikasi sama sekali, lalu diikuti tindakan notifikasi di bawah."
-                            : "Add action 'Get Contents of URL'. This works silently in the background without opening the app at all, followed by the notification action below."}
-                        </p>
-
-                        <div className="pl-7 space-y-2">
-                          <div
-                            className="p-2.5 rounded-xl border space-y-1.5"
-                            style={{
-                              background: "var(--bg-base)",
-                              borderColor: "var(--glass-border)",
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
-                                {isIndonesian ? "Alamat URL API:" : "API Endpoint URL:"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  copyToClipboard(
-                                    rpcEndpoint,
-                                    isIndonesian ? "URL API" : "API URL",
-                                  )
-                                }
-                                className="py-0.5 px-2 rounded-md border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[10px] font-semibold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                {copiedKey ===
-                                (isIndonesian ? "URL API" : "API URL") ? (
-                                  <Check
-                                    size={10}
-                                    className="text-[var(--text-primary)]"
-                                  />
-                                ) : (
-                                  <Copy size={10} />
-                                )}
-                                <span>{isIndonesian ? "Salin" : "Copy"}</span>
-                              </button>
-                            </div>
-                            <code className="block text-[10px] font-mono break-all text-[var(--text-primary)]">
-                              {rpcEndpoint}
-                            </code>
-                          </div>
-
-                          <div
-                            className="p-2.5 rounded-xl border space-y-1.5"
-                            style={{
-                              background: "var(--bg-base)",
-                              borderColor: "var(--glass-border)",
-                            }}
-                          >
-                            <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] block">
-                              {isIndonesian
-                                ? "Konfigurasi Tindakan di Pintasan:"
-                                : "Shortcut Action Configuration:"}
-                            </span>
-                            <div className="space-y-1 text-[11px] text-[var(--text-secondary)]">
-                              <div>
-                                • {isIndonesian ? "Metode:" : "Method:"}{" "}
-                                <span className="font-semibold text-[var(--text-primary)]">
-                                  POST
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <div>
-                                  • {isIndonesian ? "Tajuk (Headers):" : "Headers:"}{" "}
-                                  <span className="font-mono text-[10px] text-[var(--text-primary)]">
-                                    apikey
-                                  </span>{" "}
-                                  &{" "}
-                                  <span className="font-mono text-[10px] text-[var(--text-primary)]">
-                                    Content-Type: application/json
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    copyToClipboard(
-                                      anonKey,
-                                      isIndonesian ? "Kunci Anon API" : "Anon API Key",
-                                    )
-                                  }
-                                  className="py-0.5 px-2 rounded-md border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[10px] font-semibold text-[var(--text-primary)] shrink-0 flex items-center gap-1 cursor-pointer transition-colors"
-                                >
-                                  {copiedKey ===
-                                  (isIndonesian
-                                    ? "Kunci Anon API"
-                                    : "Anon API Key") ? (
-                                    <Check
-                                      size={10}
-                                      className="text-[var(--text-primary)]"
-                                    />
-                                  ) : (
-                                    <Copy size={10} />
-                                  )}
-                                  <span>{isIndonesian ? "Salin Kunci" : "Copy Key"}</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div
-                            className="p-2.5 rounded-xl border space-y-1.5"
-                            style={{
-                              background: "var(--bg-base)",
-                              borderColor: "var(--glass-border)",
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
-                                {isIndonesian
-                                  ? "Badan Permintaan (JSON):"
-                                  : "Request Body (JSON):"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  copyToClipboard(
-                                    JSON.stringify(
-                                      {
-                                        p_user_token: userToken || "TOKEN_PENGGUNA",
-                                        p_amount: 0,
-                                        p_category_name: "Kategori",
-                                        p_wallet_name: "Rekening",
-                                        p_note: "Catatan",
-                                        p_occurred_on: "Tanggal",
-                                      },
-                                      null,
-                                      2,
-                                    ),
-                                    isIndonesian
-                                      ? "Format JSON"
-                                      : "JSON Format",
-                                  )
-                                }
-                                className="py-0.5 px-2 rounded-md border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[10px] font-semibold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                {copiedKey ===
-                                (isIndonesian
-                                  ? "Format JSON"
-                                  : "JSON Format") ? (
-                                  <Check
-                                    size={10}
-                                    className="text-[var(--text-primary)]"
-                                  />
-                                ) : (
-                                  <Copy size={10} />
-                                )}
-                                <span>{isIndonesian ? "Salin JSON" : "Copy JSON"}</span>
-                              </button>
-                            </div>
-                            <pre className="p-2 rounded-lg text-[10px] font-mono overflow-x-auto text-[var(--text-secondary)] bg-[var(--glass-fill)] border border-[var(--glass-border)]">
-{`{
-  "p_user_token": "${userToken ? userToken.slice(0, 8) + "..." : "TOKEN_PENGGUNA"}",
-  "p_amount": [Nominal],
-  "p_category_name": "[Kategori]",
-  "p_wallet_name": "[Rekening]",
-  "p_note": "[Catatan]",
-  "p_occurred_on": "[Tanggal]"
-}`}
-                            </pre>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* METHOD 2: URL SCHEME */}
-                    {glassSaveMethod === "url_scheme" && (
-                      <div className="space-y-2.5 text-[11px]">
-                        <p className="text-[var(--text-secondary)] pl-7 leading-relaxed">
-                          {isIndonesian
-                            ? "Tambahkan tindakan 'Buka URL' lalu masukkan templat skema berikut dengan menyematkan variabel dari papan ketik iPhone (Catatan: Tindakan ini membuka Trouvaille ke layar depan saat menyimpan):"
-                            : "Add action 'Open URLs' and paste the URL scheme template below, inserting Magic Variables from your keyboard (Note: This action brings Trouvaille to the foreground upon saving):"}
-                        </p>
-
-                        <div className="pl-7 space-y-1.5">
-                          <div
-                            className="p-2.5 rounded-xl border text-[11px] space-y-1"
-                            style={{
-                              background: "var(--bg-base)",
-                              borderColor: "var(--glass-border)",
-                            }}
-                          >
-                            <span className="font-semibold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] block">
-                              {isIndonesian
-                                ? "Panduan Variabel Papan Ketik (Bukan Ketik Manual):"
-                                : "Keyboard Variable Picker Mapping:"}
-                            </span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
-                              <div>
-                                • {isIndonesian ? "nominal=" : "amount="} ➔{" "}
-                                <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
-                                  {isIndonesian ? "Nominal" : "Amount"}
-                                </span>
-                              </div>
-                              <div>
-                                • {isIndonesian ? "&kategori=" : "&category="} ➔{" "}
-                                <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
-                                  {isIndonesian ? "Kategori" : "Category"}
-                                </span>
-                              </div>
-                              <div>
-                                • {isIndonesian ? "&rekening=" : "&wallet="} ➔{" "}
-                                <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
-                                  {isIndonesian ? "Rekening" : "Wallet"}
-                                </span>
-                              </div>
-                              <div>
-                                • {isIndonesian ? "&tanggal=" : "&date="} ➔{" "}
-                                <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
-                                  {isIndonesian ? "Tanggal" : "Date"}
-                                </span>
-                              </div>
-                              <div className="sm:col-span-2">
-                                • {isIndonesian ? "&catatan=" : "&note="} ➔{" "}
-                                <span className="font-semibold px-1 rounded bg-black/10 dark:bg-white/15 text-[var(--text-primary)]">
-                                  {isIndonesian
-                                    ? "Teks Terenkode"
-                                    : "URL Encoded Text"}
-                                </span>
-                              </div>
-                              <div className="sm:col-span-2">
-                                • &autosave=true ➔{" "}
-                                <span className="text-[var(--text-secondary)]">
-                                  {isIndonesian
-                                    ? "Teks biasa (simpan langsung)"
-                                    : "Plain text (instant auto-save)"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-start gap-1.5 p-2 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[10px] text-[var(--text-secondary)] leading-relaxed">
-                            <AlertCircle
-                              size={13}
-                              className="shrink-0 mt-0.5 text-[var(--text-primary)]"
-                              strokeWidth={1.75}
-                            />
-                            <span>
-                              {isIndonesian
-                                ? "PERHATIAN: Jangan ketik tanda kurung siku '[ ]' secara manual! Tanda kurung siku menunjukkan variabel yang harus dipilih dari menu bilah papan ketik iPhone."
-                                : "NOTE: Do not type square brackets '[ ]' manually! They represent dynamic Magic Variables to select from the iOS keyboard picker."}
-                            </span>
-                          </div>
-
-                          <code
-                            className="block p-2 rounded-xl text-[10px] font-mono border break-all"
-                            style={{
-                              background: "var(--bg-base)",
-                              borderColor: "var(--glass-border)",
-                              color: "var(--text-primary)",
-                            }}
-                          >
-                            {glassSchemeTemplate}
-                          </code>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              copyToClipboard(
-                                glassSchemeTemplate,
-                                isIndonesian
-                                  ? "Templat Skema URL"
-                                  : "Scheme Template",
-                              )
-                            }
-                            className="w-full py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                          >
-                            {copiedKey ===
-                            (isIndonesian
-                              ? "Templat Skema URL"
-                              : "Scheme Template") ? (
-                              <Check
-                                size={12}
-                                className="text-[var(--text-primary)]"
-                              />
-                            ) : (
-                              <Copy size={12} />
-                            )}
-                            <span>
-                              {isIndonesian
-                                ? "Salin Templat URL"
-                                : "Copy Scheme Template"}
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Test Button */}
-                    <div className="pl-7 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const testCat =
-                            categories.find((c) => c.type !== "income")?.name ||
-                            categories[0]?.name ||
-                            (isIndonesian ? "Makanan" : "Food");
-                          const testWal =
-                            wallets[0]?.name ||
-                            (isIndonesian ? "Dompet Utama" : "Default Wallet");
-                          const testNote = isIndonesian
-                            ? "Uji Coba Pintasan"
-                            : "Shortcut Test";
-                          handleTestDeepLink(
-                            `trouvaille://add?${
-                              isIndonesian ? "nominal" : "amount"
-                            }=25000&${
-                              isIndonesian ? "kategori" : "category"
-                            }=${encodeURIComponent(testCat)}&${
-                              isIndonesian ? "rekening" : "wallet"
-                            }=${encodeURIComponent(testWal)}&${
-                              isIndonesian ? "catatan" : "note"
-                            }=${encodeURIComponent(testNote)}&autosave=true`,
-                          );
-                        }}
-                        className="w-full py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                      >
-                        <Zap size={11} />
-                        <span>
-                          {isIndonesian
-                            ? "Uji Simpan Otomatis (Rp 25.000)"
-                            : "Test Auto-Save (25k)"}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Action 8: Show Notification */}
-                  <div
-                    className="p-3 rounded-2xl border space-y-1.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)]">
-                          8
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                          {isIndonesian
-                            ? "Tampilkan Pemberitahuan"
-                            : "Show Notification"}
-                        </span>
-                      </div>
-                      <ShieldCheck
-                        size={13}
-                        className="text-[var(--text-tertiary)]"
-                      />
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] pl-7 leading-relaxed">
-                      {isIndonesian
-                        ? "Tambahkan tindakan 'Tampilkan Pemberitahuan'. Judul: 'Trouvaille', Pesan: \"Transaksi Dicatat: Rp [Nominal] • [Kategori] • [Rekening]\". Jika Anda menggunakan metode Hening Latar Belakang (Dapatkan Isi URL), banner notifikasi Apple muncul seketika dan aplikasi Trouvaille tidak akan pernah terbuka kecuali banner tersebut ditekan."
-                        : "Add action 'Show Notification'. Title: 'Trouvaille', Body: \"Transaction Recorded: Rp [Amount] • [Category] • [Wallet]\". When using the Background Silent method (Get Contents of URL), the Apple notification banner appears instantly and Trouvaille will never open unless you tap the banner."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-            {/* HOW TO ASSIGN TO IPHONE BACK TAP */}
-            <div
-              className="p-4 rounded-2xl border space-y-3"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--glass-border)",
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal
-                  size={14}
-                  className="text-[var(--text-primary)]"
-                />
-                <h4
-                  className="text-[13px] font-semibold uppercase tracking-wider"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {isIndonesian
-                    ? "Cara Menghubungkan ke Ketuk Belakang iPhone"
-                    : "Assign to iPhone Back Tap"}
-                </h4>
-              </div>
-
-              <div className="space-y-2 text-[11px] text-[var(--text-secondary)]">
-                <div className="flex items-start gap-2.5">
-                  <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)] mt-0.5">
-                    1
-                  </span>
-                  <span>
-                    {isIndonesian
-                      ? "Buka aplikasi Pengaturan di iPhone Anda."
-                      : "Open the Settings app on your iPhone."}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)] mt-0.5">
-                    2
-                  </span>
-                  <span>
-                    {isIndonesian
-                      ? "Masuk ke menu Aksesibilitas > Sentuh."
-                      : "Navigate to Accessibility > Touch."}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)] mt-0.5">
-                    3
-                  </span>
-                  <span>
-                    {isIndonesian
-                      ? "Gulir ke bawah dan ketuk opsi Ketuk Bagian Belakang."
-                      : "Scroll to the bottom and tap Back Tap."}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)] mt-0.5">
-                    4
-                  </span>
-                  <span>
-                    {isIndonesian
-                      ? "Pilih Ketuk Dua Kali atau Ketuk Tiga Kali."
-                      : "Select Double Tap or Triple Tap."}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)] mt-0.5">
-                    5
-                  </span>
-                  <span>
-                    {isIndonesian
-                      ? "Gulir ke bawah ke bagian Pintasan, lalu pilih pintasan yang telah Anda buat ('Catat Trouvaille')."
-                      : "Scroll down to the Shortcuts section and select your created shortcut ('Trouvaille Quick Log')."}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* SECTION 2: ACTION BUTTON */}
-        {activeTab === "action_button" && (
-          <div className="space-y-4">
-            <div
-              className="p-4 rounded-2xl border space-y-3"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--glass-border)",
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <Smartphone size={14} className="text-[var(--text-primary)]" />
-                <span
-                  className="text-[11px] font-semibold uppercase tracking-wider block"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian
-                    ? "Konfigurasi Tombol Aksi (iPhone 15 / 16 Pro)"
-                    : "Action Button Setup (iPhone 15 / 16 Pro)"}
-                </span>
-              </div>
-
-              <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
-                {isIndonesian
-                  ? "Tombol Aksi di sisi kiri iPhone dapat dihubungkan ke Pintasan Trouvaille untuk mencatat pengeluaran dalam satu kali pencetan fisik dari layar mana pun."
-                  : "The Action Button on the left side of your iPhone can be linked to a Trouvaille shortcut to log transactions in a single physical press from anywhere."}
-              </p>
-
-              {/* Step 1 */}
-              <div className="flex items-start gap-3 pt-1">
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold border"
-                  style={{
-                    background: "var(--bg-base)",
-                    borderColor: "var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  1
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                    {isIndonesian
-                      ? "Buka Pengaturan Tombol Tindakan"
-                      : "Open Action Button Settings"}
-                  </p>
-                  <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
-                    {isIndonesian
-                      ? "Buka aplikasi Pengaturan di iPhone > Tombol Tindakan. Geser opsi hingga menemukan 'Pintasan'."
-                      : "Go to Settings on iPhone > Action Button. Swipe through the options to find 'Shortcut'."}
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 2 */}
-              <div className="flex items-start gap-3 pt-2">
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold border"
-                  style={{
-                    background: "var(--bg-base)",
-                    borderColor: "var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  2
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                    {isIndonesian
-                      ? "Pilih Pintasan Trouvaille"
-                      : "Assign Trouvaille Shortcut"}
-                  </p>
-                  <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
-                    {isIndonesian
-                      ? "Ketuk tombol pemilih pintasan di bawahnya, lalu pilih pintasan Trouvaille yang telah Anda buat (misalnya 'Catat Trouvaille' atau 'Dikte Suara Cepat')."
-                      : "Tap the shortcut selector button below and choose your Trouvaille shortcut (e.g. 'Trouvaille Quick Log' or 'Voice Quick-Add')."}
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 3 */}
-              <div className="flex items-start gap-3 pt-2">
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold border"
-                  style={{
-                    background: "var(--bg-base)",
-                    borderColor: "var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  3
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                    {isIndonesian
-                      ? "Tekan & Tahan Kapan Saja"
-                      : "Press & Hold Anytime"}
-                  </p>
-                  <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
-                    {isIndonesian
-                      ? "Cukup tekan dan tahan Tombol Tindakan saat berada di kasir, bayar QRIS, atau selesai makan. Jendela pencatatan langsung muncul seketika!"
-                      : "Simply press and hold the Action Button at checkout, QRIS payment, or after dining. The logging modal appears instantly!"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Test Links */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleTestDeepLink("trouvaille://voice")}
-                className="flex-1 py-3 px-3 rounded-xl border text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                style={{
-                  background: "var(--bg-elevated)",
-                  borderColor: "var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Mic size={14} />
-                <span>
-                  {isIndonesian ? "Uji Aksi Suara" : "Test Voice Action"}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTestDeepLink("trouvaille://scan")}
-                className="flex-1 py-3 px-3 rounded-xl border text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                style={{
-                  background: "var(--bg-elevated)",
-                  borderColor: "var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Camera size={14} />
-                <span>
-                  {isIndonesian ? "Uji Aksi Pemindai" : "Test Scan Action"}
-                </span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* SECTION 3: WAYS TO ADD TRANSACTIONS */}
-        {activeTab === "ways_to_add" && (
-          <div className="space-y-3">
-            {[
-              {
-                num: "1",
-                icon: Mic,
-                title: isIndonesian
-                  ? "Pencatatan Suara Cepat (Siri)"
-                  : "Voice Quick-Add (Siri)",
-                desc: isIndonesian
-                  ? "Bicara santai tanpa mengetik, contoh: 'Kopi 35 ribu pakai BCA'."
-                  : "Speak naturally without typing, e.g., 'Coffee 35k with BCA'.",
-                scheme: "trouvaille://voice",
-                steps: isIndonesian
-                  ? [
-                      "Buka aplikasi Pintasan di iPhone, lalu ketuk tanda '+' untuk membuat pintasan baru.",
-                      "Cari tindakan 'Buka URL', lalu masukkan skema 'trouvaille://voice'.",
-                      "Beri nama pintasan 'Catat Pengeluaran' atau 'Suara Trouvaille'.",
-                      "Kini cukup ucapkan 'Hai Siri, Catat Pengeluaran' — mikrofon langsung aktif mendengar!",
-                    ]
-                  : [
-                      "Open the Apple Shortcuts app on iPhone, then tap '+' to create a new Shortcut.",
-                      "Search for the 'Open URL' action, then paste the scheme 'trouvaille://voice'.",
-                      "Name the shortcut 'Quick Expense' or 'Trouvaille Voice'.",
-                      "Now simply say 'Hey Siri, Quick Expense' — the mic activates instantly!",
-                    ],
-              },
-              {
-                num: "2",
-                icon: Zap,
-                title: isIndonesian
-                  ? "Pintasan Apple & Layar Terkunci"
-                  : "Apple Shortcuts & Lock Screen",
-                desc: isIndonesian
-                  ? "Buka jendela pencatatan instan dari Layar Terkunci atau Pusat Kontrol."
-                  : "Trigger the instant logging modal directly from Lock Screen or Control Center.",
-                scheme: "trouvaille://add",
-                steps: isIndonesian
-                  ? [
-                      "Buat pintasan baru dengan tindakan 'Buka URL', lalu masukkan 'trouvaille://add'.",
-                      "Tambahkan widget Pintasan ke Layar Terkunci atau Layar Utama iPhone Anda.",
-                      "Ketuk widget satu kali kapan pun ingin membuka modal pencatatan tanpa navigasi berbelit.",
-                    ]
-                  : [
-                      "Create a new Shortcut with 'Open URL' action pointing to 'trouvaille://add'.",
-                      "Add a Shortcuts widget to your iPhone Lock Screen or Home Screen.",
-                      "Tap the widget anytime to launch the transaction entry modal in 1 tap.",
-                    ],
-              },
-              {
-                num: "3",
-                icon: Camera,
-                title: isIndonesian
-                  ? "Pemindai Struk AI (Struk Fisik)"
-                  : "AI Receipt Scanner (Paper Receipts)",
-                desc: isIndonesian
-                  ? "Foto struk kasir atau struk QRIS; AI membedah rincian & nominal secara otomatis."
-                  : "Snap physical receipts or QRIS slips; AI extracts items and amounts automatically.",
-                scheme: "trouvaille://scan",
-                steps: isIndonesian
-                  ? [
-                      "Buat pintasan baru dengan tindakan 'Buka URL' dan skema 'trouvaille://scan'.",
-                      "Pasang pintasan ini di menu Ketuk Bagian Belakang atau Tombol Tindakan.",
-                      "Arahkan kamera ke struk belanja; AI Trouvaille memproses merchant dan nominal belanja.",
-                    ]
-                  : [
-                      "Create a new Shortcut with 'Open URL' action using scheme 'trouvaille://scan'.",
-                      "Assign this shortcut to your iOS Back Tap or Action Button gesture.",
-                      "Point the camera at any receipt; Trouvaille AI parses merchant and amount.",
-                    ],
-              },
-              {
-                num: "4",
-                icon: Layers,
-                title: isIndonesian
-                  ? "Tangkapan Layar & Bukti Transfer"
-                  : "Screenshot & Transfer Proof",
-                desc: isIndonesian
-                  ? "Ekstrak bukti pembayaran m-banking langsung dari galeri foto iPhone."
-                  : "Extract m-banking transaction confirmations directly from photo library.",
-                scheme: "trouvaille://scan",
-                steps: isIndonesian
-                  ? [
-                      "Setelah transfer di BCA, Mandiri, atau GoPay, simpan tangkapan layar bukti pembayaran.",
-                      "Gunakan skema 'trouvaille://scan' untuk langsung membuka pemindai tangkapan layar.",
-                      "Pilih foto dari galeri; OCR AI mengekstrak nominal dan tanggal dalam hitungan detik.",
-                    ]
-                  : [
-                      "After completing a payment in your banking app, save the confirmation screenshot.",
-                      "Trigger 'trouvaille://scan' to jump directly into the screenshot parser.",
-                      "Select the photo from gallery; AI extracts nominal and date within seconds.",
-                    ],
-              },
-              {
-                num: "5",
-                icon: Share2,
-                title: isIndonesian
-                  ? "Lembar Berbagi iOS (Teks Langsung)"
-                  : "iOS Share Sheet (Direct Text)",
-                desc: isIndonesian
-                  ? "Bagikan teks tagihan dari WhatsApp atau SMS perbankan ke Trouvaille."
-                  : "Share transaction text from WhatsApp or SMS banking directly to Trouvaille.",
-                scheme: "trouvaille://add?text=[Shortcut Input]&autosave=true",
-                steps: isIndonesian
-                  ? [
-                      "Di rincian pintasan, aktifkan opsi 'Tampilkan di Lembar Berbagi'.",
-                      "Konfigurasikan tindakan URL: 'trouvaille://add?text=[Shortcut Input]&autosave=true'.",
-                      "Saat menerima pesan tagihan atau mutasi, pilih Bagikan > Trouvaille untuk penguraian instan & simpan otomatis.",
-                    ]
-                  : [
-                      "In Shortcut details, enable 'Show in Share Sheet'.",
-                      "Configure the URL action as: 'trouvaille://add?text=[Shortcut Input]&autosave=true'.",
-                      "When receiving an SMS or message, tap Share > Trouvaille for instant auto-parse & auto-save.",
-                    ],
-              },
-              {
-                num: "6",
-                icon: PlusCircle,
-                title: isIndonesian
-                  ? "Papan Angka Ergonomis & Kalkulator"
-                  : "Ergonomic Numpad & Math Calc",
-                desc: isIndonesian
-                  ? "Papan angka monokrom dengan tombol 000 dan perhitungan matematika langsung di kolom."
-                  : "Monochrome keypad with triple-zero 000 and in-line mathematical calculation.",
-                scheme: "trouvaille://add",
-                steps: isIndonesian
-                  ? [
-                      "Buka Trouvaille di Safari iOS, lalu pilih 'Tambah ke Layar Utama' untuk mode aplikasi layar penuh.",
-                      "Gunakan tombol '+' di bilah navigasi bawah atau buka melalui skema 'trouvaille://add'.",
-                      "Ketik nominal dengan bantuan tombol '000' dan operator '+' atau '-' langsung di kolom.",
-                    ]
-                  : [
-                      "Open Trouvaille in iOS Safari and tap 'Add to Home Screen' for standalone fullscreen mode.",
-                      "Use the '+' bottom navbar button or launch via 'trouvaille://add'.",
-                      "Type amounts with triple-zero '000' and in-line '+' or '-' arithmetic directly in-field.",
-                    ],
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.num}
-                  className="p-3.5 rounded-2xl border transition-all space-y-2.5"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border"
-                      style={{
-                        background: "var(--bg-base)",
-                        borderColor: "var(--glass-border)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      <Icon size={16} strokeWidth={1.5} />
-                    </div>
-                    <div className="flex-1 space-y-0.5 pr-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold font-mono px-1.5 py-0.2 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-tertiary)]">
-                          #{item.num}
-                        </span>
-                        <p
-                          className="text-[13px] font-semibold"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {item.title}
-                        </p>
-                      </div>
-                      <p
-                        className="text-[11px] leading-relaxed font-normal"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        {item.desc}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Step-by-Step Instructions */}
-                  <div className="pt-2 border-t border-[var(--glass-border)] space-y-1.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                      {isIndonesian
-                        ? "Panduan Langkah demi Langkah"
-                        : "Step-by-Step Setup Guide"}
-                    </p>
-                    {item.steps.map((st, sIdx) => (
-                      <div
-                        key={sIdx}
-                        className="flex items-start gap-2 text-[11px] text-[var(--text-secondary)]"
-                      >
-                        <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold border border-[var(--glass-border)] bg-[var(--bg-base)] text-[var(--text-primary)] mt-0.5">
-                          {sIdx + 1}
-                        </span>
-                        <span className="leading-snug flex-1">{st}</span>
-                      </div>
-                    ))}
-
-                    <div className="pt-2 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(item.scheme, item.title)}
-                        className="flex-1 py-1.5 px-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] active:scale-95 text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                      >
-                        {copiedKey === item.title ? (
-                          <>
-                            <Check
-                              size={12}
-                              className="text-[var(--text-primary)]"
-                            />
-                            <span>
-                              {isIndonesian
-                                ? "Skema Disalin!"
-                                : "Scheme Copied!"}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={12} />
-                            <span>
-                              {isIndonesian
-                                ? "Salin Skema URL"
-                                : "Copy URL Scheme"}
-                            </span>
-                          </>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleTestDeepLink(item.scheme)}
-                        className="py-1.5 px-3 rounded-xl border border-[var(--glass-border)] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] active:scale-95 text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        title={
-                          isIndonesian
-                            ? "Uji coba buka deep link langsung"
-                            : "Test trigger deep link"
-                        }
-                      >
-                        <Zap size={11} />
-                        <span>{isIndonesian ? "Uji Tautan" : "Test Link"}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* SECTION 4: APPLE PAY AUTOMATION */}
-        {activeTab === "automation" && (
-          <div className="space-y-4">
-            <div
-              className="p-4 rounded-2xl border space-y-3"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--glass-border)",
-              }}
-            >
-              <span
-                className="text-[11px] font-semibold uppercase tracking-wider block"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian
-                  ? "Otomatisasi Ketukan Apple Pay"
-                  : "Apple Pay Tap Automation"}
-              </span>
-
-              <div className="space-y-3 text-[12px]">
-                <div className="flex items-start gap-3">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold border"
-                    style={{
-                      background: "var(--bg-base)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    1
-                  </div>
-                  <div>
-                    <p className="font-semibold text-[13px] text-[var(--text-primary)]">
-                      {isIndonesian
-                        ? "Buka Pintasan > Otomatisasi"
-                        : "Open Shortcuts > Automation"}
-                    </p>
-                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                      {isIndonesian
-                        ? "Ketuk Otomatisasi Baru (+), lalu pilih 'Transaksi' atau 'Saat Saya Mengetuk Kartu Dompet'."
-                        : "Tap New Automation, then choose Transaction or When I Tap a Wallet Card."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold border"
-                    style={{
-                      background: "var(--bg-base)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    2
-                  </div>
-                  <div>
-                    <p className="font-semibold text-[13px] text-[var(--text-primary)]">
-                      {isIndonesian
-                        ? "Atur Jalankan Segera"
-                        : "Set to Run Immediately"}
-                    </p>
-                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                      {isIndonesian
-                        ? "Pilih kartu utama Anda, lalu aktifkan 'Jalankan Segera' agar otomatis diproses di latar belakang tanpa pertanyaan konfirmasi."
-                        : "Select your primary cards, then select Run Immediately so it executes automatically in the background."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold border"
-                    style={{
-                      background: "var(--bg-base)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    3
-                  </div>
-                  <div>
-                    <p className="font-semibold text-[13px] text-[var(--text-primary)]">
-                      {isIndonesian
-                        ? "Buka Skema URL Trouvaille"
-                        : "Open Trouvaille URL"}
-                    </p>
-                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                      {isIndonesian ? (
-                        <>
-                          Tambahkan tindakan <em>Buka URL</em> dengan alamat{" "}
-                          <code>
-                            trouvaille://add?text=Shortcut
-                            Input&amp;autosave=true
-                          </code>
-                          .
-                        </>
-                      ) : (
-                        <>
-                          Add the action <em>Open URL</em> with{" "}
-                          <code>
-                            trouvaille://add?text=Shortcut
-                            Input&amp;autosave=true
-                          </code>
-                          .
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                copyToClipboard(
-                  "trouvaille://add?text=[Shortcut Input]&autosave=true",
-                  isIndonesian ? "Skema Otomatisasi URL" : "URL Template",
-                )
-              }
-              className="w-full py-3 px-4 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] text-[var(--text-primary)] transition-colors cursor-pointer"
-            >
-              {copiedKey ===
-              (isIndonesian ? "Skema Otomatisasi URL" : "URL Template") ? (
-                <Check size={14} className="text-[var(--text-primary)]" />
-              ) : (
-                <Copy size={14} />
-              )}
-              <span>
-                {isIndonesian
-                  ? "Salin Skema Otomatisasi URL"
-                  : "Copy Automation URL Scheme"}
-              </span>
-            </button>
-          </div>
-        )}
-
-        {/* Bottom Done Button */}
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic("light");
-            onClose();
-          }}
-          className="w-full py-3.5 rounded-2xl font-semibold text-[14px] transition-all active:scale-[0.98] cursor-pointer"
-          style={{
-            background: "var(--text-primary)",
-            color: "var(--bg-canvas)",
-          }}
-        >
-          {isIndonesian ? "Selesai" : "Done"}
-        </button>
       </div>
     </BottomSheet>
   );

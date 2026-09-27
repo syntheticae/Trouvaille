@@ -9,11 +9,11 @@ import {
   RefreshCcw,
   Trash2,
   Zap,
-  Users,
   Search,
   X,
   ScanLine,
   Sparkles,
+  Mic,
   Check,
   PenLine,
   AlertCircle,
@@ -23,14 +23,12 @@ import {
 import { TransactionKeypadSheet } from "./TransactionKeypadSheet";
 import { CategorySelectorRibbon } from "./CategorySelectorRibbon";
 import { WalletSelectorRibbon } from "./WalletSelectorRibbon";
-import { SplitTransactionSection } from "./SplitTransactionSection";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
 import {
   useAddTransaction,
-  useBatchAddTransactions,
   useUpdateTransaction,
   useDeleteTransaction,
   useAllTransactions,
@@ -46,8 +44,8 @@ import { IconRenderer } from "../ui/IconRenderer";
 import { GlassDatePicker } from "../ui/GlassDatePicker";
 import type { Transaction, TransactionType } from "../../lib/types";
 import { useShortcuts } from "../../hooks/useShortcuts";
-import { SmartQuickAddBar } from "./SmartQuickAddBar";
 import { evaluateMathSafe } from "../../lib/evaluateMathSafe";
+import { classifySemanticCategory } from "../../lib/semanticClassifier";
 import { useSpace } from "../../contexts/SpaceContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -80,9 +78,10 @@ interface TransactionSheetProps {
     note?: string;
   } | null;
   onOpenScan?: () => void;
+  onOpenVoiceAdd?: () => void;
 }
 
-type TabType = TransactionType | "split";
+type TabType = TransactionType;
 
 export function TransactionSheet({
   isOpen,
@@ -90,6 +89,7 @@ export function TransactionSheet({
   transaction,
   initialValues,
   onOpenScan,
+  onOpenVoiceAdd,
 }: TransactionSheetProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
@@ -147,6 +147,16 @@ export function TransactionSheet({
       : format(new Date(), "HH:mm"),
   );
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
+  const lastSavedTimestampRef = useRef<number>(0);
+  const lastSavedPayloadRef = useRef<{
+    amount: number;
+    type: string;
+    walletId: string | null;
+    categoryId: string | null;
+    note: string;
+  } | null>(null);
+  const [duplicateWarningAcknowledged, setDuplicateWarningAcknowledged] = useState(false);
 
   const [categoryId, setCategoryId] = useState<string | null>(
     transaction?.category_id || null,
@@ -228,7 +238,6 @@ export function TransactionSheet({
   const [dateOpen, setDateOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [walletTarget, setWalletTarget] = useState<"from" | "to">("from");
-  const [showSmartBar, setShowSmartBar] = useState(false);
   const [isNoteFocused, setIsNoteFocused] = useState(false);
 
   const activeTags = useMemo(() => {
@@ -270,20 +279,6 @@ export function TransactionSheet({
     }
   };
 
-  // Split Transaction & Piutang State (Innovation 2)
-  const [isSplitOpen, setIsSplitOpen] = useState(false);
-  const [splitMode, setSplitMode] = useState<"friends" | "categories">(
-    "friends",
-  );
-  const [splitFriendType, setSplitFriendType] = useState<"equal" | "custom">(
-    "equal",
-  );
-  const [peopleCount, setPeopleCount] = useState(2);
-  const [friendNames, setFriendNames] = useState("");
-  const [customMyShare, setCustomMyShare] = useState<number>(0);
-  const [itemCatId2, setItemCatId2] = useState<string | null>(null);
-  const [itemAmount1, setItemAmount1] = useState<number>(0);
-
   const { data: allCategories = [] } = useCategories();
   const categories = useMemo(() => {
     if (type === "transfer") return allCategories;
@@ -292,7 +287,6 @@ export function TransactionSheet({
   const { data: allTxs = [] } = useAllTransactions();
 
   const addTx = useAddTransaction();
-  const batchAddTx = useBatchAddTransactions();
   const updateTx = useUpdateTransaction();
   const deleteTx = useDeleteTransaction();
   const { showToast } = useToast();
@@ -331,11 +325,16 @@ export function TransactionSheet({
   }, [note, getMemoryForNote]);
 
   const predictedCategory = useMemo(() => {
-    if (!merchantPrediction?.categoryId) return null;
-    return (
-      allCategories.find((c) => c.id === merchantPrediction.categoryId) || null
-    );
-  }, [merchantPrediction, allCategories]);
+    if (merchantPrediction?.categoryId) {
+      const match = allCategories.find((c) => c.id === merchantPrediction.categoryId);
+      if (match) return match;
+    }
+    if (note && note.trim().length >= 2) {
+      const semantic = classifySemanticCategory(note, allCategories);
+      if (semantic.category) return semantic.category;
+    }
+    return null;
+  }, [merchantPrediction, allCategories, note]);
 
   const predictedWallet = useMemo(() => {
     if (!merchantPrediction?.walletId) return null;
@@ -545,7 +544,6 @@ export function TransactionSheet({
       if (transaction) {
         setActiveTab(transaction.type);
         setType(transaction.type);
-        setIsSplitOpen(false);
         setAmount(String(transaction.amount || "0"));
         setAmountInput(
           Number(transaction.amount) > 0
@@ -671,14 +669,6 @@ export function TransactionSheet({
         setCategoryId(defaultCatId);
         setWalletId(defaultFromId);
         setToWalletId(defaultToId);
-        setIsSplitOpen(false);
-        setSplitMode("friends");
-        setSplitFriendType("equal");
-        setPeopleCount(2);
-        setFriendNames("");
-        setCustomMyShare(0);
-        setItemCatId2(null);
-        setItemAmount1(0);
       }
     }
 
@@ -709,21 +699,6 @@ export function TransactionSheet({
     }
   }, [type, wallets, walletId, toWalletId]);
 
-  // Split Calculated Shares (Innovation 2)
-  const totalAmountNum = Number(amount) || 0;
-  const myShareFriends =
-    splitFriendType === "equal"
-      ? peopleCount > 0
-        ? Math.round(totalAmountNum / peopleCount)
-        : totalAmountNum
-      : Math.min(totalAmountNum, Math.max(0, customMyShare));
-  const friendsShare = Math.max(0, totalAmountNum - myShareFriends);
-  const cat1Share = Math.min(
-    totalAmountNum,
-    Math.max(0, itemAmount1 || Math.round(totalAmountNum / 2)),
-  );
-  const cat2Share = Math.max(0, totalAmountNum - cat1Share);
-
   const handleSave = () => {
     const isUUID = (id?: string | null) =>
       !!id &&
@@ -732,9 +707,14 @@ export function TransactionSheet({
       );
 
     const numAmount = Number(amount);
-    if (numAmount <= 0 || isSaving || addTx.isPending || updateTx.isPending)
+    if (
+      numAmount <= 0 ||
+      isSavingRef.current ||
+      isSaving ||
+      addTx.isPending ||
+      updateTx.isPending
+    )
       return;
-    setIsSaving(true);
 
     // Ensure valid active database foreign keys
     const matchedFromWallet =
@@ -750,7 +730,38 @@ export function TransactionSheet({
     const effectiveToWalletId = matchedToWallet?.id || null;
     const effectiveCatId = matchedCat?.id || null;
 
+    // 5-second duplicate warning protection
+    if (
+      !transaction &&
+      lastSavedPayloadRef.current &&
+      Date.now() - lastSavedTimestampRef.current < 5000
+    ) {
+      const last = lastSavedPayloadRef.current;
+      if (
+        last.amount === numAmount &&
+        last.type === type &&
+        last.walletId === effectiveWalletId &&
+        last.categoryId === effectiveCatId &&
+        last.note === note &&
+        !duplicateWarningAcknowledged
+      ) {
+        showToast(
+          isIndonesian
+            ? "Transaksi serupa baru disimpan. Ketuk Simpan sekali lagi jika disengaja."
+            : "Similar transaction saved seconds ago. Tap Save again if intended.",
+          "info",
+          () => {},
+        );
+        setDuplicateWarningAcknowledged(true);
+        return;
+      }
+    }
+
+    isSavingRef.current = true;
+    setIsSaving(true);
+
     if (type !== "transfer" && !isUUID(effectiveWalletId)) {
+      isSavingRef.current = false;
       setIsSaving(false);
       showToast(
         isIndonesian
@@ -764,6 +775,7 @@ export function TransactionSheet({
 
     if (type === "transfer") {
       if (!isUUID(effectiveWalletId) || !isUUID(effectiveToWalletId)) {
+        isSavingRef.current = false;
         setIsSaving(false);
         showToast(
           isIndonesian
@@ -775,6 +787,7 @@ export function TransactionSheet({
         return;
       }
       if (effectiveWalletId === effectiveToWalletId) {
+        isSavingRef.current = false;
         setIsSaving(false);
         showToast(
           isIndonesian
@@ -788,6 +801,7 @@ export function TransactionSheet({
     }
 
     if (type !== "transfer" && !isUUID(effectiveCatId)) {
+      isSavingRef.current = false;
       setIsSaving(false);
       showToast(
         isIndonesian
@@ -804,154 +818,6 @@ export function TransactionSheet({
     const txDate = new Date(date);
     if (!isNaN(h) && !isNaN(m)) {
       txDate.setHours(h, m, 0, 0);
-    }
-
-    // Split transaction save logic (Innovation 2)
-    if (isSplitOpen && !transaction && numAmount > 0 && type === "expense") {
-      if (splitMode === "friends" && friendsShare > 0) {
-        const piutangWallet = wallets.find(
-          (w) => w.name.trim().toLowerCase() === "piutang",
-        );
-        const friendsLabel = friendNames.trim()
-          ? friendNames.trim()
-          : `${peopleCount - 1} friend${peopleCount - 1 > 1 ? "s" : ""}`;
-
-        const myNote = note.trim()
-          ? `${note.trim()} [Split: ${isIndonesian ? "Porsi saya" : "My share"}]`
-          : isIndonesian
-            ? "Patungan [Porsi saya]"
-            : "Split bill [My share]";
-        const piutangNote = note.trim()
-          ? `${note.trim()} [Piutang: ${friendsLabel}]`
-          : `Piutang [${friendsLabel}]`;
-
-        const tx1 = {
-          type: "expense" as const,
-          amount: myShareFriends,
-          note: myNote,
-          occurred_on: format(date, "yyyy-MM-dd"),
-          created_at: txDate.toISOString(),
-          category_id: isUUID(effectiveCatId) ? effectiveCatId : null,
-          wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
-          to_wallet_id: null,
-        };
-
-        const tx2 =
-          piutangWallet && isUUID(piutangWallet.id)
-            ? {
-                type: "transfer" as const,
-                amount: friendsShare,
-                note: piutangNote,
-                occurred_on: format(date, "yyyy-MM-dd"),
-                created_at: new Date(txDate.getTime() + 1000).toISOString(),
-                category_id: null,
-                wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
-                to_wallet_id: piutangWallet.id,
-              }
-            : {
-                type: "expense" as const,
-                amount: friendsShare,
-                note: piutangNote,
-                occurred_on: format(date, "yyyy-MM-dd"),
-                created_at: new Date(txDate.getTime() + 1000).toISOString(),
-                category_id: isUUID(effectiveCatId) ? effectiveCatId : null,
-                wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
-                to_wallet_id: null,
-              };
-
-        onClose();
-        showToast(
-          isIndonesian
-            ? "Menyimpan transaksi patungan..."
-            : "Saving split transaction...",
-          "info",
-          null,
-          1600,
-        );
-        addTx.mutate(tx1, {
-          onSuccess: () => {
-            addTx.mutate(tx2, {
-              onSuccess: () => {
-                triggerSuccessHaptic();
-                showToast(
-                  isIndonesian
-                    ? "Patungan & Piutang berhasil dicatat!"
-                    : "Split bill & Piutang recorded!",
-                  "add",
-                  () => {},
-                );
-              },
-            });
-          },
-        });
-        return;
-      }
-
-      if (splitMode === "categories") {
-        const cat1Amount = cat1Share;
-        const cat2Amount = cat2Share;
-        const effectiveCat2Id =
-          itemCatId2 ||
-          (categories.length > 1 ? categories[1].id : effectiveCatId);
-
-        if (cat2Amount > 0) {
-          const tx1 = {
-            type: "expense" as const,
-            amount: cat1Amount,
-            note: note.trim()
-              ? `${note.trim()} [${isIndonesian ? "Bagian 1" : "Part 1"}]`
-              : isIndonesian
-                ? "Multi-kategori [Bagian 1]"
-                : "Multi-category [Part 1]",
-            occurred_on: format(date, "yyyy-MM-dd"),
-            created_at: txDate.toISOString(),
-            category_id: isUUID(effectiveCatId) ? effectiveCatId : null,
-            wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
-            to_wallet_id: null,
-          };
-          const tx2 = {
-            type: "expense" as const,
-            amount: cat2Amount,
-            note: note.trim()
-              ? `${note.trim()} [${isIndonesian ? "Bagian 2" : "Part 2"}]`
-              : isIndonesian
-                ? "Multi-kategori [Bagian 2]"
-                : "Multi-category [Part 2]",
-            occurred_on: format(date, "yyyy-MM-dd"),
-            created_at: new Date(txDate.getTime() + 1000).toISOString(),
-            category_id: isUUID(effectiveCat2Id) ? effectiveCat2Id : null,
-            wallet_id: isUUID(effectiveWalletId) ? effectiveWalletId : null,
-            to_wallet_id: null,
-          };
-
-          onClose();
-          showToast(
-            isIndonesian
-              ? "Menyimpan transaksi multi-kategori..."
-              : "Saving multi-category transaction...",
-            "info",
-            null,
-            1600,
-          );
-          addTx.mutate(tx1, {
-            onSuccess: () => {
-              addTx.mutate(tx2, {
-                onSuccess: () => {
-                  triggerSuccessHaptic();
-                  showToast(
-                    isIndonesian
-                      ? "Transaksi multi-kategori berhasil dicatat!"
-                      : "Multi-category transaction recorded!",
-                    "add",
-                    () => {},
-                  );
-                },
-              });
-            },
-          });
-          return;
-        }
-      }
     }
 
     const payload = {
@@ -1011,14 +877,18 @@ export function TransactionSheet({
         { id: transaction.id, ...payload },
         {
           onSuccess: () => {
+            isSavingRef.current = false;
+            setIsSaving(false);
             triggerSuccessHaptic();
             showToast(
-              isIndonesian ? "Transaksi diperbarui" : "Transaction updated",
+               isIndonesian ? "Transaksi diperbarui" : "Transaction updated",
               "update",
               () => {},
             );
           },
           onError: (err) => {
+            isSavingRef.current = false;
+            setIsSaving(false);
             console.error("Update tx error:", err);
             showToast(
               isIndonesian
@@ -1033,6 +903,17 @@ export function TransactionSheet({
     } else {
       addTx.mutate(payload, {
         onSuccess: () => {
+          lastSavedTimestampRef.current = Date.now();
+          lastSavedPayloadRef.current = {
+            amount: numAmount,
+            type,
+            walletId: effectiveWalletId,
+            categoryId: effectiveCatId,
+            note,
+          };
+          setDuplicateWarningAcknowledged(false);
+          isSavingRef.current = false;
+          setIsSaving(false);
           triggerSuccessHaptic();
           showToast(
             isIndonesian ? "Transaksi ditambahkan" : "Transaction added",
@@ -1041,6 +922,8 @@ export function TransactionSheet({
           );
         },
         onError: () => {
+          isSavingRef.current = false;
+          setIsSaving(false);
           showToast(
             isIndonesian
               ? "Gagal menyimpan transaksi"
@@ -1112,15 +995,6 @@ export function TransactionSheet({
               label: isIndonesian ? "Transfer" : "Transfer",
               icon: <RefreshCcw size={13.5} strokeWidth={1.75} />,
             },
-            ...(!transaction
-              ? [
-                  {
-                    key: "split" as TabType,
-                    label: isIndonesian ? "Patungan" : "Split",
-                    icon: <Users size={13.5} strokeWidth={1.75} />,
-                  },
-                ]
-              : []),
           ].map((t) => {
             const isSelected = activeTab === t.key;
             return (
@@ -1129,13 +1003,7 @@ export function TransactionSheet({
                 type="button"
                 onClick={() => {
                   setActiveTab(t.key);
-                  if (t.key === "split") {
-                    setType("expense");
-                    setIsSplitOpen(true);
-                  } else {
-                    setType(t.key as TransactionType);
-                    setIsSplitOpen(false);
-                  }
+                  setType(t.key);
                   triggerHaptic("light");
                 }}
                 className="flex-1 py-1.5 rounded-full text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
@@ -1166,7 +1034,6 @@ export function TransactionSheet({
                 onClick={() => {
                   setActiveTab(s.type);
                   setType(s.type);
-                  setIsSplitOpen(false);
                   setAmount(String(s.amount));
                   setAmountInput(Number(s.amount).toLocaleString("id-ID"));
                   setNote(s.note);
@@ -1745,7 +1612,7 @@ export function TransactionSheet({
         )}
 
         {/* Smart Merchant & Context Memory Suggestion Chip */}
-        {merchantPrediction && (predictedCategory || predictedWallet) && (
+        {(predictedCategory || predictedWallet) && (
           <motion.div
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1755,10 +1622,10 @@ export function TransactionSheet({
               type="button"
               onClick={() => {
                 triggerHaptic("medium");
-                if (merchantPrediction.categoryId)
-                  setCategoryId(merchantPrediction.categoryId);
-                if (merchantPrediction.walletId)
-                  setWalletId(merchantPrediction.walletId);
+                if (predictedCategory)
+                  setCategoryId(predictedCategory.id);
+                if (predictedWallet)
+                  setWalletId(predictedWallet.id);
               }}
               className="px-3 py-1.5 rounded-xl text-[11px] font-medium flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer select-none"
               style={{
@@ -1794,128 +1661,6 @@ export function TransactionSheet({
               </span>
             </button>
           </motion.div>
-        )}
-
-        {/* Collapsible Smart Quick Add Drawer (Positioned Directly Below Note Island) */}
-        <AnimatePresence>
-          {showSmartBar && !transaction && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-              animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
-              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden"
-            >
-              <SmartQuickAddBar
-                categories={categories}
-                wallets={wallets}
-                onApply={(parsed) => {
-                  if (parsed.amount !== null && parsed.amount > 0) {
-                    setAmount(String(parsed.amount));
-                    setAmountInput(parsed.amount.toLocaleString("id-ID"));
-                  }
-                  if (parsed.type) {
-                    setActiveTab(parsed.type);
-                    setType(parsed.type);
-                    setIsSplitOpen(false);
-                  }
-                  if (parsed.categoryId) setCategoryId(parsed.categoryId);
-                  if (parsed.walletId) setWalletId(parsed.walletId);
-                  if (parsed.toWalletId) setToWalletId(parsed.toWalletId);
-                  if (parsed.date) setDate(parsed.date);
-                  if (parsed.note) setNote(parsed.note);
-                  setShowSmartBar(false);
-                }}
-                onBatchApply={(parsedList) => {
-                  triggerSuccessHaptic();
-                  const payloads = parsedList.map((item) => {
-                    const itemType = item.type || "expense";
-                    const itemCat =
-                      categories.find((c) => c.id === item.categoryId) ||
-                      (categories.length > 0 ? categories[0] : null);
-                    const itemWallet =
-                      wallets.find((w) => w.id === item.walletId) ||
-                      (wallets.length > 0 ? wallets[0] : null);
-                    const itemToWallet =
-                      itemType === "transfer"
-                        ? wallets.find((w) => w.id === item.toWalletId) ||
-                          wallets.find((w) => w.id !== itemWallet?.id) ||
-                          null
-                        : null;
-                    const txDate = item.date || new Date();
-
-                    return {
-                      type: itemType,
-                      amount: item.amount || 0,
-                      note: item.note || null,
-                      occurred_on: format(txDate, "yyyy-MM-dd"),
-                      created_at: txDate.toISOString(),
-                      category_id:
-                        itemType === "transfer" ? null : itemCat?.id || null,
-                      wallet_id: itemWallet?.id || null,
-                      to_wallet_id:
-                        itemType === "transfer"
-                          ? itemToWallet?.id || null
-                          : null,
-                    };
-                  });
-
-                  batchAddTx.mutate(payloads, {
-                    onSuccess: () => {
-                      showToast(
-                        `${parsedList.length} ${
-                          isIndonesian
-                            ? "transaksi disimpan"
-                            : "transactions saved"
-                        }`,
-                        "add",
-                        () => {},
-                      );
-                      setShowSmartBar(false);
-                      onClose();
-                    },
-                    onError: (err: any) => {
-                      showToast(
-                        err?.message ||
-                          (isIndonesian
-                            ? "Gagal menyimpan transaksi"
-                            : "Failed to save transactions"),
-                        "delete",
-                        () => {},
-                      );
-                    },
-                  });
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Split Transaction & Piutang Configuration */}
-        {activeTab === "split" && !transaction && (
-          <SplitTransactionSection
-            splitMode={splitMode}
-            setSplitMode={setSplitMode}
-            splitFriendType={splitFriendType}
-            setSplitFriendType={setSplitFriendType}
-            peopleCount={peopleCount}
-            setPeopleCount={setPeopleCount}
-            friendNames={friendNames}
-            setFriendNames={setFriendNames}
-            customMyShare={customMyShare}
-            setCustomMyShare={setCustomMyShare}
-            totalAmountNum={totalAmountNum}
-            wallets={wallets}
-            categories={categories}
-            categoryId={categoryId}
-            itemCatId2={itemCatId2}
-            setItemCatId2={(id) => setItemCatId2(id)}
-            cat1Share={cat1Share}
-            cat2Share={cat2Share}
-            setItemAmount1={(amt) => setItemAmount1(amt)}
-            myShareFriends={myShareFriends}
-            friendsShare={friendsShare}
-          />
         )}
 
         {/* Action Button Bar: Scan (Left), Save (Center), Quick Add (Right) */}
@@ -2003,48 +1748,40 @@ export function TransactionSheet({
                     ? isIndonesian
                       ? "Perbarui Transaksi"
                       : "Update Transaction"
-                    : activeTab === "split"
-                      ? isIndonesian
-                        ? "Bagi & Catat Pengeluaran"
-                        : "Split & Record Expense"
-                      : isIndonesian
-                        ? "Simpan Transaksi"
-                        : "Save Transaction"}
+                    : isIndonesian
+                      ? "Simpan Transaksi"
+                      : "Save Transaction"}
                 </span>
               </>
             )}
           </button>
 
-          {!transaction && (
+          {!transaction && onOpenVoiceAdd && (
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
-                setShowSmartBar((prev) => !prev);
+                onOpenVoiceAdd();
               }}
               className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
               style={{
-                background: showSmartBar
-                  ? "var(--accent)"
-                  : isDark
-                    ? "linear-gradient(155deg, #1f1f24 0%, #121215 100%)"
-                    : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
+                background: isDark
+                  ? "linear-gradient(155deg, #1f1f24 0%, #121215 100%)"
+                  : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
                 border: "1px solid var(--glass-border)",
-                color: showSmartBar
-                  ? "var(--accent-ink)"
-                  : "var(--text-primary)",
+                color: "var(--text-primary)",
                 boxShadow: isDark
                   ? "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
                   : "0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #ffffff",
               }}
               title={
                 isIndonesian
-                  ? "Tambah Cepat Suara / Teks Alami"
-                  : "Voice / Natural Language Quick Add"
+                  ? "Pencatatan Suara Cerdas"
+                  : "Smart Voice Logging"
               }
-              aria-label={isIndonesian ? "Tambah Cepat" : "Quick Add"}
+              aria-label={isIndonesian ? "Pencatatan Suara" : "Voice Logging"}
             >
-              <Sparkles size={18} strokeWidth={1.75} />
+              <Mic size={18} strokeWidth={1.75} />
             </button>
           )}
         </div>

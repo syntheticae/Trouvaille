@@ -122,13 +122,13 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
           }}
         >
           {/* Left Side: Duplicate (revealed on swipe right) */}
-          <div className="flex items-center gap-1.5 text-blue-400 font-semibold text-[12px]">
+          <div className="flex items-center gap-1.5 text-[var(--text-secondary)] font-semibold text-[12px]">
             <Copy size={16} />
             <span>{isIndonesian ? "Duplikasi" : "Duplicate"}</span>
           </div>
 
           {/* Right Side: Delete (revealed on swipe left) */}
-          <div className="flex items-center gap-1.5 text-red-500 font-semibold text-[12px]">
+          <div className="flex items-center gap-1.5 text-[var(--text-primary)] font-semibold text-[12px]">
             <span>{isIndonesian ? "Hapus" : "Delete"}</span>
             <Trash2 size={16} />
           </div>
@@ -154,6 +154,8 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
         onTap={handleTapOrClick}
         className="p-3.5 rounded-[22px] flex items-center justify-between cursor-pointer active:scale-98 transition-transform relative z-10"
         style={{
+          willChange: "transform",
+          transform: "translateZ(0)",
           background: isSelected
             ? "rgba(255, 255, 255, 0.07)"
             : "var(--bg-elevated)",
@@ -348,8 +350,6 @@ export const TransactionItem = memo(TransactionItemComponent, (prev, next) => {
     prev.tx.category_id === next.tx.category_id &&
     prev.tx.categories?.name === next.tx.categories?.name &&
     prev.tx.categories?.emoji === next.tx.categories?.emoji &&
-    prev.categories === next.categories &&
-    prev.categoryMap === next.categoryMap &&
     prev.fromWalletName === next.fromWalletName &&
     prev.toWalletName === next.toWalletName &&
     prev.isUnusual === next.isUnusual &&

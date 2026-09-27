@@ -1,4 +1,4 @@
-import { Zap, Clock, ArrowUpRight } from "lucide-react";
+import { Zap, Clock } from "lucide-react";
 import { formatRupiah } from "../../../lib/utils";
 import { CompactShell } from "./CompactShell";
 import { useLanguage } from "../../../contexts/LanguageContext";
@@ -320,50 +320,6 @@ export function CompactTopCategoriesHalf({
             style={{ width: `${Math.min(100, Math.max(0, topCategoryPct))}%` }}
           />
         </div>
-      </div>
-    </CompactShell>
-  );
-}
-
-export function CompactSplitBillHalf({
-  totalPending = 0,
-  pendingCount = 0,
-  onOpenDetail,
-}: {
-  totalPending?: number;
-  pendingCount?: number;
-  onOpenDetail?: () => void;
-}) {
-  const { language } = useLanguage();
-  useCurrency();
-  const isIndonesian = language === "id";
-
-  return (
-    <CompactShell title={isIndonesian ? "Bagi Tagihan" : "Split Bills"} onOpenDetail={onOpenDetail}>
-      <div className="flex-1 flex flex-col justify-center py-1">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-            {isIndonesian ? "Piutang" : "Receivables"}
-          </span>
-          <span
-            className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
-            style={{
-              background: "var(--glass-fill)",
-              color: "var(--text-secondary)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            {pendingCount} {isIndonesian ? "Tertunda" : "Pending"}
-          </span>
-        </div>
-        <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
-          {formatRupiah(totalPending)}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
-        <ArrowUpRight size={11} />
-        <span>{isIndonesian ? "Ketuk untuk pelunasan" : "Tap to settle shares"}</span>
       </div>
     </CompactShell>
   );
