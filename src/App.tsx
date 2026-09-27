@@ -135,6 +135,21 @@ function AppShell() {
   const addTxMutation = useAddTransaction();
   const { isIndonesian } = useLanguage();
   const [recordedShortcutTx, setRecordedShortcutTx] = useState<ShortcutRecordedTxData | null>(null);
+  const [isPreviewingInitialSync, setIsPreviewingInitialSync] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("preview") === "initial-sync" || params.get("preview") === "sync";
+  });
+
+  useEffect(() => {
+    const handleTriggerPreview = () => {
+      setIsPreviewingInitialSync(true);
+    };
+    window.addEventListener("trouvaille:preview-initial-sync", handleTriggerPreview);
+    return () => {
+      window.removeEventListener("trouvaille:preview-initial-sync", handleTriggerPreview);
+    };
+  }, []);
 
   // Handle iOS Custom URL Scheme (trouvaille://...), Back Tap Shortcuts, and Web Share Target
   useEffect(() => {
@@ -425,6 +440,24 @@ function AppShell() {
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, hasInitialSynced]);
+
+  if (isPreviewingInitialSync) {
+    return (
+      <InitialSyncScreen
+        isPreview={true}
+        totalCount={syncedTxCount || allTxs.length || 24}
+        isDataReady={true}
+        onComplete={() => {
+          setIsPreviewingInitialSync(false);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("preview");
+            window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+          }
+        }}
+      />
+    );
+  }
 
   if (!hasInitialSynced) {
     return (

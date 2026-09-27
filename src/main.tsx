@@ -25,45 +25,115 @@ import { LanguageProvider } from './contexts/LanguageContext'
 import App from './App.tsx'
 import './index.css'
 
-import { AlertCircle, RefreshCw, RotateCcw } from 'lucide-react'
+import { AlertCircle, RefreshCw, RotateCcw, Copy, Check } from 'lucide-react'
 
-class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: Error | null, showDetails: boolean}> {
-  constructor(props: {children: ReactNode}) {
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null; showDetails: boolean; copied: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { hasError: false, error: null, showDetails: false };
+    this.state = { hasError: false, error: null, showDetails: false, copied: false };
   }
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error, showDetails: false };
+    return { hasError: true, error, showDetails: false, copied: false };
   }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[Trouvaille] Uncaught runtime exception:", error, errorInfo);
   }
   render() {
     if (this.state.hasError) {
+      const savedTheme =
+        typeof window !== 'undefined' ? localStorage.getItem('trouvaille_theme') : null;
+      const isDark =
+        savedTheme === 'light'
+          ? false
+          : savedTheme === 'dark'
+          ? true
+          : typeof window !== 'undefined' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+      const savedLang =
+        typeof window !== 'undefined' ? localStorage.getItem('trouvaille_language') : null;
+      const isIndonesian =
+        savedLang === 'id' ||
+        (!savedLang &&
+          typeof navigator !== 'undefined' &&
+          (navigator.language || '').toLowerCase().startsWith('id'));
+
       return (
-        <div className="fixed inset-0 z-[999999] flex flex-col items-center justify-center p-6 bg-[#09090c] text-white select-none">
-          <div className="w-full max-w-sm p-6 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-2xl shadow-2xl text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center bg-white/[0.08] border border-white/[0.14] text-white">
-              <AlertCircle size={22} strokeWidth={1.75} />
+        <div
+          className="fixed inset-0 z-[999999] flex flex-col items-center justify-center p-6 select-none transition-colors duration-300"
+          style={{
+            backgroundColor: isDark ? "#09090c" : "#f4f4f7",
+            color: isDark ? "#ffffff" : "#09090c",
+            fontFamily: "'Urbanist', sans-serif",
+          }}
+        >
+          {/* Subtle Ambient Glow */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div
+              className={`absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] rounded-full blur-[120px] ${
+                isDark ? "bg-white/[0.03]" : "bg-black/[0.02]"
+              }`}
+            />
+          </div>
+
+          <div
+            className={`w-full max-w-sm p-6 sm:p-7 rounded-[28px] text-center relative z-10 space-y-4 backdrop-blur-2xl transition-all ${
+              isDark
+                ? "bg-white/[0.04] border border-white/[0.12] shadow-[0_24px_60px_rgba(0,0,0,0.7)]"
+                : "bg-white/90 border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.06)]"
+            }`}
+          >
+            {/* Icon Squircle */}
+            <div
+              className={`w-13 h-13 rounded-2xl mx-auto flex items-center justify-center transition-colors ${
+                isDark
+                  ? "bg-white/[0.08] border border-white/[0.14] text-white shadow-inner"
+                  : "bg-black/[0.04] border border-black/[0.08] text-zinc-900 shadow-sm"
+              }`}
+            >
+              <AlertCircle size={24} strokeWidth={1.5} />
             </div>
 
-            <div className="space-y-1">
-              <h2 className="text-[17px] font-bold tracking-tight text-white">
-                Encountered an Unexpected Glitch
+            {/* Title & Description (Strict Non-Mixed Localization) */}
+            <div className="space-y-1.5">
+              <h2
+                className={`text-[17px] font-bold tracking-tight ${
+                  isDark ? "text-white" : "text-zinc-950"
+                }`}
+              >
+                {isIndonesian
+                  ? "Terjadi Kendala pada Tampilan"
+                  : "Encountered an Unexpected Glitch"}
               </h2>
-              <p className="text-[12px] text-zinc-400 leading-relaxed">
-                Trouvaille caught an interface error. Your financial records and local vault remain completely safe.
+              <p
+                className={`text-[12px] leading-relaxed font-normal ${
+                  isDark ? "text-zinc-400" : "text-zinc-600"
+                }`}
+              >
+                {isIndonesian
+                  ? "Trouvaille mendeteksi galat antarmuka. Catatan keuangan dan brankas lokal Anda tetap aman sepenuhnya."
+                  : "Trouvaille caught an interface error. Your financial records and local vault remain completely safe."}
               </p>
             </div>
 
+            {/* Action Buttons */}
             <div className="space-y-2 pt-2">
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="w-full py-3 px-4 rounded-xl text-[13px] font-bold bg-white text-black flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-98"
+                className={`w-full py-3 px-4 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.98] ${
+                  isDark
+                    ? "bg-white text-zinc-950 hover:bg-zinc-200"
+                    : "bg-zinc-950 text-white hover:bg-zinc-800"
+                }`}
               >
                 <RefreshCw size={15} strokeWidth={2} />
-                <span>Reload Trouvaille</span>
+                <span>
+                  {isIndonesian ? "Muat Ulang Trouvaille" : "Reload Trouvaille"}
+                </span>
               </button>
 
               <button
@@ -74,24 +144,87 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
                   } catch {}
                   window.location.reload();
                 }}
-                className="w-full py-2.5 px-4 rounded-xl text-[12px] font-semibold text-zinc-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] flex items-center justify-center gap-2 cursor-pointer transition-all"
+                className={`w-full py-2.5 px-4 rounded-xl text-[12px] font-medium flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${
+                  isDark
+                    ? "bg-white/[0.06] hover:bg-white/[0.1] text-zinc-200 border border-white/[0.12]"
+                    : "bg-black/[0.04] hover:bg-black/[0.08] text-zinc-700 border border-black/[0.09]"
+                }`}
               >
                 <RotateCcw size={13} strokeWidth={1.75} />
-                <span>Clear Cache & Restart</span>
+                <span>
+                  {isIndonesian
+                    ? "Bersihkan Cache & Mulai Ulang"
+                    : "Clear Cache & Restart"}
+                </span>
               </button>
             </div>
 
+            {/* Technical Details & Copy Log */}
             {this.state.error && (
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => this.setState({ showDetails: !this.state.showDetails })}
-                  className="text-[11px] text-zinc-500 hover:text-zinc-300 underline cursor-pointer"
-                >
-                  {this.state.showDetails ? "Hide Technical Details" : "View Technical Details"}
-                </button>
+              <div className="pt-2 border-t border-black/5 dark:border-white/5">
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      this.setState({ showDetails: !this.state.showDetails })
+                    }
+                    className={`text-[11px] underline cursor-pointer transition-colors ${
+                      isDark
+                        ? "text-zinc-400 hover:text-zinc-200"
+                        : "text-zinc-500 hover:text-zinc-800"
+                    }`}
+                  >
+                    {this.state.showDetails
+                      ? isIndonesian
+                        ? "Sembunyikan Rincian Teknis"
+                        : "Hide Technical Details"
+                      : isIndonesian
+                      ? "Lihat Rincian Teknis"
+                      : "View Technical Details"}
+                  </button>
+
+                  {this.state.showDetails && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const errorText = `${this.state.error?.toString()}\n\n${this.state.error?.stack || ""}`;
+                        navigator.clipboard?.writeText(errorText);
+                        this.setState({ copied: true });
+                        setTimeout(() => this.setState({ copied: false }), 2000);
+                      }}
+                      className={`text-[11px] inline-flex items-center gap-1 cursor-pointer transition-colors ${
+                        isDark
+                          ? "text-zinc-400 hover:text-zinc-200"
+                          : "text-zinc-500 hover:text-zinc-800"
+                      }`}
+                    >
+                      {this.state.copied ? (
+                        <>
+                          <Check size={11} strokeWidth={2} />
+                          <span>
+                            {isIndonesian ? "Tersalin" : "Copied"}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={11} strokeWidth={1.75} />
+                          <span>
+                            {isIndonesian ? "Salin Pesan Galat" : "Copy Error"}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
                 {this.state.showDetails && (
-                  <pre className="mt-2 p-3 rounded-xl bg-black/50 border border-white/[0.08] text-left text-[10px] text-zinc-400 max-h-36 overflow-auto font-mono whitespace-pre-wrap">
+                  <pre
+                    className={`mt-2.5 p-3 rounded-xl text-left text-[10px] max-h-36 overflow-auto font-mono whitespace-pre-wrap transition-colors ${
+                      isDark
+                        ? "bg-black/60 border border-white/[0.08] text-zinc-300"
+                        : "bg-black/[0.03] border border-black/[0.08] text-zinc-700"
+                    }`}
+                  >
                     {this.state.error?.toString()}
                     {"\n\n"}
                     {this.state.error?.stack}

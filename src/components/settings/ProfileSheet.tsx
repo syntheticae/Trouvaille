@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Sparkles,
   Shield,
+  ShieldCheck,
   Mail,
   Key,
 } from "lucide-react";
@@ -185,7 +186,7 @@ export function ProfileSheet({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-semibold text-[var(--text-primary)]">
-                        {isIndonesian ? "Reset Ledger Data" : "Reset Ledger Data"}
+                        {isIndonesian ? "Atur Ulang Data Buku Kas" : "Reset Ledger Data"}
                       </p>
                       <p className="text-[10px] text-[var(--text-tertiary)] truncate">
                         {isIndonesian
@@ -210,12 +211,41 @@ export function ProfileSheet({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-semibold text-[var(--text-primary)]">
-                        {isIndonesian ? "Re-run Customization" : "Re-run Customization"}
+                        {isIndonesian ? "Jalankan Ulang Kustomisasi" : "Re-run Customization"}
                       </p>
                       <p className="text-[10px] text-[var(--text-tertiary)] truncate">
                         {isIndonesian
                           ? "Buka kembali wizard setup awal"
                           : "Re-run initial onboarding wizard"}
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("medium");
+                      setIsDangerMenuOpen(false);
+                      onClose();
+                      window.dispatchEvent(
+                        new CustomEvent("trouvaille:preview-initial-sync")
+                      );
+                    }}
+                    className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors cursor-pointer group"
+                  >
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] shrink-0">
+                      <ShieldCheck size={13} strokeWidth={1.75} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)]">
+                        {isIndonesian
+                          ? "Pratinjau Layar Sinkronisasi"
+                          : "Preview Initial Sync Screen"}
+                      </p>
+                      <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+                        {isIndonesian
+                          ? "Lihat animasi sinkronisasi awal tanpa mereset data"
+                          : "View initial sync animation without resetting data"}
                       </p>
                     </div>
                   </button>
