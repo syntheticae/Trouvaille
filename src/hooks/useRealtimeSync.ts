@@ -33,6 +33,11 @@ export function useRealtimeSync(
     onPartnerTransactionRef.current = options?.onPartnerTransaction;
   }, [options?.onPartnerTransaction]);
 
+  const refreshLedgersRef = useRef(spaceContext?.refreshLedgers);
+  useEffect(() => {
+    refreshLedgersRef.current = spaceContext?.refreshLedgers;
+  }, [spaceContext?.refreshLedgers]);
+
   // Extract all collaborative shared ledgers
   const sharedLedgers = useMemo(() => {
     if (!spaces) return [];
@@ -40,6 +45,11 @@ export function useRealtimeSync(
       (s) => s.is_shared && s.id !== "personal" && s.id !== "all",
     );
   }, [spaces]);
+
+  const sharedLedgersRef = useRef(sharedLedgers);
+  useEffect(() => {
+    sharedLedgersRef.current = sharedLedgers;
+  }, [sharedLedgers]);
 
   const sharedLedgerIdsKey = useMemo(() => {
     return sharedLedgers
@@ -128,7 +138,7 @@ export function useRealtimeSync(
         },
         () => {
           // Cloud membership updated (e.g. joined ledger, role change)
-          spaceContext?.refreshLedgers?.();
+          refreshLedgersRef.current?.();
         },
       )
       .subscribe((status) => {
@@ -142,7 +152,7 @@ export function useRealtimeSync(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, queryClient, spaceContext]);
+  }, [userId, queryClient]);
 
   // 2. Collaborative Shared Ledgers Channel (Live sync across all shared ledgers simultaneously)
   useEffect(() => {
@@ -267,7 +277,7 @@ export function useRealtimeSync(
           filter: `ledger_id=eq.${ledger.id}`,
         },
         () => {
-          spaceContext?.refreshLedgers?.();
+          refreshLedgersRef.current?.();
         },
       );
     });
@@ -275,7 +285,7 @@ export function useRealtimeSync(
     channel.subscribe((status) => {
       if (status === "SUBSCRIBED") {
         console.info(
-          `[useRealtimeSync] Subscribed to shared channel: ${sharedChannelName} (${sharedLedgers.length} ledgers)`,
+          `[useRealtimeSync] Subscribed to shared channel: ${sharedChannelName} (${sharedLedgersRef.current.length} ledgers)`,
         );
       } else if (status === "CHANNEL_ERROR") {
         console.warn(`[useRealtimeSync] Channel error on ${sharedChannelName}`);
@@ -285,5 +295,5 @@ export function useRealtimeSync(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, sharedLedgerIdsKey, sharedLedgers, queryClient, spaceContext]);
+  }, [userId, sharedLedgerIdsKey, queryClient]);
 }

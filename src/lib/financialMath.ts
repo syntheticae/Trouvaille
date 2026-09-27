@@ -504,14 +504,14 @@ export function calculateWalletBalances(
   wallets: Wallet[],
 ): WalletBalancesResult {
   const walletMap = new Map<string, AccountBalanceItem>();
+  const nameToIdMap = new Map<string, string>();
 
   wallets.forEach((w) => {
-    const key = w.name.toLowerCase();
     const resolvedIcon =
       !w.icon || w.icon === "/icons/wallet.png"
         ? getFallbackWalletIcon(w.name)
         : w.icon;
-    walletMap.set(key, {
+    walletMap.set(w.id, {
       id: w.id,
       name: w.name,
       icon: resolvedIcon,
@@ -520,40 +520,54 @@ export function calculateWalletBalances(
       inflow: 0,
       outflow: 0,
     });
+    nameToIdMap.set(w.name.toLowerCase(), w.id);
   });
 
   if (walletMap.size === 0) {
-    walletMap.set("cash", {
+    const cashEntry = {
       id: "wallet-cash",
       name: "Cash",
       icon: "/icons/Budgets/Cash.png",
       balance: 0,
       inflow: 0,
       outflow: 0,
-    });
+    };
+    walletMap.set("wallet-cash", cashEntry);
+    nameToIdMap.set("cash", "wallet-cash");
   }
 
   const getWallet = (
-    nameOrId: string | null | undefined,
+    idOrName: string | null | undefined,
   ): AccountBalanceItem => {
-    if (!nameOrId)
-      return walletMap.get("cash") || Array.from(walletMap.values())[0];
-    const key = nameOrId.toLowerCase();
-    if (walletMap.has(key)) return walletMap.get(key)!;
-    const byId = wallets.find((w) => w.id === nameOrId);
-    if (byId && walletMap.has(byId.name.toLowerCase())) {
-      return walletMap.get(byId.name.toLowerCase())!;
+    if (!idOrName) {
+      return Array.from(walletMap.values())[0];
     }
-    const displayName = nameOrId.charAt(0).toUpperCase() + nameOrId.slice(1);
+    // 1. Direct ID match (highest priority, unique)
+    if (walletMap.has(idOrName)) {
+      return walletMap.get(idOrName)!;
+    }
+    // 2. Name-to-ID lookup
+    const lower = idOrName.toLowerCase();
+    const mappedId = nameToIdMap.get(lower);
+    if (mappedId && walletMap.has(mappedId)) {
+      return walletMap.get(mappedId)!;
+    }
+    // 3. Fallback: match by name among existing entries
+    for (const item of walletMap.values()) {
+      if (item.name.toLowerCase() === lower) return item;
+    }
+    // 4. Create synthetic entry if genuinely unknown
+    const displayName = idOrName.charAt(0).toUpperCase() + idOrName.slice(1);
     const newEntry: AccountBalanceItem = {
-      id: `wallet-${key}`,
+      id: `wallet-${lower}`,
       name: displayName,
       icon: getFallbackWalletIcon(displayName),
       balance: 0,
       inflow: 0,
       outflow: 0,
     };
-    walletMap.set(key, newEntry);
+    walletMap.set(newEntry.id, newEntry);
+    nameToIdMap.set(lower, newEntry.id);
     return newEntry;
   };
 
@@ -578,8 +592,8 @@ export function calculateWalletBalances(
       }
     }
 
-    const fromEntry = getWallet(fromName || "Cash");
-    const toEntry = getWallet(toName || "BNI");
+    const fromEntry = getWallet(tx.wallet_id || fromName || "Cash");
+    const toEntry = getWallet(tx.to_wallet_id || toName || "BNI");
 
     const isCorrection = isCorrectionTx(tx);
 

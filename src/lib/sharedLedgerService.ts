@@ -16,8 +16,16 @@ export function generateInviteCode(): string {
   // Excludes 0, 1, I, O, L to prevent any ambiguity
   const chars = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
   let result = "";
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const randomBytes = new Uint8Array(6);
+    crypto.getRandomValues(randomBytes);
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(randomBytes[i] % chars.length);
+    }
+  } else {
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
   }
   // Format as TRV-XXX or XXX-XXX
   return `TRV-${result.slice(0, 3)}${result.slice(3)}`;
@@ -242,11 +250,20 @@ export async function regenerateInviteCode(ledgerId: string): Promise<string | n
     });
 
     if (error) {
-      // Fallback: direct update if RPC is missing
+      // Fallback: direct update ONLY if user is the authenticated owner
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        console.error("[regenerateInviteCode] Unauthorized:", error);
+        return null;
+      }
+
       const { error: updateError } = await supabase
         .from("ledgers")
         .update({ invite_code: newCode, updated_at: new Date().toISOString() })
-        .eq("id", ledgerId);
+        .eq("id", ledgerId)
+        .eq("user_id", session.user.id);
 
       if (updateError) {
         console.error("[regenerateInviteCode] Fallback error:", updateError);

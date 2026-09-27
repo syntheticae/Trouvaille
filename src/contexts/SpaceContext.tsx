@@ -297,7 +297,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     const inviteCode = isShared ? generateInviteCode() : undefined;
 
     const newSpace: MoneySpace = {
-      id: `ledger-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: typeof crypto !== "undefined" && crypto.randomUUID ? `ledger-${crypto.randomUUID()}` : `ledger-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: spaceData.name.trim(),
       description: spaceData.description?.trim() || `Dedicated ledger for ${spaceData.name.trim()}`,
       tag: formattedTag,
@@ -467,7 +467,8 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
           await supabase
             .from("ledgers")
             .update(payload)
-            .eq("id", id);
+            .eq("id", id)
+            .eq("user_id", session.user.id);
 
           if (spaceData.is_shared) {
             await supabase.from("ledger_members").upsert({

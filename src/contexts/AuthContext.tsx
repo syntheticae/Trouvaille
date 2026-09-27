@@ -14,10 +14,10 @@ export const GUEST_USER: User = {
   id: GUEST_USER_ID,
   app_metadata: { provider: "guest" },
   user_metadata: { display_name: "Guest" },
-  aud: "authenticated",
+  aud: "guest",
   created_at: new Date().toISOString(),
   email: "guest@trouvaille.local",
-  role: "authenticated",
+  role: "anon",
 } as User;
 
 interface AuthContextType {
@@ -189,9 +189,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // If newSession is null, only clear if no stored session remains in local storage or vault
+      // If newSession is null, only preserve if vault has a valid, non-expired session
       const vault = getPersistentSession() || getStoredSupabaseSession();
-      if (!vault) {
+      const isExpired = vault?.expires_at ? Date.now() / 1000 > vault.expires_at : false;
+      if (!vault || isExpired) {
+        clearPersistentSession();
         setSession(null);
         setLoading(false);
       } else {
@@ -221,7 +223,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.removeItem("TROUVAILLE_OFFLINE_CACHE_V1");
       localStorage.removeItem("TROUVAILLE_TX_BACKUP_V1");
+      localStorage.removeItem("TROUVAILLE_WALLETS_BACKUP_V1");
+      localStorage.removeItem("TROUVAILLE_PENDING_MUTATIONS_V2");
       localStorage.removeItem("trouvaille_guest_mode");
+      localStorage.removeItem("trouvaille_shortcuts");
+      localStorage.removeItem("trouvaille_linked_web_sessions");
       clearPersistentSession();
       clearBiometricLoginCredentials();
     } catch {}

@@ -38,7 +38,7 @@ export function enqueuePendingMutation(
 ): PendingMutation {
   const mutations = getPendingMutations();
   const newMutation: PendingMutation = {
-    id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `mut-${Date.now()}-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 8)}`,
     type,
     entity: "transaction",
     payload,
@@ -117,90 +117,91 @@ export async function flushPendingMutations(): Promise<{
   }
 
   isFlushing = true;
-  const mutations = getPendingMutations();
-  if (mutations.length === 0) {
-    isFlushing = false;
-    return { flushedCount: 0, remainingCount: 0, errors: [] };
-  }
+  try {
+    const mutations = getPendingMutations();
+    if (mutations.length === 0) {
+      return { flushedCount: 0, remainingCount: 0, errors: [] };
+    }
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const user = session?.user;
-  if (!user) {
-    isFlushing = false;
-    return {
-      flushedCount: 0,
-      remainingCount: mutations.length,
-      errors: ["Not authenticated"],
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) {
+      return {
+        flushedCount: 0,
+        remainingCount: mutations.length,
+        errors: ["Not authenticated"],
+      };
+    }
+
+    let flushedCount = 0;
+    const errors: unknown[] = [];
+    const remainingMutations: PendingMutation[] = [];
+
+    const sanitizePayload = (p: any) => {
+      if (!p || typeof p !== "object") return p;
+      const { categories, wallet, to_wallet, ...clean } = p;
+      return clean;
     };
-  }
 
-  let flushedCount = 0;
-  const errors: unknown[] = [];
-  const remainingMutations: PendingMutation[] = [];
-
-  const sanitizePayload = (p: any) => {
-    if (!p || typeof p !== "object") return p;
-    const { categories, wallet, to_wallet, ...clean } = p;
-    return clean;
-  };
-
-  for (const mutation of mutations) {
-    try {
-      if (mutation.type === "insert") {
-        const item = sanitizePayload({ ...mutation.payload, user_id: user.id });
-        const { error } = await supabase.from("transactions").upsert(item);
-        if (error) throw error;
-        flushedCount++;
-      } else if (mutation.type === "update") {
-        const { id, user_id: _uid, ...updates } = mutation.payload;
-        if (!id) continue;
-        const cleanUpdates = sanitizePayload(updates);
-        delete cleanUpdates.id;
-        delete cleanUpdates.user_id;
-        const { error } = await supabase
-          .from("transactions")
-          .update(cleanUpdates)
-          .eq("id", id)
-          .eq("user_id", user.id);
-        if (error) throw error;
-        flushedCount++;
-      } else if (mutation.type === "delete") {
-        const id = mutation.payload?.id || mutation.payload;
-        if (!id) continue;
-        const { error } = await supabase
-          .from("transactions")
-          .delete()
-          .eq("id", id)
-          .eq("user_id", user.id);
-        if (error) throw error;
-        flushedCount++;
-      }
-    } catch (err: any) {
-      console.warn(
-        `[syncEngine] Failed to flush mutation ${mutation.id} (attempt ${mutation.retryCount + 1}):`,
-        err,
-      );
-      errors.push(err);
-      mutation.retryCount += 1;
-      if (mutation.retryCount <= 10) {
-        remainingMutations.push(mutation);
-      } else {
-        console.error(
-          `[syncEngine] Dropping corrupt mutation ${mutation.id} after 10 failed retries.`,
-          mutation,
+    for (const mutation of mutations) {
+      try {
+        if (mutation.type === "insert") {
+          const item = sanitizePayload({ ...mutation.payload, user_id: user.id });
+          const { error } = await supabase.from("transactions").upsert(item);
+          if (error) throw error;
+          flushedCount++;
+        } else if (mutation.type === "update") {
+          const { id, user_id: _uid, ...updates } = mutation.payload;
+          if (!id) continue;
+          const cleanUpdates = sanitizePayload(updates);
+          delete cleanUpdates.id;
+          delete cleanUpdates.user_id;
+          const { error } = await supabase
+            .from("transactions")
+            .update(cleanUpdates)
+            .eq("id", id)
+            .eq("user_id", user.id);
+          if (error) throw error;
+          flushedCount++;
+        } else if (mutation.type === "delete") {
+          const id = mutation.payload?.id || mutation.payload;
+          if (!id) continue;
+          const { error } = await supabase
+            .from("transactions")
+            .delete()
+            .eq("id", id)
+            .eq("user_id", user.id);
+          if (error) throw error;
+          flushedCount++;
+        }
+      } catch (err: any) {
+        console.warn(
+          `[syncEngine] Failed to flush mutation ${mutation.id} (attempt ${mutation.retryCount + 1}):`,
+          err,
         );
+        errors.push(err);
+        mutation.retryCount += 1;
+        if (mutation.retryCount <= 10) {
+          remainingMutations.push(mutation);
+        } else {
+          console.error(
+            `[syncEngine] Dropping corrupt mutation ${mutation.id} after 10 failed retries.`,
+            mutation,
+          );
+        }
       }
     }
+
+    savePendingMutations(remainingMutations);
+
+    return {
+      flushedCount,
+      remainingCount: remainingMutations.length,
+      errors,
+    };
+  } finally {
+    isFlushing = false;
   }
-
-  savePendingMutations(remainingMutations);
-  isFlushing = false;
-
-  return {
-    flushedCount,
-    remainingCount: remainingMutations.length,
-    errors,
-  };
 }

@@ -617,6 +617,9 @@ export function useAddWallet() {
 
 export function useUpdateWallet() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useMutation({
     mutationFn: async ({
       id,
@@ -636,23 +639,27 @@ export function useUpdateWallet() {
 
       let updated: Wallet;
       try {
-        const { data, error } = await supabase
+        let q = supabase
           .from("wallets")
           .update(payload)
-          .eq("id", id)
-          .select()
-          .single();
+          .eq("id", id);
+        if (userId && userId !== "guest_local_user") {
+          q = q.eq("user_id", userId);
+        }
+        const { data, error } = await q.select().single();
         if (error) throw error;
         updated = data as Wallet;
       } catch {
         // Safe fallback if 'classification' column does not exist yet
         delete payload.classification;
-        const { data, error } = await supabase
+        let q = supabase
           .from("wallets")
           .update(payload)
-          .eq("id", id)
-          .select()
-          .single();
+          .eq("id", id);
+        if (userId && userId !== "guest_local_user") {
+          q = q.eq("user_id", userId);
+        }
+        const { data, error } = await q.select().single();
         if (error) throw error;
         updated = data as Wallet;
       }
@@ -677,6 +684,9 @@ export function useUpdateWallet() {
 
 export function useDeleteWallet() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useMutation({
     mutationFn: async (id: string) => {
       const { count, error: refError } = await supabase
@@ -691,7 +701,11 @@ export function useDeleteWallet() {
         );
       }
 
-      const { error } = await supabase.from("wallets").delete().eq("id", id);
+      let q = supabase.from("wallets").delete().eq("id", id);
+      if (userId && userId !== "guest_local_user") {
+        q = q.eq("user_id", userId);
+      }
+      const { error } = await q;
       if (error) throw error;
       return id;
     },

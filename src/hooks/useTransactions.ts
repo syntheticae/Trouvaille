@@ -1043,15 +1043,12 @@ export function useUpdateTransaction() {
 
 export function useDeleteTransaction() {
   const qc = useQueryClient();
-  const { user } = useAuth();
-  const userId = user?.id;
 
   return useMutation({
     mutationFn: async (id: string) => {
       const mutation = enqueuePendingMutation("delete", { id });
       try {
-        let q = supabase.from("transactions").delete().eq("id", id);
-        if (userId) q = q.eq("user_id", userId);
+        const q = supabase.from("transactions").delete().eq("id", id);
         const { error } = await q;
         if (!error) {
           removePendingMutation(mutation.id);
@@ -1152,8 +1149,12 @@ export function useBatchDeleteTransactions() {
 }
 
 export function useSixMonthTrend() {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useQuery({
-    queryKey: ["transactions", "trend"],
+    queryKey: ["transactions", "trend", userId],
+    enabled: !!userId,
     queryFn: async () => {
       const months = [];
       for (let i = 5; i >= 0; i--) {
@@ -1171,11 +1172,17 @@ export function useSixMonthTrend() {
       }
       return Promise.all(
         months.map(async (m) => {
-          const { data } = await supabase
+          let query = supabase
             .from("transactions")
             .select("type,amount")
             .gte("occurred_on", m.start)
             .lte("occurred_on", m.end);
+
+          if (userId && userId !== "guest_local_user") {
+            query = query.eq("user_id", userId);
+          }
+
+          const { data } = await query;
           const income =
             data
               ?.filter((t) => t.type === "income")
@@ -1232,8 +1239,12 @@ export function useCategoryStats(
 }
 
 export function useSevenDayTrend() {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useQuery({
-    queryKey: ["transactions", "7day"],
+    queryKey: ["transactions", "7day", userId],
+    enabled: !!userId,
     queryFn: async () => {
       const days = [];
       for (let i = 6; i >= 0; i--) {
@@ -1245,11 +1256,17 @@ export function useSevenDayTrend() {
       }
       const start = days[0].dateStr;
       const end = days[days.length - 1].dateStr;
-      const { data } = await supabase
+      let query = supabase
         .from("transactions")
         .select("type,amount,occurred_on")
         .gte("occurred_on", start)
         .lte("occurred_on", end);
+
+      if (userId && userId !== "guest_local_user") {
+        query = query.eq("user_id", userId);
+      }
+
+      const { data } = await query;
       return days.map(({ dateStr, label }) => {
         const dayTxs = data?.filter((t) => t.occurred_on === dateStr) ?? [];
         const expense = dayTxs

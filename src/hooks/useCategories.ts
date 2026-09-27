@@ -487,10 +487,6 @@ export function useResetDefaultCategories() {
 export function useAddCategory() {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const isGuest =
-    !user ||
-    user.id === "guest_local_user" ||
-    localStorage.getItem("trouvaille_guest_mode") === "true";
 
   return useMutation({
     mutationFn: async (cat: {
@@ -499,10 +495,15 @@ export function useAddCategory() {
       type: TransactionType;
       budget_amount?: number;
     }) => {
-      // 1. Guest / Offline Mode
-      if (isGuest) {
+      // 1. Guest / Offline Mode (evaluated dynamically per invocation)
+      const isCurrentGuest =
+        !user ||
+        user.id === "guest_local_user" ||
+        localStorage.getItem("trouvaille_guest_mode") === "true";
+
+      if (isCurrentGuest) {
         const newCat: Category = {
-          id: `custom-cat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          id: `custom-cat-${Date.now()}-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 6) : Math.random().toString(36).slice(2, 6)}`,
           name: cat.name,
           emoji: cat.emoji,
           type: cat.type,
@@ -686,19 +687,25 @@ export function useUpdateCategory() {
 
       // Cloud user
       try {
-        const { data, error } = await supabase
+        let q = supabase
           .from("categories")
           .update(updates)
-          .eq("id", id)
-          .select()
-          .single();
+          .eq("id", id);
+        if (user?.id && user.id !== "guest_local_user") {
+          q = q.eq("user_id", user.id);
+        }
+        const { data, error } = await q.select().single();
 
         if (error) {
           console.warn("[useUpdateCategory] Cloud update error:", error);
           if (error.message?.includes("budget_amount")) {
             const fallbackUpdates = { ...updates };
             delete fallbackUpdates.budget_amount;
-            await supabase.from("categories").update(fallbackUpdates).eq("id", id);
+            let fbQ = supabase.from("categories").update(fallbackUpdates).eq("id", id);
+            if (user?.id && user.id !== "guest_local_user") {
+              fbQ = fbQ.eq("user_id", user.id);
+            }
+            await fbQ;
           }
         }
 

@@ -29,13 +29,23 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
       if (session?.user?.id && !isGuest) {
         const userId = session.user.id;
         try {
-          await Promise.allSettled([
-            supabase.from("transactions").delete().eq("user_id", userId),
-            supabase.from("wallets").delete().eq("user_id", userId),
-            supabase.from("categories").delete().eq("user_id", userId),
-            supabase.from("bills").delete().eq("user_id", userId),
-            supabase.from("goals").delete().eq("user_id", userId),
-          ]);
+          // Attempt atomic server-side full account & data wipe via RPC
+          const { error: rpcErr } = await supabase.rpc("delete_user_account");
+          if (rpcErr) {
+            // Fallback: manual wipe across all tables including holdings, budgets, and ledgers
+            await Promise.allSettled([
+              supabase.from("transactions").delete().eq("user_id", userId),
+              supabase.from("wallets").delete().eq("user_id", userId),
+              supabase.from("categories").delete().eq("user_id", userId),
+              supabase.from("bills").delete().eq("user_id", userId),
+              supabase.from("goals").delete().eq("user_id", userId),
+              supabase.from("holdings").delete().eq("user_id", userId),
+              supabase.from("user_budgets").delete().eq("user_id", userId),
+              supabase.from("user_shortcuts").delete().eq("user_id", userId),
+              supabase.from("ledger_members").delete().eq("user_id", userId),
+              supabase.from("ledgers").delete().eq("user_id", userId),
+            ]);
+          }
         } catch (serverErr) {
           console.warn("[DeleteAccount] Server wipe warning:", serverErr);
         }

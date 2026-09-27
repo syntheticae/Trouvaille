@@ -124,8 +124,8 @@ export function parseDeepLink(
       }
 
       const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
-      // Auto-save if cleanNum > 0 unless explicitly disabled via autosave=false
-      const shouldAutoSave = autoParam !== "false" && !isNaN(cleanNum) && cleanNum > 0;
+      // Auto-save only if explicitly requested (opt-in) to prevent malicious URL injection
+      const shouldAutoSave = (autoParam === "true" || autoParam === "1" || autoParam === "ya") && !isNaN(cleanNum) && cleanNum > 0;
 
       return {
         action: "transaction",

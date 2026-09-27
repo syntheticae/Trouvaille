@@ -226,8 +226,7 @@ class ErrorBoundary extends Component<
                     }`}
                   >
                     {this.state.error?.toString()}
-                    {"\n\n"}
-                    {this.state.error?.stack}
+                    {import.meta.env.DEV && this.state.error?.stack ? `\n\n${this.state.error.stack}` : ""}
                   </pre>
                 )}
               </div>

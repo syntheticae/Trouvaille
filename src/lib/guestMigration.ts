@@ -29,7 +29,8 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
   }
 
   const migrationKey = `trouvaille_migrated_guest_${userId}`;
-  if (localStorage.getItem(migrationKey) === "true") {
+  if (localStorage.getItem(migrationKey) === "true" || !hasGuestData()) {
+    localStorage.setItem(migrationKey, "true");
     return { walletsMigrated: 0, transactionsMigrated: 0 };
   }
 
@@ -133,6 +134,9 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
 
     // Mark migration as completed for this user
     localStorage.setItem(migrationKey, "true");
+    localStorage.removeItem("trouvaille_guest_mode");
+    localStorage.removeItem("trouvaille_holdings_guest_local_user");
+    localStorage.removeItem("trouvaille_usdt_pref_guest_local_user");
   } catch (err) {
     console.error("[migrateGuestDataToCloud] Migration process failed:", err);
   }
