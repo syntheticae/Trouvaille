@@ -133,19 +133,28 @@ export function WalletManagementSheets({
   }, [wallets, balancesById, balancesByName]);
 
   const filteredWallets = useMemo(() => {
-    return wallets.filter((w) => {
-      const cls = w.classification || resolveWalletClassification(w);
-      const matchesClassification =
-        classificationFilter === "all" ||
-        (classificationFilter === "debt"
-          ? cls === "credit" || cls === "loan"
-          : cls === classificationFilter);
-      const matchesSearch =
-        !walletSearch.trim() ||
-        w.name.toLowerCase().includes(walletSearch.toLowerCase().trim());
-      return matchesClassification && matchesSearch;
-    });
-  }, [wallets, classificationFilter, walletSearch]);
+    return wallets
+      .filter((w) => {
+        const cls = w.classification || resolveWalletClassification(w);
+        const matchesClassification =
+          classificationFilter === "all" ||
+          (classificationFilter === "debt"
+            ? cls === "credit" || cls === "loan"
+            : cls === classificationFilter);
+        const matchesSearch =
+          !walletSearch.trim() ||
+          w.name.toLowerCase().includes(walletSearch.toLowerCase().trim());
+        return matchesClassification && matchesSearch;
+      })
+      .sort((a, b) => {
+        const balA = balancesById[a.id] ?? balancesByName[a.name.toLowerCase()] ?? 0;
+        const balB = balancesById[b.id] ?? balancesByName[b.name.toLowerCase()] ?? 0;
+        if (balB !== balA) {
+          return balB - balA;
+        }
+        return a.name.localeCompare(b.name);
+      });
+  }, [wallets, classificationFilter, walletSearch, balancesById, balancesByName]);
 
   const handleSaveBudget = () => {
     if (!budgetName.trim()) return;
