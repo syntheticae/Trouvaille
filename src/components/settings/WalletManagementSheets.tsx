@@ -257,197 +257,131 @@ export function WalletManagementSheets({
               "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 32px)",
           }}
         >
-          <div className="flex items-center justify-between">
+          {/* Apple-style Typographic Hero Header */}
+          <div className="flex items-start justify-between">
             <div>
-              <h3
-                className="font-semibold text-lg leading-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
                 {isIndonesian ? "Akun & Dompet" : "Accounts & Wallets"}
-              </h3>
-              <p
-                className="text-[11px] font-semibold mt-0.5"
-                style={{ color: "var(--text-tertiary)" }}
-              >
+              </p>
+              <h2 className="amount font-mono text-[28px] font-bold tracking-tight text-[var(--text-primary)] leading-tight mt-0.5">
+                {formatRupiah(totalAssets)}
+              </h2>
+              <p className="text-[11px] font-medium text-[var(--text-tertiary)] mt-0.5">
                 {wallets.length} {isIndonesian ? "akun terdaftar · Rekapitulasi Neraca" : "registered accounts · Balance Sheet"}
               </p>
             </div>
             <button
+              type="button"
               onClick={() => {
                 onClose();
                 setTimeout(() => setAddBudgetOpen(true), 300);
               }}
-              className="w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 shrink-0 cursor-pointer"
+              className="w-9 h-9 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 shrink-0 cursor-pointer transition-transform"
               style={{
                 background: "var(--accent)",
                 color: "var(--accent-ink)",
               }}
               title={isIndonesian ? "Tambah Akun Baru" : "Add New Account"}
             >
-              <Plus size={16} />
+              <Plus size={18} strokeWidth={2.25} />
             </button>
           </div>
 
-          {/* Total Liquid Wealth Header (Milky Glass in Light Mode, Obsidian in Dark Mode) */}
-          <div
-            className="p-3.5 rounded-2xl flex items-center justify-between border transition-all"
-            style={{
-              background: isDark
-                ? "linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.028) 100%)"
-                : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.88) 48%, rgba(244,245,247,0.94) 100%)",
-              borderColor: isDark
-                ? "rgba(255,255,255,0.09)"
-                : "rgba(255,255,255,0.94)",
-              boxShadow: isDark
-                ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.18)"
-                : "inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(15,23,42,0.05)",
-            }}
-          >
-            <div>
-              <p
-                className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]"
-              >
-                {isIndonesian ? "Total Aset Likuid" : "Total Liquid Assets"}
-              </p>
-              <p
-                className="amount font-mono text-[19px] font-bold mt-0.5 text-[var(--text-primary)]"
-              >
-                {formatRupiah(totalAssets)}
-              </p>
-            </div>
-            <span
-              className="text-[11px] font-mono font-medium px-2.5 py-1 rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)]"
-            >
-              {wallets.length} {isIndonesian ? "Akun" : "Accounts"}
-            </span>
-          </div>
-
-          {unusedZeroWallets.length >= 2 && wallets.length > 1 && (
+          {/* Minimalist Search & Floating Filter Strip */}
+          <div className="space-y-2.5">
+            {/* Quick Search - Whisper-thin Frosted Glass Bar */}
             <div
-              className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl border text-[11px]"
+              className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl transition-all"
               style={{
-                background: "var(--glass-fill)",
-                borderColor: "var(--glass-border)",
+                background: isDark ? "rgba(255, 255, 255, 0.035)" : "rgba(0, 0, 0, 0.03)",
+                border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.05)",
               }}
             >
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
-                <span style={{ color: "var(--text-tertiary)" }}>
-                  <strong
-                    className="font-semibold"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {unusedZeroWallets.length} {isIndonesian ? "akun" : "accounts"}
-                  </strong>{" "}
-                  {isIndonesian ? "bersaldo Rp 0" : "with Rp 0 balance"}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (
-                    !confirm(
-                      isIndonesian
-                        ? `Hapus ${unusedZeroWallets.length} akun bersaldo Rp 0? Akun aktif dengan saldo positif tidak akan terpengaruh.`
-                        : `Delete ${unusedZeroWallets.length} accounts with Rp 0 balance? Active accounts with positive balances will not be touched.`,
-                    )
-                  ) {
-                    return;
-                  }
-                  unusedZeroWallets.forEach((w) => deleteWallet.mutate(w.id));
-                  showToast(
-                    isIndonesian
-                      ? `${unusedZeroWallets.length} akun kosong dihapus`
-                      : `${unusedZeroWallets.length} empty accounts removed`,
-                    "delete",
-                  );
-                }}
-                className="font-semibold hover:underline active:opacity-70 transition-opacity cursor-pointer"
+              <Search size={14} style={{ color: "var(--text-tertiary)" }} />
+              <input
+                type="text"
+                value={walletSearch}
+                onChange={(e) => setWalletSearch(e.target.value)}
+                placeholder={isIndonesian ? "Cari akun (cth. BCA, GoPay, Tunai)..." : "Search accounts (e.g. BCA, GoPay, Cash)..."}
+                className="bg-transparent text-[12.5px] font-medium flex-1 outline-none min-w-0"
                 style={{ color: "var(--text-primary)" }}
-              >
-                {isIndonesian ? "Bersihkan Akun Kosong" : "Purge Unused"}
-              </button>
-            </div>
-          )}
-
-          {/* Quick Search */}
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] shadow-sm">
-            <Search size={15} style={{ color: "var(--text-tertiary)" }} />
-            <input
-              type="text"
-              value={walletSearch}
-              onChange={(e) => setWalletSearch(e.target.value)}
-              placeholder={isIndonesian ? "Cari akun (cth. BCA, GoPay, Tunai)..." : "Search accounts (e.g. BCA, GoPay, Cash)..."}
-              className="bg-transparent text-[12.5px] font-medium flex-1 outline-none min-w-0"
-              style={{ color: "var(--text-primary)" }}
-            />
-            {walletSearch && (
-              <button
-                type="button"
-                onClick={() => setWalletSearch("")}
-                className="w-5 h-5 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 cursor-pointer"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-
-          {/* Classification Filter Tabs */}
-          <div className="flex p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[11px] font-medium">
-            {(
-              [
-                { id: "all", label: `${isIndonesian ? "Semua" : "All"} (${wallets.length})` },
-                {
-                  id: "liquid",
-                  label: `${isIndonesian ? "Likuid" : "Liquid"} (${
-                    wallets.filter(
-                      (w) =>
-                        (w.classification || resolveWalletClassification(w)) ===
-                        "liquid",
-                    ).length
-                  })`,
-                },
-                {
-                  id: "investment",
-                  label: `${isIndonesian ? "Investasi" : "Invest"} (${
-                    wallets.filter(
-                      (w) =>
-                        (w.classification || resolveWalletClassification(w)) ===
-                        "investment",
-                    ).length
-                  })`,
-                },
-                {
-                  id: "debt",
-                  label: `${isIndonesian ? "Utang" : "Debt"} (${
-                    wallets.filter((w) => {
-                      const cls =
-                        w.classification || resolveWalletClassification(w);
-                      return cls === "credit" || cls === "loan";
-                    }).length
-                  })`,
-                },
-              ] as const
-            ).map((tab) => {
-              const isActive = classificationFilter === tab.id;
-              return (
+              />
+              {walletSearch && (
                 <button
-                  key={tab.id}
                   type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setClassificationFilter(tab.id);
-                  }}
-                  className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-[var(--text-primary)] text-[var(--bg-base)] font-semibold shadow-sm"
-                      : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                  }`}
+                  onClick={() => setWalletSearch("")}
+                  className="w-4 h-4 rounded-full flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
                 >
-                  {tab.label}
+                  <X size={11} />
                 </button>
-              );
-            })}
+              )}
+            </div>
+
+            {/* Floating Filter Chips - Individual Apple-Style Frosted Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              {(
+                [
+                  { id: "all", label: `${isIndonesian ? "Semua" : "All"} (${wallets.length})` },
+                  {
+                    id: "liquid",
+                    label: `${isIndonesian ? "Likuid" : "Liquid"} (${
+                      wallets.filter(
+                        (w) =>
+                          (w.classification || resolveWalletClassification(w)) ===
+                          "liquid",
+                      ).length
+                    })`,
+                  },
+                  {
+                    id: "investment",
+                    label: `${isIndonesian ? "Investasi" : "Invest"} (${
+                      wallets.filter(
+                        (w) =>
+                          (w.classification || resolveWalletClassification(w)) ===
+                          "investment",
+                      ).length
+                    })`,
+                  },
+                  {
+                    id: "debt",
+                    label: `${isIndonesian ? "Utang" : "Debt"} (${
+                      wallets.filter((w) => {
+                        const cls =
+                          w.classification || resolveWalletClassification(w);
+                        return cls === "credit" || cls === "loan";
+                      }).length
+                    })`,
+                  },
+                ] as const
+              ).map((tab) => {
+                const isActive = classificationFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setClassificationFilter(tab.id);
+                    }}
+                    className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all shrink-0 cursor-pointer ${
+                      isActive
+                        ? "bg-[var(--text-primary)] text-[var(--bg-base)] font-semibold shadow-sm"
+                        : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    }`}
+                    style={
+                      !isActive
+                        ? {
+                            background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)",
+                            border: isDark ? "1px solid rgba(255, 255, 255, 0.05)" : "1px solid rgba(0, 0, 0, 0.04)",
+                          }
+                        : undefined
+                    }
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* 2-Column Luxury Pill Grid */}
@@ -575,7 +509,7 @@ export function WalletManagementSheets({
                             </p>
                           </div>
 
-                          {/* Quick Balance Adjustment Button (Scale Icon) */}
+                          {/* Quick Balance Adjustment Button (Scale Icon) - Unboxed Apple Style */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -594,15 +528,10 @@ export function WalletManagementSheets({
                                 setCorrectEffectiveDate(format(new Date(), "yyyy-MM-dd"));
                               }, 300);
                             }}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center border transition-all active:scale-95 cursor-pointer"
-                            style={{
-                              background: "var(--glass-fill)",
-                              borderColor: "var(--glass-border)",
-                              color: "var(--text-secondary)",
-                            }}
+                            className="w-8 h-8 flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer shrink-0"
                             title={isIndonesian ? "Sesuaikan Saldo" : "Adjust Balance"}
                           >
-                            <Scale size={14} strokeWidth={1.75} />
+                            <Scale size={15} strokeWidth={1.5} />
                           </button>
                         </div>
                       </div>
@@ -613,6 +542,51 @@ export function WalletManagementSheets({
                   className="h-[1px] w-full shrink-0"
                   style={{ background: dividerGradient }}
                 />
+              </div>
+            )}
+
+            {/* Bottom Footnote: Purge Unused Rp 0 Accounts */}
+            {unusedZeroWallets.length >= 2 && wallets.length > 1 && (
+              <div
+                className="mt-4 p-3 rounded-2xl border flex items-center justify-between text-[11px] transition-all"
+                style={{
+                  background: isDark ? "rgba(255, 255, 255, 0.025)" : "rgba(0, 0, 0, 0.02)",
+                  borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)",
+                }}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)] opacity-60 shrink-0" />
+                  <span className="truncate" style={{ color: "var(--text-tertiary)" }}>
+                    <strong className="font-semibold text-[var(--text-secondary)]">
+                      {unusedZeroWallets.length} {isIndonesian ? "akun" : "accounts"}
+                    </strong>{" "}
+                    {isIndonesian ? "bersaldo Rp 0" : "with Rp 0 balance"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      !confirm(
+                        isIndonesian
+                          ? `Hapus ${unusedZeroWallets.length} akun bersaldo Rp 0? Akun aktif dengan saldo positif tidak akan terpengaruh.`
+                          : `Delete ${unusedZeroWallets.length} accounts with Rp 0 balance? Active accounts with positive balances will not be touched.`,
+                      )
+                    ) {
+                      return;
+                    }
+                    unusedZeroWallets.forEach((w) => deleteWallet.mutate(w.id));
+                    showToast(
+                      isIndonesian
+                        ? `${unusedZeroWallets.length} akun kosong dihapus`
+                        : `${unusedZeroWallets.length} empty accounts removed`,
+                      "delete",
+                    );
+                  }}
+                  className="font-semibold hover:underline shrink-0 pl-2 transition-all cursor-pointer text-[var(--text-primary)]"
+                >
+                  {isIndonesian ? "Bersihkan Akun Kosong" : "Purge Unused"}
+                </button>
               </div>
             )}
           </div>
