@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { BottomTabBar } from "./components/layout/BottomTabBar";
 import { useAuth } from "./contexts/AuthContext";
 import {
@@ -854,6 +854,8 @@ function AppShell() {
                 />
               }
             />
+            <Route path="/categories" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </div>

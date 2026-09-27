@@ -38,6 +38,7 @@ import { ProfileMenuModal } from "../components/home/ProfileMenuModal";
 import { ProfileSheet } from "../components/settings/ProfileSheet";
 import { WebDashboardLinkModal } from "../components/settings/WebDashboardLinkModal";
 import { CategoryBudgetDeck } from "../components/home/CategoryBudgetDeck";
+import { CategoryManagementSheets } from "../components/settings/CategoryManagementSheets";
 import { InvestmentPulseCard } from "../components/home/InvestmentPulseCard";
 
 function formatNetAmount(net: number): string {
@@ -141,7 +142,8 @@ type ActiveHomeModal =
   | "profileSheet"
   | "nfc"
   | "webDashboard"
-  | "customizeHome";
+  | "customizeHome"
+  | "categoryManagement";
 
 const GlassTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -283,6 +285,9 @@ export function HomePage({
   const webDashboardOpen = activeModal === "webDashboard";
   const setWebDashboardOpen = (open: boolean) =>
     setActiveModal(open ? "webDashboard" : null);
+  const categoryManagementOpen = activeModal === "categoryManagement";
+  const setCategoryManagementOpen = (open: boolean) =>
+    setActiveModal(open ? "categoryManagement" : null);
 
   const {
     widgets,
@@ -1697,7 +1702,7 @@ export function HomePage({
       case "category_budgets":
         return (
           <CategoryBudgetDeck
-            onOpenManageCategories={() => navigate("/categories")}
+            onOpenManageCategories={() => setCategoryManagementOpen(true)}
             hideBalance={hideBalance}
           />
         );
@@ -2686,6 +2691,12 @@ export function HomePage({
         <ManageLedgersSheet
           isOpen={spaceSwitcherOpen}
           onClose={() => setSpaceSwitcherOpen(false)}
+        />
+      )}
+      {categoryManagementOpen && (
+        <CategoryManagementSheets
+          isOpen={categoryManagementOpen}
+          onClose={() => setCategoryManagementOpen(false)}
         />
       )}
       {nfcModalOpen && (
