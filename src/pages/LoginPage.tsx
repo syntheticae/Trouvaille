@@ -16,6 +16,9 @@ import {
   KeyRound,
   Delete,
   X,
+  Activity,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
@@ -122,6 +125,577 @@ function getShowcaseSlides(isIndonesian: boolean): ShowcaseSlide[] {
       visual: "runway",
     },
   ];
+}
+
+interface DynamicShowcaseCapsuleProps {
+  currentSlide: ShowcaseSlide;
+  isDark: boolean;
+  isIndonesian: boolean;
+  chartGradientId: string;
+  onNext: () => void;
+  onPrev: () => void;
+}
+
+function DynamicShowcaseCapsule({
+  currentSlide,
+  isDark,
+  isIndonesian,
+  chartGradientId,
+  onNext,
+  onPrev,
+}: DynamicShowcaseCapsuleProps) {
+  const [isInteracted, setIsInteracted] = useState(false);
+
+  return (
+    <motion.div
+      layout
+      transition={{ type: "spring", stiffness: 320, damping: 28 }}
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.25}
+      onDragEnd={(_, info) => {
+        if (info.offset.x < -40) {
+          triggerHaptic("light");
+          onNext();
+        } else if (info.offset.x > 40) {
+          triggerHaptic("light");
+          onPrev();
+        }
+      }}
+      onClick={() => {
+        triggerHaptic("light");
+        setIsInteracted((prev) => !prev);
+      }}
+      className={`relative w-full max-w-[340px] sm:max-w-[360px] rounded-[28px] p-3.5 sm:p-4 cursor-grab active:cursor-grabbing select-none transition-shadow duration-300 ${
+        isDark
+          ? "bg-[#131317]/85 border border-white/[0.12] shadow-[0_20px_45px_-12px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.22)] backdrop-blur-2xl"
+          : "bg-white/90 border border-black/[0.08] shadow-[0_16px_36px_-8px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.02),inset_0_1.5px_2px_rgba(255,255,255,0.95)] backdrop-blur-2xl"
+      }`}
+    >
+      <AnimatePresence mode="wait">
+        {currentSlide.visual === "chart" && (
+          <motion.div
+            key="chart"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex flex-col gap-2.5"
+          >
+            {/* Top Bar: Trajectory Telemetry */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center border ${
+                    isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
+                  }`}
+                >
+                  <TrendingUp
+                    size={11}
+                    strokeWidth={2}
+                    className={isDark ? "text-white" : "text-zinc-900"}
+                  />
+                </div>
+                <span
+                  className={`text-[11px] font-semibold tracking-tight ${
+                    isDark ? "text-white/80" : "text-zinc-800"
+                  }`}
+                >
+                  {isIndonesian ? "Trajektori Arus Kas" : "Cashflow Trajectory"}
+                </span>
+              </div>
+              <div
+                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide border ${
+                  isDark
+                    ? "bg-white/[0.08] border-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
+                    : "bg-black/[0.05] border-black/10 text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                }`}
+              >
+                {isIndonesian ? "+28.4% Bersih" : "+28.4% Net Inflow"}
+              </div>
+            </div>
+
+            {/* Spline Wave Area */}
+            <div className="relative h-18 w-full flex items-center justify-center overflow-hidden rounded-xl">
+              <svg
+                viewBox="0 0 320 80"
+                className="w-full h-full overflow-visible"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id={`${chartGradientId}-spline`} x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                      offset="0%"
+                      stopColor={isDark ? "#ffffff" : "#000000"}
+                      stopOpacity={isDark ? 0.22 : 0.12}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor={isDark ? "#ffffff" : "#000000"}
+                      stopOpacity={0}
+                    />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M 0 65 Q 40 45, 80 50 T 160 30 T 240 16 T 320 28 L 320 80 L 0 80 Z"
+                  fill={`url(#${chartGradientId}-spline)`}
+                />
+                <path
+                  d="M 0 65 Q 40 45, 80 50 T 160 30 T 240 16 T 320 28"
+                  fill="none"
+                  stroke={isDark ? "rgba(255,255,255,0.85)" : "rgba(18,18,22,0.85)"}
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                />
+                {/* Glowing Spline Node */}
+                <circle
+                  cx="240"
+                  cy="16"
+                  r="4"
+                  fill={isDark ? "#ffffff" : "#121216"}
+                  className="animate-pulse"
+                />
+                <circle
+                  cx="240"
+                  cy="16"
+                  r="8"
+                  fill="none"
+                  stroke={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)"}
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </div>
+
+            {/* Baseline Month Markers */}
+            <div
+              className={`flex items-center justify-between text-[9.5px] font-mono tracking-wider px-1 pt-0.5 border-t ${
+                isDark ? "border-white/[0.06] text-white/40" : "border-black/[0.06] text-zinc-400"
+              }`}
+            >
+              <span>{isIndonesian ? "Jan" : "Jan"}</span>
+              <span>{isIndonesian ? "Apr" : "Apr"}</span>
+              <span>{isIndonesian ? "Jul" : "Jul"}</span>
+              <span>{isIndonesian ? "Okt" : "Oct"}</span>
+              <span>{isIndonesian ? "Des" : "Dec"}</span>
+            </div>
+          </motion.div>
+        )}
+
+        {currentSlide.visual === "voice" && (
+          <motion.div
+            key="voice"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex flex-col gap-2.5"
+          >
+            {/* Top Bar: Pulsing Recording Beacon */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span
+                    className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                      isDark ? "bg-white" : "bg-zinc-800"
+                    }`}
+                  />
+                  <span
+                    className={`relative inline-flex rounded-full h-2 w-2 ${
+                      isDark ? "bg-white" : "bg-zinc-900"
+                    }`}
+                  />
+                </span>
+                <span
+                  className={`text-[10.5px] font-semibold uppercase tracking-wider ${
+                    isDark ? "text-white/80" : "text-zinc-800"
+                  }`}
+                >
+                  {isIndonesian ? "Dikte Pintar Aktif" : "Smart Dictation Live"}
+                </span>
+              </div>
+              <div
+                className={`w-5 h-5 rounded-full flex items-center justify-center border ${
+                  isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
+                }`}
+              >
+                <Mic size={11} strokeWidth={2} className={isDark ? "text-white" : "text-zinc-900"} />
+              </div>
+            </div>
+
+            {/* Kinetic Frequency Equalizer Wave */}
+            <div
+              className={`h-11 px-3.5 rounded-2xl flex items-center justify-center gap-1 border ${
+                isDark ? "bg-white/[0.04] border-white/8" : "bg-black/[0.03] border-black/6"
+              }`}
+            >
+              {[12, 22, 16, 28, 36, 24, 38, 30, 20, 32, 26, 14, 20, 10].map((h, i) => (
+                <motion.div
+                  key={i}
+                  animate={{
+                    height: isInteracted
+                      ? [h * 0.5, h * 1.3, h * 0.7, h]
+                      : [h * 0.7, h, h * 0.8, h * 1.1],
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                    duration: 0.7 + (i % 5) * 0.15,
+                    ease: "easeInOut",
+                  }}
+                  className={`w-1 rounded-full ${
+                    isDark ? "bg-white/70" : "bg-zinc-800/80"
+                  }`}
+                  style={{ height: `${h}px` }}
+                />
+              ))}
+            </div>
+
+            {/* Live Streaming Speech Bubble */}
+            <div
+              className={`px-3 py-2 rounded-2xl border text-[11px] leading-relaxed font-mono flex items-center justify-between ${
+                isDark
+                  ? "bg-white/[0.03] border-white/8 text-white/90"
+                  : "bg-black/[0.02] border-black/6 text-zinc-800"
+              }`}
+            >
+              <span>
+                {isIndonesian
+                  ? '"Kopi arabika 35rb dari dompet harian"'
+                  : '"Arabica coffee $4.50 from daily cash"'}
+                <span className="inline-block w-1.5 h-3 ml-1 bg-current animate-pulse align-middle" />
+              </span>
+            </div>
+
+            {/* Mini Telemetry Tag Pills */}
+            <div className="flex items-center justify-between gap-1.5 pt-0.5">
+              {(isIndonesian
+                ? ["Suara ke Entri", "Kategori Otomatis", "< 1 Detik"]
+                : ["Voice to Ledger", "Auto-Tagged", "< 1s Engine"]
+              ).map((tag, i) => (
+                <span
+                  key={i}
+                  className={`flex-1 text-center py-1 rounded-xl text-[9px] font-semibold border ${
+                    isDark
+                      ? "bg-white/[0.04] border-white/8 text-white/60"
+                      : "bg-black/[0.03] border-black/6 text-zinc-600"
+                  }`}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {currentSlide.visual === "vault" && (
+          <motion.div
+            key="vault"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex flex-col gap-2.5"
+          >
+            {/* Top Bar: Vault Status */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center border ${
+                    isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
+                  }`}
+                >
+                  <Shield size={11} strokeWidth={2} className={isDark ? "text-white" : "text-zinc-900"} />
+                </div>
+                <span
+                  className={`text-[11px] font-semibold tracking-tight ${
+                    isDark ? "text-white/80" : "text-zinc-800"
+                  }`}
+                >
+                  {isIndonesian ? "Brankas Kriptografi Klien" : "Client Cryptographic Vault"}
+                </span>
+              </div>
+              <div
+                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide border ${
+                  isDark
+                    ? "bg-white/[0.08] border-white/15 text-white"
+                    : "bg-black/[0.05] border-black/10 text-zinc-900"
+                }`}
+              >
+                {isIndonesian ? "Terkunci" : "Sealed"}
+              </div>
+            </div>
+
+            {/* 3 Crystalline Security Metric Pods */}
+            <div className="grid grid-cols-3 gap-2 py-1">
+              <div
+                className={`p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1 ${
+                  isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
+                }`}
+              >
+                <Lock size={13} className={isDark ? "text-white/80" : "text-zinc-800"} />
+                <span className="text-[10.5px] font-bold tracking-tight">AES-256</span>
+                <span
+                  className={`text-[8.5px] leading-tight ${
+                    isDark ? "text-white/50" : "text-zinc-500"
+                  }`}
+                >
+                  {isIndonesian ? "Enkripsi Klien" : "Client Cipher"}
+                </span>
+              </div>
+
+              <div
+                className={`p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1 ${
+                  isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
+                }`}
+              >
+                <Check size={13} className={isDark ? "text-white/80" : "text-zinc-800"} />
+                <span className="text-[10.5px] font-bold tracking-tight">Zero-Log</span>
+                <span
+                  className={`text-[8.5px] leading-tight ${
+                    isDark ? "text-white/50" : "text-zinc-500"
+                  }`}
+                >
+                  {isIndonesian ? "Privasi Penuh" : "Zero Knowledge"}
+                </span>
+              </div>
+
+              <div
+                className={`p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1 ${
+                  isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
+                }`}
+              >
+                <ScanFace size={13} className={isDark ? "text-white/80" : "text-zinc-800"} />
+                <span className="text-[10.5px] font-bold tracking-tight">Biometrik</span>
+                <span
+                  className={`text-[8.5px] leading-tight ${
+                    isDark ? "text-white/50" : "text-zinc-500"
+                  }`}
+                >
+                  {isIndonesian ? "Kunci Lokal" : "Hardware Key"}
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom Telemetry Note */}
+            <div
+              className={`text-center py-1 rounded-xl text-[9.5px] font-medium border ${
+                isDark ? "border-white/6 text-white/40" : "border-black/6 text-zinc-500"
+              }`}
+            >
+              {isIndonesian
+                ? "Kunci enkripsi tidak pernah meninggalkan memori perangkat"
+                : "Decryption keys never leave local device memory"}
+            </div>
+          </motion.div>
+        )}
+
+        {currentSlide.visual === "domain" && (
+          <motion.div
+            key="domain"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex flex-col gap-2.5"
+          >
+            {/* Top Bar: Domain Telemetry */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center border ${
+                    isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
+                  }`}
+                >
+                  <Layers size={11} strokeWidth={2} className={isDark ? "text-white" : "text-zinc-900"} />
+                </div>
+                <span
+                  className={`text-[11px] font-semibold tracking-tight ${
+                    isDark ? "text-white/80" : "text-zinc-800"
+                  }`}
+                >
+                  {isIndonesian ? "Pemisahan Buku Besar" : "Domain Ledger Isolation"}
+                </span>
+              </div>
+              <div
+                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide border ${
+                  isDark
+                    ? "bg-white/[0.08] border-white/15 text-white"
+                    : "bg-black/[0.05] border-black/10 text-zinc-900"
+                }`}
+              >
+                {isIndonesian ? "Partisi Tegas" : "Strict Partition"}
+              </div>
+            </div>
+
+            {/* Dual Partition Tiles */}
+            <div className="grid grid-cols-2 gap-2 py-1">
+              <div
+                className={`p-2.5 rounded-2xl border flex flex-col justify-between ${
+                  isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
+                }`}
+              >
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <User size={12} className={isDark ? "text-white/70" : "text-zinc-700"} />
+                  <span className="text-[10.5px] font-semibold tracking-tight">
+                    {isIndonesian ? "Pribadi" : "Personal"}
+                  </span>
+                </div>
+                <div className="text-[13px] font-bold tracking-tight">
+                  {isIndonesian ? "Rp 64,5 Jt" : "$4,250.00"}
+                </div>
+                <span
+                  className={`text-[8.5px] mt-0.5 ${
+                    isDark ? "text-white/45" : "text-zinc-500"
+                  }`}
+                >
+                  {isIndonesian ? "Gaya hidup & rutinitas" : "Household & Living"}
+                </span>
+              </div>
+
+              <div
+                className={`p-2.5 rounded-2xl border flex flex-col justify-between ${
+                  isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
+                }`}
+              >
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Activity size={12} className={isDark ? "text-white/70" : "text-zinc-700"} />
+                  <span className="text-[10.5px] font-semibold tracking-tight">
+                    {isIndonesian ? "Usaha" : "Venture"}
+                  </span>
+                </div>
+                <div className="text-[13px] font-bold tracking-tight">
+                  {isIndonesian ? "Rp 285 Jt" : "$18,920.00"}
+                </div>
+                <span
+                  className={`text-[8.5px] mt-0.5 ${
+                    isDark ? "text-white/45" : "text-zinc-500"
+                  }`}
+                >
+                  {isIndonesian ? "Operasional & faktur" : "Operations & Invoices"}
+                </span>
+              </div>
+            </div>
+
+            {/* Isolation Badge */}
+            <div
+              className={`text-center py-1 rounded-xl text-[9.5px] font-medium border ${
+                isDark ? "border-white/6 text-white/40" : "border-black/6 text-zinc-500"
+              }`}
+            >
+              {isIndonesian
+                ? "Batas isolasi mencegah kontaminasi saldo antar domain"
+                : "Strict firewall prevents cross-ledger contamination"}
+            </div>
+          </motion.div>
+        )}
+
+        {currentSlide.visual === "runway" && (
+          <motion.div
+            key="runway"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex flex-col gap-2.5"
+          >
+            {/* Top Bar: Runway Telemetry */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center border ${
+                    isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
+                  }`}
+                >
+                  <Sparkles size={11} strokeWidth={2} className={isDark ? "text-white" : "text-zinc-900"} />
+                </div>
+                <span
+                  className={`text-[11px] font-semibold tracking-tight ${
+                    isDark ? "text-white/80" : "text-zinc-800"
+                  }`}
+                >
+                  {isIndonesian ? "Ketahanan Finansial" : "Runway Telemetry"}
+                </span>
+              </div>
+              <div
+                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide border ${
+                  isDark
+                    ? "bg-white/[0.08] border-white/15 text-white"
+                    : "bg-black/[0.05] border-black/10 text-zinc-900"
+                }`}
+              >
+                {isIndonesian ? "Aman" : "Safe Zone"}
+              </div>
+            </div>
+
+            {/* Runway Main Display */}
+            <div
+              className={`p-3 rounded-2xl border flex flex-col gap-2 ${
+                isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
+              }`}
+            >
+              <div className="flex items-baseline justify-between">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[22px] font-bold tracking-tight">8.4</span>
+                  <span
+                    className={`text-[11px] font-medium ${
+                      isDark ? "text-white/60" : "text-zinc-600"
+                    }`}
+                  >
+                    {isIndonesian ? "bulan cadangan" : "months runway"}
+                  </span>
+                </div>
+                <span
+                  className={`text-[10px] font-mono ${
+                    isDark ? "text-white/45" : "text-zinc-500"
+                  }`}
+                >
+                  {isIndonesian ? "Target: 6 Bln" : "Target: 6 Mo"}
+                </span>
+              </div>
+
+              {/* Progress Runway Bar */}
+              <div
+                className={`h-2 w-full rounded-full overflow-hidden p-0.5 border ${
+                  isDark ? "bg-black/40 border-white/10" : "bg-zinc-200 border-black/10"
+                }`}
+              >
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: "70%" }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className={`h-full rounded-full ${
+                    isDark ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.6)]" : "bg-zinc-950"
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Bottom Dual Telemetry Pills */}
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <div
+                className={`flex-1 text-center py-1 rounded-xl text-[9px] font-semibold border ${
+                  isDark
+                    ? "bg-white/[0.04] border-white/8 text-white/60"
+                    : "bg-black/[0.03] border-black/6 text-zinc-600"
+                }`}
+              >
+                {isIndonesian ? "Pengeluaran: Aman" : "Burn Rate: Stable"}
+              </div>
+              <div
+                className={`flex-1 text-center py-1 rounded-xl text-[9px] font-semibold border ${
+                  isDark
+                    ? "bg-white/[0.04] border-white/8 text-white/60"
+                    : "bg-black/[0.03] border-black/6 text-zinc-600"
+                }`}
+              >
+                {isIndonesian ? "Dana Darurat: 140%" : "Emergency Reserve: 140%"}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
 }
 
 export function LoginPage() {
@@ -428,580 +1002,22 @@ export function LoginPage() {
           </motion.div>
         </AnimatePresence>
 
-        {/* --- Rich Telemetry / Visual Micro-Dashboard --- */}
-        <div className="w-full flex justify-center items-center min-h-[120px] my-1">
-          <AnimatePresence mode="wait">
-            {/* SLIDE 0: CASHFLOW SPLINE, ASSET STAT PILLS & YOY GAIN */}
-            {currentSlide.visual === "chart" && (
-              <motion.div
-                key="vis-chart"
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
-                className={`w-full max-w-[325px] p-3 rounded-[22px] border backdrop-blur-xl space-y-2 text-left transition-all ${
-                  isDark
-                    ? "border-white/14 bg-white/[0.035]"
-                    : "border-black/10 bg-white/80 shadow-[0_12px_28px_rgba(0,0,0,0.06)]"
-                }`}
-                style={{
-                  boxShadow: isDark
-                    ? "0 12px 28px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.2)"
-                    : "0 12px 28px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.8)",
-                }}
-              >
-                <div className="flex items-center justify-between px-1">
-                  <div>
-                    <span
-                      className={`text-[10px] uppercase font-semibold tracking-wider ${
-                        isDark ? "text-white/40" : "text-zinc-500"
-                      }`}
-                    >
-                      {isIndonesian ? "Lintasan Aset Bersih" : "Net Asset Trajectory"}
-                    </span>
-                    <div
-                      className={`text-[14.5px] font-semibold tracking-tight amount ${
-                        isDark ? "text-white" : "text-zinc-950"
-                      }`}
-                    >
-                      Rp 128.450.000
-                    </div>
-                  </div>
-                  {/* Rule 7: Luxury Monochrome Pill */}
-                  <div
-                    className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10.5px] font-semibold ${
-                      isDark
-                        ? "bg-white/[0.08] border-white/20 text-white"
-                        : "bg-black/[0.05] border-black/15 text-zinc-900"
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-                        isDark ? "bg-white" : "bg-zinc-900"
-                      }`}
-                    />
-                    <span>+24.8% YoY</span>
-                  </div>
-                </div>
-
-                {/* Spline Area Chart */}
-                <div className="w-full h-11 relative flex items-center justify-center">
-                  <svg className="w-full h-full overflow-visible" viewBox="0 0 280 44">
-                    <defs>
-                      <linearGradient id={chartGradientId} x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                          offset="0%"
-                          stopColor={isDark ? "#ffffff" : "#09090b"}
-                          stopOpacity={isDark ? "0.25" : "0.15"}
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor={isDark ? "#ffffff" : "#09090b"}
-                          stopOpacity="0"
-                        />
-                      </linearGradient>
-                    </defs>
-                    <path
-                      d="M 6 34 Q 50 30, 90 20 T 175 14 T 245 7 T 274 3"
-                      fill="none"
-                      stroke={isDark ? "#ffffff" : "#09090b"}
-                      strokeWidth="1.75"
-                      strokeLinecap="round"
-                      className="drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]"
-                    />
-                    <path
-                      d="M 6 34 Q 50 30, 90 20 T 175 14 T 245 7 T 274 3 L 274 42 L 6 42 Z"
-                      fill={`url(#${chartGradientId})`}
-                    />
-                    <circle cx="274" cy="3" r="3" fill={isDark ? "#ffffff" : "#09090b"} />
-                    <circle
-                      cx="274"
-                      cy="3"
-                      r="6"
-                      fill={isDark ? "#ffffff" : "#09090b"}
-                      className="animate-ping opacity-60"
-                    />
-                  </svg>
-                </div>
-
-                {/* Micro Stat Pills */}
-                <div className="grid grid-cols-2 gap-2 pt-0.5">
-                  <div
-                    className={`flex items-center justify-between px-2.5 py-1 rounded-xl border ${
-                      isDark
-                        ? "bg-white/[0.04] border-white/8 text-white"
-                        : "bg-black/[0.03] border-black/8 text-zinc-900"
-                    }`}
-                  >
-                    <span className={isDark ? "text-white/50 text-[10px]" : "text-zinc-500 text-[10px]"}>
-                      {isIndonesian ? "Pemasukan" : "Income"}
-                    </span>
-                    <span className="text-[11px] font-semibold amount">Rp 18.5M</span>
-                  </div>
-                  <div
-                    className={`flex items-center justify-between px-2.5 py-1 rounded-xl border ${
-                      isDark
-                        ? "bg-white/[0.04] border-white/8 text-white/80"
-                        : "bg-black/[0.03] border-black/8 text-zinc-800"
-                    }`}
-                  >
-                    <span className={isDark ? "text-white/50 text-[10px]" : "text-zinc-500 text-[10px]"}>
-                      {isIndonesian ? "Pengeluaran" : "Expense"}
-                    </span>
-                    <span className="text-[11px] font-semibold amount">Rp 6.2M</span>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* SLIDE 1: VOICE EQUALIZER, LOG BUBBLE & OCR BADGE */}
-            {currentSlide.visual === "voice" && (
-              <motion.div
-                key="vis-voice"
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
-                className={`w-full max-w-[325px] p-3 rounded-[22px] border backdrop-blur-xl space-y-2 text-left ${
-                  isDark
-                    ? "border-white/14 bg-white/[0.035]"
-                    : "border-black/10 bg-white/80 shadow-[0_12px_28px_rgba(0,0,0,0.06)]"
-                }`}
-                style={{
-                  boxShadow: isDark
-                    ? "0 12px 28px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.2)"
-                    : "0 12px 28px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.8)",
-                }}
-              >
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-5.5 h-5.5 rounded-full flex items-center justify-center border ${
-                        isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
-                      }`}
-                    >
-                      <Mic size={11} className={isDark ? "text-white" : "text-zinc-900"} />
-                    </div>
-                    <span
-                      className={`text-[11px] font-semibold ${
-                        isDark ? "text-white" : "text-zinc-900"
-                      }`}
-                    >
-                      {isIndonesian ? "Aliran Masukan Suara" : "Voice Input Stream"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-0.5 h-3.5">
-                    {[10, 16, 8, 20, 12, 22, 14, 9, 18, 11].map((h, i) => (
-                      <span
-                        key={i}
-                        className={`w-0.5 rounded-full animate-pulse ${
-                          isDark ? "bg-white" : "bg-zinc-900"
-                        }`}
-                        style={{ height: `${h}px`, animationDelay: `${i * 90}ms` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div
-                  className={`px-3 py-1.5 rounded-xl border ${
-                    isDark ? "bg-white/[0.05] border-white/10" : "bg-black/[0.03] border-black/8"
-                  }`}
-                >
-                  <p
-                    className={`text-[11px] font-medium leading-snug ${
-                      isDark ? "text-white/90" : "text-zinc-800"
-                    }`}
-                  >
-                    {isIndonesian
-                      ? '"Makan malam bersama teman Rp 185.000 via BCA"'
-                      : '"Dinner with friends Rp 185.000 via BCA Checking"'}
-                  </p>
-                </div>
-
-                <div
-                  className={`flex items-center justify-between text-[10px] font-medium ${
-                    isDark ? "text-white/55" : "text-zinc-500"
-                  }`}
-                >
-                  <span
-                    className={`px-2 py-0.5 rounded-full border ${
-                      isDark ? "bg-white/[0.04] border-white/8" : "bg-black/[0.03] border-black/8"
-                    }`}
-                  >
-                    {isIndonesian ? "Makanan & Minuman" : "Food & Dining"}
-                  </span>
-                  <span
-                    className={`px-2 py-0.5 rounded-full border ${
-                      isDark ? "bg-white/[0.04] border-white/8" : "bg-black/[0.03] border-black/8"
-                    }`}
-                  >
-                    {isIndonesian ? "Dompet BCA" : "BCA Wallet"}
-                  </span>
-                  {/* Rule 7: Luxury Monochrome Pill */}
-                  <span
-                    className={`px-2 py-0.5 rounded-full border font-medium ${
-                      isDark
-                        ? "bg-white/[0.08] text-white border-white/20"
-                        : "bg-black/[0.06] text-zinc-900 border-black/15"
-                    }`}
-                  >
-                    {isIndonesian ? "Tercatat dalam 1,4 dtk" : "Logged in 1.4s"}
-                  </span>
-                </div>
-              </motion.div>
-            )}
-
-            {/* SLIDE 2: HARDWARE ENCRYPTION, CIPHER METRICS & ZERO TELEMETRY */}
-            {currentSlide.visual === "vault" && (
-              <motion.div
-                key="vis-vault"
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
-                className={`w-full max-w-[325px] p-3 rounded-[22px] border backdrop-blur-xl space-y-2 text-left ${
-                  isDark
-                    ? "border-white/14 bg-white/[0.035]"
-                    : "border-black/10 bg-white/80 shadow-[0_12px_28px_rgba(0,0,0,0.06)]"
-                }`}
-                style={{
-                  boxShadow: isDark
-                    ? "0 12px 28px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.2)"
-                    : "0 12px 28px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.8)",
-                }}
-              >
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-5.5 h-5.5 rounded-full flex items-center justify-center border ${
-                        isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
-                      }`}
-                    >
-                      <Shield size={11} className={isDark ? "text-white" : "text-zinc-900"} />
-                    </div>
-                    <span
-                      className={`text-[11px] font-semibold ${
-                        isDark ? "text-white" : "text-zinc-900"
-                      }`}
-                    >
-                      {isIndonesian ? "Brankas Kunci Perangkat" : "Hardware Key Vault"}
-                    </span>
-                  </div>
-                  {/* Rule 7: Luxury Monochrome Pill */}
-                  <span
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                      isDark
-                        ? "bg-white/[0.08] text-white border-white/20"
-                        : "bg-black/[0.06] text-zinc-900 border-black/15"
-                    }`}
-                  >
-                    {isIndonesian ? "Terenkripsi" : "Encrypted"}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-1.5">
-                  <div
-                    className={`p-1.5 rounded-xl border text-center ${
-                      isDark ? "bg-white/[0.04] border-white/8" : "bg-black/[0.03] border-black/8"
-                    }`}
-                  >
-                    <span
-                      className={`text-[9px] block ${isDark ? "text-white/40" : "text-zinc-500"}`}
-                    >
-                      {isIndonesian ? "Sandi" : "Cipher"}
-                    </span>
-                    <span
-                      className={`text-[10.5px] font-semibold ${
-                        isDark ? "text-white" : "text-zinc-900"
-                      }`}
-                    >
-                      AES-256
-                    </span>
-                  </div>
-                  <div
-                    className={`p-1.5 rounded-xl border text-center ${
-                      isDark ? "bg-white/[0.04] border-white/8" : "bg-black/[0.03] border-black/8"
-                    }`}
-                  >
-                    <span
-                      className={`text-[9px] block ${isDark ? "text-white/40" : "text-zinc-500"}`}
-                    >
-                      {isIndonesian ? "Penyimpanan" : "Storage"}
-                    </span>
-                    <span
-                      className={`text-[10.5px] font-semibold ${
-                        isDark ? "text-white" : "text-zinc-900"
-                      }`}
-                    >
-                      {isIndonesian ? "Di Perangkat" : "On-Device"}
-                    </span>
-                  </div>
-                  <div
-                    className={`p-1.5 rounded-xl border text-center ${
-                      isDark ? "bg-white/[0.04] border-white/8" : "bg-black/[0.03] border-black/8"
-                    }`}
-                  >
-                    <span
-                      className={`text-[9px] block ${isDark ? "text-white/40" : "text-zinc-500"}`}
-                    >
-                      {isIndonesian ? "Data Cloud" : "Cloud Data"}
-                    </span>
-                    <span
-                      className={`text-[10.5px] font-semibold ${
-                        isDark ? "text-white" : "text-zinc-900"
-                      }`}
-                    >
-                      {isIndonesian ? "0 Bita" : "0 Bytes"}
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  className={`flex items-center justify-between px-1 text-[10px] ${
-                    isDark ? "text-white/45" : "text-zinc-500"
-                  }`}
-                >
-                  <span>{isIndonesian ? "Isolasi rantai kunci perangkat" : "Hardware keychain isolation"}</span>
-                  <span className={isDark ? "text-white/70" : "text-zinc-800 font-medium"}>
-                    {isIndonesian ? "Dilindungi biometrik" : "Biometric protected"}
-                  </span>
-                </div>
-              </motion.div>
-            )}
-
-            {/* SLIDE 3: DOMAIN PARTITION, PERSONAL & VENTURE SPLIT */}
-            {currentSlide.visual === "domain" && (
-              <motion.div
-                key="vis-domain"
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
-                className={`w-full max-w-[325px] p-3 rounded-[22px] border backdrop-blur-xl space-y-2 text-left ${
-                  isDark
-                    ? "border-white/14 bg-white/[0.035]"
-                    : "border-black/10 bg-white/80 shadow-[0_12px_28px_rgba(0,0,0,0.06)]"
-                }`}
-                style={{
-                  boxShadow: isDark
-                    ? "0 12px 28px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.2)"
-                    : "0 12px 28px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.8)",
-                }}
-              >
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-5.5 h-5.5 rounded-full flex items-center justify-center border ${
-                        isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
-                      }`}
-                    >
-                      <Layers size={11} className={isDark ? "text-white" : "text-zinc-900"} />
-                    </div>
-                    <span
-                      className={`text-[11px] font-semibold ${
-                        isDark ? "text-white" : "text-zinc-900"
-                      }`}
-                    >
-                      {isIndonesian ? "Partisi Multi-Domain" : "Multi-Domain Partitions"}
-                    </span>
-                  </div>
-                  <span className={`text-[10px] ${isDark ? "text-white/45" : "text-zinc-500"}`}>
-                    {isIndonesian ? "Pembukuan Terpisah" : "Isolated Books"}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div
-                    className={`p-2 rounded-xl border text-left ${
-                      isDark ? "bg-white/[0.06] border-white/16" : "bg-black/[0.04] border-black/10"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span
-                        className={`text-[10.5px] font-semibold ${
-                          isDark ? "text-white" : "text-zinc-900"
-                        }`}
-                      >
-                        {isIndonesian ? "Pribadi" : "Personal"}
-                      </span>
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-white" : "bg-zinc-900"}`}
-                      />
-                    </div>
-                    <div
-                      className={`text-[12.5px] font-semibold amount ${
-                        isDark ? "text-white" : "text-zinc-950"
-                      }`}
-                    >
-                      Rp 8.450.000
-                    </div>
-                    <span
-                      className={`text-[9px] ${isDark ? "text-white/45" : "text-zinc-500"}`}
-                    >
-                      {isIndonesian ? "3 Dompet · Batas 78%" : "3 Wallets · 78% Cap"}
-                    </span>
-                  </div>
-
-                  <div
-                    className={`p-2 rounded-xl border text-left opacity-80 ${
-                      isDark ? "bg-white/[0.03] border-white/8" : "bg-black/[0.02] border-black/6"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span
-                        className={`text-[10.5px] font-semibold ${
-                          isDark ? "text-white/80" : "text-zinc-700"
-                        }`}
-                      >
-                        {isIndonesian ? "Bisnis" : "Business"}
-                      </span>
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isDark ? "bg-white/40" : "bg-zinc-400"
-                        }`}
-                      />
-                    </div>
-                    <div
-                      className={`text-[12.5px] font-semibold amount ${
-                        isDark ? "text-white/80" : "text-zinc-800"
-                      }`}
-                    >
-                      Rp 24.120.000
-                    </div>
-                    <span
-                      className={`text-[9px] ${isDark ? "text-white/40" : "text-zinc-400"}`}
-                    >
-                      {isIndonesian ? "2 Dompet · Proyek" : "2 Wallets · Projects"}
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  className={`px-2 py-0.5 rounded-full border text-center text-[10px] ${
-                    isDark
-                      ? "bg-white/[0.04] border-white/8 text-white/55"
-                      : "bg-black/[0.03] border-black/8 text-zinc-600"
-                  }`}
-                >
-                  {isIndonesian
-                    ? "Pemisahan menyeluruh antara gaya hidup dan operasional bisnis"
-                    : "Complete separation between lifestyle and venture expenses"}
-                </div>
-              </motion.div>
-            )}
-
-            {/* SLIDE 4: RUNWAY TELEMETRY, GAUGE BAR & FIRE PROGRESS */}
-            {currentSlide.visual === "runway" && (
-              <motion.div
-                key="vis-runway"
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
-                className={`w-full max-w-[325px] p-3 rounded-[22px] border backdrop-blur-xl space-y-2 text-left ${
-                  isDark
-                    ? "border-white/14 bg-white/[0.035]"
-                    : "border-black/10 bg-white/80 shadow-[0_12px_28px_rgba(0,0,0,0.06)]"
-                }`}
-                style={{
-                  boxShadow: isDark
-                    ? "0 12px 28px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.2)"
-                    : "0 12px 28px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.8)",
-                }}
-              >
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-5.5 h-5.5 rounded-full flex items-center justify-center border ${
-                        isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
-                      }`}
-                    >
-                      <TrendingUp size={11} className={isDark ? "text-white" : "text-zinc-900"} />
-                    </div>
-                    <span
-                      className={`text-[11px] font-semibold ${
-                        isDark ? "text-white" : "text-zinc-900"
-                      }`}
-                    >
-                      {isIndonesian ? "Ketahanan Arus Kas" : "Cashflow Runway"}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-[11px] font-semibold amount ${
-                      isDark ? "text-white" : "text-zinc-950"
-                    }`}
-                  >
-                    {isIndonesian ? "14,2 Bulan Aman" : "14.2 Months Safe"}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <div
-                    className={`w-full h-2 rounded-full overflow-hidden p-0.5 border ${
-                      isDark
-                        ? "bg-white/10 border-white/10"
-                        : "bg-black/10 border-black/10"
-                    }`}
-                  >
-                    <div
-                      className={`h-full rounded-full ${
-                        isDark
-                          ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]"
-                          : "bg-zinc-950 shadow-[0_0_8px_rgba(0,0,0,0.2)]"
-                      }`}
-                      style={{ width: "72%" }}
-                    />
-                  </div>
-                  <div
-                    className={`flex justify-between text-[9px] px-0.5 ${
-                      isDark ? "text-white/45" : "text-zinc-500"
-                    }`}
-                  >
-                    <span>{isIndonesian ? "Dasar: 6 Bln" : "Baseline: 6 Mos"}</span>
-                    <span className={isDark ? "text-white/80" : "text-zinc-800 font-medium"}>
-                      {isIndonesian ? "Zona Aman: 12+ Bln" : "Safety Zone: 12+ Mos"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-0.5">
-                  <div
-                    className={`p-1 rounded-xl border flex items-center justify-between px-2 ${
-                      isDark ? "bg-white/[0.04] border-white/8" : "bg-black/[0.03] border-black/8"
-                    }`}
-                  >
-                    <span
-                      className={`text-[9.5px] ${isDark ? "text-white/50" : "text-zinc-500"}`}
-                    >
-                      {isIndonesian ? "Beban Harian" : "Daily Burn"}
-                    </span>
-                    <span
-                      className={`text-[10.5px] font-semibold amount ${
-                        isDark ? "text-white" : "text-zinc-900"
-                      }`}
-                    >
-                      Rp 320K
-                    </span>
-                  </div>
-                  <div
-                    className={`p-1 rounded-xl border flex items-center justify-between px-2 ${
-                      isDark ? "bg-white/[0.04] border-white/8" : "bg-black/[0.03] border-black/8"
-                    }`}
-                  >
-                    <span
-                      className={`text-[9.5px] ${isDark ? "text-white/50" : "text-zinc-500"}`}
-                    >
-                      {isIndonesian ? "Target FIRE" : "FIRE Target"}
-                    </span>
-                    {/* Rule 7: Strict Luxury Monochrome */}
-                    <span
-                      className={`text-[10.5px] font-semibold amount ${
-                        isDark ? "text-white" : "text-zinc-950"
-                      }`}
-                    >
-                      {isIndonesian ? "68% Tercapai" : "68% Reached"}
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        {/* Dynamic Floating Glass Capsule Display (VisionOS / Dynamic Island Style) */}
+        <div className="w-full flex justify-center items-center min-h-[140px] my-1">
+          <DynamicShowcaseCapsule
+            currentSlide={currentSlide}
+            isDark={isDark}
+            isIndonesian={isIndonesian}
+            chartGradientId={chartGradientId}
+            onNext={() => {
+              triggerHaptic("light");
+              setActiveSlide((prev) => (prev + 1) % slides.length);
+            }}
+            onPrev={() => {
+              triggerHaptic("light");
+              setActiveSlide((prev) => (prev - 1 + slides.length) % slides.length);
+            }}
+          />
         </div>
 
         {/* 5 Pagination Dots (Interactive & Auto-Synced) */}
