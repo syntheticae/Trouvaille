@@ -74,7 +74,8 @@ const SYNC_STEPS: StepItem[] = [
   },
 ];
 
-const ROW_HEIGHT = 108; // vertical rhythm distance in pixels
+const WINDOW_HEIGHT = 400; // Fixed optical viewport height
+const ROW_HEIGHT = 100;    // Row height per step
 
 export function InitialSyncScreen({
   onComplete,
@@ -107,7 +108,7 @@ export function InitialSyncScreen({
     };
   }, []);
 
-  // Adaptive luxury step progression (750ms pacing per step)
+  // Relaxed, comfortable luxury pacing: 2100ms (2.1s) per step so user can read smoothly
   useEffect(() => {
     if (isCompletedAll) return;
 
@@ -118,7 +119,7 @@ export function InitialSyncScreen({
           return next;
         }
 
-        // Hold before final step until assets & data are confirmed in real sync
+        // In real sync, hold before final step until assets & data are confirmed
         if (!isPreview && (!isAssetsLoaded || !isDataReady)) {
           return prev;
         }
@@ -130,7 +131,7 @@ export function InitialSyncScreen({
         setIsCompletedAll(true);
         return prev;
       });
-    }, 750);
+    }, 2100);
 
     return () => clearTimeout(timer);
   }, [activeStepIndex, isAssetsLoaded, isDataReady, isPreview, isCompletedAll]);
@@ -144,18 +145,17 @@ export function InitialSyncScreen({
         setIsCompletedAll(true);
         const finishTimer = setTimeout(() => {
           onComplete?.();
-        }, 500);
+        }, 700);
         return () => clearTimeout(finishTimer);
-      }, 950);
+      }, 1800);
       return () => clearTimeout(exitTimer);
     }
   }, [activeStepIndex, isPreview, onComplete]);
 
-  // Overall progress percentage
-  const progressPercent = Math.min(
-    100,
-    Math.round(((activeStepIndex + (isCompletedAll ? 1 : 0.35)) / SYNC_STEPS.length) * 100)
-  );
+  // Mathematically exact vertical centering offset:
+  // (WINDOW_HEIGHT - ROW_HEIGHT) / 2 ensures step `activeStepIndex` is locked at exactly WINDOW_HEIGHT / 2 (dead center)
+  const targetOffsetY =
+    (WINDOW_HEIGHT - ROW_HEIGHT) / 2 - activeStepIndex * ROW_HEIGHT;
 
   return (
     <div
@@ -169,17 +169,17 @@ export function InitialSyncScreen({
       {/* 1. ATMOSPHERIC MONOCHROME CINEMATIC AURORA BLOOM */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div
-          className={`absolute top-1/3 -left-40 w-[450px] h-[450px] rounded-full blur-[150px] transition-opacity duration-700 ${
-            isDark ? "bg-white/[0.035]" : "bg-black/[0.025]"
+          className={`absolute top-1/3 -left-40 w-[480px] h-[480px] rounded-full blur-[150px] transition-opacity duration-700 ${
+            isDark ? "bg-white/[0.04]" : "bg-black/[0.025]"
           }`}
         />
         <div
-          className={`absolute bottom-1/3 -right-40 w-[450px] h-[450px] rounded-full blur-[150px] transition-opacity duration-700 ${
-            isDark ? "bg-white/[0.03]" : "bg-black/[0.02]"
+          className={`absolute bottom-1/3 -right-40 w-[480px] h-[480px] rounded-full blur-[150px] transition-opacity duration-700 ${
+            isDark ? "bg-white/[0.035]" : "bg-black/[0.02]"
           }`}
         />
         <div
-          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] rounded-full blur-[180px] ${
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] h-[560px] rounded-full blur-[180px] ${
             isDark ? "bg-white/[0.02]" : "bg-black/[0.015]"
           }`}
         />
@@ -195,7 +195,7 @@ export function InitialSyncScreen({
         />
       </div>
 
-      {/* 2. FLOATING TOP-RIGHT PREVIEW CONTROLS (NO TOP-LEFT HEADER) */}
+      {/* 2. FLOATING TOP-RIGHT PREVIEW CONTROLS */}
       {isPreview && (
         <div
           className="fixed right-5 sm:right-8 z-30 flex items-center gap-2"
@@ -235,26 +235,27 @@ export function InitialSyncScreen({
         </div>
       )}
 
-      {/* 3. DYNAMIC VERTICAL TUMBLER (APPLE KEYNOTE / ACETERNITY PURE TYPOGRAPHY) */}
+      {/* 3. DYNAMIC VERTICAL TUMBLER (PERFECTLY CENTERED, PURE TYPOGRAPHY) */}
       <div
-        className="relative z-10 w-full max-w-xl h-[360px] sm:h-[420px] overflow-hidden flex flex-col justify-center items-center text-center"
+        className="relative z-10 w-full max-w-xl overflow-hidden flex flex-col items-center text-center"
         style={{
+          height: WINDOW_HEIGHT,
           maskImage:
-            "linear-gradient(to bottom, transparent 0%, black 28%, black 72%, transparent 100%)",
+            "linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)",
           WebkitMaskImage:
-            "linear-gradient(to bottom, transparent 0%, black 28%, black 72%, transparent 100%)",
+            "linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)",
         }}
       >
         <motion.div
           className="w-full flex flex-col items-center"
           animate={{
-            y: -activeStepIndex * ROW_HEIGHT,
+            y: targetOffsetY,
           }}
           transition={{
             type: "spring",
-            stiffness: 160,
-            damping: 24,
-            mass: 0.85,
+            stiffness: 120,
+            damping: 20,
+            mass: 0.8,
           }}
         >
           {SYNC_STEPS.map((step, index) => {
@@ -267,7 +268,7 @@ export function InitialSyncScreen({
               ? step.subtitleId(totalCount)
               : step.subtitleEn(totalCount);
 
-            // Optical scale & blur based on distance from optical center
+            // Contrast & visibility: active is 100% bright, surrounding are cleanly readable
             let opacity = 1;
             let scale = 1;
             let blur = "blur(0px)";
@@ -277,13 +278,13 @@ export function InitialSyncScreen({
               scale = 1;
               blur = "blur(0px)";
             } else if (distance === 1) {
-              opacity = isDark ? 0.32 : 0.35;
+              opacity = isDark ? 0.48 : 0.52;
               scale = 0.92;
-              blur = "blur(1.5px)";
+              blur = "blur(1px)";
             } else {
-              opacity = isDark ? 0.12 : 0.14;
+              opacity = isDark ? 0.18 : 0.22;
               scale = 0.84;
-              blur = "blur(3.5px)";
+              blur = "blur(2.5px)";
             }
 
             return (
@@ -297,21 +298,21 @@ export function InitialSyncScreen({
                   filter: blur,
                   transformOrigin: "center center",
                 }}
-                transition={{ duration: 0.45, ease: "easeInOut" }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
               >
-                {/* Large Quiet Luxury Typography with EncryptedText */}
+                {/* Large, High-Contrast Typography with EncryptedText */}
                 <h2
                   className={`tracking-tight leading-snug transition-colors ${
                     distance === 0
-                      ? `text-[22px] sm:text-[27px] ${
+                      ? `text-[24px] sm:text-[29px] ${
                           isDark
-                            ? "text-white font-semibold"
-                            : "text-zinc-950 font-semibold"
+                            ? "text-white font-bold drop-shadow-[0_2px_16px_rgba(255,255,255,0.18)]"
+                            : "text-zinc-950 font-bold"
                         }`
                       : `text-[17px] sm:text-[20px] ${
                           isDark
-                            ? "text-white/70 font-normal"
-                            : "text-zinc-800 font-normal"
+                            ? "text-zinc-300 font-medium"
+                            : "text-zinc-700 font-medium"
                         }`
                   }`}
                 >
@@ -319,25 +320,25 @@ export function InitialSyncScreen({
                     text={title}
                     isActive={isActive}
                     isCompleted={isCompleted}
-                    revealDelayMs={26}
+                    revealDelayMs={28}
                     encryptedClassName={
                       isDark
-                        ? "text-white/45 font-mono tracking-wider"
-                        : "text-zinc-950/45 font-mono tracking-wider"
+                        ? "text-white/70 font-mono tracking-wider"
+                        : "text-zinc-950/70 font-mono tracking-wider"
                     }
                     revealedClassName={
                       distance === 0
                         ? isDark
-                          ? "text-white font-semibold"
-                          : "text-zinc-950 font-semibold"
+                          ? "text-white font-bold"
+                          : "text-zinc-950 font-bold"
                         : isDark
-                        ? "text-white/75 font-normal"
-                        : "text-zinc-800 font-normal"
+                        ? "text-zinc-300 font-medium"
+                        : "text-zinc-700 font-medium"
                     }
                   />
                 </h2>
 
-                {/* Subtitle (Prominent only on active step) */}
+                {/* Subtitle: High contrast and legible on active step */}
                 <AnimatePresence>
                   {distance === 0 && (
                     <motion.p
@@ -345,8 +346,8 @@ export function InitialSyncScreen({
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
-                      className={`text-[12px] sm:text-[13px] font-normal mt-1.5 max-w-md mx-auto leading-relaxed ${
-                        isDark ? "text-white/50" : "text-zinc-600"
+                      className={`text-[13px] sm:text-[14px] font-medium mt-2 max-w-md mx-auto leading-relaxed ${
+                        isDark ? "text-zinc-300" : "text-zinc-600"
                       }`}
                     >
                       {subtitle}
@@ -357,60 +358,6 @@ export function InitialSyncScreen({
             );
           })}
         </motion.div>
-      </div>
-
-      {/* 4. FLOATING FROSTED GLASS MICRO-PILL COUNTER (NO HARSH BOTTOM BARS) */}
-      <div
-        className="fixed left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none"
-        style={{
-          bottom: "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 32px)",
-        }}
-      >
-        <div
-          className={`inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full backdrop-blur-2xl transition-all duration-300 ${
-            isDark
-              ? "bg-white/[0.05] border border-white/10 text-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
-              : "bg-black/[0.04] border border-black/8 text-zinc-800 shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
-          }`}
-        >
-          {/* Breathing monochrome pulse dot */}
-          <div
-            className={`w-1.5 h-1.5 rounded-full ${
-              isCompletedAll
-                ? isDark
-                  ? "bg-white"
-                  : "bg-zinc-950"
-                : isDark
-                ? "bg-white/85 animate-pulse"
-                : "bg-zinc-800 animate-pulse"
-            }`}
-          />
-
-          {/* Phase Step Index */}
-          <span className="text-[11px] font-mono tracking-wider font-medium">
-            0{Math.min(activeStepIndex + 1, SYNC_STEPS.length)} / 0{SYNC_STEPS.length}
-          </span>
-
-          <span className={`text-[10px] ${isDark ? "text-white/25" : "text-black/25"}`}>
-            ·
-          </span>
-
-          {/* Percentage */}
-          <span className="text-[11px] font-mono tracking-wider">
-            {progressPercent}%
-          </span>
-        </div>
-
-        {/* Minimalist Zero-Knowledge Tagline */}
-        <p
-          className={`text-[10.5px] font-medium tracking-wide transition-colors ${
-            isDark ? "text-white/30" : "text-zinc-500"
-          }`}
-        >
-          {isIndonesian
-            ? "Enkripsi Klien Ujung-ke-Ujung · Nir-Pengetahuan"
-            : "End-to-End Client Encryption · Zero-Knowledge"}
-        </p>
       </div>
     </div>
   );

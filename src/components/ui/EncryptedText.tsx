@@ -17,17 +17,24 @@ export const EncryptedText: React.FC<EncryptedTextProps> = ({
   text,
   isActive = false,
   isCompleted = false,
-  revealDelayMs = 32,
-  encryptedClassName = "opacity-40 font-mono tracking-widest",
-  revealedClassName = "font-medium",
+  revealDelayMs = 28,
+  encryptedClassName = "opacity-55 font-mono tracking-wide",
+  revealedClassName = "font-bold",
   className = "",
   glyphs = LUXURY_CIPHER_GLYPHS,
 }) => {
   const [revealedCount, setRevealedCount] = useState<number>(() => {
     return isCompleted ? text.length : 0;
   });
-  const [wavefrontChars, setWavefrontChars] = useState<string[]>(["·", "·", "·"]);
 
+  const generateScramble = () => {
+    return Array.from({ length: text.length }, (_, i) => {
+      if (text[i] === " ") return " ";
+      return glyphs[Math.floor(Math.random() * glyphs.length)];
+    });
+  };
+
+  const [scrambleChars, setScrambleChars] = useState<string[]>(generateScramble);
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -49,18 +56,14 @@ export const EncryptedText: React.FC<EncryptedTextProps> = ({
       return;
     }
 
-    // Active state: decrypt wavefront character-by-character
+    // Active state: decrypt character-by-character from left to right
     setRevealedCount(0);
     let current = 0;
     const total = text.length;
 
     intervalRef.current = window.setInterval(() => {
-      // Scramble only the active decoding wavefront (next 3 characters)
-      setWavefrontChars([
-        glyphs[Math.floor(Math.random() * glyphs.length)],
-        glyphs[Math.floor(Math.random() * glyphs.length)],
-        glyphs[Math.floor(Math.random() * glyphs.length)],
-      ]);
+      // Randomize remaining unrevealed characters while preserving spaces
+      setScrambleChars(generateScramble());
 
       current += 1;
       setRevealedCount(Math.min(current, total));
@@ -79,9 +82,9 @@ export const EncryptedText: React.FC<EncryptedTextProps> = ({
         intervalRef.current = null;
       }
     };
-  }, [isActive, isCompleted, text, revealDelayMs, glyphs]);
+  }, [isActive, isCompleted, text, revealDelayMs]);
 
-  // If pending, render text quietly
+  // If pending (not active and not completed), render quiet text
   if (!isActive && !isCompleted) {
     return <span className={className}>{text}</span>;
   }
@@ -91,19 +94,14 @@ export const EncryptedText: React.FC<EncryptedTextProps> = ({
     return <span className={`${className} ${revealedClassName}`}>{text}</span>;
   }
 
-  // Active state: revealed portion + decoding wavefront + gentle tail
+  // Active state: revealed real characters + scrambling cipher characters (spaces preserved)
   const revealedPart = text.slice(0, revealedCount);
-  const remainingCount = Math.max(0, text.length - revealedCount);
-  const activeWavefront = wavefrontChars.slice(0, Math.min(3, remainingCount)).join("");
-  const trailingDots = "·".repeat(Math.max(0, remainingCount - 3));
+  const scrambledPart = scrambleChars.slice(revealedCount).join("");
 
   return (
     <span className={className}>
       <span className={revealedClassName}>{revealedPart}</span>
-      <span className={encryptedClassName}>{activeWavefront}</span>
-      {trailingDots.length > 0 && (
-        <span className="opacity-20 font-mono tracking-widest">{trailingDots}</span>
-      )}
+      <span className={encryptedClassName}>{scrambledPart}</span>
     </span>
   );
 };
