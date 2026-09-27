@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { ChevronRight, ChevronDown, Wallet as WalletIcon, Check, Scale, Edit3, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useBills } from "../../hooks/useBills";
@@ -246,6 +246,9 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   const safeToSpend = Math.max(0, liquidCapital - committedAmount);
 
   const isDark = theme !== "light";
+  const dividerGradient = isDark
+    ? "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 20%, rgba(255, 255, 255, 0.06) 80%, transparent 100%)"
+    : "linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.04) 20%, rgba(0, 0, 0, 0.04) 80%, transparent 100%)";
   const SEGMENT_COLORS = isDark ? SEGMENT_COLORS_DARK : SEGMENT_COLORS_LIGHT;
 
   const posLiquidAccs = useMemo(
@@ -602,93 +605,99 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           )}
 
           {/* Sleek Streamlined Holdings List (Reference Style) */}
-          <div
-            className="divide-y border-y"
-            style={{ borderColor: "var(--glass-border)" }}
-          >
+          <div className="flex flex-col">
+            <div
+              className="h-[1px] w-full shrink-0"
+              style={{ background: dividerGradient }}
+            />
             {sortedPositiveAccounts.map((acc, index) => {
               const isAnchor = index === 0;
               return (
-                <div
-                  key={acc.id || acc.name}
-                  onClick={() => handleOpenWalletModal(acc)}
-                  className="py-3.5 flex items-center justify-between group cursor-pointer active:opacity-70 transition-opacity"
-                >
-                  {/* Left Column: Squircle Icon + Name with Chevron + Subtitle */}
-                  <div className="flex items-center gap-3 min-w-0">
+                <Fragment key={acc.id || acc.name}>
+                  {index > 0 && (
                     <div
-                      className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border"
-                      style={{
-                        background: "var(--glass-fill)",
-                        borderColor: "var(--glass-border)",
-                      }}
-                    >
-                      <IconRenderer icon={acc.icon} size="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className="text-[14.5px] font-semibold tracking-tight truncate"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {acc.name}
-                        </span>
-                        <ChevronRight
-                          size={13}
-                          className="text-[var(--text-tertiary)] group-hover:translate-x-0.5 transition-transform shrink-0"
-                        />
-                        {isAnchor && (
-                          <span
-                            className="text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider shrink-0"
-                            style={{
-                              background: "var(--glass-fill)",
-                              color: "var(--text-secondary)",
-                              border: "1px solid var(--glass-border)",
-                            }}
-                          >
-                            {isIndonesian ? "Utama" : "Core"}
-                          </span>
-                        )}
+                      className="h-[1px] w-full shrink-0"
+                      style={{ background: dividerGradient }}
+                    />
+                  )}
+                  <div
+                    onClick={() => handleOpenWalletModal(acc)}
+                    className="py-3.5 flex items-center justify-between group cursor-pointer active:opacity-70 transition-opacity"
+                  >
+                    {/* Left Column: Clean Unboxed Icon + Name with Chevron + Subtitle */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 flex items-center justify-center shrink-0 text-[var(--text-secondary)]">
+                        <IconRenderer icon={acc.icon} size="w-5 h-5" />
                       </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="text-[14.5px] font-semibold tracking-tight truncate"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {acc.name}
+                          </span>
+                          <ChevronRight
+                            size={13}
+                            className="text-[var(--text-tertiary)] group-hover:translate-x-0.5 transition-transform shrink-0"
+                          />
+                          {isAnchor && (
+                            <span
+                              className="text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider shrink-0"
+                              style={{
+                                background: "var(--glass-fill)",
+                                color: "var(--text-secondary)",
+                                border: "1px solid var(--glass-border)",
+                              }}
+                            >
+                              {isIndonesian ? "Utama" : "Core"}
+                            </span>
+                          )}
+                        </div>
+                        <p
+                          className="text-[11px] font-medium mt-0.5 truncate"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          <span
+                            className="font-semibold"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            {acc.percent.toFixed(1)}%
+                          </span>
+                          {" · "}
+                          {getWalletRoleDescription(
+                            acc.name,
+                            acc.classification,
+                            isAnchor,
+                            isIndonesian
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Tabular Balance + Sublabel */}
+                    <div className="text-right shrink-0 pl-2">
                       <p
-                        className="text-[11px] font-medium mt-0.5 truncate"
+                        className="amount text-[15px] font-bold leading-tight"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {hideBalance ? "Rp ••••••••" : formatRupiah(acc.balance)}
+                      </p>
+                      <p
+                        className="text-[10px] mt-0.5 font-medium"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        <span
-                          className="font-semibold"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          {acc.percent.toFixed(1)}%
-                        </span>
-                        {" · "}
-                        {getWalletRoleDescription(
-                          acc.name,
-                          acc.classification,
-                          isAnchor,
-                          isIndonesian
-                        )}
+                        {acc.percent.toFixed(1)}% {isIndonesian ? "alokasi" : "share"}
                       </p>
                     </div>
                   </div>
-
-                  {/* Right Column: Tabular Balance + Sublabel */}
-                  <div className="text-right shrink-0 pl-2">
-                    <p
-                      className="amount text-[15px] font-bold leading-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {hideBalance ? "Rp ••••••••" : formatRupiah(acc.balance)}
-                    </p>
-                    <p
-                      className="text-[10px] mt-0.5 font-medium"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {acc.percent.toFixed(1)}% {isIndonesian ? "alokasi" : "share"}
-                    </p>
-                  </div>
-                </div>
+                </Fragment>
               );
             })}
+            <div
+              className="h-[1px] w-full shrink-0"
+              style={{ background: dividerGradient }}
+            />
           </div>
 
           {/* Collapsible Dormant / Zero-Balance Accounts */}
@@ -739,45 +748,51 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
               </button>
 
               {showDormant && (
-                <div
-                  className="divide-y border-b px-1 pt-1"
-                  style={{ borderColor: "var(--glass-border)" }}
-                >
-                  {zeroAccounts.map((acc) => (
-                    <div
-                      key={acc.id || acc.name}
-                      onClick={() => handleOpenWalletModal(acc)}
-                      className="py-2.5 flex items-center justify-between text-xs cursor-pointer active:opacity-70 transition-opacity"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex flex-col px-1 pt-1">
+                  <div
+                    className="h-[1px] w-full shrink-0"
+                    style={{ background: dividerGradient }}
+                  />
+                  {zeroAccounts.map((acc, zIdx) => (
+                    <Fragment key={acc.id || acc.name}>
+                      {zIdx > 0 && (
                         <div
-                          className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border"
-                          style={{
-                            background: "var(--glass-fill)",
-                            borderColor: "var(--glass-border)",
-                          }}
-                        >
-                          <IconRenderer icon={acc.icon} size="w-3.5 h-3.5" />
+                          className="h-[1px] w-full shrink-0"
+                          style={{ background: dividerGradient }}
+                        />
+                      )}
+                      <div
+                        onClick={() => handleOpenWalletModal(acc)}
+                        className="py-2.5 flex items-center justify-between text-xs cursor-pointer active:opacity-70 transition-opacity"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-6 h-6 flex items-center justify-center shrink-0 text-[var(--text-secondary)]">
+                            <IconRenderer icon={acc.icon} size="w-4 h-4" />
+                          </div>
+                          <span
+                            className="truncate font-medium"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            {acc.name}
+                          </span>
+                          <ChevronRight
+                            size={12}
+                            className="text-[var(--text-tertiary)]"
+                          />
                         </div>
                         <span
-                          className="truncate font-medium"
-                          style={{ color: "var(--text-secondary)" }}
+                          className="amount text-[11px] font-medium"
+                          style={{ color: "var(--text-tertiary)" }}
                         >
-                          {acc.name}
+                          Rp 0
                         </span>
-                        <ChevronRight
-                          size={12}
-                          className="text-[var(--text-tertiary)]"
-                        />
                       </div>
-                      <span
-                        className="amount text-[11px] font-medium"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        Rp 0
-                      </span>
-                    </div>
+                    </Fragment>
                   ))}
+                  <div
+                    className="h-[1px] w-full shrink-0"
+                    style={{ background: dividerGradient }}
+                  />
                 </div>
               )}
             </div>
@@ -794,14 +809,8 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
-              <div
-                className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border"
-                style={{
-                  background: "var(--glass-fill)",
-                  borderColor: "var(--glass-border)",
-                }}
-              >
-                <IconRenderer icon={selectedWallet?.icon} size="w-5 h-5" />
+              <div className="w-9 h-9 flex items-center justify-center shrink-0 text-[var(--text-secondary)]">
+                <IconRenderer icon={selectedWallet?.icon} size="w-6 h-6" />
               </div>
               <div className="min-w-0">
                 <h3

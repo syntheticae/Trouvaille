@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { Plus, Trash2, Scale, Check, ChevronRight, Search, X } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -43,6 +43,9 @@ export function WalletManagementSheets({
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
   const isDark = theme !== "light";
+  const dividerGradient = isDark
+    ? "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 20%, rgba(255, 255, 255, 0.06) 80%, transparent 100%)"
+    : "linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.04) 20%, rgba(0, 0, 0, 0.04) 80%, transparent 100%)";
 
   const [addBudgetOpen, setAddBudgetOpen] = useState(false);
   const [budgetName, setBudgetName] = useState("");
@@ -476,11 +479,12 @@ export function WalletManagementSheets({
                 </button>
               </div>
             ) : (
-              <div
-                className="divide-y border-y"
-                style={{ borderColor: "var(--glass-border)" }}
-              >
-                {filteredWallets.map((w) => {
+              <div className="flex flex-col">
+                <div
+                  className="h-[1px] w-full shrink-0"
+                  style={{ background: dividerGradient }}
+                />
+                {filteredWallets.map((w, index) => {
                   const bal =
                     balancesById[w.id] ?? balancesByName[w.name.toLowerCase()] ?? 0;
                   const isZero = bal === 0;
@@ -490,125 +494,125 @@ export function WalletManagementSheets({
                   const isLiability = cls === "credit" || cls === "loan";
 
                   return (
-                    <div
-                      key={w.id}
-                      onClick={() =>
-                        setEditWallet({
-                          id: w.id,
-                          name: w.name,
-                          icon: w.icon || getWalletIcon(w.name),
-                          classification: cls,
-                        })
-                      }
-                      className="py-3.5 flex items-center justify-between group cursor-pointer active:opacity-70 transition-opacity"
-                    >
-                      {/* Left Column: Frosted Squircle Icon + Name with Chevron + Subtitle */}
-                      <div className="flex items-center gap-3 min-w-0">
+                    <Fragment key={w.id}>
+                      {index > 0 && (
                         <div
-                          className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border transition-transform"
-                          style={{
-                            background: "var(--glass-fill)",
-                            borderColor: "var(--glass-border)",
-                          }}
-                        >
-                          <IconRenderer
-                            icon={w.icon || getWalletIcon(w.name)}
-                            size="w-4.5 h-4.5"
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className="text-[14.5px] font-semibold tracking-tight truncate"
-                              style={{ color: "var(--text-primary)" }}
-                            >
-                              {w.name}
-                            </span>
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border uppercase tracking-wider shrink-0 ${
-                                isInvest
-                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                  : isLiability
-                                  ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-                                  : "bg-[var(--glass-fill)] border-[var(--glass-border)] text-[var(--text-tertiary)]"
-                              }`}
-                            >
-                              {isInvest
-                                ? (isIndonesian ? "Investasi" : "Invest")
-                                : isLiability
-                                ? (isIndonesian ? "Utang" : "Debt")
-                                : (isIndonesian ? "Kas Likuid" : "Liquid Cash")}
-                            </span>
-                            <ChevronRight
-                              size={13}
-                              className="text-[var(--text-tertiary)] opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0"
+                          className="h-[1px] w-full shrink-0"
+                          style={{ background: dividerGradient }}
+                        />
+                      )}
+                      <div
+                        onClick={() =>
+                          setEditWallet({
+                            id: w.id,
+                            name: w.name,
+                            icon: w.icon || getWalletIcon(w.name),
+                            classification: cls,
+                          })
+                        }
+                        className="py-3.5 flex items-center justify-between group cursor-pointer active:opacity-70 transition-opacity"
+                      >
+                        {/* Left Column: Clean Unboxed Icon + Name with Chevron + Subtitle */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 flex items-center justify-center shrink-0 text-[var(--text-secondary)]">
+                            <IconRenderer
+                              icon={w.icon || getWalletIcon(w.name)}
+                              size="w-5 h-5"
                             />
                           </div>
-                          <p
-                            className="text-[11px] font-medium mt-0.5 truncate"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            {isZero
-                              ? (isIndonesian ? "Akun Dorman (Rp 0)" : "Dormant (Rp 0)")
-                              : (isIndonesian ? "Akun Aktif" : "Active Account")}
-                          </p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className="text-[14.5px] font-semibold tracking-tight truncate"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {w.name}
+                              </span>
+                              <ChevronRight
+                                size={13}
+                                className="text-[var(--text-tertiary)] opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0"
+                              />
+                            </div>
+                            <p
+                              className="text-[11px] font-medium mt-0.5 truncate"
+                              style={{ color: "var(--text-tertiary)" }}
+                            >
+                              <span>
+                                {isInvest
+                                  ? (isIndonesian ? "Aset Investasi" : "Investment")
+                                  : isLiability
+                                  ? (isIndonesian ? "Liabilitas / Utang" : "Liability / Debt")
+                                  : (isIndonesian ? "Kas Likuid" : "Liquid Cash")}
+                              </span>
+                              {" · "}
+                              <span>
+                                {isZero
+                                  ? (isIndonesian ? "Akun Dorman (Rp 0)" : "Dormant (Rp 0)")
+                                  : (isIndonesian ? "Akun Aktif" : "Active Account")}
+                              </span>
+                            </p>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Right Column: Untruncated Tabular Balance + Quick Adjust Button */}
-                      <div className="flex items-center gap-3 shrink-0 pl-2">
-                        <div className="text-right">
-                          <p
-                            className={`amount font-mono text-[15px] font-bold leading-tight ${
-                              isZero ? "opacity-40" : ""
-                            }`}
-                            style={{
-                              color: isZero ? "var(--text-tertiary)" : "var(--text-primary)",
+                        {/* Right Column: Untruncated Tabular Balance + Quick Adjust Button */}
+                        <div className="flex items-center gap-3 shrink-0 pl-2">
+                          <div className="text-right">
+                            <p
+                              className={`amount font-mono text-[15px] font-bold leading-tight ${
+                                isZero ? "opacity-40" : ""
+                              }`}
+                              style={{
+                                color: isZero ? "var(--text-tertiary)" : "var(--text-primary)",
+                              }}
+                            >
+                              {formatRupiah(bal)}
+                            </p>
+                            <p
+                              className="text-[10px] mt-0.5 font-medium"
+                              style={{ color: "var(--text-tertiary)" }}
+                            >
+                              {isIndonesian ? "Saldo Riil" : "Real Balance"}
+                            </p>
+                          </div>
+
+                          {/* Quick Balance Adjustment Button (Scale Icon) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerHaptic("light");
+                              onClose();
+                              setTimeout(() => {
+                                setCorrectWallet({
+                                  id: w.id,
+                                  name: w.name,
+                                  icon: w.icon || getWalletIcon(w.name),
+                                  currentBalance: bal,
+                                });
+                                setCorrectTargetBalance(String(bal));
+                                setCorrectNote("");
+                                setCorrectEffectiveDate(format(new Date(), "yyyy-MM-dd"));
+                              }, 300);
                             }}
+                            className="w-8 h-8 rounded-xl flex items-center justify-center border transition-all active:scale-95 cursor-pointer"
+                            style={{
+                              background: "var(--glass-fill)",
+                              borderColor: "var(--glass-border)",
+                              color: "var(--text-secondary)",
+                            }}
+                            title={isIndonesian ? "Sesuaikan Saldo" : "Adjust Balance"}
                           >
-                            {formatRupiah(bal)}
-                          </p>
-                          <p
-                            className="text-[10px] mt-0.5 font-medium"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            {isIndonesian ? "Saldo Riil" : "Real Balance"}
-                          </p>
+                            <Scale size={14} strokeWidth={1.75} />
+                          </button>
                         </div>
-
-                        {/* Quick Balance Adjustment Button (Scale Icon) */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            triggerHaptic("light");
-                            onClose();
-                            setTimeout(() => {
-                              setCorrectWallet({
-                                id: w.id,
-                                name: w.name,
-                                icon: w.icon || getWalletIcon(w.name),
-                                currentBalance: bal,
-                              });
-                              setCorrectTargetBalance(String(bal));
-                              setCorrectNote("");
-                              setCorrectEffectiveDate(format(new Date(), "yyyy-MM-dd"));
-                            }, 300);
-                          }}
-                          className="w-8 h-8 rounded-xl flex items-center justify-center border transition-all active:scale-95 cursor-pointer"
-                          style={{
-                            background: "var(--glass-fill)",
-                            borderColor: "var(--glass-border)",
-                            color: "var(--text-secondary)",
-                          }}
-                          title={isIndonesian ? "Sesuaikan Saldo" : "Adjust Balance"}
-                        >
-                          <Scale size={14} strokeWidth={1.75} />
-                        </button>
                       </div>
-                    </div>
+                    </Fragment>
                   );
                 })}
+                <div
+                  className="h-[1px] w-full shrink-0"
+                  style={{ background: dividerGradient }}
+                />
               </div>
             )}
           </div>
