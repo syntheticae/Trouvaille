@@ -307,7 +307,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [webDashboardModalOpen, setWebDashboardModalOpen] = useState(false);
 
-  const { activeSpace } = useSpace();
+  const { activeSpace, refreshLedgers } = useSpace();
 
   // Notification toggles
   const [billRemindersEnabled, setBillRemindersEnabled] = useState(() => {
@@ -413,6 +413,10 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
         queryClient.invalidateQueries({ queryKey: ["categories"] }),
         queryClient.invalidateQueries({ queryKey: ["bills"] }),
       ]);
+
+      if (refreshLedgers) {
+        await refreshLedgers().catch(() => {});
+      }
 
       const now = new Date();
       localStorage.setItem("trouvaille_last_synced", now.toISOString());
