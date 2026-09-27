@@ -45,9 +45,29 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload APK Artifact
+      - name: Upload APK Artifact to GitHub
         uses: actions/upload-artifact@v4
         with:
           name: Trouvaille-Android-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Publish APK to Supabase Storage (Live Web CDN)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://iqjcmqkgrfmopznrfikx.supabase.co' }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxamNtcWtncmZtb3B6bnJmaWt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODA0NzcsImV4cCI6MjEwMjg1NjQ3N30.ujfATs0huUkR9tCNB0Rs8JlqJG3dkz13EKtkr-eFiDg' }}
+        run: |
+          echo "Uploading latest Trouvaille APK to Supabase CDN..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "${SUPABASE_URL}/storage/v1/object/app-releases/Trouvaille-latest.apk" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            -H "x-upsert: true" \
+            --data-binary "@android/app/build/outputs/apk/debug/app-debug.apk")
+          echo "Supabase Storage HTTP Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Success: Trouvaille-latest.apk published to Supabase CDN!"
+          else
+            echo "Notice: Storage response was $HTTP_STATUS. Please ensure app-releases bucket policy is applied."
+          fi
