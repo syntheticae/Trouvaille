@@ -86,6 +86,15 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  const [personalOverride, setPersonalOverride] = useState<Partial<MoneySpace>>(() => {
+    try {
+      const saved = localStorage.getItem("trouvaille_personal_ledger_override_v1");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
   // Attempt to sync custom and shared ledgers from Supabase cloud
   const syncFromCloud = useCallback(async () => {
     try {
@@ -169,10 +178,14 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
   }, [syncFromCloud]);
 
   const spaces = useMemo(() => {
+    const defaultPersonal: MoneySpace = {
+      ...DEFAULT_MONEY_SPACES[0],
+      ...personalOverride,
+    };
     const cleanCustom = customSpaces.filter(
       (s) => s.id !== "personal" && s.id !== "all",
     );
-    const list: MoneySpace[] = [...DEFAULT_MONEY_SPACES, ...cleanCustom];
+    const list: MoneySpace[] = [defaultPersonal, ...cleanCustom];
     if (cleanCustom.length > 0 && !list.some((s) => s.id === "all")) {
       list.push({
         id: "all",
@@ -184,7 +197,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
       });
     }
     return list;
-  }, [customSpaces]);
+  }, [customSpaces, personalOverride]);
 
   const activeSpace = useMemo(() => {
     return spaces.find((s) => s.id === activeSpaceId) || DEFAULT_MONEY_SPACES[0];
@@ -268,12 +281,71 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateCustomSpace = useCallback((id: string, spaceData: Partial<CreateSpaceInput>) => {
+    if (id === "personal") {
+      const willBeShared = spaceData.is_shared !== undefined ? Boolean(spaceData.is_shared) : Boolean(personalOverride.is_shared);
+      const inviteCode = willBeShared ? (personalOverride.invite_code || generateInviteCode()) : undefined;
+      const updated: Partial<MoneySpace> = {
+        ...personalOverride,
+        name: spaceData.name ? spaceData.name.trim() : (personalOverride.name || "Personal Ledger"),
+        description: spaceData.description !== undefined ? spaceData.description.trim() : personalOverride.description,
+        icon: spaceData.icon || personalOverride.icon || "User",
+        currency: spaceData.currency || personalOverride.currency || "IDR",
+        is_shared: willBeShared,
+        invite_code: inviteCode,
+      };
+      setPersonalOverride(updated);
+      try {
+        localStorage.setItem("trouvaille_personal_ledger_override_v1", JSON.stringify(updated));
+      } catch {}
+
+      (async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user?.id && session.user.id !== "guest_local_user") {
+            await supabase.from("ledgers").upsert({
+              id: "personal",
+              user_id: session.user.id,
+              name: updated.name || "Personal Ledger",
+              description: updated.description || "",
+              icon: updated.icon || "User",
+              currency: updated.currency || "IDR",
+              is_default: true,
+              is_shared: willBeShared,
+              invite_code: inviteCode,
+              updated_at: new Date().toISOString(),
+            });
+
+            if (willBeShared) {
+              await supabase.from("ledger_members").upsert({
+                ledger_id: "personal",
+                user_id: session.user.id,
+                role: "owner",
+                display_name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Owner",
+                email: session.user.email,
+              }, { onConflict: "ledger_id,user_id" });
+            }
+          }
+        } catch {}
+      })();
+
+      try {
+        window.dispatchEvent(new CustomEvent("trouvaille_ledgers_updated"));
+      } catch {}
+      return;
+    }
+
     const rawTag = spaceData.tag?.trim() || (spaceData.name ? `#${spaceData.name.toLowerCase().replace(/[^a-z0-9]/g, "")}` : undefined);
     const formattedTag = rawTag ? (rawTag.startsWith("#") ? rawTag.toLowerCase() : `#${rawTag.toLowerCase()}`) : undefined;
+    let generatedInviteCode: string | undefined;
 
     setCustomSpaces((prev) => {
       const updated = prev.map((s) => {
         if (s.id !== id) return s;
+        const willBeShared = spaceData.is_shared !== undefined ? Boolean(spaceData.is_shared) : Boolean(s.is_shared);
+        const inviteCode = willBeShared ? (s.invite_code || generateInviteCode()) : undefined;
+        if (willBeShared && !s.invite_code) {
+          generatedInviteCode = inviteCode;
+        }
         return {
           ...s,
           name: spaceData.name ? spaceData.name.trim() : s.name,
@@ -281,7 +353,8 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
           tag: formattedTag || s.tag,
           icon: spaceData.icon || s.icon,
           currency: spaceData.currency || s.currency || "IDR",
-          is_shared: spaceData.is_shared !== undefined ? Boolean(spaceData.is_shared) : s.is_shared,
+          is_shared: willBeShared,
+          invite_code: inviteCode,
         };
       });
 
@@ -304,13 +377,27 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
           if (spaceData.description !== undefined) payload.description = spaceData.description.trim();
           if (spaceData.icon) payload.icon = spaceData.icon;
           if (spaceData.currency) payload.currency = spaceData.currency;
-          if (spaceData.is_shared !== undefined) payload.is_shared = spaceData.is_shared;
+          if (spaceData.is_shared !== undefined) {
+            payload.is_shared = spaceData.is_shared;
+            if (spaceData.is_shared && generatedInviteCode) {
+              payload.invite_code = generatedInviteCode;
+            }
+          }
 
           await supabase
             .from("ledgers")
             .update(payload)
-            .eq("id", id)
-            .eq("user_id", session.user.id);
+            .eq("id", id);
+
+          if (spaceData.is_shared) {
+            await supabase.from("ledger_members").upsert({
+              ledger_id: id,
+              user_id: session.user.id,
+              role: "owner",
+              display_name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Owner",
+              email: session.user.email,
+            }, { onConflict: "ledger_id,user_id" });
+          }
         }
       } catch {}
     })();

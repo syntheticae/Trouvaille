@@ -69,7 +69,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useSpace } from "../contexts/SpaceContext";
-import { SpaceSwitcherSheet } from "../components/spaces/SpaceSwitcherSheet";
+import { ManageLedgersSheet } from "../components/settings/ManageLedgersSheet";
 import { NfcCardReaderModal } from "../components/nfc/NfcCardReaderModal";
 import {
   AreaChart,
@@ -2683,7 +2683,7 @@ export function HomePage({
         />
       )}
       {spaceSwitcherOpen && (
-        <SpaceSwitcherSheet
+        <ManageLedgersSheet
           isOpen={spaceSwitcherOpen}
           onClose={() => setSpaceSwitcherOpen(false)}
         />

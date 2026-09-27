@@ -369,14 +369,18 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     triggerHaptic("light");
 
     try {
-      await flushPendingMutations();
+      try {
+        await flushPendingMutations().catch(() => {});
+      } catch {}
 
       const userId = session?.user?.id;
-      if (!userId) throw new Error("Not authenticated");
+      if (!userId) {
+        throw new Error("Not authenticated");
+      }
 
       const freshTxs = await fetchAllTransactionsFromSupabase({ userId });
 
-      const [freshWallets, freshCategories, freshBills] = await Promise.all([
+      const [freshWalletsRes, freshCategoriesRes, freshBillsRes] = await Promise.allSettled([
         supabase
           .from("wallets")
           .select("*")
@@ -394,17 +398,14 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           .order("due_date", { ascending: true }),
       ]);
 
-      if (freshWallets.error) throw freshWallets.error;
-      if (freshCategories.error) throw freshCategories.error;
-      if (freshBills.error) throw freshBills.error;
+      const freshWallets = freshWalletsRes.status === "fulfilled" && !freshWalletsRes.value.error ? freshWalletsRes.value.data : null;
+      const freshCategories = freshCategoriesRes.status === "fulfilled" && !freshCategoriesRes.value.error ? freshCategoriesRes.value.data : null;
+      const freshBills = freshBillsRes.status === "fulfilled" && !freshBillsRes.value.error ? freshBillsRes.value.data : null;
 
       queryClient.setQueryData(transactionKeys.all(userId), freshTxs);
-      queryClient.setQueryData(walletKeys.all(userId), freshWallets.data ?? []);
-      queryClient.setQueryData(
-        categoryKeys.all(userId),
-        freshCategories.data ?? [],
-      );
-      queryClient.setQueryData(["bills", userId], freshBills.data ?? []);
+      if (freshWallets) queryClient.setQueryData(walletKeys.all(userId), freshWallets);
+      if (freshCategories) queryClient.setQueryData(categoryKeys.all(userId), freshCategories);
+      if (freshBills) queryClient.setQueryData(["bills", userId], freshBills);
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["transactions"] }),
@@ -419,7 +420,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
       setSyncStatus("success");
       triggerHaptic("medium");
       showToast(
-        `Data synchronized (${freshTxs.length} records)`,
+        isIndonesian
+          ? `Data tersinkronisasi (${freshTxs.length} transaksi)`
+          : `Data synchronized (${freshTxs.length} records)`,
         "update",
         () => {},
       );
@@ -427,10 +430,17 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
       setTimeout(() => {
         setSyncStatus("idle");
       }, 3500);
-    } catch (err) {
+    } catch (err: any) {
       console.error("[handleSafeSync] Sync error:", err);
       setSyncStatus("error");
-      showToast("Sync failed. Local data preserved.", "delete", () => {});
+      const isAuthErr = err?.message === "Not authenticated";
+      showToast(
+        isAuthErr
+          ? (isIndonesian ? "Sesi autentikasi berakhir. Silakan masuk kembali." : "Session expired. Please log in again.")
+          : (isIndonesian ? "Sinkronisasi gagal. Data lokal aman." : "Sync failed. Local data preserved."),
+        "delete",
+        () => {},
+      );
       setTimeout(() => {
         setSyncStatus("idle");
       }, 4000);
