@@ -7,12 +7,12 @@ import {
   TrendingUp,
   Sparkles,
   type LucideIcon,
-  ChevronRight,
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import type { HomePresetKey } from "../../lib/widgetLayoutTypes";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export interface ArchetypeItem {
   key: string;
@@ -27,68 +27,92 @@ export interface ArchetypeItem {
   visualType: "voice_flow" | "budget_gauge" | "domain_split" | "wealth_spline" | "executive_grid";
 }
 
-export const ARCHETYPE_ITEMS: ArchetypeItem[] = [
-  {
-    key: "expenses",
-    chipLabel: "Daily Flow",
-    title: "Daily Expenses & Cashflow",
-    desc: "Fast, distraction-free logging to monitor everyday burn rate.",
-    badge: "Minimalist",
-    metric: "Rp 140K / day",
-    subMetric: "Sub-second voice & camera entry",
-    widgetPreset: "minimal",
-    icon: Zap,
-    visualType: "voice_flow",
-  },
-  {
-    key: "budget",
-    chipLabel: "Budget Guard",
-    title: "Budgeting & Savings Discipline",
-    desc: "Enforce category spending caps and protect emergency reserve buffers.",
-    badge: "Guardian",
-    metric: "64% Cap Used",
-    subMetric: "Spending limit alerts & buffer protection",
-    widgetPreset: "minimal",
-    icon: PieChart,
-    visualType: "budget_gauge",
-  },
-  {
-    key: "domain",
-    chipLabel: "Dual Space",
-    title: "Dual Domain Separation",
-    desc: "Strictly partition personal living outlays from venture & side-project books.",
-    badge: "Partitioned",
-    metric: "Personal ↔ Venture",
-    subMetric: "Zero co-mingling ledger isolation",
-    widgetPreset: "executive",
-    icon: Layers,
-    visualType: "domain_split",
-  },
-  {
-    key: "wealth",
-    chipLabel: "Wealth Vault",
-    title: "Net Worth & Asset Intelligence",
-    desc: "Monitor portfolio velocity, investment allocation, and financial runway.",
-    badge: "Intelligence",
-    metric: "+24.8% YoY",
-    subMetric: "Multi-currency & runway telemetry",
-    widgetPreset: "executive",
-    icon: TrendingUp,
-    visualType: "wealth_spline",
-  },
-  {
-    key: "complete",
-    chipLabel: "Executive",
-    title: "Complete Financial Command",
-    desc: "All-in-one comprehensive telemetry suite with forecasting and full analytics.",
-    badge: "Executive",
-    metric: "12 Telemetry Widgets",
-    subMetric: "Sankey, debt simulators & deep analytics",
-    widgetPreset: "executive",
-    icon: Sparkles,
-    visualType: "executive_grid",
-  },
-];
+export function getArchetypeItems(isIndonesian: boolean): ArchetypeItem[] {
+  return [
+    {
+      key: "expenses",
+      chipLabel: isIndonesian ? "Arus Harian" : "Daily Flow",
+      title: isIndonesian ? "Arus Kas & Pengeluaran Harian" : "Daily Expenses & Cashflow",
+      desc: isIndonesian
+        ? "Pencatatan cepat tanpa hambatan untuk memantau pengeluaran harian."
+        : "Fast, distraction-free logging to monitor everyday burn rate.",
+      badge: isIndonesian ? "Minimalis" : "Minimalist",
+      metric: isIndonesian ? "Rp 140 Rb / hari" : "Rp 140K / day",
+      subMetric: isIndonesian
+        ? "Masukan suara & kamera sub-detik"
+        : "Sub-second voice & camera entry",
+      widgetPreset: "minimal",
+      icon: Zap,
+      visualType: "voice_flow",
+    },
+    {
+      key: "budget",
+      chipLabel: isIndonesian ? "Disiplin Anggaran" : "Budget Guard",
+      title: isIndonesian ? "Anggaran & Disiplin Menabung" : "Budgeting & Savings Discipline",
+      desc: isIndonesian
+        ? "Terapkan batas pengeluaran kategori dan lindungi dana darurat."
+        : "Enforce category spending caps and protect emergency reserve buffers.",
+      badge: isIndonesian ? "Pengawas" : "Guardian",
+      metric: isIndonesian ? "64% Batas Terpakai" : "64% Cap Used",
+      subMetric: isIndonesian
+        ? "Peringatan batas & proteksi dana darurat"
+        : "Spending limit alerts & buffer protection",
+      widgetPreset: "minimal",
+      icon: PieChart,
+      visualType: "budget_gauge",
+    },
+    {
+      key: "domain",
+      chipLabel: isIndonesian ? "Pemisahan Domain" : "Dual Space",
+      title: isIndonesian ? "Pemisahan Ruang Pribadi & Usaha" : "Dual Domain Separation",
+      desc: isIndonesian
+        ? "Pisahkan secara tegas kas pribadi dari pembukuan bisnis dan proyek sampingan."
+        : "Strictly partition personal living outlays from venture & side-project books.",
+      badge: isIndonesian ? "Terpartisi" : "Partitioned",
+      metric: isIndonesian ? "Pribadi ↔ Bisnis" : "Personal ↔ Venture",
+      subMetric: isIndonesian
+        ? "Isolasi buku kas tanpa percampuran dana"
+        : "Zero co-mingling ledger isolation",
+      widgetPreset: "executive",
+      icon: Layers,
+      visualType: "domain_split",
+    },
+    {
+      key: "wealth",
+      chipLabel: isIndonesian ? "Brankas Aset" : "Wealth Vault",
+      title: isIndonesian ? "Kekayaan Bersih & Telemetri Aset" : "Net Worth & Asset Intelligence",
+      desc: isIndonesian
+        ? "Pantau laju portofolio, alokasi investasi, dan ketahanan finansial."
+        : "Monitor portfolio velocity, investment allocation, and financial runway.",
+      badge: isIndonesian ? "Kecerdasan" : "Intelligence",
+      metric: "+24.8% YoY",
+      subMetric: isIndonesian
+        ? "Telemetri multivariat & daya tahan dana"
+        : "Multi-currency & runway telemetry",
+      widgetPreset: "executive",
+      icon: TrendingUp,
+      visualType: "wealth_spline",
+    },
+    {
+      key: "complete",
+      chipLabel: isIndonesian ? "Eksekutif" : "Executive",
+      title: isIndonesian ? "Komando Finansial Menyeluruh" : "Complete Financial Command",
+      desc: isIndonesian
+        ? "Rangkaian dasbor lengkap dengan proyeksi arus kas dan analitik mendalam."
+        : "All-in-one comprehensive telemetry suite with forecasting and full analytics.",
+      badge: isIndonesian ? "Eksekutif" : "Executive",
+      metric: isIndonesian ? "12 Widget Telemetri" : "12 Telemetry Widgets",
+      subMetric: isIndonesian
+        ? "Sankey, simulasi utang & analitik mendalam"
+        : "Sankey, debt simulators & deep analytics",
+      widgetPreset: "executive",
+      icon: Sparkles,
+      visualType: "executive_grid",
+    },
+  ];
+}
+
+export const ARCHETYPE_ITEMS: ArchetypeItem[] = getArchetypeItems(false);
 
 interface ArchetypeCardSelectorProps {
   items?: ArchetypeItem[];
@@ -98,25 +122,27 @@ interface ArchetypeCardSelectorProps {
 }
 
 export function ArchetypeCardSelector({
-  items = ARCHETYPE_ITEMS,
+  items,
   activeIndex = 0,
   onActiveChange,
   className,
 }: ArchetypeCardSelectorProps) {
+  const { isIndonesian } = useLanguage();
+  const activeItems = items || getArchetypeItems(isIndonesian);
   const [currentIndex, setCurrentIndex] = useState(activeIndex);
   const touchStartX = useRef(0);
 
-  const currentItem = items[currentIndex] || items[0]!;
+  const currentItem = activeItems[currentIndex] || activeItems[0]!;
 
   const handleSelectIndex = (index: number) => {
     if (index === currentIndex) return;
     triggerHaptic("light");
     setCurrentIndex(index);
-    onActiveChange?.(items[index]!, index);
+    onActiveChange?.(activeItems[index]!, index);
   };
 
   const handleNext = () => {
-    if (currentIndex < items.length - 1) {
+    if (currentIndex < activeItems.length - 1) {
       handleSelectIndex(currentIndex + 1);
     } else {
       handleSelectIndex(0);
@@ -127,7 +153,7 @@ export function ArchetypeCardSelector({
     if (currentIndex > 0) {
       handleSelectIndex(currentIndex - 1);
     } else {
-      handleSelectIndex(items.length - 1);
+      handleSelectIndex(activeItems.length - 1);
     }
   };
 
@@ -137,7 +163,7 @@ export function ArchetypeCardSelector({
       {/* 1. HORIZONTAL SEGMENTED PILL SELECTOR                        */}
       {/* ============================================================ */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
-        {items.map((item, idx) => {
+        {activeItems.map((item, idx) => {
           const isSelected = idx === currentIndex;
           const Icon = item.icon;
           return (
@@ -238,7 +264,9 @@ export function ArchetypeCardSelector({
                   <div className="flex items-center justify-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                     <span className="text-[10px] font-medium text-white/70 tracking-wide">
-                      Sub-second capture active · Voice & OCR receipt sync
+                      {isIndonesian
+                        ? "Pencatatan sub-detik aktif · Sinkronisasi suara & kamera"
+                        : "Sub-second capture active · Voice & OCR receipt sync"}
                     </span>
                   </div>
                 </div>
@@ -247,7 +275,9 @@ export function ArchetypeCardSelector({
               {currentItem.visualType === "budget_gauge" && (
                 <div className="w-full space-y-2.5 px-1">
                   <div className="flex items-center justify-between text-[10.5px]">
-                    <span className="text-white/60 font-medium">Category Spending Cap</span>
+                    <span className="text-white/60 font-medium">
+                      {isIndonesian ? "Batas Belanja Kategori" : "Category Spending Cap"}
+                    </span>
                     <span className="text-white font-semibold amount">Rp 3.2M / Rp 5.0M</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden relative">
@@ -259,9 +289,11 @@ export function ArchetypeCardSelector({
                   <div className="flex items-center justify-between text-[10px] text-white/45">
                     <span className="flex items-center gap-1">
                       <ShieldCheck size={11} className="text-white/70" />
-                      Reserve Buffer Protected
+                      {isIndonesian ? "Cadangan Dana Aman" : "Reserve Buffer Protected"}
                     </span>
-                    <span className="text-white/80 font-medium">36% Unspent Safe</span>
+                    <span className="text-white/80 font-medium">
+                      {isIndonesian ? "36% Belum Terpakai" : "36% Unspent Safe"}
+                    </span>
                   </div>
                 </div>
               )}
@@ -270,24 +302,24 @@ export function ArchetypeCardSelector({
                 <div className="w-full grid grid-cols-2 gap-2">
                   <div className="p-2.5 rounded-[13px] bg-white/[0.04] border border-white/10">
                     <span className="text-[9.5px] font-medium text-white/50 block mb-0.5">
-                      Personal Space
+                      {isIndonesian ? "Ruang Pribadi" : "Personal Space"}
                     </span>
                     <span className="text-[13px] font-semibold text-white amount block">
                       Rp 8.450.000
                     </span>
                     <span className="text-[8.5px] text-white/40 block mt-0.5">
-                      Living & Lifestyle
+                      {isIndonesian ? "Kebutuhan & Gaya Hidup" : "Living & Lifestyle"}
                     </span>
                   </div>
                   <div className="p-2.5 rounded-[13px] bg-white/[0.04] border border-white/10">
                     <span className="text-[9.5px] font-medium text-white/50 block mb-0.5">
-                      Venture Space
+                      {isIndonesian ? "Ruang Usaha" : "Venture Space"}
                     </span>
                     <span className="text-[13px] font-semibold text-white amount block">
                       Rp 24.120.000
                     </span>
                     <span className="text-[8.5px] text-white/40 block mt-0.5">
-                      Projects & Business
+                      {isIndonesian ? "Proyek & Operasional" : "Projects & Business"}
                     </span>
                   </div>
                 </div>
@@ -321,8 +353,12 @@ export function ArchetypeCardSelector({
                     </svg>
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-white/50 px-1">
-                    <span>Portfolio Velocity: +24.8% YoY</span>
-                    <span className="text-white/80 font-medium">Runway: 18 Mo</span>
+                    <span>
+                      {isIndonesian ? "Laju Portofolio: +24,8% YoY" : "Portfolio Velocity: +24.8% YoY"}
+                    </span>
+                    <span className="text-white/80 font-medium">
+                      {isIndonesian ? "Ketahanan: 18 Bln" : "Runway: 18 Mo"}
+                    </span>
                   </div>
                 </div>
               )}
@@ -330,12 +366,12 @@ export function ArchetypeCardSelector({
               {currentItem.visualType === "executive_grid" && (
                 <div className="w-full grid grid-cols-3 gap-1.5">
                   {[
-                    { label: "Cashflow", val: "+14.2M" },
-                    { label: "Burn Rate", val: "140K/d" },
-                    { label: "Sankey Flow", val: "Active" },
-                    { label: "Debt Guard", val: "0 Risk" },
-                    { label: "Runway", val: "22 Mo" },
-                    { label: "Allocation", val: "Balanced" },
+                    { label: isIndonesian ? "Arus Kas" : "Cashflow", val: "+14.2M" },
+                    { label: isIndonesian ? "Beban Harian" : "Burn Rate", val: "140K/d" },
+                    { label: isIndonesian ? "Aliran Sankey" : "Sankey Flow", val: isIndonesian ? "Aktif" : "Active" },
+                    { label: isIndonesian ? "Proteksi Utang" : "Debt Guard", val: isIndonesian ? "0 Risiko" : "0 Risk" },
+                    { label: isIndonesian ? "Ketahanan" : "Runway", val: "22 Mo" },
+                    { label: isIndonesian ? "Alokasi" : "Allocation", val: isIndonesian ? "Seimbang" : "Balanced" },
                   ].map((cell, i) => (
                     <div
                       key={i}
@@ -357,7 +393,7 @@ export function ArchetypeCardSelector({
             <div className="flex items-end justify-between pt-1 relative z-10">
               <div className="space-y-0.5">
                 <span className="text-[10px] font-medium text-white/40 uppercase tracking-wider block">
-                  Calibrated Target
+                  {isIndonesian ? "Target Terkalibrasi" : "Calibrated Target"}
                 </span>
                 <div className="text-[17px] font-semibold text-white tracking-tight amount">
                   {currentItem.metric}
@@ -372,36 +408,6 @@ export function ArchetypeCardSelector({
             </div>
           </motion.div>
         </AnimatePresence>
-      </div>
-
-      {/* ============================================================ */}
-      {/* 3. PAGINATION DOTS (INTERACTIVE)                             */}
-      {/* ============================================================ */}
-      <div className="flex items-center justify-between px-1 pt-0.5">
-        <div className="flex items-center gap-1.5">
-          {items.map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => handleSelectIndex(idx)}
-              className={cn(
-                "h-1.5 rounded-full transition-all duration-300 cursor-pointer",
-                idx === currentIndex
-                  ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]"
-                  : "w-1.5 bg-white/20 hover:bg-white/40"
-              )}
-            />
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={handleNext}
-          className="text-[11px] font-medium text-white/45 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
-        >
-          <span>Next Archetype</span>
-          <ChevronRight size={12} strokeWidth={2} />
-        </button>
       </div>
     </div>
   );

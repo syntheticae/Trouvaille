@@ -639,3 +639,112 @@ export async function authenticateWithBiometrics(): Promise<BiometricAuthResult>
     error: "Session expired on server. Please enter your password once to renew Face ID login.",
   };
 }
+
+export async function authenticateWithPin(pin: string): Promise<BiometricAuthResult> {
+  const verified = await verifySecurityPin(pin);
+  if (!verified) {
+    const lockout = getPinLockoutState();
+    if (lockout.isLocked) {
+      const waitMins = Math.ceil(lockout.remainingSeconds / 60);
+      return {
+        success: false,
+        error: `PIN locked due to too many failed attempts. Try again in ${waitMins} minute(s).`,
+      };
+    }
+    return {
+      success: false,
+      error: "Incorrect PIN. Please try again.",
+    };
+  }
+
+  // 1. Native iOS / Android: Try hardware-backed Keychain credentials
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const creds = await NativeBiometric.getCredentials({ server: "trouvaille.app" });
+      if (creds?.username && creds?.password) {
+        const { data } = await supabase.auth.signInWithPassword({
+          email: creds.username,
+          password: creds.password,
+        });
+        if (data?.session) {
+          saveBiometricLoginCredentials(creds.username, data.session, creds.password);
+          return {
+            success: true,
+            session: data.session,
+            email: creds.username,
+          };
+        }
+      }
+    } catch (e) {
+      console.info("[biometricAuth] Native Keychain lookup skipped in PIN auth:", e);
+    }
+  }
+
+  // 2. Try session vault or biometric credentials with refresh token
+  const hint = getBiometricLoginCredentials();
+  const vaultSession = hint?.session || getPersistentSession();
+
+  if (vaultSession?.refresh_token) {
+    try {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: vaultSession.access_token || "",
+        refresh_token: vaultSession.refresh_token,
+      });
+
+      if (data?.session) {
+        saveBiometricLoginCredentials(hint?.email || data.session.user?.email || "", data.session);
+        return {
+          success: true,
+          session: data.session,
+          email: hint?.email || data.session.user?.email,
+        };
+      }
+
+      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      if (isOffline || error?.message?.toLowerCase().includes("fetch")) {
+        return {
+          success: true,
+          session: vaultSession,
+          email: hint?.email || vaultSession.user?.email,
+        };
+      }
+    } catch {
+      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      if (isOffline) {
+        return {
+          success: true,
+          session: vaultSession,
+          email: hint?.email || vaultSession.user?.email,
+        };
+      }
+    }
+  }
+
+  // 3. Active session check
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session) {
+      saveBiometricLoginCredentials(data.session.user?.email || "", data.session);
+      return {
+        success: true,
+        session: data.session,
+        email: data.session.user?.email,
+      };
+    }
+  } catch {}
+
+  // 4. Session vault fallback
+  if (vaultSession) {
+    return {
+      success: true,
+      session: vaultSession,
+      email: hint?.email || vaultSession.user?.email,
+    };
+  }
+
+  return {
+    success: true,
+    email: hint?.email,
+  };
+}
+

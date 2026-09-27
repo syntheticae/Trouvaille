@@ -19,7 +19,7 @@ import { ClipboardTransactionBanner } from "./components/common/ClipboardTransac
 import { App as CapApp } from "@capacitor/app";
 import { parseDeepLink } from "./lib/deepLinkHandler";
 import { useLanguage } from "./contexts/LanguageContext";
-import { triggerSuccessHaptic } from "./lib/haptics";
+import { triggerSuccessHaptic, triggerHaptic } from "./lib/haptics";
 import { format } from "date-fns";
 import {
   ShortcutSuccessDialog,
@@ -29,9 +29,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { fetchAllTransactionsFromSupabase } from "./hooks/useTransactions";
 import { supabase } from "./lib/supabase";
 import { flushPendingMutations } from "./lib/syncEngine";
-import { migrateGuestDataToCloud } from "./lib/guestMigration";
+import {
+  migrateGuestDataToCloud,
+  hasGuestData,
+  discardGuestData,
+} from "./lib/guestMigration";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import { usePrivacy } from "./contexts/PrivacyContext";
+import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
 
 const HomePage = lazy(() =>
   import("./pages/HomePage").then((module) => ({
@@ -135,6 +141,7 @@ function AppShell() {
   const addTxMutation = useAddTransaction();
   const { isIndonesian } = useLanguage();
   const [recordedShortcutTx, setRecordedShortcutTx] = useState<ShortcutRecordedTxData | null>(null);
+  const [showGuestMigrationModal, setShowGuestMigrationModal] = useState(false);
   const [isPreviewingInitialSync, setIsPreviewingInitialSync] = useState(() => {
     if (typeof window === "undefined") return false;
     const params = new URLSearchParams(window.location.search);
@@ -273,19 +280,30 @@ function AppShell() {
       setIsInitDone(true);
     }
     if (user?.id && !isGuest) {
-      migrateGuestDataToCloud(user.id)
-        .then(({ walletsMigrated, transactionsMigrated }) => {
-          if (walletsMigrated > 0 || transactionsMigrated > 0) {
-            queryClient.invalidateQueries({ queryKey: ["wallets"] });
-            queryClient.invalidateQueries({ queryKey: ["transactions"] });
-          }
-        })
-        .catch(() => {});
+      const migrationKey = `trouvaille_migrated_guest_${user.id}`;
+      const isAlreadyHandled = localStorage.getItem(migrationKey) === "true";
+      if (!isAlreadyHandled && hasGuestData()) {
+        setShowGuestMigrationModal(true);
+      } else if (!isAlreadyHandled) {
+        localStorage.setItem(migrationKey, "true");
+      }
+
       flushPendingMutations().catch((e) =>
         console.warn("[App] Background flush warning:", e),
       );
     }
   }, [syncStorageKey, user?.id, isGuest, queryClient]);
+
+  // Auto-bypass onboarding trap if user already has categories, wallets, or synced transactions
+  useEffect(() => {
+    if (user && !isGuest && !isOnboarded && (categories.length > 0 || wallets.length > 0 || syncedTxCount > 0)) {
+      localStorage.setItem("trouvaille_onboarded", "true");
+      if (!localStorage.getItem("trouvaille_onboarding_focus")) {
+        localStorage.setItem("trouvaille_onboarding_focus", "expenses");
+      }
+      setIsOnboarded(true);
+    }
+  }, [user, isGuest, isOnboarded, categories.length, wallets.length, syncedTxCount]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -404,6 +422,20 @@ function AppShell() {
 
             transactionsReady = true;
             setSyncProgress(98);
+
+            // Cloud Data Detection & Auto-Onboard Bypass:
+            // Existing cloud users should never be forced through the onboarding modal
+            const hasCloudLedger =
+              freshTxs.length > 0 ||
+              (walletsRes.data && walletsRes.data.length > 0) ||
+              (categoriesRes.data && categoriesRes.data.length > 0);
+            if (hasCloudLedger) {
+              localStorage.setItem("trouvaille_onboarded", "true");
+              if (!localStorage.getItem("trouvaille_onboarding_focus")) {
+                localStorage.setItem("trouvaille_onboarding_focus", "expenses");
+              }
+              setIsOnboarded(true);
+            }
           } catch (e) {
             console.warn("Hydrate queries error:", e);
             const cachedTxs = queryClient.getQueryData(
@@ -471,6 +503,94 @@ function AppShell() {
           setHasInitialSynced(true);
         }}
       />
+    );
+  }
+
+  // Guest Data Migration Intercept Dialog
+  if (showGuestMigrationModal && user?.id) {
+    return (
+      <div
+        className="fixed inset-0 z-[1000] flex items-center justify-center p-4 select-none"
+        style={{
+          background: isDark ? "rgba(6, 6, 8, 0.85)" : "rgba(244, 244, 247, 0.85)",
+          backdropFilter: "blur(40px)",
+          WebkitBackdropFilter: "blur(40px)",
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          className={`w-full max-w-sm rounded-[32px] p-6 border flex flex-col items-center text-center shadow-2xl relative ${
+            isDark
+              ? "bg-[#121216] border-white/16 text-white"
+              : "bg-white border-black/10 text-zinc-950"
+          }`}
+          style={{
+            boxShadow: isDark
+              ? "0 24px 60px rgba(0,0,0,0.85), inset 0 1px 1px rgba(255,255,255,0.2)"
+              : "0 20px 50px rgba(0,0,0,0.12), inset 0 1px 1px rgba(255,255,255,1)",
+          }}
+        >
+          <div
+            className={`w-12 h-12 rounded-[18px] flex items-center justify-center border mb-3.5 ${
+              isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
+            }`}
+          >
+            <ArrowRight size={20} strokeWidth={1.75} className={isDark ? "text-white" : "text-zinc-900"} />
+          </div>
+
+          <h3 className="text-[17px] font-semibold tracking-tight">
+            {isIndonesian ? "Pindahkan Data Tamu?" : "Migrate Guest Data?"}
+          </h3>
+          <p
+            className={`text-[12.5px] mt-1.5 mb-6 leading-relaxed ${
+              isDark ? "text-white/60" : "text-zinc-600"
+            }`}
+          >
+            {isIndonesian
+              ? "Ditemukan catatan transaksi lokal dari sesi tamu. Apakah Anda ingin menyinkronkannya ke akun baru Anda atau memulai dari awal?"
+              : "Found local ledger records from your guest session. Would you like to sync them into your authenticated account or start fresh?"}
+          </p>
+
+          <div className="w-full space-y-2.5">
+            <button
+              type="button"
+              onClick={async () => {
+                triggerSuccessHaptic();
+                await migrateGuestDataToCloud(user.id);
+                localStorage.setItem("trouvaille_onboarded", "true");
+                setIsOnboarded(true);
+                setShowGuestMigrationModal(false);
+                queryClient.invalidateQueries({ queryKey: ["wallets"] });
+                queryClient.invalidateQueries({ queryKey: ["transactions"] });
+                queryClient.invalidateQueries({ queryKey: ["categories"] });
+              }}
+              className={`w-full py-3.5 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer ${
+                isDark
+                  ? "bg-white text-zinc-950 hover:bg-zinc-100 shadow-md"
+                  : "bg-zinc-950 text-white hover:bg-zinc-900 shadow-md"
+              }`}
+            >
+              {isIndonesian ? "Pindahkan ke Akun" : "Transfer to Account"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                discardGuestData(user.id);
+                setShowGuestMigrationModal(false);
+              }}
+              className={`w-full py-3 rounded-[22px] font-medium text-[12.5px] active:scale-[0.98] transition-all cursor-pointer ${
+                isDark ? "text-white/50 hover:text-white" : "text-zinc-500 hover:text-zinc-900"
+              }`}
+            >
+              {isIndonesian ? "Mulai dari Awal (Hapus Data Tamu)" : "Start Fresh (Discard Guest Data)"}
+            </button>
+          </div>
+        </motion.div>
+      </div>
     );
   }
 

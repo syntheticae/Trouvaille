@@ -11,6 +11,7 @@ import {
   Globe,
   Coins,
   X,
+  Zap,
 } from "lucide-react";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { DEFAULT_HOME_WIDGETS } from "../../lib/widgetLayoutTypes";
@@ -25,7 +26,7 @@ import { seedOnboardingWallets } from "../../hooks/useWallets";
 import type { OnboardingWalletChoice } from "../../hooks/useWallets";
 import {
   ArchetypeCardSelector,
-  ARCHETYPE_ITEMS,
+  getArchetypeItems,
 } from "./ArchetypeCardSelector";
 
 interface OnboardingModalProps {
@@ -37,8 +38,10 @@ type FocusKey = "expenses" | "budget" | "domain" | "wealth" | "complete";
 
 interface AccountOption {
   id: string;
-  name: string;
-  sub: string;
+  nameEn: string;
+  nameId: string;
+  subEn: string;
+  subId: string;
   icon: any;
   iconName: string;
   classification: "liquid" | "investment";
@@ -49,8 +52,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   // --- LOKAL (IDR) ---
   {
     id: "cash",
-    name: "Physical Cash",
-    sub: "Uang tunai & dompet fisik",
+    nameEn: "Physical Cash",
+    nameId: "Uang Tunai",
+    subEn: "Cash notes & physical wallet",
+    subId: "Uang tunai & dompet fisik",
     icon: Banknote,
     iconName: "Banknote",
     classification: "liquid",
@@ -58,8 +63,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "bca",
-    name: "BCA",
-    sub: "Rekening perbankan & operasional harian",
+    nameEn: "BCA",
+    nameId: "BCA",
+    subEn: "Checking account & daily operations",
+    subId: "Rekening perbankan & operasional harian",
     icon: Landmark,
     iconName: "Landmark",
     classification: "liquid",
@@ -67,8 +74,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "mandiri",
-    name: "Bank Mandiri / BNI",
-    sub: "Rekening payroll & transfer nasional",
+    nameEn: "Bank Mandiri / BNI",
+    nameId: "Bank Mandiri / BNI",
+    subEn: "Payroll account & domestic transfers",
+    subId: "Rekening gaji & transfer nasional",
     icon: Landmark,
     iconName: "Landmark",
     classification: "liquid",
@@ -76,8 +85,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "jago",
-    name: "Bank Jago / SeaBank",
-    sub: "Bank digital & kantong bunga harian",
+    nameEn: "Bank Jago / SeaBank",
+    nameId: "Bank Jago / SeaBank",
+    subEn: "Digital banking & interest pockets",
+    subId: "Bank digital & kantong bunga harian",
     icon: Landmark,
     iconName: "Landmark",
     classification: "liquid",
@@ -85,8 +96,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "gopay",
-    name: "GoPay",
-    sub: "Transaksi QRIS & kebutuhan harian",
+    nameEn: "GoPay",
+    nameId: "GoPay",
+    subEn: "QRIS payments & everyday outlays",
+    subId: "Pembayaran QRIS & transaksi harian",
     icon: Smartphone,
     iconName: "Smartphone",
     classification: "liquid",
@@ -94,8 +107,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "dana_ovo",
-    name: "DANA / OVO",
-    sub: "Dompet digital & marketplace belanja",
+    nameEn: "DANA / OVO",
+    nameId: "DANA / OVO",
+    subEn: "Digital wallet & online marketplace",
+    subId: "Dompet digital & belanja daring",
     icon: Smartphone,
     iconName: "Smartphone",
     classification: "liquid",
@@ -103,8 +118,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "saham_idx",
-    name: "Saham IDX & Reksa Dana",
-    sub: "Investasi pasar modal domestik (Bibit/Ajaib)",
+    nameEn: "IDX Stocks & Mutual Funds",
+    nameId: "Saham IDX & Reksa Dana",
+    subEn: "Domestic capital market investments",
+    subId: "Investasi pasar modal domestik",
     icon: TrendingUp,
     iconName: "TrendingUp",
     classification: "investment",
@@ -114,8 +131,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   // --- GLOBAL & MULTI-CURRENCY (USD/EUR/SGD) ---
   {
     id: "wise",
-    name: "Wise",
-    sub: "Multi-currency borderless account (USD/EUR/SGD)",
+    nameEn: "Wise",
+    nameId: "Wise",
+    subEn: "Multi-currency borderless balance (USD/EUR/SGD)",
+    subId: "Saldo multi-mata uang lintas batas (USD/EUR/SGD)",
     icon: Globe,
     iconName: "Globe",
     classification: "liquid",
@@ -123,8 +142,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "paypal",
-    name: "PayPal",
-    sub: "Global checkout & freelance earnings",
+    nameEn: "PayPal",
+    nameId: "PayPal",
+    subEn: "Global checkout & freelance earnings",
+    subId: "Pembayaran global & pendapatan lepas",
     icon: Smartphone,
     iconName: "Smartphone",
     classification: "liquid",
@@ -132,8 +153,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "revolut",
-    name: "Revolut",
-    sub: "Global card, travel spending & foreign exchange",
+    nameEn: "Revolut",
+    nameId: "Revolut",
+    subEn: "Global debit card & travel spending",
+    subId: "Kartu debit global & pengeluaran perjalanan",
     icon: Globe,
     iconName: "Globe",
     classification: "liquid",
@@ -141,8 +164,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "global_broker",
-    name: "Global Brokerage",
-    sub: "US Equities, ETFs & Index funds (IBKR / Schwab)",
+    nameEn: "Global Brokerage",
+    nameId: "Sekuritas Global",
+    subEn: "US Equities, ETFs & index funds",
+    subId: "Saham AS, ETF & reksa dana indeks",
     icon: TrendingUp,
     iconName: "TrendingUp",
     classification: "investment",
@@ -150,8 +175,10 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
   },
   {
     id: "crypto_vault",
-    name: "Crypto / USDT Vault",
-    sub: "Binance, Web3 vault & stablecoins",
+    nameEn: "Crypto / USDT Vault",
+    nameId: "Brankas Kripto / USDT",
+    subEn: "Decentralized wallets & stablecoins",
+    subId: "Dompet desentralisasi & koin stabil",
     icon: Coins,
     iconName: "Coins",
     classification: "investment",
@@ -161,7 +188,7 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
 
 export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const { user } = useAuth();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, isIndonesian } = useLanguage();
   const [step, setStep] = useState<number>(1);
 
   // Step 1: Focus
@@ -203,8 +230,9 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
 
   if (!isOpen) return null;
 
+  const archetypeItems = getArchetypeItems(isIndonesian);
   const currentFocus =
-    ARCHETYPE_ITEMS.find((f) => f.key === selectedFocus) || ARCHETYPE_ITEMS[0];
+    archetypeItems.find((f) => f.key === selectedFocus) || archetypeItems[0]!;
 
   const handleToggleAccount = (id: string) => {
     triggerHaptic("light");
@@ -222,6 +250,70 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const handleClearBalance = () => {
     triggerHaptic("light");
     setStartingBalance(0);
+  };
+
+  // 1-Tap Quick Start: Instant zero-friction entry for users
+  const handleQuickStart = async () => {
+    triggerSuccessHaptic();
+
+    // 1. Seed standard accounts (Cash, BCA, GoPay)
+    const standardWallets: OnboardingWalletChoice[] = [
+      {
+        name: isIndonesian ? "Uang Tunai" : "Physical Cash",
+        icon: "Banknote",
+        classification: "liquid",
+      },
+      {
+        name: "BCA",
+        icon: "Landmark",
+        classification: "liquid",
+      },
+      {
+        name: "GoPay",
+        icon: "Smartphone",
+        classification: "liquid",
+      },
+    ];
+
+    try {
+      await seedOnboardingWallets(user?.id, standardWallets);
+    } catch (err) {
+      console.warn("[OnboardingModal] Failed quick seeding wallets:", err);
+    }
+
+    // 2. Apply standard widget preset
+    try {
+      const stored = loadStoredWidgets(
+        localStorage.getItem(STORAGE_KEY),
+        DEFAULT_HOME_WIDGETS,
+      );
+      const updated = applyPresetToWidgets(stored, "minimal");
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn("[OnboardingModal] Failed setting widgets:", e);
+    }
+
+    // 3. Set default reminder (20:00)
+    try {
+      localStorage.setItem("trouvaille_streak_reminder_enabled", "true");
+      localStorage.setItem("trouvaille_streak_reminder_hour", "20");
+    } catch {}
+
+    // 4. Set user name if entered
+    if (userName.trim()) {
+      try {
+        localStorage.setItem("trouvaille_user_name", userName.trim());
+      } catch {}
+    }
+
+    // 5. Mark onboarded
+    try {
+      localStorage.setItem("trouvaille_preset_mode", "default");
+      localStorage.setItem("trouvaille_onboarding_focus", "expenses");
+      localStorage.setItem("trouvaille_onboarded", "true");
+    } catch {}
+
+    onComplete();
   };
 
   const handleNextStep = () => {
@@ -273,7 +365,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     const chosenAccountConfigs: OnboardingWalletChoice[] = ACCOUNT_OPTIONS.filter(
       (acc) => selectedAccounts[acc.id],
     ).map((acc) => ({
-      name: acc.name,
+      name: isIndonesian ? acc.nameId : acc.nameEn,
       icon: acc.iconName,
       classification: acc.classification,
     }));
@@ -281,7 +373,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     // Fallback if user unselected everything
     if (chosenAccountConfigs.length === 0) {
       chosenAccountConfigs.push({
-        name: "Main Wallet",
+        name: isIndonesian ? "Dompet Utama" : "Main Wallet",
         icon: "Wallet",
         classification: "liquid",
       });
@@ -434,40 +526,42 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -14 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className="space-y-5 w-full text-left"
+              className="space-y-4 w-full text-left"
             >
               {/* Editorial Header */}
               <div className="space-y-1 text-left">
                 <div className="inline-flex items-center gap-2">
                   <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    {t("onboarding.step01Badge", "Step 01")}
+                    {isIndonesian ? "Langkah 01" : "Step 01"}
                   </span>
                   <span className="w-1 h-1 rounded-full bg-white/25" />
                   <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    {t("onboarding.step01Category", "Identity & Setup")}
+                    {isIndonesian ? "Identitas & Pengaturan" : "Identity & Setup"}
                   </span>
                 </div>
                 <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
-                  {t("onboarding.welcomeTitle", "Welcome to")}{" "}
-                  <span className="font-semibold">{t("onboarding.welcomeBrand", "Trouvaille")}</span>
+                  {isIndonesian ? "Selamat Datang di " : "Welcome to "}
+                  <span className="font-semibold">Trouvaille</span>
                 </h1>
-                <p className="text-[13px] font-normal text-white/50 leading-relaxed">
-                  {t("onboarding.step1Desc", "Personalize your caller identity, interface language, and starting workspace architecture.")}
+                <p className="text-[12.5px] font-normal text-white/50 leading-relaxed">
+                  {isIndonesian
+                    ? "Personalisasikan nama panggilan, bahasa tampilan, dan arsitektur awal buku kas Anda."
+                    : "Personalize your caller identity, interface language, and starting workspace architecture."}
                 </p>
               </div>
 
-              {/* 1. Name Input: Unboxed Luxury Hairline */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
-                  {t("onboarding.nameLabel", "Your Name / Identity")}
+              {/* 1. Name Input */}
+              <div className="space-y-1">
+                <label className="text-[10.5px] font-semibold text-white/40 tracking-wider uppercase block">
+                  {isIndonesian ? "Nama / Identitas Anda" : "Your Name / Identity"}
                 </label>
-                <div className="relative flex items-center border-b border-white/15 focus-within:border-white transition-colors py-1.5">
+                <div className="relative flex items-center border-b border-white/15 focus-within:border-white transition-colors py-1">
                   <input
                     type="text"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
-                    placeholder={t("onboarding.namePlaceholder", "e.g. Alexander")}
-                    className="w-full bg-transparent text-[17px] sm:text-[19px] font-medium text-white placeholder:text-white/25 outline-none pr-8 transition-colors"
+                    placeholder={isIndonesian ? "misal: Alexander" : "e.g. Alexander"}
+                    className="w-full bg-transparent text-[17px] sm:text-[18px] font-medium text-white placeholder:text-white/25 outline-none pr-8 transition-colors"
                   />
                   {userName.trim() && (
                     <button
@@ -481,14 +575,14 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 </div>
               </div>
 
-              {/* 2. Interface Language Customization (Default English vs Bahasa Indonesia) */}
-              <div className="space-y-1.5 pt-0.5">
+              {/* 2. Interface Language Customization (Rule 6 Strict Non-Mixed) */}
+              <div className="space-y-1 pt-0.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
-                    {t("onboarding.languageLabel", "Interface Language")}
+                  <label className="text-[10.5px] font-semibold text-white/40 tracking-wider uppercase block">
+                    {isIndonesian ? "Bahasa Antarmuka" : "Interface Language"}
                   </label>
-                  <span className="text-[11px] text-white/40">
-                    {language === "id" ? "Bahasa Indonesia" : "English (Default)"}
+                  <span className="text-[10.5px] text-white/40">
+                    {isIndonesian ? "Bahasa Indonesia (Aktif)" : "English (Default)"}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
@@ -524,26 +618,30 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               </div>
 
               {/* 3. Preset Selection (Default vs Custom) */}
-              <div className="space-y-2.5 pt-1">
+              <div className="space-y-2 pt-0.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
-                    {t("onboarding.architectureLabel", "Workspace Architecture")}
+                  <label className="text-[10.5px] font-semibold text-white/40 tracking-wider uppercase block">
+                    {isIndonesian ? "Arsitektur Ruang Kerja" : "Workspace Architecture"}
                   </label>
-                  <span className="text-[11px] text-white/40">
+                  <span className="text-[10.5px] text-white/40">
                     {presetMode === "default"
-                      ? t("onboarding.architectureStandard", "Standard Curated")
-                      : t("onboarding.architectureCustom", "Custom Blueprint")}
+                      ? isIndonesian
+                        ? "Pilihan Standar"
+                        : "Standard Curated"
+                      : isIndonesian
+                      ? "Rancangan Kustom"
+                      : "Custom Blueprint"}
                   </span>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {/* Option A: Preset Default */}
                   <div
                     onClick={() => {
                       triggerHaptic("light");
                       setPresetMode("default");
                     }}
-                    className={`group p-4 rounded-[20px] text-left transition-all duration-300 border cursor-pointer relative ${
+                    className={`group p-3.5 rounded-[20px] text-left transition-all duration-300 border cursor-pointer relative ${
                       presetMode === "default"
                         ? "bg-white/[0.06] border-white/30 shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
                         : "bg-white/[0.02] border-white/8 opacity-55 hover:opacity-80"
@@ -552,15 +650,17 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-[14px] font-semibold text-white tracking-tight">
-                            {t("onboarding.presetDefaultTitle", "Default Curated Preset")}
+                          <span className="text-[13.5px] font-semibold text-white tracking-tight">
+                            {isIndonesian ? "Preset Standar Pilihan" : "Default Curated Preset"}
                           </span>
                           <span className="text-[9.5px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/15">
-                            {t("common.recommended", "Recommended")}
+                            {isIndonesian ? "Rekomendasi" : "Recommended"}
                           </span>
                         </div>
-                        <p className="text-[12px] text-white/50 leading-relaxed">
-                          {t("onboarding.presetDefaultDesc", "Instant zero-friction setup. Auto-provisions 3 liquid accounts and 8 essential categories.")}
+                        <p className="text-[11.5px] text-white/50 leading-relaxed">
+                          {isIndonesian
+                            ? "Pengaturan instan tanpa hambatan. Menyiapkan 3 dompet likuid dan 14 kategori utama secara otomatis."
+                            : "Instant zero-friction setup. Auto-provisions 3 liquid accounts and 14 essential categories."}
                         </p>
                       </div>
                       <div
@@ -574,19 +674,18 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-2.5 border-t border-white/[0.06]">
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
-                        Physical Cash
-                      </span>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
-                        BCA (Bank)
-                      </span>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
-                        GoPay (E-Wallet)
-                      </span>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10">
-                        +14 Core Categories
-                      </span>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-2.5 pt-2 border-t border-white/[0.06]">
+                      {(isIndonesian
+                        ? ["Uang Tunai", "BCA (Bank)", "GoPay (Dompet Digital)", "+14 Kategori Utama"]
+                        : ["Physical Cash", "BCA (Bank)", "GoPay (E-Wallet)", "+14 Core Categories"]
+                      ).map((item, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[9.5px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-white/60 border border-white/10"
+                        >
+                          {item}
+                        </span>
+                      ))}
                     </div>
                   </div>
 
@@ -596,7 +695,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                       triggerHaptic("light");
                       setPresetMode("custom");
                     }}
-                    className={`group p-4 rounded-[20px] text-left transition-all duration-300 border cursor-pointer relative ${
+                    className={`group p-3.5 rounded-[20px] text-left transition-all duration-300 border cursor-pointer relative ${
                       presetMode === "custom"
                         ? "bg-white/[0.06] border-white/30 shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
                         : "bg-white/[0.02] border-white/8 opacity-55 hover:opacity-80"
@@ -604,11 +703,13 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
-                        <span className="text-[14px] font-semibold text-white tracking-tight block">
-                          Custom Architecture
+                        <span className="text-[13.5px] font-semibold text-white tracking-tight block">
+                          {isIndonesian ? "Arsitektur Kustom" : "Custom Architecture"}
                         </span>
-                        <p className="text-[12px] text-white/50 leading-relaxed">
-                          Handpick your starting channels in the next step. Custom bank accounts, credit lines, and personal categories can be tailored anytime in Settings.
+                        <p className="text-[11.5px] text-white/50 leading-relaxed">
+                          {isIndonesian
+                            ? "Pilih saluran pembayaran dan rekening Anda sendiri. Akun bank dan kategori personal dapat disesuaikan kapan saja."
+                            : "Handpick your starting channels in the next step. Custom bank accounts, credit lines, and personal categories can be tailored anytime in Settings."}
                         </p>
                       </div>
                       <div
@@ -643,26 +744,29 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               <div className="space-y-1.5 text-left mb-1">
                 <div className="inline-flex items-center gap-2">
                   <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    Step 02
+                    {isIndonesian ? "Langkah 02" : "Step 02"}
                   </span>
                   <span className="w-1 h-1 rounded-full bg-white/25" />
                   <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    Financial Focus
+                    {isIndonesian ? "Fokus Finansial" : "Financial Focus"}
                   </span>
                 </div>
                 <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
-                  Choose your <span className="font-semibold">archetype</span>
+                  {isIndonesian ? "Pilih fokus " : "Choose your "}
+                  <span className="font-semibold">{isIndonesian ? "finansial Anda" : "archetype"}</span>
                 </h1>
                 <p className="text-[13px] font-normal text-white/50 leading-relaxed">
-                  Calibrate your home dashboard widgets, metrics, and tracking priority.
+                  {isIndonesian
+                    ? "Kalibrasikan widget dasbor utama, metrik, dan prioritas pencatatan Anda."
+                    : "Calibrate your home dashboard widgets, metrics, and tracking priority."}
                 </p>
               </div>
 
               <ArchetypeCardSelector
-                items={ARCHETYPE_ITEMS}
+                items={archetypeItems}
                 activeIndex={Math.max(
                   0,
-                  ARCHETYPE_ITEMS.findIndex((f) => f.key === selectedFocus),
+                  archetypeItems.findIndex((f) => f.key === selectedFocus),
                 )}
                 onActiveChange={(item) => setSelectedFocus(item.key as FocusKey)}
               />
@@ -679,24 +783,27 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -14 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className="space-y-5 w-full text-left"
+              className="space-y-4 w-full text-left"
             >
               {/* Editorial Header */}
-              <div className="space-y-1.5 text-left">
+              <div className="space-y-1 text-left">
                 <div className="inline-flex items-center gap-2">
                   <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    Step 03
+                    {isIndonesian ? "Langkah 03" : "Step 03"}
                   </span>
                   <span className="w-1 h-1 rounded-full bg-white/25" />
                   <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    Active Channels
+                    {isIndonesian ? "Saluran Aktif" : "Active Channels"}
                   </span>
                 </div>
                 <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
-                  Select active <span className="font-semibold">accounts</span>
+                  {isIndonesian ? "Pilih saluran " : "Select active "}
+                  <span className="font-semibold">{isIndonesian ? "pembayaran" : "accounts"}</span>
                 </h1>
-                <p className="text-[13px] font-normal text-white/50 leading-relaxed">
-                  Toggle the payment channels you transact with regularly for a noise-free ledger.
+                <p className="text-[12.5px] font-normal text-white/50 leading-relaxed">
+                  {isIndonesian
+                    ? "Pilih saluran pembayaran yang sering Anda gunakan untuk buku kas yang rapi."
+                    : "Toggle the payment channels you transact with regularly for a noise-free ledger."}
                 </p>
               </div>
 
@@ -743,12 +850,14 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 {ACCOUNT_OPTIONS.filter((acc) => acc.region === accountRegionTab).map((acc) => {
                   const isChecked = Boolean(selectedAccounts[acc.id]);
                   const Icon = acc.icon;
+                  const accName = isIndonesian ? acc.nameId : acc.nameEn;
+                  const accSub = isIndonesian ? acc.subId : acc.subEn;
                   return (
                     <button
                       key={acc.id}
                       type="button"
                       onClick={() => handleToggleAccount(acc.id)}
-                      className="w-full py-3.5 px-1 flex items-center justify-between text-left transition-all active:scale-[0.99] cursor-pointer group"
+                      className="w-full py-3 px-1 flex items-center justify-between text-left transition-all active:scale-[0.99] cursor-pointer group"
                     >
                       <div className="flex items-center gap-3.5">
                         <div
@@ -766,10 +875,10 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                               isChecked ? "text-white" : "text-white/50"
                             }`}
                           >
-                            {acc.name}
+                            {accName}
                           </div>
                           <div className="text-[11px] text-white/40 mt-0.5">
-                            {acc.sub}
+                            {accSub}
                           </div>
                         </div>
                       </div>
@@ -806,18 +915,27 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               <div className="space-y-1.5 text-left">
                 <div className="inline-flex items-center gap-2">
                   <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    {presetMode === "default" ? "Step 03" : "Step 04"}
+                    {presetMode === "default"
+                      ? isIndonesian
+                        ? "Langkah 03"
+                        : "Step 03"
+                      : isIndonesian
+                      ? "Langkah 04"
+                      : "Step 04"}
                   </span>
                   <span className="w-1 h-1 rounded-full bg-white/25" />
                   <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    Starting Baseline
+                    {isIndonesian ? "Saldo Awal" : "Starting Baseline"}
                   </span>
                 </div>
                 <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
-                  Initial <span className="font-semibold">cash reserve</span>
+                  {isIndonesian ? "Saldo kas " : "Initial "}
+                  <span className="font-semibold">{isIndonesian ? "cadangan awal" : "cash reserve"}</span>
                 </h1>
                 <p className="text-[13px] font-normal text-white/50 leading-relaxed">
-                  Input your starting liquid balance to calibrate Net Worth calculations accurately.
+                  {isIndonesian
+                    ? "Masukkan saldo kas awal Anda untuk menghitung Kekayaan Bersih secara akurat."
+                    : "Input your starting liquid balance to calibrate Net Worth calculations accurately."}
                 </p>
               </div>
 
@@ -825,7 +943,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               <div className="space-y-6">
                 <div className="space-y-2 border-b border-white/15 pb-3 focus-within:border-white transition-colors">
                   <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
-                    Liquid Balance (IDR)
+                    {isIndonesian ? "Saldo Kas Likuid (IDR)" : "Liquid Balance (IDR)"}
                   </label>
                   <div className="flex items-baseline gap-2">
                     <span className="text-[20px] sm:text-[22px] font-light text-white/40 select-none">
@@ -849,7 +967,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 {/* Quick Increment Chips */}
                 <div className="space-y-2">
                   <span className="text-[11px] text-white/40 font-medium block">
-                    Quick additive chips
+                    {isIndonesian ? "Pilihan nominal cepat" : "Quick additive chips"}
                   </span>
                   <div className="flex items-center gap-2 flex-wrap">
                     {[250000, 500000, 1000000, 5000000].map((inc) => (
@@ -868,7 +986,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                         onClick={handleClearBalance}
                         className="py-1.5 px-3 rounded-full text-[12px] font-medium text-white/40 hover:text-white/80 transition-colors cursor-pointer"
                       >
-                        Reset to 0
+                        {isIndonesian ? "Setel ulang ke 0" : "Reset to 0"}
                       </button>
                     )}
                   </div>
@@ -893,18 +1011,27 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               <div className="space-y-1.5 text-left">
                 <div className="inline-flex items-center gap-2">
                   <span className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
-                    {presetMode === "default" ? "Step 04" : "Step 05"}
+                    {presetMode === "default"
+                      ? isIndonesian
+                        ? "Langkah 04"
+                        : "Step 04"
+                      : isIndonesian
+                      ? "Langkah 05"
+                      : "Step 05"}
                   </span>
                   <span className="w-1 h-1 rounded-full bg-white/25" />
                   <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                    Habit Rhythm
+                    {isIndonesian ? "Ritme Kebiasaan" : "Habit Rhythm"}
                   </span>
                 </div>
                 <h1 className="text-[25px] sm:text-[27px] font-light tracking-tight text-white leading-tight">
-                  Daily <span className="font-semibold">evening nudge</span>
+                  {isIndonesian ? "Pengingat " : "Daily "}
+                  <span className="font-semibold">{isIndonesian ? "petang harian" : "evening nudge"}</span>
                 </h1>
                 <p className="text-[13px] font-normal text-white/50 leading-relaxed">
-                  A subtle prompt to record your day's outlays under 5 seconds so streaks stay unbroken.
+                  {isIndonesian
+                    ? "Pengingat lembut untuk mencatat pengeluaran harian dalam 5 detik agar rekor tetap terjaga."
+                    : "A subtle prompt to record your day's outlays under 5 seconds so streaks stay unbroken."}
                 </p>
               </div>
 
@@ -913,10 +1040,12 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 <div className="flex items-center justify-between py-2 border-b border-white/[0.08]">
                   <div className="space-y-0.5 pr-4">
                     <div className="text-[14px] font-semibold text-white">
-                      Daily Routine Reminder
+                      {isIndonesian ? "Pengingat Rutinitas Harian" : "Daily Routine Reminder"}
                     </div>
                     <div className="text-[11px] text-white/45 leading-relaxed">
-                      Silent prompt each evening to capture transactions
+                      {isIndonesian
+                        ? "Pemberitahuan hening setiap petang untuk mencatat transaksi"
+                        : "Silent prompt each evening to capture transactions"}
                     </div>
                   </div>
 
@@ -948,10 +1077,10 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 <div className={`space-y-3 transition-opacity duration-300 ${reminderEnabled ? "opacity-100" : "opacity-30 pointer-events-none"}`}>
                   <div className="flex items-baseline justify-between">
                     <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
-                      Scheduled Time
+                      {isIndonesian ? "Waktu Terjadwal" : "Scheduled Time"}
                     </label>
                     <span className="text-[12px] font-medium text-white/60 amount">
-                      {reminderHour}:00 Local Time
+                      {reminderHour}:00 {isIndonesian ? "Waktu Lokal" : "Local Time"}
                     </span>
                   </div>
 
@@ -977,7 +1106,9 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   </div>
 
                   <p className="text-[11px] text-white/40 leading-relaxed pt-1">
-                    Trouvaille runs silently in the background without disturbing your device focus mode.
+                    {isIndonesian
+                      ? "Trouvaille berjalan hening di latar belakang tanpa mengganggu mode fokus perangkat Anda."
+                      : "Trouvaille runs silently in the background without disturbing your device focus mode."}
                   </p>
                 </div>
               </div>
@@ -987,36 +1118,67 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       </div>
 
       {/* ============================================================ */}
-      {/* 4. BOTTOM ACTION PILL                                        */}
+      {/* 4. BOTTOM ACTION BAR: 1-TAP QUICK START OR STEPPED CONTINUE  */}
       {/* ============================================================ */}
-      <div className="px-3 sm:px-4 relative z-10 pt-2 max-w-md mx-auto w-full">
-        <button
-          type="button"
-          onClick={handleNextStep}
-          className="w-full py-3.5 rounded-full font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(255,255,255,0.15)] hover:bg-white/95"
-        >
-          <span>
-            {step === 5
-              ? t("onboarding.completeButton", "Enter Trouvaille")
-              : t("onboarding.continueButton", "Continue")}
-          </span>
-          <ArrowRight size={15} strokeWidth={2} />
-        </button>
-
-        {step === 4 && (
-          <div className="text-center pt-2">
+      <div className="px-3 sm:px-4 relative z-10 pt-2 max-w-md mx-auto w-full space-y-2">
+        {step === 1 && presetMode === "default" ? (
+          <div className="space-y-2">
+            {/* Primary Action: 1-Tap Quick Start */}
             <button
               type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setStartingBalance(0);
-                setStep(5);
-              }}
-              className="text-[11px] font-medium text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+              onClick={handleQuickStart}
+              className="w-full py-3.5 rounded-full font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(255,255,255,0.2)] hover:bg-white/95"
             >
-              Skip baseline balance
+              <Zap size={15} strokeWidth={2.5} className="fill-zinc-950 text-zinc-950" />
+              <span>{isIndonesian ? "Mulai Cepat 1-Ketukan" : "1-Tap Quick Start"}</span>
             </button>
+
+            {/* Secondary Action: Customize Step-by-Step */}
+            <div className="text-center pt-0.5">
+              <button
+                type="button"
+                onClick={handleNextStep}
+                className="text-[11.5px] font-medium text-white/50 hover:text-white transition-colors cursor-pointer"
+              >
+                {isIndonesian ? "Sesuaikan Langkah demi Langkah" : "Customize Step-by-Step"}
+              </button>
+            </div>
           </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleNextStep}
+              className="w-full py-3.5 rounded-full font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer bg-white text-zinc-950 flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(255,255,255,0.15)] hover:bg-white/95"
+            >
+              <span>
+                {step === 5
+                  ? isIndonesian
+                    ? "Buka Trouvaille"
+                    : "Enter Trouvaille"
+                  : isIndonesian
+                  ? "Lanjutkan"
+                  : "Continue"}
+              </span>
+              <ArrowRight size={15} strokeWidth={2} />
+            </button>
+
+            {step === 4 && (
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setStartingBalance(0);
+                    setStep(5);
+                  }}
+                  className="text-[11px] font-medium text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+                >
+                  {isIndonesian ? "Lewati saldo awal" : "Skip baseline balance"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

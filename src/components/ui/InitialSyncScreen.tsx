@@ -91,7 +91,7 @@ export function InitialSyncScreen({
   const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
   const [isCompletedAll, setIsCompletedAll] = useState(false);
 
-  // Preload real icons in background
+  // Preload real icons & preheat lazy route chunks in background
   useEffect(() => {
     let isMounted = true;
     preloadAllIcons()
@@ -103,6 +103,11 @@ export function InitialSyncScreen({
         if (!isMounted) return;
         setIsAssetsLoaded(true);
       });
+
+    // Preheat lazy page chunks in background for zero-flicker route entrance
+    import("../../pages/HomePage").catch(() => {});
+    import("../../pages/TransactionsPage").catch(() => {});
+
     return () => {
       isMounted = false;
     };

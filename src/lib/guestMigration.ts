@@ -139,3 +139,63 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
 
   return { walletsMigrated, transactionsMigrated };
 }
+
+/**
+ * Checks whether unmigrated guest records (transactions, wallets, holdings) exist locally.
+ */
+export function hasGuestData(): boolean {
+  try {
+    const cachedTxRaw = localStorage.getItem(TX_BACKUP_STORAGE_KEY);
+    if (cachedTxRaw) {
+      const parsed = JSON.parse(cachedTxRaw);
+      if (Array.isArray(parsed) && parsed.length > 0) return true;
+    }
+
+    const mutations = getPendingMutations();
+    if (mutations.some((m) => m.payload?.user_id === "guest_local_user" || !m.payload?.user_id)) {
+      return true;
+    }
+
+    const guestUsdt = getSavedUsdtPref("guest_local_user");
+    if (guestUsdt && guestUsdt.units > 0) return true;
+
+    const guestHoldings = getSavedHoldings("guest_local_user");
+    if (guestHoldings && guestHoldings.length > 0) return true;
+
+    const wasGuestMode = localStorage.getItem("trouvaille_guest_mode") === "true";
+    const cachedWalletsRaw = localStorage.getItem(WALLETS_BACKUP_STORAGE_KEY);
+    if (wasGuestMode && cachedWalletsRaw) {
+      const parsedWallets = JSON.parse(cachedWalletsRaw);
+      if (Array.isArray(parsedWallets) && parsedWallets.length > 0) return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Safely discards local guest ledger data when a user decides to start fresh with their authenticated account.
+ */
+export function discardGuestData(userId?: string): void {
+  try {
+    localStorage.removeItem(TX_BACKUP_STORAGE_KEY);
+    localStorage.removeItem("trouvaille_holdings_guest_local_user");
+    localStorage.removeItem("trouvaille_usdt_pref_guest_local_user");
+    localStorage.removeItem("trouvaille_guest_mode");
+
+    // Clean mutations originating from guest
+    const remainingMutations = getPendingMutations().filter(
+      (m) => m.payload?.user_id && m.payload.user_id !== "guest_local_user",
+    );
+    savePendingMutations(remainingMutations);
+
+    if (userId) {
+      localStorage.setItem(`trouvaille_migrated_guest_${userId}`, "true");
+    }
+  } catch (err) {
+    console.warn("[discardGuestData] Error clearing guest data:", err);
+  }
+}
+
