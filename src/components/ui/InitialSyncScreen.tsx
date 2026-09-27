@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Check, ShieldCheck, X, RotateCcw, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, RotateCcw } from "lucide-react";
 import { preloadAllIcons } from "../../lib/assetPreloader";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -74,6 +74,8 @@ const SYNC_STEPS: StepItem[] = [
   },
 ];
 
+const ROW_HEIGHT = 108; // vertical rhythm distance in pixels
+
 export function InitialSyncScreen({
   onComplete,
   totalCount = 0,
@@ -88,7 +90,7 @@ export function InitialSyncScreen({
   const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
   const [isCompletedAll, setIsCompletedAll] = useState(false);
 
-  // Preload real icons
+  // Preload real icons in background
   useEffect(() => {
     let isMounted = true;
     preloadAllIcons()
@@ -105,7 +107,7 @@ export function InitialSyncScreen({
     };
   }, []);
 
-  // Adaptive luxury step progression
+  // Adaptive luxury step progression (750ms pacing per step)
   useEffect(() => {
     if (isCompletedAll) return;
 
@@ -128,7 +130,7 @@ export function InitialSyncScreen({
         setIsCompletedAll(true);
         return prev;
       });
-    }, 620);
+    }, 750);
 
     return () => clearTimeout(timer);
   }, [activeStepIndex, isAssetsLoaded, isDataReady, isPreview, isCompletedAll]);
@@ -142,9 +144,9 @@ export function InitialSyncScreen({
         setIsCompletedAll(true);
         const finishTimer = setTimeout(() => {
           onComplete?.();
-        }, 450);
+        }, 500);
         return () => clearTimeout(finishTimer);
-      }, 850);
+      }, 950);
       return () => clearTimeout(exitTimer);
     }
   }, [activeStepIndex, isPreview, onComplete]);
@@ -152,48 +154,48 @@ export function InitialSyncScreen({
   // Overall progress percentage
   const progressPercent = Math.min(
     100,
-    Math.round(((activeStepIndex + (isCompletedAll ? 1 : 0.4)) / SYNC_STEPS.length) * 100)
+    Math.round(((activeStepIndex + (isCompletedAll ? 1 : 0.35)) / SYNC_STEPS.length) * 100)
   );
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center select-none px-6 sm:px-10 overflow-hidden transition-colors duration-500"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center select-none px-6 sm:px-12 overflow-hidden transition-colors duration-500"
       style={{
         backgroundColor: isDark ? "#08080a" : "#f4f4f7",
         color: isDark ? "#ffffff" : "#09090c",
         fontFamily: "'Urbanist', sans-serif",
       }}
     >
-      {/* 1. ATMOSPHERIC MONOCHROME CINEMATIC AURORA LAYER */}
+      {/* 1. ATMOSPHERIC MONOCHROME CINEMATIC AURORA BLOOM */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div
-          className={`absolute top-1/4 -left-36 w-96 h-96 rounded-full blur-[140px] transition-opacity duration-700 ${
-            isDark ? "bg-white/[0.035]" : "bg-black/[0.02]"
+          className={`absolute top-1/3 -left-40 w-[450px] h-[450px] rounded-full blur-[150px] transition-opacity duration-700 ${
+            isDark ? "bg-white/[0.035]" : "bg-black/[0.025]"
           }`}
         />
         <div
-          className={`absolute bottom-1/4 -right-36 w-96 h-96 rounded-full blur-[140px] transition-opacity duration-700 ${
+          className={`absolute bottom-1/3 -right-40 w-[450px] h-[450px] rounded-full blur-[150px] transition-opacity duration-700 ${
             isDark ? "bg-white/[0.03]" : "bg-black/[0.02]"
           }`}
         />
         <div
-          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full blur-[170px] ${
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] rounded-full blur-[180px] ${
             isDark ? "bg-white/[0.02]" : "bg-black/[0.015]"
           }`}
         />
 
-        {/* Fluted Fractal Ribbed Texture */}
+        {/* Fluted Fractal Glass Ribbed Texture */}
         <div
-          className="absolute inset-0 opacity-[0.22]"
+          className="absolute inset-0 opacity-[0.2]"
           style={{
             backgroundImage: isDark
-              ? "repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 38px)"
-              : "repeating-linear-gradient(90deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 38px)",
+              ? "repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 42px)"
+              : "repeating-linear-gradient(90deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 42px)",
           }}
         />
       </div>
 
-      {/* 2. FLOATING PREVIEW CONTROLS (TOP RIGHT ONLY - NO TOP LEFT BRANDING) */}
+      {/* 2. FLOATING TOP-RIGHT PREVIEW CONTROLS (NO TOP-LEFT HEADER) */}
       {isPreview && (
         <div
           className="fixed right-5 sm:right-8 z-30 flex items-center gap-2"
@@ -233,214 +235,182 @@ export function InitialSyncScreen({
         </div>
       )}
 
-      {/* 3. UNIFIED CENTRALLY ALIGNED CONTENT CONTAINER */}
-      <div className="relative z-10 w-full max-w-sm sm:max-w-md mx-auto my-auto flex flex-col items-center justify-center space-y-6">
-        {/* Timeline Items */}
-        <div className="w-full space-y-0 relative">
+      {/* 3. DYNAMIC VERTICAL TUMBLER (APPLE KEYNOTE / ACETERNITY PURE TYPOGRAPHY) */}
+      <div
+        className="relative z-10 w-full max-w-xl h-[360px] sm:h-[420px] overflow-hidden flex flex-col justify-center items-center text-center"
+        style={{
+          maskImage:
+            "linear-gradient(to bottom, transparent 0%, black 28%, black 72%, transparent 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, transparent 0%, black 28%, black 72%, transparent 100%)",
+        }}
+      >
+        <motion.div
+          className="w-full flex flex-col items-center"
+          animate={{
+            y: -activeStepIndex * ROW_HEIGHT,
+          }}
+          transition={{
+            type: "spring",
+            stiffness: 160,
+            damping: 24,
+            mass: 0.85,
+          }}
+        >
           {SYNC_STEPS.map((step, index) => {
-            const isCompleted = isCompletedAll || activeStepIndex > index;
-            const isActive = !isCompletedAll && activeStepIndex === index;
-            const isLast = index === SYNC_STEPS.length - 1;
+            const distance = Math.abs(index - activeStepIndex);
+            const isActive = index === activeStepIndex && !isCompletedAll;
+            const isCompleted = index < activeStepIndex || isCompletedAll;
 
             const title = isIndonesian ? step.titleId : step.titleEn;
             const subtitle = isIndonesian
               ? step.subtitleId(totalCount)
               : step.subtitleEn(totalCount);
 
+            // Optical scale & blur based on distance from optical center
+            let opacity = 1;
+            let scale = 1;
+            let blur = "blur(0px)";
+
+            if (distance === 0) {
+              opacity = 1;
+              scale = 1;
+              blur = "blur(0px)";
+            } else if (distance === 1) {
+              opacity = isDark ? 0.32 : 0.35;
+              scale = 0.92;
+              blur = "blur(1.5px)";
+            } else {
+              opacity = isDark ? 0.12 : 0.14;
+              scale = 0.84;
+              blur = "blur(3.5px)";
+            }
+
             return (
-              <div key={step.id} className="relative flex items-start gap-4 sm:gap-4.5 group">
-                {/* Vertical Rail + Step Squircle Indicator */}
-                <div className="flex flex-col items-center shrink-0">
-                  <div className="relative flex items-center justify-center">
-                    {/* Active Breathing Glow Halo */}
-                    {isActive && (
-                      <motion.div
-                        className="absolute -inset-1 rounded-[16px] pointer-events-none"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{
-                          opacity: [0.3, 0.6, 0.3],
-                          scale: [0.96, 1.05, 0.96],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                        style={{
-                          boxShadow: isDark
-                            ? "0 0 16px rgba(255, 255, 255, 0.16)"
-                            : "0 0 14px rgba(0, 0, 0, 0.1)",
-                        }}
-                      />
-                    )}
-
-                    {/* Squircle Indicator (Frosted Luxury - Never stark white solid blocks) */}
-                    <div
-                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-[13px] flex items-center justify-center transition-all duration-300 relative z-10 backdrop-blur-xl ${
-                        isCompleted
-                          ? isDark
-                            ? "bg-white/[0.08] border border-white/20 text-white shadow-[0_2px_10px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.15)]"
-                            : "bg-black/[0.05] border border-black/15 text-zinc-900 shadow-sm"
-                          : isActive
-                          ? isDark
-                            ? "bg-white/[0.14] border border-white/35 text-white shadow-[0_0_14px_rgba(255,255,255,0.12)]"
-                            : "bg-black/[0.08] border border-black/25 text-zinc-950 shadow-sm"
-                          : isDark
-                          ? "bg-white/[0.02] border border-white/[0.07] text-white/20"
-                          : "bg-black/[0.02] border border-black/[0.06] text-zinc-400/40"
-                      }`}
-                    >
-                      {isCompleted ? (
-                        <motion.div
-                          initial={{ scale: 0.6, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          transition={{ duration: 0.25, ease: "easeOut" }}
-                        >
-                          <Check size={14} strokeWidth={2} />
-                        </motion.div>
-                      ) : isActive ? (
-                        <Sparkles size={13} strokeWidth={1.75} className="animate-spin-slow" />
-                      ) : (
-                        <span className="text-[10px] font-mono font-medium">
-                          0{index + 1}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Vertical Connecting Rail */}
-                  {!isLast && (
-                    <div
-                      className={`w-[1.5px] h-7 sm:h-8 my-0.5 transition-all duration-500 ${
-                        isCompleted
-                          ? isDark
-                            ? "bg-gradient-to-b from-white/35 to-white/15 shadow-[0_0_6px_rgba(255,255,255,0.25)]"
-                            : "bg-gradient-to-b from-zinc-800/35 to-zinc-800/15"
-                          : isDark
-                          ? "bg-white/[0.05]"
-                          : "bg-black/[0.05]"
-                      }`}
-                    />
-                  )}
-                </div>
-
-                {/* Step Text Block with Decryption Wavefront */}
-                <div
-                  className={`flex-1 pt-1 pb-2.5 transition-opacity duration-300 ${
-                    isActive
-                      ? "opacity-100"
-                      : isCompleted
-                      ? "opacity-85"
-                      : "opacity-30"
+              <motion.div
+                key={step.id}
+                className="w-full flex flex-col items-center justify-center px-4"
+                style={{
+                  height: ROW_HEIGHT,
+                  opacity,
+                  scale,
+                  filter: blur,
+                  transformOrigin: "center center",
+                }}
+                transition={{ duration: 0.45, ease: "easeInOut" }}
+              >
+                {/* Large Quiet Luxury Typography with EncryptedText */}
+                <h2
+                  className={`tracking-tight leading-snug transition-colors ${
+                    distance === 0
+                      ? `text-[22px] sm:text-[27px] ${
+                          isDark
+                            ? "text-white font-semibold"
+                            : "text-zinc-950 font-semibold"
+                        }`
+                      : `text-[17px] sm:text-[20px] ${
+                          isDark
+                            ? "text-white/70 font-normal"
+                            : "text-zinc-800 font-normal"
+                        }`
                   }`}
                 >
-                  <h3
-                    className={`text-[13.5px] sm:text-[15px] tracking-tight leading-snug transition-colors ${
-                      isActive
+                  <EncryptedText
+                    text={title}
+                    isActive={isActive}
+                    isCompleted={isCompleted}
+                    revealDelayMs={26}
+                    encryptedClassName={
+                      isDark
+                        ? "text-white/45 font-mono tracking-wider"
+                        : "text-zinc-950/45 font-mono tracking-wider"
+                    }
+                    revealedClassName={
+                      distance === 0
                         ? isDark
                           ? "text-white font-semibold"
                           : "text-zinc-950 font-semibold"
-                        : isCompleted
-                        ? isDark
-                          ? "text-white/80 font-medium"
-                          : "text-zinc-900 font-medium"
                         : isDark
-                        ? "text-white/30 font-light"
-                        : "text-zinc-500 font-light"
-                    }`}
-                  >
-                    <EncryptedText
-                      text={title}
-                      isActive={isActive}
-                      isCompleted={isCompleted}
-                      revealDelayMs={28}
-                      encryptedClassName={
-                        isDark
-                          ? "text-white/50 font-mono tracking-wider"
-                          : "text-zinc-950/50 font-mono tracking-wider"
-                      }
-                      revealedClassName={
-                        isActive
-                          ? isDark
-                            ? "text-white font-semibold"
-                            : "text-zinc-950 font-semibold"
-                          : isDark
-                          ? "text-white/85 font-medium"
-                          : "text-zinc-900 font-medium"
-                      }
-                    />
-                  </h3>
+                        ? "text-white/75 font-normal"
+                        : "text-zinc-800 font-normal"
+                    }
+                  />
+                </h2>
 
-                  <p
-                    className={`text-[11px] sm:text-[11.5px] font-normal mt-0.5 leading-relaxed transition-colors ${
-                      isActive
-                        ? isDark
-                          ? "text-white/55"
-                          : "text-zinc-600"
-                        : isCompleted
-                        ? isDark
-                          ? "text-white/35"
-                          : "text-zinc-500"
-                        : isDark
-                        ? "text-white/15"
-                        : "text-zinc-400"
-                    }`}
-                  >
-                    {subtitle}
-                  </p>
-                </div>
-              </div>
+                {/* Subtitle (Prominent only on active step) */}
+                <AnimatePresence>
+                  {distance === 0 && (
+                    <motion.p
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className={`text-[12px] sm:text-[13px] font-normal mt-1.5 max-w-md mx-auto leading-relaxed ${
+                        isDark ? "text-white/50" : "text-zinc-600"
+                      }`}
+                    >
+                      {subtitle}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
+      </div>
 
-        {/* Integrated Centered Bottom Progress & Trust Badge */}
-        <div className="w-full pt-2 space-y-3.5">
-          {/* Hairline Liquid Progress Track */}
-          <div className="w-full space-y-1.5">
-            <div
-              className={`w-full h-1 rounded-full overflow-hidden relative ${
-                isDark ? "bg-white/[0.06]" : "bg-black/[0.05]"
-              }`}
-            >
-              <motion.div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  isDark
-                    ? "bg-white shadow-[0_0_10px_rgba(255,255,255,0.6)]"
-                    : "bg-zinc-950 shadow-[0_0_6px_rgba(0,0,0,0.25)]"
-                }`}
-                initial={{ width: "10%" }}
-                animate={{ width: `${progressPercent}%` }}
-                transition={{ duration: 0.35, ease: "easeOut" }}
-              />
-            </div>
-
-            <div
-              className={`flex justify-between items-center text-[9.5px] font-mono tracking-widest ${
-                isDark ? "text-white/30" : "text-zinc-400"
-              }`}
-            >
-              <span>
-                {isIndonesian ? "PROTOKOL KEAMANAN AKTIF" : "SECURITY PROTOCOL ACTIVE"}
-              </span>
-              <span>{progressPercent}%</span>
-            </div>
-          </div>
-
-          {/* Floating Trust Badge */}
+      {/* 4. FLOATING FROSTED GLASS MICRO-PILL COUNTER (NO HARSH BOTTOM BARS) */}
+      <div
+        className="fixed left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none"
+        style={{
+          bottom: "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 32px)",
+        }}
+      >
+        <div
+          className={`inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full backdrop-blur-2xl transition-all duration-300 ${
+            isDark
+              ? "bg-white/[0.05] border border-white/10 text-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+              : "bg-black/[0.04] border border-black/8 text-zinc-800 shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
+          }`}
+        >
+          {/* Breathing monochrome pulse dot */}
           <div
-            className={`flex items-center justify-center gap-1.5 text-[10.5px] font-medium ${
-              isDark ? "text-white/35" : "text-zinc-500"
+            className={`w-1.5 h-1.5 rounded-full ${
+              isCompletedAll
+                ? isDark
+                  ? "bg-white"
+                  : "bg-zinc-950"
+                : isDark
+                ? "bg-white/85 animate-pulse"
+                : "bg-zinc-800 animate-pulse"
             }`}
-          >
-            <ShieldCheck size={12} strokeWidth={1.5} />
-            <span>
-              {isIndonesian
-                ? "Enkripsi Klien Ujung-ke-Ujung · Nir-Pengetahuan"
-                : "End-to-End Client Encryption · Zero-Knowledge"}
-            </span>
-          </div>
+          />
+
+          {/* Phase Step Index */}
+          <span className="text-[11px] font-mono tracking-wider font-medium">
+            0{Math.min(activeStepIndex + 1, SYNC_STEPS.length)} / 0{SYNC_STEPS.length}
+          </span>
+
+          <span className={`text-[10px] ${isDark ? "text-white/25" : "text-black/25"}`}>
+            ·
+          </span>
+
+          {/* Percentage */}
+          <span className="text-[11px] font-mono tracking-wider">
+            {progressPercent}%
+          </span>
         </div>
+
+        {/* Minimalist Zero-Knowledge Tagline */}
+        <p
+          className={`text-[10.5px] font-medium tracking-wide transition-colors ${
+            isDark ? "text-white/30" : "text-zinc-500"
+          }`}
+        >
+          {isIndonesian
+            ? "Enkripsi Klien Ujung-ke-Ujung · Nir-Pengetahuan"
+            : "End-to-End Client Encryption · Zero-Knowledge"}
+        </p>
       </div>
     </div>
   );
