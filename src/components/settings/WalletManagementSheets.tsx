@@ -266,7 +266,7 @@ export function WalletManagementSheets({
                 className="text-[11px] font-semibold mt-0.5"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {wallets.length} {isIndonesian ? "akun aktif · kapsul 2-kolom" : "active accounts · 2-grid capsules"}
+                {wallets.length} {isIndonesian ? "akun terdaftar · Rekapitulasi Neraca" : "registered accounts · Balance Sheet"}
               </p>
             </div>
             <button
@@ -320,13 +320,25 @@ export function WalletManagementSheets({
           </div>
 
           {unusedZeroWallets.length >= 2 && wallets.length > 1 && (
-            <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-red-500/[0.04] border border-red-500/20 text-[11.5px]">
-              <span className="text-neutral-400 font-medium">
-                <span className="font-semibold text-neutral-200">
-                  {unusedZeroWallets.length} {isIndonesian ? "akun" : "accounts"}
-                </span>{" "}
-                {isIndonesian ? "bersaldo Rp 0" : "with Rp 0 balance"}
-              </span>
+            <div
+              className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl border text-[11px]"
+              style={{
+                background: "var(--glass-fill)",
+                borderColor: "var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
+                <span style={{ color: "var(--text-tertiary)" }}>
+                  <strong
+                    className="font-semibold"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {unusedZeroWallets.length} {isIndonesian ? "akun" : "accounts"}
+                  </strong>{" "}
+                  {isIndonesian ? "bersaldo Rp 0" : "with Rp 0 balance"}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -347,7 +359,8 @@ export function WalletManagementSheets({
                     "delete",
                   );
                 }}
-                className="text-red-500 hover:text-red-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer"
+                className="font-semibold hover:underline active:opacity-70 transition-opacity cursor-pointer"
+                style={{ color: "var(--text-primary)" }}
               >
                 {isIndonesian ? "Bersihkan Akun Kosong" : "Purge Unused"}
               </button>
@@ -463,7 +476,10 @@ export function WalletManagementSheets({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5">
+              <div
+                className="divide-y border-y"
+                style={{ borderColor: "var(--glass-border)" }}
+              >
                 {filteredWallets.map((w) => {
                   const bal =
                     balancesById[w.id] ?? balancesByName[w.name.toLowerCase()] ?? 0;
@@ -484,154 +500,111 @@ export function WalletManagementSheets({
                           classification: cls,
                         })
                       }
-                      className="group relative min-w-0 p-3 rounded-[20px] transition-all cursor-pointer flex flex-col justify-between gap-2.5 active:scale-[0.98] select-none"
-                      style={{
-                        background: isDark
-                          ? "linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.028) 100%)"
-                          : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.88) 48%, rgba(244,245,247,0.94) 100%)",
-                        border: isDark
-                          ? "1px solid rgba(255,255,255,0.09)"
-                          : "1px solid rgba(255,255,255,0.94)",
-                        boxShadow: isDark
-                          ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.18)"
-                          : "inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(15,23,42,0.05)",
-                        backdropFilter: "blur(18px) saturate(155%)",
-                        WebkitBackdropFilter: "blur(18px) saturate(155%)",
-                      }}
+                      className="py-3.5 flex items-center justify-between group cursor-pointer active:opacity-70 transition-opacity"
                     >
-                      {/* Top Tier: Icon Avatar & Account Name & Discrete Trash Icon */}
-                      <div className="flex items-start justify-between gap-1.5 min-w-0">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <div
-                            className={`w-7.5 h-7.5 rounded-xl flex items-center justify-center shrink-0 transition-transform ${
-                              isDark
-                                ? "bg-white/[0.08] border border-white/10"
-                                : "bg-white/90 border border-black/[0.06] shadow-sm"
-                            }`}
-                          >
-                            <IconRenderer
-                              icon={w.icon || getWalletIcon(w.name)}
-                              size="w-3.5 h-3.5"
-                            />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className="font-semibold text-[12.5px] leading-tight truncate"
+                      {/* Left Column: Frosted Squircle Icon + Name with Chevron + Subtitle */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border transition-transform"
+                          style={{
+                            background: "var(--glass-fill)",
+                            borderColor: "var(--glass-border)",
+                          }}
+                        >
+                          <IconRenderer
+                            icon={w.icon || getWalletIcon(w.name)}
+                            size="w-4.5 h-4.5"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="text-[14.5px] font-semibold tracking-tight truncate"
                               style={{ color: "var(--text-primary)" }}
-                              title={w.name}
                             >
                               {w.name}
-                            </p>
+                            </span>
                             <span
-                              className={`text-[9px] font-semibold px-1.5 py-0.2 rounded border inline-block mt-0.5 ${
+                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border uppercase tracking-wider shrink-0 ${
                                 isInvest
-                                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                                   : isLiability
-                                    ? "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20"
-                                    : "bg-black/[0.04] dark:bg-white/[0.06] text-[var(--text-tertiary)] border-black/10 dark:border-white/10"
+                                  ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                  : "bg-[var(--glass-fill)] border-[var(--glass-border)] text-[var(--text-tertiary)]"
                               }`}
                             >
                               {isInvest
                                 ? (isIndonesian ? "Investasi" : "Invest")
                                 : isLiability
-                                  ? (isIndonesian ? "Utang" : "Debt")
-                                  : (isIndonesian ? "Likuid" : "Liquid")}
+                                ? (isIndonesian ? "Utang" : "Debt")
+                                : (isIndonesian ? "Kas Likuid" : "Liquid Cash")}
                             </span>
+                            <ChevronRight
+                              size={13}
+                              className="text-[var(--text-tertiary)] opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0"
+                            />
                           </div>
+                          <p
+                            className="text-[11px] font-medium mt-0.5 truncate"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            {isZero
+                              ? (isIndonesian ? "Akun Dorman (Rp 0)" : "Dormant (Rp 0)")
+                              : (isIndonesian ? "Akun Aktif" : "Active Account")}
+                          </p>
                         </div>
-
-                        {/* Discrete Delete Button with StopPropagation */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            triggerHaptic("medium");
-                            if (!confirm(isIndonesian ? `Hapus akun "${w.name}"?` : `Delete account "${w.name}"?`)) return;
-                            deleteWallet.mutate(w.id, {
-                              onSuccess: () => {
-                                showToast(isIndonesian ? "Akun dihapus" : "Account deleted", "delete", () => {});
-                              },
-                              onError: (error: any) => {
-                                showToast(
-                                  error?.message || (isIndonesian ? "Gagal menghapus akun" : "Failed to delete account"),
-                                  "delete",
-                                  () => {},
-                                );
-                              },
-                            });
-                          }}
-                          className="w-6 h-6 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 active:scale-90 transition-all cursor-pointer shrink-0"
-                          title={isIndonesian ? "Hapus Akun" : "Delete Account"}
-                        >
-                          <Trash2 size={12} strokeWidth={1.75} />
-                        </button>
                       </div>
 
-                      {/* Bottom Tier: Balance & Direct Adjust Micro-Pill */}
-                      <div
-                        className="flex items-center justify-between pt-2 border-t gap-1 text-[10.5px]"
-                        style={{ borderColor: "var(--glass-border)" }}
-                      >
-                        <div className="min-w-0">
+                      {/* Right Column: Untruncated Tabular Balance + Quick Adjust Button */}
+                      <div className="flex items-center gap-3 shrink-0 pl-2">
+                        <div className="text-right">
                           <p
-                            className={`font-mono text-[11.5px] font-semibold truncate ${
+                            className={`amount font-mono text-[15px] font-bold leading-tight ${
                               isZero ? "opacity-40" : ""
                             }`}
                             style={{
-                              color: isZero
-                                ? "var(--text-tertiary)"
-                                : "var(--text-primary)",
+                              color: isZero ? "var(--text-tertiary)" : "var(--text-primary)",
                             }}
                           >
                             {formatRupiah(bal)}
                           </p>
-                        </div>
-
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              triggerHaptic("light");
-                              onClose();
-                              setTimeout(() => {
-                                setCorrectWallet({
-                                  id: w.id,
-                                  name: w.name,
-                                  icon: w.icon || getWalletIcon(w.name),
-                                  currentBalance: bal,
-                                });
-                                setCorrectTargetBalance(String(bal));
-                                setCorrectNote("");
-                                setCorrectEffectiveDate(
-                                  format(new Date(), "yyyy-MM-dd"),
-                                );
-                              }, 300);
-                            }}
-                            className="font-mono text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 active:scale-95 transition-all truncate cursor-pointer shrink-0"
-                            style={{
-                              background: isDark
-                                ? "rgba(255, 255, 255, 0.05)"
-                                : "rgba(0, 0, 0, 0.04)",
-                              border: isDark
-                                ? "1px solid rgba(255, 255, 255, 0.08)"
-                                : "1px solid rgba(0, 0, 0, 0.08)",
-                              color: "var(--text-secondary)",
-                            }}
-                            title={isIndonesian ? "Sesuaikan Saldo" : "Adjust Balance"}
+                          <p
+                            className="text-[10px] mt-0.5 font-medium"
+                            style={{ color: "var(--text-tertiary)" }}
                           >
-                            <Scale
-                              size={10}
-                              strokeWidth={2}
-                              className="opacity-70 shrink-0"
-                            />
-                            <span>{isIndonesian ? "Sesuaikan" : "Adjust"}</span>
-                          </button>
-
-                          <div className="flex items-center text-[var(--text-tertiary)] opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0">
-                            <ChevronRight size={13} strokeWidth={2} />
-                          </div>
+                            {isIndonesian ? "Saldo Riil" : "Real Balance"}
+                          </p>
                         </div>
+
+                        {/* Quick Balance Adjustment Button (Scale Icon) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerHaptic("light");
+                            onClose();
+                            setTimeout(() => {
+                              setCorrectWallet({
+                                id: w.id,
+                                name: w.name,
+                                icon: w.icon || getWalletIcon(w.name),
+                                currentBalance: bal,
+                              });
+                              setCorrectTargetBalance(String(bal));
+                              setCorrectNote("");
+                              setCorrectEffectiveDate(format(new Date(), "yyyy-MM-dd"));
+                            }, 300);
+                          }}
+                          className="w-8 h-8 rounded-xl flex items-center justify-center border transition-all active:scale-95 cursor-pointer"
+                          style={{
+                            background: "var(--glass-fill)",
+                            borderColor: "var(--glass-border)",
+                            color: "var(--text-secondary)",
+                          }}
+                          title={isIndonesian ? "Sesuaikan Saldo" : "Adjust Balance"}
+                        >
+                          <Scale size={14} strokeWidth={1.75} />
+                        </button>
                       </div>
                     </div>
                   );
@@ -975,29 +948,73 @@ export function WalletManagementSheets({
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              if (!editWallet?.name.trim()) return;
-              updateWallet.mutate(
-                {
-                  id: editWallet.id,
-                  name: editWallet.name.trim(),
-                  icon: editWallet.icon || getWalletIcon(editWallet.name),
-                  classification: editWallet.classification,
-                },
-                {
+          <div className="space-y-2 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                if (!editWallet?.name.trim()) return;
+                updateWallet.mutate(
+                  {
+                    id: editWallet.id,
+                    name: editWallet.name.trim(),
+                    icon: editWallet.icon || getWalletIcon(editWallet.name),
+                    classification: editWallet.classification,
+                  },
+                  {
+                    onSuccess: () => {
+                      setEditWallet(null);
+                      showToast(isIndonesian ? "Akun diperbarui" : "Account updated", "update", () => {});
+                    },
+                  },
+                );
+              }}
+              className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg cursor-pointer"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            >
+              {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!editWallet) return;
+                triggerHaptic("medium");
+                if (
+                  !confirm(
+                    isIndonesian
+                      ? `Hapus akun "${editWallet.name}"?`
+                      : `Delete account "${editWallet.name}"?`
+                  )
+                ) {
+                  return;
+                }
+                deleteWallet.mutate(editWallet.id, {
                   onSuccess: () => {
                     setEditWallet(null);
-                    showToast(isIndonesian ? "Akun diperbarui" : "Account updated", "update", () => {});
+                    showToast(
+                      isIndonesian ? "Akun dihapus" : "Account deleted",
+                      "delete",
+                      () => {}
+                    );
                   },
-                },
-              );
-            }}
-            className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg cursor-pointer"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-          >
-            {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
-          </button>
+                  onError: (error: any) => {
+                    showToast(
+                      error?.message ||
+                        (isIndonesian
+                          ? "Gagal menghapus akun"
+                          : "Failed to delete account"),
+                      "delete",
+                      () => {}
+                    );
+                  },
+                });
+              }}
+              className="w-full py-3 rounded-2xl font-semibold text-[13px] border border-red-500/20 text-red-400 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Trash2 size={14} />
+              <span>{isIndonesian ? "Hapus Akun Ini" : "Delete This Account"}</span>
+            </button>
+          </div>
         </div>
       </BottomSheet>
 
