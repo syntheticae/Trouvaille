@@ -148,8 +148,6 @@ function DynamicShowcaseCapsule({
 
   return (
     <motion.div
-      layout
-      transition={{ type: "spring", stiffness: 320, damping: 28 }}
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.25}
@@ -166,21 +164,24 @@ function DynamicShowcaseCapsule({
         triggerHaptic("light");
         setIsInteracted((prev) => !prev);
       }}
-      className={`relative w-full max-w-[340px] sm:max-w-[360px] rounded-[28px] p-3.5 sm:p-4 cursor-grab active:cursor-grabbing select-none transition-shadow duration-300 ${
-        isDark
-          ? "bg-[#131317]/85 border border-white/[0.12] shadow-[0_20px_45px_-12px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.22)] backdrop-blur-2xl"
-          : "bg-white/90 border border-black/[0.08] shadow-[0_16px_36px_-8px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.02),inset_0_1.5px_2px_rgba(255,255,255,0.95)] backdrop-blur-2xl"
-      }`}
+      className="relative w-full max-w-[340px] sm:max-w-[365px] min-h-[165px] flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
     >
       <AnimatePresence mode="wait">
+        {/* ============================================================ */}
+        {/* SLIDE 0: MINIMALIST OPEN GLASS HORIZON & LIVE SPLINE        */}
+        {/* ============================================================ */}
         {currentSlide.visual === "chart" && (
           <motion.div
             key="chart"
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            initial={{ opacity: 0, y: 10, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="flex flex-col gap-2.5"
+            exit={{ opacity: 0, y: -10, scale: 0.97 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            className={`w-full rounded-[26px] p-3.5 border flex flex-col gap-2.5 backdrop-blur-2xl transition-all duration-300 ${
+              isDark
+                ? "bg-[#121216]/75 border-white/[0.1] shadow-[0_16px_36px_-8px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.18)]"
+                : "bg-white/80 border-black/[0.07] shadow-[0_12px_28px_-6px_rgba(0,0,0,0.06),inset_0_1.5px_2px_rgba(255,255,255,0.95)]"
+            }`}
           >
             {/* Top Bar: Trajectory Telemetry */}
             <div className="flex items-center justify-between">
@@ -281,122 +282,163 @@ function DynamicShowcaseCapsule({
           </motion.div>
         )}
 
+        {/* ============================================================ */}
+        {/* SLIDE 1: 3 STAGGERED CASCADING LIQUID GLASS PILLS           */}
+        {/* ============================================================ */}
         {currentSlide.visual === "voice" && (
           <motion.div
             key="voice"
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="flex flex-col gap-2.5"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            className="w-full flex flex-col gap-2.5 items-center justify-center py-1"
           >
-            {/* Top Bar: Pulsing Recording Beacon */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="relative flex h-2 w-2">
-                  <span
-                    className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                      isDark ? "bg-white" : "bg-zinc-800"
-                    }`}
-                  />
-                  <span
-                    className={`relative inline-flex rounded-full h-2 w-2 ${
-                      isDark ? "bg-white" : "bg-zinc-900"
-                    }`}
-                  />
-                </span>
-                <span
-                  className={`text-[10.5px] font-semibold uppercase tracking-wider ${
-                    isDark ? "text-white/80" : "text-zinc-800"
+            {/* Pill 1: Top, offset left by 12px */}
+            <motion.div
+              animate={{
+                x: isInteracted ? -16 : -10,
+                y: isInteracted ? -2 : 0,
+              }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              className={`w-[92%] rounded-full py-2 px-3.5 border flex items-center justify-between backdrop-blur-2xl shadow-md ${
+                isDark
+                  ? "bg-white/[0.07] border-white/14 shadow-[0_8px_20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.18)] text-white"
+                  : "bg-white/90 border-black/[0.08] shadow-[0_8px_20px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.9)] text-zinc-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center border ${
+                    isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
                   }`}
                 >
-                  {isIndonesian ? "Dikte Pintar Aktif" : "Smart Dictation Live"}
+                  <Mic size={11} strokeWidth={2} />
+                </div>
+                <span className="text-[11px] font-semibold tracking-tight">
+                  {isIndonesian ? "Dikte Suara" : "Voice Dictation"}
                 </span>
               </div>
+
+              {/* Mini 6-bar live pulsing equalizer */}
+              <div className="flex items-center gap-1">
+                {[10, 16, 22, 14, 20, 12].map((h, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{
+                      height: isInteracted ? [h * 0.6, h * 1.3, h] : [h * 0.8, h, h * 0.9],
+                    }}
+                    transition={{ repeat: Infinity, repeatType: "reverse", duration: 0.6 + i * 0.1 }}
+                    className={`w-0.5 rounded-full ${isDark ? "bg-white/70" : "bg-zinc-800"}`}
+                    style={{ height: `${h}px` }}
+                  />
+                ))}
+                <span
+                  className={`text-[9.5px] font-mono ml-1.5 px-1.5 py-0.5 rounded-md ${
+                    isDark ? "bg-white/10 text-white/80" : "bg-black/5 text-zinc-700"
+                  }`}
+                >
+                  {isIndonesian ? '"Kopi 35rb"' : '"$4.50 Coffee"'}
+                </span>
+              </div>
+            </motion.div>
+
+            {/* Pill 2: Middle, offset right by 14px (Hero prominence) */}
+            <motion.div
+              animate={{
+                x: isInteracted ? 18 : 12,
+                scale: isInteracted ? 1.02 : 1,
+              }}
+              transition={{ type: "spring", stiffness: 350, damping: 25, delay: 0.04 }}
+              className={`w-[95%] rounded-full py-2.5 px-4 border flex items-center justify-between backdrop-blur-2xl shadow-xl z-10 ${
+                isDark
+                  ? "bg-[#18181e]/90 border-white/18 shadow-[0_12px_28px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.25)] text-white"
+                  : "bg-white border-black/[0.1] shadow-[0_12px_28px_rgba(0,0,0,0.08),inset_0_1.5px_2px_rgba(255,255,255,1)] text-zinc-950"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center border ${
+                    isDark ? "bg-white/12 border-white/20" : "bg-black/6 border-black/12"
+                  }`}
+                >
+                  <ScanFace size={13} strokeWidth={2} />
+                </div>
+                <div>
+                  <div className="text-[11.5px] font-bold tracking-tight leading-none">
+                    {isIndonesian ? "Pindai Bukti Bayar" : "Receipt Camera Scan"}
+                  </div>
+                  <div
+                    className={`text-[8.5px] mt-0.5 font-medium ${
+                      isDark ? "text-white/50" : "text-zinc-500"
+                    }`}
+                  >
+                    {isIndonesian ? "Ekstraksi OCR Otomatis" : "Instant OCR Engine"}
+                  </div>
+                </div>
+              </div>
+
               <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center border ${
-                  isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
+                className={`px-2 py-0.5 rounded-full text-[9.5px] font-semibold tracking-wide border ${
+                  isDark
+                    ? "bg-white/10 border-white/15 text-white"
+                    : "bg-black/5 border-black/10 text-zinc-900"
                 }`}
               >
-                <Mic size={11} strokeWidth={2} className={isDark ? "text-white" : "text-zinc-900"} />
+                {isIndonesian ? "< 1 Detik" : "< 1s Engine"}
               </div>
-            </div>
+            </motion.div>
 
-            {/* Kinetic Frequency Equalizer Wave */}
-            <div
-              className={`h-11 px-3.5 rounded-2xl flex items-center justify-center gap-1 border ${
-                isDark ? "bg-white/[0.04] border-white/8" : "bg-black/[0.03] border-black/6"
-              }`}
-            >
-              {[12, 22, 16, 28, 36, 24, 38, 30, 20, 32, 26, 14, 20, 10].map((h, i) => (
-                <motion.div
-                  key={i}
-                  animate={{
-                    height: isInteracted
-                      ? [h * 0.5, h * 1.3, h * 0.7, h]
-                      : [h * 0.7, h, h * 0.8, h * 1.1],
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    repeatType: "reverse",
-                    duration: 0.7 + (i % 5) * 0.15,
-                    ease: "easeInOut",
-                  }}
-                  className={`w-1 rounded-full ${
-                    isDark ? "bg-white/70" : "bg-zinc-800/80"
-                  }`}
-                  style={{ height: `${h}px` }}
-                />
-              ))}
-            </div>
-
-            {/* Live Streaming Speech Bubble */}
-            <div
-              className={`px-3 py-2 rounded-2xl border text-[11px] leading-relaxed font-mono flex items-center justify-between ${
+            {/* Pill 3: Bottom, offset slightly left by 4px */}
+            <motion.div
+              animate={{
+                x: isInteracted ? -6 : -2,
+                y: isInteracted ? 2 : 0,
+              }}
+              transition={{ type: "spring", stiffness: 350, damping: 25, delay: 0.08 }}
+              className={`w-[88%] rounded-full py-1.5 px-3.5 border flex items-center justify-between backdrop-blur-2xl shadow-md ${
                 isDark
-                  ? "bg-white/[0.03] border-white/8 text-white/90"
-                  : "bg-black/[0.02] border-black/6 text-zinc-800"
+                  ? "bg-white/[0.05] border-white/10 shadow-[0_6px_16px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] text-white/90"
+                  : "bg-white/85 border-black/[0.06] shadow-[0_6px_16px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.8)] text-zinc-800"
               }`}
             >
-              <span>
-                {isIndonesian
-                  ? '"Kopi arabika 35rb dari dompet harian"'
-                  : '"Arabica coffee $4.50 from daily cash"'}
-                <span className="inline-block w-1.5 h-3 ml-1 bg-current animate-pulse align-middle" />
-              </span>
-            </div>
-
-            {/* Mini Telemetry Tag Pills */}
-            <div className="flex items-center justify-between gap-1.5 pt-0.5">
-              {(isIndonesian
-                ? ["Suara ke Entri", "Kategori Otomatis", "< 1 Detik"]
-                : ["Voice to Ledger", "Auto-Tagged", "< 1s Engine"]
-              ).map((tag, i) => (
-                <span
-                  key={i}
-                  className={`flex-1 text-center py-1 rounded-xl text-[9px] font-semibold border ${
-                    isDark
-                      ? "bg-white/[0.04] border-white/8 text-white/60"
-                      : "bg-black/[0.03] border-black/6 text-zinc-600"
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center border ${
+                    isDark ? "bg-white/10 border-white/12" : "bg-black/4 border-black/8"
                   }`}
                 >
-                  {tag}
+                  <Sparkles size={10} strokeWidth={2} />
+                </div>
+                <span className="text-[10.5px] font-medium">
+                  {isIndonesian ? "Preset Cepat 1-Ketuk" : "1-Tap Preset"}
                 </span>
-              ))}
-            </div>
+              </div>
+
+              <span className="text-[11px] font-bold font-mono tracking-tight">
+                {isIndonesian ? "Rp 50.000" : "$50.00"}
+              </span>
+            </motion.div>
           </motion.div>
         )}
 
+        {/* ============================================================ */}
+        {/* SLIDE 2: CRYPTOGRAPHIC CRYSTALLINE PLATE WITH 3 DIES         */}
+        {/* ============================================================ */}
         {currentSlide.visual === "vault" && (
           <motion.div
             key="vault"
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            initial={{ opacity: 0, y: 10, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="flex flex-col gap-2.5"
+            exit={{ opacity: 0, y: -10, scale: 0.97 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            className={`w-full rounded-[26px] p-3.5 border flex flex-col gap-2.5 backdrop-blur-2xl ${
+              isDark
+                ? "bg-[#121216]/80 border-white/[0.12] shadow-[0_18px_40px_-10px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.2)]"
+                : "bg-white/90 border-black/[0.08] shadow-[0_14px_32px_-8px_rgba(0,0,0,0.07),inset_0_1.5px_2px_rgba(255,255,255,0.95)]"
+            }`}
           >
-            {/* Top Bar: Vault Status */}
+            {/* Top Shield Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <div
@@ -425,21 +467,17 @@ function DynamicShowcaseCapsule({
               </div>
             </div>
 
-            {/* 3 Crystalline Security Metric Pods */}
-            <div className="grid grid-cols-3 gap-2 py-1">
+            {/* 3 Crystalline Security Dies */}
+            <div className="grid grid-cols-3 gap-2 py-0.5">
               <div
                 className={`p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1 ${
                   isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
                 }`}
               >
-                <Lock size={13} className={isDark ? "text-white/80" : "text-zinc-800"} />
-                <span className="text-[10.5px] font-bold tracking-tight">AES-256</span>
-                <span
-                  className={`text-[8.5px] leading-tight ${
-                    isDark ? "text-white/50" : "text-zinc-500"
-                  }`}
-                >
-                  {isIndonesian ? "Enkripsi Klien" : "Client Cipher"}
+                <Lock size={12} className={isDark ? "text-white/80" : "text-zinc-800"} />
+                <span className="text-[10px] font-bold tracking-tight">AES-256</span>
+                <span className={`text-[8.5px] leading-tight ${isDark ? "text-white/50" : "text-zinc-500"}`}>
+                  {isIndonesian ? "Klien GCM" : "Client GCM"}
                 </span>
               </div>
 
@@ -448,14 +486,10 @@ function DynamicShowcaseCapsule({
                   isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
                 }`}
               >
-                <Check size={13} className={isDark ? "text-white/80" : "text-zinc-800"} />
-                <span className="text-[10.5px] font-bold tracking-tight">Zero-Log</span>
-                <span
-                  className={`text-[8.5px] leading-tight ${
-                    isDark ? "text-white/50" : "text-zinc-500"
-                  }`}
-                >
-                  {isIndonesian ? "Privasi Penuh" : "Zero Knowledge"}
+                <Check size={12} className={isDark ? "text-white/80" : "text-zinc-800"} />
+                <span className="text-[10px] font-bold tracking-tight">Zero-Log</span>
+                <span className={`text-[8.5px] leading-tight ${isDark ? "text-white/50" : "text-zinc-500"}`}>
+                  {isIndonesian ? "Privasi Nol" : "Zero Trace"}
                 </span>
               </div>
 
@@ -464,42 +498,41 @@ function DynamicShowcaseCapsule({
                   isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
                 }`}
               >
-                <ScanFace size={13} className={isDark ? "text-white/80" : "text-zinc-800"} />
-                <span className="text-[10.5px] font-bold tracking-tight">Biometrik</span>
-                <span
-                  className={`text-[8.5px] leading-tight ${
-                    isDark ? "text-white/50" : "text-zinc-500"
-                  }`}
-                >
-                  {isIndonesian ? "Kunci Lokal" : "Hardware Key"}
+                <ScanFace size={12} className={isDark ? "text-white/80" : "text-zinc-800"} />
+                <span className="text-[10px] font-bold tracking-tight">Enclave</span>
+                <span className={`text-[8.5px] leading-tight ${isDark ? "text-white/50" : "text-zinc-500"}`}>
+                  {isIndonesian ? "Kunci Lokal" : "Device Key"}
                 </span>
               </div>
             </div>
 
-            {/* Bottom Telemetry Note */}
+            {/* Footnote */}
             <div
-              className={`text-center py-1 rounded-xl text-[9.5px] font-medium border ${
-                isDark ? "border-white/6 text-white/40" : "border-black/6 text-zinc-500"
+              className={`text-center py-1 rounded-xl text-[9px] font-medium border ${
+                isDark ? "border-white/6 text-white/45" : "border-black/6 text-zinc-500"
               }`}
             >
               {isIndonesian
-                ? "Kunci enkripsi tidak pernah meninggalkan memori perangkat"
-                : "Decryption keys never leave local device memory"}
+                ? "Kunci dekripsi tidak pernah meninggalkan memori perangkat"
+                : "Decryption keys strictly confined to local device memory"}
             </div>
           </motion.div>
         )}
 
+        {/* ============================================================ */}
+        {/* SLIDE 3: ASYMMETRIC SPLIT FLOATING SLABS                     */}
+        {/* ============================================================ */}
         {currentSlide.visual === "domain" && (
           <motion.div
             key="domain"
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="flex flex-col gap-2.5"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            className="w-full flex flex-col gap-2 items-center"
           >
-            {/* Top Bar: Domain Telemetry */}
-            <div className="flex items-center justify-between">
+            {/* Top Bar Header */}
+            <div className="w-full flex items-center justify-between px-1">
               <div className="flex items-center gap-1.5">
                 <div
                   className={`w-5 h-5 rounded-full flex items-center justify-center border ${
@@ -527,58 +560,76 @@ function DynamicShowcaseCapsule({
               </div>
             </div>
 
-            {/* Dual Partition Tiles */}
-            <div className="grid grid-cols-2 gap-2 py-1">
-              <div
-                className={`p-2.5 rounded-2xl border flex flex-col justify-between ${
-                  isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
+            {/* Two Asymmetric Split Floating Slabs */}
+            <div className="w-full flex items-center justify-between gap-2.5 pt-0.5">
+              {/* Left Slab: Personal (Shifted slightly up -2px) */}
+              <motion.div
+                animate={{ y: isInteracted ? -4 : -1 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                className={`flex-1 rounded-[22px] p-3 border flex flex-col justify-between backdrop-blur-2xl shadow-lg ${
+                  isDark
+                    ? "bg-[#141418]/85 border-white/12 shadow-[0_10px_24px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.18)]"
+                    : "bg-white/90 border-black/[0.08] shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.95)]"
                 }`}
               >
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <User size={12} className={isDark ? "text-white/70" : "text-zinc-700"} />
+                  <div
+                    className={`w-4.5 h-4.5 rounded-full flex items-center justify-center border ${
+                      isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
+                    }`}
+                  >
+                    <User size={10} className={isDark ? "text-white/80" : "text-zinc-800"} />
+                  </div>
                   <span className="text-[10.5px] font-semibold tracking-tight">
                     {isIndonesian ? "Pribadi" : "Personal"}
                   </span>
                 </div>
-                <div className="text-[13px] font-bold tracking-tight">
+                <div className="text-[13.5px] font-bold font-mono tracking-tight">
                   {isIndonesian ? "Rp 64,5 Jt" : "$4,250.00"}
                 </div>
                 <span
-                  className={`text-[8.5px] mt-0.5 ${
-                    isDark ? "text-white/45" : "text-zinc-500"
-                  }`}
+                  className={`text-[8.5px] mt-1 ${isDark ? "text-white/45" : "text-zinc-500"}`}
                 >
-                  {isIndonesian ? "Gaya hidup & rutinitas" : "Household & Living"}
+                  {isIndonesian ? "Gaya hidup & keluarga" : "Household & Living"}
                 </span>
-              </div>
+              </motion.div>
 
-              <div
-                className={`p-2.5 rounded-2xl border flex flex-col justify-between ${
-                  isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
+              {/* Right Slab: Venture (Shifted slightly down +2px) */}
+              <motion.div
+                animate={{ y: isInteracted ? 4 : 2 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25, delay: 0.04 }}
+                className={`flex-1 rounded-[22px] p-3 border flex flex-col justify-between backdrop-blur-2xl shadow-lg ${
+                  isDark
+                    ? "bg-[#16161c]/90 border-white/15 shadow-[0_12px_26px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.22)]"
+                    : "bg-white/95 border-black/[0.09] shadow-[0_10px_22px_rgba(0,0,0,0.07),inset_0_1px_0_rgba(255,255,255,1)]"
                 }`}
               >
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <Activity size={12} className={isDark ? "text-white/70" : "text-zinc-700"} />
+                  <div
+                    className={`w-4.5 h-4.5 rounded-full flex items-center justify-center border ${
+                      isDark ? "bg-white/10 border-white/15" : "bg-black/5 border-black/10"
+                    }`}
+                  >
+                    <Activity size={10} className={isDark ? "text-white/80" : "text-zinc-800"} />
+                  </div>
                   <span className="text-[10.5px] font-semibold tracking-tight">
                     {isIndonesian ? "Usaha" : "Venture"}
                   </span>
                 </div>
-                <div className="text-[13px] font-bold tracking-tight">
+                <div className="text-[13.5px] font-bold font-mono tracking-tight">
                   {isIndonesian ? "Rp 285 Jt" : "$18,920.00"}
                 </div>
                 <span
-                  className={`text-[8.5px] mt-0.5 ${
-                    isDark ? "text-white/45" : "text-zinc-500"
-                  }`}
+                  className={`text-[8.5px] mt-1 ${isDark ? "text-white/45" : "text-zinc-500"}`}
                 >
                   {isIndonesian ? "Operasional & faktur" : "Operations & Invoices"}
                 </span>
-              </div>
+              </motion.div>
             </div>
 
-            {/* Isolation Badge */}
+            {/* Divider Firewall Tag */}
             <div
-              className={`text-center py-1 rounded-xl text-[9.5px] font-medium border ${
+              className={`w-full text-center py-1 rounded-xl text-[9px] font-medium border ${
                 isDark ? "border-white/6 text-white/40" : "border-black/6 text-zinc-500"
               }`}
             >
@@ -589,16 +640,23 @@ function DynamicShowcaseCapsule({
           </motion.div>
         )}
 
+        {/* ============================================================ */}
+        {/* SLIDE 4: AEROSPACE RUNWAY DIAL & PROGRESS ARC                */}
+        {/* ============================================================ */}
         {currentSlide.visual === "runway" && (
           <motion.div
             key="runway"
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            initial={{ opacity: 0, y: 10, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="flex flex-col gap-2.5"
+            exit={{ opacity: 0, y: -10, scale: 0.97 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            className={`w-full rounded-[26px] p-3.5 border flex flex-col gap-2.5 backdrop-blur-2xl ${
+              isDark
+                ? "bg-[#121216]/80 border-white/[0.12] shadow-[0_18px_40px_-10px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.2)]"
+                : "bg-white/90 border-black/[0.08] shadow-[0_14px_32px_-8px_rgba(0,0,0,0.07),inset_0_1.5px_2px_rgba(255,255,255,0.95)]"
+            }`}
           >
-            {/* Top Bar: Runway Telemetry */}
+            {/* Top Runway Telemetry */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <div
@@ -627,7 +685,7 @@ function DynamicShowcaseCapsule({
               </div>
             </div>
 
-            {/* Runway Main Display */}
+            {/* Main Dial & Progress Arc */}
             <div
               className={`p-3 rounded-2xl border flex flex-col gap-2 ${
                 isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
@@ -637,23 +695,19 @@ function DynamicShowcaseCapsule({
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-[22px] font-bold tracking-tight">8.4</span>
                   <span
-                    className={`text-[11px] font-medium ${
-                      isDark ? "text-white/60" : "text-zinc-600"
-                    }`}
+                    className={`text-[11px] font-medium ${isDark ? "text-white/60" : "text-zinc-600"}`}
                   >
                     {isIndonesian ? "bulan cadangan" : "months runway"}
                   </span>
                 </div>
                 <span
-                  className={`text-[10px] font-mono ${
-                    isDark ? "text-white/45" : "text-zinc-500"
-                  }`}
+                  className={`text-[10px] font-mono ${isDark ? "text-white/45" : "text-zinc-500"}`}
                 >
                   {isIndonesian ? "Target: 6 Bln" : "Target: 6 Mo"}
                 </span>
               </div>
 
-              {/* Progress Runway Bar */}
+              {/* Multi-Segment Runway Progress Bar */}
               <div
                 className={`h-2 w-full rounded-full overflow-hidden p-0.5 border ${
                   isDark ? "bg-black/40 border-white/10" : "bg-zinc-200 border-black/10"
@@ -726,12 +780,12 @@ export function LoginPage() {
 
   const slides = getShowcaseSlides(isIndonesian);
 
-  // Auto-advance showcase slides every 6 seconds (paused when user opens form or modal)
+  // Auto-advance showcase slides every 5.5 seconds (paused when user opens form or modal)
   useEffect(() => {
     if (showEmailForm || showPinModal) return;
     const timer = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % slides.length);
-    }, 6000);
+    }, 5500);
     return () => clearInterval(timer);
   }, [showEmailForm, showPinModal, slides.length]);
 
@@ -1002,8 +1056,8 @@ export function LoginPage() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Dynamic Floating Glass Capsule Display (VisionOS / Dynamic Island Style) */}
-        <div className="w-full flex justify-center items-center min-h-[140px] my-1">
+        {/* Dynamic Showcase Display Stage (Architecturally Differentiated Glass Morphism) */}
+        <div className="w-full flex justify-center items-center min-h-[165px] my-1">
           <DynamicShowcaseCapsule
             currentSlide={currentSlide}
             isDark={isDark}
