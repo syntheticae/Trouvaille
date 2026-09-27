@@ -8,6 +8,11 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'never',
     preferredContentMode: 'mobile'
+  },
+  android: {
+    backgroundColor: '#0A0A0B',
+    allowMixedContent: true,
+    webContentsDebuggingEnabled: false
   }
 };
 

@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from "react";
+import { Capacitor } from "@capacitor/core";
 import { triggerHaptic } from "../lib/haptics";
 import {
   ChevronRight,
@@ -178,6 +179,7 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
+  const isAndroid = Capacitor.getPlatform() === "android";
   const queryClient = useQueryClient();
   const { data: bills = [] } = useBills();
   const { data: categories = [] } = useCategories();
@@ -1349,9 +1351,13 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate block"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {isIndonesian
-                      ? "Pintasan Apple & Otomatisasi"
-                      : "Apple Shortcuts & Automations"}
+                    {isAndroid
+                      ? isIndonesian
+                        ? "Pintasan URL & Otomatisasi"
+                        : "URL Shortcuts & Automations"
+                      : isIndonesian
+                        ? "Pintasan Apple & Otomatisasi"
+                        : "Apple Shortcuts & Automations"}
                   </span>
                 </div>
               </div>

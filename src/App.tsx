@@ -238,9 +238,10 @@ function AppShell() {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    // 2. Native iOS URL scheme (trouvaille://...) via Capacitor App plugin
+    // 2. Native URL scheme (trouvaille://...) via Capacitor App plugin
     let isSubscribed = true;
     let urlListenerHandle: { remove: () => void } | null = null;
+    let backListenerHandle: { remove: () => void } | null = null;
 
     CapApp.addListener("appUrlOpen", (event) => {
       if (isSubscribed && event?.url) {
@@ -254,13 +255,84 @@ function AppShell() {
         // Safe fallback in standard browser environment
       });
 
+    // 3. Native Android Hardware/Gesture Back Button listener
+    CapApp.addListener("backButton", ({ canGoBack }) => {
+      if (!isSubscribed) return;
+
+      // Priority 1: Close active modal or bottom sheet first
+      if (statementImportOpen) {
+        setStatementImportOpen(false);
+        triggerHaptic("light");
+        return;
+      }
+      if (receiptScanOpen) {
+        setReceiptScanOpen(false);
+        triggerHaptic("light");
+        return;
+      }
+      if (voiceModalOpen) {
+        setVoiceModalOpen(false);
+        triggerHaptic("light");
+        return;
+      }
+      if (addSheetOpen) {
+        setAddSheetOpen(false);
+        triggerHaptic("light");
+        return;
+      }
+      if (recordedShortcutTx) {
+        setRecordedShortcutTx(null);
+        triggerHaptic("light");
+        return;
+      }
+      if (showGuestMigrationModal) {
+        setShowGuestMigrationModal(false);
+        triggerHaptic("light");
+        return;
+      }
+      if (isPreviewingInitialSync) {
+        setIsPreviewingInitialSync(false);
+        triggerHaptic("light");
+        return;
+      }
+
+      // Priority 2: Navigate back in history if not at root
+      if (canGoBack && window.history.length > 1) {
+        window.history.back();
+      } else {
+        // At root page with no modals open -> exit/minimize app
+        CapApp.exitApp();
+      }
+    })
+      .then((handle) => {
+        backListenerHandle = handle;
+      })
+      .catch(() => {
+        // Safe fallback on iOS or Web
+      });
+
     return () => {
       isSubscribed = false;
       if (urlListenerHandle) {
         urlListenerHandle.remove();
       }
+      if (backListenerHandle) {
+        backListenerHandle.remove();
+      }
     };
-  }, [categories, wallets, addTxMutation, isIndonesian]);
+  }, [
+    categories,
+    wallets,
+    addTxMutation,
+    isIndonesian,
+    statementImportOpen,
+    receiptScanOpen,
+    voiceModalOpen,
+    addSheetOpen,
+    recordedShortcutTx,
+    showGuestMigrationModal,
+    isPreviewingInitialSync,
+  ]);
 
   // Flush pending offline mutations when user returns to active app from privacy shield
   useEffect(() => {
