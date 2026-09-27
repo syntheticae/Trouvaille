@@ -22,9 +22,9 @@ import { useLanguage } from "./contexts/LanguageContext";
 import { triggerSuccessHaptic, triggerHaptic } from "./lib/haptics";
 import { format } from "date-fns";
 import {
-  ShortcutSuccessDialog,
+  DynamicIslandHUD,
   type ShortcutRecordedTxData,
-} from "./components/transactions/ShortcutSuccessDialog";
+} from "./components/transactions/DynamicIslandHUD";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchAllTransactionsFromSupabase } from "./hooks/useTransactions";
 import { supabase } from "./lib/supabase";
@@ -159,6 +159,24 @@ function AppShell() {
       window.removeEventListener("trouvaille:preview-initial-sync", handleTriggerPreview);
     };
   }, []);
+
+  useEffect(() => {
+    const handleTestHud = (e: any) => {
+      const detail = e?.detail;
+      setRecordedShortcutTx({
+        amount: detail?.amount || 75000,
+        type: detail?.type || "expense",
+        categoryName: detail?.categoryName || (isIndonesian ? "Makanan" : "Food"),
+        walletName: detail?.walletName || "BCA",
+        date: format(new Date(), "d MMM yyyy"),
+        note: detail?.note || (isIndonesian ? "Kopi Kenangan" : "Coffee"),
+      });
+    };
+    window.addEventListener("trouvaille:test-hud", handleTestHud);
+    return () => {
+      window.removeEventListener("trouvaille:test-hud", handleTestHud);
+    };
+  }, [isIndonesian]);
 
 
   // Handle iOS Custom URL Scheme (trouvaille://...), Back Tap Shortcuts, and Web Share Target
@@ -879,8 +897,8 @@ function AppShell() {
         </Suspense>
       )}
 
-      {/* Luxury Confirmation Modal for Auto-saved Shortcut Transactions */}
-      <ShortcutSuccessDialog
+      {/* Dynamic Island Floating Glass HUD Capsule for Auto-saved Shortcut Transactions */}
+      <DynamicIslandHUD
         data={recordedShortcutTx}
         onClose={() => setRecordedShortcutTx(null)}
         onEdit={() => {

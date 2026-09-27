@@ -63,7 +63,7 @@ interface SlideData {
   stepNum?: number;
   title: string;
   desc: string;
-  actionType?: "test_url" | "copy" | "info";
+  actionType?: "test_url" | "copy" | "info" | "test_hud";
   scheme?: string;
   copyText?: string;
   copyLabel?: string;
@@ -124,6 +124,26 @@ export function AppleShortcutsGuideModal({
     window.location.href = scheme;
   };
 
+  const handleTestHud = () => {
+    triggerHaptic("medium");
+    window.dispatchEvent(
+      new CustomEvent("trouvaille:test-hud", {
+        detail: {
+          amount: 75000,
+          type: "expense",
+          categoryName: isIndonesian ? "Makanan" : "Food",
+          walletName: "BCA",
+          note: isIndonesian ? "Kopi Kenangan" : "Coffee",
+        },
+      })
+    );
+    showToast(
+      isIndonesian ? "Simulasi Dynamic Island HUD aktif!" : "Dynamic Island HUD simulated!",
+      "add",
+      () => {},
+    );
+  };
+
   const categoryListText =
     categories
       .filter((c) => c.type !== "income")
@@ -150,9 +170,8 @@ export function AppleShortcutsGuideModal({
         desc: isIndonesian
           ? "Saat berada di layar bukti pembayaran apa pun (BCA, Livin, GoPay, QRIS, dll.), ketuk 2x bodi belakang iPhone Anda. Pintasan otomatis menjepret layar, membaca teks resi via Live Text OCR, lalu menyimpannya langsung ke Trouvaille tanpa jeda."
           : "While viewing any payment receipt screen (BCA, Livin, GoPay, QRIS, etc.), double tap the back of your iPhone. Shortcuts automatically captures the screen, reads receipt text via Live Text OCR, and logs it directly into Trouvaille.",
-        actionType: "test_url",
-        scheme: "trouvaille://add?text=Pembayaran%20QRIS%20Kopi%20Kenangan%20Rp%2075.000%20berhasil&autosave=true",
-        btnText: isIndonesian ? "Uji Buka URL Sekarang" : "Test Open URL Now",
+        actionType: "test_hud",
+        btnText: isIndonesian ? "Uji Dynamic Island HUD" : "Test Dynamic Island HUD",
       },
       {
         stepNum: 1,
@@ -197,12 +216,8 @@ export function AppleShortcutsGuideModal({
         desc: isIndonesian
           ? "Setiap kali notifikasi transaksi masuk dari m-Banking atau dompet digital (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, dll.), iPhone otomatis membaca teks notifikasi dan langsung menyimpannya ke Trouvaille di latar belakang tanpa sentuhan manual."
           : "Whenever a transaction notification arrives from your banking or e-wallet app (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, etc.), your iPhone automatically reads the notification text and saves it directly to Trouvaille in the background without manual touch.",
-        actionType: "copy",
-        copyText: isIndonesian
-          ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
-          : "trouvaille://add?text=[URL Encoded Text]&autosave=true",
-        copyLabel: isIndonesian ? "Skema Notifikasi" : "Notification Scheme",
-        btnText: isIndonesian ? "Salin Skema Notifikasi" : "Copy Notification Scheme",
+        actionType: "test_hud",
+        btnText: isIndonesian ? "Uji Dynamic Island HUD" : "Test Dynamic Island HUD",
       },
       {
         stepNum: 1,
@@ -2016,6 +2031,23 @@ export function AppleShortcutsGuideModal({
                     }}
                   >
                     <ExternalLink size={12} strokeWidth={2.5} />
+                    <span>{activeSlide.btnText}</span>
+                  </button>
+                </div>
+              )}
+
+              {activeSlide.actionType === "test_hud" && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={handleTestHud}
+                    className="font-semibold text-[12.5px] px-4 py-2 rounded-full inline-flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 transition-all"
+                    style={{
+                      background: isDark ? "#ffffff" : "#000000",
+                      color: isDark ? "#000000" : "#ffffff",
+                    }}
+                  >
+                    <Sparkles size={12} strokeWidth={2} />
                     <span>{activeSlide.btnText}</span>
                   </button>
                 </div>
