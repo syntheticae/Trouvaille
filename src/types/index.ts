@@ -79,6 +79,18 @@ export interface Wallet {
   balance?: number;
 }
 
+export type LedgerMemberRole = "owner" | "editor" | "viewer";
+
+export interface LedgerMember {
+  id: string;
+  ledger_id: string;
+  user_id: string;
+  role: LedgerMemberRole;
+  display_name?: string | null;
+  email?: string | null;
+  joined_at: string;
+}
+
 export interface FinancialLedger {
   id: string;
   user_id?: string;
@@ -90,7 +102,13 @@ export interface FinancialLedger {
   isDefault?: boolean;
   created_at?: string;
   tag?: string;
+  is_shared?: boolean;
+  invite_code?: string | null;
+  role?: LedgerMemberRole;
+  members?: LedgerMember[];
 }
+
+export type FinancialDomain = FinancialLedger;
 
 export interface Transaction {
   id: string;
@@ -106,6 +124,8 @@ export interface Transaction {
   categories?: Category | null;
   space_id?: string | null;
   ledger_id?: string | null;
+  created_by_name?: string | null;
+  created_by_user_id?: string | null;
 }
 
 export interface Bill {

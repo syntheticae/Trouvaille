@@ -282,6 +282,11 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
                   ? fromWalletName
                   : tx.note || (isTransfer ? "Transfer" : fromWalletName)}
               </span>
+              {tx.created_by_name && (
+                <span className="flex items-center gap-0.5 text-[9.5px] opacity-80 font-normal shrink-0">
+                  · {isIndonesian ? "oleh" : "by"} {tx.created_by_name}
+                </span>
+              )}
             </div>
           </div>
         </div>

@@ -18,8 +18,14 @@ import {
   Edit3,
   AlertTriangle,
   ArrowRightLeft,
+  Users,
+  QrCode,
+  Share2,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
+import { ToggleSwitch } from "../ui/ToggleSwitch";
+import { SharedLedgerDetailSheet } from "./SharedLedgerDetailSheet";
+import { JoinLedgerModal } from "./JoinLedgerModal";
 import { useSpace, type MoneySpace } from "../../contexts/SpaceContext";
 import { useAllTransactions } from "../../hooks/useTransactions";
 import type { Transaction } from "../../types";
@@ -30,10 +36,12 @@ import { useLanguage } from "../../contexts/LanguageContext";
 interface ManageLedgersSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenLogin?: () => void;
 }
 
 const LEDGER_ICONS = [
   { name: "BookOpen", label: "General Book", icon: BookOpen },
+  { name: "Users", label: "Shared / Family", icon: Users },
   { name: "User", label: "Personal", icon: User },
   { name: "Briefcase", label: "Business", icon: Briefcase },
   { name: "Store", label: "Merchant / Shop", icon: Store },
@@ -47,7 +55,7 @@ const LEDGER_ICONS = [
   { name: "Coins", label: "Crypto / Capital", icon: Coins },
 ];
 
-export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps) {
+export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedgersSheetProps) {
   const {
     activeSpaceId,
     spaces,
@@ -69,7 +77,13 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
   const [formDescription, setFormDescription] = useState("");
   const [formIcon, setFormIcon] = useState("BookOpen");
   const [formCurrency, setFormCurrency] = useState("IDR");
+  const [formIsShared, setFormIsShared] = useState(false);
   const [reassignToPersonal, setReassignToPersonal] = useState(true);
+
+  // Collaboration sheets state
+  const [sharedDetailOpen, setSharedDetailOpen] = useState(false);
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
+  const [targetSharedLedger, setTargetSharedLedger] = useState<MoneySpace | null>(null);
 
   // Calculate transaction count per ledger
   const transactionCounts = useMemo(() => {
@@ -104,6 +118,7 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
     setFormDescription("");
     setFormIcon("Briefcase");
     setFormCurrency("IDR");
+    setFormIsShared(false);
     setViewState("create");
   };
 
@@ -115,6 +130,7 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
     setFormDescription(ledger.description || "");
     setFormIcon(ledger.icon || "BookOpen");
     setFormCurrency(ledger.currency || "IDR");
+    setFormIsShared(Boolean(ledger.is_shared));
     setViewState("edit");
   };
 
@@ -156,6 +172,7 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
       description: formDescription.trim(),
       icon: formIcon,
       currency: formCurrency,
+      is_shared: formIsShared,
     });
 
     setActiveSpaceId(created.id);
@@ -179,6 +196,7 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
       description: formDescription.trim(),
       icon: formIcon,
       currency: formCurrency,
+      is_shared: formIsShared,
     });
 
     setViewState("list");
@@ -217,6 +235,7 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
   };
 
   return (
+    <>
     <BottomSheet
       isOpen={isOpen}
       onClose={() => {
@@ -296,6 +315,12 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
                           <span className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
                             {ledger.name}
                           </span>
+                          {ledger.is_shared && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.08] text-[var(--text-secondary)] border border-[var(--glass-border)] flex items-center gap-1">
+                              <Users size={10} strokeWidth={2} />
+                              <span>{isIndonesian ? "Bersama" : "Shared"}</span>
+                            </span>
+                          )}
                           {isDefault && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)]">
                               Default
@@ -318,6 +343,22 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
 
                     {/* Actions / Active Status */}
                     <div className="flex items-center gap-1.5 shrink-0">
+                      {ledger.is_shared && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerHaptic("light");
+                            setTargetSharedLedger(ledger);
+                            setSharedDetailOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] transition-colors cursor-pointer"
+                          title={isIndonesian ? "Detail Kolaborasi" : "Collaboration Details"}
+                        >
+                          <Share2 size={14} strokeWidth={1.75} />
+                        </button>
+                      )}
+
                       {!isDefault && !isConsolidated && (
                         <div className="flex items-center gap-1">
                           <button
@@ -355,15 +396,28 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
               })}
             </div>
 
-            {/* Bottom Action: Create New Ledger */}
-            <button
-              type="button"
-              onClick={handleOpenCreate}
-              className="w-full mt-3 py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-dashed border-[var(--glass-border)] text-[var(--text-primary)] hover:bg-white/[0.04] active:scale-[0.99] transition-all cursor-pointer font-medium text-[13px]"
-            >
-              <Plus size={15} strokeWidth={1.75} />
-              <span>{isIndonesian ? "Tambah Buku Kas Baru" : "Add New Financial Ledger"}</span>
-            </button>
+            {/* Bottom Actions: Create New & Join Shared Ledger */}
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button
+                type="button"
+                onClick={handleOpenCreate}
+                className="py-3 px-3 rounded-2xl flex items-center justify-center gap-1.5 border border-dashed border-[var(--glass-border)] text-[var(--text-primary)] hover:bg-white/[0.04] active:scale-[0.99] transition-all cursor-pointer font-medium text-[12.5px]"
+              >
+                <Plus size={14} strokeWidth={2} />
+                <span>{isIndonesian ? "Buku Kas Baru" : "New Ledger"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setJoinModalOpen(true);
+                }}
+                className="py-3 px-3 rounded-2xl flex items-center justify-center gap-1.5 border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:bg-white/[0.06] active:scale-[0.99] transition-all cursor-pointer font-semibold text-[12.5px] shadow-sm"
+              >
+                <QrCode size={14} strokeWidth={2} />
+                <span>{isIndonesian ? "Gabung Buku Kas" : "Join Ledger"}</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -433,6 +487,30 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
                   );
                 })}
               </div>
+            </div>
+
+            {/* Shared Ledger Toggle (Rule 3 layout) */}
+            <div className="p-3.5 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] flex items-center justify-between gap-3">
+              <div className="space-y-0.5 min-w-0">
+                <div className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--text-primary)]">
+                  <Users size={14} strokeWidth={1.75} />
+                  <span>{isIndonesian ? "Buku Kas Bersama (Multi-User)" : "Shared Ledger (Multi-User)"}</span>
+                </div>
+                <p className="text-[11px] text-[var(--text-tertiary)] leading-tight">
+                  {isIndonesian
+                    ? "Kelola keuangan bersama keluarga, pasangan, atau teman."
+                    : "Manage finances collaboratively with family or friends."}
+                </p>
+              </div>
+              <ToggleSwitch
+                checked={formIsShared}
+                onChange={(val) => {
+                  setFormIsShared(val);
+                  if (val && formIcon === "BookOpen") {
+                    setFormIcon("Users");
+                  }
+                }}
+              />
             </div>
 
             {/* Form Actions */}
@@ -530,5 +608,33 @@ export function ManageLedgersSheet({ isOpen, onClose }: ManageLedgersSheetProps)
         )}
       </div>
     </BottomSheet>
+
+    {/* Shared Ledger Detail Sheet */}
+    <SharedLedgerDetailSheet
+      isOpen={sharedDetailOpen}
+      ledger={targetSharedLedger}
+      onClose={() => {
+        setSharedDetailOpen(false);
+        setTargetSharedLedger(null);
+      }}
+      onEditLedger={(l: MoneySpace) => {
+        setSharedDetailOpen(false);
+        setSelectedLedger(l);
+        setFormName(l.name);
+        setFormDescription(l.description || "");
+        setFormIcon(l.icon || "BookOpen");
+        setFormCurrency(l.currency || "IDR");
+        setFormIsShared(Boolean(l.is_shared));
+        setViewState("edit");
+      }}
+    />
+
+    {/* Join Ledger Modal */}
+    <JoinLedgerModal
+      isOpen={joinModalOpen}
+      onClose={() => setJoinModalOpen(false)}
+      onOpenLogin={onOpenLogin}
+    />
+    </>
   );
 }

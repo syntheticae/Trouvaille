@@ -99,11 +99,16 @@ const OnboardingModal = lazy(() =>
     default: module.OnboardingModal,
   })),
 );
+const JoinLedgerModal = lazy(() =>
+  import("./components/settings/JoinLedgerModal").then((module) => ({
+    default: module.JoinLedgerModal,
+  })),
+);
 
 import { useTheme } from "./contexts/ThemeContext";
 
 function AppShell() {
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, exitGuestMode } = useAuth();
   useRealtimeSync(user?.id);
 
   const { theme } = useTheme();
@@ -141,6 +146,8 @@ function AppShell() {
   const addTxMutation = useAddTransaction();
   const { isIndonesian } = useLanguage();
   const [recordedShortcutTx, setRecordedShortcutTx] = useState<ShortcutRecordedTxData | null>(null);
+  const [joinLedgerOpen, setJoinLedgerOpen] = useState(false);
+  const [joinLedgerCode, setJoinLedgerCode] = useState("");
   // Queue for deep links that arrive before categories/wallets have loaded (cold-launch race condition fix)
   const pendingDeepLinkRef = useRef<string | null>(null);
   const [showGuestMigrationModal, setShowGuestMigrationModal] = useState(false);
@@ -149,6 +156,17 @@ function AppShell() {
     const params = new URLSearchParams(window.location.search);
     return params.get("preview") === "initial-sync" || params.get("preview") === "sync";
   });
+
+  useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get("join") || searchParams.get("code");
+      if (code) {
+        setJoinLedgerCode(code);
+        setJoinLedgerOpen(true);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const handleTriggerPreview = () => {
@@ -189,6 +207,19 @@ function AppShell() {
     // Keep the dispatch function up-to-date with fresh categories/wallets/state closures
     handleUrlDispatch.current = (rawUrl: string) => {
       if (!rawUrl) return;
+
+      if (rawUrl.includes("join") || rawUrl.includes("code=")) {
+        try {
+          const urlObj = new URL(rawUrl.replace("trouvaille://", "https://trouvaille.app/"));
+          const code = urlObj.searchParams.get("code") || urlObj.searchParams.get("join");
+          if (code) {
+            setJoinLedgerCode(code);
+            setJoinLedgerOpen(true);
+            return;
+          }
+        } catch {}
+      }
+
       const res = parseDeepLink(rawUrl, categories, wallets);
       if (res.action === "transaction") {
         if (res.autoSave && res.prefilledValues?.amount && res.prefilledValues.amount > 0) {
@@ -913,6 +944,21 @@ function AppShell() {
           }
         }}
       />
+
+      {/* Join Shared Ledger Modal */}
+      {joinLedgerOpen && (
+        <Suspense fallback={null}>
+          <JoinLedgerModal
+            isOpen={joinLedgerOpen}
+            initialCode={joinLedgerCode}
+            onClose={() => {
+              setJoinLedgerOpen(false);
+              setJoinLedgerCode("");
+            }}
+            onOpenLogin={exitGuestMode}
+          />
+        </Suspense>
+      )}
 
 
       {/* iOS App Switcher / Multitasking Privacy Screen Shield */}

@@ -35,6 +35,8 @@ interface TransactionInput {
   created_at?: string;
   space_id?: string | null;
   ledger_id?: string | null;
+  created_by_name?: string | null;
+  created_by_user_id?: string | null;
 }
 
 export interface TransactionFilters {
@@ -87,14 +89,15 @@ function matchesTransactionFilters(
   filters?: TransactionFilters | null,
 ) {
   if (!filters) return true;
-  if (filters.userId && tx.user_id !== filters.userId) return false;
-  if (filters.categoryId && tx.category_id !== filters.categoryId) return false;
-  if (filters.startDate && tx.occurred_on < filters.startDate) return false;
-  if (filters.endDate && tx.occurred_on > filters.endDate) return false;
   if (filters.ledgerId && filters.ledgerId !== "all") {
     const txLedger = tx.ledger_id || tx.space_id || "personal";
     if (txLedger !== filters.ledgerId) return false;
+  } else if (filters.userId && tx.user_id !== filters.userId) {
+    return false;
   }
+  if (filters.categoryId && tx.category_id !== filters.categoryId) return false;
+  if (filters.startDate && tx.occurred_on < filters.startDate) return false;
+  if (filters.endDate && tx.occurred_on > filters.endDate) return false;
   if (filters.search) {
     const search = filters.search.toLowerCase();
     if (!tx.note?.toLowerCase().includes(search)) return false;
@@ -306,7 +309,11 @@ export async function fetchAllTransactionsFromSupabase(
           .order("id", { ascending: false })
           .range(from, from + pageSize - 1);
 
-        if (effectiveUserId) query = query.eq("user_id", effectiveUserId);
+        if (filters?.ledgerId && filters.ledgerId !== "all") {
+          query = query.eq("ledger_id", filters.ledgerId);
+        } else if (effectiveUserId) {
+          query = query.eq("user_id", effectiveUserId);
+        }
         if (filters?.categoryId)
           query = query.eq("category_id", filters.categoryId);
         if (filters?.startDate)
@@ -324,8 +331,11 @@ export async function fetchAllTransactionsFromSupabase(
             .order("id", { ascending: false })
             .range(from, from + pageSize - 1);
 
-          if (effectiveUserId)
+          if (filters?.ledgerId && filters.ledgerId !== "all") {
+            fallbackQuery = fallbackQuery.eq("ledger_id", filters.ledgerId);
+          } else if (effectiveUserId) {
             fallbackQuery = fallbackQuery.eq("user_id", effectiveUserId);
+          }
           if (filters?.categoryId)
             fallbackQuery = fallbackQuery.eq("category_id", filters.categoryId);
           if (filters?.startDate)
@@ -641,6 +651,12 @@ export function useAddTransaction() {
 
       const assignedLedger = input.ledger_id || input.space_id || "personal";
 
+      const createdByName =
+        input.created_by_name ||
+        (session?.user?.user_metadata?.full_name as string) ||
+        session?.user?.email?.split("@")[0] ||
+        null;
+
       const fullTx: Transaction = {
         id: effectiveId,
         user_id: currentUser?.id || userId || "",
@@ -655,6 +671,8 @@ export function useAddTransaction() {
         categories: categoryObj,
         ledger_id: assignedLedger,
         space_id: assignedLedger,
+        created_by_name: createdByName,
+        created_by_user_id: currentUser?.id || userId || null,
       };
 
       // Always save to persistent pending mutations queue first
@@ -674,9 +692,15 @@ export function useAddTransaction() {
 
         let res = await withTimeout(query, 7000);
         if (res.error) {
-          // Graceful fallback: If ledger_id or space_id column does not exist yet in Supabase,
+          // Graceful fallback: If ledger_id, space_id, or created_by columns do not exist yet in Supabase,
           // retry without them so the operation succeeds unconditionally.
-          const { ledger_id: _ledger_id, space_id: _space_id, ...fallbackPayload } = dbPayload;
+          const {
+            ledger_id: _ledger_id,
+            space_id: _space_id,
+            created_by_name: _cbn,
+            created_by_user_id: _cbuid,
+            ...fallbackPayload
+          } = dbPayload;
           res = await withTimeout(
             supabase
               .from("transactions")
@@ -925,6 +949,10 @@ export function useUpdateTransaction() {
         cleanUpdate.ledger_id = input.space_id ?? "personal";
       }
 
+      if (input.created_by_name !== undefined) {
+        cleanUpdate.created_by_name = input.created_by_name;
+      }
+
       // DO NOT include id or user_id in cleanUpdate payload sent to supabase.update()!
       const mutation = enqueuePendingMutation("update", { id, ...cleanUpdate });
 
@@ -937,8 +965,14 @@ export function useUpdateTransaction() {
 
         let res = await withTimeout(query, 7000);
         if (res.error) {
-          // Graceful fallback: retry without ledger_id/space_id if columns don't exist yet
-          const { ledger_id: _ledger_id, space_id: _space_id, ...fallbackPayload } = cleanUpdate;
+          // Graceful fallback: retry without ledger_id/space_id/created_by if columns don't exist yet
+          const {
+            ledger_id: _ledger_id,
+            space_id: _space_id,
+            created_by_name: _cbn,
+            created_by_user_id: _cbuid,
+            ...fallbackPayload
+          } = cleanUpdate;
           res = await withTimeout(
             supabase
               .from("transactions")
