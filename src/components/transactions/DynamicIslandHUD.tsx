@@ -5,54 +5,86 @@ import {
   Sparkles,
   Pencil,
   X,
+  Users,
+  ArrowRight,
 } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { triggerHaptic } from "../../lib/haptics";
+import type { TransactionType } from "../../types";
 
-export interface ShortcutRecordedTxData {
+export interface DynamicIslandHUDData {
   amount: number;
-  type?: "expense" | "income" | "transfer";
-  categoryName: string;
-  walletName: string;
-  date: string;
+  type?: TransactionType;
+  categoryName?: string;
+  walletName?: string;
+  date?: string;
   note?: string;
+  source?: "shortcut" | "partner_sync";
+  partnerName?: string;
+  ledgerId?: string;
+  ledgerName?: string;
 }
 
+export type ShortcutRecordedTxData = DynamicIslandHUDData;
+
 interface DynamicIslandHUDProps {
-  data: ShortcutRecordedTxData | null;
+  data: DynamicIslandHUDData | null;
   onClose: () => void;
   onEdit?: () => void;
+  onViewLedger?: (ledgerId: string) => void;
 }
 
 export function DynamicIslandHUD({
   data,
   onClose,
   onEdit,
+  onViewLedger,
 }: DynamicIslandHUDProps) {
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
+
+  const isPartnerSync = data?.source === "partner_sync";
 
   useEffect(() => {
     if (!data) return;
 
     triggerHaptic("medium");
 
-    // Auto-dismiss after 4.5 seconds
+    // Auto-dismiss after 5 seconds
     const timer = setTimeout(() => {
       onClose();
-    }, 4500);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, [data, onClose]);
+
+  const handleCardClick = () => {
+    if (isPartnerSync && data?.ledgerId && onViewLedger) {
+      triggerHaptic("light");
+      onViewLedger(data.ledgerId);
+      onClose();
+    } else if (!isPartnerSync && onEdit) {
+      triggerHaptic("light");
+      onEdit();
+    }
+  };
 
   return (
     <AnimatePresence>
       {data && (
         <aside
-          aria-label={isIndonesian ? "Pemberitahuan Pencatatan Transaksi" : "Transaction Recorded Notification"}
+          aria-label={
+            isPartnerSync
+              ? isIndonesian
+                ? "Pemberitahuan Mutasi Buku Kas Bersama"
+                : "Shared Ledger Activity Notification"
+              : isIndonesian
+                ? "Pemberitahuan Pencatatan Transaksi"
+                : "Transaction Recorded Notification"
+          }
           className="fixed z-[100000] left-3.5 right-3.5 max-w-sm mx-auto pointer-events-none select-none font-sans"
           style={{
             top: "max(calc(env(safe-area-inset-top, 0px) + 12px), 24px)",
@@ -97,12 +129,7 @@ export function DynamicIslandHUD({
             <div className="flex items-center justify-between gap-2.5">
               <div
                 className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
-                onClick={() => {
-                  if (onEdit) {
-                    triggerHaptic("light");
-                    onEdit();
-                  }
-                }}
+                onClick={handleCardClick}
               >
                 {/* Status Icon Circle */}
                 <div
@@ -117,29 +144,85 @@ export function DynamicIslandHUD({
                     color: "var(--text-primary)",
                   }}
                 >
-                  <Check size={13} strokeWidth={2.5} />
+                  {isPartnerSync ? (
+                    <Users size={13} strokeWidth={2.2} />
+                  ) : (
+                    <Check size={13} strokeWidth={2.5} />
+                  )}
                 </div>
 
                 {/* Eyebrow & Main Amount */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className="text-[9.5px] font-semibold tracking-wider uppercase truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian ? "Pencatatan Otomatis" : "Auto Logged"}
-                    </span>
-                    <Sparkles size={9} strokeWidth={1.5} style={{ color: "var(--text-tertiary)" }} />
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {isPartnerSync ? (
+                      <>
+                        <span
+                          className="text-[9.5px] font-semibold tracking-wider uppercase truncate"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {data.partnerName || (isIndonesian ? "Rekan" : "Partner")}
+                        </span>
+                        <span className="text-[8px] opacity-40 shrink-0">•</span>
+                        <span
+                          className="text-[9.5px] font-medium tracking-normal truncate opacity-85"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {data.ledgerName || (isIndonesian ? "Buku Kas Bersama" : "Shared Ledger")}
+                        </span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse shrink-0 ml-0.5" />
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          className="text-[9.5px] font-semibold tracking-wider uppercase truncate"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {isIndonesian ? "Pencatatan Otomatis" : "Auto Logged"}
+                        </span>
+                        <Sparkles
+                          size={9}
+                          strokeWidth={1.5}
+                          style={{ color: "var(--text-tertiary)" }}
+                        />
+                      </>
+                    )}
                   </div>
                   <div className="text-[15px] font-semibold tracking-tight leading-tight truncate">
+                    {data.type === "expense" ? "-" : data.type === "income" ? "+" : ""}
                     {formatRupiah(data.amount)}
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons: Edit & Close */}
+              {/* Action Buttons: View Ledger / Edit & Close */}
               <div className="flex items-center gap-1 shrink-0">
-                {onEdit && (
+                {isPartnerSync && data.ledgerId && onViewLedger && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic("light");
+                      onViewLedger(data.ledgerId!);
+                      onClose();
+                    }}
+                    className="p-1.5 rounded-full flex items-center justify-center transition-colors cursor-pointer border"
+                    style={{
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(0, 0, 0, 0.04)",
+                      borderColor: isDark
+                        ? "rgba(255, 255, 255, 0.1)"
+                        : "rgba(0, 0, 0, 0.06)",
+                      color: "var(--text-secondary)",
+                    }}
+                    title={isIndonesian ? "Buka Buku Kas" : "Open Ledger"}
+                    aria-label={isIndonesian ? "Buka Buku Kas" : "Open Ledger"}
+                  >
+                    <ArrowRight size={12} strokeWidth={2} />
+                  </button>
+                )}
+
+                {!isPartnerSync && onEdit && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -149,8 +232,12 @@ export function DynamicIslandHUD({
                     }}
                     className="p-1.5 rounded-full flex items-center justify-center transition-colors cursor-pointer border"
                     style={{
-                      background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.04)",
-                      borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.06)",
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(0, 0, 0, 0.04)",
+                      borderColor: isDark
+                        ? "rgba(255, 255, 255, 0.1)"
+                        : "rgba(0, 0, 0, 0.06)",
                       color: "var(--text-secondary)",
                     }}
                     title={isIndonesian ? "Ubah Rincian" : "Edit Details"}
@@ -169,8 +256,12 @@ export function DynamicIslandHUD({
                   }}
                   className="p-1.5 rounded-full flex items-center justify-center transition-colors cursor-pointer border"
                   style={{
-                    background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.04)",
-                    borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.06)",
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.08)"
+                      : "rgba(0, 0, 0, 0.04)",
+                    borderColor: isDark
+                      ? "rgba(255, 255, 255, 0.1)"
+                      : "rgba(0, 0, 0, 0.06)",
                     color: "var(--text-tertiary)",
                   }}
                   title={isIndonesian ? "Tutup" : "Dismiss"}
@@ -181,44 +272,73 @@ export function DynamicIslandHUD({
               </div>
             </div>
 
-            {/* Bottom Row: Metadata Badges (Category · Wallet · Note) */}
+            {/* Bottom Row: Metadata Badges (Category · Wallet / Ledger · Note) */}
             <div
               className="flex items-center gap-1.5 mt-2 pt-2 border-t text-[11px] font-medium overflow-hidden cursor-pointer"
               style={{
-                borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
+                borderColor: isDark
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.06)",
                 color: "var(--text-secondary)",
               }}
-              onClick={() => {
-                if (onEdit) {
-                  triggerHaptic("light");
-                  onEdit();
-                }
-              }}
+              onClick={handleCardClick}
             >
-              <span
-                className="px-2 py-0.5 rounded-md shrink-0 border"
-                style={{
-                  background: isDark ? "rgba(255, 255, 255, 0.07)" : "rgba(0, 0, 0, 0.04)",
-                  borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.06)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                {data.categoryName}
-              </span>
+              {data.categoryName && (
+                <span
+                  className="px-2 py-0.5 rounded-md shrink-0 border truncate max-w-[120px]"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.07)"
+                      : "rgba(0, 0, 0, 0.04)",
+                    borderColor: isDark
+                      ? "rgba(255, 255, 255, 0.1)"
+                      : "rgba(0, 0, 0, 0.06)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {data.categoryName}
+                </span>
+              )}
 
-              <span
-                className="px-2 py-0.5 rounded-md shrink-0 border"
-                style={{
-                  background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
-                  borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                {data.walletName}
-              </span>
+              {data.walletName && (
+                <span
+                  className="px-2 py-0.5 rounded-md shrink-0 border truncate max-w-[120px]"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.03)",
+                    borderColor: isDark
+                      ? "rgba(255, 255, 255, 0.08)"
+                      : "rgba(0, 0, 0, 0.05)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  {data.walletName}
+                </span>
+              )}
+
+              {isPartnerSync && !data.walletName && data.ledgerName && (
+                <span
+                  className="px-2 py-0.5 rounded-md shrink-0 border truncate max-w-[120px]"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.03)",
+                    borderColor: isDark
+                      ? "rgba(255, 255, 255, 0.08)"
+                      : "rgba(0, 0, 0, 0.05)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  {data.ledgerName}
+                </span>
+              )}
 
               {data.note && (
-                <span className="truncate opacity-80 pl-0.5" style={{ color: "var(--text-tertiary)" }}>
+                <span
+                  className="truncate opacity-80 pl-0.5"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   {data.note}
                 </span>
               )}
@@ -228,10 +348,12 @@ export function DynamicIslandHUD({
             <motion.div
               initial={{ scaleX: 1 }}
               animate={{ scaleX: 0 }}
-              transition={{ duration: 4.5, ease: "linear" }}
+              transition={{ duration: 5, ease: "linear" }}
               className="absolute bottom-0 left-0 right-0 h-[1.5px] origin-left"
               style={{
-                background: isDark ? "rgba(255, 255, 255, 0.22)" : "rgba(0, 0, 0, 0.18)",
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.22)"
+                  : "rgba(0, 0, 0, 0.18)",
               }}
             />
           </motion.div>

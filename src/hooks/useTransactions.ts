@@ -46,6 +46,7 @@ export interface TransactionFilters {
   endDate?: string;
   userId?: string;
   ledgerId?: string;
+  filterByUserIdOnly?: boolean;
 }
 
 interface TransactionQueryOptions {
@@ -92,7 +93,7 @@ function matchesTransactionFilters(
   if (filters.ledgerId && filters.ledgerId !== "all") {
     const txLedger = tx.ledger_id || tx.space_id || "personal";
     if (txLedger !== filters.ledgerId) return false;
-  } else if (filters.userId && tx.user_id !== filters.userId) {
+  } else if (filters.filterByUserIdOnly && filters.userId && tx.user_id !== filters.userId) {
     return false;
   }
   if (filters.categoryId && tx.category_id !== filters.categoryId) return false;
@@ -311,8 +312,8 @@ export async function fetchAllTransactionsFromSupabase(
 
         if (filters?.ledgerId && filters.ledgerId !== "all") {
           query = query.eq("ledger_id", filters.ledgerId);
-        } else if (effectiveUserId) {
-          query = query.eq("user_id", effectiveUserId);
+        } else if (filters?.filterByUserIdOnly && filters?.userId) {
+          query = query.eq("user_id", filters.userId);
         }
         if (filters?.categoryId)
           query = query.eq("category_id", filters.categoryId);
@@ -333,8 +334,8 @@ export async function fetchAllTransactionsFromSupabase(
 
           if (filters?.ledgerId && filters.ledgerId !== "all") {
             fallbackQuery = fallbackQuery.eq("ledger_id", filters.ledgerId);
-          } else if (effectiveUserId) {
-            fallbackQuery = fallbackQuery.eq("user_id", effectiveUserId);
+          } else if (filters?.filterByUserIdOnly && filters?.userId) {
+            fallbackQuery = fallbackQuery.eq("user_id", filters.userId);
           }
           if (filters?.categoryId)
             fallbackQuery = fallbackQuery.eq("category_id", filters.categoryId);

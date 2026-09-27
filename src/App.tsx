@@ -36,6 +36,7 @@ import {
 } from "./lib/guestMigration";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import { usePrivacy } from "./contexts/PrivacyContext";
+import { useSpace } from "./contexts/SpaceContext";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
@@ -109,7 +110,13 @@ import { useTheme } from "./contexts/ThemeContext";
 
 function AppShell() {
   const { user, isGuest, exitGuestMode } = useAuth();
-  useRealtimeSync(user?.id);
+  const { setActiveSpaceId } = useSpace();
+
+  useRealtimeSync(user?.id, {
+    onPartnerTransaction: (data) => {
+      setRecordedShortcutTx(data);
+    },
+  });
 
   const { theme } = useTheme();
   const isDark = theme !== "light";
@@ -928,7 +935,7 @@ function AppShell() {
         </Suspense>
       )}
 
-      {/* Dynamic Island Floating Glass HUD Capsule for Auto-saved Shortcut Transactions */}
+      {/* Dynamic Island Floating Glass HUD Capsule for Auto-saved Shortcut & Live Partner Transactions */}
       <DynamicIslandHUD
         data={recordedShortcutTx}
         onClose={() => setRecordedShortcutTx(null)}
@@ -942,6 +949,9 @@ function AppShell() {
             setRecordedShortcutTx(null);
             setAddSheetOpen(true);
           }
+        }}
+        onViewLedger={(ledgerId) => {
+          setActiveSpaceId(ledgerId);
         }}
       />
 
