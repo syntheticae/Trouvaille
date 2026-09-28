@@ -12,7 +12,6 @@ import {
   List,
   MessageSquare,
   Link as LinkIcon,
-  Calendar,
   FileText,
   Search,
   RotateCcw,
@@ -370,27 +369,29 @@ export function AppleShortcutsGuideModal({
       },
       {
         stepNum: 4,
-        title: isIndonesian ? "Langkah 4: Tanggal & Catatan Keterangan" : "Step 4: Date & Notes",
+        title: isIndonesian ? "Langkah 4: Masukan Catatan & Rangkai Teks" : "Step 4: Notes & Assemble Text",
         desc: isIndonesian
-          ? "1. Tambah tindakan 'Tanggal Saat Ini' atau 'Minta Masukan' Tanggal (beri nama 'Tanggal').\n2. Tambah 'Minta Masukan' Teks dengan pertanyaan: 'Catatan tambahan?' (opsional).\n3. Tambah 'Enkode URL' untuk variabel Catatan tersebut (beri nama 'Catatan')."
-          : "1. Add 'Current Date' action or 'Ask for Input' Date (rename to 'Date').\n2. Add 'Ask for Input' Text with prompt: 'Any notes?' (optional).\n3. Add 'URL Encode' action for notes (rename to 'Notes').",
-        actionType: "info",
-        noteText: isIndonesian
-          ? "Variabel terpisah ini akan dirangkai pada langkah berikutnya."
-          : "These variables will be chained into the final URL scheme in the next step.",
+          ? "1. Tambah tindakan 'Minta Masukan' Teks dengan pertanyaan: 'Catatan tambahan?' (opsional, ganti nama variabel menjadi 'Catatan').\n2. Tambah tindakan 'Teks', lalu tempel templat di bawah dan sisipkan variabel biru ke masing-masing baris:"
+          : "1. Add 'Ask for Input' Text: 'Any notes?' (optional, rename variable to 'Notes').\n2. Add 'Text' action, paste the template below and place your blue variables on each line:",
+        actionType: "copy",
+        copyText: isIndonesian
+          ? "Nominal: [Nominal]\nKategori: [Kategori]\nAkun: [Akun]\nCatatan: [Catatan]"
+          : "Nominal: [Amount]\nKategori: [Category]\nAkun: [Account]\nCatatan: [Notes]",
+        copyLabel: isIndonesian ? "Format Teks Transaksi" : "Transaction Text Format",
+        btnText: isIndonesian ? "Salin Format Teks" : "Copy Text Format",
       },
       {
         stepNum: 5,
-        title: isIndonesian ? "Langkah 5: Rangkai Tindakan Buka URL" : "Step 5: Assemble Full 'Open URLs' Scheme",
+        title: isIndonesian ? "Langkah 5: Enkode URL & Buka Trouvaille" : "Step 5: URL Encode & Open Trouvaille",
         desc: isIndonesian
-          ? "Tambahkan tindakan 'Buka URL' di urutan paling akhir. Tempel templat di bawah, lalu ganti setiap token dalam tanda kurung siku dengan variabel biru yang sudah disiapkan di langkah sebelumnya:"
-          : "Add 'Open URLs' action at the end. Paste the template below, then replace each bracketed token with the corresponding blue variable you configured above:",
+          ? "1. Tambah tindakan 'Enkode URL' untuk variabel 'Teks' dari Langkah 4.\n2. Tambah tindakan 'Buka URL' di urutan paling akhir dan tempel templat di bawah, lalu ganti [Teks Terenkode] dengan variabel biru 'Teks Terenkode URL':"
+          : "1. Add 'URL Encode' action for the 'Text' variable from Step 4.\n2. Add 'Open URLs' action at the end and paste the template below, replacing [URL Encoded Text] with the blue 'URL Encoded Text' variable:",
         actionType: "copy",
         copyText: isIndonesian
-          ? "trouvaille://add?category=[Kategori]&amount=[Nominal]&wallet=[Akun]&date=[Tanggal]&note=[Catatan]&autosave=true"
-          : "trouvaille://add?category=[Category]&amount=[Amount]&wallet=[Account]&date=[Date]&note=[Notes]&autosave=true",
-        copyLabel: isIndonesian ? "Skema URL Lengkap" : "Full URL Scheme",
-        btnText: isIndonesian ? "Salin Skema URL Lengkap" : "Copy Full URL Scheme",
+          ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
+          : "trouvaille://add?text=[URL Encoded Text]&autosave=true",
+        copyLabel: isIndonesian ? "Skema Buka URL" : "Open URLs Scheme",
+        btnText: isIndonesian ? "Salin Skema Buka URL" : "Copy Open URLs Scheme",
       },
     ],
   };
@@ -1863,46 +1864,51 @@ export function AppleShortcutsGuideModal({
                     <ChevronLeft size={9} strokeWidth={2.5} />
                   </div>
                   <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
-                    {isIndonesian ? "Tanggal & Catatan" : "Date & Notes"}
+                    {isIndonesian ? "Catatan & Format Teks" : "Notes & Format Text"}
                   </span>
                 </div>
 
                 {/* Preceding Step 3: Wallet (Dimmed Chain) */}
-                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3.5px 7px", opacity: 0.45 }}>
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3px 6px", opacity: 0.45 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <List size={5.5} className="text-white" />
+                    <div style={{ width: 9, height: 9, borderRadius: 2, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <List size={5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 6.5, color: "white" }}>{isIndonesian ? "Pilih Akun" : "Choose Account"}</span>
+                    <span style={{ fontSize: 6, color: "white" }}>{isIndonesian ? "Pilih Akun" : "Choose Account"}</span>
                     <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ {isIndonesian ? "Akun" : "Account"}</span>
                   </div>
                 </div>
 
-                <div style={{ width: 1.5, height: 5, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+                <div style={{ width: 1.5, height: 4, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
-                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3, fontSize: 7.5 }}>
-                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <Calendar size={6} strokeWidth={2.5} className="text-white" />
+                {/* Ask for Input Text (Notes) */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "4px 6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <MessageSquare size={5.5} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ color: "white" }}>Current Date</span>
-                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>
-                      {isIndonesian ? "Tanggal" : "Date"}
+                    <span style={{ color: "white" }}>Ask for Text</span>
+                    <span style={{ color: "white", opacity: 0.6, fontSize: 6.5 }}>
+                      {isIndonesian ? "(Catatan)" : "(Notes)"}
                     </span>
                   </div>
                 </div>
 
-                <div style={{ width: 1.5, height: 7, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+                <div style={{ width: 1.5, height: 4, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
-                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3, fontSize: 7.5 }}>
-                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <MessageSquare size={6} strokeWidth={2.5} className="text-white" />
+                {/* Text Block Assembling Variables */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "4px 6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 2 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <FileText size={5.5} className="text-white" />
                     </div>
-                    <span style={{ color: "white" }}>Ask for Text</span>
-                    <span style={{ color: "white", opacity: 0.6 }}>
-                      {isIndonesian ? "(Catatan)" : "(Notes)"}
-                    </span>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>Text</span>
+                  </div>
+                  <div style={{ background: "#18181a", borderRadius: 4, padding: "3px 4px", fontSize: 5.5, lineHeight: 1.35, color: "rgba(255,255,255,0.85)" }}>
+                    <div>Nominal: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>Nominal</span></div>
+                    <div>{isIndonesian ? "Kategori" : "Category"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Kategori" : "Category"}</span></div>
+                    <div>{isIndonesian ? "Akun" : "Account"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Akun" : "Account"}</span></div>
+                    <div>{isIndonesian ? "Catatan" : "Note"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Catatan" : "Notes"}</span></div>
                   </div>
                 </div>
               </div>
@@ -1928,39 +1934,47 @@ export function AppleShortcutsGuideModal({
                     <ChevronLeft size={9} strokeWidth={2.5} />
                   </div>
                   <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
-                    {isIndonesian ? "Buka URL Skema" : "Open URLs Scheme"}
+                    {isIndonesian ? "Enkode URL & Buka Trouvaille" : "URL Encode & Open Trouvaille"}
                   </span>
                 </div>
 
-                {/* Preceding Variables Chain (Dimmed) */}
-                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3.5px 7px", opacity: 0.45 }}>
+                {/* Preceding Text Chain (Dimmed) */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3.5px 6px", opacity: 0.45 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 6 }}>
-                    <span style={{ color: "rgba(255,255,255,0.7)" }}>Variables Ready:</span>
-                    <div style={{ display: "flex", gap: 2 }}>
-                      <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>Nominal</span>
-                      <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>{isIndonesian ? "Kategori" : "Category"}</span>
-                      <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>{isIndonesian ? "Akun" : "Account"}</span>
-                    </div>
+                    <span style={{ color: "rgba(255,255,255,0.7)" }}>{isIndonesian ? "Teks Transaksi Siap" : "Transaction Text Ready"}</span>
+                    <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>Text</span>
                   </div>
                 </div>
 
-                <div style={{ width: 1.5, height: 5, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+                <div style={{ width: 1.5, height: 4, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
-                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 3 }}>
-                    <div style={{ width: 11, height: 11, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <ExternalLink size={6} strokeWidth={2.5} className="text-white" />
+                {/* URL Encode Action Block */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "4px 6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <LinkIcon size={5.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Open</span>
-                    <span style={{ fontSize: 7, color: "#2997ff" }}>trouvaille://add?</span>
+                    <span style={{ color: "white", fontWeight: 600 }}>URL Encode</span>
+                    <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px", fontSize: 6 }}>
+                      {isIndonesian ? "Teks" : "Text"}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ width: 1.5, height: 4, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                {/* Open URLs Action Block */}
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "5px 6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 2 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ExternalLink size={5.5} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>Open</span>
+                    <span style={{ fontSize: 6.5, color: "#2997ff" }}>trouvaille://add?</span>
                   </div>
                   
-                  <div style={{ background: "#18181a", borderRadius: 5, padding: "4px 5px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
-                    <span style={{ color: "#2997ff" }}>category=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Kategori" : "Category"}</span>
-                    <span style={{ color: "#2997ff" }}>&amount=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>Nominal</span>
-                    <span style={{ color: "#2997ff" }}>&wallet=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Akun" : "Account"}</span>
-                    <span style={{ color: "#2997ff" }}>&date=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Tanggal" : "Date"}</span>
-                    <span style={{ color: "#2997ff" }}>&note=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Catatan" : "Notes"}</span>
+                  <div style={{ background: "#18181a", borderRadius: 4, padding: "3.5px 5px", fontSize: 6, lineHeight: 1.4, wordBreak: "break-all" }}>
+                    <span style={{ color: "#2997ff" }}>text=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 2px" }}>{isIndonesian ? "Teks Terenkode" : "URL Encoded Text"}</span>
                     <span style={{ color: "#2997ff" }}>&autosave=true</span>
                   </div>
                 </div>

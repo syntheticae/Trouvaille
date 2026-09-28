@@ -109,6 +109,35 @@ describe("DeepLink & iOS Shortcuts URL Scheme Handler", () => {
     expect(result.prefilledValues?.wallet_id).toBe("w-bca");
   });
 
+  it("parses structured multi-line shortcut text from iOS Dialog shortcut", () => {
+    const dialogText = "Nominal: 50.000\nKategori: Makanan\nAkun: BCA\nCatatan: Makan siang bareng";
+    const url = `trouvaille://add?text=${encodeURIComponent(dialogText)}&autosave=true`;
+    const result = parseDeepLink(url, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.autoSave).toBe(true);
+    expect(result.prefilledValues?.amount).toBe(50000);
+    expect(result.prefilledValues?.categoryId).toBe("c-food");
+    expect(result.prefilledValues?.walletId).toBe("w-bca");
+    expect(result.prefilledValues?.note).toBe("Makan siang bareng");
+  });
+
+  it("sanitizes unencoded spaces and & in direct query scheme", () => {
+    const rawUrl = "trouvaille://add?category=Makanan & Minuman&amount=50000&wallet=BCA&note=Makan & Minum&autosave=true";
+    const result = parseDeepLink(rawUrl, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.autoSave).toBe(true);
+    expect(result.prefilledValues?.amount).toBe(50000);
+    expect(result.prefilledValues?.categoryId).toBe("c-food");
+    expect(result.prefilledValues?.walletId).toBe("w-bca");
+  });
+
+  it("handles restore-balance action route", () => {
+    expect(parseDeepLink("trouvaille://restore-balance").action).toBe("restore_balance");
+    expect(parseDeepLink("trouvaille://clean-sync").action).toBe("restore_balance");
+  });
+
   it("returns none action on empty or invalid inputs", () => {
     expect(parseDeepLink("").action).toBe("none");
     expect(parseDeepLink("random-string-without-scheme").action).toBe("none");
