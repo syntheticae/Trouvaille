@@ -194,7 +194,7 @@ export function PayBillModal({
             {paymentMode === "personal" && wallets.length > 0 && (
               <div className="pt-1 border-t border-[var(--glass-border)]">
                 <span className="text-[10px] font-medium text-[var(--text-tertiary)] block mb-1.5">
-                  {isIndonesian ? "Pilih Akun Sumber:" : "Select Debit Account:"}
+                  {isIndonesian ? "Pilih Sumber Wallet:" : "Select Debit Wallet:"}
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   {wallets.map((w) => {

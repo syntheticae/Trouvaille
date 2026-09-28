@@ -468,7 +468,7 @@ export function ShortcutManagementSheets({
             className="font-semibold text-lg mb-3"
             style={{ color: "var(--text-primary)" }}
           >
-            {isIndonesian ? "Pilih Akun / Dompet" : "Select Account"}
+            {isIndonesian ? "Pilih Wallet" : "Select Wallet"}
           </h3>
           <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
             {wallets.map((w) => {

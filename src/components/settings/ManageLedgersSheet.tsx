@@ -146,7 +146,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
     await setDefaultLedger(ledgerId);
     showToast(
       isIndonesian
-        ? `"${ledgerName}" dijadikan buku kas utama bawaan.`
+        ? `"${ledgerName}" dijadikan ledger utama bawaan.`
         : `"${ledgerName}" set as default ledger.`,
       "update",
       () => {},
@@ -167,7 +167,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
     const selected = spaces.find((s) => s.id === id);
     showToast(
       isIndonesian
-        ? `Buku kas aktif: ${selected?.name || "Buku Kas"}`
+        ? `Ledger aktif: ${selected?.name || "Ledger"}`
         : `Active ledger: ${selected?.name || "Ledger"}`,
       "update",
       () => {},
@@ -192,7 +192,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
     e.preventDefault();
     if (!formName.trim()) {
       showToast(
-        isIndonesian ? "Nama buku kas wajib diisi" : "Ledger name is required",
+        isIndonesian ? "Nama ledger wajib diisi" : "Ledger name is required",
         "delete",
         () => {},
       );
@@ -216,7 +216,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
     setViewState("list");
     showToast(
       isIndonesian
-        ? `Buku kas "${created.name}" berhasil dibuat`
+        ? `Ledger "${created.name}" berhasil dibuat`
         : `Ledger "${created.name}" created successfully`,
       "add",
       () => {},
@@ -245,7 +245,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
     setViewState("list");
     setSelectedLedger(null);
     showToast(
-      isIndonesian ? "Buku kas berhasil diperbarui" : "Ledger updated successfully",
+      isIndonesian ? "Ledger berhasil diperbarui" : "Ledger updated successfully",
       "update",
       () => {},
     );
@@ -264,7 +264,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
 
     showToast(
       isIndonesian
-        ? `Buku kas "${deletedName}" dihapus`
+        ? `Ledger "${deletedName}" dihapus`
         : `Ledger "${deletedName}" deleted`,
       "delete",
       () => {},
@@ -288,23 +288,23 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
       title={
         viewState === "create"
           ? isIndonesian
-            ? "Buku Kas Baru"
+            ? "Ledger Baru"
             : "Create New Ledger"
           : viewState === "edit"
             ? isIndonesian
-              ? "Edit Buku Kas"
+              ? "Edit Ledger"
               : "Edit Ledger"
             : viewState === "join"
               ? isIndonesian
-                ? "Gabung Buku Kas Bersama"
+                ? "Gabung Ledger Bersama"
                 : "Join Shared Ledger"
               : viewState === "delete_confirm"
                 ? isIndonesian
                   ? "Konfirmasi Hapus"
                   : "Delete Confirmation"
                 : isIndonesian
-                  ? "Kelola Buku Kas"
-                  : "Financial Ledgers"
+                  ? "Kelola Ledger"
+                  : "Manage Ledgers"
       }
     >
       <div className="px-5 sm:px-6 space-y-5 pb-[calc(env(safe-area-inset-bottom,16px)+28px)] pt-1 select-none">
@@ -316,8 +316,8 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
             {/* Header Subtitle */}
             <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
               {isIndonesian
-                ? "Isolasi pencatatan arus kas, dompet, dan laporan keuangan ke dalam buku kas mandiri."
-                : "Isolate cashflows, wallets, and reports into independent financial books."}
+                ? "Isolasi pencatatan arus kas, wallet, dan laporan keuangan ke dalam ledger mandiri."
+                : "Isolate cashflows, wallets, and reports into independent financial ledgers."}
             </p>
 
             {/* Ledgers List */}
@@ -381,7 +381,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                           )}
                         </div>
                         <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
-                          {ledger.description || (isConsolidated ? (isIndonesian ? "Seluruh buku kas aktif terkonsolidasi" : "All active ledgers consolidated") : (isIndonesian ? "Buku kas finansial mandiri" : "Independent financial domain"))}
+                          {ledger.description || (isConsolidated ? (isIndonesian ? "Seluruh ledger aktif terkonsolidasi" : "All active ledgers consolidated") : (isIndonesian ? "Ledger finansial mandiri" : "Independent financial ledger"))}
                         </p>
                         <span className="text-[10px] font-mono text-[var(--text-tertiary)] opacity-75 mt-0.5 inline-block">
                           {txCount} {isIndonesian ? "transaksi" : "transactions"}
@@ -404,8 +404,8 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                             }`}
                             title={
                               isDefault
-                                ? (isIndonesian ? "Buku Kas Bawaan Utama" : "Default Ledger")
-                                : (isIndonesian ? "Jadikan Buku Kas Bawaan" : "Set as Default Ledger")
+                                ? (isIndonesian ? "Ledger Bawaan Utama" : "Default Ledger")
+                                : (isIndonesian ? "Jadikan Ledger Bawaan" : "Set as Default Ledger")
                             }
                           >
                             <Star size={14} className={isDefault ? "fill-current" : ""} strokeWidth={1.75} />
@@ -420,7 +420,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                                 ? "text-[var(--text-primary)] bg-white/[0.08]"
                                 : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06]"
                             }`}
-                            title={isIndonesian ? "Bagikan Buku Kas" : "Share Ledger"}
+                            title={isIndonesian ? "Bagikan Ledger" : "Share Ledger"}
                           >
                             <Share2 size={14} strokeWidth={1.75} />
                           </button>
@@ -430,7 +430,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                             type="button"
                             onClick={(e) => handleOpenEdit(ledger, e)}
                             className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] transition-colors cursor-pointer"
-                            title={isIndonesian ? "Edit Buku Kas" : "Edit Ledger"}
+                            title={isIndonesian ? "Edit Ledger" : "Edit Ledger"}
                           >
                             <Edit3 size={14} strokeWidth={1.75} />
                           </button>
@@ -441,7 +441,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                               type="button"
                               onClick={(e) => handleOpenDelete(ledger, e)}
                               className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-rose-400 hover:bg-white/[0.06] transition-colors cursor-pointer"
-                              title={isIndonesian ? "Hapus Buku Kas" : "Delete Ledger"}
+                              title={isIndonesian ? "Hapus Ledger" : "Delete Ledger"}
                             >
                               <Trash2 size={14} strokeWidth={1.75} />
                             </button>
@@ -473,7 +473,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                 className="py-3 px-3 rounded-2xl flex items-center justify-center gap-1.5 border border-dashed border-[var(--glass-border)] text-[var(--text-primary)] hover:bg-white/[0.04] active:scale-[0.99] transition-all cursor-pointer font-medium text-[12.5px]"
               >
                 <Plus size={14} strokeWidth={2} />
-                <span>{isIndonesian ? "Buku Kas Baru" : "New Ledger"}</span>
+                <span>{isIndonesian ? "Ledger Baru" : "New Ledger"}</span>
               </button>
               <button
                 type="button"
@@ -484,7 +484,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                 className="py-3 px-3 rounded-2xl flex items-center justify-center gap-1.5 border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:bg-white/[0.06] active:scale-[0.99] transition-all cursor-pointer font-semibold text-[12.5px] shadow-sm"
               >
                 <QrCode size={14} strokeWidth={2} />
-                <span>{isIndonesian ? "Gabung Buku Kas" : "Join Ledger"}</span>
+                <span>{isIndonesian ? "Gabung Ledger" : "Join Ledger"}</span>
               </button>
             </div>
           </div>
@@ -501,7 +501,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
             {/* Ledger Name Input */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-0.5">
-                {isIndonesian ? "Nama Buku Kas" : "Ledger Name"}
+                {isIndonesian ? "Nama Ledger" : "Ledger Name"}
               </label>
               <input
                 type="text"
@@ -522,7 +522,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                 type="text"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
-                placeholder={isIndonesian ? "Tujuan atau keterangan buku kas" : "Purpose or domain scope"}
+                placeholder={isIndonesian ? "Tujuan atau keterangan ledger" : "Purpose or domain scope"}
                 className="w-full px-4 py-3 rounded-xl text-[13px] bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-all"
               />
             </div>
@@ -563,11 +563,11 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
               <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--text-primary)]">
                   <Star size={14} className={formIsDefault ? "fill-current" : ""} strokeWidth={1.75} />
-                  <span>{isIndonesian ? "Buku Kas Bawaan (Utama)" : "Default Ledger"}</span>
+                  <span>{isIndonesian ? "Ledger Bawaan Utama" : "Default Ledger"}</span>
                 </div>
                 <p className="text-[11px] text-[var(--text-tertiary)] leading-tight">
                   {isIndonesian
-                    ? "Buka buku kas ini secara otomatis saat aplikasi pertama kali dijalankan."
+                    ? "Buka ledger ini secara otomatis saat aplikasi pertama kali dijalankan."
                     : "Automatically open this ledger whenever the app starts up."}
                 </p>
               </div>
@@ -584,7 +584,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
               <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--text-primary)]">
                   <Users size={14} strokeWidth={1.75} />
-                  <span>{isIndonesian ? "Buku Kas Bersama (Multi-User)" : "Shared Ledger (Multi-User)"}</span>
+                  <span>{isIndonesian ? "Ledger Bersama" : "Shared Ledger"}</span>
                 </div>
                 <p className="text-[11px] text-[var(--text-tertiary)] leading-tight">
                   {isIndonesian
@@ -618,7 +618,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
               >
                 {viewState === "create"
                   ? isIndonesian
-                    ? "Buat Buku Kas"
+                    ? "Buat Ledger"
                     : "Create Ledger"
                   : isIndonesian
                     ? "Simpan Perubahan"
@@ -643,7 +643,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                 </h4>
                 <p className="text-[11px] text-[var(--text-tertiary)] mt-1 leading-relaxed">
                   {isIndonesian
-                    ? "Buku kas ini akan dihapus dari sistem. Pilih bagaimana transaksi yang sudah tercatat di dalamnya diperlakukan:"
+                    ? "Ledger ini akan dihapus dari sistem. Pilih bagaimana transaksi yang sudah tercatat di dalamnya diperlakukan:"
                     : "This ledger will be removed. Choose how existing transactions recorded inside this ledger should be handled:"}
                 </p>
               </div>
@@ -658,11 +658,11 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                 <ArrowRightLeft size={15} strokeWidth={1.75} className="text-[var(--text-secondary)] shrink-0" />
                 <div>
                   <span className="text-[12.5px] font-medium text-[var(--text-primary)] block">
-                    {isIndonesian ? "Pindahkan ke Buku Kas Pribadi" : "Reassign to Personal Ledger"}
+                    {isIndonesian ? "Pindahkan ke Ledger Pribadi" : "Reassign to Personal Ledger"}
                   </span>
                   <span className="text-[11px] text-[var(--text-tertiary)] block">
                     {isIndonesian
-                      ? "Transaksi tidak dihapus, hanya dialihkan ke Personal."
+                      ? "Transaksi tidak dihapus, hanya dialihkan ke Ledger Pribadi."
                       : "Transactions will be preserved in your Personal domain."}
                   </span>
                 </div>
@@ -708,7 +708,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
               className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
             >
               <ArrowLeft size={14} strokeWidth={2} />
-              <span>{isIndonesian ? "Kembali ke Daftar Buku Kas" : "Back to Ledgers List"}</span>
+              <span>{isIndonesian ? "Kembali ke Daftar Ledger" : "Back to Ledgers List"}</span>
             </button>
             <JoinLedgerContent
               onSuccess={() => {

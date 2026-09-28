@@ -806,7 +806,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                   )}
                   <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
                     {selectedWalletId
-                      ? activeWallet?.name || (isIndonesian ? "Pilih Dompet" : "Select Wallet")
+                      ? activeWallet?.name || (isIndonesian ? "Pilih Wallet" : "Select Wallet")
                       : isIndonesian
                       ? "Otomatis dari File"
                       : "Auto-Detect"}
@@ -1290,7 +1290,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                       <p className="text-[11px] font-bold truncate" style={{ color: "var(--text-primary)" }}>
                         {[
                           newWallets.length > 0
-                            ? `${newWallets.length} ${isIndonesian ? "Akun Baru" : "New Accounts"}`
+                            ? `${newWallets.length} ${isIndonesian ? "Wallet Baru" : "New Wallets"}`
                             : null,
                           newCategories.length > 0
                             ? `${newCategories.length} ${isIndonesian ? "Kategori Baru" : "New Categories"}`
@@ -1302,7 +1302,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                       <p className="text-[10px] truncate font-mono mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                         {[
                           newWallets.length > 0
-                            ? `${isIndonesian ? "Akun" : "Accounts"}: ${newWallets.join(", ")}`
+                            ? `${isIndonesian ? "Wallet" : "Wallets"}: ${newWallets.join(", ")}`
                             : null,
                           newCategories.length > 0
                             ? `${isIndonesian ? "Kategori" : "Categories"}: ${newCategories.join(", ")}`
@@ -1443,7 +1443,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                               <span className="truncate">
                                 {item.walletName ||
                                   wallets.find((w) => w.id === item.walletId)?.name ||
-                                  (isIndonesian ? "Dompet" : "Wallet")}
+                                  (isIndonesian ? "Wallet" : "Wallet")}
                               </span>
                             </span>
                           )}
@@ -1657,7 +1657,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
           setWalletSheetOpen(false);
           setWalletSearchQuery("");
         }}
-        title={isIndonesian ? "Pilih Akun / Dompet" : "Select Account / Wallet"}
+        title={isIndonesian ? "Pilih Wallet" : "Select Wallet"}
       >
         <div
           className="space-y-3 p-2"
@@ -1678,7 +1678,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               type="text"
               value={walletSearchQuery}
               onChange={(e) => setWalletSearchQuery(e.target.value)}
-              placeholder={isIndonesian ? "Cari akun atau dompet…" : "Search account or wallet…"}
+              placeholder={isIndonesian ? "Cari wallet…" : "Search wallet…"}
               className="bg-transparent flex-1 text-[12px] outline-none placeholder:text-zinc-500"
               style={{ color: "var(--text-primary)" }}
             />
@@ -1693,7 +1693,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
             )}
           </div>
 
-          {/* Option 1: Otomatis dari File (Multi-Akun) */}
+          {/* Option 1: Otomatis dari File (Multi-Wallet) */}
           {!walletSearchQuery && (
             <button
               type="button"
@@ -1723,7 +1723,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                 <div className="text-left">
                   <div className="flex items-center gap-1.5">
                     <span className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
-                      {isIndonesian ? "Otomatis dari File (Multi-Akun)" : "Auto-Detect from File"}
+                      {isIndonesian ? "Otomatis dari File (Multi-Wallet)" : "Auto-Detect from File"}
                     </span>
                     <span
                       className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-semibold"
@@ -1738,8 +1738,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                   </div>
                   <p className="text-[11px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                     {isIndonesian
-                      ? "Gunakan kolom akun dari file untuk memetakan dompet tiap transaksi"
-                      : "Route transactions to respective accounts specified in the file"}
+                      ? "Gunakan kolom wallet dari file untuk memetakan tiap transaksi"
+                      : "Route transactions to respective wallets specified in the file"}
                   </p>
                 </div>
               </div>
@@ -1797,7 +1797,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
             })}
             {filteredWallets.length === 0 && (
               <div className="py-8 text-center text-[12px]" style={{ color: "var(--text-tertiary)" }}>
-                {isIndonesian ? "Tidak ada dompet ditemukan" : "No wallets found"}
+                {isIndonesian ? "Tidak ada wallet ditemukan" : "No wallets found"}
               </div>
             )}
           </div>
@@ -1808,7 +1808,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
       <BottomSheet
         isOpen={destWalletSheetOpen}
         onClose={() => setDestWalletSheetOpen(false)}
-        title={isIndonesian ? "Pilih Dompet Penerima Transfer" : "Select Transfer Target Wallet"}
+        title={isIndonesian ? "Pilih Wallet Penerima Transfer" : "Select Transfer Target Wallet"}
       >
         <div
           className="space-y-2 p-2"

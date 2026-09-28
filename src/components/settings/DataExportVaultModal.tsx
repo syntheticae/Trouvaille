@@ -79,13 +79,13 @@ export function DataExportVaultModal({
                     {isIndonesian ? "Ekspor Laporan Keuangan" : "Financial Report Export"}
                   </h4>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-medium">
-                    PDF / XLS / CSV
+                    PDF / CSV / JSON
                   </span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                   {isIndonesian
-                    ? "Cetak posisi keuangan, arus kas, neraca, dan mutasi buku kas dalam format PDF eksekutif, spreadsheet Excel / CSV, atau arsip JSON."
-                    : "Generate official executive statements, cash flows, balance sheets, Excel / CSV spreadsheets, or JSON vault archives."}
+                    ? "Cetak posisi keuangan, arus kas, neraca, dan mutasi buku kas dalam format PDF eksekutif, berkas CSV, atau arsip JSON."
+                    : "Generate official executive statements, cash flows, balance sheets, CSV ledgers, or JSON vault archives."}
                 </p>
               </div>
             </div>

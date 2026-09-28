@@ -47,8 +47,8 @@ export function WalletManagementSheets({
     ? "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 20%, rgba(255, 255, 255, 0.06) 80%, transparent 100%)"
     : "linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.04) 20%, rgba(0, 0, 0, 0.04) 80%, transparent 100%)";
 
-  const [addBudgetOpen, setAddBudgetOpen] = useState(false);
-  const [budgetName, setBudgetName] = useState("");
+  const [addWalletOpen, setAddWalletOpen] = useState(false);
+  const [walletName, setWalletName] = useState("");
   const [walletIcon, setWalletIcon] = useState("Wallet");
   const [hasCustomPickedWalletIcon, setHasCustomPickedWalletIcon] = useState(false);
   const [iconPickerTarget, setIconPickerTarget] = useState<"add" | "edit" | null>(null);
@@ -156,19 +156,19 @@ export function WalletManagementSheets({
       });
   }, [wallets, classificationFilter, walletSearch, balancesById, balancesByName]);
 
-  const handleSaveBudget = () => {
-    if (!budgetName.trim()) return;
-    const name = budgetName.trim();
+  const handleSaveWallet = () => {
+    if (!walletName.trim()) return;
+    const name = walletName.trim();
     const chosenIcon = walletIcon || getWalletIcon(name) || "Wallet";
     addWallet.mutate(
       { name, icon: chosenIcon },
       {
         onSuccess: () => {
-          setAddBudgetOpen(false);
-          setBudgetName("");
+          setAddWalletOpen(false);
+          setWalletName("");
           setWalletIcon("Wallet");
           setHasCustomPickedWalletIcon(false);
-          showToast(isIndonesian ? "Akun ditambahkan" : "Account added", "add", () => {});
+          showToast(isIndonesian ? "Wallet ditambahkan" : "Wallet added", "add", () => {});
         },
       },
     );
@@ -270,27 +270,27 @@ export function WalletManagementSheets({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                {isIndonesian ? "Akun & Dompet" : "Accounts & Wallets"}
+                {isIndonesian ? "Wallet Saya" : "My Wallets"}
               </p>
               <h2 className="amount font-mono text-[28px] font-bold tracking-tight text-[var(--text-primary)] leading-tight mt-0.5">
                 {formatRupiah(totalAssets)}
               </h2>
               <p className="text-[11px] font-medium text-[var(--text-tertiary)] mt-0.5">
-                {wallets.length} {isIndonesian ? "akun terdaftar · Rekapitulasi Neraca" : "registered accounts · Balance Sheet"}
+                {wallets.length} {isIndonesian ? "wallet terdaftar · Rekapitulasi Neraca" : "registered wallets · Balance Summary"}
               </p>
             </div>
             <button
               type="button"
               onClick={() => {
                 onClose();
-                setTimeout(() => setAddBudgetOpen(true), 300);
+                setTimeout(() => setAddWalletOpen(true), 300);
               }}
               className="w-9 h-9 rounded-full flex items-center justify-center font-bold shadow-md active:scale-95 shrink-0 cursor-pointer transition-transform"
               style={{
                 background: "var(--accent)",
                 color: "var(--accent-ink)",
               }}
-              title={isIndonesian ? "Tambah Akun Baru" : "Add New Account"}
+              title={isIndonesian ? "Tambah Wallet Baru" : "Add New Wallet"}
             >
               <Plus size={18} strokeWidth={2.25} />
             </button>
@@ -311,7 +311,7 @@ export function WalletManagementSheets({
                 type="text"
                 value={walletSearch}
                 onChange={(e) => setWalletSearch(e.target.value)}
-                placeholder={isIndonesian ? "Cari akun (cth. BCA, GoPay, Tunai)..." : "Search accounts (e.g. BCA, GoPay, Cash)..."}
+                placeholder={isIndonesian ? "Cari wallet (cth. BCA, GoPay, Tunai)..." : "Search wallets (e.g. BCA, GoPay, Cash)..."}
                 className="bg-transparent text-[12.5px] font-medium flex-1 outline-none min-w-0"
                 style={{ color: "var(--text-primary)" }}
               />
@@ -403,22 +403,22 @@ export function WalletManagementSheets({
                 >
                   {walletSearch.trim()
                     ? (isIndonesian
-                        ? `Tidak ada akun yang cocok dengan "${walletSearch}"`
-                        : `No accounts matching "${walletSearch}"`)
+                        ? `Tidak ada wallet yang cocok dengan "${walletSearch}"`
+                        : `No wallets matching "${walletSearch}"`)
                     : (isIndonesian
-                        ? "Tidak ada akun dalam kategori ini"
-                        : "No accounts found in this category")}
+                        ? "Tidak ada wallet dalam kategori ini"
+                        : "No wallets found in this category")}
                 </p>
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
-                    setTimeout(() => setAddBudgetOpen(true), 300);
+                    setTimeout(() => setAddWalletOpen(true), 300);
                   }}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--accent)] hover:border-[var(--accent)] active:scale-95 transition-all cursor-pointer"
                 >
                   <Plus size={13} strokeWidth={2} />
-                  <span>{isIndonesian ? "Tambah Akun Baru" : "Add New Account"}</span>
+                  <span>{isIndonesian ? "Tambah Wallet Baru" : "Add New Wallet"}</span>
                 </button>
               </div>
             ) : (
@@ -490,8 +490,8 @@ export function WalletManagementSheets({
                               {" · "}
                               <span>
                                 {isZero
-                                  ? (isIndonesian ? "Akun Dorman (Rp 0)" : "Dormant (Rp 0)")
-                                  : (isIndonesian ? "Akun Aktif" : "Active Account")}
+                                  ? (isIndonesian ? "Wallet Dorman (Rp 0)" : "Dormant Wallet (Rp 0)")
+                                  : (isIndonesian ? "Wallet Aktif" : "Active Wallet")}
                               </span>
                             </p>
                           </div>
@@ -554,7 +554,7 @@ export function WalletManagementSheets({
               </div>
             )}
 
-            {/* Bottom Footnote: Purge Unused Rp 0 Accounts */}
+            {/* Bottom Footnote: Purge Unused Rp 0 Wallets */}
             {unusedZeroWallets.length >= 2 && wallets.length > 1 && (
               <div
                 className="mt-4 p-3 rounded-2xl border flex items-center justify-between text-[11px] transition-all"
@@ -567,7 +567,7 @@ export function WalletManagementSheets({
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)] opacity-60 shrink-0" />
                   <span className="truncate" style={{ color: "var(--text-tertiary)" }}>
                     <strong className="font-semibold text-[var(--text-secondary)]">
-                      {unusedZeroWallets.length} {isIndonesian ? "akun" : "accounts"}
+                      {unusedZeroWallets.length} {isIndonesian ? "wallet" : "wallets"}
                     </strong>{" "}
                     {isIndonesian ? "bersaldo Rp 0" : "with Rp 0 balance"}
                   </span>
@@ -578,8 +578,8 @@ export function WalletManagementSheets({
                     if (
                       !confirm(
                         isIndonesian
-                          ? `Hapus ${unusedZeroWallets.length} akun bersaldo Rp 0? Akun aktif dengan saldo positif tidak akan terpengaruh.`
-                          : `Delete ${unusedZeroWallets.length} accounts with Rp 0 balance? Active accounts with positive balances will not be touched.`,
+                          ? `Hapus ${unusedZeroWallets.length} wallet bersaldo Rp 0? Wallet aktif dengan saldo positif tidak akan terpengaruh.`
+                          : `Delete ${unusedZeroWallets.length} wallets with Rp 0 balance? Active wallets with positive balances will not be touched.`,
                       )
                     ) {
                       return;
@@ -587,14 +587,14 @@ export function WalletManagementSheets({
                     unusedZeroWallets.forEach((w) => deleteWallet.mutate(w.id));
                     showToast(
                       isIndonesian
-                        ? `${unusedZeroWallets.length} akun kosong dihapus`
-                        : `${unusedZeroWallets.length} empty accounts removed`,
+                        ? `${unusedZeroWallets.length} wallet kosong dihapus`
+                        : `${unusedZeroWallets.length} empty wallets removed`,
                       "delete",
                     );
                   }}
                   className="font-semibold hover:underline shrink-0 pl-2 transition-all cursor-pointer text-[var(--text-primary)]"
                 >
-                  {isIndonesian ? "Bersihkan Akun Kosong" : "Purge Unused"}
+                  {isIndonesian ? "Bersihkan Wallet Kosong" : "Purge Unused Wallets"}
                 </button>
               </div>
             )}
@@ -788,7 +788,7 @@ export function WalletManagementSheets({
         </div>
       </BottomSheet>
 
-      {/* Edit Account Modal */}
+      {/* Edit Wallet Modal */}
       <BottomSheet isOpen={!!editWallet} onClose={() => setEditWallet(null)}>
         <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between">
@@ -796,7 +796,7 @@ export function WalletManagementSheets({
               className="font-semibold text-lg"
               style={{ color: "var(--text-primary)" }}
             >
-              {isIndonesian ? "Edit Akun" : "Edit Account"}
+              {isIndonesian ? "Edit Wallet" : "Edit Wallet"}
             </h3>
             <button
               type="button"
@@ -825,7 +825,7 @@ export function WalletManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {isIndonesian ? "Nama Akun" : "Account Name"}
+              {isIndonesian ? "Nama Wallet" : "Wallet Name"}
             </label>
             <input
               type="text"
@@ -835,7 +835,7 @@ export function WalletManagementSheets({
                   prev ? { ...prev, name: e.target.value } : null,
                 )
               }
-              placeholder={isIndonesian ? "Nama Akun" : "Account Name"}
+              placeholder={isIndonesian ? "Nama Wallet" : "Wallet Name"}
               className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
               style={{
                 background: "var(--bg-elevated)",
@@ -850,35 +850,35 @@ export function WalletManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {isIndonesian ? "Tipe Akun (Neraca / Posisi Keuangan)" : "Account Type (Neraca / Balance Sheet)"}
+              {isIndonesian ? "Klasifikasi Neraca Wallet" : "Wallet Balance Sheet Classification"}
             </label>
             <div className="grid grid-cols-1 gap-1.5">
               {(
                 [
                   {
                     key: "liquid",
-                    label: isIndonesian ? "Kas & Rekening Likuid" : "Liquid Cash & Bank",
-                    desc: isIndonesian ? "Uang tunai, giro, tabungan, e-wallet (Aset Lancar)" : "Cash, checking, savings, e-wallets (Aset Lancar)",
+                    label: isIndonesian ? "Kas & Bank Likuid" : "Liquid Cash & Bank",
+                    desc: isIndonesian ? "Uang tunai, tabungan bank, dan saldo e-wallet (Aset Lancar)" : "Cash, checking, savings, and e-wallets (Liquid Assets)",
                   },
                   {
                     key: "investment",
                     label: isIndonesian ? "Portofolio Investasi" : "Investment Portfolio",
-                    desc: isIndonesian ? "Saham, kripto, reksa dana, emas (Aset Investasi)" : "Stocks, crypto, mutual funds, gold (Aset Investasi)",
+                    desc: isIndonesian ? "Saham, kripto, reksa dana, dan emas (Aset Investasi)" : "Stocks, crypto, mutual funds, and gold (Invested Assets)",
                   },
                   {
                     key: "receivable",
-                    label: isIndonesian ? "Piutang" : "Receivable (Piutang)",
-                    desc: isIndonesian ? "Uang yang dipinjamkan ke pihak lain (Aset Piutang)" : "Money lent out to others (Aset Piutang)",
+                    label: isIndonesian ? "Piutang" : "Receivables",
+                    desc: isIndonesian ? "Dana yang dipinjamkan ke pihak lain (Aset Piutang)" : "Money lent out to third parties (Receivable Assets)",
                   },
                   {
                     key: "credit",
                     label: isIndonesian ? "Kartu Kredit & PayLater" : "Credit Card & PayLater",
-                    desc: isIndonesian ? "Kredit bergulir / limit terpakai (Liabilitas Lancar)" : "Revolving lines of credit (Liabilitas Lancar)",
+                    desc: isIndonesian ? "Kredit bergulir dan limit terpakai (Liabilitas Lancar)" : "Revolving lines of credit and paylater (Current Liabilities)",
                   },
                   {
                     key: "loan",
-                    label: isIndonesian ? "Pinjaman & Utang Berjangka" : "Term Loan & Liabilities",
-                    desc: isIndonesian ? "Utang jangka panjang, KPR, pinjaman bank (Liabilitas Jangka Panjang)" : "Long-term debt, mortgages, loans (Liabilitas Jangka Panjang)",
+                    label: isIndonesian ? "Pinjaman & Utang Berjangka" : "Term Loans & Debt",
+                    desc: isIndonesian ? "Utang jangka panjang, KPR, dan pinjaman bank (Liabilitas Jangka Panjang)" : "Long-term debt, mortgages, and bank loans (Long-term Liabilities)",
                   },
                 ] as const
               ).map((opt) => {
@@ -950,7 +950,7 @@ export function WalletManagementSheets({
                   {
                     onSuccess: () => {
                       setEditWallet(null);
-                      showToast(isIndonesian ? "Akun diperbarui" : "Account updated", "update", () => {});
+                      showToast(isIndonesian ? "Wallet diperbarui" : "Wallet updated", "update", () => {});
                     },
                   },
                 );
@@ -969,8 +969,8 @@ export function WalletManagementSheets({
                 if (
                   !confirm(
                     isIndonesian
-                      ? `Hapus akun "${editWallet.name}"?`
-                      : `Delete account "${editWallet.name}"?`
+                      ? `Hapus wallet "${editWallet.name}"?`
+                      : `Delete wallet "${editWallet.name}"?`
                   )
                 ) {
                   return;
@@ -979,7 +979,7 @@ export function WalletManagementSheets({
                   onSuccess: () => {
                     setEditWallet(null);
                     showToast(
-                      isIndonesian ? "Akun dihapus" : "Account deleted",
+                      isIndonesian ? "Wallet dihapus" : "Wallet deleted",
                       "delete",
                       () => {}
                     );
@@ -988,8 +988,8 @@ export function WalletManagementSheets({
                     showToast(
                       error?.message ||
                         (isIndonesian
-                          ? "Gagal menghapus akun"
-                          : "Failed to delete account"),
+                          ? "Gagal menghapus wallet"
+                          : "Failed to delete wallet"),
                       "delete",
                       () => {}
                     );
@@ -999,16 +999,16 @@ export function WalletManagementSheets({
               className="w-full py-3 rounded-2xl font-semibold text-[13px] border border-red-500/20 text-red-400 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
               <Trash2 size={14} />
-              <span>{isIndonesian ? "Hapus Akun Ini" : "Delete This Account"}</span>
+              <span>{isIndonesian ? "Hapus Wallet Ini" : "Delete Wallet"}</span>
             </button>
           </div>
         </div>
       </BottomSheet>
 
-      {/* Add Account Modal with Available Defaults & Custom Creator */}
+      {/* Add Wallet Modal with Available Defaults & Custom Creator */}
       <BottomSheet
-        isOpen={addBudgetOpen}
-        onClose={() => setAddBudgetOpen(false)}
+        isOpen={addWalletOpen}
+        onClose={() => setAddWalletOpen(false)}
       >
         <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between">
@@ -1016,7 +1016,7 @@ export function WalletManagementSheets({
               className="font-semibold text-lg"
               style={{ color: "var(--text-primary)" }}
             >
-              {isIndonesian ? "Tambah Akun" : "Add Account"}
+              {isIndonesian ? "Tambah Wallet" : "Add Wallet"}
             </h3>
             <button
               type="button"
@@ -1049,7 +1049,7 @@ export function WalletManagementSheets({
                   className="text-[11px] font-bold uppercase tracking-wider block"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  {isIndonesian ? "Pilihan Akun Siap Pakai" : "Preset Accounts"} ({availableDefaultWallets.length})
+                  {isIndonesian ? "Pilihan Wallet Siap Pakai" : "Preset Wallets"} ({availableDefaultWallets.length})
                 </label>
               </div>
 
@@ -1083,8 +1083,8 @@ export function WalletManagementSheets({
                 <div className="p-3 text-center rounded-xl bg-[var(--bg-elevated)] border border-[var(--glass-border)]">
                   <p className="text-[11px] text-[var(--text-tertiary)]">
                     {isIndonesian
-                      ? "Semua akun dalam kategori ini sudah ditambahkan."
-                      : "All accounts in this category have been added."}
+                      ? "Semua wallet dalam kategori ini sudah ditambahkan."
+                      : "All wallets in this category have been added."}
                   </p>
                 </div>
               ) : (
@@ -1106,7 +1106,7 @@ export function WalletManagementSheets({
                             { name, icon },
                             {
                               onSuccess: () => {
-                                setAddBudgetOpen(false);
+                                setAddWalletOpen(false);
                                 showToast(
                                   isIndonesian
                                     ? `${name} ditambahkan`
@@ -1145,13 +1145,13 @@ export function WalletManagementSheets({
             </div>
           )}
 
-          {/* Section 2: Create Custom Account */}
+          {/* Section 2: Create Custom Wallet */}
           <div className="pt-2 border-t border-[var(--glass-border)] space-y-3">
             <label
               className="text-[11px] font-bold uppercase tracking-wider block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {isIndonesian ? "Atau Buat Akun Kustom" : "Or Create Custom Account"}
+              {isIndonesian ? "Atau Buat Wallet Kustom" : "Or Create Custom Wallet"}
             </label>
             <div
               className="flex items-center gap-3 p-3 rounded-2xl"
@@ -1180,29 +1180,29 @@ export function WalletManagementSheets({
               </button>
               <input
                 type="text"
-                value={budgetName}
+                value={walletName}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setBudgetName(val);
+                  setWalletName(val);
                   if (!hasCustomPickedWalletIcon) {
                     setWalletIcon(getWalletIcon(val));
                   }
                 }}
-                placeholder={isIndonesian ? "Nama Akun (cth. Tabungan, Dompet Saku)" : "Account Name (e.g. Tabungan, Dompet Saku)"}
+                placeholder={isIndonesian ? "Nama Wallet (cth. BCA, GoPay, Tunai)" : "Wallet Name (e.g. Checking, Savings, Cash)"}
                 className="w-full bg-transparent outline-none font-semibold text-[14px]"
                 style={{ color: "var(--text-primary)" }}
               />
             </div>
 
             <button
-              onClick={handleSaveBudget}
+              onClick={handleSaveWallet}
               className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 shadow-lg cursor-pointer"
               style={{
                 background: "var(--accent)",
                 color: "var(--accent-ink)",
               }}
             >
-              {isIndonesian ? "Simpan Akun Kustom" : "Save Custom Account"}
+              {isIndonesian ? "Simpan Wallet Kustom" : "Save Custom Wallet"}
             </button>
           </div>
         </div>
@@ -1227,8 +1227,8 @@ export function WalletManagementSheets({
         }}
         title={
           iconPickerTarget === "add"
-            ? (isIndonesian ? "Pilih Ikon Akun" : "Choose Account Icon")
-            : (isIndonesian ? "Edit Ikon Akun" : "Edit Account Icon")
+            ? (isIndonesian ? "Pilih Ikon Wallet" : "Choose Wallet Icon")
+            : (isIndonesian ? "Edit Ikon Wallet" : "Edit Wallet Icon")
         }
       />
     </>

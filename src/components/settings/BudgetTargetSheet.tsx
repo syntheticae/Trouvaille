@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { formatRupiah } from "../../lib/utils";
 import { useToast } from "../../contexts/ToastContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { getBudgetPeriodInterval } from "../../lib/financialMath";
 import { Calendar } from "lucide-react";
 
@@ -22,6 +23,7 @@ export function BudgetTargetSheet({
   budgetPeriodStart = 1,
   setBudgetPeriodStart,
 }: BudgetTargetSheetProps) {
+  const { isIndonesian } = useLanguage();
   const { showToast } = useToast();
   const [tempBudgetTarget, setTempBudgetTarget] = useState(String(budgetTarget || ""));
   const [tempPeriodStart, setTempPeriodStart] = useState<number>(budgetPeriodStart);
@@ -45,13 +47,31 @@ export function BudgetTargetSheet({
       setBudgetPeriodStart(tempPeriodStart);
     }
     onClose();
-    showToast("Budget target & period saved", "add", () => {});
+    showToast(
+      isIndonesian
+        ? "Pengaturan anggaran berhasil disimpan"
+        : "Budget settings saved successfully",
+      "add",
+      () => {},
+    );
   };
 
   const presetDays = [
-    { day: 1, label: "Day 1", desc: "Calendar" },
-    { day: 25, label: "Day 25", desc: "Payroll" },
-    { day: 27, label: "Day 27", desc: "Payroll" },
+    {
+      day: 1,
+      label: isIndonesian ? "Tgl 1" : "Day 1",
+      desc: isIndonesian ? "Awal Bulan" : "Calendar",
+    },
+    {
+      day: 25,
+      label: isIndonesian ? "Tgl 25" : "Day 25",
+      desc: isIndonesian ? "Gajian" : "Payroll",
+    },
+    {
+      day: 27,
+      label: isIndonesian ? "Tgl 27" : "Day 27",
+      desc: isIndonesian ? "Gajian" : "Payroll",
+    },
   ];
 
   return (
@@ -62,10 +82,12 @@ export function BudgetTargetSheet({
             className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
-            Budget & Spending Cycle
+            {isIndonesian ? "Anggaran & Siklus Belanja" : "Budget & Spending Cycle"}
           </h3>
           <p className="text-[12px] mt-1" style={{ color: "var(--text-tertiary)" }}>
-            Set your monthly limit and synchronize the spending cycle with your salary date.
+            {isIndonesian
+              ? "Atur batas maksimal belanja bulanan dan sinkronkan siklus pembukuan dengan tanggal gajian Anda."
+              : "Set your monthly spending limit and synchronize the cycle with your salary date."}
           </p>
         </div>
 
@@ -75,7 +97,7 @@ export function BudgetTargetSheet({
             className="text-[10px] font-semibold uppercase tracking-wider mb-1 block px-1"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Monthly Spending Limit
+            {isIndonesian ? "Batas Anggaran Bulanan" : "Monthly Spending Limit"}
           </label>
           <input
             type="text"
@@ -103,13 +125,15 @@ export function BudgetTargetSheet({
               className="text-[10px] font-semibold uppercase tracking-wider block"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Budget Period Start
+              {isIndonesian ? "Awal Siklus Anggaran" : "Budget Period Start"}
             </label>
             <span
               className="text-[11px] font-medium"
               style={{ color: "var(--text-secondary)" }}
             >
-              Cycle begins Day {tempPeriodStart}
+              {isIndonesian
+                ? `Siklus dimulai tanggal ${tempPeriodStart}`
+                : `Cycle begins Day ${tempPeriodStart}`}
             </span>
           </div>
 
@@ -159,10 +183,10 @@ export function BudgetTargetSheet({
                   isCustomDay ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
                 }`}
               >
-                Custom
+                {isIndonesian ? "Kustom" : "Custom"}
               </div>
               <div className="text-[9.5px] text-[var(--text-tertiary)] truncate">
-                Day 1–28
+                {isIndonesian ? "Tgl 1–28" : "Day 1–28"}
               </div>
             </button>
           </div>
@@ -190,7 +214,9 @@ export function BudgetTargetSheet({
                   }}
                 />
                 <span className="text-[11px] text-[var(--text-tertiary)]">
-                  Day of every month (1 to 28)
+                  {isIndonesian
+                    ? "Tanggal setiap bulan (1 hingga 28)"
+                    : "Day of every month (1 to 28)"}
                 </span>
               </div>
             </div>
@@ -203,7 +229,7 @@ export function BudgetTargetSheet({
             <Calendar size={14} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
             <div className="min-w-0">
               <div className="text-[10px] uppercase font-semibold tracking-wider text-[var(--text-tertiary)]">
-                Active Cycle Range
+                {isIndonesian ? "Rentang Siklus Aktif" : "Active Cycle Range"}
               </div>
               <div className="text-[11.5px] font-medium text-[var(--text-primary)] mt-0.5">
                 {previewInterval.label}
@@ -218,7 +244,7 @@ export function BudgetTargetSheet({
           className="w-full py-2.5 rounded-xl font-semibold text-[13px] active:scale-98 transition-transform cursor-pointer"
           style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
         >
-          Save Budget Settings
+          {isIndonesian ? "Simpan Pengaturan Anggaran" : "Save Budget Settings"}
         </button>
       </div>
     </BottomSheet>

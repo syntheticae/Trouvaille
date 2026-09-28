@@ -292,7 +292,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   // Modal open states
   const [profileOpen, setProfileOpen] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
-  const [budgetsOpen, setBudgetsOpen] = useState(false);
+  const [walletsOpen, setWalletsOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [billListOpen, setBillListOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
@@ -518,20 +518,20 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     "expense income groups classifications",
   );
   const showWallets = matches(
-    "Account & Wallets",
-    "bank cash balance cards accounts",
+    "Manage Wallets",
+    "bank cash balance cards wallets dompet",
   );
   const showBudget = matches(
-    "Monthly Budget Target",
-    "spending limit monthly budget",
+    "Monthly Spending Budget",
+    "spending limit monthly budget anggaran belanja",
   );
   const showBills = matches(
     "Recurring Bills",
-    "subscriptions commitments due dates bills",
+    "subscriptions commitments due dates bills tagihan",
   );
   const showGoals = matches(
     "Financial Goals",
-    "savings target milestone progress goals",
+    "savings target milestone progress goals tabungan",
   );
   const showValuation = matches(
     "Asset Valuation",
@@ -827,7 +827,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             className="text-[11px] font-bold uppercase tracking-wider px-1"
             style={{ color: "var(--text-secondary)" }}
           >
-            Financial Architecture
+            {isIndonesian ? "Arsitektur Finansial" : "Financial Architecture"}
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
             {/* Manage Ledgers */}
@@ -855,7 +855,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {isIndonesian ? "Kelola Buku Kas" : "Manage Ledgers"}
+                    {isIndonesian ? "Kelola Ledger" : "Manage Ledgers"}
                   </span>
                 </div>
               </div>
@@ -895,7 +895,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Manage Categories
+                    {isIndonesian ? "Kelola Kategori" : "Manage Categories"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -913,11 +913,11 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
               </button>
             )}
 
-            {/* Account & Wallets */}
+            {/* Wallets */}
             {showWallets && (
               <button
                 type="button"
-                onClick={() => setBudgetsOpen(true)}
+                onClick={() => setWalletsOpen(true)}
                 className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -935,7 +935,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Accounts & Wallets
+                    {isIndonesian ? "Kelola Wallet" : "Manage Wallets"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -953,7 +953,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
               </button>
             )}
 
-            {/* Monthly Budget Target */}
+            {/* Monthly Spending Budget */}
             {showBudget && (
               <button
                 type="button"
@@ -975,7 +975,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Monthly Budget Target
+                    {isIndonesian ? "Anggaran Belanja Bulanan" : "Monthly Spending Budget"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -983,7 +983,11 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[12px] font-mono"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {budgetTarget > 0 ? formatRupiah(budgetTarget) : "Not Set"}
+                    {budgetTarget > 0
+                      ? formatRupiah(budgetTarget)
+                      : isIndonesian
+                        ? "Belum Diatur"
+                        : "Not Set"}
                   </span>
                   <ChevronRight
                     size={15}
@@ -1015,7 +1019,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Recurring Bills
+                    {isIndonesian ? "Tagihan Rutin" : "Recurring Bills"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -1023,7 +1027,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[12px] font-mono"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    {bills.length} active
+                    {bills.length} {isIndonesian ? "aktif" : "active"}
                   </span>
                   <ChevronRight
                     size={15}
@@ -1055,7 +1059,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Financial Goals
+                    {isIndonesian ? "Target Tabungan" : "Financial Goals"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -1063,7 +1067,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[12px] font-mono"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    {goals.length} targets
+                    {goals.length} {isIndonesian ? "target" : "targets"}
                   </span>
                   <ChevronRight
                     size={15}
@@ -1098,7 +1102,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Asset Valuation
+                    {isIndonesian ? "Valuasi Aset" : "Asset Valuation"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -1106,7 +1110,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[12px]"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    Crypto & Holdings
+                    {isIndonesian ? "Kripto & Portofolio" : "Crypto & Holdings"}
                   </span>
                   <ChevronRight
                     size={15}
@@ -1141,7 +1145,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Base Currency
+                    {isIndonesian ? "Mata Uang Utama" : "Base Currency"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -1214,7 +1218,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             className="text-[11px] font-bold uppercase tracking-wider px-1"
             style={{ color: "var(--text-secondary)" }}
           >
-            Preferences
+            {isIndonesian ? "Preferensi" : "Preferences"}
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
             {/* Light Appearance Toggle */}
@@ -1432,7 +1436,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             className="text-[11px] font-bold uppercase tracking-wider px-1"
             style={{ color: "var(--text-secondary)" }}
           >
-            Notifications
+            {isIndonesian ? "Notifikasi" : "Notifications"}
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
             {/* Daily Streak Reminder Button (Opens DailyReminderSheet) */}
@@ -1550,7 +1554,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             className="text-[11px] font-bold uppercase tracking-wider px-1"
             style={{ color: "var(--text-secondary)" }}
           >
-            Security & Privacy
+            {isIndonesian ? "Keamanan & Privasi" : "Security & Privacy"}
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
             {/* Privacy Shield Toggle */}
@@ -1851,7 +1855,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             className="text-[11px] font-bold uppercase tracking-wider px-1"
             style={{ color: "var(--text-secondary)" }}
           >
-            Data & Vault
+            {isIndonesian ? "Data & Brankas" : "Data & Vault"}
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
             {/* Cloud Sync */}
@@ -2228,8 +2232,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
         />
 
         <WalletManagementSheets
-          isOpen={budgetsOpen}
-          onClose={() => setBudgetsOpen(false)}
+          isOpen={walletsOpen}
+          onClose={() => setWalletsOpen(false)}
         />
 
 

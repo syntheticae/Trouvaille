@@ -255,12 +255,12 @@ export function calculateReportSummary(
     options.spaceName ||
     (!options.spaceId || options.spaceId === "all"
       ? isIndonesian
-        ? "Semua Ruang"
-        : "All Spaces"
+        ? "Semua Ledger"
+        : "All Ledgers"
       : options.spaceId === "personal"
         ? isIndonesian
-          ? "Ruang Pribadi"
-          : "Personal Space"
+          ? "Ledger Pribadi"
+          : "Personal Ledger"
         : `#${options.spaceId}`);
 
   return {
@@ -739,13 +739,13 @@ export async function generateLuxuryExcelBlob(
     return db.localeCompare(da);
   });
 
-  const sheetTitle = isIndonesian ? "Buku Kas" : "Transaction Ledger";
+  const sheetTitle = isIndonesian ? "Ledger Transaksi" : "Transaction Ledger";
 
   // Data structure focused 100% on transaction records
   const aoaLedger: any[][] = [
-    ["TROUVAILLE — " + (isIndonesian ? "BUKU KAS TRANSAKSI" : "TRANSACTION LEDGER")],
+    ["TROUVAILLE — " + (isIndonesian ? "LEDGER TRANSAKSI" : "TRANSACTION LEDGER")],
     [
-      (isIndonesian ? "Ruang: " : "Space: ") +
+      (isIndonesian ? "Ledger: " : "Ledger: ") +
         summary.spaceName +
         "   |   " +
         (isIndonesian ? "Periode: " : "Period: ") +
@@ -1678,7 +1678,7 @@ export function generateLuxuryPdf(
     doc.setTextColor(18, 18, 20);
     doc.text(
       isIndonesian
-        ? `BUKU KAS TRANSAKSI (${transactions.length} CATATAN)`
+        ? `LEDGER TRANSAKSI (${transactions.length} CATATAN)`
         : `TRANSACTION LEDGER (${transactions.length} RECORDS)`,
       margin,
       currY

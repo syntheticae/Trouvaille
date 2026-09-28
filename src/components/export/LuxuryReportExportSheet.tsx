@@ -28,8 +28,6 @@ import {
   triggerPrintLuxuryReport,
   downloadLuxuryPdf,
   shareLuxuryPdf,
-  downloadLuxuryExcel,
-  shareLuxuryExcel,
   downloadExportFile,
   shareOrDownloadFile,
   type ReportDateRange,
@@ -43,7 +41,7 @@ export interface LuxuryReportExportSheetProps {
   defaultSpaceId?: string;
 }
 
-type ExportFormat = "pdf" | "excel" | "csv" | "json";
+type ExportFormat = "pdf" | "csv" | "json";
 
 export function LuxuryReportExportSheet({
   isOpen,
@@ -71,7 +69,7 @@ export function LuxuryReportExportSheet({
 
   const spaceName = useMemo(() => {
     const s = spaces.find((sp) => sp.id === selectedSpaceId);
-    return s ? s.name : isIndonesian ? "Semua Ruang" : "All Spaces";
+    return s ? s.name : isIndonesian ? "Semua Ledger" : "All Ledgers";
   }, [spaces, selectedSpaceId, isIndonesian]);
 
   const filterOptions: ReportFilterOptions = useMemo(() => {
@@ -147,34 +145,10 @@ export function LuxuryReportExportSheet({
             () => {},
           );
         }
-      } else if (exportFormat === "excel") {
-        const filename = isIndonesian
-          ? `Trouvaille - Buku Kas${spaceSegment} - ${safePeriod}.xlsx`
-          : `Trouvaille - Transaction Ledger${spaceSegment} - ${safePeriod}.xlsx`;
-
-        if (action === "share") {
-          const ok = await shareLuxuryExcel(filteredTransactions, summary, wallets, categories, filename, isIndonesian);
-          if (ok) {
-            triggerSuccessHaptic();
-            showToast(
-              isIndonesian ? "Berkas Excel berhasil dibagikan" : "Excel statement shared successfully",
-              "update",
-              () => {},
-            );
-          }
-        } else {
-          await downloadLuxuryExcel(filteredTransactions, summary, wallets, categories, filename, isIndonesian);
-          triggerSuccessHaptic();
-          showToast(
-            isIndonesian ? "Berkas Excel berhasil diunduh" : "Excel statement downloaded",
-            "update",
-            () => {},
-          );
-        }
       } else if (exportFormat === "csv") {
         const csvContent = generateCsvContent(filteredTransactions, wallets, isIndonesian);
         const filename = isIndonesian
-          ? `Trouvaille - Buku Kas${spaceSegment} - ${safePeriod}.csv`
+          ? `Trouvaille - Ledger Transaksi${spaceSegment} - ${safePeriod}.csv`
           : `Trouvaille - Transaction Ledger${spaceSegment} - ${safePeriod}.csv`;
 
         if (action === "share") {
@@ -182,7 +156,7 @@ export function LuxuryReportExportSheet({
             csvContent,
             filename,
             "text/csv;charset=utf-8;",
-            isIndonesian ? "Buku Kas Trouvaille" : "Trouvaille Transaction Ledger",
+            isIndonesian ? "Ledger Transaksi Trouvaille" : "Trouvaille Transaction Ledger",
           );
           if (ok) {
             triggerSuccessHaptic();
@@ -267,7 +241,7 @@ export function LuxuryReportExportSheet({
             </h3>
             <p className="text-[12px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
               {isIndonesian
-                ? "Neraca, Arus Kas, CaLK, Buku Kas & arsip cadangan"
+                ? "Neraca, Arus Kas, CaLK, Ledger & arsip cadangan"
                 : "Balance Sheet, Cash Flow, CaLK, Ledger & vault archives"}
             </p>
           </div>
@@ -397,11 +371,11 @@ export function LuxuryReportExportSheet({
             )}
           </div>
 
-          {/* Row B: Space Scope (If multiple spaces exist) */}
+          {/* Row B: Ledger Scope (If multiple ledgers exist) */}
           {spaces.length > 1 && (
             <div className="p-3.5 space-y-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
-                {isIndonesian ? "Ruang Pencatatan" : "Ledger Scope"}
+                {isIndonesian ? "Cakupan Ledger" : "Ledger Scope"}
               </span>
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                 {spaces.map((sp) => {
@@ -469,18 +443,13 @@ export function LuxuryReportExportSheet({
             <span className="text-[10px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
               {isIndonesian ? "Format Berkas" : "Export Format"}
             </span>
-            <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
+            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
               {(
                 [
                   {
                     id: "pdf" as const,
                     label: "PDF",
                     icon: FileText,
-                  },
-                  {
-                    id: "excel" as const,
-                    label: "Excel",
-                    icon: FileSpreadsheet,
                   },
                   {
                     id: "csv" as const,
@@ -504,13 +473,13 @@ export function LuxuryReportExportSheet({
                       triggerHaptic("light");
                       setExportFormat(fmt.id);
                     }}
-                    className={`py-2 px-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    className={`py-2 px-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       active
                         ? "bg-[#18181b] text-white dark:bg-white dark:text-black shadow-sm"
                         : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                     }`}
                   >
-                    <Icon size={13} strokeWidth={1.75} />
+                    <Icon size={14} strokeWidth={1.75} />
                     <span>{fmt.label}</span>
                   </button>
                 );
@@ -537,17 +506,13 @@ export function LuxuryReportExportSheet({
                 ? isIndonesian
                   ? "Unduh PDF"
                   : "Download PDF"
-                : exportFormat === "excel"
+                : exportFormat === "csv"
                   ? isIndonesian
-                    ? "Unduh Excel"
-                    : "Download Excel"
-                  : exportFormat === "csv"
-                    ? isIndonesian
-                      ? "Unduh CSV"
-                      : "Download CSV"
-                    : isIndonesian
-                      ? "Unduh JSON"
-                      : "Download JSON"}
+                    ? "Unduh CSV"
+                    : "Download CSV"
+                  : isIndonesian
+                    ? "Unduh JSON"
+                    : "Download JSON"}
             </span>
           </button>
 

@@ -267,7 +267,7 @@ export const CATEGORIZED_WALLET_PRESETS: WalletPresetGroup[] = [
     id: "local_banks",
     label: "Lokal & Perbankan (IDR)",
     wallets: [
-      { name: "Cash", icon: "Banknote", classification: "liquid", badge: "Tunai", description: "Uang tunai & dompet fisik" },
+      { name: "Cash", icon: "Banknote", classification: "liquid", badge: "Tunai", description: "Uang tunai fisik" },
       { name: "BCA", icon: "Landmark", classification: "liquid", badge: "BCA", description: "Bank Central Asia" },
       { name: "Mandiri", icon: "Landmark", classification: "liquid", badge: "Mandiri", description: "Bank Mandiri" },
       { name: "BRI", icon: "Landmark", classification: "liquid", badge: "BRI", description: "Bank Rakyat Indonesia" },
@@ -279,11 +279,11 @@ export const CATEGORIZED_WALLET_PRESETS: WalletPresetGroup[] = [
   },
   {
     id: "local_wallets",
-    label: "Dompet Digital (IDR)",
+    label: "e-Wallet Digital (IDR)",
     wallets: [
       { name: "GoPay", icon: "Smartphone", classification: "liquid", badge: "QRIS", description: "Gojek & merchant QRIS" },
       { name: "OVO", icon: "Smartphone", classification: "liquid", badge: "OVO", description: "Grab & e-commerce" },
-      { name: "DANA", icon: "Smartphone", classification: "liquid", badge: "DANA", description: "Dompet digital serbaguna" },
+      { name: "DANA", icon: "Smartphone", classification: "liquid", badge: "DANA", description: "e-Wallet digital serbaguna" },
       { name: "ShopeePay", icon: "Smartphone", classification: "liquid", badge: "Shopee", description: "Belanja online" },
     ],
   },

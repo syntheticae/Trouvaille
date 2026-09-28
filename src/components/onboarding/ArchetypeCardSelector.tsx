@@ -63,15 +63,15 @@ export function getArchetypeItems(isIndonesian: boolean): ArchetypeItem[] {
     },
     {
       key: "domain",
-      chipLabel: isIndonesian ? "Pemisahan Domain" : "Dual Space",
-      title: isIndonesian ? "Pemisahan Ruang Pribadi & Usaha" : "Dual Domain Separation",
+      chipLabel: isIndonesian ? "Pemisahan Ledger" : "Dual Ledger",
+      title: isIndonesian ? "Pemisahan Ledger Pribadi & Usaha" : "Dual Ledger Separation",
       desc: isIndonesian
         ? "Pisahkan secara tegas kas pribadi dari pembukuan bisnis dan proyek sampingan."
         : "Strictly partition personal living outlays from venture & side-project books.",
       badge: isIndonesian ? "Terpartisi" : "Partitioned",
       metric: isIndonesian ? "Pribadi ↔ Bisnis" : "Personal ↔ Venture",
       subMetric: isIndonesian
-        ? "Isolasi buku kas tanpa percampuran dana"
+        ? "Isolasi ledger tanpa percampuran dana"
         : "Zero co-mingling ledger isolation",
       widgetPreset: "executive",
       icon: Layers,
@@ -302,7 +302,7 @@ export function ArchetypeCardSelector({
                 <div className="w-full grid grid-cols-2 gap-2">
                   <div className="p-2.5 rounded-[13px] bg-white/[0.04] border border-white/10">
                     <span className="text-[9.5px] font-medium text-white/50 block mb-0.5">
-                      {isIndonesian ? "Ruang Pribadi" : "Personal Space"}
+                      {isIndonesian ? "Ledger Pribadi" : "Personal Ledger"}
                     </span>
                     <span className="text-[13px] font-semibold text-white amount block">
                       Rp 8.450.000
@@ -313,7 +313,7 @@ export function ArchetypeCardSelector({
                   </div>
                   <div className="p-2.5 rounded-[13px] bg-white/[0.04] border border-white/10">
                     <span className="text-[9.5px] font-medium text-white/50 block mb-0.5">
-                      {isIndonesian ? "Ruang Usaha" : "Venture Space"}
+                      {isIndonesian ? "Ledger Usaha" : "Business Ledger"}
                     </span>
                     <span className="text-[13px] font-semibold text-white amount block">
                       Rp 24.120.000

@@ -184,7 +184,7 @@ export function WalletSelectorRibbon({
           className="text-[11px] font-semibold uppercase tracking-wider"
           style={{ color: "var(--text-tertiary)" }}
         >
-          {isIndonesian ? "Akun" : "Account"}
+          {isIndonesian ? "Wallet" : "Wallet"}
         </span>
         <button
           type="button"

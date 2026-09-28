@@ -1570,7 +1570,7 @@ export function LoginPage() {
                   }`}
                 >
                   {isIndonesian
-                    ? "Masuk untuk mengakses brankas aset dan buku kas tersinkronisasi milik Anda."
+                    ? "Masuk untuk mengakses brankas aset dan ledger tersinkronisasi milik Anda."
                     : "Sign in to access your synchronized wealth vault and transaction ledger."}
                 </p>
               </div>

@@ -765,7 +765,7 @@ export function TransactionSheet({
       setIsSaving(false);
       showToast(
         isIndonesian
-          ? "Pilih akun yang valid sebelum menyimpan"
+          ? "Pilih wallet yang valid sebelum menyimpan"
           : "Choose a valid wallet before saving",
         "delete",
         () => {},
@@ -779,7 +779,7 @@ export function TransactionSheet({
         setIsSaving(false);
         showToast(
           isIndonesian
-            ? "Pilih akun asal dan akun tujuan"
+            ? "Pilih wallet asal dan wallet tujuan"
             : "Choose both source and destination wallets",
           "delete",
           () => {},
@@ -2135,8 +2135,8 @@ export function TransactionSheet({
                 }}
               >
                 {isIndonesian
-                  ? "Pilih Akun / Dompet"
-                  : "Select Account / Wallet"}
+                  ? "Pilih Wallet"
+                  : "Select Wallet"}
               </h3>
 
               <p
@@ -2147,13 +2147,13 @@ export function TransactionSheet({
               >
                 {walletTarget === "from"
                   ? isIndonesian
-                    ? "Akun Asal"
-                    : "Source Account"
+                    ? "Wallet Asal"
+                    : "Source Wallet"
                   : isIndonesian
-                    ? "Akun Tujuan"
-                    : "Destination Account"}{" "}
+                    ? "Wallet Tujuan"
+                    : "Destination Wallet"}{" "}
                 · {filteredMoreWallets.length}{" "}
-                {isIndonesian ? "akun" : "accounts"}
+                {isIndonesian ? "wallet" : "wallets"}
               </p>
             </div>
 
