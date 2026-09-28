@@ -2014,7 +2014,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       background: "var(--bg-elevated)",
                     }}
                   >
-                    {isIndonesian ? "Ekspor / Backup" : "Export / Backup"}
+                    {isIndonesian ? "Ekspor & Cadangan" : "Export & Backup"}
                   </span>
                   <ChevronRight
                     size={15}
@@ -2049,7 +2049,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Import Bank Statement
+                    {isIndonesian ? "Impor Rekening Koran" : "Import Bank Statement"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -2057,7 +2057,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[12px]"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    Bank / CSV
+                    {isIndonesian ? "Bank / Mutasi" : "Bank / CSV"}
                   </span>
                   <ChevronRight
                     size={15}

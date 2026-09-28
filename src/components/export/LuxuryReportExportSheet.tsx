@@ -24,6 +24,7 @@ import {
   filterTransactionsForReport,
   calculateReportSummary,
   generateJsonVaultContent,
+  generateCsvContent,
   triggerPrintLuxuryReport,
   downloadLuxuryPdf,
   shareLuxuryPdf,
@@ -42,7 +43,7 @@ export interface LuxuryReportExportSheetProps {
   defaultSpaceId?: string;
 }
 
-type ExportFormat = "pdf" | "excel" | "json";
+type ExportFormat = "pdf" | "excel" | "csv" | "json";
 
 export function LuxuryReportExportSheet({
   isOpen,
@@ -89,8 +90,8 @@ export function LuxuryReportExportSheet({
   }, [allTxs, filterOptions]);
 
   const summary = useMemo(() => {
-    return calculateReportSummary(filteredTransactions, filterOptions, wallets);
-  }, [filteredTransactions, filterOptions, wallets]);
+    return calculateReportSummary(filteredTransactions, filterOptions, wallets, isIndonesian);
+  }, [filteredTransactions, filterOptions, wallets, isIndonesian]);
 
   const handleExport = async (action: "download" | "share" | "print") => {
     triggerHaptic("medium");
@@ -106,8 +107,12 @@ export function LuxuryReportExportSheet({
     }
 
     setIsExporting(true);
-    const dateStr = format(new Date(), "yyyyMMdd");
-    const spaceSlug = selectedSpaceId !== "all" ? `_${selectedSpaceId}` : "";
+    const isAllSpaces = selectedSpaceId === "all";
+    const safePeriod = summary.periodLabel.replace(/[–—]/g, "-").replace(/[/\\:*?"<>|]/g, "").trim();
+    const safeSpace = spaceName.replace(/[/\\:*?"<>|]/g, "").trim();
+    const spaceSegment = isAllSpaces || !safeSpace || safeSpace.toLowerCase().includes("semua") || safeSpace.toLowerCase().includes("all")
+      ? ""
+      : ` (${safeSpace})`;
 
     try {
       if (action === "print") {
@@ -120,11 +125,11 @@ export function LuxuryReportExportSheet({
         );
       } else if (exportFormat === "pdf") {
         const filename = isIndonesian
-          ? `trouvaille_laporan_${dateStr}${spaceSlug}.pdf`
-          : `trouvaille_statement_${dateStr}${spaceSlug}.pdf`;
+          ? `Trouvaille - Laporan Keuangan${spaceSegment} - ${safePeriod}.pdf`
+          : `Trouvaille - Financial Statement${spaceSegment} - ${safePeriod}.pdf`;
 
         if (action === "share") {
-          const ok = await shareLuxuryPdf(filteredTransactions, summary, wallets, categories, filename);
+          const ok = await shareLuxuryPdf(filteredTransactions, summary, wallets, categories, filename, isIndonesian);
           if (ok) {
             triggerSuccessHaptic();
             showToast(
@@ -134,7 +139,7 @@ export function LuxuryReportExportSheet({
             );
           }
         } else {
-          await downloadLuxuryPdf(filteredTransactions, summary, wallets, categories, filename);
+          await downloadLuxuryPdf(filteredTransactions, summary, wallets, categories, filename, isIndonesian);
           triggerSuccessHaptic();
           showToast(
             isIndonesian ? "Laporan PDF berhasil diunduh" : "PDF statement downloaded",
@@ -144,11 +149,11 @@ export function LuxuryReportExportSheet({
         }
       } else if (exportFormat === "excel") {
         const filename = isIndonesian
-          ? `trouvaille_laporan_${dateStr}${spaceSlug}.xlsx`
-          : `trouvaille_statement_${dateStr}${spaceSlug}.xlsx`;
+          ? `Trouvaille - Buku Kas${spaceSegment} - ${safePeriod}.xlsx`
+          : `Trouvaille - Transaction Ledger${spaceSegment} - ${safePeriod}.xlsx`;
 
         if (action === "share") {
-          const ok = await shareLuxuryExcel(filteredTransactions, summary, wallets, categories, filename);
+          const ok = await shareLuxuryExcel(filteredTransactions, summary, wallets, categories, filename, isIndonesian);
           if (ok) {
             triggerSuccessHaptic();
             showToast(
@@ -158,10 +163,40 @@ export function LuxuryReportExportSheet({
             );
           }
         } else {
-          await downloadLuxuryExcel(filteredTransactions, summary, wallets, categories, filename);
+          await downloadLuxuryExcel(filteredTransactions, summary, wallets, categories, filename, isIndonesian);
           triggerSuccessHaptic();
           showToast(
             isIndonesian ? "Berkas Excel berhasil diunduh" : "Excel statement downloaded",
+            "update",
+            () => {},
+          );
+        }
+      } else if (exportFormat === "csv") {
+        const csvContent = generateCsvContent(filteredTransactions, wallets, isIndonesian);
+        const filename = isIndonesian
+          ? `Trouvaille - Buku Kas${spaceSegment} - ${safePeriod}.csv`
+          : `Trouvaille - Transaction Ledger${spaceSegment} - ${safePeriod}.csv`;
+
+        if (action === "share") {
+          const ok = await shareOrDownloadFile(
+            csvContent,
+            filename,
+            "text/csv;charset=utf-8;",
+            isIndonesian ? "Buku Kas Trouvaille" : "Trouvaille Transaction Ledger",
+          );
+          if (ok) {
+            triggerSuccessHaptic();
+            showToast(
+              isIndonesian ? "Berkas CSV berhasil dibagikan" : "CSV ledger shared successfully",
+              "update",
+              () => {},
+            );
+          }
+        } else {
+          downloadExportFile(csvContent, filename, "text/csv;charset=utf-8;");
+          triggerSuccessHaptic();
+          showToast(
+            isIndonesian ? "Berkas CSV berhasil diunduh" : "CSV ledger downloaded",
             "update",
             () => {},
           );
@@ -174,8 +209,8 @@ export function LuxuryReportExportSheet({
           summary,
         );
         const filename = isIndonesian
-          ? `trouvaille_arsip_vault_${dateStr}${spaceSlug}.json`
-          : `trouvaille_vault_${dateStr}${spaceSlug}.json`;
+          ? `Trouvaille - Cadangan Data Vault${spaceSegment} - ${safePeriod}.json`
+          : `Trouvaille - Data Vault Backup${spaceSegment} - ${safePeriod}.json`;
 
         if (action === "share") {
           const ok = await shareOrDownloadFile(
@@ -434,7 +469,7 @@ export function LuxuryReportExportSheet({
             <span className="text-[10px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
               {isIndonesian ? "Format Berkas" : "Export Format"}
             </span>
-            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
+            <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
               {(
                 [
                   {
@@ -445,6 +480,11 @@ export function LuxuryReportExportSheet({
                   {
                     id: "excel" as const,
                     label: "Excel",
+                    icon: FileSpreadsheet,
+                  },
+                  {
+                    id: "csv" as const,
+                    label: "CSV",
                     icon: FileSpreadsheet,
                   },
                   {
@@ -464,13 +504,13 @@ export function LuxuryReportExportSheet({
                       triggerHaptic("light");
                       setExportFormat(fmt.id);
                     }}
-                    className={`py-2 px-2 text-[11px] font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
                       active
                         ? "bg-[#18181b] text-white dark:bg-white dark:text-black shadow-sm"
                         : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                     }`}
                   >
-                    <Icon size={14} strokeWidth={1.75} />
+                    <Icon size={13} strokeWidth={1.75} />
                     <span>{fmt.label}</span>
                   </button>
                 );
@@ -501,9 +541,13 @@ export function LuxuryReportExportSheet({
                   ? isIndonesian
                     ? "Unduh Excel"
                     : "Download Excel"
-                  : isIndonesian
-                    ? "Unduh JSON"
-                    : "Download JSON"}
+                  : exportFormat === "csv"
+                    ? isIndonesian
+                      ? "Unduh CSV"
+                      : "Download CSV"
+                    : isIndonesian
+                      ? "Unduh JSON"
+                      : "Download JSON"}
             </span>
           </button>
 

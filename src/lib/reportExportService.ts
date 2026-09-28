@@ -1,4 +1,5 @@
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, subYears } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { jsPDF } from "jspdf";
 import { Capacitor } from "@capacitor/core";
 import type { Transaction, Wallet, Category } from "./types";
@@ -143,27 +144,34 @@ export function calculateReportSummary(
   filteredTxs: Transaction[],
   options: ReportFilterOptions,
   wallets: Wallet[] = [],
+  isIndonesian = true,
   now = new Date(),
 ): ReportSummary {
-  let periodLabel = "All Time";
+  let periodLabel = isIndonesian ? "Semua Waktu" : "All Time";
+  const dateLocale = isIndonesian ? idLocale : undefined;
+
   switch (options.dateRange) {
     case "this_month":
-      periodLabel = format(now, "MMMM yyyy");
+      periodLabel = format(now, "MMMM yyyy", { locale: dateLocale });
       break;
     case "last_month":
-      periodLabel = format(subMonths(now, 1), "MMMM yyyy");
+      periodLabel = format(subMonths(now, 1), "MMMM yyyy", { locale: dateLocale });
       break;
     case "ytd":
-      periodLabel = `Year to Date (${format(now, "yyyy")})`;
+      periodLabel = isIndonesian
+        ? `Tahun Berjalan (${format(now, "yyyy")})`
+        : `Year to Date (${format(now, "yyyy")})`;
       break;
     case "last_year":
-      periodLabel = `Fiscal Year ${format(subYears(now, 1), "yyyy")}`;
+      periodLabel = isIndonesian
+        ? `Tahun Buku ${format(subYears(now, 1), "yyyy")}`
+        : `Fiscal Year ${format(subYears(now, 1), "yyyy")}`;
       break;
     case "custom":
-      periodLabel = `${options.customStartDate ? format(options.customStartDate, "dd MMM yyyy") : "Start"} – ${options.customEndDate ? format(options.customEndDate, "dd MMM yyyy") : "End"}`;
+      periodLabel = `${options.customStartDate ? format(options.customStartDate, "dd MMM yyyy", { locale: dateLocale }) : isIndonesian ? "Awal" : "Start"} – ${options.customEndDate ? format(options.customEndDate, "dd MMM yyyy", { locale: dateLocale }) : isIndonesian ? "Akhir" : "End"}`;
       break;
     case "all":
-      periodLabel = "Complete Ledger Archive";
+      periodLabel = isIndonesian ? "Semua Riwayat Transaksi" : "Complete Ledger Archive";
       break;
   }
 
@@ -244,11 +252,16 @@ export function calculateReportSummary(
     .filter((w) => w.inflow > 0 || w.outflow > 0);
 
   const spaceName =
-    !options.spaceId || options.spaceId === "all"
-      ? "All Spaces (Consolidated)"
+    options.spaceName ||
+    (!options.spaceId || options.spaceId === "all"
+      ? isIndonesian
+        ? "Semua Ruang"
+        : "All Spaces"
       : options.spaceId === "personal"
-        ? "Personal Space"
-        : options.spaceName || `#${options.spaceId}`;
+        ? isIndonesian
+          ? "Ruang Pribadi"
+          : "Personal Space"
+        : `#${options.spaceId}`);
 
   return {
     periodLabel,
@@ -270,20 +283,37 @@ export function calculateReportSummary(
 export function generateCsvContent(
   transactions: Transaction[],
   wallets: Wallet[] = [],
+  isIndonesian = true,
 ): string {
-  const headers = [
-    "Date",
-    "Time",
-    "Type",
-    "Category",
-    "From Account",
-    "To Account",
-    "Amount (IDR)",
-    "Space",
-    "Tags",
-    "Note",
-    "Transaction ID",
-  ];
+  const headers = isIndonesian
+    ? [
+        "No.",
+        "Tanggal",
+        "Waktu",
+        "Tipe",
+        "Kategori",
+        "Deskripsi / Catatan",
+        "Akun Sumber",
+        "Akun Tujuan",
+        "Pemasukan (IDR)",
+        "Pengeluaran (IDR)",
+        "Transfer (IDR)",
+        "ID Transaksi",
+      ]
+    : [
+        "No.",
+        "Date",
+        "Time",
+        "Type",
+        "Category",
+        "Description / Note",
+        "Source Account",
+        "Destination Account",
+        "Income (IDR)",
+        "Expense (IDR)",
+        "Transfer (IDR)",
+        "Transaction ID",
+      ];
 
   const walletMap = new Map<string, string>();
   wallets.forEach((w) => walletMap.set(w.id, w.name));
@@ -294,33 +324,47 @@ export function generateCsvContent(
     return db.localeCompare(da);
   });
 
-  const rows = sortedTxs.map((t) => {
+  const rows = sortedTxs.map((t, idx) => {
     const dateStr = t.occurred_on || (t.created_at ? t.created_at.slice(0, 10) : "");
     const timeStr = t.created_at ? format(new Date(t.created_at), "HH:mm") : "";
-    const typeStr =
-      t.type === "income" ? "Income" : t.type === "expense" ? "Expense" : "Transfer";
-    const amountStr = String(t.amount || 0);
-    const catStr = t.categories?.name || (t.type === "transfer" ? "Transfer" : "General");
-    const fromAccount = t.wallet_id ? walletMap.get(t.wallet_id) || t.wallet_id : "";
-    const toAccount = t.to_wallet_id ? walletMap.get(t.to_wallet_id) || t.to_wallet_id : "";
-    const spaceStr = t.space_id || "personal";
+    const typeStr = isIndonesian
+      ? t.type === "income"
+        ? "Pemasukan"
+        : t.type === "expense"
+          ? "Pengeluaran"
+          : "Transfer"
+      : t.type === "income"
+        ? "Income"
+        : t.type === "expense"
+          ? "Expense"
+          : "Transfer";
 
-    // Extract #hashtags
+    const catStr =
+      t.categories?.name ||
+      (t.type === "transfer" ? "Transfer" : isIndonesian ? "Umum" : "General");
+    const fromAccount = t.wallet_id ? walletMap.get(t.wallet_id) || t.wallet_id : "-";
+    const toAccount =
+      t.type === "transfer" && t.to_wallet_id ? walletMap.get(t.to_wallet_id) || t.to_wallet_id : "-";
     const note = t.note || "";
-    const tags = (note.match(/#[a-zA-Z0-9_-]+/g) || []).join(" ");
     const cleanNote = note.replace(/"/g, '""');
 
+    // Clean numeric output: leave blank "" for non-applicable columns instead of 0
+    const incomeVal = t.type === "income" ? String(t.amount || 0) : "";
+    const expenseVal = t.type === "expense" ? String(t.amount || 0) : "";
+    const transferVal = t.type === "transfer" ? String(t.amount || 0) : "";
+
     return [
+      idx + 1,
       dateStr,
       timeStr,
       typeStr,
       `"${catStr.replace(/"/g, '""')}"`,
+      `"${cleanNote}"`,
       `"${fromAccount.replace(/"/g, '""')}"`,
       `"${toAccount.replace(/"/g, '""')}"`,
-      amountStr,
-      spaceStr,
-      `"${tags}"`,
-      `"${cleanNote}"`,
+      incomeVal,
+      expenseVal,
+      transferVal,
       t.id || "",
     ].join(",");
   });
@@ -669,14 +713,16 @@ function patchGridlinesInUint8Array(buffer: Uint8Array): Uint8Array {
 }
 
 /**
- * Generates an executive Excel workbook (.xlsx) with clean typography, column widths,
- * 4 dedicated sheets (Buku Kas, Neraca, Arus Kas, CaLK), and gridlines turned off for monochrome luxury.
+ * Generates an executive Excel workbook (.xlsx) focused 100% on the transaction ledger:
+ * clean typography, column widths, separate Inflow / Outflow / Transfer columns without zero clutter,
+ * and background gridlines disabled.
  */
 export async function generateLuxuryExcelBlob(
   transactions: Transaction[],
   summary: ReportSummary,
   wallets: Wallet[] = [],
   categories: Category[] = [],
+  isIndonesian = true,
 ): Promise<Blob> {
   const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
@@ -684,10 +730,8 @@ export async function generateLuxuryExcelBlob(
   const walletMap = new Map<string, string>();
   wallets.forEach((w) => walletMap.set(w.id, w.name));
 
-  const reportPkg = generateFinancialReportPackage(wallets, transactions, categories, {
-    periodLabel: summary.periodLabel,
-  });
-  const { balanceSheet, cashFlow, calk } = reportPkg;
+  const catMap = new Map<string, string>();
+  categories.forEach((c) => catMap.set(c.id, c.name));
 
   const sortedTxs = [...transactions].sort((a, b) => {
     const da = a.occurred_on || a.created_at || "";
@@ -695,272 +739,145 @@ export async function generateLuxuryExcelBlob(
     return db.localeCompare(da);
   });
 
-  // ==========================================
-  // SHEET 1: Buku Kas (Financial Ledger)
-  // ==========================================
+  const sheetTitle = isIndonesian ? "Buku Kas" : "Transaction Ledger";
+
+  // Data structure focused 100% on transaction records
   const aoaLedger: any[][] = [
-    ["TROUVAILLE — BUKU KAS TRANSAKSI (FINANCIAL LEDGER)"],
-    [`Periode: ${summary.periodLabel}   |   Ruang: ${summary.spaceName}   |   Dibuat: ${format(new Date(), "dd MMMM yyyy, HH:mm:ss")}`],
-    [],
+    ["TROUVAILLE — " + (isIndonesian ? "BUKU KAS TRANSAKSI" : "TRANSACTION LEDGER")],
     [
-      "Tanggal",
-      "Waktu",
-      "Jenis",
-      "Kategori",
-      "Dari Akun",
-      "Ke Akun",
-      "Nominal (IDR)",
-      "Ruang",
-      "Catatan / Deskripsi",
-      "Tag",
-      "ID Transaksi",
+      (isIndonesian ? "Ruang: " : "Space: ") +
+        summary.spaceName +
+        "   |   " +
+        (isIndonesian ? "Periode: " : "Period: ") +
+        summary.periodLabel +
+        "   |   " +
+        (isIndonesian ? "Total Catatan: " : "Total Records: ") +
+        transactions.length,
     ],
+    [],
+    isIndonesian
+      ? [
+          "No.",
+          "Tanggal",
+          "Waktu",
+          "Tipe",
+          "Kategori",
+          "Deskripsi / Catatan",
+          "Akun Sumber",
+          "Akun Tujuan",
+          "Pemasukan (IDR)",
+          "Pengeluaran (IDR)",
+          "Transfer (IDR)",
+          "ID Transaksi",
+        ]
+      : [
+          "No.",
+          "Date",
+          "Time",
+          "Type",
+          "Category",
+          "Description / Note",
+          "Source Account",
+          "Destination Account",
+          "Income (IDR)",
+          "Expense (IDR)",
+          "Transfer (IDR)",
+          "Transaction ID",
+        ],
   ];
 
-  sortedTxs.forEach((t) => {
+  sortedTxs.forEach((t, idx) => {
     const dateStr = t.occurred_on || (t.created_at ? t.created_at.slice(0, 10) : "");
     const timeStr = t.created_at ? format(new Date(t.created_at), "HH:mm") : "";
-    const typeStr =
-      t.type === "income" ? "Pemasukan" : t.type === "expense" ? "Pengeluaran" : "Transfer";
-    const catStr = t.categories?.name || (t.type === "transfer" ? "Transfer" : "General");
-    const fromAccount = t.wallet_id ? walletMap.get(t.wallet_id) || t.wallet_id : "";
-    const toAccount = t.to_wallet_id ? walletMap.get(t.to_wallet_id) || t.to_wallet_id : "";
-    const spaceStr = t.space_id || "personal";
+    const typeStr = isIndonesian
+      ? t.type === "income"
+        ? "Pemasukan"
+        : t.type === "expense"
+          ? "Pengeluaran"
+          : "Transfer"
+      : t.type === "income"
+        ? "Income"
+        : t.type === "expense"
+          ? "Expense"
+          : "Transfer";
+
+    const catStr =
+      (t.category_id ? catMap.get(t.category_id) : t.categories?.name) ||
+      (t.type === "transfer" ? "Transfer" : isIndonesian ? "Umum" : "General");
+    const fromAccount = t.wallet_id ? walletMap.get(t.wallet_id) || t.wallet_id : "-";
+    const toAccount =
+      t.type === "transfer" && t.to_wallet_id ? walletMap.get(t.to_wallet_id) || t.to_wallet_id : "-";
     const note = t.note || "";
-    const tags = (note.match(/#[a-zA-Z0-9_-]+/g) || []).join(" ");
+
+    // Numeric amounts: only assign number when applicable, otherwise empty string ""
+    // Avoids zero clutter in the spreadsheet
+    const incomeVal = t.type === "income" ? Number(t.amount || 0) : "";
+    const expenseVal = t.type === "expense" ? Number(t.amount || 0) : "";
+    const transferVal = t.type === "transfer" ? Number(t.amount || 0) : "";
 
     aoaLedger.push([
+      idx + 1,
       dateStr,
       timeStr,
       typeStr,
       catStr,
+      note,
       fromAccount,
       toAccount,
-      Number(t.amount || 0),
-      spaceStr,
-      note,
-      tags,
+      incomeVal,
+      expenseVal,
+      transferVal,
       t.id || "",
     ]);
   });
 
+  // Total summary row at bottom
+  aoaLedger.push([
+    isIndonesian ? "TOTAL" : "TOTAL",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    summary.totalIncome,
+    summary.totalExpense,
+    summary.totalTransfer,
+    "",
+  ]);
+
   const ws1 = XLSX.utils.aoa_to_sheet(aoaLedger);
   ws1["!cols"] = [
+    { wch: 6 }, // No.
     { wch: 14 }, // Tanggal
-    { wch: 10 }, // Waktu
-    { wch: 14 }, // Jenis
+    { wch: 8 }, // Waktu
+    { wch: 14 }, // Tipe
     { wch: 22 }, // Kategori
-    { wch: 20 }, // Dari Akun
-    { wch: 20 }, // Ke Akun
-    { wch: 18 }, // Nominal (IDR)
-    { wch: 16 }, // Ruang
-    { wch: 34 }, // Catatan
-    { wch: 18 }, // Tag
-    { wch: 36 }, // ID
+    { wch: 38 }, // Deskripsi
+    { wch: 20 }, // Akun Sumber
+    { wch: 20 }, // Akun Tujuan
+    { wch: 18 }, // Pemasukan
+    { wch: 18 }, // Pengeluaran
+    { wch: 18 }, // Transfer
+    { wch: 20 }, // ID Transaksi
   ];
-  ws1["!autofilter"] = { ref: `A4:K${aoaLedger.length}` };
 
-  // Apply number format to Amount column
+  // Auto-filter on row 4 (A4:L)
+  ws1["!autofilter"] = { ref: `A4:L${aoaLedger.length}` };
+
+  // Apply number format #,##0 to columns I, J, K (Pemasukan, Pengeluaran, Transfer)
   for (let r = 5; r <= aoaLedger.length; r++) {
-    const cell = ws1[`G${r}`];
-    if (cell && typeof cell.v === "number") {
-      cell.z = "#,##0";
-    }
-  }
-  XLSX.utils.book_append_sheet(wb, ws1, "Buku Kas");
-
-  // ==========================================
-  // SHEET 2: Neraca (Balance Sheet)
-  // ==========================================
-  const aoaNeraca: any[][] = [
-    ["TROUVAILLE — LAPORAN POSISI KEUANGAN (NERACA / BALANCE SHEET)"],
-    [`Posisi Keuangan per: ${summary.periodLabel}   |   Ruang: ${summary.spaceName}`],
-    [],
-    ["1. ASET (ASSETS)", "Nominal (IDR)", "Porsi dari Total Aset (%)"],
-    ["ASET LANCAR (LIQUID ASSETS)", balanceSheet.liquidAssets.total, "Subtotal"],
-  ];
-
-  balanceSheet.liquidAssets.items.forEach((item) => {
-    aoaNeraca.push([`   • ${item.name}`, item.balance, `${item.percentageOfTotal}%`]);
-  });
-
-  aoaNeraca.push(
-    ["ASET INVESTASI (INVESTMENTS)", balanceSheet.investmentAssets.total, "Subtotal"]
-  );
-  balanceSheet.investmentAssets.items.forEach((item) => {
-    aoaNeraca.push([`   • ${item.name}`, item.balance, `${item.percentageOfTotal}%`]);
-  });
-
-  aoaNeraca.push(
-    ["PIUTANG (RECEIVABLES)", balanceSheet.receivableAssets.total, "Subtotal"]
-  );
-  balanceSheet.receivableAssets.items.forEach((item) => {
-    aoaNeraca.push([`   • ${item.name}`, item.balance, `${item.percentageOfTotal}%`]);
-  });
-
-  aoaNeraca.push(
-    ["TOTAL ASET (TOTAL ASSETS)", balanceSheet.totalAssets, "100.0%"],
-    [],
-    ["2. LIABILITAS & UTANG (LIABILITIES)", "Nominal (IDR)", "Porsi dari Total Liabilitas (%)"],
-    ["LIABILITAS LANCAR (CURRENT LIABILITIES)", balanceSheet.currentLiabilities.total, "Subtotal"]
-  );
-  balanceSheet.currentLiabilities.items.forEach((item) => {
-    aoaNeraca.push([`   • ${item.name}`, item.balance, `${item.percentageOfTotal}%`]);
-  });
-
-  aoaNeraca.push(
-    ["LIABILITAS JANGKA PANJANG (LONG-TERM LIABILITIES)", balanceSheet.longTermLiabilities.total, "Subtotal"]
-  );
-  balanceSheet.longTermLiabilities.items.forEach((item) => {
-    aoaNeraca.push([`   • ${item.name}`, item.balance, `${item.percentageOfTotal}%`]);
-  });
-
-  aoaNeraca.push(
-    ["TOTAL LIABILITAS (TOTAL LIABILITIES)", balanceSheet.totalLiabilities, "100.0%"],
-    [],
-    ["3. EKUITAS & KEKAYAAN BERSIH (NET WORTH)", "Nominal (IDR)", "Keterangan"],
-    ["KEKAYAAN BERSIH (NET WORTH)", balanceSheet.netWorth, "Total Aset - Total Liabilitas"],
-    [
-      "STATUS KESEIMBANGAN AKUNTANSI",
-      balanceSheet.isBalanced ? "TERVERIFIKASI SEIMBANG" : "SELISIH AUDIT",
-      balanceSheet.isBalanced ? "Aset = Liabilitas + Ekuitas (100% Seimbang)" : `Selisih: ${formatRupiah(balanceSheet.discrepancy)}`,
-    ]
-  );
-
-  const ws2 = XLSX.utils.aoa_to_sheet(aoaNeraca);
-  ws2["!cols"] = [{ wch: 44 }, { wch: 22 }, { wch: 32 }];
-
-  // Format currency in Sheet 2
-  for (let r = 4; r <= aoaNeraca.length; r++) {
-    const cell = ws2[`B${r}`];
-    if (cell && typeof cell.v === "number") {
-      cell.z = "#,##0";
-    }
-  }
-  XLSX.utils.book_append_sheet(wb, ws2, "Neraca");
-
-  // ==========================================
-  // SHEET 3: Arus Kas (Cash Flow Statement)
-  // ==========================================
-  const aoaCashFlow: any[][] = [
-    ["TROUVAILLE — LAPORAN ARUS KAS (CASH FLOW STATEMENT)"],
-    [`Periode: ${summary.periodLabel}   |   Ruang: ${summary.spaceName}`],
-    [],
-    ["1. ARUS KAS DARI AKTIVITAS OPERASI (OPERATING CASH FLOW)", "Nominal (IDR)", "Status"],
-    ["Arus Masuk Operasi (Operating Inflow)", cashFlow.operatingInflow, "Penerimaan rutin"],
-    ["Arus Keluar Operasi (Operating Outflow)", cashFlow.operatingOutflow, "Pengeluaran belanja"],
-    [
-      "ARUS KAS BERSIH OPERASI (NET OPERATING CASH FLOW)",
-      cashFlow.netOperatingCashFlow,
-      cashFlow.netOperatingCashFlow >= 0 ? "Surplus Operasi" : "Defisit Operasi",
-    ],
-    [],
-    ["2. ARUS KAS DARI AKTIVITAS INVESTASI (INVESTING CASH FLOW)", "Nominal (IDR)", "Status"],
-    ["Arus Masuk Investasi (Investing Inflow)", cashFlow.investingInflow, "Penjualan aset / dividen"],
-    ["Arus Keluar Investasi (Investing Outflow)", cashFlow.investingOutflow, "Pembelian instrumen investasi"],
-    [
-      "ARUS KAS BERSIH INVESTASI (NET INVESTING CASH FLOW)",
-      cashFlow.netInvestingCashFlow,
-      cashFlow.netInvestingCashFlow >= 0 ? "Surplus Investasi" : "Defisit Investasi",
-    ],
-    [],
-    ["3. ARUS KAS DARI AKTIVITAS PENDANAAN (FINANCING CASH FLOW)", "Nominal (IDR)", "Status"],
-    ["Arus Masuk Pendanaan (Financing Inflow)", cashFlow.financingInflow, "Penerimaan pinjaman / utang"],
-    ["Arus Keluar Pendanaan (Financing Outflow)", cashFlow.financingOutflow, "Pelunasan cicilan / utang"],
-    [
-      "ARUS KAS BERSIH PENDANAAN (NET FINANCING CASH FLOW)",
-      cashFlow.netFinancingCashFlow,
-      cashFlow.netFinancingCashFlow >= 0 ? "Surplus Pendanaan" : "Defisit Pendanaan",
-    ],
-    [],
-    ["4. REKAPITULASI ARUS KAS KONSOLIDASI", "Nominal (IDR)", "Keterangan"],
-    ["Total Pemasukan Kas Seluruh Aktivitas", cashFlow.totalInflow, "Total Inflow"],
-    ["Total Pengeluaran Kas Seluruh Aktivitas", cashFlow.totalOutflow, "Total Outflow"],
-    [
-      "PERUBAHAN KAS BERSIH (NET CHANGE IN CASH)",
-      cashFlow.netCashFlow,
-      cashFlow.netCashFlow >= 0 ? "Surplus Kas Konsolidasi" : "Defisit Kas Konsolidasi",
-    ],
-  ];
-
-  const ws3 = XLSX.utils.aoa_to_sheet(aoaCashFlow);
-  ws3["!cols"] = [{ wch: 48 }, { wch: 22 }, { wch: 30 }];
-
-  for (let r = 4; r <= aoaCashFlow.length; r++) {
-    const cell = ws3[`B${r}`];
-    if (cell && typeof cell.v === "number") {
-      cell.z = "#,##0";
-    }
-  }
-  XLSX.utils.book_append_sheet(wb, ws3, "Arus Kas");
-
-  // ==========================================
-  // SHEET 4: CaLK & Rasio (Notes & Disclosures)
-  // ==========================================
-  const aoaCalk: any[][] = [
-    ["TROUVAILLE — CATATAN ATAS LAPORAN KEUANGAN & ANALISIS RASIO (CALK)"],
-    [`Periode: ${summary.periodLabel}   |   Ruang: ${summary.spaceName}`],
-    [],
-    ["1. ANALISIS KETAHANAN KEUANGAN & SOLVENSI", "Nilai", "Status Penilaian", "Analisis Kualitatif"],
-    [
-      "Runway Likuiditas / Dana Darurat",
-      `${calk.solvencyRunwayMonths} Bulan`,
-      calk.solvencyRunwayRating.toUpperCase(),
-      calk.solvencyDescription,
-    ],
-    [
-      "Rasio Utang terhadap Aset (Debt-to-Asset)",
-      `${calk.debtToAssetRatioPct}%`,
-      calk.debtRating.toUpperCase(),
-      calk.debtDescription,
-    ],
-    [
-      "Laju Arus Kas Bebas (Free Cash Flow Rate)",
-      `${calk.freeCashflowRatePct}%`,
-      calk.freeCashflowRating.toUpperCase(),
-      calk.freeCashflowDescription,
-    ],
-    [],
-    [
-      "2. PENGUNGKAPAN TRANSAKSI PENGELUARAN MATERIAL (>= 5% DARI TOTAL PENGELUARAN)",
-      "Kategori",
-      "Nominal (IDR)",
-      "Porsi Pengeluaran (%)",
-    ],
-  ];
-
-  if (calk.materialTransactions.length > 0) {
-    calk.materialTransactions.forEach((item) => {
-      aoaCalk.push([
-        `${item.date} - ${item.note}`,
-        item.categoryName,
-        item.amount,
-        `${item.percentageOfTotalExpense}%`,
-      ]);
+    ["I", "J", "K"].forEach((col) => {
+      const cell = ws1[`${col}${r}`];
+      if (cell && typeof cell.v === "number") {
+        cell.z = "#,##0";
+        cell.t = "n";
+      }
     });
-  } else {
-    aoaCalk.push([
-      "Tidak ada transaksi pengeluaran tunggal yang mencapai ambang batas material 5%.",
-      "-",
-      0,
-      "-",
-    ]);
   }
 
-  aoaCalk.push(
-    [],
-    ["3. REKONSILIASI & INTEGRITAS DATA AKUNTANSI", "Status Audit", "Keterangan Lengkap"],
-    [
-      "Status Rekonsiliasi Neraca",
-      calk.reconciliation.auditStatus === "CERTIFIED_BALANCED" ? "TERVERIFIKASI SEIMBANG" : "PERINGATAN AUDIT",
-      calk.reconciliation.notes,
-    ]
-  );
-
-  const ws4 = XLSX.utils.aoa_to_sheet(aoaCalk);
-  ws4["!cols"] = [{ wch: 40 }, { wch: 22 }, { wch: 22 }, { wch: 54 }];
-
-  XLSX.utils.book_append_sheet(wb, ws4, "CaLK & Rasio");
+  XLSX.utils.book_append_sheet(wb, ws1, sheetTitle);
 
   // Generate uncompressed XLSX binary
   const rawUint8 = XLSX.write(wb, { bookType: "xlsx", type: "array", compression: false });
@@ -981,9 +898,10 @@ export async function downloadLuxuryExcel(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   categories: Category[] = [],
-  filename = "trouvaille_statement.xlsx",
+  filename = "trouvaille_ledger.xlsx",
+  isIndonesian = true,
 ): Promise<void> {
-  const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories);
+  const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories, isIndonesian);
 
   if (Capacitor.isNativePlatform() && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
     try {
@@ -993,8 +911,10 @@ export async function downloadLuxuryExcel(
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: "Trouvaille Excel Statement",
-          text: `Here is the financial statement export from Trouvaille (${filename}).`,
+          title: isIndonesian ? "Buku Kas Excel Trouvaille" : "Trouvaille Excel Ledger",
+          text: isIndonesian
+            ? `Berikut berkas buku kas transaksi dari Trouvaille (${filename}).`
+            : `Here is the transaction ledger export from Trouvaille (${filename}).`,
         });
         return;
       }
@@ -1021,9 +941,10 @@ export async function shareLuxuryExcel(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   categories: Category[] = [],
-  filename = "trouvaille_statement.xlsx",
+  filename = "trouvaille_ledger.xlsx",
+  isIndonesian = true,
 ): Promise<boolean> {
-  const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories);
+  const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories, isIndonesian);
 
   if (navigator.share && navigator.canShare) {
     try {
@@ -1033,8 +954,10 @@ export async function shareLuxuryExcel(
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: "Trouvaille Excel Statement",
-          text: `Here is the financial statement export from Trouvaille (${filename}).`,
+          title: isIndonesian ? "Buku Kas Excel Trouvaille" : "Trouvaille Excel Ledger",
+          text: isIndonesian
+            ? `Berikut berkas buku kas transaksi dari Trouvaille (${filename}).`
+            : `Here is the transaction ledger export from Trouvaille (${filename}).`,
         });
         return true;
       }
@@ -1069,6 +992,7 @@ export function generateLuxuryPdf(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   categories: Category[] = [],
+  isIndonesian = true,
 ): jsPDF {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -1103,7 +1027,13 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(113, 113, 122); // zinc-500
-  doc.text("PRIVATE WEALTH ARCHITECTURE · EXECUTIVE STATEMENT", margin, y + 13);
+  doc.text(
+    isIndonesian
+      ? "ARSITEKTUR KEKAYAAN PRIVAT · LAPORAN KEUANGAN EKSEKUTIF"
+      : "PRIVATE WEALTH ARCHITECTURE · EXECUTIVE STATEMENT",
+    margin,
+    y + 13
+  );
 
   // Period, Scope & Generation Date (right aligned)
   doc.setFontSize(8);
@@ -1115,7 +1045,14 @@ export function generateLuxuryPdf(
   doc.setFontSize(7.5);
   doc.setTextColor(113, 113, 122);
   doc.text(`${summary.spaceName} · ${docRef}`, pageWidth - margin, y + 11, { align: "right" });
-  doc.text(`Generated: ${format(now, "dd MMM yyyy, HH:mm:ss")}`, pageWidth - margin, y + 21, { align: "right" });
+  doc.text(
+    isIndonesian
+      ? `Diterbitkan: ${format(now, "dd MMMM yyyy, HH:mm", { locale: idLocale })}`
+      : `Issued: ${format(now, "dd MMMM yyyy, HH:mm:ss")}`,
+    pageWidth - margin,
+    y + 21,
+    { align: "right" }
+  );
 
   y += 32;
 
@@ -1128,25 +1065,37 @@ export function generateLuxuryPdf(
 
   // 1. Key Financial Metrics Grid (4 columns)
   const colGap = 8;
-  const colW = (contentWidth - colGap * 3) / 4;
+  const metricColW = (contentWidth - colGap * 3) / 4;
   const metrics = [
-    { label: "TOTAL INFLOW", val: `+${formatRupiah(summary.totalIncome)}`, sub: "Income & credits" },
-    { label: "TOTAL OUTFLOW", val: `-${formatRupiah(summary.totalExpense)}`, sub: "Expenses & debits" },
     {
-      label: "NET CASHFLOW",
-      val: `${summary.netCashflow >= 0 ? "+" : ""}${formatRupiah(summary.netCashflow)}`,
-      sub: "Net movement",
+      label: isIndonesian ? "TOTAL PEMASUKAN" : "TOTAL INFLOW",
+      val: `+${formatRupiah(summary.totalIncome)}`,
+      sub: isIndonesian ? "Penerimaan kas" : "Income & credits",
     },
-    { label: "SAVINGS RATE", val: `${summary.savingsRate.toFixed(1)}%`, sub: "Preservation" },
+    {
+      label: isIndonesian ? "TOTAL PENGELUARAN" : "TOTAL OUTFLOW",
+      val: `-${formatRupiah(summary.totalExpense)}`,
+      sub: isIndonesian ? "Pengeluaran belanja" : "Expenses & debits",
+    },
+    {
+      label: isIndonesian ? "ARUS KAS BERSIH" : "NET CASHFLOW",
+      val: `${summary.netCashflow >= 0 ? "+" : ""}${formatRupiah(summary.netCashflow)}`,
+      sub: isIndonesian ? "Surplus / defisit" : "Net movement",
+    },
+    {
+      label: isIndonesian ? "RASIO TABUNGAN" : "SAVINGS RATE",
+      val: `${summary.savingsRate.toFixed(1)}%`,
+      sub: isIndonesian ? "Ketahanan modal" : "Preservation",
+    },
   ];
 
   metrics.forEach((m, idx) => {
-    const x = margin + idx * (colW + colGap);
+    const x = margin + idx * (metricColW + colGap);
     doc.setFillColor(248, 248, 250);
-    doc.roundedRect(x, y, colW, 46, 5, 5, "F");
+    doc.roundedRect(x, y, metricColW, 46, 5, 5, "F");
     doc.setDrawColor(235, 235, 239);
     doc.setLineWidth(0.5);
-    doc.roundedRect(x, y, colW, 46, 5, 5, "S");
+    doc.roundedRect(x, y, metricColW, 46, 5, 5, "S");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6.5);
@@ -1164,121 +1113,243 @@ export function generateLuxuryPdf(
     doc.text(m.sub, x + 8, y + 39);
   });
 
-  y += 66;
+  y += 64;
 
-  // 2. Neraca / Statement of Financial Position (Balance Sheet)
+  // 2. Neraca / Statement of Financial Position (Balance Sheet) with account breakdown
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(18, 18, 20);
-  doc.text("LAPORAN POSISI KEUANGAN (NERACA / BALANCE SHEET)", margin, y);
-
-  y += 14;
-
-  const bsBoxW = (contentWidth - 10) / 2;
-  const bsBoxH = 68;
-
-  // Box A: Total Assets
-  doc.setFillColor(248, 248, 250);
-  doc.roundedRect(margin, y, bsBoxW, bsBoxH, 5, 5, "F");
-  doc.setDrawColor(235, 235, 239);
-  doc.setLineWidth(0.5);
-  doc.roundedRect(margin, y, bsBoxW, bsBoxH, 5, 5, "S");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.setTextColor(113, 113, 122);
-  doc.text("TOTAL ASET (TOTAL ASSETS)", margin + 10, y + 14);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(24, 24, 27);
-  doc.text(formatRupiah(balanceSheet.totalAssets), margin + 10, y + 30);
+  doc.text(isIndonesian ? "LAPORAN POSISI KEUANGAN (NERACA)" : "STATEMENT OF FINANCIAL POSITION", margin, y);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(113, 113, 122);
   doc.text(
-    `Lancar: ${formatRupiah(balanceSheet.liquidAssets.total)}   Investasi: ${formatRupiah(balanceSheet.investmentAssets.total)}`,
-    margin + 10,
-    y + 46
-  );
-  doc.text(
-    `Piutang: ${formatRupiah(balanceSheet.receivableAssets.total)}`,
-    margin + 10,
-    y + 58
+    isIndonesian
+      ? `Rincian posisi saldo kas, bank, investasi, dan liabilitas per ${summary.periodLabel}`
+      : `Account breakdown of cash, bank, investments, and liabilities as of ${summary.periodLabel}`,
+    margin + 185,
+    y
   );
 
-  // Box B: Total Liabilities
-  const rightX = margin + bsBoxW + 10;
+  y += 12;
+
+  const bsColW = (contentWidth - 10) / 2;
+  const bsColH = 152;
+  const rightX = margin + bsColW + 10;
+
+  // Card A: ASET (Left Card)
   doc.setFillColor(248, 248, 250);
-  doc.roundedRect(rightX, y, bsBoxW, bsBoxH, 5, 5, "F");
+  doc.roundedRect(margin, y, bsColW, bsColH, 5, 5, "F");
   doc.setDrawColor(235, 235, 239);
   doc.setLineWidth(0.5);
-  doc.roundedRect(rightX, y, bsBoxW, bsBoxH, 5, 5, "S");
+  doc.roundedRect(margin, y, bsColW, bsColH, 5, 5, "S");
 
+  // Card B: LIABILITAS & KEKAYAAN BERSIH (Right Card)
+  doc.setFillColor(248, 248, 250);
+  doc.roundedRect(rightX, y, bsColW, bsColH, 5, 5, "F");
+  doc.setDrawColor(235, 235, 239);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(rightX, y, bsColW, bsColH, 5, 5, "S");
+
+  // --- Left Card Contents (ASET) ---
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(113, 113, 122);
-  doc.text("TOTAL LIABILITAS (TOTAL LIABILITIES)", rightX + 10, y + 14);
+  doc.text(isIndonesian ? "TOTAL ASET" : "TOTAL ASSETS", margin + 10, y + 13);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(24, 24, 27);
-  doc.text(formatRupiah(balanceSheet.totalLiabilities), rightX + 10, y + 30);
+  doc.text(formatRupiah(balanceSheet.totalAssets), margin + 10, y + 27);
 
-  doc.setFont("helvetica", "normal");
+  doc.setDrawColor(232, 232, 237);
+  doc.setLineWidth(0.5);
+  doc.line(margin + 10, y + 33, margin + bsColW - 10, y + 33);
+
+  let leftY = y + 45;
+
+  // Group 1: Kas & Bank
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
+  doc.setTextColor(82, 82, 91);
+  doc.text(isIndonesian ? "Aset Lancar (Kas & Bank)" : "Liquid Assets (Cash & Bank)", margin + 10, leftY);
+  leftY += 11;
+
+  const maxLiquid = 4;
+  const displayedLiquid = balanceSheet.liquidAssets.items.slice(0, maxLiquid);
+  displayedLiquid.forEach((item) => {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(39, 39, 42);
+    doc.text(item.name.slice(0, 22), margin + 10, leftY);
+    doc.setTextColor(24, 24, 27);
+    doc.text(formatRupiah(item.balance), margin + bsColW - 10, leftY, { align: "right" });
+    leftY += 11;
+  });
+
+  if (balanceSheet.liquidAssets.items.length > maxLiquid) {
+    const rem = balanceSheet.liquidAssets.items.slice(maxLiquid);
+    const remSum = rem.reduce((sum, it) => sum + it.balance, 0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(113, 113, 122);
+    doc.text(
+      isIndonesian ? `+ ${rem.length} Akun Kas Lainnya` : `+ ${rem.length} Other Accounts`,
+      margin + 10,
+      leftY
+    );
+    doc.text(formatRupiah(remSum), margin + bsColW - 10, leftY, { align: "right" });
+    leftY += 11;
+  } else if (balanceSheet.liquidAssets.items.length === 0) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(161, 161, 170);
+    doc.text(isIndonesian ? "Tidak ada akun kas/bank" : "No cash/bank accounts", margin + 10, leftY);
+    leftY += 11;
+  }
+
+  // Group 2: Investasi
+  if (balanceSheet.investmentAssets.items.length > 0 && leftY < y + bsColH - 18) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(82, 82, 91);
+    doc.text(isIndonesian ? "Aset Investasi & Portofolio" : "Investments", margin + 10, leftY);
+    leftY += 10;
+    balanceSheet.investmentAssets.items.slice(0, 2).forEach((item) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(39, 39, 42);
+      doc.text(item.name.slice(0, 22), margin + 10, leftY);
+      doc.setTextColor(24, 24, 27);
+      doc.text(formatRupiah(item.balance), margin + bsColW - 10, leftY, { align: "right" });
+      leftY += 11;
+    });
+  }
+
+  // Group 3: Piutang
+  if (balanceSheet.receivableAssets.items.length > 0 && leftY < y + bsColH - 14) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(82, 82, 91);
+    doc.text(isIndonesian ? "Piutang" : "Receivables", margin + 10, leftY);
+    leftY += 10;
+    balanceSheet.receivableAssets.items.slice(0, 1).forEach((item) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(39, 39, 42);
+      doc.text(item.name.slice(0, 22), margin + 10, leftY);
+      doc.setTextColor(24, 24, 27);
+      doc.text(formatRupiah(item.balance), margin + bsColW - 10, leftY, { align: "right" });
+      leftY += 11;
+    });
+  }
+
+  // --- Right Card Contents (LIABILITAS & KEKAYAAN BERSIH) ---
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.5);
   doc.setTextColor(113, 113, 122);
-  doc.text(
-    `Lancar: ${formatRupiah(balanceSheet.currentLiabilities.total)}`,
-    rightX + 10,
-    y + 46
-  );
-  doc.text(
-    `Jangka Panjang: ${formatRupiah(balanceSheet.longTermLiabilities.total)}`,
-    rightX + 10,
-    y + 58
-  );
+  doc.text(isIndonesian ? "TOTAL LIABILITAS" : "TOTAL LIABILITIES", rightX + 10, y + 13);
 
-  y += bsBoxH + 8;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(24, 24, 27);
+  doc.text(formatRupiah(balanceSheet.totalLiabilities), rightX + 10, y + 27);
 
-  // Box C: Net Worth (Full-width card)
-  doc.setFillColor(244, 244, 247);
-  doc.roundedRect(margin, y, contentWidth, 38, 5, 5, "F");
+  doc.setDrawColor(232, 232, 237);
+  doc.setLineWidth(0.5);
+  doc.line(rightX + 10, y + 33, rightX + bsColW - 10, y + 33);
+
+  let rightY = y + 45;
+
+  // Group 1: Liabilitas Lancar
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(82, 82, 91);
+  doc.text(
+    isIndonesian ? "Liabilitas Lancar (Kartu Kredit & Paylater)" : "Current Liabilities (Credit)",
+    rightX + 10,
+    rightY
+  );
+  rightY += 11;
+
+  if (balanceSheet.currentLiabilities.items.length > 0) {
+    balanceSheet.currentLiabilities.items.slice(0, 2).forEach((item) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(39, 39, 42);
+      doc.text(item.name.slice(0, 22), rightX + 10, rightY);
+      doc.setTextColor(24, 24, 27);
+      doc.text(formatRupiah(item.balance), rightX + bsColW - 10, rightY, { align: "right" });
+      rightY += 11;
+    });
+  } else {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(161, 161, 170);
+    doc.text(isIndonesian ? "Tidak ada liabilitas lancar (Rp 0)" : "No current liabilities (Rp 0)", rightX + 10, rightY);
+    rightY += 11;
+  }
+
+  // Group 2: Liabilitas Jangka Panjang
+  if (balanceSheet.longTermLiabilities.items.length > 0) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(82, 82, 91);
+    doc.text(isIndonesian ? "Liabilitas Jangka Panjang (Pinjaman)" : "Long-Term Liabilities", rightX + 10, rightY);
+    rightY += 10;
+    balanceSheet.longTermLiabilities.items.slice(0, 2).forEach((item) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(39, 39, 42);
+      doc.text(item.name.slice(0, 22), rightX + 10, rightY);
+      doc.setTextColor(24, 24, 27);
+      doc.text(formatRupiah(item.balance), rightX + bsColW - 10, rightY, { align: "right" });
+      rightY += 11;
+    });
+  }
+
+  // Divider above Net Worth
+  const netWorthY = y + bsColH - 42;
   doc.setDrawColor(228, 228, 233);
   doc.setLineWidth(0.5);
-  doc.roundedRect(margin, y, contentWidth, 38, 5, 5, "S");
+  doc.line(rightX + 10, netWorthY, rightX + bsColW - 10, netWorthY);
 
+  // Net Worth Box
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(113, 113, 122);
-  doc.text("KEKAYAAN BERSIH (NET WORTH = ASET - LIABILITAS)", margin + 10, y + 14);
+  doc.text(isIndonesian ? "KEKAYAAN BERSIH (EKUITAS)" : "NET WORTH (EQUITY)", rightX + 10, netWorthY + 12);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(18, 18, 20);
-  doc.text(formatRupiah(balanceSheet.netWorth), margin + 10, y + 29);
+  doc.text(formatRupiah(balanceSheet.netWorth), rightX + 10, netWorthY + 26);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
+  doc.setFontSize(6.5);
   doc.setTextColor(113, 113, 122);
   doc.text(
     balanceSheet.isBalanced
-      ? "Keseimbangan: Aset = Liabilitas + Ekuitas (100% Seimbang)"
-      : `Selisih: ${formatRupiah(balanceSheet.discrepancy)}`,
-    pageWidth - margin - 10,
-    y + 24,
+      ? isIndonesian
+        ? "100% Seimbang"
+        : "100% Balanced"
+      : isIndonesian
+        ? `Selisih: ${formatRupiah(balanceSheet.discrepancy)}`
+        : `Diff: ${formatRupiah(balanceSheet.discrepancy)}`,
+    rightX + bsColW - 10,
+    netWorthY + 26,
     { align: "right" }
   );
 
-  y += 54;
+  y += bsColH + 16;
 
   // 3. Top Expense Distribution
   if (summary.topCategories.length > 0) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(18, 18, 20);
-    doc.text("DISTRIBUSI PENGELUARAN (TOP 5 SPENDING)", margin, y);
+    doc.text(isIndonesian ? "DISTRIBUSI PENGELUARAN TERBESAR" : "TOP EXPENSE DISTRIBUTION", margin, y);
 
     y += 14;
 
@@ -1320,7 +1391,13 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(113, 113, 122);
-  doc.text("LAPORAN ARUS KAS & CATATAN ATAS LAPORAN KEUANGAN (CALK)", margin, y + 13);
+  doc.text(
+    isIndonesian
+      ? "LAPORAN ARUS KAS & CATATAN ATAS LAPORAN KEUANGAN"
+      : "STATEMENT OF CASH FLOWS & FINANCIAL NOTES",
+    margin,
+    y + 13
+  );
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
@@ -1342,7 +1419,7 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(18, 18, 20);
-  doc.text("LAPORAN ARUS KAS (STATEMENT OF CASH FLOWS)", margin, y);
+  doc.text(isIndonesian ? "LAPORAN ARUS KAS" : "STATEMENT OF CASH FLOWS", margin, y);
 
   y += 12;
 
@@ -1350,19 +1427,19 @@ export function generateLuxuryPdf(
   const cfBoxH = 62;
   const cfActivities = [
     {
-      title: "AKTIVITAS OPERASI",
+      title: isIndonesian ? "AKTIVITAS OPERASI" : "OPERATING ACTIVITIES",
       inflow: cashFlow.operatingInflow,
       outflow: cashFlow.operatingOutflow,
       net: cashFlow.netOperatingCashFlow,
     },
     {
-      title: "AKTIVITAS INVESTASI",
+      title: isIndonesian ? "AKTIVITAS INVESTASI" : "INVESTING ACTIVITIES",
       inflow: cashFlow.investingInflow,
       outflow: cashFlow.investingOutflow,
       net: cashFlow.netInvestingCashFlow,
     },
     {
-      title: "AKTIVITAS PENDANAAN",
+      title: isIndonesian ? "AKTIVITAS PENDANAAN" : "FINANCING ACTIVITIES",
       inflow: cashFlow.financingInflow,
       outflow: cashFlow.financingOutflow,
       net: cashFlow.netFinancingCashFlow,
@@ -1385,13 +1462,17 @@ export function generateLuxuryPdf(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(113, 113, 122);
-    doc.text(`Masuk: +${formatRupiah(act.inflow)}`, x + 8, y + 27);
-    doc.text(`Keluar: -${formatRupiah(act.outflow)}`, x + 8, y + 39);
+    doc.text(`${isIndonesian ? "Masuk: +" : "Inflow: +"}${formatRupiah(act.inflow)}`, x + 8, y + 27);
+    doc.text(`${isIndonesian ? "Keluar: -" : "Outflow: -"}${formatRupiah(act.outflow)}`, x + 8, y + 39);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
     doc.setTextColor(24, 24, 27);
-    doc.text(`Bersih: ${(act.net >= 0 ? "+" : "") + formatRupiah(act.net)}`, x + 8, y + 52);
+    doc.text(
+      `${isIndonesian ? "Bersih: " : "Net: "}${(act.net >= 0 ? "+" : "") + formatRupiah(act.net)}`,
+      x + 8,
+      y + 52
+    );
   });
 
   y += cfBoxH + 10;
@@ -1402,7 +1483,7 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(18, 18, 20);
-  doc.text("PERUBAHAN KAS BERSIH (NET CHANGE IN CASH)", margin + 8, y + 15);
+  doc.text(isIndonesian ? "PERUBAHAN KAS BERSIH" : "NET CHANGE IN CASH", margin + 8, y + 15);
   doc.text(
     `${cashFlow.netCashFlow >= 0 ? "+" : ""}${formatRupiah(cashFlow.netCashFlow)}`,
     pageWidth - margin - 8,
@@ -1416,7 +1497,13 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(18, 18, 20);
-  doc.text("CATATAN ATAS LAPORAN KEUANGAN (CALK) & ANALISIS RASIO", margin, y);
+  doc.text(
+    isIndonesian
+      ? "CATATAN ATAS LAPORAN KEUANGAN & ANALISIS RASIO"
+      : "NOTES TO FINANCIAL STATEMENTS & FINANCIAL RATIOS",
+    margin,
+    y
+  );
 
   y += 12;
 
@@ -1424,19 +1511,37 @@ export function generateLuxuryPdf(
   const rColW = (contentWidth - 16) / 3;
   const ratios = [
     {
-      title: "RUNWAY LIKUIDITAS",
-      val: `${calk.solvencyRunwayMonths} Bulan`,
-      rating: calk.solvencyRunwayRating.toUpperCase(),
+      title: isIndonesian ? "RUNWAY LIKUIDITAS" : "LIQUIDITY RUNWAY",
+      val: `${calk.solvencyRunwayMonths} ${isIndonesian ? "Bulan" : "Months"}`,
+      rating: isIndonesian
+        ? calk.solvencyRunwayMonths >= 6
+          ? "AMAN"
+          : calk.solvencyRunwayMonths >= 3
+            ? "CUKUP"
+            : "KRITIS"
+        : calk.solvencyRunwayRating.toUpperCase(),
     },
     {
-      title: "RASIO UTANG (DAR)",
+      title: isIndonesian ? "RASIO UTANG (DAR)" : "DEBT TO ASSET RATIO",
       val: `${calk.debtToAssetRatioPct}%`,
-      rating: calk.debtRating.toUpperCase(),
+      rating: isIndonesian
+        ? calk.debtToAssetRatioPct <= 30
+          ? "SEHAT"
+          : calk.debtToAssetRatioPct <= 50
+            ? "MODERAT"
+            : "TINGGI"
+        : calk.debtRating.toUpperCase(),
     },
     {
-      title: "ARUS KAS BEBAS (FCF)",
+      title: isIndonesian ? "ARUS KAS BEBAS (FCF)" : "FREE CASH FLOW RATE",
       val: `${calk.freeCashflowRatePct}%`,
-      rating: calk.freeCashflowRating.toUpperCase(),
+      rating: isIndonesian
+        ? calk.freeCashflowRatePct >= 20
+          ? "OPTIMAL"
+          : calk.freeCashflowRatePct >= 10
+            ? "CUKUP"
+            : "KETAT"
+        : calk.freeCashflowRating.toUpperCase(),
     },
   ];
 
@@ -1470,7 +1575,13 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(18, 18, 20);
-  doc.text("PENGUNGKAPAN TRANSAKSI MATERIAL (>= 5% DARI TOTAL PENGELUARAN)", margin, y);
+  doc.text(
+    isIndonesian
+      ? "PENGUNGKAPAN TRANSAKSI MATERIAL (>= 5% DARI TOTAL PENGELUARAN)"
+      : "MATERIAL TRANSACTIONS DISCLOSURE (>= 5% OF TOTAL EXPENSE)",
+    margin,
+    y
+  );
 
   y += 10;
 
@@ -1480,10 +1591,10 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.setTextColor(113, 113, 122);
-  doc.text("TANGGAL", margin + 6, y + 10);
-  doc.text("DESKRIPSI / KATEGORI", margin + 70, y + 10);
-  doc.text("PORSI BELANJA", margin + 340, y + 10);
-  doc.text("NOMINAL", pageWidth - margin - 6, y + 10, { align: "right" });
+  doc.text(isIndonesian ? "TANGGAL" : "DATE", margin + 6, y + 10);
+  doc.text(isIndonesian ? "DESKRIPSI / KATEGORI" : "DESCRIPTION / CATEGORY", margin + 70, y + 10);
+  doc.text(isIndonesian ? "PORSI BELANJA" : "PORTION", margin + 340, y + 10);
+  doc.text(isIndonesian ? "NOMINAL" : "AMOUNT", pageWidth - margin - 6, y + 10, { align: "right" });
 
   y += 16;
 
@@ -1510,7 +1621,13 @@ export function generateLuxuryPdf(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(161, 161, 170);
-    doc.text("Tidak ada transaksi tunggal yang melebihi ambang batas material 5%.", margin + 6, y + 10);
+    doc.text(
+      isIndonesian
+        ? "Tidak ada transaksi tunggal yang melebihi ambang batas material 5%."
+        : "No single transaction exceeded the 5% materiality threshold.",
+      margin + 6,
+      y + 10
+    );
     y += 16;
   }
 
@@ -1526,14 +1643,24 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.setTextColor(18, 18, 20);
-  doc.text("REKONSILIASI & INTEGRITAS AUDIT INTERNAL", margin + 8, y + 12);
+  doc.text(
+    isIndonesian
+      ? "REKONSILIASI & INTEGRITAS AUDIT INTERNAL"
+      : "AUDIT RECONCILIATION & INTERNAL INTEGRITY",
+    margin + 8,
+    y + 12
+  );
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.5);
   doc.setTextColor(113, 113, 122);
   doc.text(
     calk.reconciliation.auditStatus === "CERTIFIED_BALANCED"
-      ? "Status: TERVERIFIKASI SEIMBANG — Seluruh saldo akun dan mutasi kas konsisten 100% tanpa selisih."
-      : `Status: PERINGATAN — Ditemukan selisih ${formatRupiah(calk.reconciliation.discrepancyAmount)}.`,
+      ? isIndonesian
+        ? "Status: TERVERIFIKASI SEIMBANG — Seluruh saldo akun dan mutasi kas konsisten 100% tanpa selisih."
+        : "Status: VERIFIED BALANCED — All account balances and ledger entries are 100% consistent."
+      : isIndonesian
+        ? `Status: PERINGATAN — Ditemukan selisih ${formatRupiah(calk.reconciliation.discrepancyAmount)}.`
+        : `Status: WARNING — Discrepancy detected: ${formatRupiah(calk.reconciliation.discrepancyAmount)}.`,
     margin + 8,
     y + 22
   );
@@ -1549,7 +1676,13 @@ export function generateLuxuryPdf(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(18, 18, 20);
-    doc.text(`BUKU KAS TRANSAKSI (${transactions.length} CATATAN)`, margin, currY);
+    doc.text(
+      isIndonesian
+        ? `BUKU KAS TRANSAKSI (${transactions.length} CATATAN)`
+        : `TRANSACTION LEDGER (${transactions.length} RECORDS)`,
+      margin,
+      currY
+    );
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
@@ -1567,10 +1700,10 @@ export function generateLuxuryPdf(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(113, 113, 122);
-    doc.text("TANGGAL", margin + 6, currY + 11);
-    doc.text("DESKRIPSI / KATEGORI", margin + 70, currY + 11);
-    doc.text("AKUN", margin + 310, currY + 11);
-    doc.text("NOMINAL", pageWidth - margin - 6, currY + 11, { align: "right" });
+    doc.text(isIndonesian ? "TANGGAL" : "DATE", margin + 6, currY + 11);
+    doc.text(isIndonesian ? "DESKRIPSI / KATEGORI" : "DESCRIPTION / CATEGORY", margin + 70, currY + 11);
+    doc.text(isIndonesian ? "AKUN" : "ACCOUNT", margin + 310, currY + 11);
+    doc.text(isIndonesian ? "NOMINAL" : "AMOUNT", pageWidth - margin - 6, currY + 11, { align: "right" });
 
     return currY + 18;
   };
@@ -1598,11 +1731,11 @@ export function generateLuxuryPdf(
     }
 
     const txDate = tx.occurred_on || tx.created_at?.slice(0, 10) || "";
-    const fromName = tx.wallet_id ? walletMap.get(tx.wallet_id) || "Account" : "-";
-    const toName = tx.to_wallet_id ? walletMap.get(tx.to_wallet_id) || "Account" : "";
+    const fromName = tx.wallet_id ? walletMap.get(tx.wallet_id) || (isIndonesian ? "Akun" : "Account") : "-";
+    const toName = tx.to_wallet_id ? walletMap.get(tx.to_wallet_id) || (isIndonesian ? "Akun" : "Account") : "";
     const accountLabel = tx.type === "transfer" && toName ? `${fromName} -> ${toName}` : fromName;
 
-    const catName = tx.categories?.name || (tx.type === "transfer" ? "Transfer" : "General");
+    const catName = tx.categories?.name || (tx.type === "transfer" ? "Transfer" : (isIndonesian ? "Umum" : "General"));
     const noteText = tx.type === "transfer"
       ? (tx.note ? `${tx.note} (Transfer)` : "Transfer")
       : (tx.note ? `${tx.note} (${catName})` : catName);
@@ -1650,8 +1783,19 @@ export function generateLuxuryPdf(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(161, 161, 170);
-    doc.text("Trouvaille · Private Wealth Architecture · Confidential Document", margin, pageHeight - 12);
-    doc.text(`Halaman ${i} dari ${totalPages}`, pageWidth - margin, pageHeight - 12, { align: "right" });
+    doc.text(
+      isIndonesian
+        ? "Trouvaille · Arsitektur Kekayaan Privat · Dokumen Rahasia"
+        : "Trouvaille · Private Wealth Architecture · Confidential Document",
+      margin,
+      pageHeight - 12
+    );
+    doc.text(
+      isIndonesian ? `Halaman ${i} dari ${totalPages}` : `Page ${i} of ${totalPages}`,
+      pageWidth - margin,
+      pageHeight - 12,
+      { align: "right" }
+    );
   }
 
   return doc;
@@ -1666,8 +1810,9 @@ export async function downloadLuxuryPdf(
   wallets: Wallet[] = [],
   categories: Category[] = [],
   filename = "trouvaille_statement.pdf",
+  isIndonesian = true,
 ): Promise<void> {
-  const doc = generateLuxuryPdf(transactions, summary, wallets, categories);
+  const doc = generateLuxuryPdf(transactions, summary, wallets, categories, isIndonesian);
   const blob = doc.output("blob");
 
   // In native Capacitor iOS WKWebView, <a download> is ignored; Web Share API prompts native "Save to Files"
@@ -1677,8 +1822,10 @@ export async function downloadLuxuryPdf(
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: "Trouvaille Financial Statement",
-          text: `Here is the financial statement export from Trouvaille (${filename}).`,
+          title: isIndonesian ? "Laporan Keuangan Trouvaille" : "Trouvaille Financial Statement",
+          text: isIndonesian
+            ? `Berikut laporan keuangan dari Trouvaille (${filename}).`
+            : `Here is the financial statement export from Trouvaille (${filename}).`,
         });
         return;
       }
@@ -1700,8 +1847,9 @@ export async function shareLuxuryPdf(
   wallets: Wallet[] = [],
   categories: Category[] = [],
   filename = "trouvaille_statement.pdf",
+  isIndonesian = true,
 ): Promise<boolean> {
-  const doc = generateLuxuryPdf(transactions, summary, wallets, categories);
+  const doc = generateLuxuryPdf(transactions, summary, wallets, categories, isIndonesian);
   const blob = doc.output("blob");
 
   if (navigator.share && navigator.canShare) {
@@ -1710,8 +1858,10 @@ export async function shareLuxuryPdf(
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: "Trouvaille Financial Statement",
-          text: `Here is the financial statement export from Trouvaille (${filename}).`,
+          title: isIndonesian ? "Laporan Keuangan Trouvaille" : "Trouvaille Financial Statement",
+          text: isIndonesian
+            ? `Berikut laporan keuangan dari Trouvaille (${filename}).`
+            : `Here is the financial statement export from Trouvaille (${filename}).`,
         });
         return true;
       }

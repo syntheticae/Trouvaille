@@ -47,8 +47,8 @@ export function DataExportVaultModal({
             style={{ color: "var(--text-secondary)" }}
           >
             {isIndonesian
-              ? "Pusat ekspor laporan finansial profesional (PDF, CSV, JSON) dan pencadangan brankas terenkripsi militer AES-256."
-              : "Unified hub for professional financial reporting (PDF, CSV, JSON) and AES-256 military-grade encrypted backups."}
+              ? "Pusat ekspor laporan finansial profesional (PDF, Excel, CSV, JSON) dan pencadangan brankas terenkripsi militer AES-256."
+              : "Unified hub for professional financial reporting (PDF, Excel, CSV, JSON) and AES-256 military-grade encrypted backups."}
           </p>
         </div>
 
@@ -79,13 +79,13 @@ export function DataExportVaultModal({
                     {isIndonesian ? "Ekspor Laporan Keuangan" : "Financial Report Export"}
                   </h4>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-medium">
-                    PDF / CSV / JSON
+                    PDF / XLS / CSV
                   </span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                   {isIndonesian
-                    ? "Cetak mutasi rekening berstandar perbankan dalam format PDF, spreadsheet Excel / CSV, atau format JSON untuk analisis pajak."
-                    : "Generate official bank-grade PDF statements, Excel / CSV spreadsheets, or JSON for tax audits and analytics."}
+                    ? "Cetak posisi keuangan, arus kas, neraca, dan mutasi buku kas dalam format PDF eksekutif, spreadsheet Excel / CSV, atau arsip JSON."
+                    : "Generate official executive statements, cash flows, balance sheets, Excel / CSV spreadsheets, or JSON vault archives."}
                 </p>
               </div>
             </div>
