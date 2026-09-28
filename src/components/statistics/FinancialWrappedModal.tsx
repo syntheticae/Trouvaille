@@ -16,7 +16,6 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toBlob } from "html-to-image";
-import html2canvas from "html2canvas";
 import type { Transaction, Category } from "../../lib/types";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
@@ -680,6 +679,7 @@ export function FinancialWrappedModal({
           "html-to-image toBlob error, falling back to html2canvas:",
           toBlobErr,
         );
+        const { default: html2canvas } = await import("html2canvas");
         const canvas = await html2canvas(element, {
           scale: 2,
           useCORS: true,

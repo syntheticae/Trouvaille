@@ -243,19 +243,52 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
 
 export const TX_BACKUP_STORAGE_KEY = "TROUVAILLE_TX_BACKUP_V1";
 
+export const TRANSACTION_SELECT_COLUMNS =
+  "id, user_id, amount, type, category_id, wallet_id, to_wallet_id, note, occurred_on, created_at, space_id, ledger_id, created_by_name, created_by_user_id, categories(id, name, emoji, type)";
+
+export const TRANSACTION_FALLBACK_COLUMNS =
+  "id, user_id, amount, type, category_id, wallet_id, to_wallet_id, note, occurred_on, created_at, space_id, ledger_id, created_by_name, created_by_user_id";
+
 import { useAuth } from "../contexts/AuthContext";
 import { emitSyncStatus } from "../components/ui/SyncStatusPill";
+import { getVaultItem, setVaultItem } from "../lib/indexedDbStorage";
+
+let inMemoryTransactionsSnapshot: Transaction[] | null = null;
+
+// Synchronously prime from localStorage for 0ms initial render
+try {
+  const cached = typeof window !== "undefined" ? localStorage.getItem(TX_BACKUP_STORAGE_KEY) : null;
+  if (cached) inMemoryTransactionsSnapshot = JSON.parse(cached);
+} catch {}
+
+// Asynchronously load 100% full dataset from off-main-thread IndexedDB
+if (typeof window !== "undefined") {
+  getVaultItem<Transaction[]>(TX_BACKUP_STORAGE_KEY).then((data) => {
+    if (data && Array.isArray(data) && data.length > 0) {
+      inMemoryTransactionsSnapshot = data;
+    }
+  }).catch(() => {});
+}
 
 /**
  * Retrieve cached local transactions snapshot for instantaneous 0ms cold-start rendering.
+ * Serves from preloaded in-memory cache or local storage fallback.
  */
 export function getStoredTransactionsSnapshot(userId?: string): Transaction[] | undefined {
+  if (inMemoryTransactionsSnapshot && inMemoryTransactionsSnapshot.length > 0) {
+    if (userId && userId !== "guest_local_user") {
+      const filtered = inMemoryTransactionsSnapshot.filter((t: Transaction) => !t.user_id || t.user_id === userId);
+      return filtered.length > 0 ? filtered : inMemoryTransactionsSnapshot;
+    }
+    return inMemoryTransactionsSnapshot;
+  }
   if (typeof window === "undefined") return undefined;
   try {
     const raw = localStorage.getItem(TX_BACKUP_STORAGE_KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
+      inMemoryTransactionsSnapshot = parsed;
       if (userId && userId !== "guest_local_user") {
         const filtered = parsed.filter((t: Transaction) => !t.user_id || t.user_id === userId);
         return filtered.length > 0 ? filtered : parsed;
@@ -268,6 +301,7 @@ export function getStoredTransactionsSnapshot(userId?: string): Transaction[] | 
 
 /**
  * Helper to fetch a single transaction slice with 3-attempt exponential backoff retry.
+ * Uses selective column projection to reduce bandwidth consumption.
  */
 async function fetchTransactionChunk(
   from: number,
@@ -278,7 +312,7 @@ async function fetchTransactionChunk(
     try {
       let query = supabase
         .from("transactions")
-        .select("*, categories(*)")
+        .select(TRANSACTION_SELECT_COLUMNS)
         .order("occurred_on", { ascending: false })
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
@@ -297,7 +331,7 @@ async function fetchTransactionChunk(
       if (error) {
         let fallbackQuery = supabase
           .from("transactions")
-          .select("*")
+          .select(TRANSACTION_FALLBACK_COLUMNS)
           .order("occurred_on", { ascending: false })
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
@@ -314,9 +348,9 @@ async function fetchTransactionChunk(
 
         const fallbackRes = await withTimeout(fallbackQuery, 15000);
         if (fallbackRes.error) throw fallbackRes.error;
-        data = fallbackRes.data;
+        return (fallbackRes.data as unknown as Transaction[]) || [];
       }
-      return (data as Transaction[]) || [];
+      return (data as unknown as Transaction[]) || [];
     } catch (err) {
       if (attempt === 3) throw err;
       await delay(250 * attempt);
@@ -386,7 +420,7 @@ export async function fetchAllTransactionsFromSupabase(
     try {
       let query = supabase
         .from("transactions")
-        .select("*, categories(*)", { count: "exact" })
+        .select(TRANSACTION_SELECT_COLUMNS, { count: "exact" })
         .order("occurred_on", { ascending: false })
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
@@ -406,7 +440,7 @@ export async function fetchAllTransactionsFromSupabase(
         // Fallback to flat query without join for speed and resilience
         let fallbackQuery = supabase
           .from("transactions")
-          .select("*", { count: "exact" })
+          .select(TRANSACTION_FALLBACK_COLUMNS, { count: "exact" })
           .order("occurred_on", { ascending: false })
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
@@ -423,14 +457,14 @@ export async function fetchAllTransactionsFromSupabase(
 
         const fallbackRes = await withTimeout(fallbackQuery, 15000);
         if (fallbackRes.error) throw fallbackRes.error;
-        data = fallbackRes.data;
-        count = fallbackRes.count;
+        if (fallbackRes.data && Array.isArray(fallbackRes.data)) {
+          allRecords.push(...(fallbackRes.data as unknown as Transaction[]));
+        }
+        totalCount = typeof fallbackRes.count === "number" ? fallbackRes.count : null;
+      } else if (data && Array.isArray(data)) {
+        allRecords.push(...(data as unknown as Transaction[]));
+        totalCount = typeof count === "number" ? count : null;
       }
-
-      if (data && Array.isArray(data)) {
-        allRecords.push(...(data as Transaction[]));
-      }
-      totalCount = typeof count === "number" ? count : null;
       fetchError = null;
       break;
     } catch (err) {
@@ -579,7 +613,7 @@ export async function fetchAllTransactionsFromSupabase(
     );
   }
 
-  // Persist healthy full dataset to local backup if unfiltered (up to 500 records for fast instant cold-start)
+  // Persist full 100% dataset (all 2,345+ transactions) to IndexedDB off-main-thread!
   if (
     !filters?.categoryId &&
     !filters?.startDate &&
@@ -587,10 +621,16 @@ export async function fetchAllTransactionsFromSupabase(
     !filters?.search &&
     uniqueRecords.length > 0
   ) {
+    inMemoryTransactionsSnapshot = uniqueRecords;
+    setVaultItem(TX_BACKUP_STORAGE_KEY, uniqueRecords).catch((e) =>
+      console.warn("[fetchAllTransactionsFromSupabase] IndexedDB write warning:", e),
+    );
+
+    // Keep lightweight localStorage slice as zero-delay synchronous backup
     try {
       localStorage.setItem(
         TX_BACKUP_STORAGE_KEY,
-        JSON.stringify(uniqueRecords.slice(0, 500)),
+        JSON.stringify(uniqueRecords.slice(0, 300)),
       );
     } catch (e) {
       console.warn("[fetchAllTransactionsFromSupabase] Failed to write backup snapshot:", e);
@@ -623,7 +663,7 @@ export function useRecentTransactions(limit = 10) {
       }
       const { data, error } = await supabase
         .from("transactions")
-        .select("*, categories(*)")
+        .select(TRANSACTION_SELECT_COLUMNS)
         .eq("user_id", userId)
         .order("occurred_on", { ascending: false })
         .order("created_at", { ascending: false })
@@ -632,16 +672,16 @@ export function useRecentTransactions(limit = 10) {
       if (error) {
         const { data: fallback, error: fbErr } = await supabase
           .from("transactions")
-          .select("*")
+          .select(TRANSACTION_FALLBACK_COLUMNS)
           .eq("user_id", userId)
           .order("occurred_on", { ascending: false })
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
           .limit(limit);
         if (fbErr) throw fbErr;
-        return (fallback || []) as Transaction[];
+        return ((fallback || []) as unknown) as Transaction[];
       }
-      return data as Transaction[];
+      return ((data || []) as unknown) as Transaction[];
     },
     enabled: !!userId,
     staleTime: 60 * 1000,
@@ -704,21 +744,21 @@ export function useDayTransactions(date: string) {
       if (!userId) return [];
       const { data, error } = await supabase
         .from("transactions")
-        .select("*, categories(*)")
+        .select(TRANSACTION_SELECT_COLUMNS)
         .eq("user_id", userId)
         .eq("occurred_on", date)
         .order("created_at", { ascending: false });
       if (error) {
         const { data: fb, error: fbErr } = await supabase
           .from("transactions")
-          .select("*")
+          .select(TRANSACTION_FALLBACK_COLUMNS)
           .eq("user_id", userId)
           .eq("occurred_on", date)
           .order("created_at", { ascending: false });
         if (fbErr) throw fbErr;
-        return (fb || []) as Transaction[];
+        return ((fb || []) as unknown) as Transaction[];
       }
-      return data as Transaction[];
+      return ((data || []) as unknown) as Transaction[];
     },
     enabled: !!userId,
     staleTime: 60 * 1000,

@@ -19,7 +19,6 @@ import {
   ShieldCheck,
   User,
 } from "lucide-react";
-import jsQR from "jsqr";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useSpace } from "../../contexts/SpaceContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -157,6 +156,8 @@ export function JoinLedgerContent({
           canvasRef.current = document.createElement("canvas");
         }
 
+        const { default: jsQR } = await import("jsqr");
+
         // Loop jsQR at 8 fps (125ms interval) for smooth battery-friendly scanning
         scanIntervalRef.current = window.setInterval(() => {
           if (!videoRef.current || !canvasRef.current) return;
@@ -211,7 +212,7 @@ export function JoinLedgerContent({
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement("canvas");
         canvas.width = img.width;
         canvas.height = img.height;
@@ -219,6 +220,7 @@ export function JoinLedgerContent({
         if (!ctx) return;
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const { default: jsQR } = await import("jsqr");
         const code = jsQR(imageData.data, imageData.width, imageData.height);
         if (code && code.data) {
           processQrText(code.data);

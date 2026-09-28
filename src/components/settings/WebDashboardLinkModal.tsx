@@ -16,7 +16,6 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
-import jsQR from "jsqr";
 import { Capacitor } from "@capacitor/core";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useAuth } from "../../contexts/AuthContext";
@@ -122,7 +121,7 @@ export function WebDashboardLinkModal({
   );
 
   // Frame decoding loop via offscreen canvas
-  const startQrDecodingLoop = useCallback(() => {
+  const startQrDecodingLoop = useCallback(async () => {
     if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
 
     if (!canvasRef.current) {
@@ -130,6 +129,7 @@ export function WebDashboardLinkModal({
     }
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const { default: jsQR } = await import("jsqr");
 
     scanIntervalRef.current = window.setInterval(() => {
       const video = videoRef.current;
@@ -234,7 +234,7 @@ export function WebDashboardLinkModal({
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
@@ -244,6 +244,7 @@ export function WebDashboardLinkModal({
         ctx.drawImage(img, 0, 0, img.width, img.height);
 
         const imageData = ctx.getImageData(0, 0, img.width, img.height);
+        const { default: jsQR } = await import("jsqr");
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: "attemptBoth",
         });

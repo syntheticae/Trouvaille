@@ -82,6 +82,8 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes("node_modules/recharts")) return "charts";
           if (id.includes("node_modules/framer-motion")) return "motion";
+          if (id.includes("node_modules/html2canvas")) return "html2canvas";
+          if (id.includes("node_modules/jsqr")) return "jsqr";
           if (
             id.includes("node_modules/@supabase") ||
             id.includes("node_modules/@tanstack")
