@@ -264,28 +264,12 @@ export function calculateReportSummary(
 }
 
 /**
- * Generate CSV formatted string with UTF-8 BOM
- */
-/**
- * Generate CSV formatted string with UTF-8 BOM and Executive Metadata
+ * Generate CSV formatted string with UTF-8 BOM (pure clean CSV without '#' lines)
  */
 export function generateCsvContent(
   transactions: Transaction[],
   wallets: Wallet[] = [],
-  summary?: ReportSummary,
 ): string {
-  const metaLines: string[] = [];
-  if (summary) {
-    metaLines.push(
-      `# Trouvaille Private Wealth Architecture — Financial Statement & Ledger`,
-      `# Period: ${summary.periodLabel}`,
-      `# Scope: ${summary.spaceName}`,
-      `# Summary: Total Inflow = ${formatRupiah(summary.totalIncome)} | Total Outflow = ${formatRupiah(summary.totalExpense)} | Net Cashflow = ${(summary.netCashflow >= 0 ? "+" : "") + formatRupiah(summary.netCashflow)} | Records = ${summary.transactionCount}`,
-      `# Generated: ${format(new Date(), "dd MMMM yyyy, HH:mm:ss")}`,
-      `#`
-    );
-  }
-
   const headers = [
     "Date",
     "Time",
@@ -340,12 +324,8 @@ export function generateCsvContent(
     ].join(",");
   });
 
-  const allLines = metaLines.length > 0
-    ? [...metaLines, headers.join(","), ...rows]
-    : [headers.join(","), ...rows];
-
   // Include UTF-8 BOM (\uFEFF) for native Excel UTF-8 support
-  return "\uFEFF" + allLines.join("\r\n");
+  return "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
 }
 
 /**
@@ -609,14 +589,14 @@ export function triggerPrintLuxuryReport(
 }
 
 /**
- * Download a file in the browser
+ * Download a file in the browser (supports text or binary Blob)
  */
 export function downloadExportFile(
-  content: string,
+  content: string | Blob,
   filename: string,
   mimeType = "text/csv;charset=utf-8;",
 ): void {
-  const blob = new Blob([content], { type: mimeType });
+  const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -628,15 +608,15 @@ export function downloadExportFile(
 }
 
 /**
- * Share or download file with Web Share API fallback
+ * Share or download file with Web Share API fallback (supports text or binary Blob)
  */
 export async function shareOrDownloadFile(
-  content: string,
+  content: string | Blob,
   filename: string,
   mimeType = "text/csv",
   title = "Trouvaille Financial Report",
 ): Promise<boolean> {
-  const blob = new Blob([content], { type: mimeType });
+  const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
 
   if (navigator.share && navigator.canShare) {
     try {
@@ -659,7 +639,213 @@ export async function shareOrDownloadFile(
   }
 
   // Fallback to standard download
-  downloadExportFile(content, filename, mimeType);
+  downloadExportFile(blob, filename, mimeType);
+  return true;
+}
+
+/**
+ * Generates an executive Excel workbook (.xlsx) with clean typography, column widths,
+ * executive summary section, and structured ledger table.
+ */
+export async function generateLuxuryExcelBlob(
+  transactions: Transaction[],
+  summary: ReportSummary,
+  wallets: Wallet[] = [],
+): Promise<Blob> {
+  const XLSX = await import("xlsx");
+  const wb = XLSX.utils.book_new();
+
+  const walletMap = new Map<string, string>();
+  wallets.forEach((w) => walletMap.set(w.id, w.name));
+
+  const sortedTxs = [...transactions].sort((a, b) => {
+    const da = a.occurred_on || a.created_at || "";
+    const db = b.occurred_on || b.created_at || "";
+    return db.localeCompare(da);
+  });
+
+  // Sheet 1: Financial Ledger
+  const aoaData: any[][] = [
+    ["TROUVAILLE — FINANCIAL STATEMENT & LEDGER"],
+    [`Period: ${summary.periodLabel}   |   Scope: ${summary.spaceName}   |   Generated: ${format(new Date(), "dd MMMM yyyy, HH:mm:ss")}`],
+    [],
+    ["EXECUTIVE FINANCIAL SUMMARY"],
+    ["Metric", "Amount (IDR)", "Status / Ratio"],
+    ["Total Inflow", summary.totalIncome, "Income & credit transfers"],
+    ["Total Outflow", summary.totalExpense, "Expenses & debit transfers"],
+    ["Net Cashflow", summary.netCashflow, summary.netCashflow >= 0 ? "Surplus" : "Deficit"],
+    ["Savings Rate", `${summary.savingsRate.toFixed(1)}%`, "Preservation ratio"],
+    ["Total Transactions", summary.transactionCount, "Recorded entries"],
+    [],
+    [
+      "Date",
+      "Time",
+      "Type",
+      "Category",
+      "From Account",
+      "To Account",
+      "Amount (IDR)",
+      "Space",
+      "Note / Description",
+      "Tags",
+      "Transaction ID",
+    ],
+  ];
+
+  sortedTxs.forEach((t) => {
+    const dateStr = t.occurred_on || (t.created_at ? t.created_at.slice(0, 10) : "");
+    const timeStr = t.created_at ? format(new Date(t.created_at), "HH:mm") : "";
+    const typeStr =
+      t.type === "income" ? "Income" : t.type === "expense" ? "Expense" : "Transfer";
+    const catStr = t.categories?.name || (t.type === "transfer" ? "Transfer" : "General");
+    const fromAccount = t.wallet_id ? walletMap.get(t.wallet_id) || t.wallet_id : "";
+    const toAccount = t.to_wallet_id ? walletMap.get(t.to_wallet_id) || t.to_wallet_id : "";
+    const spaceStr = t.space_id || "personal";
+    const note = t.note || "";
+    const tags = (note.match(/#[a-zA-Z0-9_-]+/g) || []).join(" ");
+
+    aoaData.push([
+      dateStr,
+      timeStr,
+      typeStr,
+      catStr,
+      fromAccount,
+      toAccount,
+      Number(t.amount || 0),
+      spaceStr,
+      note,
+      tags,
+      t.id || "",
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoaData);
+
+  ws["!cols"] = [
+    { wch: 14 }, // Date
+    { wch: 10 }, // Time
+    { wch: 12 }, // Type
+    { wch: 22 }, // Category
+    { wch: 20 }, // From Account
+    { wch: 20 }, // To Account
+    { wch: 18 }, // Amount (IDR)
+    { wch: 16 }, // Space
+    { wch: 34 }, // Note / Description
+    { wch: 18 }, // Tags
+    { wch: 36 }, // Transaction ID
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, "Financial Statement");
+
+  // Sheet 2: Expense Breakdown
+  if (summary.topCategories.length > 0) {
+    const catData: any[][] = [
+      ["EXPENSE DISTRIBUTION BY CATEGORY"],
+      [`Period: ${summary.periodLabel}   |   Scope: ${summary.spaceName}`],
+      [],
+      ["Category", "Total Spent (IDR)", "Share (%)", "Transaction Count"],
+    ];
+
+    summary.topCategories.forEach((c) => {
+      catData.push([c.name, c.amount, `${c.percentage.toFixed(1)}%`, c.count]);
+    });
+
+    const catWs = XLSX.utils.aoa_to_sheet(catData);
+    catWs["!cols"] = [
+      { wch: 24 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 18 },
+    ];
+    XLSX.utils.book_append_sheet(wb, catWs, "Expense Breakdown");
+  }
+
+  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  return new Blob([wbout], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}
+
+/**
+ * Direct luxury Excel (.xlsx) download
+ */
+export async function downloadLuxuryExcel(
+  transactions: Transaction[],
+  summary: ReportSummary,
+  wallets: Wallet[] = [],
+  filename = "trouvaille_statement.xlsx",
+): Promise<void> {
+  const blob = await generateLuxuryExcelBlob(transactions, summary, wallets);
+
+  if (Capacitor.isNativePlatform() && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+    try {
+      const file = new File([blob], filename, {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "Trouvaille Excel Statement",
+          text: `Here is the financial statement export from Trouvaille (${filename}).`,
+        });
+        return;
+      }
+    } catch (e: any) {
+      if (e.name === "AbortError") return;
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Direct luxury Excel (.xlsx) share with Web Share API fallback
+ */
+export async function shareLuxuryExcel(
+  transactions: Transaction[],
+  summary: ReportSummary,
+  wallets: Wallet[] = [],
+  filename = "trouvaille_statement.xlsx",
+): Promise<boolean> {
+  const blob = await generateLuxuryExcelBlob(transactions, summary, wallets);
+
+  if (navigator.share && navigator.canShare) {
+    try {
+      const file = new File([blob], filename, {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "Trouvaille Excel Statement",
+          text: `Here is the financial statement export from Trouvaille (${filename}).`,
+        });
+        return true;
+      }
+    } catch (e: any) {
+      if (e.name !== "AbortError") {
+        console.warn("[reportExportService] Web Share failed, falling back to download:", e);
+      } else {
+        return false;
+      }
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
   return true;
 }
 
@@ -686,12 +872,12 @@ export function generateLuxuryPdf(
 
   // Header: Brand & Title
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setTextColor(18, 18, 20); // obsidian
   doc.text("TROUVAILLE", margin, y);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(113, 113, 122); // zinc-500
   doc.text("PRIVATE WEALTH ARCHITECTURE · EXECUTIVE STATEMENT", margin, y + 13);
 
@@ -716,7 +902,7 @@ export function generateLuxuryPdf(
   doc.setLineWidth(0.75);
   doc.line(margin, y, pageWidth - margin, y);
 
-  y += 14;
+  y += 18;
 
   // Key Financial Metrics Grid (4 columns)
   const colGap = 8;
@@ -756,50 +942,53 @@ export function generateLuxuryPdf(
     doc.text(m.sub, x + 8, y + 39);
   });
 
-  y += 58;
+  // Generous spacing after metric cards
+  y += 68;
 
   // Top Categories (Proportional Progress Bars)
   if (summary.topCategories.length > 0) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(18, 18, 20);
     doc.text("EXPENSE DISTRIBUTION (TOP 5)", margin, y);
 
-    y += 12;
+    y += 14;
 
     summary.topCategories.slice(0, 5).forEach((cat) => {
-      doc.setFont("helvetica", "bold");
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(39, 39, 42);
       doc.text(cat.name, margin, y);
 
       const amtText = `${formatRupiah(cat.amount)}  (${cat.percentage.toFixed(1)}%)`;
       doc.setFont("helvetica", "normal");
+      doc.setTextColor(113, 113, 122);
       doc.text(amtText, pageWidth - margin, y, { align: "right" });
 
       // Track bar
       y += 4;
       doc.setFillColor(240, 240, 244);
-      doc.roundedRect(margin, y, contentWidth, 3.5, 1.5, 1.5, "F");
+      doc.roundedRect(margin, y, contentWidth, 3, 1.5, 1.5, "F");
 
       // Progress bar
       const fillW = Math.max(3, (contentWidth * Math.min(100, cat.percentage)) / 100);
       doc.setFillColor(39, 39, 42);
-      doc.roundedRect(margin, y, fillW, 3.5, 1.5, 1.5, "F");
+      doc.roundedRect(margin, y, fillW, 3, 1.5, 1.5, "F");
 
-      y += 12;
+      y += 14;
     });
 
-    y += 8;
+    // Generous space after category section
+    y += 18;
   }
 
   // Section Header: Transaction Ledger
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setTextColor(18, 18, 20);
   doc.text(`LEDGER TRANSACTIONS (${transactions.length})`, margin, y);
 
-  y += 10;
+  y += 12;
 
   // Table Header Function
   const renderTableHeader = (currY: number) => {
@@ -819,7 +1008,7 @@ export function generateLuxuryPdf(
   };
 
   renderTableHeader(y);
-  y += 17;
+  y += 18;
 
   // Sort transactions by date descending
   const sortedTxs = [...transactions].sort((a, b) => {
@@ -835,7 +1024,7 @@ export function generateLuxuryPdf(
       doc.addPage();
       y = 40;
       renderTableHeader(y);
-      y += 17;
+      y += 18;
     }
 
     // Alternating row background tint
@@ -850,12 +1039,16 @@ export function generateLuxuryPdf(
     const accountLabel = tx.type === "transfer" && toName ? `${fromName} -> ${toName}` : fromName;
 
     const catName = tx.categories?.name || (tx.type === "transfer" ? "Transfer" : "General");
-    const noteText = tx.note ? `${tx.note} (${catName})` : catName;
+    const noteText = tx.type === "transfer"
+      ? (tx.note ? `${tx.note} (Transfer)` : "Transfer")
+      : (tx.note ? `${tx.note} (${catName})` : catName);
     const desc = noteText.length > 50 ? noteText.slice(0, 48) + "..." : noteText;
 
     const isIncome = tx.type === "income";
     const isExpense = tx.type === "expense";
-    const prefix = isIncome ? "+" : isExpense ? "-" : "⇄ ";
+
+    // Clean formatting without broken Unicode characters
+    const prefix = isIncome ? "+" : isExpense ? "-" : "";
     const amtStr = `${prefix}${formatRupiah(Number(tx.amount || 0))}`;
 
     doc.setFont("helvetica", "normal");
@@ -865,11 +1058,13 @@ export function generateLuxuryPdf(
     doc.text(desc, margin + 70, y + 10);
     doc.text(accountLabel.slice(0, 26), margin + 310, y + 10);
 
-    doc.setFont("helvetica", "bold");
+    // Regular font weight for all line amounts to maintain clean visual balance
     if (isIncome) {
       doc.setTextColor(13, 148, 136); // teal-600 for inflow
+    } else if (isExpense) {
+      doc.setTextColor(24, 24, 27); // obsidian for outflow
     } else {
-      doc.setTextColor(24, 24, 27); // obsidian for outflow/transfer
+      doc.setTextColor(113, 113, 122); // zinc-500 neutral for transfer
     }
     doc.text(amtStr, pageWidth - margin - 6, y + 10, { align: "right" });
 
@@ -886,13 +1081,13 @@ export function generateLuxuryPdf(
     doc.setPage(i);
     doc.setDrawColor(228, 228, 233);
     doc.setLineWidth(0.5);
-    doc.line(margin, pageHeight - 26, pageWidth - margin, pageHeight - 26);
+    doc.line(margin, pageHeight - 24, pageWidth - margin, pageHeight - 24);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(161, 161, 170);
-    doc.text("Trouvaille · Private Wealth Architecture · Confidential Document", margin, pageHeight - 14);
-    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 14, { align: "right" });
+    doc.text("Trouvaille · Private Wealth Architecture · Confidential Document", margin, pageHeight - 12);
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 12, { align: "right" });
   }
 
   return doc;
