@@ -325,7 +325,7 @@ export function calculateBalanceSheet(
 }
 
 // ======================================================================
-// PURE CALCULATION: STATEMENT OF CASH FLOWS (LAPORAN ARUS KAS / PSAK 2)
+// PURE CALCULATION: STATEMENT OF CASH FLOWS (LAPORAN ARUS KAS)
 // ======================================================================
 
 export function calculateCashFlowStatement(
@@ -578,7 +578,7 @@ export function calculateCALKReport(
       .forEach((tx) => {
         const amt = Number(tx.amount || 0);
         const pct = (amt / totalExpenseAmt) * 100;
-        if (pct >= 15) {
+        if (pct >= 5) {
           const catName =
             (tx.category_id ? catMap.get(tx.category_id) : tx.categories?.name) ||
             "General Expense";

@@ -3,6 +3,7 @@ import { jsPDF } from "jspdf";
 import { Capacitor } from "@capacitor/core";
 import type { Transaction, Wallet, Category } from "./types";
 import { formatRupiah } from "./utils";
+import { generateFinancialReportPackage } from "./financialAccounting";
 
 export type ReportDateRange =
   | "this_month"
@@ -644,13 +645,38 @@ export async function shareOrDownloadFile(
 }
 
 /**
+ * Helper to turn off gridlines on all sheets in generated XLSX binary
+ */
+function patchGridlinesInUint8Array(buffer: Uint8Array): Uint8Array {
+  const target = new TextEncoder().encode('<sheetView workbookViewId="0"/>');
+  const replace = new TextEncoder().encode('<sheetView showGridLines="0" />');
+  const n = buffer.length;
+  const m = target.length;
+  for (let i = 0; i <= n - m; i++) {
+    let match = true;
+    for (let j = 0; j < m; j++) {
+      if (buffer[i + j] !== target[j]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) {
+      buffer.set(replace, i);
+      i += m - 1;
+    }
+  }
+  return buffer;
+}
+
+/**
  * Generates an executive Excel workbook (.xlsx) with clean typography, column widths,
- * executive summary section, and structured ledger table.
+ * 4 dedicated sheets (Buku Kas, Neraca, Arus Kas, CaLK), and gridlines turned off for monochrome luxury.
  */
 export async function generateLuxuryExcelBlob(
   transactions: Transaction[],
   summary: ReportSummary,
   wallets: Wallet[] = [],
+  categories: Category[] = [],
 ): Promise<Blob> {
   const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
@@ -658,37 +684,36 @@ export async function generateLuxuryExcelBlob(
   const walletMap = new Map<string, string>();
   wallets.forEach((w) => walletMap.set(w.id, w.name));
 
+  const reportPkg = generateFinancialReportPackage(wallets, transactions, categories, {
+    periodLabel: summary.periodLabel,
+  });
+  const { balanceSheet, cashFlow, calk } = reportPkg;
+
   const sortedTxs = [...transactions].sort((a, b) => {
     const da = a.occurred_on || a.created_at || "";
     const db = b.occurred_on || b.created_at || "";
     return db.localeCompare(da);
   });
 
-  // Sheet 1: Financial Ledger
-  const aoaData: any[][] = [
-    ["TROUVAILLE — FINANCIAL STATEMENT & LEDGER"],
-    [`Period: ${summary.periodLabel}   |   Scope: ${summary.spaceName}   |   Generated: ${format(new Date(), "dd MMMM yyyy, HH:mm:ss")}`],
-    [],
-    ["EXECUTIVE FINANCIAL SUMMARY"],
-    ["Metric", "Amount (IDR)", "Status / Ratio"],
-    ["Total Inflow", summary.totalIncome, "Income & credit transfers"],
-    ["Total Outflow", summary.totalExpense, "Expenses & debit transfers"],
-    ["Net Cashflow", summary.netCashflow, summary.netCashflow >= 0 ? "Surplus" : "Deficit"],
-    ["Savings Rate", `${summary.savingsRate.toFixed(1)}%`, "Preservation ratio"],
-    ["Total Transactions", summary.transactionCount, "Recorded entries"],
+  // ==========================================
+  // SHEET 1: Buku Kas (Financial Ledger)
+  // ==========================================
+  const aoaLedger: any[][] = [
+    ["TROUVAILLE — BUKU KAS TRANSAKSI (FINANCIAL LEDGER)"],
+    [`Periode: ${summary.periodLabel}   |   Ruang: ${summary.spaceName}   |   Dibuat: ${format(new Date(), "dd MMMM yyyy, HH:mm:ss")}`],
     [],
     [
-      "Date",
-      "Time",
-      "Type",
-      "Category",
-      "From Account",
-      "To Account",
-      "Amount (IDR)",
-      "Space",
-      "Note / Description",
-      "Tags",
-      "Transaction ID",
+      "Tanggal",
+      "Waktu",
+      "Jenis",
+      "Kategori",
+      "Dari Akun",
+      "Ke Akun",
+      "Nominal (IDR)",
+      "Ruang",
+      "Catatan / Deskripsi",
+      "Tag",
+      "ID Transaksi",
     ],
   ];
 
@@ -696,7 +721,7 @@ export async function generateLuxuryExcelBlob(
     const dateStr = t.occurred_on || (t.created_at ? t.created_at.slice(0, 10) : "");
     const timeStr = t.created_at ? format(new Date(t.created_at), "HH:mm") : "";
     const typeStr =
-      t.type === "income" ? "Income" : t.type === "expense" ? "Expense" : "Transfer";
+      t.type === "income" ? "Pemasukan" : t.type === "expense" ? "Pengeluaran" : "Transfer";
     const catStr = t.categories?.name || (t.type === "transfer" ? "Transfer" : "General");
     const fromAccount = t.wallet_id ? walletMap.get(t.wallet_id) || t.wallet_id : "";
     const toAccount = t.to_wallet_id ? walletMap.get(t.to_wallet_id) || t.to_wallet_id : "";
@@ -704,7 +729,7 @@ export async function generateLuxuryExcelBlob(
     const note = t.note || "";
     const tags = (note.match(/#[a-zA-Z0-9_-]+/g) || []).join(" ");
 
-    aoaData.push([
+    aoaLedger.push([
       dateStr,
       timeStr,
       typeStr,
@@ -719,49 +744,231 @@ export async function generateLuxuryExcelBlob(
     ]);
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(aoaData);
+  const ws1 = XLSX.utils.aoa_to_sheet(aoaLedger);
+  ws1["!cols"] = [
+    { wch: 14 }, // Tanggal
+    { wch: 10 }, // Waktu
+    { wch: 14 }, // Jenis
+    { wch: 22 }, // Kategori
+    { wch: 20 }, // Dari Akun
+    { wch: 20 }, // Ke Akun
+    { wch: 18 }, // Nominal (IDR)
+    { wch: 16 }, // Ruang
+    { wch: 34 }, // Catatan
+    { wch: 18 }, // Tag
+    { wch: 36 }, // ID
+  ];
+  ws1["!autofilter"] = { ref: `A4:K${aoaLedger.length}` };
 
-  ws["!cols"] = [
-    { wch: 14 }, // Date
-    { wch: 10 }, // Time
-    { wch: 12 }, // Type
-    { wch: 22 }, // Category
-    { wch: 20 }, // From Account
-    { wch: 20 }, // To Account
-    { wch: 18 }, // Amount (IDR)
-    { wch: 16 }, // Space
-    { wch: 34 }, // Note / Description
-    { wch: 18 }, // Tags
-    { wch: 36 }, // Transaction ID
+  // Apply number format to Amount column
+  for (let r = 5; r <= aoaLedger.length; r++) {
+    const cell = ws1[`G${r}`];
+    if (cell && typeof cell.v === "number") {
+      cell.z = "#,##0";
+    }
+  }
+  XLSX.utils.book_append_sheet(wb, ws1, "Buku Kas");
+
+  // ==========================================
+  // SHEET 2: Neraca (Balance Sheet)
+  // ==========================================
+  const aoaNeraca: any[][] = [
+    ["TROUVAILLE — LAPORAN POSISI KEUANGAN (NERACA / BALANCE SHEET)"],
+    [`Posisi Keuangan per: ${summary.periodLabel}   |   Ruang: ${summary.spaceName}`],
+    [],
+    ["1. ASET (ASSETS)", "Nominal (IDR)", "Porsi dari Total Aset (%)"],
+    ["ASET LANCAR (LIQUID ASSETS)", balanceSheet.liquidAssets.total, "Subtotal"],
   ];
 
-  XLSX.utils.book_append_sheet(wb, ws, "Financial Statement");
+  balanceSheet.liquidAssets.items.forEach((item) => {
+    aoaNeraca.push([`   • ${item.name}`, item.balance, `${item.percentageOfTotal}%`]);
+  });
 
-  // Sheet 2: Expense Breakdown
-  if (summary.topCategories.length > 0) {
-    const catData: any[][] = [
-      ["EXPENSE DISTRIBUTION BY CATEGORY"],
-      [`Period: ${summary.periodLabel}   |   Scope: ${summary.spaceName}`],
-      [],
-      ["Category", "Total Spent (IDR)", "Share (%)", "Transaction Count"],
-    ];
+  aoaNeraca.push(
+    ["ASET INVESTASI (INVESTMENTS)", balanceSheet.investmentAssets.total, "Subtotal"]
+  );
+  balanceSheet.investmentAssets.items.forEach((item) => {
+    aoaNeraca.push([`   • ${item.name}`, item.balance, `${item.percentageOfTotal}%`]);
+  });
 
-    summary.topCategories.forEach((c) => {
-      catData.push([c.name, c.amount, `${c.percentage.toFixed(1)}%`, c.count]);
+  aoaNeraca.push(
+    ["PIUTANG (RECEIVABLES)", balanceSheet.receivableAssets.total, "Subtotal"]
+  );
+  balanceSheet.receivableAssets.items.forEach((item) => {
+    aoaNeraca.push([`   • ${item.name}`, item.balance, `${item.percentageOfTotal}%`]);
+  });
+
+  aoaNeraca.push(
+    ["TOTAL ASET (TOTAL ASSETS)", balanceSheet.totalAssets, "100.0%"],
+    [],
+    ["2. LIABILITAS & UTANG (LIABILITIES)", "Nominal (IDR)", "Porsi dari Total Liabilitas (%)"],
+    ["LIABILITAS LANCAR (CURRENT LIABILITIES)", balanceSheet.currentLiabilities.total, "Subtotal"]
+  );
+  balanceSheet.currentLiabilities.items.forEach((item) => {
+    aoaNeraca.push([`   • ${item.name}`, item.balance, `${item.percentageOfTotal}%`]);
+  });
+
+  aoaNeraca.push(
+    ["LIABILITAS JANGKA PANJANG (LONG-TERM LIABILITIES)", balanceSheet.longTermLiabilities.total, "Subtotal"]
+  );
+  balanceSheet.longTermLiabilities.items.forEach((item) => {
+    aoaNeraca.push([`   • ${item.name}`, item.balance, `${item.percentageOfTotal}%`]);
+  });
+
+  aoaNeraca.push(
+    ["TOTAL LIABILITAS (TOTAL LIABILITIES)", balanceSheet.totalLiabilities, "100.0%"],
+    [],
+    ["3. EKUITAS & KEKAYAAN BERSIH (NET WORTH)", "Nominal (IDR)", "Keterangan"],
+    ["KEKAYAAN BERSIH (NET WORTH)", balanceSheet.netWorth, "Total Aset - Total Liabilitas"],
+    [
+      "STATUS KESEIMBANGAN AKUNTANSI",
+      balanceSheet.isBalanced ? "TERVERIFIKASI SEIMBANG" : "SELISIH AUDIT",
+      balanceSheet.isBalanced ? "Aset = Liabilitas + Ekuitas (100% Seimbang)" : `Selisih: ${formatRupiah(balanceSheet.discrepancy)}`,
+    ]
+  );
+
+  const ws2 = XLSX.utils.aoa_to_sheet(aoaNeraca);
+  ws2["!cols"] = [{ wch: 44 }, { wch: 22 }, { wch: 32 }];
+
+  // Format currency in Sheet 2
+  for (let r = 4; r <= aoaNeraca.length; r++) {
+    const cell = ws2[`B${r}`];
+    if (cell && typeof cell.v === "number") {
+      cell.z = "#,##0";
+    }
+  }
+  XLSX.utils.book_append_sheet(wb, ws2, "Neraca");
+
+  // ==========================================
+  // SHEET 3: Arus Kas (Cash Flow Statement)
+  // ==========================================
+  const aoaCashFlow: any[][] = [
+    ["TROUVAILLE — LAPORAN ARUS KAS (CASH FLOW STATEMENT)"],
+    [`Periode: ${summary.periodLabel}   |   Ruang: ${summary.spaceName}`],
+    [],
+    ["1. ARUS KAS DARI AKTIVITAS OPERASI (OPERATING CASH FLOW)", "Nominal (IDR)", "Status"],
+    ["Arus Masuk Operasi (Operating Inflow)", cashFlow.operatingInflow, "Penerimaan rutin"],
+    ["Arus Keluar Operasi (Operating Outflow)", cashFlow.operatingOutflow, "Pengeluaran belanja"],
+    [
+      "ARUS KAS BERSIH OPERASI (NET OPERATING CASH FLOW)",
+      cashFlow.netOperatingCashFlow,
+      cashFlow.netOperatingCashFlow >= 0 ? "Surplus Operasi" : "Defisit Operasi",
+    ],
+    [],
+    ["2. ARUS KAS DARI AKTIVITAS INVESTASI (INVESTING CASH FLOW)", "Nominal (IDR)", "Status"],
+    ["Arus Masuk Investasi (Investing Inflow)", cashFlow.investingInflow, "Penjualan aset / dividen"],
+    ["Arus Keluar Investasi (Investing Outflow)", cashFlow.investingOutflow, "Pembelian instrumen investasi"],
+    [
+      "ARUS KAS BERSIH INVESTASI (NET INVESTING CASH FLOW)",
+      cashFlow.netInvestingCashFlow,
+      cashFlow.netInvestingCashFlow >= 0 ? "Surplus Investasi" : "Defisit Investasi",
+    ],
+    [],
+    ["3. ARUS KAS DARI AKTIVITAS PENDANAAN (FINANCING CASH FLOW)", "Nominal (IDR)", "Status"],
+    ["Arus Masuk Pendanaan (Financing Inflow)", cashFlow.financingInflow, "Penerimaan pinjaman / utang"],
+    ["Arus Keluar Pendanaan (Financing Outflow)", cashFlow.financingOutflow, "Pelunasan cicilan / utang"],
+    [
+      "ARUS KAS BERSIH PENDANAAN (NET FINANCING CASH FLOW)",
+      cashFlow.netFinancingCashFlow,
+      cashFlow.netFinancingCashFlow >= 0 ? "Surplus Pendanaan" : "Defisit Pendanaan",
+    ],
+    [],
+    ["4. REKAPITULASI ARUS KAS KONSOLIDASI", "Nominal (IDR)", "Keterangan"],
+    ["Total Pemasukan Kas Seluruh Aktivitas", cashFlow.totalInflow, "Total Inflow"],
+    ["Total Pengeluaran Kas Seluruh Aktivitas", cashFlow.totalOutflow, "Total Outflow"],
+    [
+      "PERUBAHAN KAS BERSIH (NET CHANGE IN CASH)",
+      cashFlow.netCashFlow,
+      cashFlow.netCashFlow >= 0 ? "Surplus Kas Konsolidasi" : "Defisit Kas Konsolidasi",
+    ],
+  ];
+
+  const ws3 = XLSX.utils.aoa_to_sheet(aoaCashFlow);
+  ws3["!cols"] = [{ wch: 48 }, { wch: 22 }, { wch: 30 }];
+
+  for (let r = 4; r <= aoaCashFlow.length; r++) {
+    const cell = ws3[`B${r}`];
+    if (cell && typeof cell.v === "number") {
+      cell.z = "#,##0";
+    }
+  }
+  XLSX.utils.book_append_sheet(wb, ws3, "Arus Kas");
+
+  // ==========================================
+  // SHEET 4: CaLK & Rasio (Notes & Disclosures)
+  // ==========================================
+  const aoaCalk: any[][] = [
+    ["TROUVAILLE — CATATAN ATAS LAPORAN KEUANGAN & ANALISIS RASIO (CALK)"],
+    [`Periode: ${summary.periodLabel}   |   Ruang: ${summary.spaceName}`],
+    [],
+    ["1. ANALISIS KETAHANAN KEUANGAN & SOLVENSI", "Nilai", "Status Penilaian", "Analisis Kualitatif"],
+    [
+      "Runway Likuiditas / Dana Darurat",
+      `${calk.solvencyRunwayMonths} Bulan`,
+      calk.solvencyRunwayRating.toUpperCase(),
+      calk.solvencyDescription,
+    ],
+    [
+      "Rasio Utang terhadap Aset (Debt-to-Asset)",
+      `${calk.debtToAssetRatioPct}%`,
+      calk.debtRating.toUpperCase(),
+      calk.debtDescription,
+    ],
+    [
+      "Laju Arus Kas Bebas (Free Cash Flow Rate)",
+      `${calk.freeCashflowRatePct}%`,
+      calk.freeCashflowRating.toUpperCase(),
+      calk.freeCashflowDescription,
+    ],
+    [],
+    [
+      "2. PENGUNGKAPAN TRANSAKSI PENGELUARAN MATERIAL (>= 5% DARI TOTAL PENGELUARAN)",
+      "Kategori",
+      "Nominal (IDR)",
+      "Porsi Pengeluaran (%)",
+    ],
+  ];
+
+  if (calk.materialTransactions.length > 0) {
+    calk.materialTransactions.forEach((item) => {
+      aoaCalk.push([
+        `${item.date} - ${item.note}`,
+        item.categoryName,
+        item.amount,
+        `${item.percentageOfTotalExpense}%`,
+      ]);
     });
-
-    const catWs = XLSX.utils.aoa_to_sheet(catData);
-    catWs["!cols"] = [
-      { wch: 24 },
-      { wch: 20 },
-      { wch: 14 },
-      { wch: 18 },
-    ];
-    XLSX.utils.book_append_sheet(wb, catWs, "Expense Breakdown");
+  } else {
+    aoaCalk.push([
+      "Tidak ada transaksi pengeluaran tunggal yang mencapai ambang batas material 5%.",
+      "-",
+      0,
+      "-",
+    ]);
   }
 
-  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  return new Blob([wbout], {
+  aoaCalk.push(
+    [],
+    ["3. REKONSILIASI & INTEGRITAS DATA AKUNTANSI", "Status Audit", "Keterangan Lengkap"],
+    [
+      "Status Rekonsiliasi Neraca",
+      calk.reconciliation.auditStatus === "CERTIFIED_BALANCED" ? "TERVERIFIKASI SEIMBANG" : "PERINGATAN AUDIT",
+      calk.reconciliation.notes,
+    ]
+  );
+
+  const ws4 = XLSX.utils.aoa_to_sheet(aoaCalk);
+  ws4["!cols"] = [{ wch: 40 }, { wch: 22 }, { wch: 22 }, { wch: 54 }];
+
+  XLSX.utils.book_append_sheet(wb, ws4, "CaLK & Rasio");
+
+  // Generate uncompressed XLSX binary
+  const rawUint8 = XLSX.write(wb, { bookType: "xlsx", type: "array", compression: false });
+
+  // Patch all sheet views to disable gridlines (<sheetView showGridLines="0" />)
+  const patchedUint8 = patchGridlinesInUint8Array(new Uint8Array(rawUint8));
+
+  return new Blob([patchedUint8.buffer as ArrayBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 }
@@ -773,9 +980,10 @@ export async function downloadLuxuryExcel(
   transactions: Transaction[],
   summary: ReportSummary,
   wallets: Wallet[] = [],
+  categories: Category[] = [],
   filename = "trouvaille_statement.xlsx",
 ): Promise<void> {
-  const blob = await generateLuxuryExcelBlob(transactions, summary, wallets);
+  const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories);
 
   if (Capacitor.isNativePlatform() && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
     try {
@@ -812,9 +1020,10 @@ export async function shareLuxuryExcel(
   transactions: Transaction[],
   summary: ReportSummary,
   wallets: Wallet[] = [],
+  categories: Category[] = [],
   filename = "trouvaille_statement.xlsx",
 ): Promise<boolean> {
-  const blob = await generateLuxuryExcelBlob(transactions, summary, wallets);
+  const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories);
 
   if (navigator.share && navigator.canShare) {
     try {
@@ -850,12 +1059,16 @@ export async function shareLuxuryExcel(
 }
 
 /**
- * Generates an executive luxury PDF document with full typography, summary cards, and paginated ledger.
+ * Generates an executive luxury PDF document structured into formal wealth sections:
+ * Page 1: Executive Summary, Key Metrics, Balance Sheet (Neraca) & Top Spending
+ * Page 2: Statement of Cash Flows (Arus Kas) & Notes to Financial Statements (CaLK)
+ * Page 3+: Paginated Ledger Transactions Table
  */
 export function generateLuxuryPdf(
   transactions: Transaction[],
   summary: ReportSummary,
   wallets: Wallet[] = [],
+  categories: Category[] = [],
 ): jsPDF {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -868,9 +1081,20 @@ export function generateLuxuryPdf(
   const margin = 36;
   const contentWidth = pageWidth - margin * 2; // 523.28 pt
 
+  const reportPkg = generateFinancialReportPackage(wallets, transactions, categories, {
+    periodLabel: summary.periodLabel,
+  });
+  const { balanceSheet, cashFlow, calk } = reportPkg;
+
+  const now = new Date();
+  const docRef = `REF: TVL-${format(now, "yyyyMMdd-HHmm")}`;
+
+  // ==========================================
+  // PAGE 1: Executive Statement & Neraca
+  // ==========================================
   let y = 46;
 
-  // Header: Brand & Title
+  // Header Brand & Title
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
   doc.setTextColor(18, 18, 20); // obsidian
@@ -882,8 +1106,6 @@ export function generateLuxuryPdf(
   doc.text("PRIVATE WEALTH ARCHITECTURE · EXECUTIVE STATEMENT", margin, y + 13);
 
   // Period, Scope & Generation Date (right aligned)
-  const now = new Date();
-  const docRef = `REF: TVL-${format(now, "yyyyMMdd-HHmm")}`;
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(24, 24, 27);
@@ -904,7 +1126,7 @@ export function generateLuxuryPdf(
 
   y += 18;
 
-  // Key Financial Metrics Grid (4 columns)
+  // 1. Key Financial Metrics Grid (4 columns)
   const colGap = 8;
   const colW = (contentWidth - colGap * 3) / 4;
   const metrics = [
@@ -942,15 +1164,121 @@ export function generateLuxuryPdf(
     doc.text(m.sub, x + 8, y + 39);
   });
 
-  // Generous spacing after metric cards
-  y += 68;
+  y += 66;
 
-  // Top Categories (Proportional Progress Bars)
+  // 2. Neraca / Statement of Financial Position (Balance Sheet)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(18, 18, 20);
+  doc.text("LAPORAN POSISI KEUANGAN (NERACA / BALANCE SHEET)", margin, y);
+
+  y += 14;
+
+  const bsBoxW = (contentWidth - 10) / 2;
+  const bsBoxH = 68;
+
+  // Box A: Total Assets
+  doc.setFillColor(248, 248, 250);
+  doc.roundedRect(margin, y, bsBoxW, bsBoxH, 5, 5, "F");
+  doc.setDrawColor(235, 235, 239);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(margin, y, bsBoxW, bsBoxH, 5, 5, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(113, 113, 122);
+  doc.text("TOTAL ASET (TOTAL ASSETS)", margin + 10, y + 14);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(24, 24, 27);
+  doc.text(formatRupiah(balanceSheet.totalAssets), margin + 10, y + 30);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(113, 113, 122);
+  doc.text(
+    `Lancar: ${formatRupiah(balanceSheet.liquidAssets.total)}   Investasi: ${formatRupiah(balanceSheet.investmentAssets.total)}`,
+    margin + 10,
+    y + 46
+  );
+  doc.text(
+    `Piutang: ${formatRupiah(balanceSheet.receivableAssets.total)}`,
+    margin + 10,
+    y + 58
+  );
+
+  // Box B: Total Liabilities
+  const rightX = margin + bsBoxW + 10;
+  doc.setFillColor(248, 248, 250);
+  doc.roundedRect(rightX, y, bsBoxW, bsBoxH, 5, 5, "F");
+  doc.setDrawColor(235, 235, 239);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(rightX, y, bsBoxW, bsBoxH, 5, 5, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(113, 113, 122);
+  doc.text("TOTAL LIABILITAS (TOTAL LIABILITIES)", rightX + 10, y + 14);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(24, 24, 27);
+  doc.text(formatRupiah(balanceSheet.totalLiabilities), rightX + 10, y + 30);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(113, 113, 122);
+  doc.text(
+    `Lancar: ${formatRupiah(balanceSheet.currentLiabilities.total)}`,
+    rightX + 10,
+    y + 46
+  );
+  doc.text(
+    `Jangka Panjang: ${formatRupiah(balanceSheet.longTermLiabilities.total)}`,
+    rightX + 10,
+    y + 58
+  );
+
+  y += bsBoxH + 8;
+
+  // Box C: Net Worth (Full-width card)
+  doc.setFillColor(244, 244, 247);
+  doc.roundedRect(margin, y, contentWidth, 38, 5, 5, "F");
+  doc.setDrawColor(228, 228, 233);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(margin, y, contentWidth, 38, 5, 5, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(113, 113, 122);
+  doc.text("KEKAYAAN BERSIH (NET WORTH = ASET - LIABILITAS)", margin + 10, y + 14);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(18, 18, 20);
+  doc.text(formatRupiah(balanceSheet.netWorth), margin + 10, y + 29);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(113, 113, 122);
+  doc.text(
+    balanceSheet.isBalanced
+      ? "Keseimbangan: Aset = Liabilitas + Ekuitas (100% Seimbang)"
+      : `Selisih: ${formatRupiah(balanceSheet.discrepancy)}`,
+    pageWidth - margin - 10,
+    y + 24,
+    { align: "right" }
+  );
+
+  y += 54;
+
+  // 3. Top Expense Distribution
   if (summary.topCategories.length > 0) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
+    doc.setFontSize(8.5);
     doc.setTextColor(18, 18, 20);
-    doc.text("EXPENSE DISTRIBUTION (TOP 5)", margin, y);
+    doc.text("DISTRIBUSI PENGELUARAN (TOP 5 SPENDING)", margin, y);
 
     y += 14;
 
@@ -965,33 +1293,271 @@ export function generateLuxuryPdf(
       doc.setTextColor(113, 113, 122);
       doc.text(amtText, pageWidth - margin, y, { align: "right" });
 
-      // Track bar
       y += 4;
       doc.setFillColor(240, 240, 244);
       doc.roundedRect(margin, y, contentWidth, 3, 1.5, 1.5, "F");
 
-      // Progress bar
       const fillW = Math.max(3, (contentWidth * Math.min(100, cat.percentage)) / 100);
       doc.setFillColor(39, 39, 42);
       doc.roundedRect(margin, y, fillW, 3, 1.5, 1.5, "F");
 
       y += 14;
     });
-
-    // Generous space after category section
-    y += 18;
   }
 
-  // Section Header: Transaction Ledger
+  // ==========================================
+  // PAGE 2: Arus Kas & CaLK
+  // ==========================================
+  doc.addPage();
+  y = 46;
+
+  // Page 2 Header
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
+  doc.setFontSize(14);
   doc.setTextColor(18, 18, 20);
-  doc.text(`LEDGER TRANSACTIONS (${transactions.length})`, margin, y);
+  doc.text("TROUVAILLE", margin, y);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(113, 113, 122);
+  doc.text("LAPORAN ARUS KAS & CATATAN ATAS LAPORAN KEUANGAN (CALK)", margin, y + 13);
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(24, 24, 27);
+  doc.text(summary.periodLabel, pageWidth - margin, y, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(113, 113, 122);
+  doc.text(`${summary.spaceName} · ${docRef}`, pageWidth - margin, y + 11, { align: "right" });
+
+  y += 28;
+  doc.setDrawColor(228, 228, 233);
+  doc.setLineWidth(0.75);
+  doc.line(margin, y, pageWidth - margin, y);
+
+  y += 18;
+
+  // Section: Laporan Arus Kas (3 Activity Cards)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(18, 18, 20);
+  doc.text("LAPORAN ARUS KAS (STATEMENT OF CASH FLOWS)", margin, y);
 
   y += 12;
 
+  const cfColW = (contentWidth - 16) / 3;
+  const cfBoxH = 62;
+  const cfActivities = [
+    {
+      title: "AKTIVITAS OPERASI",
+      inflow: cashFlow.operatingInflow,
+      outflow: cashFlow.operatingOutflow,
+      net: cashFlow.netOperatingCashFlow,
+    },
+    {
+      title: "AKTIVITAS INVESTASI",
+      inflow: cashFlow.investingInflow,
+      outflow: cashFlow.investingOutflow,
+      net: cashFlow.netInvestingCashFlow,
+    },
+    {
+      title: "AKTIVITAS PENDANAAN",
+      inflow: cashFlow.financingInflow,
+      outflow: cashFlow.financingOutflow,
+      net: cashFlow.netFinancingCashFlow,
+    },
+  ];
+
+  cfActivities.forEach((act, idx) => {
+    const x = margin + idx * (cfColW + 8);
+    doc.setFillColor(248, 248, 250);
+    doc.roundedRect(x, y, cfColW, cfBoxH, 5, 5, "F");
+    doc.setDrawColor(235, 235, 239);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(x, y, cfColW, cfBoxH, 5, 5, "S");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(113, 113, 122);
+    doc.text(act.title, x + 8, y + 13);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(113, 113, 122);
+    doc.text(`Masuk: +${formatRupiah(act.inflow)}`, x + 8, y + 27);
+    doc.text(`Keluar: -${formatRupiah(act.outflow)}`, x + 8, y + 39);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(24, 24, 27);
+    doc.text(`Bersih: ${(act.net >= 0 ? "+" : "") + formatRupiah(act.net)}`, x + 8, y + 52);
+  });
+
+  y += cfBoxH + 10;
+
+  // Net Cash Change Bar
+  doc.setFillColor(244, 244, 247);
+  doc.roundedRect(margin, y, contentWidth, 24, 4, 4, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(18, 18, 20);
+  doc.text("PERUBAHAN KAS BERSIH (NET CHANGE IN CASH)", margin + 8, y + 15);
+  doc.text(
+    `${cashFlow.netCashFlow >= 0 ? "+" : ""}${formatRupiah(cashFlow.netCashFlow)}`,
+    pageWidth - margin - 8,
+    y + 15,
+    { align: "right" }
+  );
+
+  y += 42;
+
+  // Section: CaLK & Analisis Rasio
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(18, 18, 20);
+  doc.text("CATATAN ATAS LAPORAN KEUANGAN (CALK) & ANALISIS RASIO", margin, y);
+
+  y += 12;
+
+  // 3 Metric Badges
+  const rColW = (contentWidth - 16) / 3;
+  const ratios = [
+    {
+      title: "RUNWAY LIKUIDITAS",
+      val: `${calk.solvencyRunwayMonths} Bulan`,
+      rating: calk.solvencyRunwayRating.toUpperCase(),
+    },
+    {
+      title: "RASIO UTANG (DAR)",
+      val: `${calk.debtToAssetRatioPct}%`,
+      rating: calk.debtRating.toUpperCase(),
+    },
+    {
+      title: "ARUS KAS BEBAS (FCF)",
+      val: `${calk.freeCashflowRatePct}%`,
+      rating: calk.freeCashflowRating.toUpperCase(),
+    },
+  ];
+
+  ratios.forEach((r, idx) => {
+    const x = margin + idx * (rColW + 8);
+    doc.setFillColor(248, 248, 250);
+    doc.roundedRect(x, y, rColW, 40, 4, 4, "F");
+    doc.setDrawColor(235, 235, 239);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(x, y, rColW, 40, 4, 4, "S");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(113, 113, 122);
+    doc.text(r.title, x + 8, y + 12);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(24, 24, 27);
+    doc.text(r.val, x + 8, y + 26);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(113, 113, 122);
+    doc.text(r.rating, x + rColW - 8, y + 26, { align: "right" });
+  });
+
+  y += 50;
+
+  // Material Transactions Table (>= 5% threshold)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(18, 18, 20);
+  doc.text("PENGUNGKAPAN TRANSAKSI MATERIAL (>= 5% DARI TOTAL PENGELUARAN)", margin, y);
+
+  y += 10;
+
+  // CaLK Table Header
+  doc.setFillColor(244, 244, 246);
+  doc.rect(margin, y, contentWidth, 15, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(113, 113, 122);
+  doc.text("TANGGAL", margin + 6, y + 10);
+  doc.text("DESKRIPSI / KATEGORI", margin + 70, y + 10);
+  doc.text("PORSI BELANJA", margin + 340, y + 10);
+  doc.text("NOMINAL", pageWidth - margin - 6, y + 10, { align: "right" });
+
+  y += 16;
+
+  if (calk.materialTransactions.length > 0) {
+    calk.materialTransactions.slice(0, 5).forEach((item, idx) => {
+      if (idx % 2 === 0) {
+        doc.setFillColor(250, 250, 252);
+        doc.rect(margin, y - 1, contentWidth, 15, "F");
+      }
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(71, 71, 78);
+      doc.text(item.date || "", margin + 6, y + 9);
+      doc.text(`${item.note.slice(0, 36)} (${item.categoryName})`, margin + 70, y + 9);
+      doc.text(`${item.percentageOfTotalExpense}%`, margin + 340, y + 9);
+      doc.text(formatRupiah(item.amount), pageWidth - margin - 6, y + 9, { align: "right" });
+
+      doc.setDrawColor(240, 240, 244);
+      doc.setLineWidth(0.5);
+      doc.line(margin, y + 13, pageWidth - margin, y + 13);
+      y += 15;
+    });
+  } else {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(161, 161, 170);
+    doc.text("Tidak ada transaksi tunggal yang melebihi ambang batas material 5%.", margin + 6, y + 10);
+    y += 16;
+  }
+
+  y += 10;
+
+  // Audit Reconciliation Banner
+  doc.setFillColor(248, 248, 250);
+  doc.roundedRect(margin, y, contentWidth, 30, 4, 4, "F");
+  doc.setDrawColor(235, 235, 239);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(margin, y, contentWidth, 30, 4, 4, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(18, 18, 20);
+  doc.text("REKONSILIASI & INTEGRITAS AUDIT INTERNAL", margin + 8, y + 12);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(113, 113, 122);
+  doc.text(
+    calk.reconciliation.auditStatus === "CERTIFIED_BALANCED"
+      ? "Status: TERVERIFIKASI SEIMBANG — Seluruh saldo akun dan mutasi kas konsisten 100% tanpa selisih."
+      : `Status: PERINGATAN — Ditemukan selisih ${formatRupiah(calk.reconciliation.discrepancyAmount)}.`,
+    margin + 8,
+    y + 22
+  );
+
+  // ==========================================
+  // PAGE 3+: Buku Kas Transaksi (Ledger)
+  // ==========================================
+  doc.addPage();
+  y = 46;
+
   // Table Header Function
-  const renderTableHeader = (currY: number) => {
+  const renderLedgerHeader = (currY: number) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(18, 18, 20);
+    doc.text(`BUKU KAS TRANSAKSI (${transactions.length} CATATAN)`, margin, currY);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(113, 113, 122);
+    doc.text(`${summary.spaceName} · ${summary.periodLabel}`, pageWidth - margin, currY, { align: "right" });
+
+    currY += 12;
+
     doc.setFillColor(244, 244, 246);
     doc.rect(margin, currY, contentWidth, 16, "F");
     doc.setDrawColor(228, 228, 233);
@@ -1001,16 +1567,16 @@ export function generateLuxuryPdf(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(113, 113, 122);
-    doc.text("DATE", margin + 6, currY + 11);
-    doc.text("DESCRIPTION / CATEGORY", margin + 70, currY + 11);
-    doc.text("ACCOUNT", margin + 310, currY + 11);
-    doc.text("AMOUNT", pageWidth - margin - 6, currY + 11, { align: "right" });
+    doc.text("TANGGAL", margin + 6, currY + 11);
+    doc.text("DESKRIPSI / KATEGORI", margin + 70, currY + 11);
+    doc.text("AKUN", margin + 310, currY + 11);
+    doc.text("NOMINAL", pageWidth - margin - 6, currY + 11, { align: "right" });
+
+    return currY + 18;
   };
 
-  renderTableHeader(y);
-  y += 18;
+  y = renderLedgerHeader(y);
 
-  // Sort transactions by date descending
   const sortedTxs = [...transactions].sort((a, b) => {
     const da = a.occurred_on || a.created_at || "";
     const db = b.occurred_on || b.created_at || "";
@@ -1022,9 +1588,7 @@ export function generateLuxuryPdf(
   sortedTxs.forEach((tx, idx) => {
     if (y > pageHeight - 55) {
       doc.addPage();
-      y = 40;
-      renderTableHeader(y);
-      y += 18;
+      y = renderLedgerHeader(44);
     }
 
     // Alternating row background tint
@@ -1058,7 +1622,7 @@ export function generateLuxuryPdf(
     doc.text(desc, margin + 70, y + 10);
     doc.text(accountLabel.slice(0, 26), margin + 310, y + 10);
 
-    // Regular font weight for all line amounts to maintain clean visual balance
+    // Regular font weight for all line amounts
     if (isIncome) {
       doc.setTextColor(13, 148, 136); // teal-600 for inflow
     } else if (isExpense) {
@@ -1087,7 +1651,7 @@ export function generateLuxuryPdf(
     doc.setFontSize(7);
     doc.setTextColor(161, 161, 170);
     doc.text("Trouvaille · Private Wealth Architecture · Confidential Document", margin, pageHeight - 12);
-    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 12, { align: "right" });
+    doc.text(`Halaman ${i} dari ${totalPages}`, pageWidth - margin, pageHeight - 12, { align: "right" });
   }
 
   return doc;
@@ -1100,9 +1664,10 @@ export async function downloadLuxuryPdf(
   transactions: Transaction[],
   summary: ReportSummary,
   wallets: Wallet[] = [],
+  categories: Category[] = [],
   filename = "trouvaille_statement.pdf",
 ): Promise<void> {
-  const doc = generateLuxuryPdf(transactions, summary, wallets);
+  const doc = generateLuxuryPdf(transactions, summary, wallets, categories);
   const blob = doc.output("blob");
 
   // In native Capacitor iOS WKWebView, <a download> is ignored; Web Share API prompts native "Save to Files"
@@ -1133,9 +1698,10 @@ export async function shareLuxuryPdf(
   transactions: Transaction[],
   summary: ReportSummary,
   wallets: Wallet[] = [],
+  categories: Category[] = [],
   filename = "trouvaille_statement.pdf",
 ): Promise<boolean> {
-  const doc = generateLuxuryPdf(transactions, summary, wallets);
+  const doc = generateLuxuryPdf(transactions, summary, wallets, categories);
   const blob = doc.output("blob");
 
   if (navigator.share && navigator.canShare) {

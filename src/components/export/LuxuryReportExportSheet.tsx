@@ -124,7 +124,7 @@ export function LuxuryReportExportSheet({
           : `trouvaille_statement_${dateStr}${spaceSlug}.pdf`;
 
         if (action === "share") {
-          const ok = await shareLuxuryPdf(filteredTransactions, summary, wallets, filename);
+          const ok = await shareLuxuryPdf(filteredTransactions, summary, wallets, categories, filename);
           if (ok) {
             triggerSuccessHaptic();
             showToast(
@@ -134,7 +134,7 @@ export function LuxuryReportExportSheet({
             );
           }
         } else {
-          await downloadLuxuryPdf(filteredTransactions, summary, wallets, filename);
+          await downloadLuxuryPdf(filteredTransactions, summary, wallets, categories, filename);
           triggerSuccessHaptic();
           showToast(
             isIndonesian ? "Laporan PDF berhasil diunduh" : "PDF statement downloaded",
@@ -148,7 +148,7 @@ export function LuxuryReportExportSheet({
           : `trouvaille_statement_${dateStr}${spaceSlug}.xlsx`;
 
         if (action === "share") {
-          const ok = await shareLuxuryExcel(filteredTransactions, summary, wallets, filename);
+          const ok = await shareLuxuryExcel(filteredTransactions, summary, wallets, categories, filename);
           if (ok) {
             triggerSuccessHaptic();
             showToast(
@@ -158,7 +158,7 @@ export function LuxuryReportExportSheet({
             );
           }
         } else {
-          await downloadLuxuryExcel(filteredTransactions, summary, wallets, filename);
+          await downloadLuxuryExcel(filteredTransactions, summary, wallets, categories, filename);
           triggerSuccessHaptic();
           showToast(
             isIndonesian ? "Berkas Excel berhasil diunduh" : "Excel statement downloaded",
@@ -232,8 +232,8 @@ export function LuxuryReportExportSheet({
             </h3>
             <p className="text-[12px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
               {isIndonesian
-                ? "Ringkasan eksekutif, spreadsheet Excel & arsip cadangan"
-                : "Executive statements, Excel spreadsheets & vault archives"}
+                ? "Neraca, Arus Kas, CaLK, Buku Kas & arsip cadangan"
+                : "Balance Sheet, Cash Flow, CaLK, Ledger & vault archives"}
             </p>
           </div>
           <button
