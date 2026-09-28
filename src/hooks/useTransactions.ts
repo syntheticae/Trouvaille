@@ -53,6 +53,7 @@ export interface TransactionFilters {
   ledgerId?: string;
   filterByUserIdOnly?: boolean;
   skipPendingOverlay?: boolean;
+  showVisualIndicator?: boolean;
 }
 
 interface TransactionQueryOptions {
@@ -485,8 +486,10 @@ export async function fetchAllTransactionsFromSupabase(
     return all.filter((t) => matchesTransactionFilters(t, filters));
   }
 
-  // Cloud Mode: Notify floating pill of sync start
-  emitSyncStatus({ status: "syncing" });
+  // Cloud Mode: Notify floating pill of sync start ONLY if visually requested
+  if (filters?.showVisualIndicator) {
+    emitSyncStatus({ status: "syncing" });
+  }
 
   let totalCount: number | null = null;
   let fetchError: unknown = null;
@@ -784,11 +787,13 @@ export async function fetchAllTransactionsFromSupabase(
     }
   }
 
-  // Inform status pill that sync has cleanly completed
-  if (!isTruncatedFetch) {
-    emitSyncStatus({ status: "synced", count: uniqueRecords.length });
-  } else {
-    emitSyncStatus({ status: "error", message: "Sinkronisasi belum lengkap" });
+  // Inform status pill that sync has completed ONLY if visually requested
+  if (filters?.showVisualIndicator) {
+    if (!isTruncatedFetch) {
+      emitSyncStatus({ status: "synced", count: uniqueRecords.length });
+    } else {
+      emitSyncStatus({ status: "error", message: "Sinkronisasi belum lengkap" });
+    }
   }
 
   return uniqueRecords;

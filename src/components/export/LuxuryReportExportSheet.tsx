@@ -20,7 +20,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useToast } from "../../contexts/ToastContext";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { formatRupiah } from "../../lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   filterTransactionsForReport,
   calculateReportSummary,
@@ -374,33 +374,43 @@ export function LuxuryReportExportSheet({
             {/* Custom Dates (collapsible) */}
             {dateRange === "custom" && (
               <div className="grid grid-cols-2 gap-2.5 pt-2 animate-fadeIn">
-                <div className="p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] space-y-1.5 min-w-0">
-                  <div className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
+                <div className="relative p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] min-w-0 transition-colors hover:border-[var(--text-secondary)] flex flex-col justify-center cursor-pointer">
+                  <div className="flex items-center gap-1.5 text-[var(--text-tertiary)] mb-1">
                     <Calendar size={12} strokeWidth={1.5} className="shrink-0" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider truncate">
-                      {isIndonesian ? "Dari Tanggal" : "Start Date"}
+                      {isIndonesian ? "Mulai" : "Start Date"}
                     </span>
+                  </div>
+                  <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
+                    {customStart
+                      ? format(parseISO(customStart), isIndonesian ? "d MMM yyyy" : "MMM d, yyyy")
+                      : "-"}
                   </div>
                   <input
                     type="date"
                     value={customStart}
                     onChange={(e) => setCustomStart(e.target.value)}
-                    className="w-full h-8 px-2 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] text-[12px] font-medium text-[var(--text-primary)] outline-none min-w-0 transition-colors focus:border-[var(--text-secondary)]"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                 </div>
 
-                <div className="p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] space-y-1.5 min-w-0">
-                  <div className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
+                <div className="relative p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] min-w-0 transition-colors hover:border-[var(--text-secondary)] flex flex-col justify-center cursor-pointer">
+                  <div className="flex items-center gap-1.5 text-[var(--text-tertiary)] mb-1">
                     <Calendar size={12} strokeWidth={1.5} className="shrink-0" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider truncate">
-                      {isIndonesian ? "Hingga Tanggal" : "End Date"}
+                      {isIndonesian ? "Selesai" : "End Date"}
                     </span>
+                  </div>
+                  <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
+                    {customEnd
+                      ? format(parseISO(customEnd), isIndonesian ? "d MMM yyyy" : "MMM d, yyyy")
+                      : "-"}
                   </div>
                   <input
                     type="date"
                     value={customEnd}
                     onChange={(e) => setCustomEnd(e.target.value)}
-                    className="w-full h-8 px-2 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] text-[12px] font-medium text-[var(--text-primary)] outline-none min-w-0 transition-colors focus:border-[var(--text-secondary)]"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                 </div>
               </div>

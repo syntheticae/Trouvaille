@@ -2333,26 +2333,41 @@ export function HomePage({
             }}
             className="flex items-center gap-3 group text-left cursor-pointer select-none transition-transform active:scale-[0.98] min-w-0 max-w-full"
           >
-            <div
-              className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center relative shrink-0 transition-shadow group-hover:shadow-md"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "0 2px 8px var(--shadow-strength)",
-              }}
-            >
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
+            <div className="relative shrink-0">
+              <div
+                className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center relative transition-shadow group-hover:shadow-md"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  boxShadow: "0 2px 8px var(--shadow-strength)",
+                }}
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="font-semibold text-[14px]"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {displayName.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              {upcomingBills.length > 0 && (
                 <span
-                  className="font-semibold text-[14px]"
-                  style={{ color: "var(--text-primary)" }}
+                  className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center text-[9.5px] font-bold border pointer-events-none transition-transform shadow-sm"
+                  style={{
+                    background: "var(--text-primary)",
+                    color: "var(--bg-base)",
+                    borderColor: "var(--bg-base)",
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                  }}
                 >
-                  {displayName.slice(0, 2).toUpperCase()}
+                  {upcomingBills.length > 9 ? "9+" : upcomingBills.length}
                 </span>
               )}
             </div>

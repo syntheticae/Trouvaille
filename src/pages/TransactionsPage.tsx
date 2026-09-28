@@ -1912,34 +1912,40 @@ export function TransactionsPage({
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                <div>
+                <div className="relative p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] min-w-0 transition-colors hover:border-[var(--text-secondary)] flex flex-col justify-center cursor-pointer">
                   <span
-                    className="text-[10px] font-bold uppercase tracking-wider block mb-1"
-                    style={{ color: "var(--text-tertiary)" }}
+                    className="text-[10px] font-bold uppercase tracking-wider block mb-1 text-[var(--text-tertiary)]"
                   >
                     {isIndonesian ? "Tanggal Mulai" : "Start Date"}
                   </span>
+                  <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
+                    {customStartDate
+                      ? format(parseISO(customStartDate), isIndonesian ? "d MMM yyyy" : "MMM d, yyyy")
+                      : "-"}
+                  </div>
                   <input
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="w-full bg-transparent text-[12px] font-bold outline-none cursor-pointer"
-                    style={{ color: "var(--text-primary)" }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                 </div>
-                <div>
+                <div className="relative p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] min-w-0 transition-colors hover:border-[var(--text-secondary)] flex flex-col justify-center cursor-pointer">
                   <span
-                    className="text-[10px] font-bold uppercase tracking-wider block mb-1"
-                    style={{ color: "var(--text-tertiary)" }}
+                    className="text-[10px] font-bold uppercase tracking-wider block mb-1 text-[var(--text-tertiary)]"
                   >
                     {isIndonesian ? "Tanggal Selesai" : "End Date"}
                   </span>
+                  <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
+                    {customEndDate
+                      ? format(parseISO(customEndDate), isIndonesian ? "d MMM yyyy" : "MMM d, yyyy")
+                      : "-"}
+                  </div>
                   <input
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="w-full bg-transparent text-[12px] font-bold outline-none cursor-pointer"
-                    style={{ color: "var(--text-primary)" }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                 </div>
               </div>

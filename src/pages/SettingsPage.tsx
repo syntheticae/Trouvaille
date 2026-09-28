@@ -35,12 +35,8 @@ import {
   Laptop,
   QrCode,
   Sparkles,
-  BarChart2,
-  PieChart,
-  AlertCircle,
   RotateCcw,
   Trash2,
-  Scale,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -70,7 +66,6 @@ import {
   requestNotificationPermission,
   syncBillNotifications,
   cancelAllBillNotifications,
-  getDailyStreakReminderTime,
   syncWeeklyDigestNotification,
   cancelWeeklyDigestNotification,
   syncMonthEndReviewNotification,
@@ -180,11 +175,6 @@ const WebDashboardLinkModal = lazy(() =>
 const DataExportVaultModal = lazy(() =>
   import("../components/settings/DataExportVaultModal").then((m) => ({
     default: m.DataExportVaultModal,
-  })),
-);
-const DailyReminderSheet = lazy(() =>
-  import("../components/settings/DailyReminderSheet").then((m) => ({
-    default: m.DailyReminderSheet,
   })),
 );
 const AppUpdateModal = lazy(() =>
@@ -359,113 +349,111 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
   const { activeSpace, refreshLedgers } = useSpace();
 
-  // Notification toggles
+  // Notification toggles (Streamlined into 2 combined switches)
   const [billRemindersEnabled, setBillRemindersEnabled] = useState(() => {
     return (
       localStorage.getItem("trouvaille_bill_reminders_enabled") !== "false"
     );
   });
-
-  const handleToggleBillReminders = async () => {
-    triggerHaptic("light");
-    if (billRemindersEnabled) {
-      setBillRemindersEnabled(false);
-      localStorage.setItem("trouvaille_bill_reminders_enabled", "false");
-      await cancelAllBillNotifications();
-      showToast("Bill reminders turned off", "delete", () => {});
-    } else {
-      const granted = await requestNotificationPermission();
-      if (granted) {
-        setBillRemindersEnabled(true);
-        localStorage.setItem("trouvaille_bill_reminders_enabled", "true");
-        await syncBillNotifications(bills);
-        showToast("Bill reminders enabled", "add", () => {});
-      } else {
-        showToast("Notification permission denied", "delete", () => {});
-      }
-    }
-  };
-
-  const [dailyReminderEnabled, setDailyReminderEnabled] = useState(() => {
-    return (
-      localStorage.getItem("trouvaille_daily_reminder_enabled") !== "false"
-    );
-  });
-  const [dailyReminderTime, setDailyReminderTime] = useState<string>(() => {
-    return getDailyStreakReminderTime();
-  });
-  const [dailyReminderSheetOpen, setDailyReminderSheetOpen] = useState(false);
-
-  // Weekly Financial Digest toggle
-  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(() => {
-    return localStorage.getItem("trouvaille_weekly_digest_enabled") !== "false";
-  });
-
-  const handleToggleWeeklyDigest = async () => {
-    triggerHaptic("light");
-    if (weeklyDigestEnabled) {
-      setWeeklyDigestEnabled(false);
-      localStorage.setItem("trouvaille_weekly_digest_enabled", "false");
-      await cancelWeeklyDigestNotification();
-      showToast(isIndonesian ? "Rekap mingguan dinonaktifkan" : "Weekly digest turned off", "delete", () => {});
-    } else {
-      const granted = await requestNotificationPermission();
-      if (granted) {
-        setWeeklyDigestEnabled(true);
-        localStorage.setItem("trouvaille_weekly_digest_enabled", "true");
-        await syncWeeklyDigestNotification(allTxs, isIndonesian);
-        showToast(isIndonesian ? "Rekap mingguan diaktifkan" : "Weekly digest enabled", "add", () => {});
-      } else {
-        showToast(isIndonesian ? "Izin notifikasi ditolak" : "Notification permission denied", "delete", () => {});
-      }
-    }
-  };
-
-  // Month-End Review toggle
-  const [monthEndReviewEnabled, setMonthEndReviewEnabled] = useState(() => {
-    return localStorage.getItem("trouvaille_month_end_review_enabled") !== "false";
-  });
-
-  const handleToggleMonthEndReview = async () => {
-    triggerHaptic("light");
-    if (monthEndReviewEnabled) {
-      setMonthEndReviewEnabled(false);
-      localStorage.setItem("trouvaille_month_end_review_enabled", "false");
-      await cancelMonthEndReviewNotification();
-      showToast(isIndonesian ? "Evaluasi akhir bulan dinonaktifkan" : "Month-end review turned off", "delete", () => {});
-    } else {
-      const granted = await requestNotificationPermission();
-      if (granted) {
-        setMonthEndReviewEnabled(true);
-        localStorage.setItem("trouvaille_month_end_review_enabled", "true");
-        await syncMonthEndReviewNotification(isIndonesian);
-        showToast(isIndonesian ? "Evaluasi akhir bulan diaktifkan" : "Month-end review enabled", "add", () => {});
-      } else {
-        showToast(isIndonesian ? "Izin notifikasi ditolak" : "Notification permission denied", "delete", () => {});
-      }
-    }
-  };
-
-  // Budget Alerts toggle
   const [budgetAlertsEnabled, setBudgetAlertsEnabled] = useState(() => {
     return localStorage.getItem("trouvaille_budget_alerts_enabled") !== "false";
   });
 
-  const handleToggleBudgetAlerts = async () => {
+  const handleToggleBillAndBudgetAlerts = async () => {
     triggerHaptic("light");
-    if (budgetAlertsEnabled) {
+    const nextVal = !(billRemindersEnabled || budgetAlertsEnabled);
+    if (!nextVal) {
+      setBillRemindersEnabled(false);
       setBudgetAlertsEnabled(false);
+      localStorage.setItem("trouvaille_bill_reminders_enabled", "false");
       localStorage.setItem("trouvaille_budget_alerts_enabled", "false");
-      showToast(isIndonesian ? "Peringatan anggaran dinonaktifkan" : "Budget alerts turned off", "delete", () => {});
+      await cancelAllBillNotifications();
+      showToast(
+        isIndonesian
+          ? "Peringatan tagihan & anggaran dinonaktifkan"
+          : "Bill & budget alerts turned off",
+        "delete",
+        () => {},
+      );
     } else {
       const granted = await requestNotificationPermission();
       if (granted) {
+        setBillRemindersEnabled(true);
         setBudgetAlertsEnabled(true);
+        localStorage.setItem("trouvaille_bill_reminders_enabled", "true");
         localStorage.setItem("trouvaille_budget_alerts_enabled", "true");
+        await syncBillNotifications(bills);
         await checkBudgetThresholdAlerts(allTxs, categories, isIndonesian);
-        showToast(isIndonesian ? "Peringatan anggaran diaktifkan" : "Budget alerts enabled", "add", () => {});
+        showToast(
+          isIndonesian
+            ? "Peringatan tagihan & anggaran diaktifkan"
+            : "Bill & budget alerts enabled",
+          "add",
+          () => {},
+        );
       } else {
-        showToast(isIndonesian ? "Izin notifikasi ditolak" : "Notification permission denied", "delete", () => {});
+        showToast(
+          isIndonesian
+            ? "Izin notifikasi ditolak"
+            : "Notification permission denied",
+          "delete",
+          () => {},
+        );
+      }
+    }
+  };
+
+  // Periodic Financial Digests & Reviews
+  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(() => {
+    return localStorage.getItem("trouvaille_weekly_digest_enabled") !== "false";
+  });
+  const [monthEndReviewEnabled, setMonthEndReviewEnabled] = useState(() => {
+    return (
+      localStorage.getItem("trouvaille_month_end_review_enabled") !== "false"
+    );
+  });
+
+  const handleTogglePeriodicDigests = async () => {
+    triggerHaptic("light");
+    const nextVal = !(weeklyDigestEnabled || monthEndReviewEnabled);
+    if (!nextVal) {
+      setWeeklyDigestEnabled(false);
+      setMonthEndReviewEnabled(false);
+      localStorage.setItem("trouvaille_weekly_digest_enabled", "false");
+      localStorage.setItem("trouvaille_month_end_review_enabled", "false");
+      await cancelWeeklyDigestNotification();
+      await cancelMonthEndReviewNotification();
+      showToast(
+        isIndonesian
+          ? "Rekap & evaluasi berkala dinonaktifkan"
+          : "Periodic digests turned off",
+        "delete",
+        () => {},
+      );
+    } else {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setWeeklyDigestEnabled(true);
+        setMonthEndReviewEnabled(true);
+        localStorage.setItem("trouvaille_weekly_digest_enabled", "true");
+        localStorage.setItem("trouvaille_month_end_review_enabled", "true");
+        await syncWeeklyDigestNotification(allTxs, isIndonesian);
+        await syncMonthEndReviewNotification(isIndonesian);
+        showToast(
+          isIndonesian
+            ? "Rekap & evaluasi berkala diaktifkan"
+            : "Periodic financial digests enabled",
+          "add",
+          () => {},
+        );
+      } else {
+        showToast(
+          isIndonesian
+            ? "Izin notifikasi ditolak"
+            : "Notification permission denied",
+          "delete",
+          () => {},
+        );
       }
     }
   };
@@ -1625,239 +1613,63 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             {isIndonesian ? "Notifikasi" : "Notifications"}
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
-            {/* Daily Streak Reminder Button (Opens DailyReminderSheet) */}
-            {showDailyReminder && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setDailyReminderSheetOpen(true);
-                }}
-                className="w-full flex items-center justify-between py-2.5 px-3.5 min-h-[52px] text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <BellRing size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span
-                      className="text-[13px] font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Pengingat Streak Harian"
-                        : "Daily Streak Reminder"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {dailyReminderEnabled
-                        ? isIndonesian
-                          ? `Aktif · Setiap pukul ${dailyReminderTime}`
-                          : `Active · Daily at ${dailyReminderTime}`
-                        : isIndonesian
-                          ? "Nonaktif"
-                          : "Disabled"}
-                    </span>
-                  </div>
+            {/* Bar 1: Bill & Budget Alerts */}
+            <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[48px]">
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <BellRing size={14} strokeWidth={1.75} />
                 </div>
-
-                <div className="flex items-center gap-1.5 shrink-0 pl-2">
-                  <span
-                    className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full border"
-                    style={{
-                      borderColor: "var(--glass-border)",
-                      color: dailyReminderEnabled
-                        ? "var(--text-primary)"
-                        : "var(--text-tertiary)",
-                      background: "var(--bg-elevated)",
-                    }}
-                  >
-                    {dailyReminderEnabled
-                      ? dailyReminderTime
-                      : isIndonesian
-                        ? "Nonaktif"
-                        : "Off"}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-tertiary)" }}
-                  />
-                </div>
-              </button>
-            )}
-
-            {/* Bill Reminders Toggle */}
-            {showBillReminders && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <CalendarClock size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span
-                      className="text-[13px] font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Peringatan Tagihan Jatuh Tempo"
-                        : "Bill Due Alerts"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian
-                        ? "Pemberitahuan h-1 dan saat tagihan jatuh tempo"
-                        : "Alerts 1 day before and on bill due date"}
-                    </span>
-                  </div>
-                </div>
-                <ToggleSwitch
-                  checked={billRemindersEnabled}
-                  onChange={handleToggleBillReminders}
-                  ariaLabel="Toggle bill reminders"
-                />
+                <span
+                  className="text-[13px] font-semibold truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian
+                    ? "Peringatan Tagihan & Anggaran"
+                    : "Bill & Budget Alerts"}
+                </span>
               </div>
-            )}
+              <ToggleSwitch
+                checked={billRemindersEnabled || budgetAlertsEnabled}
+                onChange={handleToggleBillAndBudgetAlerts}
+                ariaLabel="Toggle bill and budget alerts"
+              />
+            </div>
 
-            {/* Weekly Financial Digest */}
-            {showWeeklyDigest && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <BarChart2 size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span
-                      className="text-[13px] font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Rekap Finansial Mingguan"
-                        : "Weekly Financial Digest"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian
-                        ? "Ringkasan pengeluaran & performa setiap Minggu pukul 19:30"
-                        : "Spending summary & performance every Sunday at 19:30"}
-                    </span>
-                  </div>
+            {/* Bar 2: Periodic Financial Digests & Reviews */}
+            <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[48px]">
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <CalendarClock size={14} strokeWidth={1.75} />
                 </div>
-                <ToggleSwitch
-                  checked={weeklyDigestEnabled}
-                  onChange={handleToggleWeeklyDigest}
-                  ariaLabel="Toggle weekly financial digest"
-                />
+                <span
+                  className="text-[13px] font-semibold truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian
+                    ? "Rekap & Evaluasi Berkala"
+                    : "Periodic Financial Digests"}
+                </span>
               </div>
-            )}
-
-            {/* Budget Threshold Alerts */}
-            {showBudgetAlerts && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <AlertCircle size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span
-                      className="text-[13px] font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Peringatan Batas Anggaran"
-                        : "Budget Threshold Alerts"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian
-                        ? "Pemberitahuan cerdas saat kategori mencapai 80% dan 100%"
-                        : "Smart alerts when category reaches 80% and 100%"}
-                    </span>
-                  </div>
-                </div>
-                <ToggleSwitch
-                  checked={budgetAlertsEnabled}
-                  onChange={handleToggleBudgetAlerts}
-                  ariaLabel="Toggle budget threshold alerts"
-                />
-              </div>
-            )}
-
-            {/* Month-End Wealth Review */}
-            {showMonthEndReview && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <PieChart size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span
-                      className="text-[13px] font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Evaluasi Kekayaan Akhir Bulan"
-                        : "Month-End Wealth Review"}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian
-                        ? "Pengingat tinjauan Neraca & Arus Kas pada hari terakhir bulan"
-                        : "Balance Sheet & Cash Flow review reminder on month end"}
-                    </span>
-                  </div>
-                </div>
-                <ToggleSwitch
-                  checked={monthEndReviewEnabled}
-                  onChange={handleToggleMonthEndReview}
-                  ariaLabel="Toggle month-end wealth review"
-                />
-              </div>
-            )}
+              <ToggleSwitch
+                checked={weeklyDigestEnabled || monthEndReviewEnabled}
+                onChange={handleTogglePeriodicDigests}
+                ariaLabel="Toggle periodic financial digests"
+              />
+            </div>
           </div>
         </section>
       )}
@@ -2194,39 +2006,21 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       className="text-[13px] font-semibold block truncate leading-tight"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      Cloud Sync
+                      {isIndonesian ? "Sinkronisasi Cloud" : "Cloud Sync"}
                     </span>
                     <span
                       className="text-[10px] font-normal block truncate"
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       {syncStatus === "syncing"
-                        ? "Syncing..."
+                        ? (isIndonesian ? "Menyinkronkan..." : "Syncing...")
                         : syncStatus === "error"
-                          ? "Offline · Local preserved"
-                          : `Synced ${lastSyncedTime}`}
+                          ? (isIndonesian ? "Offline · Tersimpan lokal" : "Offline · Local preserved")
+                          : (isIndonesian ? `Tersinkron ${lastSyncedTime}` : `Synced ${lastSyncedTime}`)}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleDiscardPendingAndRestore}
-                    disabled={syncStatus === "syncing"}
-                    title={
-                      isIndonesian
-                        ? "Tarik Ulang Bersih dari Cloud (Abaikan Cache Lokal)"
-                        : "Force Pure Cloud Sync (Bypass Local Cache)"
-                    }
-                    className="w-7 h-7 rounded-full flex items-center justify-center border active:scale-90 transition-all disabled:opacity-60 cursor-pointer"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    <RotateCcw size={12} strokeWidth={1.75} />
-                  </button>
                   <button
                     type="button"
                     onClick={handleSafeSync}
@@ -2260,106 +2054,6 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   </button>
                 </div>
               </div>
-            )}
-
-            {/* Bersihkan Cache & Tarik Cloud */}
-            {showCloudSync && (
-              <button
-                type="button"
-                onClick={handleDiscardPendingAndRestore}
-                disabled={syncStatus === "syncing"}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <RotateCcw size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block truncate leading-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Bersihkan Cache & Tarik Cloud"
-                        : "Purge Cache & Fetch Cloud"}
-                    </span>
-                    <span
-                      className="text-[10px] font-normal block truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian
-                        ? "Hapus antrean lokal dan pulihkan data murni dari cloud"
-                        : "Clear local pending queue and restore pure cloud data"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {isIndonesian ? "Tarik Bersih" : "Pure Sync"}
-                  </span>
-                </div>
-              </button>
-            )}
-
-            {/* Rekonsiliasi & Sesuaikan Saldo */}
-            {showWallets && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setWalletsOpen(true);
-                }}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Scale size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block truncate leading-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Rekonsiliasi & Sesuaikan Saldo"
-                        : "Reconcile & Adjust Balance"}
-                    </span>
-                    <span
-                      className="text-[10px] font-normal block truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian
-                        ? "Kalibrasi ulang saldo dompet agar sesuai saldo riil rekening"
-                        : "Recalibrate wallet balances to match real bank balances"}
-                    </span>
-                  </div>
-                </div>
-                <ChevronRight
-                  size={15}
-                  style={{ color: "var(--text-tertiary)" }}
-                />
-              </button>
             )}
 
             {/* Pending Offline Mutations Banner */}
@@ -2834,14 +2528,6 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           }}
         />
 
-        <DailyReminderSheet
-          isOpen={dailyReminderSheetOpen}
-          onClose={() => setDailyReminderSheetOpen(false)}
-          onSaved={(enabled, time) => {
-            setDailyReminderEnabled(enabled);
-            setDailyReminderTime(time);
-          }}
-        />
 
         <AppUpdateModal
           isOpen={appUpdateOpen}

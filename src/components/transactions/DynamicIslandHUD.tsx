@@ -85,20 +85,35 @@ export function DynamicIslandHUD({
                 ? "Pemberitahuan Pencatatan Transaksi"
                 : "Transaction Recorded Notification"
           }
-          className="fixed z-[100000] left-3.5 right-3.5 max-w-sm mx-auto pointer-events-none select-none font-sans"
+          className="fixed z-[100000] left-4 right-4 max-w-md mx-auto pointer-events-none select-none font-sans"
           style={{
-            top: "max(calc(env(safe-area-inset-top, 0px) + 12px), 24px)",
+            top: "max(calc(env(safe-area-inset-top, 0px) + 14px), 24px)",
           }}
         >
           <motion.div
-            initial={{ opacity: 0, y: -45, scale: 0.86 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -38, scale: 0.9 }}
+            initial={{
+              opacity: 0,
+              scaleX: 0.92,
+              scaleY: 0.88,
+              y: -18,
+            }}
+            animate={{
+              opacity: 1,
+              scaleX: 1,
+              scaleY: 1,
+              y: 0,
+            }}
+            exit={{
+              opacity: 0,
+              scaleX: 0.94,
+              scaleY: 0.9,
+              y: -14,
+            }}
             transition={{
               type: "spring",
-              damping: 24,
-              stiffness: 340,
-              mass: 0.8,
+              stiffness: 380,
+              damping: 28,
+              mass: 0.75,
             }}
             drag="y"
             dragConstraints={{ top: -60, bottom: 0 }}
@@ -109,93 +124,126 @@ export function DynamicIslandHUD({
                 onClose();
               }
             }}
-            className="pointer-events-auto w-full rounded-[24px] p-3.5 border transition-all cursor-grab active:cursor-grabbing overflow-hidden"
+            className="pointer-events-auto relative w-full rounded-[28px] px-3.5 py-2.5 transition-all cursor-grab active:cursor-grabbing overflow-hidden box-border shadow-2xl"
             style={{
               background: isDark
-                ? "rgba(18, 18, 22, 0.92)"
-                : "rgba(255, 255, 255, 0.94)",
-              backdropFilter: "blur(32px)",
-              WebkitBackdropFilter: "blur(32px)",
-              borderColor: isDark
-                ? "rgba(255, 255, 255, 0.14)"
-                : "rgba(0, 0, 0, 0.08)",
+                ? "linear-gradient(180deg, rgba(43,43,48,0.96) 0%, rgba(23,23,27,0.98) 48%, rgba(13,13,16,0.99) 100%)"
+                : "linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(248,248,250,0.98) 50%, rgba(240,240,243,0.98) 100%)",
+              backdropFilter: "blur(24px) saturate(160%)",
+              WebkitBackdropFilter: "blur(24px) saturate(160%)",
+              border: isDark
+                ? "1px solid rgba(255, 255, 255, 0.16)"
+                : "1px solid rgba(0, 0, 0, 0.1)",
               boxShadow: isDark
-                ? "0 18px 45px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.16)"
-                : "0 14px 34px -8px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+                ? "0 22px 50px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.4)"
+                : "0 18px 40px -8px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.95)",
               color: "var(--text-primary)",
             }}
           >
-            {/* Top Row: Icon + Status + Amount + Actions */}
-            <div className="flex items-center justify-between gap-2.5">
+            {/* Subtle Top Reflection Line */}
+            <div
+              className="absolute top-0 left-6 right-6 h-[1px] pointer-events-none"
+              style={{
+                background: isDark
+                  ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)"
+                  : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)",
+              }}
+            />
+
+            <div className="flex items-center justify-between gap-3">
+              {/* Left & Center: Clickable Content Area */}
               <div
-                className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
                 onClick={handleCardClick}
               >
-                {/* Status Icon Circle */}
+                {/* Status Glyphed Circle */}
                 <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 border"
+                  className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border transition-transform group-hover:scale-105"
                   style={{
                     background: isDark
                       ? "rgba(255, 255, 255, 0.12)"
-                      : "rgba(0, 0, 0, 0.06)",
+                      : "rgba(0, 0, 0, 0.05)",
                     borderColor: isDark
                       ? "rgba(255, 255, 255, 0.18)"
-                      : "rgba(0, 0, 0, 0.1)",
+                      : "rgba(0, 0, 0, 0.08)",
                     color: "var(--text-primary)",
                   }}
                 >
                   {isPartnerSync ? (
-                    <Users size={13} strokeWidth={2.2} />
+                    <Users size={14} strokeWidth={2} />
                   ) : (
-                    <Check size={13} strokeWidth={2.5} />
+                    <Check size={14} strokeWidth={2.4} />
                   )}
                 </div>
 
-                {/* Eyebrow & Main Amount */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    {isPartnerSync ? (
+                {/* Eyebrow, Amount & Metadata */}
+                <div className="min-w-0 flex-1 flex flex-col justify-center">
+                  <div className="flex items-center gap-1.5 min-w-0 leading-none">
+                    <span
+                      className="text-[10px] font-semibold tracking-wider uppercase truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isPartnerSync
+                        ? data.partnerName || (isIndonesian ? "Rekan" : "Partner")
+                        : isIndonesian
+                        ? "Pencatatan Otomatis"
+                        : "Auto Logged"}
+                    </span>
+                    {!isPartnerSync && (
+                      <Sparkles
+                        size={10}
+                        strokeWidth={1.5}
+                        className="opacity-70 shrink-0"
+                        style={{ color: "var(--text-tertiary)" }}
+                      />
+                    )}
+                    {isPartnerSync && data.ledgerName && (
                       <>
-                        <span
-                          className="text-[9.5px] font-semibold tracking-wider uppercase truncate"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {data.partnerName || (isIndonesian ? "Rekan" : "Partner")}
-                        </span>
                         <span className="text-[8px] opacity-40 shrink-0">•</span>
                         <span
-                          className="text-[9.5px] font-medium tracking-normal truncate opacity-85"
+                          className="text-[10px] font-medium truncate opacity-85"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          {data.ledgerName || (isIndonesian ? "Space Bersama" : "Shared Space")}
+                          {data.ledgerName}
                         </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse shrink-0 ml-0.5" />
-                      </>
-                    ) : (
-                      <>
-                        <span
-                          className="text-[9.5px] font-semibold tracking-wider uppercase truncate"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {isIndonesian ? "Pencatatan Otomatis" : "Auto Logged"}
-                        </span>
-                        <Sparkles
-                          size={9}
-                          strokeWidth={1.5}
-                          style={{ color: "var(--text-tertiary)" }}
-                        />
                       </>
                     )}
                   </div>
-                  <div className="text-[15px] font-semibold tracking-tight leading-tight truncate">
-                    {data.type === "expense" ? "-" : data.type === "income" ? "+" : ""}
-                    {formatRupiah(data.amount)}
+
+                  {/* Primary Amount & Tags */}
+                  <div className="flex items-baseline gap-2 mt-1 min-w-0">
+                    <span className="text-[14.5px] font-bold tracking-tight text-[var(--text-primary)] shrink-0">
+                      {data.type === "expense" ? "-" : data.type === "income" ? "+" : ""}
+                      {formatRupiah(data.amount)}
+                    </span>
+
+                    <div className="flex items-center gap-1.5 min-w-0 truncate text-[11px] text-[var(--text-tertiary)]">
+                      {data.categoryName && (
+                        <span className="truncate font-medium text-[var(--text-secondary)]">
+                          {data.categoryName}
+                        </span>
+                      )}
+                      {data.walletName && (
+                        <>
+                          <span className="opacity-40 text-[9px] shrink-0">•</span>
+                          <span className="truncate">{data.walletName}</span>
+                        </>
+                      )}
+                      {data.note && (
+                        <>
+                          <span className="opacity-40 text-[9px] shrink-0">•</span>
+                          <span className="truncate italic opacity-80">
+                            {data.note}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons: View Ledger / Edit & Close */}
-              <div className="flex items-center gap-1 shrink-0">
+              {/* Right Action Buttons */}
+              <div className="flex items-center gap-1.5 shrink-0 pl-1">
                 {isPartnerSync && data.ledgerId && onViewLedger && (
                   <button
                     type="button"
@@ -205,20 +253,20 @@ export function DynamicIslandHUD({
                       onViewLedger(data.ledgerId!);
                       onClose();
                     }}
-                    className="p-1.5 rounded-full flex items-center justify-center transition-colors cursor-pointer border"
+                    className="w-7 h-7 rounded-full flex items-center justify-center transition-transform active:scale-90 cursor-pointer border"
                     style={{
                       background: isDark
                         ? "rgba(255, 255, 255, 0.08)"
                         : "rgba(0, 0, 0, 0.04)",
                       borderColor: isDark
-                        ? "rgba(255, 255, 255, 0.1)"
-                        : "rgba(0, 0, 0, 0.06)",
-                      color: "var(--text-secondary)",
+                        ? "rgba(255, 255, 255, 0.12)"
+                        : "rgba(0, 0, 0, 0.08)",
+                      color: "var(--text-primary)",
                     }}
                     title={isIndonesian ? "Buka Space" : "Open Space"}
                     aria-label={isIndonesian ? "Buka Space" : "Open Space"}
                   >
-                    <ArrowRight size={12} strokeWidth={2} />
+                    <ArrowRight size={13} strokeWidth={2} />
                   </button>
                 )}
 
@@ -230,20 +278,20 @@ export function DynamicIslandHUD({
                       triggerHaptic("light");
                       onEdit();
                     }}
-                    className="p-1.5 rounded-full flex items-center justify-center transition-colors cursor-pointer border"
+                    className="w-7 h-7 rounded-full flex items-center justify-center transition-transform active:scale-90 cursor-pointer border"
                     style={{
                       background: isDark
                         ? "rgba(255, 255, 255, 0.08)"
                         : "rgba(0, 0, 0, 0.04)",
                       borderColor: isDark
-                        ? "rgba(255, 255, 255, 0.1)"
-                        : "rgba(0, 0, 0, 0.06)",
+                        ? "rgba(255, 255, 255, 0.12)"
+                        : "rgba(0, 0, 0, 0.08)",
                       color: "var(--text-secondary)",
                     }}
                     title={isIndonesian ? "Ubah Rincian" : "Edit Details"}
                     aria-label={isIndonesian ? "Ubah Rincian" : "Edit Details"}
                   >
-                    <Pencil size={12} strokeWidth={2} />
+                    <Pencil size={12} strokeWidth={1.8} />
                   </button>
                 )}
 
@@ -254,14 +302,14 @@ export function DynamicIslandHUD({
                     triggerHaptic("light");
                     onClose();
                   }}
-                  className="p-1.5 rounded-full flex items-center justify-center transition-colors cursor-pointer border"
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-transform active:scale-90 cursor-pointer border"
                   style={{
                     background: isDark
                       ? "rgba(255, 255, 255, 0.08)"
                       : "rgba(0, 0, 0, 0.04)",
                     borderColor: isDark
-                      ? "rgba(255, 255, 255, 0.1)"
-                      : "rgba(0, 0, 0, 0.06)",
+                      ? "rgba(255, 255, 255, 0.12)"
+                      : "rgba(0, 0, 0, 0.08)",
                     color: "var(--text-tertiary)",
                   }}
                   title={isIndonesian ? "Tutup" : "Dismiss"}
@@ -270,78 +318,6 @@ export function DynamicIslandHUD({
                   <X size={12} strokeWidth={2} />
                 </button>
               </div>
-            </div>
-
-            {/* Bottom Row: Metadata Badges (Category · Wallet / Ledger · Note) */}
-            <div
-              className="flex items-center gap-1.5 mt-2 pt-2 border-t text-[11px] font-medium overflow-hidden cursor-pointer"
-              style={{
-                borderColor: isDark
-                  ? "rgba(255, 255, 255, 0.08)"
-                  : "rgba(0, 0, 0, 0.06)",
-                color: "var(--text-secondary)",
-              }}
-              onClick={handleCardClick}
-            >
-              {data.categoryName && (
-                <span
-                  className="px-2 py-0.5 rounded-md shrink-0 border truncate max-w-[120px]"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.07)"
-                      : "rgba(0, 0, 0, 0.04)",
-                    borderColor: isDark
-                      ? "rgba(255, 255, 255, 0.1)"
-                      : "rgba(0, 0, 0, 0.06)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  {data.categoryName}
-                </span>
-              )}
-
-              {data.walletName && (
-                <span
-                  className="px-2 py-0.5 rounded-md shrink-0 border truncate max-w-[120px]"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(0, 0, 0, 0.03)",
-                    borderColor: isDark
-                      ? "rgba(255, 255, 255, 0.08)"
-                      : "rgba(0, 0, 0, 0.05)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  {data.walletName}
-                </span>
-              )}
-
-              {isPartnerSync && !data.walletName && data.ledgerName && (
-                <span
-                  className="px-2 py-0.5 rounded-md shrink-0 border truncate max-w-[120px]"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(0, 0, 0, 0.03)",
-                    borderColor: isDark
-                      ? "rgba(255, 255, 255, 0.08)"
-                      : "rgba(0, 0, 0, 0.05)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  {data.ledgerName}
-                </span>
-              )}
-
-              {data.note && (
-                <span
-                  className="truncate opacity-80 pl-0.5"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {data.note}
-                </span>
-              )}
             </div>
 
             {/* Subtle Progress Bar */}
