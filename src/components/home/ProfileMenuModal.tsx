@@ -471,7 +471,7 @@ export function ProfileMenuModal({
                     ? "inset 0 1px 0 rgba(255,255,255,0.05)"
                     : "inset 0 1px 0 rgba(255,255,255,0.72)",
                 }}
-                title={isIndonesian ? "Ganti Ledger" : "Switch Ledger"}
+                title={isIndonesian ? "Ganti Space" : "Switch Space"}
               >
                 <Layers
                   size={12}

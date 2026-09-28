@@ -373,7 +373,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     // Fallback if user unselected everything
     if (chosenAccountConfigs.length === 0) {
       chosenAccountConfigs.push({
-        name: isIndonesian ? "Dompet Utama" : "Main Wallet",
+        name: isIndonesian ? "Akun Utama" : "Main Account",
         icon: "Wallet",
         classification: "liquid",
       });
@@ -545,8 +545,8 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 </h1>
                 <p className="text-[12.5px] font-normal text-white/50 leading-relaxed">
                   {isIndonesian
-                    ? "Personalisasikan nama panggilan, bahasa tampilan, dan arsitektur awal buku kas Anda."
-                    : "Personalize your caller identity, interface language, and starting workspace architecture."}
+                    ? "Personalisasikan nama panggilan, bahasa tampilan, dan arsitektur awal space Anda."
+                    : "Personalize your caller identity, interface language, and starting space architecture."}
                 </p>
               </div>
 
@@ -659,7 +659,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                         </div>
                         <p className="text-[11.5px] text-white/50 leading-relaxed">
                           {isIndonesian
-                            ? "Pengaturan instan tanpa hambatan. Menyiapkan 3 dompet likuid dan 14 kategori utama secara otomatis."
+                            ? "Pengaturan instan tanpa hambatan. Menyiapkan 3 akun likuid dan 14 kategori utama secara otomatis."
                             : "Instant zero-friction setup. Auto-provisions 3 liquid accounts and 14 essential categories."}
                         </p>
                       </div>
@@ -802,8 +802,8 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 </h1>
                 <p className="text-[12.5px] font-normal text-white/50 leading-relaxed">
                   {isIndonesian
-                    ? "Pilih saluran pembayaran yang sering Anda gunakan untuk buku kas yang rapi."
-                    : "Toggle the payment channels you transact with regularly for a noise-free ledger."}
+                    ? "Pilih saluran pembayaran yang sering Anda gunakan untuk space yang rapi."
+                    : "Toggle the payment channels you transact with regularly for a noise-free space."}
                 </p>
               </div>
 

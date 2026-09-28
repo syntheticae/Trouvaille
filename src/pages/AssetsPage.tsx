@@ -535,7 +535,7 @@ export function AssetsPage() {
         sublabel: `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`,
         amount: usdtMarketValue,
         detail: isIndonesian
-          ? "Stablecoin cadangan di wallet"
+          ? "Stablecoin cadangan di akun"
           : "Stablecoin reserve",
         onClick: () => {
           setSelectedMetricDrillDown(null);

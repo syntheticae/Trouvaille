@@ -108,8 +108,8 @@ function getShowcaseSlides(isIndonesian: boolean): ShowcaseSlide[] {
     {
       title: isIndonesian ? "Brankas Privasi Nol" : "Zero-Knowledge Vault",
       tagline: isIndonesian
-        ? "Buku besar keuangan Anda dienkripsi penuh\ndan sepenuhnya privat di perangkat Anda."
-        : "Your financial ledger stays encrypted\nand strictly private on your device.",
+        ? "Catatan keuangan Anda dienkripsi penuh\ndan sepenuhnya privat di perangkat Anda."
+        : "Your financial records stay encrypted\nand strictly private on your device.",
       visual: "vault",
     },
     {
@@ -548,7 +548,7 @@ function DynamicShowcaseCapsule({
                     isDark ? "text-white/80" : "text-zinc-800"
                   }`}
                 >
-                  {isIndonesian ? "Pemisahan Buku Besar" : "Domain Ledger Isolation"}
+                  {isIndonesian ? "Pemisahan Space" : "Space Isolation"}
                 </span>
               </div>
               <div
@@ -636,8 +636,8 @@ function DynamicShowcaseCapsule({
               }`}
             >
               {isIndonesian
-                ? "Batas isolasi mencegah kontaminasi saldo antar domain"
-                : "Strict firewall prevents cross-ledger contamination"}
+                ? "Batas isolasi mencegah kontaminasi saldo antar space"
+                : "Strict firewall prevents cross-space contamination"}
             </div>
           </motion.div>
         )}
@@ -1570,8 +1570,8 @@ export function LoginPage() {
                   }`}
                 >
                   {isIndonesian
-                    ? "Masuk untuk mengakses brankas aset dan ledger tersinkronisasi milik Anda."
-                    : "Sign in to access your synchronized wealth vault and transaction ledger."}
+                    ? "Masuk untuk mengakses brankas aset dan space tersinkronisasi milik Anda."
+                    : "Sign in to access your synchronized wealth vault and spaces."}
                 </p>
               </div>
 

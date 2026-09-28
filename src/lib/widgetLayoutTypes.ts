@@ -121,7 +121,7 @@ export const DEFAULT_HOME_WIDGETS: CardWidgetConfig[] = [
   {
     id: "recent_transactions",
     title: "Recent Transactions",
-    subtitle: "Quick ledger feed of latest activity",
+    subtitle: "Quick transaction feed of latest activity",
     page: "home",
     category: "ledger",
     size: "full",
@@ -282,7 +282,7 @@ export const WIDGET_LOCALIZED_META: Record<
     id: { title: "Anggaran Kategori", subtitle: "Amplop kategori bulanan & batas pengeluaran" },
   },
   recent_transactions: {
-    en: { title: "Recent Transactions", subtitle: "Quick ledger feed of latest activity" },
+    en: { title: "Recent Transactions", subtitle: "Quick transaction feed of latest activity" },
     id: { title: "Transaksi Terkini", subtitle: "Pencatatan langsung aktivitas terbaru" },
   },
   top_categories: {

@@ -186,12 +186,12 @@ export function ProfileSheet({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-semibold text-[var(--text-primary)]">
-                        {isIndonesian ? "Atur Ulang Data Buku Kas" : "Reset Ledger Data"}
+                        {isIndonesian ? "Atur Ulang Data Transaksi" : "Reset Transaction Data"}
                       </p>
                       <p className="text-[10px] text-[var(--text-tertiary)] truncate">
                         {isIndonesian
-                          ? "Kosongkan transaksi pada ledger aktif"
-                          : "Wipe transactions in active ledger"}
+                          ? "Kosongkan transaksi pada space aktif"
+                          : "Wipe transactions in active space"}
                       </p>
                     </div>
                   </button>

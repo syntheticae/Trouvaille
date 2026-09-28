@@ -117,7 +117,7 @@ export async function joinLedgerWithCode(
     if (!session?.user?.id || session.user.id === "guest_local_user") {
       return {
         success: false,
-        message: "Silakan masuk ke akun Trouvaille terlebih dahulu untuk bergabung ke ledger bersama.",
+        message: "Silakan masuk ke akun Trouvaille terlebih dahulu untuk bergabung ke space bersama.",
       };
     }
 

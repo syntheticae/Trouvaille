@@ -40,10 +40,10 @@ const SYNC_STEPS: StepItem[] = [
   },
   {
     id: "ledgers",
-    titleEn: "Resolving Ledgers & Multi-Wallet State",
-    titleId: "Penyelarasan Buku Kas & Multi-Dompet",
-    subtitleEn: () => "Connecting balance ledgers & active vaults",
-    subtitleId: () => "Menghubungkan buku kas saldo & brankas aktif",
+    titleEn: "Resolving Spaces & Multi-Account State",
+    titleId: "Penyelarasan Space & Multi-Akun",
+    subtitleEn: () => "Connecting balance accounts & active spaces",
+    subtitleId: () => "Menghubungkan akun saldo & space aktif",
   },
   {
     id: "entries",
@@ -52,15 +52,15 @@ const SYNC_STEPS: StepItem[] = [
     subtitleEn: (count) =>
       count > 0
         ? `${count.toLocaleString()} encrypted entries calibrated`
-        : "Calibrating encrypted ledger records",
+        : "Calibrating encrypted transaction records",
     subtitleId: (count) =>
       count > 0
         ? `${count.toLocaleString()} catatan terenkripsi dikalibrasi`
-        : "Mengalibrasi catatan buku kas terenkripsi",
+        : "Mengalibrasi catatan transaksi terenkripsi",
   },
   {
     id: "integrity",
-    titleEn: "Verifying Ledger Integrity & Zero-Knowledge",
+    titleEn: "Verifying Space Integrity & Zero-Knowledge",
     titleId: "Verifikasi Keamanan Zero-Knowledge",
     subtitleEn: () => "End-to-end client encryption hash verified",
     subtitleId: () => "Hash enkripsi klien ujung-ke-ujung terverifikasi",

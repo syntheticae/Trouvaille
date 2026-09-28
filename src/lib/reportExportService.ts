@@ -171,7 +171,7 @@ export function calculateReportSummary(
       periodLabel = `${options.customStartDate ? format(options.customStartDate, "dd MMM yyyy", { locale: dateLocale }) : isIndonesian ? "Awal" : "Start"} – ${options.customEndDate ? format(options.customEndDate, "dd MMM yyyy", { locale: dateLocale }) : isIndonesian ? "Akhir" : "End"}`;
       break;
     case "all":
-      periodLabel = isIndonesian ? "Semua Riwayat Transaksi" : "Complete Ledger Archive";
+      periodLabel = isIndonesian ? "Semua Riwayat Transaksi" : "Complete Transaction Archive";
       break;
   }
 
@@ -255,12 +255,12 @@ export function calculateReportSummary(
     options.spaceName ||
     (!options.spaceId || options.spaceId === "all"
       ? isIndonesian
-        ? "Semua Ledger"
-        : "All Ledgers"
+        ? "Semua Space"
+        : "All Spaces"
       : options.spaceId === "personal"
         ? isIndonesian
-          ? "Ledger Pribadi"
-          : "Personal Ledger"
+          ? "Space Pribadi"
+          : "Personal Space"
         : `#${options.spaceId}`);
 
   return {
@@ -562,10 +562,10 @@ export function generateLuxuryPrintableHtml(
       : ""
   }
 
-  <!-- Transactions Ledger Table -->
+  <!-- Transactions Table -->
   <div style="margin-bottom: 30px;">
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
-      <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #09090c;">Transactions Ledger</div>
+      <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #09090c;">Transactions Table</div>
       <div style="font-size: 11px; color: #71717a;">${summary.transactionCount} records</div>
     </div>
     <table style="width: 100%; border-collapse: collapse; text-align: left;">
@@ -739,13 +739,13 @@ export async function generateLuxuryExcelBlob(
     return db.localeCompare(da);
   });
 
-  const sheetTitle = isIndonesian ? "Ledger Transaksi" : "Transaction Ledger";
+  const sheetTitle = isIndonesian ? "Catatan Transaksi" : "Transaction Records";
 
   // Data structure focused 100% on transaction records
   const aoaLedger: any[][] = [
-    ["TROUVAILLE — " + (isIndonesian ? "LEDGER TRANSAKSI" : "TRANSACTION LEDGER")],
+    ["TROUVAILLE — " + (isIndonesian ? "CATATAN TRANSAKSI" : "TRANSACTION RECORDS")],
     [
-      (isIndonesian ? "Ledger: " : "Ledger: ") +
+      (isIndonesian ? "Space: " : "Space: ") +
         summary.spaceName +
         "   |   " +
         (isIndonesian ? "Periode: " : "Period: ") +
@@ -898,7 +898,7 @@ export async function downloadLuxuryExcel(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   categories: Category[] = [],
-  filename = "trouvaille_ledger.xlsx",
+  filename = "trouvaille_catatan_transaksi.xlsx",
   isIndonesian = true,
 ): Promise<void> {
   const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories, isIndonesian);
@@ -911,10 +911,10 @@ export async function downloadLuxuryExcel(
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: isIndonesian ? "Buku Kas Excel Trouvaille" : "Trouvaille Excel Ledger",
+          title: isIndonesian ? "Catatan Transaksi Trouvaille" : "Trouvaille Transaction Records",
           text: isIndonesian
-            ? `Berikut berkas buku kas transaksi dari Trouvaille (${filename}).`
-            : `Here is the transaction ledger export from Trouvaille (${filename}).`,
+            ? `Berikut berkas catatan transaksi dari Trouvaille (${filename}).`
+            : `Here is the transaction records export from Trouvaille (${filename}).`,
         });
         return;
       }
@@ -941,7 +941,7 @@ export async function shareLuxuryExcel(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   categories: Category[] = [],
-  filename = "trouvaille_ledger.xlsx",
+  filename = "trouvaille_catatan_transaksi.xlsx",
   isIndonesian = true,
 ): Promise<boolean> {
   const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories, isIndonesian);
@@ -954,10 +954,10 @@ export async function shareLuxuryExcel(
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: isIndonesian ? "Buku Kas Excel Trouvaille" : "Trouvaille Excel Ledger",
+          title: isIndonesian ? "Catatan Transaksi Trouvaille" : "Trouvaille Transaction Records",
           text: isIndonesian
-            ? `Berikut berkas buku kas transaksi dari Trouvaille (${filename}).`
-            : `Here is the transaction ledger export from Trouvaille (${filename}).`,
+            ? `Berikut berkas catatan transaksi dari Trouvaille (${filename}).`
+            : `Here is the transaction records export from Trouvaille (${filename}).`,
         });
         return true;
       }
@@ -1657,7 +1657,7 @@ export function generateLuxuryPdf(
     calk.reconciliation.auditStatus === "CERTIFIED_BALANCED"
       ? isIndonesian
         ? "Status: TERVERIFIKASI SEIMBANG — Seluruh saldo akun dan mutasi kas konsisten 100% tanpa selisih."
-        : "Status: VERIFIED BALANCED — All account balances and ledger entries are 100% consistent."
+        : "Status: VERIFIED BALANCED — All account balances and transaction records are 100% consistent."
       : isIndonesian
         ? `Status: PERINGATAN — Ditemukan selisih ${formatRupiah(calk.reconciliation.discrepancyAmount)}.`
         : `Status: WARNING — Discrepancy detected: ${formatRupiah(calk.reconciliation.discrepancyAmount)}.`,
@@ -1666,20 +1666,20 @@ export function generateLuxuryPdf(
   );
 
   // ==========================================
-  // PAGE 3+: Buku Kas Transaksi (Ledger)
+  // PAGE 3+: Catatan Transaksi (Transaction Records)
   // ==========================================
   doc.addPage();
   y = 46;
 
   // Table Header Function
-  const renderLedgerHeader = (currY: number) => {
+  const renderTransactionRecordsHeader = (currY: number) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(18, 18, 20);
     doc.text(
       isIndonesian
-        ? `LEDGER TRANSAKSI (${transactions.length} CATATAN)`
-        : `TRANSACTION LEDGER (${transactions.length} RECORDS)`,
+        ? `CATATAN TRANSAKSI (${transactions.length} CATATAN)`
+        : `TRANSACTION RECORDS (${transactions.length} RECORDS)`,
       margin,
       currY
     );
@@ -1708,7 +1708,7 @@ export function generateLuxuryPdf(
     return currY + 18;
   };
 
-  y = renderLedgerHeader(y);
+  y = renderTransactionRecordsHeader(y);
 
   const sortedTxs = [...transactions].sort((a, b) => {
     const da = a.occurred_on || a.created_at || "";
@@ -1721,7 +1721,7 @@ export function generateLuxuryPdf(
   sortedTxs.forEach((tx, idx) => {
     if (y > pageHeight - 55) {
       doc.addPage();
-      y = renderLedgerHeader(44);
+      y = renderTransactionRecordsHeader(44);
     }
 
     // Alternating row background tint

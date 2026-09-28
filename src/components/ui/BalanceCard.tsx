@@ -1093,7 +1093,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                       {
                         key: "liquid",
                         label: isIndonesian ? "Kas & Rekening Likuid" : "Liquid Cash & Bank",
-                        desc: isIndonesian ? "Uang tunai, bank, dompet digital" : "Cash, bank checking, e-wallets",
+                        desc: isIndonesian ? "Uang tunai, bank, akun digital" : "Cash, bank checking, e-wallets",
                       },
                       {
                         key: "investment",

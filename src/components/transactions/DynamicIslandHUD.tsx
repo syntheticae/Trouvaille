@@ -79,8 +79,8 @@ export function DynamicIslandHUD({
           aria-label={
             isPartnerSync
               ? isIndonesian
-                ? "Pemberitahuan Mutasi Buku Kas Bersama"
-                : "Shared Ledger Activity Notification"
+                ? "Pemberitahuan Transaksi Space Bersama"
+                : "Shared Space Activity Notification"
               : isIndonesian
                 ? "Pemberitahuan Pencatatan Transaksi"
                 : "Transaction Recorded Notification"
@@ -167,7 +167,7 @@ export function DynamicIslandHUD({
                           className="text-[9.5px] font-medium tracking-normal truncate opacity-85"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          {data.ledgerName || (isIndonesian ? "Buku Kas Bersama" : "Shared Ledger")}
+                          {data.ledgerName || (isIndonesian ? "Space Bersama" : "Shared Space")}
                         </span>
                         <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse shrink-0 ml-0.5" />
                       </>
@@ -215,8 +215,8 @@ export function DynamicIslandHUD({
                         : "rgba(0, 0, 0, 0.06)",
                       color: "var(--text-secondary)",
                     }}
-                    title={isIndonesian ? "Buka Buku Kas" : "Open Ledger"}
-                    aria-label={isIndonesian ? "Buka Buku Kas" : "Open Ledger"}
+                    title={isIndonesian ? "Buka Space" : "Open Space"}
+                    aria-label={isIndonesian ? "Buka Space" : "Open Space"}
                   >
                     <ArrowRight size={12} strokeWidth={2} />
                   </button>

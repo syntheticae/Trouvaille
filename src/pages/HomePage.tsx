@@ -2205,8 +2205,8 @@ export function HomePage({
                         : "Total Outflow This Month",
                       amount: currentMonthStats.expense,
                       detail: isIndonesian
-                        ? "Pengeluaran kumulatif di seluruh wallet"
-                        : "Cumulative spending across all wallets",
+                        ? "Pengeluaran kumulatif di seluruh akun"
+                        : "Cumulative spending across all accounts",
                     },
                     {
                       label: isIndonesian
@@ -2477,7 +2477,7 @@ export function HomePage({
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
             <span>
-              {isIndonesian ? "Ledger Aktif: " : "Active Ledger: "}
+              {isIndonesian ? "Space Aktif: " : "Active Space: "}
               <strong className="text-[var(--text-primary)]">
                 {activeSpace.name}
               </strong>{" "}

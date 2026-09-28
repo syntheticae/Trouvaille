@@ -882,8 +882,8 @@ export function CalendarPage() {
                         ? "Proyeksi Masa Depan"
                         : "Future Projection"
                       : isIndonesian
-                        ? "Ledger Lampau"
-                        : "Past Ledger"}
+                        ? "Transaksi Lampau"
+                        : "Past Transactions"}
                   </p>
                 </div>
 

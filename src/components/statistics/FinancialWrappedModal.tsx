@@ -1848,8 +1848,8 @@ export function FinancialWrappedModal({
                         1)
                       </span>{" "}
                       {isIndonesian
-                        ? `Indikator kinerja privat yang diaudit pada buku kas internal Trouvaille untuk ${periodTitle}.`
-                        : `Audited private performance indicators across internal Trouvaille ledger for ${periodTitle}.`}
+                        ? `Indikator kinerja privat yang diaudit pada space internal Trouvaille untuk ${periodTitle}.`
+                        : `Audited private performance indicators across internal Trouvaille space for ${periodTitle}.`}
                     </p>
                     <p>
                       <span

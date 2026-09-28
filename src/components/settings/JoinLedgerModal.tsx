@@ -127,8 +127,8 @@ export function JoinLedgerContent({
       } else {
         setCameraError(
           isIndonesian
-            ? "Format kode QR tidak dikenali sebagai buku kas Trouvaille."
-            : "QR code format is not recognized as a Trouvaille ledger.",
+            ? "Format kode QR tidak dikenali sebagai space Trouvaille."
+            : "QR code format is not recognized as a Trouvaille space.",
         );
       }
     },
@@ -258,8 +258,8 @@ export function JoinLedgerContent({
         triggerSuccessHaptic();
         showToast(
           isIndonesian
-            ? `Berhasil bergabung ke '${result.ledger_name || "Buku Kas Bersama"}'!`
-            : `Joined '${result.ledger_name || "Shared Ledger"}' successfully!`,
+            ? `Berhasil bergabung ke '${result.ledger_name || "Space Bersama"}'!`
+            : `Joined '${result.ledger_name || "Shared Space"}' successfully!`,
           "add",
         );
         if (onSuccess) {
@@ -285,7 +285,7 @@ export function JoinLedgerContent({
             <span>{isIndonesian ? "Kolaborasi Keuangan" : "Financial Collaboration"}</span>
           </div>
           <h2 className="text-[20px] font-semibold text-[var(--text-primary)] tracking-tight">
-            {isIndonesian ? "Gabung Buku Kas Bersama" : "Join Shared Ledger"}
+            {isIndonesian ? "Gabung Space Bersama" : "Join Shared Space"}
           </h2>
           <p className="text-[12px] text-[var(--text-tertiary)] mt-1 max-w-xs mx-auto leading-relaxed">
             {isIndonesian
@@ -313,8 +313,8 @@ export function JoinLedgerContent({
             </h3>
             <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
               {isIndonesian
-                ? "Buku Kas Bersama disinkronkan secara aman antar-perangkat via cloud. Silakan masuk atau buat akun Trouvaille untuk melanjutkan."
-                : "Shared Ledgers are securely synchronized across devices via cloud. Please sign in or create a Trouvaille account to proceed."}
+                ? "Space Bersama disinkronkan secara aman antar-perangkat via cloud. Silakan masuk atau buat akun Trouvaille untuk melanjutkan."
+                : "Shared spaces are securely synchronized across devices via cloud. Please sign in or create a Trouvaille account to proceed."}
             </p>
           </div>
           <button
@@ -399,7 +399,7 @@ export function JoinLedgerContent({
               {/* Display Name Field */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
-                  {isIndonesian ? "NAMA ANDA DI BUKU KAS INI" : "YOUR DISPLAY NAME"}
+                  {isIndonesian ? "NAMA ANDA DI SPACE INI" : "YOUR DISPLAY NAME"}
                 </label>
                 <div className="relative">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none">
@@ -429,7 +429,7 @@ export function JoinLedgerContent({
                 ) : (
                   <>
                     <Check size={15} strokeWidth={2.5} />
-                    <span>{isIndonesian ? "Gabung Buku Kas" : "Join Shared Ledger"}</span>
+                    <span>{isIndonesian ? "Gabung Space" : "Join Shared Space"}</span>
                   </>
                 )}
               </button>

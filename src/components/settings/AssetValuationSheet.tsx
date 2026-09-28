@@ -806,7 +806,7 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                           className="text-[11px] font-medium truncate mt-1 leading-tight"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          {usdtPref.units > 0 ? "Tether USD" : (isIndonesian ? `Dompet terhubung · ${suggestedUsdtUnits} USDT` : `Wallet linked · ${suggestedUsdtUnits} USDT`)}
+                          {usdtPref.units > 0 ? "Tether USD" : (isIndonesian ? `Akun terhubung · ${suggestedUsdtUnits} USDT` : `Account linked · ${suggestedUsdtUnits} USDT`)}
                         </p>
                       </div>
                     </div>

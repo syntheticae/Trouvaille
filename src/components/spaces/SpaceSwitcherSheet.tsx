@@ -59,8 +59,8 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
     const selected = spaces.find((s) => s.id === id);
     showToast(
       isIndonesian
-        ? `Beralih ke ${selected?.name || "Ledger"}`
-        : `Switched to ${selected?.name || "Ledger"}`,
+        ? `Beralih ke ${selected?.name || "Space"}`
+        : `Switched to ${selected?.name || "Space"}`,
       "update",
       () => {},
     );
@@ -71,7 +71,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
     e.preventDefault();
     if (!newSpaceName.trim()) {
       showToast(
-        isIndonesian ? "Nama ledger wajib diisi" : "Ledger name is required",
+        isIndonesian ? "Nama space wajib diisi" : "Space name is required",
         "delete",
         () => {},
       );
@@ -91,8 +91,8 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
     setNewSpaceTag("");
     showToast(
       isIndonesian
-        ? `Ledger "${created.name}" berhasil dibuat`
-        : `Ledger "${created.name}" created successfully`,
+        ? `Space "${created.name}" berhasil dibuat`
+        : `Space "${created.name}" created successfully`,
       "add",
       () => {},
     );
@@ -104,7 +104,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
     triggerHaptic("light");
     deleteCustomSpace(space.id);
     showToast(
-      isIndonesian ? `Ledger "${space.name}" dihapus` : `Ledger "${space.name}" deleted`,
+      isIndonesian ? `Space "${space.name}" dihapus` : `Space "${space.name}" deleted`,
       "delete",
       () => {},
     );
@@ -114,14 +114,14 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
-      title={isIndonesian ? "Daftar Ledger" : "Financial Ledgers"}
+      title={isIndonesian ? "Daftar Space" : "Spaces"}
     >
       <div className="px-5 sm:px-6 space-y-4 pb-[calc(env(safe-area-inset-bottom,16px)+28px)] pt-1 select-none">
         {/* Header Subtitle */}
         <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
           {isIndonesian
-            ? "Kelola arus kas, pisahkan transaksi, dan pantau keuangan dalam ledger tersendiri."
-            : "Manage cashflow, isolate transactions, and track finances across dedicated ledgers."}
+            ? "Kelola arus kas, pisahkan transaksi, dan pantau keuangan dalam space tersendiri."
+            : "Manage cashflow, isolate transactions, and track finances across dedicated spaces."}
         </p>
 
         {/* Domains List */}
@@ -176,7 +176,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
                       type="button"
                       onClick={(e) => handleDeleteSpace(e, space)}
                       className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-rose-400 active:scale-90 transition-colors"
-                      title={isIndonesian ? "Hapus Ledger" : "Delete Ledger"}
+                      title={isIndonesian ? "Hapus Space" : "Delete Space"}
                     >
                       <Trash2 size={14} strokeWidth={1.5} />
                     </button>
@@ -207,7 +207,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
             className="w-full py-3 rounded-[22px] flex items-center justify-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)] bg-[var(--glass-fill)] border border-dashed border-[var(--glass-border)] hover:text-[var(--text-primary)] active:scale-[0.99] transition-all cursor-pointer"
           >
             <Plus size={15} strokeWidth={1.75} />
-            <span>{isIndonesian ? "Tambah Ledger Baru" : "Create New Custom Ledger"}</span>
+            <span>{isIndonesian ? "Tambah Space Baru" : "Add New Space"}</span>
           </button>
         ) : (
           <form
@@ -216,7 +216,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
           >
             <div className="flex items-center justify-between">
               <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                {isIndonesian ? "Ledger Baru" : "New Custom Ledger"}
+                {isIndonesian ? "Space Baru" : "New Space"}
               </span>
               <button
                 type="button"
@@ -229,7 +229,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
 
             <div>
               <label className="text-[10px] font-medium text-[var(--text-tertiary)] block mb-1">
-                {isIndonesian ? "Nama Ledger" : "Ledger Name"}
+                {isIndonesian ? "Nama Space" : "Space Name"}
               </label>
               <input
                 type="text"
@@ -292,7 +292,7 @@ export function SpaceSwitcherSheet({ isOpen, onClose }: SpaceSwitcherSheetProps)
                   color: "var(--bg-base)",
                 }}
               >
-                {isIndonesian ? "Simpan Ledger" : "Save Ledger"}
+                {isIndonesian ? "Simpan Space" : "Save Space"}
               </button>
             </div>
           </form>

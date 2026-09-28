@@ -765,8 +765,8 @@ export function TransactionSheet({
       setIsSaving(false);
       showToast(
         isIndonesian
-          ? "Pilih wallet yang valid sebelum menyimpan"
-          : "Choose a valid wallet before saving",
+          ? "Pilih akun yang valid sebelum menyimpan"
+          : "Choose a valid account before saving",
         "delete",
         () => {},
       );
@@ -779,8 +779,8 @@ export function TransactionSheet({
         setIsSaving(false);
         showToast(
           isIndonesian
-            ? "Pilih wallet asal dan wallet tujuan"
-            : "Choose both source and destination wallets",
+            ? "Pilih akun asal dan akun tujuan"
+            : "Choose both source and destination accounts",
           "delete",
           () => {},
         );
@@ -792,7 +792,7 @@ export function TransactionSheet({
         showToast(
           isIndonesian
             ? "Akun transfer harus berbeda"
-            : "Transfer wallets must be different",
+            : "Transfer accounts must be different",
           "delete",
           () => {},
         );
@@ -1563,7 +1563,7 @@ export function TransactionSheet({
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 <span>
-                  Ledger:{" "}
+                  Space:{" "}
                   <strong className="text-[var(--text-primary)]">
                     {activeSpace.name}
                   </strong>
@@ -2135,8 +2135,8 @@ export function TransactionSheet({
                 }}
               >
                 {isIndonesian
-                  ? "Pilih Wallet"
-                  : "Select Wallet"}
+                  ? "Pilih Akun"
+                  : "Select Account"}
               </h3>
 
               <p
@@ -2147,13 +2147,13 @@ export function TransactionSheet({
               >
                 {walletTarget === "from"
                   ? isIndonesian
-                    ? "Wallet Asal"
-                    : "Source Wallet"
+                    ? "Akun Asal"
+                    : "Source Account"
                   : isIndonesian
-                    ? "Wallet Tujuan"
-                    : "Destination Wallet"}{" "}
+                    ? "Akun Tujuan"
+                    : "Destination Account"}{" "}
                 · {filteredMoreWallets.length}{" "}
-                {isIndonesian ? "wallet" : "wallets"}
+                {isIndonesian ? "akun" : "accounts"}
               </p>
             </div>
 

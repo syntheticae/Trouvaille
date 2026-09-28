@@ -270,7 +270,7 @@ export function DebtPayoffSimulatorCard({
                       }}
                     >
                       <Plus size={13} />
-                      {isIndonesian ? "Tambah Wallet Utang" : "Add Debt Wallet"}
+                      {isIndonesian ? "Tambah Akun Utang" : "Add Debt Account"}
                     </button>
                   </div>
                 </div>

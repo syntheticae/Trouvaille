@@ -106,7 +106,7 @@ const STATISTICS_CARD_METAS: Record<
     },
     id: {
       title: "Rincian Beban Kategori",
-      subtitle: "Distribusi hierarki kategori & porsi alokasi dompet",
+      subtitle: "Distribusi hierarki kategori & porsi alokasi pengeluaran",
     },
   },
   cashflow_velocity: {

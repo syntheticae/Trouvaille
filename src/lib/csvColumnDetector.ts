@@ -288,7 +288,7 @@ export function columnRoleLabel(role: ColumnRole, isIndonesian: boolean): string
     credit: ["Kredit (Masuk)", "Credit (In)"],
     amount: ["Jumlah", "Amount"],
     type: ["Jenis (DB/CR)", "Type (DB/CR)"],
-    wallet: ["Dompet / Akun", "Wallet / Account"],
+    wallet: ["Akun", "Account"],
     category: ["Kategori", "Category"],
     balance: ["Saldo", "Balance"],
     ignore: ["Abaikan", "Ignore"],

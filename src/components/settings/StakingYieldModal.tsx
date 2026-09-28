@@ -386,13 +386,13 @@ export function StakingYieldModal({
         <div className="space-y-1">
           <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-0.5 flex items-center gap-1">
             <WalletIcon size={11} strokeWidth={1.75} />
-            <span>{isIndonesian ? "Dompet Penerima" : "Credited Wallet"}</span>
+            <span>{isIndonesian ? "Akun Penerima" : "Credited Account"}</span>
           </label>
           <GlassSelect
             value={activeWalletId}
             onChange={(val) => setSelectedWalletId(val)}
             options={walletOptions}
-            placeholder={isIndonesian ? "Pilih Dompet" : "Select Wallet"}
+            placeholder={isIndonesian ? "Pilih Akun" : "Select Account"}
           />
         </div>
 

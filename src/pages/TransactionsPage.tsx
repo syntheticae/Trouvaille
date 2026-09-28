@@ -853,7 +853,15 @@ export function TransactionsPage({
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse" />
               <span>
-                Filtered to <strong>{activeSpace.name}</strong> ledger ({visibleTxs.length} txs)
+                {isIndonesian ? (
+                  <>
+                    Difilter ke space <strong>{activeSpace.name}</strong> ({visibleTxs.length} catatan)
+                  </>
+                ) : (
+                  <>
+                    Filtered to <strong>{activeSpace.name}</strong> space ({visibleTxs.length} records)
+                  </>
+                )}
               </span>
             </div>
             <button

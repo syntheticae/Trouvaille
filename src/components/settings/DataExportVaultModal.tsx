@@ -84,8 +84,8 @@ export function DataExportVaultModal({
                 </div>
                 <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                   {isIndonesian
-                    ? "Cetak posisi keuangan, arus kas, neraca, dan mutasi buku kas dalam format PDF eksekutif, berkas CSV, atau arsip JSON."
-                    : "Generate official executive statements, cash flows, balance sheets, CSV ledgers, or JSON vault archives."}
+                    ? "Cetak posisi keuangan, arus kas, neraca, dan catatan transaksi dalam format PDF eksekutif, berkas CSV, atau arsip JSON."
+                    : "Generate official executive statements, cash flows, balance sheets, CSV records, or JSON vault archives."}
                 </p>
               </div>
             </div>

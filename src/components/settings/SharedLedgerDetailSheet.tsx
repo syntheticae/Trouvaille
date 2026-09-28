@@ -139,8 +139,8 @@ export function SharedLedgerDetailSheet({
   const handleShare = async () => {
     triggerHaptic("medium");
     const shareText = isIndonesian
-      ? `Ayo bergabung ke buku kas bersama '${ledger.name}' di Trouvaille! Masukkan kode: ${inviteCode} atau buka: ${webUrl}`
-      : `Join the shared ledger '${ledger.name}' on Trouvaille! Use code: ${inviteCode} or open: ${webUrl}`;
+      ? `Ayo bergabung ke space bersama '${ledger.name}' di Trouvaille! Masukkan kode: ${inviteCode} atau buka: ${webUrl}`
+      : `Join the shared space '${ledger.name}' on Trouvaille! Use code: ${inviteCode} or open: ${webUrl}`;
 
     if (navigator.share) {
       try {
@@ -217,7 +217,7 @@ export function SharedLedgerDetailSheet({
     if (success) {
       triggerSuccessHaptic();
       showToast(
-        isIndonesian ? "Berhasil keluar dari buku kas bersama." : "Left shared ledger successfully.",
+        isIndonesian ? "Berhasil keluar dari space bersama." : "Left shared space successfully.",
         "add",
       );
       onClose();
@@ -232,7 +232,7 @@ export function SharedLedgerDetailSheet({
         <div className="text-center pt-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[11px] font-semibold text-[var(--text-secondary)] mb-2">
             <Users size={12} strokeWidth={2} />
-            <span>{isIndonesian ? "Buku Kas Bersama" : "Shared Collaborative Ledger"}</span>
+            <span>{isIndonesian ? "Space Bersama" : "Shared Collaborative Space"}</span>
           </div>
           <h2 className="text-[20px] font-semibold text-[var(--text-primary)] tracking-tight">
             {ledger.name}
@@ -463,7 +463,7 @@ export function SharedLedgerDetailSheet({
               className="w-full py-3 px-4 rounded-2xl text-[13px] font-semibold border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-primary)] transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2"
             >
               <Edit3 size={14} strokeWidth={1.75} />
-              <span>{isIndonesian ? "Ubah Nama & Ikon Buku Kas" : "Edit Ledger Name & Icon"}</span>
+              <span>{isIndonesian ? "Ubah Nama & Ikon Space" : "Edit Space Name & Icon"}</span>
             </button>
           )}
 
@@ -474,7 +474,7 @@ export function SharedLedgerDetailSheet({
               className="w-full py-3 px-4 rounded-2xl text-[13px] font-semibold border border-red-500/20 bg-red-500/5 text-red-400 transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2"
             >
               <LogOut size={14} strokeWidth={1.75} />
-              <span>{isIndonesian ? "Keluar dari Buku Kas Bersama" : "Leave Shared Ledger"}</span>
+              <span>{isIndonesian ? "Keluar dari Space Bersama" : "Leave Shared Space"}</span>
             </button>
           ) : null}
         </div>
@@ -494,8 +494,8 @@ export function SharedLedgerDetailSheet({
               </h4>
               <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
                 {isIndonesian
-                  ? `Apakah Anda yakin ingin mengeluarkan ${confirmKickMember.display_name || confirmKickMember.email} dari buku kas ini?`
-                  : `Are you sure you want to remove ${confirmKickMember.display_name || confirmKickMember.email} from this ledger?`}
+                  ? `Apakah Anda yakin ingin mengeluarkan ${confirmKickMember.display_name || confirmKickMember.email} dari space ini?`
+                  : `Are you sure you want to remove ${confirmKickMember.display_name || confirmKickMember.email} from this space?`}
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -528,12 +528,12 @@ export function SharedLedgerDetailSheet({
               }}
             >
               <h4 className="text-[15px] font-semibold text-[var(--text-primary)]">
-                {isIndonesian ? "Keluar dari Buku Kas?" : "Leave Shared Ledger?"}
+                {isIndonesian ? "Keluar dari Space Bersama?" : "Leave Shared Space?"}
               </h4>
               <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
                 {isIndonesian
-                  ? "Anda tidak akan dapat lagi melihat atau mencatat pengeluaran di buku kas bersama ini kecuali diundang kembali."
-                  : "You will no longer be able to view or record transactions in this shared ledger unless invited again."}
+                  ? "Anda tidak akan dapat lagi melihat atau mencatat pengeluaran di space bersama ini kecuali diundang kembali."
+                  : "You will no longer be able to view or record transactions in this shared space unless invited again."}
               </p>
               <div className="flex items-center gap-2">
                 <button

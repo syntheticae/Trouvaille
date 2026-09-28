@@ -69,7 +69,7 @@ export function LuxuryReportExportSheet({
 
   const spaceName = useMemo(() => {
     const s = spaces.find((sp) => sp.id === selectedSpaceId);
-    return s ? s.name : isIndonesian ? "Semua Ledger" : "All Ledgers";
+    return s ? s.name : isIndonesian ? "Semua Space" : "All Spaces";
   }, [spaces, selectedSpaceId, isIndonesian]);
 
   const filterOptions: ReportFilterOptions = useMemo(() => {
@@ -148,20 +148,20 @@ export function LuxuryReportExportSheet({
       } else if (exportFormat === "csv") {
         const csvContent = generateCsvContent(filteredTransactions, wallets, isIndonesian);
         const filename = isIndonesian
-          ? `Trouvaille - Ledger Transaksi${spaceSegment} - ${safePeriod}.csv`
-          : `Trouvaille - Transaction Ledger${spaceSegment} - ${safePeriod}.csv`;
+          ? `Trouvaille - Catatan Transaksi${spaceSegment} - ${safePeriod}.csv`
+          : `Trouvaille - Transaction Records${spaceSegment} - ${safePeriod}.csv`;
 
         if (action === "share") {
           const ok = await shareOrDownloadFile(
             csvContent,
             filename,
             "text/csv;charset=utf-8;",
-            isIndonesian ? "Ledger Transaksi Trouvaille" : "Trouvaille Transaction Ledger",
+            isIndonesian ? "Catatan Transaksi Trouvaille" : "Trouvaille Transaction Records",
           );
           if (ok) {
             triggerSuccessHaptic();
             showToast(
-              isIndonesian ? "Berkas CSV berhasil dibagikan" : "CSV ledger shared successfully",
+              isIndonesian ? "Berkas CSV berhasil dibagikan" : "CSV records shared successfully",
               "update",
               () => {},
             );
@@ -170,7 +170,7 @@ export function LuxuryReportExportSheet({
           downloadExportFile(csvContent, filename, "text/csv;charset=utf-8;");
           triggerSuccessHaptic();
           showToast(
-            isIndonesian ? "Berkas CSV berhasil diunduh" : "CSV ledger downloaded",
+            isIndonesian ? "Berkas CSV berhasil diunduh" : "CSV records downloaded",
             "update",
             () => {},
           );
@@ -237,12 +237,12 @@ export function LuxuryReportExportSheet({
               className="font-semibold text-base tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              {isIndonesian ? "Ekspor Laporan Keuangan" : "Financial Statement & Ledger"}
+              {isIndonesian ? "Ekspor Laporan Keuangan" : "Financial Statement & Records"}
             </h3>
             <p className="text-[12px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
               {isIndonesian
-                ? "Neraca, Arus Kas, CaLK, Ledger & arsip cadangan"
-                : "Balance Sheet, Cash Flow, CaLK, Ledger & vault archives"}
+                ? "Neraca, Arus Kas, CaLK, Transaksi & arsip cadangan"
+                : "Balance Sheet, Cash Flow, CaLK, Records & vault archives"}
             </p>
           </div>
           <button
@@ -375,7 +375,7 @@ export function LuxuryReportExportSheet({
           {spaces.length > 1 && (
             <div className="p-3.5 space-y-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
-                {isIndonesian ? "Cakupan Ledger" : "Ledger Scope"}
+                {isIndonesian ? "Cakupan Space" : "Space Scope"}
               </span>
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                 {spaces.map((sp) => {

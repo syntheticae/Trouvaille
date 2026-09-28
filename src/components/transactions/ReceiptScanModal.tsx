@@ -1520,7 +1520,7 @@ export function ReceiptScanModal({
                         <Plus size={12} strokeWidth={2} />
                       )}
 
-                      <span>{isIndonesian ? "Tambah Wallet" : "Add Wallet"}</span>
+                      <span>{isIndonesian ? "Tambah Akun" : "Add Account"}</span>
                     </button>
                   </div>
                 ) : unregisteredCategoryName ? (
@@ -2037,8 +2037,8 @@ export function ReceiptScanModal({
                             {selectedWallet
                               ? selectedWallet.name
                               : isIndonesian
-                                ? "Pilih Wallet"
-                                : "Select Wallet"}
+                                ? "Pilih Akun"
+                                : "Select Account"}
                           </span>
 
                           <ChevronRight
@@ -2082,7 +2082,7 @@ export function ReceiptScanModal({
                             className="text-[12.5px] font-semibold"
                             style={{ color: "var(--text-secondary)" }}
                           >
-                            {isIndonesian ? "Ke Wallet" : "To Wallet"}
+                            {isIndonesian ? "Ke Akun" : "To Account"}
                           </span>
                         </div>
 
@@ -2094,8 +2094,8 @@ export function ReceiptScanModal({
                             {selectedToWallet
                               ? selectedToWallet.name
                               : isIndonesian
-                                ? "Pilih Wallet Tujuan"
-                                : "Select Destination Wallet"}
+                                ? "Pilih Akun Tujuan"
+                                : "Select Destination Account"}
                           </span>
 
                           <ChevronRight
@@ -2198,7 +2198,7 @@ export function ReceiptScanModal({
                             className="text-[12.5px] font-semibold"
                             style={{ color: "var(--text-secondary)" }}
                           >
-                            {isIndonesian ? "Wallet" : "Wallet"}
+                            {isIndonesian ? "Akun" : "Account"}
                           </span>
                         </div>
 
@@ -2210,8 +2210,8 @@ export function ReceiptScanModal({
                             {selectedWallet
                               ? selectedWallet.name
                               : isIndonesian
-                                ? "Pilih Wallet"
-                                : "Select Wallet"}
+                                ? "Pilih Akun"
+                                : "Select Account"}
                           </span>
 
                           <ChevronRight
@@ -2655,7 +2655,7 @@ export function ReceiptScanModal({
           setWalletSheetOpen(false);
           setSearchWalletQuery("");
         }}
-        title={isIndonesian ? "Pilih Wallet" : "Select Wallet"}
+        title={isIndonesian ? "Pilih Akun" : "Select Account"}
       >
         <div
           className="px-4 pt-1 pb-8"
@@ -2826,7 +2826,7 @@ export function ReceiptScanModal({
           setSearchToWalletQuery("");
         }}
         title={
-          isIndonesian ? "Pilih Wallet Tujuan" : "Select Destination Wallet"
+          isIndonesian ? "Pilih Akun Tujuan" : "Select Destination Account"
         }
       >
         <div

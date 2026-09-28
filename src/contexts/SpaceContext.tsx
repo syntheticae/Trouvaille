@@ -14,7 +14,7 @@ export type MoneySpace = FinancialDomain;
 export const DEFAULT_MONEY_SPACES: FinancialDomain[] = [
   {
     id: "personal",
-    name: "Personal Ledger",
+    name: "Personal Space",
     description: "Daily personal cashflow, necessities, shopping & personal savings",
     icon: "User",
     currency: "IDR",
@@ -299,7 +299,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     const newSpace: MoneySpace = {
       id: typeof crypto !== "undefined" && crypto.randomUUID ? `ledger-${crypto.randomUUID()}` : `ledger-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: spaceData.name.trim(),
-      description: spaceData.description?.trim() || `Dedicated ledger for ${spaceData.name.trim()}`,
+      description: spaceData.description?.trim() || `Dedicated space for ${spaceData.name.trim()}`,
       tag: formattedTag,
       icon: spaceData.icon || (isShared ? "Users" : "BookOpen"),
       currency: spaceData.currency || "IDR",
@@ -366,7 +366,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
       const inviteCode = willBeShared ? (personalOverride.invite_code || generateInviteCode()) : undefined;
       const updated: Partial<MoneySpace> = {
         ...personalOverride,
-        name: spaceData.name ? spaceData.name.trim() : (personalOverride.name || "Personal Ledger"),
+        name: spaceData.name ? spaceData.name.trim() : (personalOverride.name || "Personal Space"),
         description: spaceData.description !== undefined ? spaceData.description.trim() : personalOverride.description,
         icon: spaceData.icon || personalOverride.icon || "User",
         currency: spaceData.currency || personalOverride.currency || "IDR",
@@ -385,7 +385,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
             await supabase.from("ledgers").upsert({
               id: "personal",
               user_id: session.user.id,
-              name: updated.name || "Personal Ledger",
+              name: updated.name || "Personal Space",
               description: updated.description || "",
               icon: updated.icon || "User",
               currency: updated.currency || "IDR",

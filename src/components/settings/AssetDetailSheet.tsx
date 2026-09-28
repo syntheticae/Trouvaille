@@ -1074,8 +1074,8 @@ export function AssetDetailSheet({
                     <div className="flex items-center gap-2">
                       <span className="text-[12px] font-medium text-[var(--text-primary)]">
                         {actionModal === "buy"
-                          ? (isIndonesian ? "Potong dari Saldo Dompet" : "Deduct from Wallet")
-                          : (isIndonesian ? "Setor ke Saldo Dompet" : "Deposit to Wallet")}
+                          ? (isIndonesian ? "Potong dari Saldo Akun" : "Deduct from Account")
+                          : (isIndonesian ? "Setor ke Saldo Akun" : "Deposit to Account")}
                       </span>
                     </div>
                     <div
@@ -1094,7 +1094,7 @@ export function AssetDetailSheet({
                       value={selectedWalletId}
                       onChange={setSelectedWalletId}
                       options={walletOptions}
-                      placeholder={isIndonesian ? "Pilih dompet..." : "Select wallet..."}
+                      placeholder={isIndonesian ? "Pilih akun..." : "Select account..."}
                       className="mt-2"
                     />
                   )}

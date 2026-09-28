@@ -283,7 +283,7 @@ function AppShell() {
                 const catName =
                   catObj?.name || res.matchedCategoryName || (isIndonesian ? "Pengeluaran" : "Expense");
                 const walName =
-                  walObj?.name || res.matchedWalletName || (isIndonesian ? "Dompet Utama" : "Default Wallet");
+                  walObj?.name || res.matchedWalletName || (isIndonesian ? "Akun Utama" : "Default Account");
                 const toWalName =
                   toWalObj?.name || res.matchedToWalletName || "";
 

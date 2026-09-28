@@ -251,8 +251,8 @@ export function AppleShortcutsGuideModal({
           : "Make sure 'Notify When Run' is toggled OFF. Now, whenever you pay at a merchant or receive a transfer, the transaction is automatically recorded!",
         actionType: "info",
         noteText: isIndonesian
-          ? "Parser pintar Trouvaille otomatis memisahkan nominal, merchant, dan rekening dompet."
-          : "Trouvaille's smart parser automatically extracts amount, merchant, and wallet account.",
+          ? "Parser pintar Trouvaille otomatis memisahkan nominal, merchant, dan akun pembayaran."
+          : "Trouvaille's smart parser automatically extracts amount, merchant, and payment account.",
       },
     ],
     instan: [
@@ -359,14 +359,14 @@ export function AppleShortcutsGuideModal({
       },
       {
         stepNum: 3,
-        title: isIndonesian ? "Langkah 3: Pilihan Rekening Dompet" : "Step 3: Wallet Account Selection",
+        title: isIndonesian ? "Langkah 3: Pilihan Akun" : "Step 3: Account Selection",
         desc: isIndonesian
-          ? "1. Tambah tindakan 'Teks' dan tempel daftar rekening di bawah.\n2. Tambah tindakan 'Pisahkan Teks' dengan pemisah 'Baris Baru'.\n3. Tambah tindakan 'Pilih dari Daftar' lalu ganti nama variabel menjadi 'Rekening'."
-          : "1. Add 'Text' action and paste your wallet list below.\n2. Add 'Split Text' action by 'New Lines'.\n3. Add 'Choose from List' action and rename the variable to 'Wallet'.",
+          ? "1. Tambah tindakan 'Teks' dan tempel daftar akun di bawah.\n2. Tambah tindakan 'Pisahkan Teks' dengan pemisah 'Baris Baru'.\n3. Tambah tindakan 'Pilih dari Daftar' lalu ganti nama variabel menjadi 'Akun'."
+          : "1. Add 'Text' action and paste your account list below.\n2. Add 'Split Text' action by 'New Lines'.\n3. Add 'Choose from List' action and rename the variable to 'Account'.",
         actionType: "copy",
         copyText: walletListText,
-        copyLabel: isIndonesian ? "Daftar Rekening" : "Wallets",
-        btnText: isIndonesian ? "Salin Daftar Rekening" : "Copy Wallets",
+        copyLabel: isIndonesian ? "Daftar Akun" : "Accounts",
+        btnText: isIndonesian ? "Salin Daftar Akun" : "Copy Accounts",
       },
       {
         stepNum: 4,
@@ -1495,7 +1495,7 @@ export function AppleShortcutsGuideModal({
                       <span style={{ fontWeight: 700, color: "white" }}>Makanan</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "2.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.04)", fontSize: 7 }}>
-                      <span style={{ color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Rekening" : "Wallet"}</span>
+                      <span style={{ color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Akun" : "Account"}</span>
                       <span style={{ fontWeight: 700, color: "white" }}>BCA</span>
                     </div>
                   </div>
@@ -1836,7 +1836,7 @@ export function AppleShortcutsGuideModal({
                     </div>
                     <span style={{ color: "white" }}>Choose from</span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>
-                      {isIndonesian ? "Rekening" : "Wallet"}
+                      {isIndonesian ? "Akun" : "Account"}
                     </span>
                   </div>
                 </div>
@@ -1873,8 +1873,8 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <List size={5.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 6.5, color: "white" }}>Choose Wallet</span>
-                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ Rekening</span>
+                    <span style={{ fontSize: 6.5, color: "white" }}>{isIndonesian ? "Pilih Akun" : "Choose Account"}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ {isIndonesian ? "Akun" : "Account"}</span>
                   </div>
                 </div>
 
@@ -1939,7 +1939,7 @@ export function AppleShortcutsGuideModal({
                     <div style={{ display: "flex", gap: 2 }}>
                       <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>Nominal</span>
                       <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>{isIndonesian ? "Kategori" : "Category"}</span>
-                      <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>{isIndonesian ? "Rekening" : "Wallet"}</span>
+                      <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>{isIndonesian ? "Akun" : "Account"}</span>
                     </div>
                   </div>
                 </div>
@@ -1958,7 +1958,7 @@ export function AppleShortcutsGuideModal({
                   <div style={{ background: "#18181a", borderRadius: 5, padding: "4px 5px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
                     <span style={{ color: "#2997ff" }}>category=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Kategori" : "Category"}</span>
                     <span style={{ color: "#2997ff" }}>&amount=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>Nominal</span>
-                    <span style={{ color: "#2997ff" }}>&wallet=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Rekening" : "Wallet"}</span>
+                    <span style={{ color: "#2997ff" }}>&wallet=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Akun" : "Account"}</span>
                     <span style={{ color: "#2997ff" }}>&date=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Tanggal" : "Date"}</span>
                     <span style={{ color: "#2997ff" }}>&note=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0 2px" }}>{isIndonesian ? "Catatan" : "Notes"}</span>
                     <span style={{ color: "#2997ff" }}>&autosave=true</span>

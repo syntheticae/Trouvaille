@@ -141,7 +141,7 @@ export function ExecutiveWalletCard({
         category: isIndonesian ? "KAS & BANK" : "CASH & BANK",
         balance: bal,
         allocation: alloc,
-        metadata: isIndonesian ? "Rekening Kas Aktif" : "Active Cash Ledger",
+        metadata: isIndonesian ? "Rekening Kas Aktif" : "Active Cash Account",
         trendText: "▲ Kas",
         livePrice: formatRupiah(bal),
         sparklinePoints: "M 0 24 Q 25 28 45 16 T 80 12 T 100 4",
@@ -241,7 +241,7 @@ export function ExecutiveWalletCard({
             className="text-[8.5px] font-mono font-bold tracking-[0.22em] uppercase"
             style={{ color: isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.38)" }}
           >
-            {isIndonesian ? "DOMPET NERACA EKSEKUTIF" : "EXECUTIVE WALLET VAULT"}
+            {isIndonesian ? "NERACA AKUN EKSEKUTIF" : "EXECUTIVE BALANCE VAULT"}
           </span>
         </div>
 

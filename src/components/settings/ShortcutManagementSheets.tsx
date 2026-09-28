@@ -341,7 +341,7 @@ export function ShortcutManagementSheets({
                 className="text-[11px] font-bold uppercase tracking-wider block"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {isIndonesian ? "Akun / Dompet" : "Account / Wallet"}
+                {isIndonesian ? "Akun" : "Account"}
               </label>
               <button
                 type="button"
@@ -468,7 +468,7 @@ export function ShortcutManagementSheets({
             className="font-semibold text-lg mb-3"
             style={{ color: "var(--text-primary)" }}
           >
-            {isIndonesian ? "Pilih Wallet" : "Select Wallet"}
+            {isIndonesian ? "Pilih Akun" : "Select Account"}
           </h3>
           <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
             {wallets.map((w) => {

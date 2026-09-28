@@ -487,7 +487,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     triggerHaptic("medium");
     if (
       confirm(
-        "Reset onboarding state? Your existing transaction ledger will remain safe, and you can re-experience the customization wizard immediately.",
+        isIndonesian
+          ? "Atur ulang konfigurasi awal? Catatan transaksi Anda akan tetap aman, dan Anda dapat mengonfigurasi ulang preferensi."
+          : "Reset onboarding state? Your existing transaction records will remain safe, and you can re-experience the customization wizard immediately.",
       )
     ) {
       localStorage.removeItem("trouvaille_onboarded");
@@ -518,8 +520,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     "expense income groups classifications",
   );
   const showWallets = matches(
-    "Manage Wallets",
-    "bank cash balance cards wallets dompet",
+    "Manage Accounts",
+    "bank cash balance cards wallets dompet accounts akun rekening",
   );
   const showBudget = matches(
     "Monthly Spending Budget",
@@ -632,7 +634,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   );
   const showExportVault = matches(
     "Report Export & Data Vault",
-    "csv excel pdf statement tax ledger json aes-256 file backup export restore offline brankas laporan cadangan ekspor",
+    "csv excel pdf statement space json aes-256 file backup export restore offline brankas laporan cadangan ekspor catatan transaksi",
   );
   const hasDataVault = showCloudSync || showWebDashboard || showExportVault;
 
@@ -777,7 +779,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
               }}
             >
               <p className="text-[11px] font-medium text-[var(--text-tertiary)] truncate">
-                Ledger stored offline · Connect to backup
+                {isIndonesian ? "Data tersimpan offline · Hubungkan untuk cadangkan" : "Data stored offline · Connect to backup"}
               </p>
               <button
                 type="button"
@@ -855,7 +857,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {isIndonesian ? "Kelola Ledger" : "Manage Ledgers"}
+                    {isIndonesian ? "Kelola Space" : "Manage Spaces"}
                   </span>
                 </div>
               </div>
@@ -864,7 +866,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   className="text-[12px] font-mono"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  {activeSpace?.name || "Personal Ledger"}
+                  {activeSpace?.name || (isIndonesian ? "Space Pribadi" : "Personal Space")}
                 </span>
                 <ChevronRight
                   size={15}
@@ -935,7 +937,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {isIndonesian ? "Kelola Wallet" : "Manage Wallets"}
+                    {isIndonesian ? "Kelola Akun" : "Manage Accounts"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
