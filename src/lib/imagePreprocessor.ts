@@ -12,14 +12,22 @@ export interface PreprocessedImageResult {
 }
 
 /**
- * Preprocesses a receipt or transfer slip image on HTML5 Canvas:
- * 1. Rescales large camera photos down to max 1280px (maintaining aspect ratio).
- * 2. Applies luminance grayscaling.
- * 3. Applies high-contrast adaptive thresholding to eliminate shadows and background noise.
+ * Preprocesses a receipt or transfer slip image on HTML5 Canvas.
+ *
+ * Automatically detects whether the image is:
+ * - A dark-background digital screenshot (e-banking/e-wallet app) — uses
+ *   light-text-on-dark detection so white characters become black on white output.
+ * - A light-background physical receipt or bright screenshot — uses standard
+ *   dark-ink-on-white adaptive binarization.
+ *
+ * Processing pipeline:
+ * 1. Rescale to max 1600px (better accuracy for long receipts).
+ * 2. Convert to grayscale.
+ * 3. Apply Bradley-Roth adaptive thresholding, mode-matched to image type.
  */
 export async function preprocessReceiptImage(
   fileOrBlob: Blob | File,
-  maxDimension = 1280,
+  maxDimension = 1600,
 ): Promise<PreprocessedImageResult> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") {
@@ -35,7 +43,6 @@ export async function preprocessReceiptImage(
       const originalWidth = img.naturalWidth || img.width;
       const originalHeight = img.naturalHeight || img.height;
 
-      // Calculate constrained dimensions
       let targetWidth = originalWidth;
       let targetHeight = originalHeight;
 
@@ -58,7 +65,6 @@ export async function preprocessReceiptImage(
         return reject(new Error("Unable to create canvas 2D rendering context"));
       }
 
-      // Draw rescaled image
       ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
 
       try {
@@ -66,40 +72,48 @@ export async function preprocessReceiptImage(
         const data = imgData.data;
         const len = data.length;
 
-        // 1. Convert to grayscale 1D array
+        // 1. Grayscale
         const totalPixels = targetWidth * targetHeight;
         const grayscale = new Uint8ClampedArray(totalPixels);
         let sumLum = 0;
 
         for (let i = 0, p = 0; i < len; i += 4, p++) {
-          const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+          const gray = Math.round(
+            0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2],
+          );
           grayscale[p] = gray;
           sumLum += gray;
         }
         const globalMean = sumLum / totalPixels;
 
-        // 2. Build 2D Integral Image (Summed-Area Table) for O(1) window queries
-        const integral = new Uint32Array(totalPixels);
+        // 2. Detect image mode:
+        //   globalMean < 100 → dark-background screenshot (e.g. dark-mode banking app)
+        //   globalMean 100–160 → mid-tone (could be grey UI background or shadowed receipt)
+        //   globalMean > 160 → light background (physical receipt, bright screenshot)
+        const isDarkScreenshot = globalMean < 110;
+        // Mid-tone images (grey background app screenshots) need a softer threshold
+        const isMidTone = !isDarkScreenshot && globalMean < 165;
 
+        // 3. Integral image for O(1) window sums
+        const integral = new Uint32Array(totalPixels);
         for (let y = 0; y < targetHeight; y++) {
           let lineSum = 0;
           const rowOffset = y * targetWidth;
           const prevRowOffset = (y - 1) * targetWidth;
           for (let x = 0; x < targetWidth; x++) {
             lineSum += grayscale[rowOffset + x];
-            if (y === 0) {
-              integral[rowOffset + x] = lineSum;
-            } else {
-              integral[rowOffset + x] = integral[prevRowOffset + x] + lineSum;
-            }
+            integral[rowOffset + x] =
+              y === 0
+                ? lineSum
+                : integral[prevRowOffset + x] + lineSum;
           }
         }
 
-        // 3. Adaptive Local-Window Thresholding (Bradley-Roth Algorithm)
-        // Window size S = width / 8 (clamped between 16 and 64 for thermal print size)
-        const S = Math.min(64, Math.max(16, Math.floor(targetWidth / 8)));
+        // 4. Adaptive Bradley-Roth thresholding
+        const S = Math.min(72, Math.max(16, Math.floor(targetWidth / 8)));
         const sHalf = Math.floor(S / 2);
-        const T = 0.13; // 13% darker than local mean denotes ink
+        // Mid-tone: use looser threshold (0.08) to avoid obliterating grey text
+        const T = isMidTone ? 0.08 : 0.13;
 
         for (let y = 0; y < targetHeight; y++) {
           const y1 = Math.max(0, y - sHalf);
@@ -109,7 +123,6 @@ export async function preprocessReceiptImage(
           for (let x = 0; x < targetWidth; x++) {
             const x1 = Math.max(0, x - sHalf);
             const x2 = Math.min(targetWidth - 1, x + sHalf);
-
             const count = (x2 - x1 + 1) * (y2 - y1 + 1);
 
             let sum = integral[y2 * targetWidth + x2];
@@ -121,13 +134,17 @@ export async function preprocessReceiptImage(
             const pixelVal = grayscale[pixelIdx];
             const dataIdx = pixelIdx * 4;
 
-            // Ink test: pixelVal * count <= sum * (1 - T)
-            const isDarkText = pixelVal * count <= sum * (1 - T);
-
-            // Handle dark-mode digital receipts vs physical white receipts
-            const outputVal = globalMean < 90
-              ? (isDarkText ? 255 : 0)
-              : (isDarkText ? 0 : 255);
+            // For dark screenshots: bright pixels are "ink" (text), output as black on white
+            // For light/midtone images: dark pixels are ink, output as black on white
+            let outputVal: number;
+            if (isDarkScreenshot) {
+              // Bright text on dark background → invert logic
+              const isBrightText = pixelVal * count >= sum * (1 + T);
+              outputVal = isBrightText ? 0 : 255; // text=black, bg=white
+            } else {
+              const isDarkText = pixelVal * count <= sum * (1 - T);
+              outputVal = isDarkText ? 0 : 255; // ink=black, bg=white
+            }
 
             data[dataIdx] = outputVal;
             data[dataIdx + 1] = outputVal;
@@ -137,7 +154,7 @@ export async function preprocessReceiptImage(
 
         ctx.putImageData(imgData, 0, 0);
 
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
         resolve({
           dataUrl,
           originalWidth,
@@ -145,9 +162,9 @@ export async function preprocessReceiptImage(
           processedWidth: targetWidth,
           processedHeight: targetHeight,
         });
-      } catch (err) {
-        // Fallback: return canvas without custom pixel processing if security or context fails
-        const fallbackDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      } catch {
+        // Fallback: return unprocessed rescaled canvas
+        const fallbackDataUrl = canvas.toDataURL("image/jpeg", 0.88);
         resolve({
           dataUrl: fallbackDataUrl,
           originalWidth,

@@ -862,80 +862,201 @@ export function parseSlipText(
 
   // 6b. Detect Destination Wallet (for Transfer / Top-up Slips)
   let matchedDestinationWallet: Wallet | null = null;
-  const isTransferSlip =
-    fullTextLower.includes("transfer") ||
-    fullTextLower.includes("jumlah transfer") ||
-    fullTextLower.includes("kirim dana") ||
-    fullTextLower.includes("transfer money") ||
-    fullTextLower.includes("transfer ke") ||
-    fullTextLower.includes("qr transfer") ||
-    fullTextLower.includes("dana terkirim") ||
-    fullTextLower.includes("bi-fast") ||
-    fullTextLower.includes("realtime online") ||
-    fullTextLower.includes("top up") ||
-    fullTextLower.includes("topup") ||
-    fullTextLower.includes("isi saldo");
 
-  if (isTransferSlip && userWallets.length > 0) {
-    const destinationCandidates: string[] = [];
+  // ----------------------------------------------------------------
+  // MULTI-SIGNAL TRANSACTION TYPE SCORING
+  // Score three type hypotheses; highest score wins.
+  // ----------------------------------------------------------------
+  let incomeScore = 0;
+  let transferScore = 0;
+  let expenseScore = 0;
+
+  // --- INCOME SIGNALS ---
+  const INCOME_STRONG = [
+    "transfer masuk", "dana masuk", "uang masuk", "saldo masuk",
+    "pembayaran masuk", "kredit masuk", "terima transfer", "dana diterima",
+    "menerima transfer", "kamu menerima", "anda menerima",
+    "telah menerima", "telah terkirim ke", "berhasil masuk",
+    "menerima dana", "menerima kiriman", "top-up berhasil",
+    "topup berhasil", "saldo berhasil ditambahkan",
+    "pencairan pinjaman", "pencairan dana", "gaji masuk",
+    "gaji telah ditransfer", "pembayaran gaji",
+    "refund berhasil", "pengembalian dana", "pengembalian berhasil",
+    "cashback berhasil", "bonus masuk",
+    "penerimaan", "incoming transfer", "credit", // bank statement term
+    "incoming", "received",
+  ];
+  const INCOME_MODERATE = [
+    "diterima", "pemasukan", "masuk ke rekening",
+    "saldo bertambah", "ke rekening kamu", "ke akun kamu",
+    "top up sukses", "topup sukses",
+    "gaji", "honor", "dividen",
+  ];
+
+  for (const sig of INCOME_STRONG) {
+    if (fullTextLower.includes(sig)) incomeScore += 20;
+  }
+  for (const sig of INCOME_MODERATE) {
+    if (fullTextLower.includes(sig)) incomeScore += 8;
+  }
+
+  // --- TRANSFER SIGNALS ---
+  const TRANSFER_STRONG = [
+    "berhasil transfer", "transfer berhasil", "kirim dana berhasil",
+    "berhasil mengirim", "transfer ke rekening", "transfer ke akun",
+    "dana terkirim", "uang terkirim", "bi-fast", "bifast",
+    "realtime online", "sknbi", "rtgs",
+    "isi ulang", "top up gopay", "top up ovo", "top up dana",
+    "top up shopeepay", "top up linkaja", "isi saldo gopay",
+    "isi saldo ovo", "isi saldo dana",
+    "transfer antar bank", "transfer antar rekening",
+    "qr transfer",
+  ];
+  const TRANSFER_MODERATE = [
+    "transfer", "jumlah transfer", "nominal transfer",
+    "kirim dana", "pindah dana",
+    "top up", "topup", "isi saldo",
+    "ke rekening", "tujuan transfer",
+    "bank tujuan", "transfer money",
+  ];
+
+  for (const sig of TRANSFER_STRONG) {
+    if (fullTextLower.includes(sig)) transferScore += 20;
+  }
+  for (const sig of TRANSFER_MODERATE) {
+    if (fullTextLower.includes(sig)) transferScore += 6;
+  }
+
+  // If a destination wallet in user's wallets is found, strongly boost transfer
+  // First: extract destination candidates from label lines
+  const destinationCandidates: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const keMatch = line.match(
+      /^(?:ke|transfer\s+ke|transfer\s+to|recipient\s+bank|bank\s+tujuan|tujuan\s+transfer|penerima)\s*[:\-]?\s*(.+)$/i
+    );
+    if (keMatch && keMatch[1]) {
+      destinationCandidates.push(keMatch[1].trim());
+    } else if (
+      /^(?:ke|transfer\s+ke|transfer\s+to|recipient\s+bank|bank\s+tujuan|penerima)$/i.test(line)
+    ) {
+      if (i < lines.length - 1) {
+        destinationCandidates.push(lines[i + 1].trim());
+      }
+    }
+  }
+
+  const destSearchText = (destinationCandidates.join(" ") + " " + merchantOrRecipient).toLowerCase();
+
+  // Try to match destination to a user wallet
+  for (const w of eligibleWallets) {
+    if (matchedWallet && w.id === matchedWallet.id) continue;
+    const wLower = w.name.toLowerCase();
+    const aliases = BANK_ALIASES[wLower] || [wLower];
+    const isDestMatch = aliases.some(
+      (alias) => destSearchText.includes(alias) || matchesWord(destSearchText, alias)
+    );
+    if (isDestMatch) {
+      matchedDestinationWallet = w;
+      transferScore += 30; // Destination wallet confirmed → strongly transfer
+      break;
+    }
+  }
+
+  // --- EXPENSE SIGNALS ---
+  // QRIS, struk kasir, debit purchase → expense
+  const EXPENSE_STRONG = [
+    "qris", "nmid", "merchant id",
+    "kasir", "struk", "nota", "invoice",
+    "purchase", "debet", "pembayaran qris",
+    "belanja", "bayar ke", "payment to",
+    "transaksi berhasil dibayar",
+  ];
+  const EXPENSE_MODERATE = [
+    "total bayar", "grand total", "total belanja",
+    "subtotal", "kembalian", "kembali", "tunai",
+    "merchant", "toko", "resto", "restoran",
+  ];
+
+  for (const sig of EXPENSE_STRONG) {
+    if (fullTextLower.includes(sig)) expenseScore += 18;
+  }
+  for (const sig of EXPENSE_MODERATE) {
+    if (fullTextLower.includes(sig)) expenseScore += 5;
+  }
+
+  // If slip type is physical receipt → strong expense prior
+  if (detectedSlipType === "receipt") expenseScore += 25;
+  if (detectedSlipType === "qris") expenseScore += 20;
+
+  // INCOME: if income > both, it's income
+  // TRANSFER: if transfer > income AND dest wallet found (or transfer >> expense)
+  // EXPENSE: default
+
+  let type: TransactionType = "expense";
+
+  // Income wins if it has the strongest signal and isn't confused with a send-transfer
+  if (incomeScore > transferScore && incomeScore > expenseScore && incomeScore >= 20) {
+    type = "income";
+  } else if (
+    transferScore > expenseScore &&
+    (matchedDestinationWallet !== null || transferScore >= 26)
+  ) {
+    type = "transfer";
+  } else {
+    type = "expense";
+  }
+
+  // --- INCOME-SPECIFIC: For income slips, source wallet = the destination account (where money arrived)
+  // Re-match matchedWallet for income slips using the "penerima" / "tujuan" lines
+  // that contain a user account. The income "from" field becomes merchant (sender).
+  if (type === "income") {
+    // Try to find which user wallet received the money by scanning "ke:" / "penerima:" lines
+    // For income slips the "tujuan" / "ke" lines point to the user's own wallet
+    const incomeDestCandidates: string[] = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const keMatch = line.match(
-        /^(?:ke|transfer\s+ke|transfer\s+to|recipient\s+bank|bank\s+tujuan|tujuan\s+transfer|penerima)\s*[:\-]?\s*(.+)$/i
+      const destMatch = line.match(
+        /^(?:ke|rekening\s+tujuan|akun\s+tujuan|penerima|tujuan|masuk\s+ke)\s*[:\-]?\s*(.+)$/i
       );
-      if (keMatch && keMatch[1]) {
-        destinationCandidates.push(keMatch[1].trim());
-      } else if (
-        /^(?:ke|transfer\s+ke|transfer\s+to|recipient\s+bank|bank\s+tujuan|penerima)$/i.test(line)
-      ) {
-        if (i < lines.length - 1) {
-          destinationCandidates.push(lines[i + 1].trim());
+      if (destMatch && destMatch[1]) incomeDestCandidates.push(destMatch[1].trim());
+      // "dari:" / "pengirim:" = sender (will become merchant)
+      const senderMatch = line.match(
+        /^(?:dari|pengirim|sumber\s+dana|from)\s*[:\-]?\s*(.+)$/i
+      );
+      if (senderMatch && senderMatch[1] && !merchantOrRecipient) {
+        const candidate = senderMatch[1].trim();
+        if (candidate.length >= 3 && !/^\d+$/.test(candidate)) {
+          merchantOrRecipient = candidate.slice(0, 45);
         }
       }
     }
 
-    const destSearchText = (destinationCandidates.join(" ") + " " + merchantOrRecipient).toLowerCase();
-
-    for (const w of eligibleWallets) {
-      if (matchedWallet && w.id === matchedWallet.id) continue;
-      const wLower = w.name.toLowerCase();
-      const aliases = BANK_ALIASES[wLower] || [wLower];
-      const isMatch = aliases.some(
-        (alias) =>
-          destSearchText.includes(alias) ||
-          matchesWord(destSearchText, alias)
-      );
-      if (isMatch) {
-        matchedDestinationWallet = w;
-        break;
+    // Try to match income dest to a user wallet (override matchedWallet if found)
+    if (incomeDestCandidates.length > 0) {
+      const incomeDestText = incomeDestCandidates.join(" ").toLowerCase();
+      for (const w of eligibleWallets) {
+        const wLower = w.name.toLowerCase();
+        const aliases = BANK_ALIASES[wLower] || [wLower];
+        if (aliases.some((a) => incomeDestText.includes(a) || matchesWord(incomeDestText, a))) {
+          matchedWallet = w;
+          break;
+        }
       }
     }
   }
 
-  // 7. Determine Transaction Type
-  let type: TransactionType = "expense";
-  if (
-    fullTextLower.includes("dana masuk") ||
-    fullTextLower.includes("transfer masuk") ||
-    fullTextLower.includes("topup berhasil") ||
-    fullTextLower.includes("pencairan pinjaman") ||
-    fullTextLower.includes("dana diterima")
-  ) {
-    type = "income";
-  } else if (isTransferSlip && matchedDestinationWallet) {
-    // Destination account matches a user-owned wallet -> Inter-wallet Transfer
-    type = "transfer";
-  } else {
-    // Destination account is external or merchant -> Expense
-    type = "expense";
-  }
-
-  // 8. Confidence Calculation
-  let confidence = 0.35;
-  if (detectedAmount && detectedAmount > 0) confidence += 0.35;
+  // 8. Confidence Calculation — field-presence weighted
+  let confidence = 0.25;
+  if (detectedAmount && detectedAmount > 0) confidence += 0.30;
   if (detectedInstitution) confidence += 0.15;
-  if (merchantOrRecipient) confidence += 0.1;
-  if (matchedWallet) confidence += 0.05;
+  if (merchantOrRecipient) confidence += 0.12;
+  if (matchedWallet) confidence += 0.08;
+  if (type === "transfer" && matchedDestinationWallet) confidence += 0.10;
+  // Penalty if type is ambiguous (both income and transfer signals present)
+  if (incomeScore > 0 && transferScore > 0 && Math.abs(incomeScore - transferScore) < 15) {
+    confidence -= 0.10;
+  }
 
   return {
     amount: detectedAmount,
