@@ -24,6 +24,10 @@ export function generateUUID(): string {
   });
 }
 
+function isUUID(val?: string | null): boolean {
+  return Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+}
+
 interface TransactionInput {
   type: TransactionType;
   amount: number;
@@ -941,6 +945,9 @@ export function useAddTransaction() {
         allCategories?.find((c) => c.id === input.category_id) || null;
 
       const assignedLedger = input.ledger_id || input.space_id || "personal";
+      const cleanCatId = input.category_id && isUUID(input.category_id) ? input.category_id : null;
+      const cleanWalletId = input.wallet_id && isUUID(input.wallet_id) ? input.wallet_id : null;
+      const cleanToWalletId = input.type === "transfer" && input.to_wallet_id && isUUID(input.to_wallet_id) ? input.to_wallet_id : null;
 
       const createdByName =
         input.created_by_name ||
@@ -953,9 +960,9 @@ export function useAddTransaction() {
         user_id: currentUser?.id || userId || "",
         amount: Number(input.amount),
         type: input.type,
-        category_id: input.category_id,
-        wallet_id: input.wallet_id || null,
-        to_wallet_id: input.to_wallet_id || null,
+        category_id: cleanCatId,
+        wallet_id: cleanWalletId,
+        to_wallet_id: cleanToWalletId,
         note: input.note || null,
         occurred_on: input.occurred_on,
         created_at: input.created_at || new Date().toISOString(),
@@ -975,27 +982,34 @@ export function useAddTransaction() {
 
       // Attempt immediate sync to Supabase with quick timeout/retry
       try {
-        const { categories: _categories, wallet: _wallet, to_wallet: _to_wallet, ...dbPayload } = fullTx as any;
+        // Exclude virtual/local-only client properties (space_id, created_by_*) so Supabase insert succeeds unconditionally
+        const dbPayload: any = {
+          id: effectiveId,
+          user_id: currentUser.id,
+          amount: Number(input.amount),
+          type: input.type,
+          category_id: cleanCatId,
+          wallet_id: cleanWalletId,
+          to_wallet_id: cleanToWalletId,
+          note: input.note || null,
+          occurred_on: input.occurred_on,
+          created_at: input.created_at || new Date().toISOString(),
+          ledger_id: assignedLedger,
+        };
+
         let query = supabase
           .from("transactions")
-          .upsert({ ...dbPayload, user_id: currentUser.id })
+          .upsert(dbPayload)
           .select("*, categories(*)");
 
         let res = await withTimeout(query, 7000);
         if (res.error) {
-          // Graceful fallback: If ledger_id, space_id, or created_by columns do not exist yet in Supabase,
-          // retry without them so the operation succeeds unconditionally.
-          const {
-            ledger_id: _ledger_id,
-            space_id: _space_id,
-            created_by_name: _cbn,
-            created_by_user_id: _cbuid,
-            ...fallbackPayload
-          } = dbPayload;
+          // Graceful fallback: If ledger_id column does not exist yet in Supabase, retry without it
+          const { ledger_id: _lid, ...fallbackPayload } = dbPayload;
           res = await withTimeout(
             supabase
               .from("transactions")
-              .upsert({ ...fallbackPayload, user_id: currentUser.id })
+              .upsert(fallbackPayload)
               .select("*"),
             7000,
           );
@@ -1031,18 +1045,25 @@ export function useAddTransaction() {
       const categoryObj =
         allCategories?.find((c) => c.id === newTx.category_id) || null;
 
+      const cleanCatId = newTx.category_id && isUUID(newTx.category_id) ? newTx.category_id : null;
+      const cleanWalletId = newTx.wallet_id && isUUID(newTx.wallet_id) ? newTx.wallet_id : null;
+      const cleanToWalletId = newTx.type === "transfer" && newTx.to_wallet_id && isUUID(newTx.to_wallet_id) ? newTx.to_wallet_id : null;
+      const assignedLedger = newTx.ledger_id || newTx.space_id || "personal";
+
       const optimisticItem: Transaction = {
         id: effectiveId,
         user_id: userId || "",
         amount: Number(newTx.amount),
         type: newTx.type,
-        category_id: newTx.category_id,
-        wallet_id: newTx.wallet_id || null,
-        to_wallet_id: newTx.to_wallet_id || null,
+        category_id: cleanCatId,
+        wallet_id: cleanWalletId,
+        to_wallet_id: cleanToWalletId,
         note: newTx.note || null,
         occurred_on: newTx.occurred_on,
         created_at: newTx.created_at || new Date().toISOString(),
         categories: categoryObj,
+        ledger_id: assignedLedger,
+        space_id: assignedLedger,
       };
 
       upsertTransactionAcrossCaches(qc, optimisticItem);
@@ -1102,14 +1123,18 @@ export function useBatchAddTransactions() {
 
         const assignedLedger = input.ledger_id || input.space_id || "personal";
 
+        const cleanCatId = input.category_id && isUUID(input.category_id) ? input.category_id : null;
+        const cleanWalletId = input.wallet_id && isUUID(input.wallet_id) ? input.wallet_id : null;
+        const cleanToWalletId = input.type === "transfer" && input.to_wallet_id && isUUID(input.to_wallet_id) ? input.to_wallet_id : null;
+
         const fullTx: Transaction = {
           id: effectiveId,
           user_id: currentUser?.id || userId || "",
           amount: Number(input.amount),
           type: input.type,
-          category_id: input.category_id,
-          wallet_id: input.wallet_id || null,
-          to_wallet_id: input.to_wallet_id || null,
+          category_id: cleanCatId,
+          wallet_id: cleanWalletId,
+          to_wallet_id: cleanToWalletId,
           note: input.note || null,
           occurred_on: input.occurred_on,
           created_at: input.created_at || new Date().toISOString(),
@@ -1124,18 +1149,31 @@ export function useBatchAddTransactions() {
 
         if (currentUser?.id) {
           try {
-            const { categories: _categories, wallet: _wallet, to_wallet: _to_wallet, ...dbPayload } = fullTx as any;
+            const dbPayload: any = {
+              id: effectiveId,
+              user_id: currentUser.id,
+              amount: Number(input.amount),
+              type: input.type,
+              category_id: cleanCatId,
+              wallet_id: cleanWalletId,
+              to_wallet_id: cleanToWalletId,
+              note: input.note || null,
+              occurred_on: input.occurred_on,
+              created_at: input.created_at || new Date().toISOString(),
+              ledger_id: assignedLedger,
+            };
             let query = supabase
               .from("transactions")
-              .upsert({ ...dbPayload, user_id: currentUser.id })
+              .upsert(dbPayload)
               .select("*, categories(*)");
 
             let res = await withTimeout(query, 7000);
             if (res.error) {
+              const { ledger_id: _lid, ...fallbackPayload } = dbPayload;
               res = await withTimeout(
                 supabase
                   .from("transactions")
-                  .upsert({ ...dbPayload, user_id: currentUser.id })
+                  .upsert(fallbackPayload)
                   .select("*"),
                 7000,
               );
@@ -1235,29 +1273,27 @@ export function useUpdateTransaction() {
 
   return useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
+      const cleanCatId = input.category_id !== undefined ? (input.category_id && isUUID(input.category_id) ? input.category_id : null) : undefined;
+      const cleanWalletId = input.wallet_id !== undefined ? (input.wallet_id && isUUID(input.wallet_id) ? input.wallet_id : null) : undefined;
+      const cleanToWalletId = input.to_wallet_id !== undefined ? (input.to_wallet_id && isUUID(input.to_wallet_id) ? input.to_wallet_id : null) : undefined;
+
       const cleanUpdate: any = {};
       if (input.type) cleanUpdate.type = input.type;
       if (input.amount !== undefined) cleanUpdate.amount = Number(input.amount);
       if (input.occurred_on) cleanUpdate.occurred_on = input.occurred_on;
       if (input.created_at) cleanUpdate.created_at = input.created_at;
       if (input.note !== undefined) cleanUpdate.note = input.note ?? null;
-      if (input.category_id !== undefined) cleanUpdate.category_id = input.category_id ?? null;
-      if (input.wallet_id !== undefined) cleanUpdate.wallet_id = input.wallet_id ?? null;
-      if (input.to_wallet_id !== undefined) cleanUpdate.to_wallet_id = input.to_wallet_id ?? null;
+      if (cleanCatId !== undefined) cleanUpdate.category_id = cleanCatId;
+      if (cleanWalletId !== undefined) cleanUpdate.wallet_id = cleanWalletId;
+      if (cleanToWalletId !== undefined) cleanUpdate.to_wallet_id = cleanToWalletId;
       if (input.ledger_id !== undefined) {
         cleanUpdate.ledger_id = input.ledger_id ?? "personal";
-        cleanUpdate.space_id = input.ledger_id ?? "personal";
       } else if (input.space_id !== undefined) {
-        cleanUpdate.space_id = input.space_id ?? "personal";
         cleanUpdate.ledger_id = input.space_id ?? "personal";
       }
 
-      if (input.created_by_name !== undefined) {
-        cleanUpdate.created_by_name = input.created_by_name;
-      }
-
-      // DO NOT include id or user_id in cleanUpdate payload sent to supabase.update()!
-      const mutation = enqueuePendingMutation("update", { id, ...cleanUpdate });
+      // DO NOT include id or user_id or space_id in cleanUpdate payload sent to supabase.update()!
+      const mutation = enqueuePendingMutation("update", { id, ...cleanUpdate, space_id: cleanUpdate.ledger_id });
 
       try {
         let query = supabase
@@ -1268,12 +1304,9 @@ export function useUpdateTransaction() {
 
         let res = await withTimeout(query, 7000);
         if (res.error) {
-          // Graceful fallback: retry without ledger_id/space_id/created_by if columns don't exist yet
+          // Graceful fallback: retry without ledger_id if column doesn't exist yet
           const {
             ledger_id: _ledger_id,
-            space_id: _space_id,
-            created_by_name: _cbn,
-            created_by_user_id: _cbuid,
             ...fallbackPayload
           } = cleanUpdate;
           res = await withTimeout(

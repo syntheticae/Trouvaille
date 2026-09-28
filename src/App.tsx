@@ -172,6 +172,9 @@ function AppShell() {
   const [joinLedgerCode, setJoinLedgerCode] = useState("");
   // Queue for deep links that arrive before categories/wallets have loaded (cold-launch race condition fix)
   const pendingDeepLinkRef = useRef<string | null>(null);
+  const hasHandledColdLaunchUrlRef = useRef(false);
+  const lastHandledUrlRef = useRef<string | null>(null);
+  const lastHandledTimeRef = useRef<number>(0);
   const [showGuestMigrationModal, setShowGuestMigrationModal] = useState(false);
   const [isPreviewingInitialSync, setIsPreviewingInitialSync] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -253,6 +256,9 @@ function AppShell() {
 
       if (res.action === "transaction") {
         if (res.autoSave && res.prefilledValues?.amount && res.prefilledValues.amount > 0) {
+          const isUUID = (val?: string | null) =>
+            Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
           const targetAmount = res.prefilledValues.amount;
           const targetType: "income" | "expense" | "transfer" =
             res.prefilledValues.type === "income"
@@ -260,24 +266,73 @@ function AppShell() {
               : res.prefilledValues.type === "transfer"
               ? "transfer"
               : "expense";
-          const targetCatId =
+
+          const rawCatId =
             res.prefilledValues.category_id ||
             categories.find((c) => c.type !== "income")?.id ||
             categories[0]?.id ||
-            "";
-          const targetWalletId =
-            res.prefilledValues.wallet_id || wallets[0]?.id || "";
-          const targetToWalletId =
+            null;
+          const targetCatId = isUUID(rawCatId) ? rawCatId : null;
+
+          const rawWalletId =
+            res.prefilledValues.wallet_id || wallets[0]?.id || null;
+          const targetWalletId = isUUID(rawWalletId)
+            ? rawWalletId
+            : (wallets[0]?.id && isUUID(wallets[0].id) ? wallets[0].id : null);
+
+          const rawToWalletId =
             targetType === "transfer"
               ? res.prefilledValues.to_wallet_id ||
                 wallets.find((w) => w.id !== targetWalletId)?.id ||
                 null
               : null;
+          const targetToWalletId = isUUID(rawToWalletId) ? rawToWalletId : null;
+
           const txDate = res.prefilledValues.date || new Date();
           const occurred_on = format(txDate, "yyyy-MM-dd");
           const note = res.prefilledValues.note || "";
           const targetSpaceId = activeSpaceId && activeSpaceId !== "all" ? activeSpaceId : "personal";
 
+          const catObj = categories.find((c) => c.id === targetCatId);
+          const walObj = wallets.find((w) => w.id === targetWalletId);
+          const toWalObj = wallets.find((w) => w.id === targetToWalletId);
+
+          const catName =
+            catObj?.name || res.matchedCategoryName || (isIndonesian ? "Pengeluaran" : "Expense");
+          const walName =
+            walObj?.name || res.matchedWalletName || (isIndonesian ? "Akun Utama" : "Default Account");
+          const toWalName =
+            toWalObj?.name || res.matchedToWalletName || "";
+
+          // 1. In-App Dynamic Island HUD (Instant optimistic visual feedback)
+          setRecordedShortcutTx({
+            amount: targetAmount,
+            type: targetType,
+            categoryName:
+              targetType === "transfer"
+                ? (isIndonesian ? "Transfer" : "Transfer")
+                : catName,
+            walletName:
+              targetType === "transfer"
+                ? `${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
+                : walName,
+            date: format(txDate, "d MMM yyyy"),
+            note: note,
+          });
+
+          // 2. Native iOS Local Notification (Instant local banner on lock screen / banner)
+          const notifTitle = isIndonesian ? "Transaksi Berhasil Dicatat" : "Transaction Recorded";
+          const notifBody =
+            targetType === "transfer"
+              ? `${formatRupiah(targetAmount)} • ${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
+              : `${formatRupiah(targetAmount)} • ${catName} • ${walName}`;
+          showNativeLocalNotification({
+            title: notifTitle,
+            body: notifBody,
+          }).catch(() => {});
+          triggerSuccessHaptic();
+
+          // 3. Mutate transaction in background with sanitized payload
           addTxMutation.mutate(
             {
               amount: targetAmount,
@@ -292,46 +347,6 @@ function AppShell() {
             } as any,
             {
               onSuccess: () => {
-                triggerSuccessHaptic();
-                const catObj = categories.find((c) => c.id === targetCatId);
-                const walObj = wallets.find((w) => w.id === targetWalletId);
-                const toWalObj = wallets.find((w) => w.id === targetToWalletId);
-
-                const catName =
-                  catObj?.name || res.matchedCategoryName || (isIndonesian ? "Pengeluaran" : "Expense");
-                const walName =
-                  walObj?.name || res.matchedWalletName || (isIndonesian ? "Akun Utama" : "Default Account");
-                const toWalName =
-                  toWalObj?.name || res.matchedToWalletName || "";
-
-                // 1. In-App Dynamic Island HUD
-                setRecordedShortcutTx({
-                  amount: targetAmount,
-                  type: targetType,
-                  categoryName:
-                    targetType === "transfer"
-                      ? (isIndonesian ? "Transfer" : "Transfer")
-                      : catName,
-                  walletName:
-                    targetType === "transfer"
-                      ? `${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
-                      : walName,
-                  date: format(txDate, "d MMM yyyy"),
-                  note: note,
-                });
-
-                // 2. Native iOS Local Notification (Notification Center / Lock Screen)
-                const notifTitle = isIndonesian ? "Transaksi Berhasil Dicatat" : "Transaction Recorded";
-                const notifBody =
-                  targetType === "transfer"
-                    ? `${formatRupiah(targetAmount)} • ${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
-                    : `${formatRupiah(targetAmount)} • ${catName} • ${walName}`;
-                showNativeLocalNotification({
-                  title: notifTitle,
-                  body: notifBody,
-                }).catch(() => {});
-
-                // 3. Immediately refresh transactions and wallets query cache
                 queryClient.invalidateQueries({ queryKey: ["transactions"] });
                 queryClient.invalidateQueries({ queryKey: ["wallets"] });
               },
@@ -370,6 +385,15 @@ function AppShell() {
 
   const tryDispatch = useCallback((rawUrl: string) => {
     if (!rawUrl) return;
+
+    // Deduplicate identical URL dispatches within 1500ms
+    const now = Date.now();
+    if (lastHandledUrlRef.current === rawUrl && now - lastHandledTimeRef.current < 1500) {
+      return;
+    }
+    lastHandledUrlRef.current = rawUrl;
+    lastHandledTimeRef.current = now;
+
     const lower = rawUrl.toLowerCase();
     // Fast path: if the deep link is for direct modal or tab navigation, dispatch immediately without waiting for category cache
     if (
@@ -405,13 +429,17 @@ function AppShell() {
     let urlListenerHandle: { remove: () => void } | null = null;
 
     // 1. Cold launch URL capture via CapApp.getLaunchUrl() (Critical for iOS Shortcuts from terminated state)
-    CapApp.getLaunchUrl()
-      .then((launch) => {
-        if (isSubscribed && launch?.url) {
-          tryDispatch(launch.url);
-        }
-      })
-      .catch(() => {});
+    // Run ONCE per app process to prevent re-triggering during in-app cache invalidations (e.g. Settings Sync)
+    if (!hasHandledColdLaunchUrlRef.current) {
+      hasHandledColdLaunchUrlRef.current = true;
+      CapApp.getLaunchUrl()
+        .then((launch) => {
+          if (isSubscribed && launch?.url) {
+            tryDispatch(launch.url);
+          }
+        })
+        .catch(() => {});
+    }
 
     // 2. Web / PWA URL params on load (e.g. ?text=...)
     if (typeof window !== "undefined" && window.location.search) {

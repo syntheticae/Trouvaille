@@ -387,8 +387,8 @@ export function AppleShortcutsGuideModal({
           : "Add 'Open URLs' action at the end. Paste the template below, then replace each bracketed token with the corresponding blue variable you configured above:",
         actionType: "copy",
         copyText: isIndonesian
-          ? "trouvaille://add?category=[Kategori]&amount=[Nominal]&wallet=[Rekening]&date=[Tanggal]&note=[Catatan]&autosave=true"
-          : "trouvaille://add?category=[Category]&amount=[Amount]&wallet=[Wallet]&date=[Date]&note=[Notes]&autosave=true",
+          ? "trouvaille://add?category=[Kategori]&amount=[Nominal]&wallet=[Akun]&date=[Tanggal]&note=[Catatan]&autosave=true"
+          : "trouvaille://add?category=[Category]&amount=[Amount]&wallet=[Account]&date=[Date]&note=[Notes]&autosave=true",
         copyLabel: isIndonesian ? "Skema URL Lengkap" : "Full URL Scheme",
         btnText: isIndonesian ? "Salin Skema URL Lengkap" : "Copy Full URL Scheme",
       },
@@ -1798,7 +1798,7 @@ export function AppleShortcutsGuideModal({
                     <ChevronLeft size={9} strokeWidth={2.5} />
                   </div>
                   <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
-                    {isIndonesian ? "Pilihan Rekening" : "Wallets"}
+                    {isIndonesian ? "Pilihan Akun" : "Account"}
                   </span>
                 </div>
 

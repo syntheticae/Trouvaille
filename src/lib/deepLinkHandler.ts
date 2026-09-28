@@ -33,7 +33,11 @@ export interface DeepLinkResult {
  */
 export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
   if (!dateStr || typeof dateStr !== "string") return undefined;
-  const clean = dateStr.trim();
+  // Strip leading day names (e.g. "Senin, ", "Monday, ") often produced by iOS Shortcuts
+  const clean = dateStr
+    .trim()
+    .replace(/^(?:senin|selasa|rabu|kamis|jumat|jum'at|sabtu|minggu|monday|tuesday|wednesday|thursday|friday|saturday|sunday)[,\s]+/i, "")
+    .trim();
   if (!clean) return undefined;
 
   // Try standard JS parse first (e.g. ISO 8601 or YYYY-MM-DD)
@@ -157,7 +161,9 @@ export function parseDeepLink(
       return { action: "none" };
     }
 
-    const parsed = new URL(targetUrl);
+    // Replace raw spaces with %20 so new URL(...) does not throw on unencoded query params
+    const safeUrl = targetUrl.replace(/ /g, "%20");
+    const parsed = new URL(safeUrl);
     const actionPath = parsed.pathname.replace(/^\/+/, "").toLowerCase();
     const params = parsed.searchParams;
 
@@ -221,9 +227,10 @@ export function parseDeepLink(
       params.get("wallet") ||
       params.get("rekening") ||
       params.get("dompet") ||
+      params.get("akun") ||
+      params.get("account") ||
       params.get("wallet_id") ||
       params.get("walletId") ||
-      params.get("account") ||
       params.get("dari");
     const directToWallet =
       params.get("to_wallet") ||
@@ -311,7 +318,41 @@ export function parseDeepLink(
       const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
       const isAutoRequested = autoParam === "true" || autoParam === "1";
 
-      // B1: Indonesian Bank / E-Wallet notification parser (SeaBank, ShopeePay, wondr, BCA, Mandiri, etc.)
+      const isMultiLineOrSlip =
+        trimmedText.includes("\n") ||
+        trimmedText.includes("\r") ||
+        trimmedText.length > 70 ||
+        /(?:struk|nota|total|subtotal|biaya admin|rekening|pengirim|penerima|no\.?\s*referensi|bi-fast|bukti transfer|transfer berhasil|transaksi berhasil)/i.test(trimmedText);
+
+      // B1: If multi-line OCR text or matches slip characteristics (Back Tap Live Text OCR output),
+      // prioritize parseSlipText so transfer slips (e.g. SeaBank -> ShopeePay) are accurately parsed!
+      if (isMultiLineOrSlip) {
+        const slipResult = parseSlipText(trimmedText, wallets, categories);
+        if (slipResult && slipResult.amount && slipResult.amount > 0) {
+          return {
+            action: "transaction",
+            autoSave: isAutoRequested,
+            matchedCategoryName: slipResult.categoryName || undefined,
+            matchedWalletName: slipResult.sourceWalletName || undefined,
+            matchedToWalletName: slipResult.destinationWalletName || undefined,
+            prefilledValues: {
+              amount: slipResult.amount,
+              type: slipResult.type,
+              note: directNote || "", // Strictly empty note for scanned receipts/slips unless explicit directNote
+              category_id: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
+              categoryId: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
+              wallet_id: slipResult.sourceWalletId || undefined,
+              walletId: slipResult.sourceWalletId || undefined,
+              to_wallet_id: slipResult.destinationWalletId || undefined,
+              toWalletId: slipResult.destinationWalletId || undefined,
+              date: slipResult.date || new Date(),
+              time: slipResult.time || undefined,
+            },
+          };
+        }
+      }
+
+      // B2: Indonesian Bank / E-Wallet push notification parser (single-line notifications from iOS notification center)
       const bankResult = parseBankNotification(trimmedText, categories, wallets);
       if (bankResult && bankResult.amount > 0) {
         const matchedCat = categories.find((c) => c.id === bankResult.suggestedCategoryId);
@@ -327,7 +368,7 @@ export function parseDeepLink(
           prefilledValues: {
             amount: bankResult.amount,
             type: bankResult.type,
-            note: bankResult.merchantOrNote || "",
+            note: directNote || (bankResult.type === "transfer" ? "" : (bankResult.merchantOrNote || "")),
             category_id: bankResult.type === "transfer" ? undefined : bankResult.suggestedCategoryId,
             categoryId: bankResult.type === "transfer" ? undefined : bankResult.suggestedCategoryId,
             wallet_id: bankResult.suggestedWalletId,
@@ -339,32 +380,34 @@ export function parseDeepLink(
         };
       }
 
-      // B2: Try Slip & Receipt Parser (for Back Tap Live Text OCR output)
-      const slipResult = parseSlipText(trimmedText, wallets, categories);
-      if (slipResult && slipResult.amount && slipResult.amount > 0) {
-        return {
-          action: "transaction",
-          autoSave: isAutoRequested,
-          matchedCategoryName: slipResult.categoryName || undefined,
-          matchedWalletName: slipResult.sourceWalletName || undefined,
-          matchedToWalletName: slipResult.destinationWalletName || undefined,
-          prefilledValues: {
-            amount: slipResult.amount,
-            type: slipResult.type,
-            note: "", // Strictly default to empty string for scanned receipts to keep history clean
-            category_id: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
-            categoryId: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
-            wallet_id: slipResult.sourceWalletId || undefined,
-            walletId: slipResult.sourceWalletId || undefined,
-            to_wallet_id: slipResult.destinationWalletId || undefined,
-            toWalletId: slipResult.destinationWalletId || undefined,
-            date: slipResult.date || new Date(),
-            time: slipResult.time || undefined,
-          },
-        };
+      // B3: Fallback to Slip & Receipt Parser if not already run in B1
+      if (!isMultiLineOrSlip) {
+        const slipResult = parseSlipText(trimmedText, wallets, categories);
+        if (slipResult && slipResult.amount && slipResult.amount > 0) {
+          return {
+            action: "transaction",
+            autoSave: isAutoRequested,
+            matchedCategoryName: slipResult.categoryName || undefined,
+            matchedWalletName: slipResult.sourceWalletName || undefined,
+            matchedToWalletName: slipResult.destinationWalletName || undefined,
+            prefilledValues: {
+              amount: slipResult.amount,
+              type: slipResult.type,
+              note: directNote || "",
+              category_id: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
+              categoryId: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
+              wallet_id: slipResult.sourceWalletId || undefined,
+              walletId: slipResult.sourceWalletId || undefined,
+              to_wallet_id: slipResult.destinationWalletId || undefined,
+              toWalletId: slipResult.destinationWalletId || undefined,
+              date: slipResult.date || new Date(),
+              time: slipResult.time || undefined,
+            },
+          };
+        }
       }
 
-      // B3: Try Natural Language Transaction parser (e.g., "Kopi tuku 25rb pakai gopay")
+      // B4: Try Natural Language Transaction parser (e.g., "Kopi tuku 25rb pakai gopay")
       const nlpResult = parseNaturalTransaction(trimmedText, categories, wallets);
       if (nlpResult && nlpResult.amount && nlpResult.amount > 0) {
         const matchedCat = categories.find((c) => c.id === nlpResult.categoryId) || categories[0];
@@ -377,7 +420,7 @@ export function parseDeepLink(
           prefilledValues: {
             amount: nlpResult.amount,
             type: nlpResult.type || "expense",
-            note: nlpResult.note || trimmedText.slice(0, 40),
+            note: directNote || nlpResult.note || trimmedText.slice(0, 40),
             category_id: nlpResult.categoryId || matchedCat?.id,
             categoryId: nlpResult.categoryId || matchedCat?.id,
             wallet_id: nlpResult.walletId || matchedWal?.id,
@@ -387,12 +430,12 @@ export function parseDeepLink(
         };
       }
 
-      // B4: Fallback if amount couldn't be extracted, open with note
+      // B5: Fallback if amount couldn't be extracted, open with note
       return {
         action: "transaction",
         autoSave: false,
         prefilledValues: {
-          note: trimmedText.slice(0, 60),
+          note: directNote || trimmedText.slice(0, 60),
           type: "expense",
         },
       };
