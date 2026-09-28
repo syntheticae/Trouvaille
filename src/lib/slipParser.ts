@@ -11,6 +11,8 @@ import { classifySemanticCategory } from "./semanticClassifier";
 export interface ParsedSlipResult {
   amount: number | null;
   amountFormatted: string | null;
+  adminFee: number | null;
+  adminFeeFormatted?: string | null;
   type: TransactionType;
   date: Date;
   dateFormatted: string;
@@ -26,6 +28,8 @@ export interface ParsedSlipResult {
   detectedSlipType: "m_banking" | "ewallet" | "qris" | "receipt" | "general";
   detectedInstitution?: string;
   detectedCategory?: string;
+  isVirtualAccount: boolean;
+  vaNumber?: string | null;
   rawText: string;
   extractedLines: string[];
 }
@@ -207,6 +211,8 @@ export function parseSlipText(
     return {
       amount: null,
       amountFormatted: null,
+      adminFee: null,
+      adminFeeFormatted: null,
       type: "expense",
       date: new Date(),
       dateFormatted: format(new Date(), "yyyy-MM-dd"),
@@ -219,6 +225,8 @@ export function parseSlipText(
       categoryName: userCategories[0]?.name || null,
       confidence: 0,
       detectedSlipType: "general",
+      isVirtualAccount: false,
+      vaNumber: null,
       rawText: "",
       extractedLines: [],
     };
@@ -490,6 +498,76 @@ export function parseSlipText(
     detectedAmount = candidateAmounts[0].amount;
   }
 
+  // 2b. Extract Admin Fee (BI-FAST, Top-Up, Inter-bank fee)
+  let detectedAdminFee: number | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineLower = line.toLowerCase();
+    const prevLineLower = i > 0 ? lines[i - 1].toLowerCase() : "";
+    const contextLower = `${prevLineLower} ${lineLower}`.trim();
+
+    const isAdminFeePattern =
+      contextLower.includes("biaya admin") ||
+      contextLower.includes("biaya transfer") ||
+      contextLower.includes("biaya transaksi") ||
+      contextLower.includes("biaya layanan") ||
+      contextLower.includes("admin fee") ||
+      contextLower.includes("bi-fast") ||
+      contextLower.includes("bifast") ||
+      contextLower.includes("biaya:") ||
+      lineLower.startsWith("biaya ") ||
+      lineLower.startsWith("admin ");
+
+    if (isAdminFeePattern) {
+      const feeMatches = line.match(
+        /(?:rp\.?|idr)?\s*([0-9]{1,3}(?:[.,][0-9]{3})*(?:,[0-9]{2})?|[0-9]{3,6})/gi
+      );
+      if (feeMatches) {
+        for (const m of feeMatches) {
+          const feeAmt = cleanCurrency(m);
+          // Standard Indonesian admin fees range from Rp 500 to Rp 25.000
+          if (feeAmt >= 500 && feeAmt <= 25_000) {
+            detectedAdminFee = feeAmt;
+            break;
+          }
+        }
+      }
+      if (detectedAdminFee) break;
+    }
+  }
+
+  // Cross-validation: Check if detectedAmount was accidentally the Gross Total (Principal + Fee)
+  // E.g., Principal Rp 100.000, Fee Rp 2.500, Gross Total Rp 102.500.
+  // We want detectedAmount to be the principal Rp 100.000!
+  if (detectedAmount && detectedAdminFee && detectedAmount > detectedAdminFee) {
+    const netPrincipal = detectedAmount - detectedAdminFee;
+    const principalCandidate = candidateAmounts.find((c) => c.amount === netPrincipal);
+    if (principalCandidate) {
+      detectedAmount = netPrincipal;
+    }
+  }
+
+  // 2c. Detect Virtual Account (VA)
+  const isVirtualAccount =
+    fullTextLower.includes("virtual account") ||
+    fullTextLower.includes("briva") ||
+    fullTextLower.includes("bca va") ||
+    fullTextLower.includes("mandiri va") ||
+    fullTextLower.includes("bni va") ||
+    fullTextLower.includes("permata va") ||
+    fullTextLower.includes("cimb va") ||
+    fullTextLower.includes("kode bayar") ||
+    /\bva\s*[:\-#]/i.test(rawText) ||
+    /\bno\.?\s*va\b/i.test(rawText);
+
+  let vaNumber: string | null = null;
+  const vaMatch = rawText.match(
+    /(?:virtual\s*account|briva|va|nomor\s*va|kode\s*bayar)\s*[:\-#]?\s*(\d{8,20})/i
+  );
+  if (vaMatch && vaMatch[1]) {
+    vaNumber = vaMatch[1];
+  }
+
   // 3. Extract Date
   let detectedDate = new Date();
   const MONTHS: Record<string, number> = {
@@ -583,7 +661,7 @@ export function parseSlipText(
 
       // Single line: "Payment to <merchant>", "Ke <merchant>", "Penerima: <merchant>", "Receiver <merchant>"
       const inlineMatch = line.match(
-        /^(?:payment\s+to|bayar\s+ke|dibayar\s+kepada|tujuan\s+transfer|transfer\s+ke|penerima|receiver|nama\s+penerima|nama\s+periairas|merchant|nama\s+merchant|toko)\s*[:\-]?\s*([a-z0-9\s.&'-]+)$/i
+        /^(?:payment\s+to|bayar\s+ke|dibayar\s+kepada|tujuan\s+transfer|transfer\s+ke|penerima|receiver|nama\s+penerima|nama\s+periairas|merchant|nama\s+merchant|toko|perusahaan|institusi|nama\s+va|nama\s+pelanggan)\s*[:\-]?\s*([a-z0-9\s.&'-]+)$/i
       );
       if (inlineMatch && inlineMatch[1] && inlineMatch[1].trim().length >= 3) {
         const candidate = inlineMatch[1].trim();
@@ -604,7 +682,7 @@ export function parseSlipText(
       }
 
       // Multi-line: label on line i, recipient on line i+1
-      if (/^(?:penerima|receiver|tujuan|kepada|nama\s+merchant|nama\s+toko)$/i.test(line)) {
+      if (/^(?:penerima|receiver|tujuan|kepada|nama\s+merchant|nama\s+toko|perusahaan|institusi|nama\s+va|nama\s+pelanggan)$/i.test(line)) {
         if (i < lines.length - 1) {
           const nextLine = lines[i + 1].trim();
           if (
@@ -963,6 +1041,25 @@ export function parseSlipText(
     }
   }
 
+  // --- VIRTUAL ACCOUNT (VA) OWNERSHIP-BASED ROUTING ---
+  // If payment is via Virtual Account:
+  // - Top-up to user-owned e-wallet (e.g. ShopeePay, DANA, GoPay, OVO) -> Transfer to that wallet
+  // - Payment to merchant, e-commerce, or someone else's e-wallet -> Expense
+  if (isVirtualAccount) {
+    const EWALLET_KEYS = ["shopeepay", "shopee pay", "spay", "dana", "gopay", "ovo", "linkaja"];
+    const isEWalletVA = EWALLET_KEYS.some(
+      (ew) => destSearchText.includes(ew) || fullTextLower.includes(ew)
+    );
+
+    if (isEWalletVA && matchedDestinationWallet) {
+      // User owns the destination e-wallet account -> Confirmed Inter-Wallet Transfer!
+      transferScore += 50;
+    } else {
+      // E-commerce purchase (Shopee, Tokopedia, Blibli, etc.) or utility bill -> Confirmed Expense!
+      expenseScore += 45;
+    }
+  }
+
   // --- EXPENSE SIGNALS ---
   // QRIS, struk kasir, debit purchase → expense
   const EXPENSE_STRONG = [
@@ -1053,6 +1150,8 @@ export function parseSlipText(
   if (merchantOrRecipient) confidence += 0.12;
   if (matchedWallet) confidence += 0.08;
   if (type === "transfer" && matchedDestinationWallet) confidence += 0.10;
+  if (detectedAdminFee && detectedAdminFee > 0) confidence += 0.05;
+  if (isVirtualAccount && vaNumber) confidence += 0.05;
   // Penalty if type is ambiguous (both income and transfer signals present)
   if (incomeScore > 0 && transferScore > 0 && Math.abs(incomeScore - transferScore) < 15) {
     confidence -= 0.10;
@@ -1061,6 +1160,8 @@ export function parseSlipText(
   return {
     amount: detectedAmount,
     amountFormatted: detectedAmount ? formatRupiah(detectedAmount) : null,
+    adminFee: detectedAdminFee,
+    adminFeeFormatted: detectedAdminFee ? formatRupiah(detectedAdminFee) : null,
     type,
     date: detectedDate,
     dateFormatted: format(detectedDate, "yyyy-MM-dd"),
@@ -1076,6 +1177,8 @@ export function parseSlipText(
     detectedSlipType,
     detectedInstitution,
     detectedCategory,
+    isVirtualAccount,
+    vaNumber,
     rawText,
     extractedLines: lines,
   };

@@ -118,6 +118,8 @@ export function ReceiptScanModal({
   const [merchant, setMerchant] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [type, setType] = useState<TransactionType>("expense");
+  const [includeAdminFee, setIncludeAdminFee] = useState<boolean>(false);
+  const [adminFeeAmount, setAdminFeeAmount] = useState<number>(0);
 
   // Torch / Flash State
   const [isTorchOn, setIsTorchOn] = useState(false);
@@ -283,6 +285,8 @@ export function ReceiptScanModal({
       setSearchWalletQuery("");
       setSearchToWalletQuery("");
       setToWalletId(null);
+      setIncludeAdminFee(false);
+      setAdminFeeAmount(0);
       setPermissionPrompt({
         isOpen: false,
         type: "photos",
@@ -523,6 +527,13 @@ export function ReceiptScanModal({
       setNote("");
       setType(result.slip.type || "expense");
       setToWalletId(result.slip.destinationWalletId || null);
+      if (result.slip.adminFee && result.slip.adminFee > 0) {
+        setAdminFeeAmount(result.slip.adminFee);
+        setIncludeAdminFee(true);
+      } else {
+        setAdminFeeAmount(0);
+        setIncludeAdminFee(false);
+      }
       setStep("result");
     } catch (err: any) {
       console.error("[ReceiptScanModal] Scan failed:", err);
@@ -786,6 +797,54 @@ export function ReceiptScanModal({
       txDate.setHours(h, m, 0, 0);
     }
 
+    const saveAdminFeeIfRequested = async () => {
+      if (!includeAdminFee || adminFeeAmount <= 0 || !effectiveWalletId) return;
+
+      // Find or create "Biaya Admin" category
+      const adminCat = categories.find((c) => {
+        const n = c.name.toLowerCase();
+        return (
+          n.includes("biaya admin") ||
+          n.includes("admin fee") ||
+          n.includes("biaya transfer") ||
+          n === "admin"
+        );
+      });
+
+      let adminCatId = adminCat?.id || null;
+      if (!adminCatId) {
+        try {
+          const createdCat = await addCategoryMutation.mutateAsync({
+            name: isIndonesian ? "Biaya Admin" : "Admin Fee",
+            emoji: "receipt",
+            type: "expense",
+          });
+          if (createdCat?.id) {
+            adminCatId = createdCat.id;
+          }
+        } catch {
+          const fallbackCat = categories.find((c) => c.type !== "income") || categories[0];
+          adminCatId = fallbackCat?.id || null;
+        }
+      }
+
+      const adminTxDate = new Date(txDate.getTime() + 1000);
+      const feeNote = isIndonesian
+        ? `Biaya transfer ${merchant.trim() || ""}`.trim()
+        : `Transfer fee ${merchant.trim() || ""}`.trim();
+
+      addTx.mutate({
+        type: "expense",
+        amount: adminFeeAmount,
+        wallet_id: effectiveWalletId,
+        to_wallet_id: null,
+        category_id: adminCatId,
+        note: feeNote,
+        occurred_on: format(date, "yyyy-MM-dd"),
+        created_at: adminTxDate.toISOString(),
+      });
+    };
+
     triggerSuccessHaptic();
     addTx.mutate(
       {
@@ -800,13 +859,24 @@ export function ReceiptScanModal({
       },
       {
         onSuccess: () => {
-          showToast(
-            isIndonesian
-              ? "Transaksi berhasil disimpan"
-              : "Transaction saved successfully",
-            "add",
-            () => {},
-          );
+          if (includeAdminFee && adminFeeAmount > 0 && effectiveWalletId) {
+            saveAdminFeeIfRequested();
+            showToast(
+              isIndonesian
+                ? "2 transaksi dicatat (pokok & biaya admin)"
+                : "2 transactions recorded (principal & admin fee)",
+              "add",
+              () => {},
+            );
+          } else {
+            showToast(
+              isIndonesian
+                ? "Transaksi berhasil disimpan"
+                : "Transaction saved successfully",
+              "add",
+              () => {},
+            );
+          }
           onClose();
         },
         onError: () => {
@@ -1742,6 +1812,88 @@ export function ReceiptScanModal({
                         }}
                       />
                     </div>
+
+                    {/* Admin Fee Chip Toggle */}
+                    {adminFeeAmount > 0 && (
+                      <div
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setIncludeAdminFee(!includeAdminFee);
+                        }}
+                        className="mt-2.5 w-full p-2.5 px-3 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition-all active:scale-[0.98]"
+                        style={{
+                          background: includeAdminFee
+                            ? isDark
+                              ? "rgba(255,255,255,0.065)"
+                              : "rgba(15,23,42,0.04)"
+                            : isDark
+                              ? "rgba(255,255,255,0.02)"
+                              : "rgba(15,23,42,0.02)",
+                          border: includeAdminFee
+                            ? isDark
+                              ? "1px solid rgba(255,255,255,0.15)"
+                              : "1px solid rgba(15,23,42,0.12)"
+                            : isDark
+                              ? "1px solid rgba(255,255,255,0.06)"
+                              : "1px solid rgba(15,23,42,0.05)",
+                          boxShadow: includeAdminFee
+                            ? isDark
+                              ? "inset 0 1px 0 rgba(255,255,255,0.08)"
+                              : "0 2px 8px rgba(15,23,42,0.04)"
+                            : "none",
+                        }}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                            style={{
+                              background: includeAdminFee
+                                ? isDark
+                                  ? "rgba(255,255,255,0.18)"
+                                  : "rgba(15,23,42,0.85)"
+                                : isDark
+                                  ? "rgba(255,255,255,0.05)"
+                                  : "rgba(15,23,42,0.08)",
+                              color: includeAdminFee
+                                ? "#ffffff"
+                                : "transparent",
+                            }}
+                          >
+                            <Check size={12} strokeWidth={2.5} />
+                          </div>
+
+                          <div className="min-w-0 text-left">
+                            <p
+                              className="text-[12px] font-semibold truncate leading-tight"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {isIndonesian
+                                ? `Catat Biaya Admin (+${formatRupiah(adminFeeAmount)})`
+                                : `Record Admin Fee (+${formatRupiah(adminFeeAmount)})`}
+                            </p>
+                            <p
+                              className="text-[10px] font-normal truncate mt-0.5"
+                              style={{ color: "var(--text-tertiary)" }}
+                            >
+                              {isIndonesian
+                                ? "Otomatis dicatat sebagai pengeluaran terpisah"
+                                : "Auto-recorded as separate expense"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span
+                          className="text-[11px] font-mono font-semibold shrink-0"
+                          style={{
+                            color: includeAdminFee
+                              ? "var(--text-primary)"
+                              : "var(--text-tertiary)",
+                          }}
+                        >
+                          +{formatRupiah(adminFeeAmount)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

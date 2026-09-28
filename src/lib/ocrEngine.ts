@@ -89,8 +89,10 @@ export async function scanReceiptOrSlip(
       : "Enhancing image clarity & contrast...",
   );
 
-  // 1. Preprocess on Canvas
-  const preprocessed = await preprocessReceiptImage(fileOrBlob);
+  // 1. Pass 1: Standard Adaptive Binarization
+  const preprocessed1 = await preprocessReceiptImage(fileOrBlob, {
+    mode: "adaptive_binarize",
+  });
 
   onProgress?.(
     30,
@@ -100,24 +102,69 @@ export async function scanReceiptOrSlip(
   // 2. Get OCR Worker
   const worker = await getOCRWorker(onProgress, language);
 
-  // 3. Recognize
-  const { data } = await worker.recognize(preprocessed.dataUrl);
-  const rawText = data.text || "";
+  // 3. Recognize Pass 1
+  const { data: data1 } = await worker.recognize(preprocessed1.dataUrl);
+  const rawText1 = data1.text || "";
 
   onProgress?.(
-    95,
-    isId ? "Mengekstrak nominal & merchant..." : "Extracting amount & merchant...",
+    80,
+    isId ? "Menganalisis struktur finansial..." : "Analyzing financial structure...",
   );
 
-  // 4. Parse Indonesian financial structure
-  const slip = parseSlipText(rawText, userWallets, userCategories);
+  // 4. Parse Indonesian financial structure (Pass 1)
+  const slip1 = parseSlipText(rawText1, userWallets, userCategories);
+
+  let finalSlip = slip1;
+  let finalRawText = rawText1;
+  let finalProcessedImageUrl = preprocessed1.dataUrl;
+
+  // 5. Dual-Pass OCR Fallback:
+  // If Pass 1 failed to extract amount, or has low confidence (< 0.55),
+  // or extracted text is very short (< 25 chars) which indicates aggressive binarization
+  // erased faint thermal print or washed out low-contrast characters:
+  const shouldRunPass2 =
+    slip1.amount === null ||
+    slip1.confidence < 0.55 ||
+    rawText1.trim().length < 25;
+
+  if (shouldRunPass2) {
+    onProgress?.(
+      60,
+      isId
+        ? "Meningkatkan kontras untuk nota redup/kusut..."
+        : "Enhancing contrast for faint/glared receipt...",
+    );
+
+    try {
+      const preprocessed2 = await preprocessReceiptImage(fileOrBlob, {
+        mode: "enhanced_grayscale",
+      });
+      const { data: data2 } = await worker.recognize(preprocessed2.dataUrl);
+      const rawText2 = data2.text || "";
+      const slip2 = parseSlipText(rawText2, userWallets, userCategories);
+
+      // Evaluate whether Pass 2 is superior:
+      const pass2IsBetter =
+        (slip2.amount !== null && slip1.amount === null) ||
+        (slip2.amount !== null && slip2.confidence > slip1.confidence) ||
+        (slip2.confidence >= slip1.confidence + 0.1);
+
+      if (pass2IsBetter) {
+        finalSlip = slip2;
+        finalRawText = rawText2;
+        finalProcessedImageUrl = preprocessed2.dataUrl;
+      }
+    } catch (pass2Err) {
+      console.warn("[ocrEngine] Pass 2 fallback encountered error, using Pass 1 result:", pass2Err);
+    }
+  }
 
   onProgress?.(100, isId ? "Selesai!" : "Done!");
 
   return {
-    slip,
-    rawText,
-    processedImageUrl: preprocessed.dataUrl,
+    slip: finalSlip,
+    rawText: finalRawText,
+    processedImageUrl: finalProcessedImageUrl,
   };
 }
 

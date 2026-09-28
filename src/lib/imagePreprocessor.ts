@@ -9,26 +9,36 @@ export interface PreprocessedImageResult {
   originalHeight: number;
   processedWidth: number;
   processedHeight: number;
+  modeUsed?: "adaptive_binarize" | "enhanced_grayscale";
+}
+
+export interface PreprocessReceiptOptions {
+  maxDimension?: number;
+  mode?: "adaptive_binarize" | "enhanced_grayscale";
 }
 
 /**
  * Preprocesses a receipt or transfer slip image on HTML5 Canvas.
  *
- * Automatically detects whether the image is:
- * - A dark-background digital screenshot (e-banking/e-wallet app) — uses
- *   light-text-on-dark detection so white characters become black on white output.
- * - A light-background physical receipt or bright screenshot — uses standard
- *   dark-ink-on-white adaptive binarization.
+ * Supports two operational modes:
+ * - 'adaptive_binarize' (Pass 1): Bradley-Roth adaptive thresholding for crisp, high-contrast black/white output.
+ * - 'enhanced_grayscale' (Pass 2): Non-destructive contrast stretching & gamma enhancement preserving subtle dot-matrix thermal ink and low-contrast text.
  *
- * Processing pipeline:
- * 1. Rescale to max 1600px (better accuracy for long receipts).
- * 2. Convert to grayscale.
- * 3. Apply Bradley-Roth adaptive thresholding, mode-matched to image type.
+ * Automatically detects dark-background screenshots and inverts accordingly so Tesseract always reads dark text on light background.
  */
 export async function preprocessReceiptImage(
   fileOrBlob: Blob | File,
-  maxDimension = 1600,
+  optionsOrMaxDim?: number | PreprocessReceiptOptions,
 ): Promise<PreprocessedImageResult> {
+  const maxDimension =
+    typeof optionsOrMaxDim === "number"
+      ? optionsOrMaxDim
+      : optionsOrMaxDim?.maxDimension ?? 1600;
+  const mode: "adaptive_binarize" | "enhanced_grayscale" =
+    typeof optionsOrMaxDim === "object" && optionsOrMaxDim.mode
+      ? optionsOrMaxDim.mode
+      : "adaptive_binarize";
+
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") {
       return reject(new Error("Canvas preprocessing requires a browser environment"));
@@ -94,61 +104,104 @@ export async function preprocessReceiptImage(
         // Mid-tone images (grey background app screenshots) need a softer threshold
         const isMidTone = !isDarkScreenshot && globalMean < 165;
 
-        // 3. Integral image for O(1) window sums
-        const integral = new Uint32Array(totalPixels);
-        for (let y = 0; y < targetHeight; y++) {
-          let lineSum = 0;
-          const rowOffset = y * targetWidth;
-          const prevRowOffset = (y - 1) * targetWidth;
-          for (let x = 0; x < targetWidth; x++) {
-            lineSum += grayscale[rowOffset + x];
-            integral[rowOffset + x] =
-              y === 0
-                ? lineSum
-                : integral[prevRowOffset + x] + lineSum;
+        if (mode === "enhanced_grayscale") {
+          // Mode: Enhanced Contrast Grayscale (Pass 2 Fallback)
+          // Non-destructive dynamic range stretching + gamma correction.
+          // Preserves faint dot-matrix printer dots & faded thermal paper without binary clipping.
+          const hist = new Uint32Array(256);
+          for (let p = 0; p < totalPixels; p++) {
+            hist[grayscale[p]]++;
           }
-        }
 
-        // 4. Adaptive Bradley-Roth thresholding
-        const S = Math.min(72, Math.max(16, Math.floor(targetWidth / 8)));
-        const sHalf = Math.floor(S / 2);
-        // Mid-tone: use looser threshold (0.08) to avoid obliterating grey text
-        const T = isMidTone ? 0.08 : 0.13;
+          // 2nd and 98th percentiles to avoid extreme border noise
+          const pLowCount = totalPixels * 0.02;
+          const pHighCount = totalPixels * 0.98;
+          let running = 0;
+          let minLum = 0;
+          let maxLum = 255;
+          for (let i = 0; i < 256; i++) {
+            running += hist[i];
+            if (minLum === 0 && running >= pLowCount) minLum = i;
+            if (running >= pHighCount) {
+              maxLum = i;
+              break;
+            }
+          }
+          if (maxLum <= minLum) {
+            minLum = 0;
+            maxLum = 255;
+          }
+          const range = maxLum - minLum || 1;
 
-        for (let y = 0; y < targetHeight; y++) {
-          const y1 = Math.max(0, y - sHalf);
-          const y2 = Math.min(targetHeight - 1, y + sHalf);
-          const rowOffset = y * targetWidth;
+          for (let p = 0; p < totalPixels; p++) {
+            const rawVal = grayscale[p];
+            const normalized = Math.min(1, Math.max(0, (rawVal - minLum) / range));
+            let enhanced = Math.round(Math.pow(normalized, 0.85) * 255);
 
-          for (let x = 0; x < targetWidth; x++) {
-            const x1 = Math.max(0, x - sHalf);
-            const x2 = Math.min(targetWidth - 1, x + sHalf);
-            const count = (x2 - x1 + 1) * (y2 - y1 + 1);
-
-            let sum = integral[y2 * targetWidth + x2];
-            if (x1 > 0) sum -= integral[y2 * targetWidth + (x1 - 1)];
-            if (y1 > 0) sum -= integral[(y1 - 1) * targetWidth + x2];
-            if (x1 > 0 && y1 > 0) sum += integral[(y1 - 1) * targetWidth + (x1 - 1)];
-
-            const pixelIdx = rowOffset + x;
-            const pixelVal = grayscale[pixelIdx];
-            const dataIdx = pixelIdx * 4;
-
-            // For dark screenshots: bright pixels are "ink" (text), output as black on white
-            // For light/midtone images: dark pixels are ink, output as black on white
-            let outputVal: number;
+            // Invert dark-mode screenshots so Tesseract reads dark text on light canvas
             if (isDarkScreenshot) {
-              // Bright text on dark background → invert logic
-              const isBrightText = pixelVal * count >= sum * (1 + T);
-              outputVal = isBrightText ? 0 : 255; // text=black, bg=white
-            } else {
-              const isDarkText = pixelVal * count <= sum * (1 - T);
-              outputVal = isDarkText ? 0 : 255; // ink=black, bg=white
+              enhanced = 255 - enhanced;
             }
 
-            data[dataIdx] = outputVal;
-            data[dataIdx + 1] = outputVal;
-            data[dataIdx + 2] = outputVal;
+            const dataIdx = p * 4;
+            data[dataIdx] = enhanced;
+            data[dataIdx + 1] = enhanced;
+            data[dataIdx + 2] = enhanced;
+          }
+        } else {
+          // Mode: Bradley-Roth Adaptive Binarization (Pass 1)
+          // 3. Integral image for O(1) window sums
+          const integral = new Uint32Array(totalPixels);
+          for (let y = 0; y < targetHeight; y++) {
+            let lineSum = 0;
+            const rowOffset = y * targetWidth;
+            const prevRowOffset = (y - 1) * targetWidth;
+            for (let x = 0; x < targetWidth; x++) {
+              lineSum += grayscale[rowOffset + x];
+              integral[rowOffset + x] =
+                y === 0
+                  ? lineSum
+                  : integral[prevRowOffset + x] + lineSum;
+            }
+          }
+
+          // 4. Adaptive thresholding
+          const S = Math.min(72, Math.max(16, Math.floor(targetWidth / 8)));
+          const sHalf = Math.floor(S / 2);
+          const T = isMidTone ? 0.08 : 0.13;
+
+          for (let y = 0; y < targetHeight; y++) {
+            const y1 = Math.max(0, y - sHalf);
+            const y2 = Math.min(targetHeight - 1, y + sHalf);
+            const rowOffset = y * targetWidth;
+
+            for (let x = 0; x < targetWidth; x++) {
+              const x1 = Math.max(0, x - sHalf);
+              const x2 = Math.min(targetWidth - 1, x + sHalf);
+              const count = (x2 - x1 + 1) * (y2 - y1 + 1);
+
+              let sum = integral[y2 * targetWidth + x2];
+              if (x1 > 0) sum -= integral[y2 * targetWidth + (x1 - 1)];
+              if (y1 > 0) sum -= integral[(y1 - 1) * targetWidth + x2];
+              if (x1 > 0 && y1 > 0) sum += integral[(y1 - 1) * targetWidth + (x1 - 1)];
+
+              const pixelIdx = rowOffset + x;
+              const pixelVal = grayscale[pixelIdx];
+              const dataIdx = pixelIdx * 4;
+
+              let outputVal: number;
+              if (isDarkScreenshot) {
+                const isBrightText = pixelVal * count >= sum * (1 + T);
+                outputVal = isBrightText ? 0 : 255;
+              } else {
+                const isDarkText = pixelVal * count <= sum * (1 - T);
+                outputVal = isDarkText ? 0 : 255;
+              }
+
+              data[dataIdx] = outputVal;
+              data[dataIdx + 1] = outputVal;
+              data[dataIdx + 2] = outputVal;
+            }
           }
         }
 
@@ -161,6 +214,7 @@ export async function preprocessReceiptImage(
           originalHeight,
           processedWidth: targetWidth,
           processedHeight: targetHeight,
+          modeUsed: mode,
         });
       } catch {
         // Fallback: return unprocessed rescaled canvas
@@ -171,6 +225,7 @@ export async function preprocessReceiptImage(
           originalHeight,
           processedWidth: targetWidth,
           processedHeight: targetHeight,
+          modeUsed: mode,
         });
       }
     };
