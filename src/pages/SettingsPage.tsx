@@ -66,11 +66,12 @@ import {
   requestNotificationPermission,
   syncBillNotifications,
   cancelAllBillNotifications,
+  syncDailyStreakReminder,
+  cancelDailyStreakReminder,
   syncWeeklyDigestNotification,
   cancelWeeklyDigestNotification,
   syncMonthEndReviewNotification,
   cancelMonthEndReviewNotification,
-  checkBudgetThresholdAlerts,
 } from "../lib/notifications";
 import {
   flushPendingMutations,
@@ -175,6 +176,16 @@ const WebDashboardLinkModal = lazy(() =>
 const DataExportVaultModal = lazy(() =>
   import("../components/settings/DataExportVaultModal").then((m) => ({
     default: m.DataExportVaultModal,
+  })),
+);
+const BillDailyReminderSheet = lazy(() =>
+  import("../components/settings/BillDailyReminderSheet").then((m) => ({
+    default: m.BillDailyReminderSheet,
+  })),
+);
+const PeriodicDigestSettingsSheet = lazy(() =>
+  import("../components/settings/PeriodicDigestSettingsSheet").then((m) => ({
+    default: m.PeriodicDigestSettingsSheet,
   })),
 );
 const AppUpdateModal = lazy(() =>
@@ -349,29 +360,36 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
   const { activeSpace, refreshLedgers } = useSpace();
 
+  // Notification sheets state
+  const [billDailyReminderSheetOpen, setBillDailyReminderSheetOpen] = useState(false);
+  const [periodicDigestSheetOpen, setPeriodicDigestSheetOpen] = useState(false);
+
   // Notification toggles (Streamlined into 2 combined switches)
   const [billRemindersEnabled, setBillRemindersEnabled] = useState(() => {
     return (
       localStorage.getItem("trouvaille_bill_reminders_enabled") !== "false"
     );
   });
-  const [budgetAlertsEnabled, setBudgetAlertsEnabled] = useState(() => {
-    return localStorage.getItem("trouvaille_budget_alerts_enabled") !== "false";
+  const [dailyReminderEnabled, setDailyReminderEnabled] = useState(() => {
+    return (
+      localStorage.getItem("trouvaille_daily_reminder_enabled") !== "false"
+    );
   });
 
-  const handleToggleBillAndBudgetAlerts = async () => {
+  const handleToggleBillAndDailyReminders = async () => {
     triggerHaptic("light");
-    const nextVal = !(billRemindersEnabled || budgetAlertsEnabled);
+    const nextVal = !(billRemindersEnabled || dailyReminderEnabled);
     if (!nextVal) {
       setBillRemindersEnabled(false);
-      setBudgetAlertsEnabled(false);
+      setDailyReminderEnabled(false);
       localStorage.setItem("trouvaille_bill_reminders_enabled", "false");
-      localStorage.setItem("trouvaille_budget_alerts_enabled", "false");
+      localStorage.setItem("trouvaille_daily_reminder_enabled", "false");
       await cancelAllBillNotifications();
+      await cancelDailyStreakReminder();
       showToast(
         isIndonesian
-          ? "Peringatan tagihan & anggaran dinonaktifkan"
-          : "Bill & budget alerts turned off",
+          ? "Pengingat tagihan & catat harian dinonaktifkan"
+          : "Bill & daily reminders turned off",
         "delete",
         () => {},
       );
@@ -379,15 +397,15 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
       const granted = await requestNotificationPermission();
       if (granted) {
         setBillRemindersEnabled(true);
-        setBudgetAlertsEnabled(true);
+        setDailyReminderEnabled(true);
         localStorage.setItem("trouvaille_bill_reminders_enabled", "true");
-        localStorage.setItem("trouvaille_budget_alerts_enabled", "true");
-        await syncBillNotifications(bills);
-        await checkBudgetThresholdAlerts(allTxs, categories, isIndonesian);
+        localStorage.setItem("trouvaille_daily_reminder_enabled", "true");
+        await syncBillNotifications(bills, isIndonesian);
+        await syncDailyStreakReminder(false);
         showToast(
           isIndonesian
-            ? "Peringatan tagihan & anggaran diaktifkan"
-            : "Bill & budget alerts enabled",
+            ? "Pengingat tagihan & catat harian diaktifkan"
+            : "Bill & daily reminders enabled",
           "add",
           () => {},
         );
@@ -1613,9 +1631,16 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             {isIndonesian ? "Notifikasi" : "Notifications"}
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
-            {/* Bar 1: Bill & Budget Alerts */}
-            <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[48px]">
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+            {/* Bar 1: Bill & Daily Log Reminders */}
+            <div className="flex items-center justify-between py-2 px-3.5 min-h-[48px] group">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setBillDailyReminderSheetOpen(true);
+                }}
+                className="flex items-center gap-2.5 min-w-0 pr-2 flex-1 text-left cursor-pointer active:opacity-75 transition-opacity"
+              >
                 <div
                   className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                   style={{
@@ -1627,24 +1652,39 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   <BellRing size={14} strokeWidth={1.75} />
                 </div>
                 <span
-                  className="text-[13px] font-semibold truncate"
+                  className="text-[13px] font-semibold truncate flex-1"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {isIndonesian
-                    ? "Peringatan Tagihan & Anggaran"
-                    : "Bill & Budget Alerts"}
+                    ? "Pengingat Tagihan & Catat Harian"
+                    : "Bill & Daily Log Reminders"}
                 </span>
+                <ChevronRight
+                  size={14}
+                  strokeWidth={1.75}
+                  className="shrink-0 mr-1.5 opacity-40 group-hover:opacity-80 transition-opacity"
+                  style={{ color: "var(--text-tertiary)" }}
+                />
+              </button>
+              <div className="shrink-0 pl-1 border-l border-[var(--glass-border)]">
+                <ToggleSwitch
+                  checked={billRemindersEnabled || dailyReminderEnabled}
+                  onChange={handleToggleBillAndDailyReminders}
+                  ariaLabel="Toggle bill and daily log reminders"
+                />
               </div>
-              <ToggleSwitch
-                checked={billRemindersEnabled || budgetAlertsEnabled}
-                onChange={handleToggleBillAndBudgetAlerts}
-                ariaLabel="Toggle bill and budget alerts"
-              />
             </div>
 
             {/* Bar 2: Periodic Financial Digests & Reviews */}
-            <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[48px]">
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+            <div className="flex items-center justify-between py-2 px-3.5 min-h-[48px] group">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setPeriodicDigestSheetOpen(true);
+                }}
+                className="flex items-center gap-2.5 min-w-0 pr-2 flex-1 text-left cursor-pointer active:opacity-75 transition-opacity"
+              >
                 <div
                   className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                   style={{
@@ -1656,19 +1696,27 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   <CalendarClock size={14} strokeWidth={1.75} />
                 </div>
                 <span
-                  className="text-[13px] font-semibold truncate"
+                  className="text-[13px] font-semibold truncate flex-1"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {isIndonesian
                     ? "Rekap & Evaluasi Berkala"
                     : "Periodic Financial Digests"}
                 </span>
+                <ChevronRight
+                  size={14}
+                  strokeWidth={1.75}
+                  className="shrink-0 mr-1.5 opacity-40 group-hover:opacity-80 transition-opacity"
+                  style={{ color: "var(--text-tertiary)" }}
+                />
+              </button>
+              <div className="shrink-0 pl-1 border-l border-[var(--glass-border)]">
+                <ToggleSwitch
+                  checked={weeklyDigestEnabled || monthEndReviewEnabled}
+                  onChange={handleTogglePeriodicDigests}
+                  ariaLabel="Toggle periodic financial digests"
+                />
               </div>
-              <ToggleSwitch
-                checked={weeklyDigestEnabled || monthEndReviewEnabled}
-                onChange={handleTogglePeriodicDigests}
-                ariaLabel="Toggle periodic financial digests"
-              />
             </div>
           </div>
         </section>
@@ -2528,6 +2576,29 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           }}
         />
 
+        <BillDailyReminderSheet
+          isOpen={billDailyReminderSheetOpen}
+          onClose={() => setBillDailyReminderSheetOpen(false)}
+          bills={bills}
+          onSaved={() => {
+            setBillRemindersEnabled(
+              localStorage.getItem("trouvaille_bill_reminders_enabled") !== "false",
+            );
+            setDailyReminderEnabled(
+              localStorage.getItem("trouvaille_daily_reminder_enabled") !== "false",
+            );
+          }}
+        />
+
+        <PeriodicDigestSettingsSheet
+          isOpen={periodicDigestSheetOpen}
+          onClose={() => setPeriodicDigestSheetOpen(false)}
+          transactions={allTxs}
+          onSaved={(wEnabled, mEnabled) => {
+            setWeeklyDigestEnabled(wEnabled);
+            setMonthEndReviewEnabled(mEnabled);
+          }}
+        />
 
         <AppUpdateModal
           isOpen={appUpdateOpen}
