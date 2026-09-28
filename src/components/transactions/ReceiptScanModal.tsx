@@ -522,6 +522,7 @@ export function ReceiptScanModal({
       setMerchant(result.slip.merchantOrRecipient || "");
       setNote("");
       setType(result.slip.type || "expense");
+      setToWalletId(result.slip.destinationWalletId || null);
       setStep("result");
     } catch (err: any) {
       console.error("[ReceiptScanModal] Scan failed:", err);
@@ -776,14 +777,7 @@ export function ReceiptScanModal({
       return;
     }
 
-    const finalDescription = note.trim()
-      ? merchant.trim()
-        ? `${merchant.trim()} • ${note.trim()}`
-        : note.trim()
-      : merchant.trim() ||
-        (type === "transfer"
-          ? (isIndonesian ? "Transfer" : "Transfer")
-          : (isIndonesian ? "Struk Hasil Pindai" : "Scanned Receipt"));
+    const finalDescription = note.trim() ? note.trim() : null;
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);

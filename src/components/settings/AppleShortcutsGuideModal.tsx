@@ -292,49 +292,35 @@ export function AppleShortcutsGuideModal({
     suara: [
       {
         isHero: true,
-        title: isIndonesian ? "Pencatatan Suara Otomatis (NLP AI)" : "Automated Voice Logging (NLP AI)",
+        title: isIndonesian ? "Pencatatan Suara 1-Ketukan" : "Instant 1-Tap Voice Logging",
         desc: isIndonesian
-          ? "Cukup ucapkan transaksi Anda secara santai (contoh: \"Kopi susu 25 ribu bayar pakai BCA\"). Mesin pintar Trouvaille otomatis mendeteksi nominal, kategori, dan rekening dompet secara instan."
-          : "Simply speak your transaction naturally (e.g. \"Iced coffee 25 thousand paid with BCA\"). Trouvaille automatically parses the amount, category, and wallet account instantly.",
-        actionType: "info",
-        noteText: isIndonesian
-          ? "Mendukung pengucapan langsung via Siri atau pintasan suara."
-          : "Supports direct Siri voice dictation or shortcuts.",
+          ? "Buka perekam suara cerdas Trouvaille secara instan dengan satu ketukan tombol atau pintasan. Cukup ucapkan transaksi Anda (contoh: \"Kopi susu 25 ribu bayar pakai BCA\") tanpa perlu mengetik manual."
+          : "Open Trouvaille's intelligent voice recorder instantly with a single button tap or shortcut. Speak your transaction naturally (e.g. \"Iced coffee 25 thousand paid with BCA\") without manual typing.",
+        actionType: "test_url",
+        scheme: "trouvaille://voice",
+        btnText: isIndonesian ? "Uji Buka Suara Sekarang" : "Test Open Voice Now",
       },
       {
         stepNum: 1,
-        title: isIndonesian ? "Tindakan 1: Minta Masukan" : "Action 1: Ask for Input",
+        title: isIndonesian ? "Langkah 1: Tambah Tindakan 'Buka URL'" : "Step 1: Add 'Open URLs' Action",
         desc: isIndonesian
-          ? "Buat pintasan baru bernama 'Catat Transaksi'. Tambah tindakan 'Minta Masukan', atur masukan ke 'Teks', dan isi pertanyaan dengan 'Catat apa?'."
-          : "Create a new shortcut named 'Log Transaction'. Add 'Ask for Input', set input type to 'Text', and set prompt to 'What to log?'.",
-        actionType: "info",
-        noteText: isIndonesian
-          ? "Variabel masukan ini yang akan menangkap kalimat suara Anda."
-          : "This input variable captures your transcribed speech.",
+          ? "Buka aplikasi Pintasan › Ketuk (+) › Ganti nama menjadi 'Catat Suara' › Tambahkan tindakan 'Buka URL' dan tempel alamat skema berikut:"
+          : "Open Shortcuts › Tap (+) › Rename shortcut to 'Log Voice' › Add 'Open URLs' action and paste the scheme below:",
+        actionType: "copy",
+        copyText: "trouvaille://voice",
+        copyLabel: isIndonesian ? "Skema URL Suara" : "Voice URL Scheme",
+        btnText: isIndonesian ? "Salin Skema Suara" : "Copy Voice Scheme",
       },
       {
         stepNum: 2,
-        title: isIndonesian ? "Tindakan 2: Enkode URL" : "Action 2: URL Encode",
+        title: isIndonesian ? "Langkah 2: Tautkan ke Tombol Tindakan / Ketuk Belakang" : "Step 2: Link to Action Button / Back Tap",
         desc: isIndonesian
-          ? "Tambah tindakan 'Enkode URL' tepat di bawahnya. Sambungkan ke variabel 'Teks' agar spasi, koma, dan karakter khusus suara Anda aman saat disematkan ke tautan."
-          : "Add 'URL Encode' action directly below. Connect it to the 'Text' variable so spaces, commas, and punctuation in your voice are safely encoded for web links.",
+          ? "Buka Pengaturan iOS › Tombol Tindakan (atau Aksesibilitas › Sentuh › Ketuk Bagian Belakang) › Pilih Pintasan 'Catat Suara'. Saat ditekan, modal perekam suara Trouvaille langsung aktif mendengarkan ucapan Anda!"
+          : "Open iOS Settings › Action Button (or Accessibility › Touch › Back Tap) › Select 'Log Voice' shortcut. When pressed, Trouvaille's voice modal immediately starts listening!",
         actionType: "info",
         noteText: isIndonesian
-          ? "Mencegah tautan error akibat spasi atau tanda baca."
-          : "Prevents broken links from spaces and punctuation.",
-      },
-      {
-        stepNum: 3,
-        title: isIndonesian ? "Tindakan 3: Buka URL & Simpan Otomatis" : "Action 3: Open URLs & Autosave",
-        desc: isIndonesian
-          ? "Tambah tindakan 'Buka URL'. Masukkan templat skema di bawah, lalu ganti teks '[Teks Terenkode]' dengan variabel biru dari Langkah 2:"
-          : "Add 'Open URLs' action. Paste the scheme template below, then replace the '[URL Encoded Text]' placeholder with the blue variable token from Step 2:",
-        actionType: "copy",
-        copyText: isIndonesian
-          ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
-          : "trouvaille://add?text=[URL Encoded Text]&autosave=true",
-        copyLabel: isIndonesian ? "Templat Suara" : "Voice Template",
-        btnText: isIndonesian ? "Salin Templat Suara" : "Copy Voice Template",
+          ? "Mikrofon langsung aktif otomatis mendengarkan pengucapan Anda."
+          : "The microphone automatically starts listening immediately.",
       },
     ],
     dialog: [
@@ -853,7 +839,7 @@ export function AppleShortcutsGuideModal({
                 }}
               >
                 {/* Header */}
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
                   <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
                     <ChevronLeft size={10} strokeWidth={2.5} />
                   </div>
@@ -861,6 +847,20 @@ export function AppleShortcutsGuideModal({
                     {isIndonesian ? "Pindai Resi" : "Scan Receipt"}
                   </span>
                 </div>
+
+                {/* Preceding Actions (Dimmed Chain) */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "4px 7px", opacity: 0.45 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 3, background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <FileText size={6.5} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>Extract Text</span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "rgba(255,255,255,0.4)" }}>➔ Text</span>
+                  </div>
+                </div>
+
+                {/* Connection Line */}
+                <div style={{ width: 1.5, height: 6, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
                 {/* Action 3: URL Encode */}
                 <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 8px" }}>
@@ -1114,7 +1114,7 @@ export function AppleShortcutsGuideModal({
                   transform: activeTab === "notifikasi" && currentSlide === 2 ? "scale(1)" : "scale(0.97)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
                   <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
                     <ChevronLeft size={10} strokeWidth={2.5} />
                   </div>
@@ -1122,6 +1122,22 @@ export function AppleShortcutsGuideModal({
                     {isIndonesian ? "Tindakan Automasi" : "Automation Actions"}
                   </span>
                 </div>
+
+                {/* Preceding Trigger (Dimmed Chain) */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "4px 7px", opacity: 0.45 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3.5 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 3, background: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Bell size={6.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Notifikasi Diterima" : "Notification Received"}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "rgba(255,255,255,0.4)" }}>➔ Input</span>
+                  </div>
+                </div>
+
+                {/* Connection Line */}
+                <div style={{ width: 1.5, height: 6, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
                 {/* Action 1: URL Encode */}
                 <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 8px" }}>
@@ -1175,7 +1191,9 @@ export function AppleShortcutsGuideModal({
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 4 }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>Automasi</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Automasi" : "Automation"}
+                  </span>
                   <span style={{ fontSize: 11, color: "#007aff", fontWeight: 600 }}>+</span>
                 </div>
 
@@ -1189,13 +1207,13 @@ export function AppleShortcutsGuideModal({
                         {isIndonesian ? "Saat Notifikasi Bank Masuk" : "When Bank Notification Arrives"}
                       </p>
                       <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>
-                        Buka URL di Trouvaille
+                        {isIndonesian ? "Buka URL di Trouvaille" : "Open URLs in Trouvaille"}
                       </p>
                     </div>
                   </div>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 999, background: "rgba(52,199,89,0.15)", border: "0.5px solid rgba(52,199,89,0.3)" }}>
-                    <Check size={7} className="text-[#34c759]" />
-                    <span style={{ fontSize: 6.5, fontWeight: 600, color: "#34c759" }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: "0.5px solid rgba(255,255,255,0.18)" }}>
+                    <Check size={7} className="text-white" />
+                    <span style={{ fontSize: 6.5, fontWeight: 600, color: "white" }}>
                       {isIndonesian ? "Jalankan Segera • Aktif" : "Run Immediately • Active"}
                     </span>
                   </div>
@@ -1425,9 +1443,9 @@ export function AppleShortcutsGuideModal({
                 </div>
               </div>
 
-              {/* --- TAB 4: SUARA (SIRI NLP AI) --- */}
+              {/* --- TAB 4: SUARA (1-TAP VOICE QUICK ADD) --- */}
 
-              {/* SUARA - SLIDE 0: SIRI NLP SHOWCASE */}
+              {/* SUARA - SLIDE 0: VOICE QUICK ADD SHOWCASE */}
               <div
                 style={{
                   position: "absolute",
@@ -1444,18 +1462,25 @@ export function AppleShortcutsGuideModal({
                   transform: activeTab === "suara" && currentSlide === 0 ? "scale(1)" : "scale(0.97)",
                 }}
               >
-                <div style={{ background: "rgba(28,28,34,0.95)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "7px 9px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
-                    <Mic size={8} strokeWidth={2.5} className="text-[#2997ff]" />
-                    <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", fontWeight: 700 }}>
-                      Siri
-                    </p>
+                {/* Voice Listening Waveform Card */}
+                <div style={{ background: "rgba(28,28,34,0.95)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "8px 9px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <div style={{ width: 14, height: 14, borderRadius: "50%", background: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Mic size={8} strokeWidth={2.5} className="text-black" />
+                      </div>
+                      <span style={{ fontSize: 7.5, fontWeight: 700, color: "white" }}>
+                        {isIndonesian ? "Mendengarkan..." : "Listening..."}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>Trouvaille Voice</span>
                   </div>
-                  <p style={{ fontSize: 8.5, fontStyle: "italic", color: "white", fontWeight: 500 }}>
+                  <p style={{ fontSize: 8.5, fontStyle: "italic", color: "white", fontWeight: 500, lineHeight: 1.3 }}>
                     "{isIndonesian ? "Kopi susu 25 ribu bayar pakai BCA" : "Iced coffee 25 thousand paid with BCA"}"
                   </p>
                 </div>
 
+                {/* Parsed Result Capsule */}
                 <div style={{ background: "rgba(18,18,22,0.96)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 8, fontWeight: 700, color: "white", display: "block", marginBottom: 4 }}>
                     Trouvaille NLP
@@ -1480,7 +1505,7 @@ export function AppleShortcutsGuideModal({
                 </div>
               </div>
 
-              {/* SUARA - SLIDE 1: ASK FOR TEXT */}
+              {/* SUARA - SLIDE 1: SHORTCUTS 'OPEN URL' SCREEN */}
               <div
                 style={{
                   position: "absolute",
@@ -1500,29 +1525,47 @@ export function AppleShortcutsGuideModal({
                   <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
                     <ChevronLeft size={10} strokeWidth={2.5} />
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
-                    {isIndonesian ? "Catat Transaksi" : "Log Transaction"}
+                  <div style={{ width: 16, height: 16, borderRadius: 4, background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Mic size={9} className="text-white" />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white", letterSpacing: -0.2 }}>
+                    {isIndonesian ? "Catat Suara" : "Log Voice"}
                   </span>
+                  <div style={{ marginLeft: "auto", width: 14, height: 14, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "rgba(255,255,255,0.6)" }}>
+                    •••
+                  </div>
                 </div>
 
                 <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "7px 9px", boxShadow: "0 3px 10px rgba(0,0,0,0.35)" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3.5 }}>
-                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <MessageSquare size={8} strokeWidth={2.5} className="text-white" />
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ExternalLink size={9} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>Ask for</span>
+                    <span style={{ fontSize: 8.5, fontWeight: 600, color: "white" }}>Open</span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
-                      Text
+                      trouvaille://voice
                     </span>
-                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>with</span>
-                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
-                      {isIndonesian ? "Catat apa?" : "What to log?"}
-                    </span>
+                    <div style={{ marginLeft: "auto", width: 13, height: 13, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "rgba(255,255,255,0.5)" }}>
+                      ✕
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "auto", background: "rgba(28,28,32,0.95)", borderRadius: 18, padding: "6px 9px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: 10 }}>
+                  <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 999, padding: "3px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>Search Actions</span>
+                    <Search size={8} strokeWidth={2} className="text-white/45" />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-around", fontSize: 8, color: "rgba(255,255,255,0.65)" }}>
+                    <RotateCcw size={9} strokeWidth={2} />
+                    <span style={{ transform: "scaleX(-1)", display: "inline-block" }}><RotateCcw size={9} strokeWidth={2} /></span>
+                    <span style={{ fontSize: 8 }}>ⓘ</span>
+                    <Play size={9} strokeWidth={2.5} className="text-[#007aff] fill-[#007aff]" />
                   </div>
                 </div>
               </div>
 
-              {/* SUARA - SLIDE 2: URL ENCODE */}
+              {/* SUARA - SLIDE 2: SETTINGS BACK TAP / ACTION BUTTON SCREEN */}
               <div
                 style={{
                   position: "absolute",
@@ -1530,6 +1573,7 @@ export function AppleShortcutsGuideModal({
                   padding: "34px 8px 10px",
                   display: "flex",
                   flexDirection: "column",
+                  gap: 6,
                   borderRadius: 37,
                   overflow: "hidden",
                   opacity: activeTab === "suara" && currentSlide === 2 ? 1 : 0,
@@ -1538,77 +1582,27 @@ export function AppleShortcutsGuideModal({
                   transform: activeTab === "suara" && currentSlide === 2 ? "scale(1)" : "scale(0.97)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
-                    <ChevronLeft size={10} strokeWidth={2.5} />
-                  </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
-                    {isIndonesian ? "Catat Transaksi" : "Log Transaction"}
+                <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 4 }}>
+                  <span style={{ fontSize: 8, color: "#007aff", fontWeight: 500 }}>
+                    {isIndonesian ? "‹ Tindakan" : "‹ Action"}
+                  </span>
+                  <span style={{ fontSize: 8.5, fontWeight: 700, color: "white", marginLeft: "auto", marginRight: "auto" }}>
+                    {isIndonesian ? "Tombol Tindakan" : "Action Button"}
                   </span>
                 </div>
 
-                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 8px", opacity: 0.5 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 7.5 }}>
-                    <div style={{ width: 13, height: 13, borderRadius: 3, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <MessageSquare size={7} strokeWidth={2.5} className="text-white" />
-                    </div>
-                    <span>Ask for Text</span>
+                <div style={{ background: "#1c1c1e", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ padding: "5px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 6.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
+                    Shortcuts
                   </div>
-                </div>
-
-                <div style={{ width: 1.5, height: 7, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
-
-                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "7px 9px", boxShadow: "0 3px 10px rgba(0,0,0,0.35)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <LinkIcon size={8} strokeWidth={2.5} className="text-white" />
-                    </div>
-                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>URL Encode</span>
-                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
-                      Provided Input
+                  <div style={{ padding: "6px 8px", background: "rgba(0,122,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: "#60a5fa" }}>
+                      {isIndonesian ? "Catat Suara" : "Log Voice"}
                     </span>
+                    <Check size={9} strokeWidth={3} className="text-[#007aff]" />
                   </div>
-                </div>
-              </div>
-
-              {/* SUARA - SLIDE 3: OPEN URL */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  padding: "34px 8px 10px",
-                  display: "flex",
-                  flexDirection: "column",
-                  borderRadius: 37,
-                  overflow: "hidden",
-                  opacity: activeTab === "suara" && currentSlide === 3 ? 1 : 0,
-                  pointerEvents: activeTab === "suara" && currentSlide === 3 ? "auto" : "none",
-                  transition: "opacity 0.28s ease, transform 0.28s ease",
-                  transform: activeTab === "suara" && currentSlide === 3 ? "scale(1)" : "scale(0.97)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
-                    <ChevronLeft size={10} strokeWidth={2.5} />
-                  </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
-                    {isIndonesian ? "Catat Transaksi" : "Log Transaction"}
-                  </span>
-                </div>
-
-                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "7px 9px", boxShadow: "0 3px 10px rgba(0,0,0,0.35)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-                    <div style={{ width: 15, height: 15, borderRadius: 4, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <ExternalLink size={8} strokeWidth={2.5} className="text-white" />
-                    </div>
-                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>Open</span>
-                  </div>
-                  <div style={{ background: "#18181a", borderRadius: 7, padding: "5px 6px", fontSize: 7.5, lineHeight: 1.5, wordBreak: "break-all" }}>
-                    <span style={{ color: "#2997ff" }}>trouvaille://add?text=</span>
-                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1px 4px", fontSize: 7 }}>
-                      URL Encoded Text
-                    </span>
-                    <span style={{ color: "#2997ff" }}>&autosave=true</span>
+                  <div style={{ padding: "5px 8px", borderTop: "1px solid rgba(255,255,255,0.05)", fontSize: 7.5, color: "rgba(255,255,255,0.5)" }}>
+                    {isIndonesian ? "Catat Pengeluaran" : "Log Expense"}
                   </div>
                 </div>
               </div>
@@ -1720,7 +1714,7 @@ export function AppleShortcutsGuideModal({
                   transform: activeTab === "dialog" && currentSlide === 2 ? "scale(1)" : "scale(0.97)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
                   <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
                     <ChevronLeft size={9} strokeWidth={2.5} />
                   </div>
@@ -1728,6 +1722,19 @@ export function AppleShortcutsGuideModal({
                     {isIndonesian ? "Pilihan Kategori" : "Categories"}
                   </span>
                 </div>
+
+                {/* Preceding Step 1: Nominal (Dimmed Chain) */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3.5px 7px", opacity: 0.45 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <MessageSquare size={5.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 6.5, color: "white" }}>Ask for Number</span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ Nominal</span>
+                  </div>
+                </div>
+
+                <div style={{ width: 1.5, height: 5, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
                 <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "5px 7px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7.5, marginBottom: 2 }}>
@@ -1786,7 +1793,7 @@ export function AppleShortcutsGuideModal({
                   transform: activeTab === "dialog" && currentSlide === 3 ? "scale(1)" : "scale(0.97)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
                   <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
                     <ChevronLeft size={9} strokeWidth={2.5} />
                   </div>
@@ -1794,6 +1801,19 @@ export function AppleShortcutsGuideModal({
                     {isIndonesian ? "Pilihan Rekening" : "Wallets"}
                   </span>
                 </div>
+
+                {/* Preceding Step 2: Category (Dimmed Chain) */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3.5px 7px", opacity: 0.45 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <List size={5.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 6.5, color: "white" }}>Choose Category</span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ Kategori</span>
+                  </div>
+                </div>
+
+                <div style={{ width: 1.5, height: 5, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
                 <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "5px 7px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7.5, marginBottom: 2 }}>
@@ -1838,7 +1858,7 @@ export function AppleShortcutsGuideModal({
                   transform: activeTab === "dialog" && currentSlide === 4 ? "scale(1)" : "scale(0.97)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 7 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
                   <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
                     <ChevronLeft size={9} strokeWidth={2.5} />
                   </div>
@@ -1846,6 +1866,19 @@ export function AppleShortcutsGuideModal({
                     {isIndonesian ? "Tanggal & Catatan" : "Date & Notes"}
                   </span>
                 </div>
+
+                {/* Preceding Step 3: Wallet (Dimmed Chain) */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3.5px 7px", opacity: 0.45 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <List size={5.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 6.5, color: "white" }}>Choose Wallet</span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ Rekening</span>
+                  </div>
+                </div>
+
+                <div style={{ width: 1.5, height: 5, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
                 <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
                   <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3, fontSize: 7.5 }}>
@@ -1890,7 +1923,7 @@ export function AppleShortcutsGuideModal({
                   transform: activeTab === "dialog" && currentSlide === 5 ? "scale(1)" : "scale(0.97)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 7 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
                   <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
                     <ChevronLeft size={9} strokeWidth={2.5} />
                   </div>
@@ -1898,6 +1931,20 @@ export function AppleShortcutsGuideModal({
                     {isIndonesian ? "Buka URL Skema" : "Open URLs Scheme"}
                   </span>
                 </div>
+
+                {/* Preceding Variables Chain (Dimmed) */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3.5px 7px", opacity: 0.45 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 6 }}>
+                    <span style={{ color: "rgba(255,255,255,0.7)" }}>Variables Ready:</span>
+                    <div style={{ display: "flex", gap: 2 }}>
+                      <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>Nominal</span>
+                      <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>{isIndonesian ? "Kategori" : "Category"}</span>
+                      <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>{isIndonesian ? "Rekening" : "Wallet"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ width: 1.5, height: 5, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
                 <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 3 }}>

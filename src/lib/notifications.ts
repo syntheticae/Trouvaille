@@ -169,3 +169,38 @@ export async function syncDailyStreakReminder(
   }
 }
 
+/**
+ * Triggers an immediate native local notification on device (Lock Screen, Notification Center, Banner).
+ * Used when Apple Shortcuts automations (Bank notification reader, Back Tap receipt scanner, Dialog input) complete.
+ */
+export async function showNativeLocalNotification({
+  title,
+  body,
+  id,
+}: {
+  title: string;
+  body: string;
+  id?: number;
+}): Promise<void> {
+  try {
+    const granted = await requestNotificationPermission();
+    if (!granted) return;
+
+    const notifId = id || Math.floor(Math.random() * 800000) + 100000;
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: notifId,
+          title,
+          body,
+          schedule: { at: new Date(Date.now() + 100) },
+          sound: "default",
+        },
+      ],
+    });
+  } catch (e) {
+    console.warn("Failed to fire native local notification:", e);
+  }
+}
+
+

@@ -22,6 +22,8 @@ import { parseDeepLink } from "./lib/deepLinkHandler";
 import { useLanguage } from "./contexts/LanguageContext";
 import { triggerSuccessHaptic, triggerHaptic } from "./lib/haptics";
 import { format } from "date-fns";
+import { formatRupiah } from "./lib/utils";
+import { showNativeLocalNotification } from "./lib/notifications";
 import {
   DynamicIslandHUD,
   type ShortcutRecordedTxData,
@@ -126,6 +128,7 @@ function AppShell() {
 
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const queryClient = useQueryClient();
   const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [receiptScanOpen, setReceiptScanOpen] = useState(false);
@@ -250,6 +253,12 @@ function AppShell() {
             "";
           const targetWalletId =
             res.prefilledValues.wallet_id || wallets[0]?.id || "";
+          const targetToWalletId =
+            targetType === "transfer"
+              ? res.prefilledValues.to_wallet_id ||
+                wallets.find((w) => w.id !== targetWalletId)?.id ||
+                null
+              : null;
           const txDate = res.prefilledValues.date || new Date();
           const occurred_on = format(txDate, "yyyy-MM-dd");
           const note = res.prefilledValues.note || "";
@@ -258,8 +267,9 @@ function AppShell() {
             {
               amount: targetAmount,
               type: targetType,
-              category_id: targetCatId,
+              category_id: targetType === "transfer" ? null : targetCatId,
               wallet_id: targetWalletId,
+              to_wallet_id: targetToWalletId,
               occurred_on,
               note: note || undefined,
             },
@@ -268,16 +278,45 @@ function AppShell() {
                 triggerSuccessHaptic();
                 const catObj = categories.find((c) => c.id === targetCatId);
                 const walObj = wallets.find((w) => w.id === targetWalletId);
+                const toWalObj = wallets.find((w) => w.id === targetToWalletId);
+
+                const catName =
+                  catObj?.name || res.matchedCategoryName || (isIndonesian ? "Pengeluaran" : "Expense");
+                const walName =
+                  walObj?.name || res.matchedWalletName || (isIndonesian ? "Dompet Utama" : "Default Wallet");
+                const toWalName =
+                  toWalObj?.name || res.matchedToWalletName || "";
+
+                // 1. In-App Dynamic Island HUD
                 setRecordedShortcutTx({
                   amount: targetAmount,
                   type: targetType,
                   categoryName:
-                    catObj?.name || res.matchedCategoryName || (isIndonesian ? "Pengeluaran" : "Expense"),
+                    targetType === "transfer"
+                      ? (isIndonesian ? "Transfer" : "Transfer")
+                      : catName,
                   walletName:
-                    walObj?.name || res.matchedWalletName || (isIndonesian ? "Dompet Utama" : "Default Wallet"),
+                    targetType === "transfer"
+                      ? `${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
+                      : walName,
                   date: format(txDate, "d MMM yyyy"),
                   note: note,
                 });
+
+                // 2. Native iOS Local Notification (Notification Center / Lock Screen)
+                const notifTitle = isIndonesian ? "Transaksi Berhasil Dicatat" : "Transaction Recorded";
+                const notifBody =
+                  targetType === "transfer"
+                    ? `${formatRupiah(targetAmount)} • ${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
+                    : `${formatRupiah(targetAmount)} • ${catName} • ${walName}`;
+                showNativeLocalNotification({
+                  title: notifTitle,
+                  body: notifBody,
+                }).catch(() => {});
+
+                // 3. Immediately refresh transactions and wallets query cache
+                queryClient.invalidateQueries({ queryKey: ["transactions"] });
+                queryClient.invalidateQueries({ queryKey: ["wallets"] });
               },
               onError: (err) => {
                 console.error("Auto-save failed, fallback to modal:", err);
@@ -443,7 +482,6 @@ function AppShell() {
 
   const ensureCategories = useEnsureDefaultCategories();
   const ensureWallets = useEnsureDefaultWallets();
-  const queryClient = useQueryClient();
 
   useEffect(() => {
     const isAlreadySynced = localStorage.getItem(syncStorageKey) === "true";

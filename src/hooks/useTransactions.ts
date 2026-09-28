@@ -125,6 +125,20 @@ export function upsertTransactionAcrossCaches(
   qc: ReturnType<typeof useQueryClient>,
   tx: Transaction,
 ) {
+  // 1. Immediately update in-memory snapshot and offline vault backup so fresh queries always see the item
+  try {
+    const current = inMemoryTransactionsSnapshot || [];
+    const withoutTx = current.filter((item) => item.id !== tx.id);
+    inMemoryTransactionsSnapshot = sortTransactionsDesc([tx, ...withoutTx]);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(inMemoryTransactionsSnapshot));
+      } catch {}
+      setVaultItem(TX_BACKUP_STORAGE_KEY, inMemoryTransactionsSnapshot).catch(() => {});
+    }
+  } catch {}
+
+  // 2. Update active React Query caches
   const queries = qc.getQueryCache().findAll({ queryKey: ["transactions"] });
   queries.forEach((query) => {
     const data = query.state.data;
@@ -178,6 +192,19 @@ export function removeTransactionFromCaches(
   qc: ReturnType<typeof useQueryClient>,
   id: string,
 ) {
+  // Update in-memory snapshot and offline vault backup
+  try {
+    if (inMemoryTransactionsSnapshot) {
+      inMemoryTransactionsSnapshot = inMemoryTransactionsSnapshot.filter((item) => item.id !== id);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(inMemoryTransactionsSnapshot));
+        } catch {}
+        setVaultItem(TX_BACKUP_STORAGE_KEY, inMemoryTransactionsSnapshot).catch(() => {});
+      }
+    }
+  } catch {}
+
   const queries = qc.getQueryCache().findAll({ queryKey: ["transactions"] });
   queries.forEach((query) => {
     const data = query.state.data;
@@ -1040,6 +1067,7 @@ export function useAddTransaction() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["wallets"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
       flushPendingMutations().catch(() => {});
     },
   });
@@ -1184,6 +1212,7 @@ export function useBatchAddTransactions() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["wallets"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
       flushPendingMutations().catch(() => {});
     },
   });
@@ -1299,6 +1328,7 @@ export function useUpdateTransaction() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["wallets"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
       flushPendingMutations().catch(() => {});
     },
   });
@@ -1347,6 +1377,7 @@ export function useDeleteTransaction() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["wallets"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
       flushPendingMutations().catch(() => {});
     },
   });

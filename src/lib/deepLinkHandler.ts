@@ -1,6 +1,7 @@
 import type { Category, Wallet, TransactionType } from "./types";
 import { parseBankNotification } from "./bankNotificationParser";
 import { parseNaturalTransaction } from "./nlpParser";
+import { parseSlipText } from "./slipParser";
 
 export interface DeepLinkPrefill {
   amount?: number;
@@ -10,6 +11,8 @@ export interface DeepLinkPrefill {
   categoryId?: string;
   wallet_id?: string;
   walletId?: string;
+  to_wallet_id?: string;
+  toWalletId?: string;
   date?: Date;
   time?: string;
 }
@@ -19,7 +22,77 @@ export interface DeepLinkResult {
   autoSave?: boolean;
   matchedCategoryName?: string;
   matchedWalletName?: string;
+  matchedToWalletName?: string;
   prefilledValues?: DeepLinkPrefill;
+}
+
+/**
+ * Resilient multi-format Indonesian & international date parser.
+ * Handles ISO, YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, DD MMM YYYY with Indonesian month names.
+ */
+export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
+  if (!dateStr || typeof dateStr !== "string") return undefined;
+  const clean = dateStr.trim();
+  if (!clean) return undefined;
+
+  // Try standard JS parse first (e.g. ISO 8601 or YYYY-MM-DD)
+  const stdDate = new Date(clean);
+  if (!isNaN(stdDate.getTime()) && !/^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(clean)) {
+    return stdDate;
+  }
+
+  const monthMap: Record<string, number> = {
+    jan: 0, januari: 0, january: 0,
+    feb: 1, februari: 1, february: 1,
+    mar: 2, maret: 2, march: 2,
+    apr: 3, april: 3,
+    mei: 4, may: 4,
+    jun: 5, juni: 5, june: 5,
+    jul: 6, juli: 6, july: 6,
+    agu: 7, agustus: 7, aug: 7, august: 7,
+    sep: 8, september: 8,
+    okt: 9, oktober: 9, oct: 9, october: 9,
+    nov: 10, november: 10,
+    des: 11, desember: 11, dec: 11, december: 11,
+  };
+
+  // Pattern A: "28/09/2026", "28-09-2026", "28/09/26" (DD/MM/YYYY or DD-MM-YYYY)
+  const numMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+  if (numMatch) {
+    const d = parseInt(numMatch[1], 10);
+    const m = parseInt(numMatch[2], 10);
+    let y = parseInt(numMatch[3], 10);
+    if (y < 100) y += 2000;
+    if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 2000 && y <= 2100) {
+      return new Date(y, m - 1, d);
+    }
+  }
+
+  // Pattern B: "28 Sep 2026", "28 September 2026", "28 Okt 2026", "28-Agu-2026"
+  const textMatch =
+    clean.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{2,4})/i) ||
+    clean.match(/^(\d{1,2})[/-]([a-zA-Z]+)[/-](\d{2,4})/i);
+  if (textMatch) {
+    const d = parseInt(textMatch[1], 10);
+    const mStr = textMatch[2].toLowerCase();
+    const m = monthMap[mStr];
+    let y = parseInt(textMatch[3], 10);
+    if (y < 100) y += 2000;
+    if (m !== undefined && d >= 1 && d <= 31 && y >= 2000 && y <= 2100) {
+      return new Date(y, m, d);
+    }
+  }
+
+  // Pattern C: YYYY-MM-DD
+  const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const y = parseInt(isoMatch[1], 10);
+    const m = parseInt(isoMatch[2], 10);
+    const d = parseInt(isoMatch[3], 10);
+    return new Date(y, m - 1, d);
+  }
+
+  return undefined;
 }
 
 /**
@@ -50,7 +123,7 @@ export function parseDeepLink(
     const actionPath = parsed.pathname.replace(/^\/+/, "").toLowerCase();
     const params = parsed.searchParams;
 
-    // 1. Direct modal routing actions (via path, ?mode=, or ?action= from PWA manifest shortcuts)
+    // 1. Direct modal routing actions (via path, ?mode=, or ?action=)
     if (actionPath === "voice" || params.get("mode") === "voice" || params.get("action") === "voice") {
       return { action: "voice" };
     }
@@ -86,11 +159,18 @@ export function parseDeepLink(
       params.get("dompet") ||
       params.get("wallet_id") ||
       params.get("walletId") ||
-      params.get("account");
+      params.get("account") ||
+      params.get("dari");
+    const directToWallet =
+      params.get("to_wallet") ||
+      params.get("to_wallet_id") ||
+      params.get("toWallet") ||
+      params.get("ke") ||
+      params.get("tujuan");
     const directDate = params.get("date") || params.get("tanggal") || params.get("datetime");
     const directTime = params.get("time") || params.get("waktu");
 
-    // Case A: Direct structured parameters (e.g. from Siri Shortcuts with ask for input)
+    // Case A: Direct structured parameters (e.g. from Siri Shortcuts with ask for input / Dialog)
     if (directAmount) {
       const cleanNum = parseFloat(directAmount.replace(/[^\d.]/g, ""));
       let matchedCat = categories.find(
@@ -115,71 +195,116 @@ export function parseDeepLink(
         matchedWal = wallets[0];
       }
 
-      let parsedDate: Date | undefined;
-      if (directDate) {
-        const d = new Date(directDate);
-        if (!isNaN(d.getTime())) {
-          parsedDate = d;
-        }
+      let matchedToWal: Wallet | undefined;
+      if (directToWallet) {
+        matchedToWal = wallets.find(
+          (w) =>
+            w.id.toLowerCase() === directToWallet.toLowerCase() ||
+            w.name.toLowerCase() === directToWallet.toLowerCase() ||
+            w.name.toLowerCase().includes(directToWallet.toLowerCase()) ||
+            directToWallet.toLowerCase().includes(w.name.toLowerCase())
+        );
       }
 
+      const parsedDate = parseIndonesianDate(directDate) || new Date();
+
       const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
-      // Auto-save only if explicitly requested (opt-in) to prevent malicious URL injection
+      // Auto-save only if explicitly requested (opt-in) to prevent unintended auto-inserts
       const shouldAutoSave = (autoParam === "true" || autoParam === "1" || autoParam === "ya") && !isNaN(cleanNum) && cleanNum > 0;
+
+      const effectiveType: TransactionType =
+        directType === "income"
+          ? "income"
+          : directType === "transfer" || matchedToWal
+          ? "transfer"
+          : "expense";
 
       return {
         action: "transaction",
         autoSave: shouldAutoSave,
         matchedCategoryName: matchedCat?.name,
         matchedWalletName: matchedWal?.name,
+        matchedToWalletName: matchedToWal?.name,
         prefilledValues: {
           amount: isNaN(cleanNum) ? undefined : cleanNum,
           note: directNote || "",
-          type: directType === "income" ? "income" : "expense",
-          category_id: matchedCat?.id,
-          categoryId: matchedCat?.id,
+          type: effectiveType,
+          category_id: effectiveType === "transfer" ? undefined : matchedCat?.id,
+          categoryId: effectiveType === "transfer" ? undefined : matchedCat?.id,
           wallet_id: matchedWal?.id,
           walletId: matchedWal?.id,
-          date: parsedDate || new Date(),
+          to_wallet_id: matchedToWal?.id,
+          toWalletId: matchedToWal?.id,
+          date: parsedDate,
           time: directTime || undefined,
         },
       };
     }
 
-    // Case B: Raw text provided (from iOS Back Tap OCR / Share Sheet / Web Share Target)
+    // Case B: Raw text provided (from iOS Back Tap OCR / Shortcuts Notification Automations)
     if (rawText) {
       const trimmedText = rawText.trim();
       const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
       const isAutoRequested = autoParam === "true" || autoParam === "1";
 
-      // B1: Try Indonesian Bank / E-Wallet notification parser
+      // B1: Indonesian Bank / E-Wallet notification parser (SeaBank, ShopeePay, wondr, BCA, Mandiri, etc.)
       const bankResult = parseBankNotification(trimmedText, categories, wallets);
       if (bankResult && bankResult.amount > 0) {
-        const matchedCat = categories.find(c => c.id === bankResult.suggestedCategoryId);
-        const matchedWal = wallets.find(w => w.id === bankResult.suggestedWalletId);
+        const matchedCat = categories.find((c) => c.id === bankResult.suggestedCategoryId);
+        const matchedWal = wallets.find((w) => w.id === bankResult.suggestedWalletId);
+        const matchedToWal = wallets.find((w) => w.id === bankResult.suggestedToWalletId);
+
         return {
           action: "transaction",
           autoSave: isAutoRequested,
           matchedCategoryName: matchedCat?.name,
           matchedWalletName: matchedWal?.name,
+          matchedToWalletName: matchedToWal?.name,
           prefilledValues: {
             amount: bankResult.amount,
             type: bankResult.type,
-            note: bankResult.merchantOrNote,
-            category_id: bankResult.suggestedCategoryId,
-            categoryId: bankResult.suggestedCategoryId,
+            note: bankResult.merchantOrNote || "",
+            category_id: bankResult.type === "transfer" ? undefined : bankResult.suggestedCategoryId,
+            categoryId: bankResult.type === "transfer" ? undefined : bankResult.suggestedCategoryId,
             wallet_id: bankResult.suggestedWalletId,
             walletId: bankResult.suggestedWalletId,
+            to_wallet_id: bankResult.suggestedToWalletId,
+            toWalletId: bankResult.suggestedToWalletId,
             date: new Date(),
           },
         };
       }
 
-      // B2: Try Natural Language Transaction parser (e.g., "Kopi tuku 25rb pakai gopay")
+      // B2: Try Slip & Receipt Parser (for Back Tap Live Text OCR output)
+      const slipResult = parseSlipText(trimmedText, wallets, categories);
+      if (slipResult && slipResult.amount && slipResult.amount > 0) {
+        return {
+          action: "transaction",
+          autoSave: isAutoRequested,
+          matchedCategoryName: slipResult.categoryName || undefined,
+          matchedWalletName: slipResult.sourceWalletName || undefined,
+          matchedToWalletName: slipResult.destinationWalletName || undefined,
+          prefilledValues: {
+            amount: slipResult.amount,
+            type: slipResult.type,
+            note: "", // Strictly default to empty string for scanned receipts to keep history clean
+            category_id: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
+            categoryId: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
+            wallet_id: slipResult.sourceWalletId || undefined,
+            walletId: slipResult.sourceWalletId || undefined,
+            to_wallet_id: slipResult.destinationWalletId || undefined,
+            toWalletId: slipResult.destinationWalletId || undefined,
+            date: slipResult.date || new Date(),
+            time: slipResult.time || undefined,
+          },
+        };
+      }
+
+      // B3: Try Natural Language Transaction parser (e.g., "Kopi tuku 25rb pakai gopay")
       const nlpResult = parseNaturalTransaction(trimmedText, categories, wallets);
       if (nlpResult && nlpResult.amount && nlpResult.amount > 0) {
-        const matchedCat = categories.find(c => c.id === nlpResult.categoryId) || categories[0];
-        const matchedWal = wallets.find(w => w.id === nlpResult.walletId) || wallets[0];
+        const matchedCat = categories.find((c) => c.id === nlpResult.categoryId) || categories[0];
+        const matchedWal = wallets.find((w) => w.id === nlpResult.walletId) || wallets[0];
         return {
           action: "transaction",
           autoSave: isAutoRequested,
@@ -198,7 +323,7 @@ export function parseDeepLink(
         };
       }
 
-      // B3: Fallback if amount couldn't be extracted, still open with note
+      // B4: Fallback if amount couldn't be extracted, open with note
       return {
         action: "transaction",
         autoSave: false,

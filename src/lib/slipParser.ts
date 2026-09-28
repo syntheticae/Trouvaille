@@ -860,6 +860,58 @@ export function parseSlipText(
     }
   }
 
+  // 6b. Detect Destination Wallet (for Transfer / Top-up Slips)
+  let matchedDestinationWallet: Wallet | null = null;
+  const isTransferSlip =
+    fullTextLower.includes("transfer") ||
+    fullTextLower.includes("jumlah transfer") ||
+    fullTextLower.includes("kirim dana") ||
+    fullTextLower.includes("transfer money") ||
+    fullTextLower.includes("transfer ke") ||
+    fullTextLower.includes("qr transfer") ||
+    fullTextLower.includes("dana terkirim") ||
+    fullTextLower.includes("bi-fast") ||
+    fullTextLower.includes("realtime online") ||
+    fullTextLower.includes("top up") ||
+    fullTextLower.includes("topup") ||
+    fullTextLower.includes("isi saldo");
+
+  if (isTransferSlip && userWallets.length > 0) {
+    const destinationCandidates: string[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const keMatch = line.match(
+        /^(?:ke|transfer\s+ke|transfer\s+to|recipient\s+bank|bank\s+tujuan|tujuan\s+transfer|penerima)\s*[:\-]?\s*(.+)$/i
+      );
+      if (keMatch && keMatch[1]) {
+        destinationCandidates.push(keMatch[1].trim());
+      } else if (
+        /^(?:ke|transfer\s+ke|transfer\s+to|recipient\s+bank|bank\s+tujuan|penerima)$/i.test(line)
+      ) {
+        if (i < lines.length - 1) {
+          destinationCandidates.push(lines[i + 1].trim());
+        }
+      }
+    }
+
+    const destSearchText = (destinationCandidates.join(" ") + " " + merchantOrRecipient).toLowerCase();
+
+    for (const w of eligibleWallets) {
+      if (matchedWallet && w.id === matchedWallet.id) continue;
+      const wLower = w.name.toLowerCase();
+      const aliases = BANK_ALIASES[wLower] || [wLower];
+      const isMatch = aliases.some(
+        (alias) =>
+          destSearchText.includes(alias) ||
+          matchesWord(destSearchText, alias)
+      );
+      if (isMatch) {
+        matchedDestinationWallet = w;
+        break;
+      }
+    }
+  }
+
   // 7. Determine Transaction Type
   let type: TransactionType = "expense";
   if (
@@ -870,6 +922,12 @@ export function parseSlipText(
     fullTextLower.includes("dana diterima")
   ) {
     type = "income";
+  } else if (isTransferSlip && matchedDestinationWallet) {
+    // Destination account matches a user-owned wallet -> Inter-wallet Transfer
+    type = "transfer";
+  } else {
+    // Destination account is external or merchant -> Expense
+    type = "expense";
   }
 
   // 8. Confidence Calculation
@@ -889,8 +947,8 @@ export function parseSlipText(
     merchantOrRecipient,
     sourceWalletId: matchedWallet?.id || null,
     sourceWalletName: matchedWallet?.name || null,
-    destinationWalletId: null,
-    destinationWalletName: null,
+    destinationWalletId: matchedDestinationWallet?.id || null,
+    destinationWalletName: matchedDestinationWallet?.name || null,
     categoryId: matchedCategory?.id || null,
     categoryName: matchedCategory?.name || null,
     confidence: Math.min(1, Math.round(confidence * 100) / 100),
