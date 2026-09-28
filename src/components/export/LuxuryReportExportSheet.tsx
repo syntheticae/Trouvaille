@@ -7,12 +7,15 @@ import {
   X,
   FileText,
   FileJson,
+  ArrowUpRight,
+  ArrowDownLeft,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useAllTransactions } from "../../hooks/useTransactions";
 import { useWallets } from "../../hooks/useWallets";
 import { useCategories } from "../../hooks/useCategories";
 import { useSpace } from "../../contexts/SpaceContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { useToast } from "../../contexts/ToastContext";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { formatRupiah } from "../../lib/utils";
@@ -45,6 +48,7 @@ export function LuxuryReportExportSheet({
   onClose,
   defaultSpaceId,
 }: LuxuryReportExportSheetProps) {
+  const { isIndonesian } = useLanguage();
   const { data: allTxs = [] } = useAllTransactions();
   const { data: wallets = [] } = useWallets();
   const { data: categories = [] } = useCategories();
@@ -65,8 +69,8 @@ export function LuxuryReportExportSheet({
 
   const spaceName = useMemo(() => {
     const s = spaces.find((sp) => sp.id === selectedSpaceId);
-    return s ? s.name : "All Spaces";
-  }, [spaces, selectedSpaceId]);
+    return s ? s.name : isIndonesian ? "Semua Ruang" : "All Spaces";
+  }, [spaces, selectedSpaceId, isIndonesian]);
 
   const filterOptions: ReportFilterOptions = useMemo(() => {
     return {
@@ -90,7 +94,13 @@ export function LuxuryReportExportSheet({
   const handleExport = async (action: "download" | "share" | "print") => {
     triggerHaptic("medium");
     if (filteredTransactions.length === 0 && action !== "print") {
-      showToast("No transactions found in selected period", "delete", () => {});
+      showToast(
+        isIndonesian
+          ? "Tidak ada transaksi dalam periode yang dipilih"
+          : "No transactions found in selected period",
+        "delete",
+        () => {},
+      );
       return;
     }
 
@@ -102,53 +112,107 @@ export function LuxuryReportExportSheet({
       if (action === "print") {
         triggerSuccessHaptic();
         triggerPrintLuxuryReport(filteredTransactions, summary, wallets);
-        showToast("Executive statement ready for print", "update", () => {});
+        showToast(
+          isIndonesian ? "Laporan siap dicetak" : "Executive statement ready for print",
+          "update",
+          () => {},
+        );
       } else if (exportFormat === "pdf") {
-        const filename = `trouvaille_statement_${dateStr}${spaceSlug}.pdf`;
+        const filename = isIndonesian
+          ? `trouvaille_laporan_${dateStr}${spaceSlug}.pdf`
+          : `trouvaille_statement_${dateStr}${spaceSlug}.pdf`;
+
         if (action === "share") {
           const ok = await shareLuxuryPdf(filteredTransactions, summary, wallets, filename);
           if (ok) {
             triggerSuccessHaptic();
-            showToast("PDF statement shared successfully", "update", () => {});
+            showToast(
+              isIndonesian ? "Laporan PDF berhasil dibagikan" : "PDF statement shared successfully",
+              "update",
+              () => {},
+            );
           }
         } else {
           await downloadLuxuryPdf(filteredTransactions, summary, wallets, filename);
           triggerSuccessHaptic();
-          showToast("PDF statement downloaded", "update", () => {});
+          showToast(
+            isIndonesian ? "Laporan PDF berhasil diunduh" : "PDF statement downloaded",
+            "update",
+            () => {},
+          );
         }
       } else if (exportFormat === "csv") {
-        const csvContent = generateCsvContent(filteredTransactions, wallets);
-        const filename = `trouvaille_ledger_${dateStr}${spaceSlug}.csv`;
+        const csvContent = generateCsvContent(filteredTransactions, wallets, summary);
+        const filename = isIndonesian
+          ? `trouvaille_buku_kas_${dateStr}${spaceSlug}.csv`
+          : `trouvaille_ledger_${dateStr}${spaceSlug}.csv`;
 
         if (action === "share") {
-          const ok = await shareOrDownloadFile(csvContent, filename, "text/csv", "Trouvaille Ledger CSV");
+          const ok = await shareOrDownloadFile(
+            csvContent,
+            filename,
+            "text/csv",
+            isIndonesian ? "Buku Kas Trouvaille" : "Trouvaille Ledger CSV",
+          );
           if (ok) {
             triggerSuccessHaptic();
-            showToast("CSV shared successfully", "update", () => {});
+            showToast(
+              isIndonesian ? "Buku kas CSV berhasil dibagikan" : "CSV ledger shared successfully",
+              "update",
+              () => {},
+            );
           }
         } else {
           downloadExportFile(csvContent, filename, "text/csv;charset=utf-8;");
           triggerSuccessHaptic();
-          showToast("CSV ledger downloaded", "update", () => {});
+          showToast(
+            isIndonesian ? "Buku kas CSV berhasil diunduh" : "CSV ledger downloaded",
+            "update",
+            () => {},
+          );
         }
       } else if (exportFormat === "json") {
-        const jsonContent = generateJsonVaultContent(filteredTransactions, wallets, categories, summary);
-        const filename = `trouvaille_vault_${dateStr}${spaceSlug}.json`;
+        const jsonContent = generateJsonVaultContent(
+          filteredTransactions,
+          wallets,
+          categories,
+          summary,
+        );
+        const filename = isIndonesian
+          ? `trouvaille_arsip_vault_${dateStr}${spaceSlug}.json`
+          : `trouvaille_vault_${dateStr}${spaceSlug}.json`;
 
         if (action === "share") {
-          const ok = await shareOrDownloadFile(jsonContent, filename, "application/json", "Trouvaille Vault JSON");
+          const ok = await shareOrDownloadFile(
+            jsonContent,
+            filename,
+            "application/json",
+            isIndonesian ? "Arsip Vault Trouvaille" : "Trouvaille Vault JSON",
+          );
           if (ok) {
             triggerSuccessHaptic();
-            showToast("JSON vault shared successfully", "update", () => {});
+            showToast(
+              isIndonesian ? "Arsip JSON berhasil dibagikan" : "JSON vault shared successfully",
+              "update",
+              () => {},
+            );
           }
         } else {
           downloadExportFile(jsonContent, filename, "application/json;charset=utf-8;");
           triggerSuccessHaptic();
-          showToast("JSON vault archive downloaded", "update", () => {});
+          showToast(
+            isIndonesian ? "Arsip JSON berhasil diunduh" : "JSON vault archive downloaded",
+            "update",
+            () => {},
+          );
         }
       }
     } catch (err: any) {
-      showToast(err?.message || "Failed to export report", "delete", () => {});
+      showToast(
+        err?.message || (isIndonesian ? "Gagal mengekspor laporan" : "Failed to export report"),
+        "delete",
+        () => {},
+      );
     } finally {
       setIsExporting(false);
     }
@@ -156,7 +220,12 @@ export function LuxuryReportExportSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-10 space-y-4">
+      <div
+        className="p-5 space-y-4"
+        style={{
+          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+        }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -164,69 +233,78 @@ export function LuxuryReportExportSheet({
               className="font-semibold text-base tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              Report & Tax Export
+              {isIndonesian ? "Ekspor Laporan Keuangan" : "Financial Statement & Ledger"}
             </h3>
             <p className="text-[12px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-              Statements, CSV ledger & tax backups
+              {isIndonesian
+                ? "Ringkasan eksekutif, buku kas CSV & arsip cadangan"
+                : "Executive statements, CSV ledger & vault archives"}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={isIndonesian ? "Tutup" : "Close"}
             className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] active:scale-95 transition-colors"
           >
             <X size={15} strokeWidth={1.75} />
           </button>
         </div>
 
-        {/* 1. Minimalist Financial & Tax Preview */}
-        <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] p-4 space-y-3 shadow-sm">
+        {/* 1. Executive Cashflow Summary Card */}
+        <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] p-4 space-y-3.5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
               {summary.periodLabel}
             </span>
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)]">
-              {summary.transactionCount} records · {summary.spaceName}
+            <span className="text-[10px] font-medium px-2.5 py-0.5 rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)]">
+              {summary.transactionCount} {isIndonesian ? "transaksi" : "records"} · {summary.spaceName}
             </span>
           </div>
 
-          <div className="flex items-baseline justify-between pt-1">
+          {/* Hero Cashflow Metric */}
+          <div className="flex items-baseline justify-between pt-0.5">
             <div>
               <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-tertiary)] block">
-                Tax Deductible Expenses
+                {isIndonesian ? "Arus Kas Bersih" : "Net Cashflow"}
               </span>
-              <span className="text-[20px] font-semibold text-[var(--text-primary)] font-mono tracking-tight mt-0.5 block">
-                {formatRupiah(summary.taxDeductibleTotal)}
+              <span className="text-[22px] font-semibold text-[var(--text-primary)] font-mono tracking-tight mt-0.5 block">
+                {(summary.netCashflow >= 0 ? "+" : "") + formatRupiah(summary.netCashflow)}
               </span>
             </div>
             <div className="text-right">
               <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-tertiary)] block">
-                Net Cashflow
+                {isIndonesian ? "Rasio Tabungan" : "Savings Rate"}
               </span>
-              <span
-                className={`text-[15px] font-semibold font-mono tracking-tight mt-0.5 block ${
-                  summary.netCashflow >= 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-[var(--text-primary)]"
-                }`}
-              >
-                {formatRupiah(summary.netCashflow)}
+              <span className="text-[18px] font-semibold text-[var(--text-primary)] font-mono tracking-tight mt-0.5 block">
+                {summary.savingsRate.toFixed(1)}%
               </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-[var(--glass-border)] text-[11px]">
-            <div className="flex items-center justify-between py-0.5">
-              <span className="text-[var(--text-tertiary)]">Total Inflow</span>
-              <span className="font-mono font-medium text-[var(--text-primary)]">
-                {formatRupiah(summary.totalIncome)}
+          {/* Inflow & Outflow Dual Sub-Cards */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[var(--glass-border)]">
+            <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--glass-fill)] border border-[var(--glass-border)]">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <ArrowDownLeft size={13} strokeWidth={1.75} className="text-[var(--text-secondary)] shrink-0" />
+                <span className="text-[11px] text-[var(--text-secondary)] truncate">
+                  {isIndonesian ? "Pemasukan" : "Inflow"}
+                </span>
+              </div>
+              <span className="font-mono text-[11px] font-medium text-[var(--text-primary)] pl-1 shrink-0">
+                +{formatRupiah(summary.totalIncome)}
               </span>
             </div>
-            <div className="flex items-center justify-between py-0.5">
-              <span className="text-[var(--text-tertiary)]">Total Outflow</span>
-              <span className="font-mono font-medium text-[var(--text-primary)]">
-                {formatRupiah(summary.totalExpense)}
+
+            <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--glass-fill)] border border-[var(--glass-border)]">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <ArrowUpRight size={13} strokeWidth={1.75} className="text-[var(--text-secondary)] shrink-0" />
+                <span className="text-[11px] text-[var(--text-secondary)] truncate">
+                  {isIndonesian ? "Pengeluaran" : "Outflow"}
+                </span>
+              </div>
+              <span className="font-mono text-[11px] font-medium text-[var(--text-primary)] pl-1 shrink-0">
+                -{formatRupiah(summary.totalExpense)}
               </span>
             </div>
           </div>
@@ -237,16 +315,16 @@ export function LuxuryReportExportSheet({
           {/* Row A: Period Selector */}
           <div className="p-3.5 space-y-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
-              Period
+              {isIndonesian ? "Rentang Waktu" : "Time Period"}
             </span>
             <div className="grid grid-cols-5 gap-1 p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
               {(
                 [
-                  { id: "this_month", label: "Month" },
-                  { id: "last_month", label: "Last" },
+                  { id: "this_month", label: isIndonesian ? "Bulan Ini" : "Month" },
+                  { id: "last_month", label: isIndonesian ? "Lalu" : "Last" },
                   { id: "ytd", label: "YTD" },
-                  { id: "all", label: "All" },
-                  { id: "custom", label: "Custom" },
+                  { id: "all", label: isIndonesian ? "Semua" : "All" },
+                  { id: "custom", label: isIndonesian ? "Kustom" : "Custom" },
                 ] as const
               ).map((item) => {
                 const active = dateRange === item.id;
@@ -293,7 +371,7 @@ export function LuxuryReportExportSheet({
           {spaces.length > 1 && (
             <div className="p-3.5 space-y-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
-                Ledger Context
+                {isIndonesian ? "Ruang Pencatatan" : "Ledger Scope"}
               </span>
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                 {spaces.map((sp) => {
@@ -323,15 +401,15 @@ export function LuxuryReportExportSheet({
           {/* Row C: Ledger Type Filter */}
           <div className="p-3.5 space-y-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
-              Transaction Filter
+              {isIndonesian ? "Jenis Transaksi" : "Transaction Filter"}
             </span>
             <div className="grid grid-cols-4 gap-1 p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
               {(
                 [
-                  { id: "all" as const, label: "All Records" },
-                  { id: "expense" as const, label: "Expenses" },
-                  { id: "income" as const, label: "Income" },
-                  { id: "business_tax" as const, label: "Tax / Biz" },
+                  { id: "all" as const, label: isIndonesian ? "Semua" : "All Records" },
+                  { id: "expense" as const, label: isIndonesian ? "Pengeluaran" : "Expenses" },
+                  { id: "income" as const, label: isIndonesian ? "Pemasukan" : "Income" },
+                  { id: "transfer" as const, label: isIndonesian ? "Transfer" : "Transfers" },
                 ] as const
               ).map((t) => {
                 const active = transactionType === t.id;
@@ -359,14 +437,26 @@ export function LuxuryReportExportSheet({
           {/* Row D: Export Format */}
           <div className="p-3.5 space-y-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
-              Export Format
+              {isIndonesian ? "Format Berkas" : "Export Format"}
             </span>
             <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
               {(
                 [
-                  { id: "pdf" as const, label: "PDF Statement", icon: FileText },
-                  { id: "csv" as const, label: "CSV Ledger", icon: FileSpreadsheet },
-                  { id: "json" as const, label: "JSON Vault", icon: FileJson },
+                  {
+                    id: "pdf" as const,
+                    label: isIndonesian ? "PDF Laporan" : "PDF Statement",
+                    icon: FileText,
+                  },
+                  {
+                    id: "csv" as const,
+                    label: isIndonesian ? "Buku Kas CSV" : "CSV Ledger",
+                    icon: FileSpreadsheet,
+                  },
+                  {
+                    id: "json" as const,
+                    label: isIndonesian ? "Arsip JSON" : "JSON Vault",
+                    icon: FileJson,
+                  },
                 ] as const
               ).map((fmt) => {
                 const active = exportFormat === fmt.id;
@@ -385,7 +475,7 @@ export function LuxuryReportExportSheet({
                         : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                     }`}
                   >
-                    <Icon size={13} strokeWidth={2} />
+                    <Icon size={13} strokeWidth={1.75} />
                     <span>{fmt.label}</span>
                   </button>
                 );
@@ -394,13 +484,13 @@ export function LuxuryReportExportSheet({
           </div>
         </div>
 
-        {/* 3. Primary Export Action Button */}
+        {/* 3. Primary Export Action Dock */}
         <div className="pt-1 flex items-center gap-2">
           <button
             type="button"
             onClick={() => handleExport("download")}
             disabled={isExporting}
-            className="flex-1 h-11 rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-sm disabled:opacity-50"
+            className="flex-1 h-12 rounded-full flex items-center justify-center gap-2 text-[13px] font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-sm disabled:opacity-50"
             style={{
               background: "var(--text-primary)",
               color: "var(--bg-base)",
@@ -408,7 +498,17 @@ export function LuxuryReportExportSheet({
           >
             <Download size={15} strokeWidth={1.75} />
             <span>
-              {exportFormat === "pdf" ? "Download PDF" : `Export ${exportFormat.toUpperCase()}`}
+              {exportFormat === "pdf"
+                ? isIndonesian
+                  ? "Unduh PDF Laporan"
+                  : "Download PDF Statement"
+                : exportFormat === "csv"
+                  ? isIndonesian
+                    ? "Unduh Buku Kas CSV"
+                    : "Download CSV Ledger"
+                  : isIndonesian
+                    ? "Unduh Arsip JSON"
+                    : "Download JSON Vault"}
             </span>
           </button>
 
@@ -416,11 +516,11 @@ export function LuxuryReportExportSheet({
             type="button"
             onClick={() => handleExport("share")}
             disabled={isExporting}
-            aria-label="Share"
-            className="w-11 h-11 rounded-xl flex items-center justify-center border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)] transition-all cursor-pointer active:scale-95 shrink-0"
-            title="Share file / Save to Files"
+            aria-label={isIndonesian ? "Bagikan Berkas" : "Share Document"}
+            title={isIndonesian ? "Bagikan Berkas" : "Share Document"}
+            className="w-12 h-12 rounded-full flex items-center justify-center border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)] transition-all cursor-pointer active:scale-95 shrink-0"
           >
-            <Share2 size={15} strokeWidth={1.75} />
+            <Share2 size={16} strokeWidth={1.75} />
           </button>
 
           {exportFormat === "pdf" && (
@@ -428,11 +528,11 @@ export function LuxuryReportExportSheet({
               type="button"
               onClick={() => handleExport("print")}
               disabled={isExporting}
-              aria-label="Print Statement"
-              className="w-11 h-11 rounded-xl flex items-center justify-center border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer active:scale-95 shrink-0"
-              title="Print Statement Preview"
+              aria-label={isIndonesian ? "Cetak Pratinjau Laporan" : "Print Statement Preview"}
+              title={isIndonesian ? "Cetak Pratinjau Laporan" : "Print Statement Preview"}
+              className="w-12 h-12 rounded-full flex items-center justify-center border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer active:scale-95 shrink-0"
             >
-              <Printer size={15} strokeWidth={1.75} />
+              <Printer size={16} strokeWidth={1.75} />
             </button>
           )}
         </div>

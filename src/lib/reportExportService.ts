@@ -12,7 +12,7 @@ export type ReportDateRange =
   | "all"
   | "custom";
 
-export type ReportTransactionType = "all" | "expense" | "income" | "business_tax";
+export type ReportTransactionType = "all" | "expense" | "income" | "transfer";
 
 export interface ReportFilterOptions {
   dateRange: ReportDateRange;
@@ -42,9 +42,9 @@ export interface ReportSummary {
   spaceName: string;
   totalIncome: number;
   totalExpense: number;
+  totalTransfer: number;
   netCashflow: number;
   savingsRate: number; // 0 to 100
-  taxDeductibleTotal: number;
   transactionCount: number;
   topCategories: CategorySummaryItem[];
   walletBreakdown: WalletSummaryItem[];
@@ -107,7 +107,6 @@ export function filterTransactionsForReport(
     // Space filtering
     if (options.spaceId && options.spaceId !== "all") {
       if (options.spaceId === "personal") {
-        // Must not have space_id or business/travel tag
         const note = (tx.note || "").toLowerCase();
         if (tx.space_id || note.includes("#business") || note.includes("#travel") || note.includes("#kantor") || note.includes("#liburan")) {
           return false;
@@ -119,7 +118,7 @@ export function filterTransactionsForReport(
         const matchesSpace =
           txSpace === target ||
           note.includes(`#${target}`) ||
-          (target === "business" && (note.includes("#kantor") || note.includes("#reimburse") || note.includes("#pajak"))) ||
+          (target === "business" && (note.includes("#kantor") || note.includes("#reimburse"))) ||
           (target === "travel" && note.includes("#liburan"));
         if (!matchesSpace) return false;
       }
@@ -127,20 +126,7 @@ export function filterTransactionsForReport(
 
     // Transaction type filtering
     if (options.transactionType && options.transactionType !== "all") {
-      if (options.transactionType === "business_tax") {
-        const note = (tx.note || "").toLowerCase();
-        const catName = (tx.categories?.name || "").toLowerCase();
-        const isBusiness =
-          tx.space_id === "business" ||
-          note.includes("#business") ||
-          note.includes("#kantor") ||
-          note.includes("#reimburse") ||
-          note.includes("#pajak") ||
-          catName.includes("pajak") ||
-          catName.includes("legal") ||
-          catName.includes("admin");
-        if (!isBusiness) return false;
-      } else if (tx.type !== options.transactionType) {
+      if (tx.type !== options.transactionType) {
         return false;
       }
     }
@@ -182,7 +168,7 @@ export function calculateReportSummary(
 
   let totalIncome = 0;
   let totalExpense = 0;
-  let taxDeductibleTotal = 0;
+  let totalTransfer = 0;
   const categoryMap = new Map<string, { amount: number; count: number }>();
   const walletMap = new Map<string, { inflow: number; outflow: number }>();
 
@@ -193,8 +179,7 @@ export function calculateReportSummary(
 
   filteredTxs.forEach((tx) => {
     const amt = tx.amount || 0;
-    const note = (tx.note || "").toLowerCase();
-    const catName = tx.categories?.name || "General";
+    const catName = tx.categories?.name || (tx.type === "transfer" ? "Transfer" : "General");
 
     if (tx.type === "income") {
       totalIncome += amt;
@@ -215,19 +200,8 @@ export function calculateReportSummary(
         cur.outflow += amt;
         walletMap.set(tx.wallet_id, cur);
       }
-
-      // Check tax deductible / business
-      const isTaxDeductible =
-        tx.space_id === "business" ||
-        note.includes("#business") ||
-        note.includes("#kantor") ||
-        note.includes("#reimburse") ||
-        note.includes("#pajak") ||
-        catName.toLowerCase().includes("pajak");
-      if (isTaxDeductible) {
-        taxDeductibleTotal += amt;
-      }
     } else if (tx.type === "transfer") {
+      totalTransfer += amt;
       if (tx.wallet_id) {
         const cur = walletMap.get(tx.wallet_id) || { inflow: 0, outflow: 0 };
         cur.outflow += amt;
@@ -280,9 +254,9 @@ export function calculateReportSummary(
     spaceName,
     totalIncome,
     totalExpense,
+    totalTransfer,
     netCashflow,
     savingsRate,
-    taxDeductibleTotal,
     transactionCount: filteredTxs.length,
     topCategories,
     walletBreakdown,
@@ -292,18 +266,34 @@ export function calculateReportSummary(
 /**
  * Generate CSV formatted string with UTF-8 BOM
  */
+/**
+ * Generate CSV formatted string with UTF-8 BOM and Executive Metadata
+ */
 export function generateCsvContent(
   transactions: Transaction[],
   wallets: Wallet[] = [],
+  summary?: ReportSummary,
 ): string {
+  const metaLines: string[] = [];
+  if (summary) {
+    metaLines.push(
+      `# Trouvaille Private Wealth Architecture — Financial Statement & Ledger`,
+      `# Period: ${summary.periodLabel}`,
+      `# Scope: ${summary.spaceName}`,
+      `# Summary: Total Inflow = ${formatRupiah(summary.totalIncome)} | Total Outflow = ${formatRupiah(summary.totalExpense)} | Net Cashflow = ${(summary.netCashflow >= 0 ? "+" : "") + formatRupiah(summary.netCashflow)} | Records = ${summary.transactionCount}`,
+      `# Generated: ${format(new Date(), "dd MMMM yyyy, HH:mm:ss")}`,
+      `#`
+    );
+  }
+
   const headers = [
     "Date",
     "Time",
     "Type",
-    "Amount (IDR)",
     "Category",
     "From Account",
     "To Account",
+    "Amount (IDR)",
     "Space",
     "Tags",
     "Note",
@@ -313,7 +303,13 @@ export function generateCsvContent(
   const walletMap = new Map<string, string>();
   wallets.forEach((w) => walletMap.set(w.id, w.name));
 
-  const rows = transactions.map((t) => {
+  const sortedTxs = [...transactions].sort((a, b) => {
+    const da = a.occurred_on || a.created_at || "";
+    const db = b.occurred_on || b.created_at || "";
+    return db.localeCompare(da);
+  });
+
+  const rows = sortedTxs.map((t) => {
     const dateStr = t.occurred_on || (t.created_at ? t.created_at.slice(0, 10) : "");
     const timeStr = t.created_at ? format(new Date(t.created_at), "HH:mm") : "";
     const typeStr =
@@ -333,10 +329,10 @@ export function generateCsvContent(
       dateStr,
       timeStr,
       typeStr,
-      amountStr,
       `"${catStr.replace(/"/g, '""')}"`,
       `"${fromAccount.replace(/"/g, '""')}"`,
       `"${toAccount.replace(/"/g, '""')}"`,
+      amountStr,
       spaceStr,
       `"${tags}"`,
       `"${cleanNote}"`,
@@ -344,8 +340,12 @@ export function generateCsvContent(
     ].join(",");
   });
 
+  const allLines = metaLines.length > 0
+    ? [...metaLines, headers.join(","), ...rows]
+    : [headers.join(","), ...rows];
+
   // Include UTF-8 BOM (\uFEFF) for native Excel UTF-8 support
-  return "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+  return "\uFEFF" + allLines.join("\r\n");
 }
 
 /**
@@ -368,9 +368,9 @@ export function generateJsonVaultContent(
     metrics: {
       total_income: summary.totalIncome,
       total_expense: summary.totalExpense,
+      total_transfer: summary.totalTransfer,
       net_cashflow: summary.netCashflow,
       savings_rate_pct: summary.savingsRate,
-      tax_deductible_total: summary.taxDeductibleTotal,
       transaction_count: summary.transactionCount,
     },
     accounts: wallets.map((w) => ({
@@ -449,52 +449,47 @@ export function generateLuxuryPrintableHtml(
 
   const topCatsHtml = summary.topCategories
     .slice(0, 5)
-    .map(
-      (c) => `
-      <div style="margin-bottom: 9px;">
-        <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
-          <span style="font-weight: 500; color: #18181b;">${c.name}</span>
-          <span style="font-weight: 600; color: #09090c;">${formatRupiah(c.amount)} (${c.percentage}%)</span>
+    .map((c) => {
+      return `
+        <div style="margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
+            <span style="font-weight: 500; color: #18181b;">${c.name}</span>
+            <span style="font-family: -apple-system, BlinkMacSystemFont, monospace; color: #71717a;">${formatRupiah(c.amount)} (${c.percentage.toFixed(1)}%)</span>
+          </div>
+          <div style="width: 100%; height: 5px; background: #f0f0f4; border-radius: 99px; overflow: hidden;">
+            <div style="width: ${c.percentage}%; height: 100%; background: #27272a; border-radius: 99px;"></div>
+          </div>
         </div>
-        <div style="width: 100%; height: 4px; background: #f4f4f7; border-radius: 9999px; overflow: hidden;">
-          <div style="width: ${Math.min(100, c.percentage)}%; height: 100%; background: #18181b; border-radius: 9999px;"></div>
-        </div>
-      </div>
-    `,
-    )
+      `;
+    })
     .join("");
 
   return `<!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
   <meta charset="utf-8">
   <title>Trouvaille Statement - ${summary.periodLabel}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap');
-    
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    @media print {
+      @page { margin: 15mm; size: A4 portrait; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
     body {
-      font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #09090c;
       background: #ffffff;
-      padding: 40px;
-      line-height: 1.45;
-      -webkit-font-smoothing: antialiased;
-    }
-    @media print {
-      body { padding: 20px; font-size: 11px; }
-      .no-print { display: none !important; }
-      .page-break { page-break-after: always; }
-      @page { margin: 15mm; size: A4 portrait; }
+      margin: 0;
+      padding: 24px;
+      line-height: 1.4;
     }
   </style>
 </head>
 <body>
-  <!-- Header -->
-  <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1.5px solid #09090c; padding-bottom: 20px; margin-bottom: 28px;">
+  <!-- Header Bar -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1.5px solid #09090c; padding-bottom: 14px; margin-bottom: 24px;">
     <div>
-      <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase;">TROUVAILLE</div>
-      <div style="font-size: 11px; font-weight: 600; color: #71717a; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px;">EXECUTIVE FINANCIAL REPORT</div>
+      <div style="font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: #09090c;">TROUVAILLE</div>
+      <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.05em; color: #71717a; text-transform: uppercase; margin-top: 2px;">Private Wealth Architecture · Executive Statement</div>
     </div>
     <div style="text-align: right;">
       <div style="font-size: 13px; font-weight: 600; color: #09090c;">${summary.periodLabel}</div>
@@ -507,26 +502,26 @@ export function generateLuxuryPrintableHtml(
   <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px;">
     <div style="background: #fafafc; border: 1px solid #e4e4e9; border-radius: 12px; padding: 14px 16px;">
       <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">TOTAL INFLOW</div>
-      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">${formatRupiah(summary.totalIncome)}</div>
+      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">+${formatRupiah(summary.totalIncome)}</div>
       <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Income & credits</div>
     </div>
 
     <div style="background: #fafafc; border: 1px solid #e4e4e9; border-radius: 12px; padding: 14px 16px;">
       <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">TOTAL OUTFLOW</div>
-      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">${formatRupiah(summary.totalExpense)}</div>
-      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Operating expenses</div>
+      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">-${formatRupiah(summary.totalExpense)}</div>
+      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Expenses & debits</div>
     </div>
 
     <div style="background: #fafafc; border: 1px solid #e4e4e9; border-radius: 12px; padding: 14px 16px;">
       <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">NET CASH FLOW</div>
-      <div style="font-size: 18px; font-weight: 700; color: ${summary.netCashflow >= 0 ? "#0d9488" : "#e11d48"}; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">${formatRupiah(summary.netCashflow)}</div>
-      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Savings rate: ${summary.savingsRate}%</div>
+      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">${(summary.netCashflow >= 0 ? "+" : "") + formatRupiah(summary.netCashflow)}</div>
+      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Net capital movement</div>
     </div>
 
     <div style="background: #fafafc; border: 1px solid #e4e4e9; border-radius: 12px; padding: 14px 16px;">
-      <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">BUSINESS / TAX DEDUCTIBLE</div>
-      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">${formatRupiah(summary.taxDeductibleTotal)}</div>
-      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Tag: #business, #reimburse</div>
+      <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">SAVINGS RATE</div>
+      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">${summary.savingsRate.toFixed(1)}%</div>
+      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Preservation ratio</div>
     </div>
   </div>
 
@@ -566,12 +561,11 @@ export function generateLuxuryPrintableHtml(
   <!-- Confidentiality Statement / Footer -->
   <div style="border-top: 1px solid #e4e4e9; padding-top: 14px; display: flex; justify-content: space-between; font-size: 10px; color: #a1a1aa;">
     <div>Trouvaille · Private Wealth Architecture</div>
-    <div>Confidential Document · For Personal or Tax Advisory Use Only</div>
+    <div>Confidential Document · Executive Wealth Summary</div>
   </div>
 
   <script>
     window.onload = function() {
-      // Allow fonts to render then trigger print
       setTimeout(function() {
         window.print();
       }, 350);
@@ -685,10 +679,10 @@ export function generateLuxuryPdf(
 
   const pageWidth = doc.internal.pageSize.getWidth(); // 595.28 pt
   const pageHeight = doc.internal.pageSize.getHeight(); // 841.89 pt
-  const margin = 40;
-  const contentWidth = pageWidth - margin * 2; // 515.28 pt
+  const margin = 36;
+  const contentWidth = pageWidth - margin * 2; // 523.28 pt
 
-  let y = 50;
+  let y = 46;
 
   // Header: Brand & Title
   doc.setFont("helvetica", "bold");
@@ -697,72 +691,103 @@ export function generateLuxuryPdf(
   doc.text("TROUVAILLE", margin, y);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(113, 113, 122); // zinc-500
-  doc.text("PRIVATE WEALTH ARCHITECTURE · EXECUTIVE STATEMENT", margin, y + 14);
+  doc.text("PRIVATE WEALTH ARCHITECTURE · EXECUTIVE STATEMENT", margin, y + 13);
 
-  // Period & Generation Date (right aligned)
-  doc.setFontSize(8.5);
-  doc.text(`Period: ${summary.periodLabel}`, pageWidth - margin, y, { align: "right" });
-  doc.text(`Generated: ${format(new Date(), "dd MMM yyyy, HH:mm")}`, pageWidth - margin, y + 14, { align: "right" });
+  // Period, Scope & Generation Date (right aligned)
+  const now = new Date();
+  const docRef = `REF: TVL-${format(now, "yyyyMMdd-HHmm")}`;
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(24, 24, 27);
+  doc.text(summary.periodLabel, pageWidth - margin, y, { align: "right" });
 
-  y += 30;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(113, 113, 122);
+  doc.text(`${summary.spaceName} · ${docRef}`, pageWidth - margin, y + 11, { align: "right" });
+  doc.text(`Generated: ${format(now, "dd MMM yyyy, HH:mm:ss")}`, pageWidth - margin, y + 21, { align: "right" });
+
+  y += 32;
 
   // Hairline divider
   doc.setDrawColor(228, 228, 233);
   doc.setLineWidth(0.75);
   doc.line(margin, y, pageWidth - margin, y);
 
-  y += 16;
+  y += 14;
 
   // Key Financial Metrics Grid (4 columns)
-  const colW = contentWidth / 4;
+  const colGap = 8;
+  const colW = (contentWidth - colGap * 3) / 4;
   const metrics = [
-    { label: "TOTAL INFLOW", val: formatRupiah(summary.totalIncome) },
-    { label: "TOTAL OUTFLOW", val: formatRupiah(summary.totalExpense) },
+    { label: "TOTAL INFLOW", val: `+${formatRupiah(summary.totalIncome)}`, sub: "Income & credits" },
+    { label: "TOTAL OUTFLOW", val: `-${formatRupiah(summary.totalExpense)}`, sub: "Expenses & debits" },
     {
       label: "NET CASHFLOW",
       val: `${summary.netCashflow >= 0 ? "+" : ""}${formatRupiah(summary.netCashflow)}`,
+      sub: "Net movement",
     },
-    { label: "SAVINGS RATE", val: `${summary.savingsRate.toFixed(1)}%` },
+    { label: "SAVINGS RATE", val: `${summary.savingsRate.toFixed(1)}%`, sub: "Preservation" },
   ];
 
   metrics.forEach((m, idx) => {
-    const x = margin + idx * colW;
+    const x = margin + idx * (colW + colGap);
     doc.setFillColor(248, 248, 250);
-    doc.roundedRect(x + 2, y, colW - 4, 44, 4, 4, "F");
+    doc.roundedRect(x, y, colW, 46, 5, 5, "F");
+    doc.setDrawColor(235, 235, 239);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(x, y, colW, 46, 5, 5, "S");
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(113, 113, 122);
-    doc.text(m.label, x + 8, y + 13);
+    doc.text(m.label, x + 8, y + 12);
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(24, 24, 27);
-    doc.text(m.val, x + 8, y + 31);
+    doc.text(m.val, x + 8, y + 27);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(161, 161, 170);
+    doc.text(m.sub, x + 8, y + 39);
   });
 
-  y += 56;
+  y += 58;
 
-  // Top Categories (if any)
+  // Top Categories (Proportional Progress Bars)
   if (summary.topCategories.length > 0) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.5);
+    doc.setFontSize(9);
     doc.setTextColor(18, 18, 20);
-    doc.text("EXPENSE DISTRIBUTION", margin, y);
+    doc.text("EXPENSE DISTRIBUTION (TOP 5)", margin, y);
 
     y += 12;
 
     summary.topCategories.slice(0, 5).forEach((cat) => {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(71, 71, 78);
-      doc.text(cat.name, margin + 4, y);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(39, 39, 42);
+      doc.text(cat.name, margin, y);
 
-      const amtText = `${formatRupiah(cat.amount)} (${cat.percentage.toFixed(1)}%)`;
-      doc.text(amtText, pageWidth - margin - 4, y, { align: "right" });
-      y += 11;
+      const amtText = `${formatRupiah(cat.amount)}  (${cat.percentage.toFixed(1)}%)`;
+      doc.setFont("helvetica", "normal");
+      doc.text(amtText, pageWidth - margin, y, { align: "right" });
+
+      // Track bar
+      y += 4;
+      doc.setFillColor(240, 240, 244);
+      doc.roundedRect(margin, y, contentWidth, 3.5, 1.5, 1.5, "F");
+
+      // Progress bar
+      const fillW = Math.max(3, (contentWidth * Math.min(100, cat.percentage)) / 100);
+      doc.setFillColor(39, 39, 42);
+      doc.roundedRect(margin, y, fillW, 3.5, 1.5, 1.5, "F");
+
+      y += 12;
     });
 
     y += 8;
@@ -770,27 +795,31 @@ export function generateLuxuryPdf(
 
   // Section Header: Transaction Ledger
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
+  doc.setFontSize(9);
   doc.setTextColor(18, 18, 20);
   doc.text(`LEDGER TRANSACTIONS (${transactions.length})`, margin, y);
 
-  y += 12;
+  y += 10;
 
   // Table Header Function
   const renderTableHeader = (currY: number) => {
     doc.setFillColor(244, 244, 246);
     doc.rect(margin, currY, contentWidth, 16, "F");
+    doc.setDrawColor(228, 228, 233);
+    doc.setLineWidth(0.5);
+    doc.line(margin, currY + 16, pageWidth - margin, currY + 16);
+
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(113, 113, 122);
     doc.text("DATE", margin + 6, currY + 11);
-    doc.text("DESCRIPTION / CATEGORY", margin + 75, currY + 11);
+    doc.text("DESCRIPTION / CATEGORY", margin + 70, currY + 11);
     doc.text("ACCOUNT", margin + 310, currY + 11);
     doc.text("AMOUNT", pageWidth - margin - 6, currY + 11, { align: "right" });
   };
 
   renderTableHeader(y);
-  y += 18;
+  y += 17;
 
   // Sort transactions by date descending
   const sortedTxs = [...transactions].sort((a, b) => {
@@ -801,47 +830,69 @@ export function generateLuxuryPdf(
 
   const walletMap = new Map(wallets.map((w) => [w.id, w.name]));
 
-  sortedTxs.forEach((tx) => {
-    if (y > pageHeight - 45) {
+  sortedTxs.forEach((tx, idx) => {
+    if (y > pageHeight - 55) {
       doc.addPage();
       y = 40;
       renderTableHeader(y);
-      y += 18;
+      y += 17;
+    }
+
+    // Alternating row background tint
+    if (idx % 2 === 0) {
+      doc.setFillColor(250, 250, 252);
+      doc.rect(margin, y - 1, contentWidth, 16, "F");
     }
 
     const txDate = tx.occurred_on || tx.created_at?.slice(0, 10) || "";
-    const walletName = tx.wallet_id ? walletMap.get(tx.wallet_id) || "Cash" : "Cash";
-    const desc = (tx.note || (tx as any).category_name || "Transaction").slice(0, 40);
+    const fromName = tx.wallet_id ? walletMap.get(tx.wallet_id) || "Account" : "-";
+    const toName = tx.to_wallet_id ? walletMap.get(tx.to_wallet_id) || "Account" : "";
+    const accountLabel = tx.type === "transfer" && toName ? `${fromName} -> ${toName}` : fromName;
+
+    const catName = tx.categories?.name || (tx.type === "transfer" ? "Transfer" : "General");
+    const noteText = tx.note ? `${tx.note} (${catName})` : catName;
+    const desc = noteText.length > 50 ? noteText.slice(0, 48) + "..." : noteText;
+
     const isIncome = tx.type === "income";
-    const prefix = isIncome ? "+" : tx.type === "expense" ? "-" : "";
+    const isExpense = tx.type === "expense";
+    const prefix = isIncome ? "+" : isExpense ? "-" : "⇄ ";
     const amtStr = `${prefix}${formatRupiah(Number(tx.amount || 0))}`;
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(71, 71, 78);
-    doc.text(txDate, margin + 6, y + 9);
-    doc.text(desc, margin + 75, y + 9);
-    doc.text(walletName.slice(0, 16), margin + 310, y + 9);
+    doc.text(txDate, margin + 6, y + 10);
+    doc.text(desc, margin + 70, y + 10);
+    doc.text(accountLabel.slice(0, 26), margin + 310, y + 10);
 
     doc.setFont("helvetica", "bold");
-    doc.text(amtStr, pageWidth - margin - 6, y + 9, { align: "right" });
+    if (isIncome) {
+      doc.setTextColor(13, 148, 136); // teal-600 for inflow
+    } else {
+      doc.setTextColor(24, 24, 27); // obsidian for outflow/transfer
+    }
+    doc.text(amtStr, pageWidth - margin - 6, y + 10, { align: "right" });
 
     doc.setDrawColor(240, 240, 244);
     doc.setLineWidth(0.5);
-    doc.line(margin, y + 13, pageWidth - margin, y + 13);
+    doc.line(margin, y + 15, pageWidth - margin, y + 15);
 
-    y += 15;
+    y += 16;
   });
 
   // Footer on all pages
   const totalPages = doc.internal.pages.length - 1;
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
+    doc.setDrawColor(228, 228, 233);
+    doc.setLineWidth(0.5);
+    doc.line(margin, pageHeight - 26, pageWidth - margin, pageHeight - 26);
+
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(161, 161, 170);
-    doc.text("Trouvaille · Private Wealth Architecture · Confidential Document", margin, pageHeight - 18);
-    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 18, { align: "right" });
+    doc.text("Trouvaille · Private Wealth Architecture · Confidential Document", margin, pageHeight - 14);
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 14, { align: "right" });
   }
 
   return doc;
