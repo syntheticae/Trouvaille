@@ -34,6 +34,7 @@ import {
   BookOpen,
   Laptop,
   QrCode,
+  Sparkles,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -169,6 +170,18 @@ const DailyReminderSheet = lazy(() =>
     default: m.DailyReminderSheet,
   })),
 );
+const AppUpdateModal = lazy(() =>
+  import("../components/settings/AppUpdateModal").then((m) => ({
+    default: m.AppUpdateModal,
+  })),
+);
+
+import {
+  checkForAppUpdate,
+  type AppReleaseInfo,
+  APP_VERSION,
+  APP_BUILD_NUMBER,
+} from "../lib/appUpdateService";
 
 interface SettingsPageProps {
   onOpenImport?: () => void;
@@ -306,6 +319,25 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const [dataExportVaultOpen, setDataExportVaultOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [webDashboardModalOpen, setWebDashboardModalOpen] = useState(false);
+  const [appUpdateOpen, setAppUpdateOpen] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [releaseInfo, setReleaseInfo] = useState<AppReleaseInfo | null>(null);
+
+  const handleCheckForUpdate = async (openModal = true) => {
+    setCheckingUpdate(true);
+    triggerHaptic("medium");
+    try {
+      const info = await checkForAppUpdate();
+      setReleaseInfo(info);
+      if (openModal) {
+        setAppUpdateOpen(true);
+      }
+    } catch (err) {
+      console.warn("[Settings] App update check failed:", err);
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
 
   const { activeSpace, refreshLedgers } = useSpace();
 
@@ -2039,7 +2071,93 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
       )}
 
       {/* ============================================================ */}
-      {/* 8. SIGN OUT / EXIT GUEST */}
+      {/* 8. ABOUT & APP UPDATES */}
+      {/* ============================================================ */}
+      {!searchQuery.trim() && (
+        <section className="space-y-1.5 pt-1">
+          <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+            {isIndonesian ? "Aplikasi & Pembaruan" : "App & Updates"}
+          </div>
+
+          <div
+            className="rounded-2xl overflow-hidden backdrop-blur-md shadow-sm"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => handleCheckForUpdate(true)}
+              disabled={checkingUpdate}
+              className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full disabled:opacity-60"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Sparkles size={14} strokeWidth={1.75} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Trouvaille v{APP_VERSION}
+                  </span>
+                  <span
+                    className="text-[11px] truncate"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {isIndonesian
+                      ? `Build ${APP_BUILD_NUMBER} · Ketuk untuk periksa pembaruan`
+                      : `Build ${APP_BUILD_NUMBER} · Tap to check for updates`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {checkingUpdate ? (
+                  <Loader2
+                    size={14}
+                    className="animate-spin"
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                ) : releaseInfo?.hasUpdate ? (
+                  <span
+                    className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "var(--text-primary)",
+                      color: "var(--bg-primary)",
+                    }}
+                  >
+                    {isIndonesian ? "Pembaruan" : "Update"}
+                  </span>
+                ) : (
+                  <span
+                    className="text-[11px] font-medium"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {isIndonesian ? "Periksa" : "Check"}
+                  </span>
+                )}
+                <ChevronRight
+                  size={15}
+                  style={{ color: "var(--text-secondary)" }}
+                />
+              </div>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* ============================================================ */}
+      {/* 9. SIGN OUT / EXIT GUEST */}
       {/* ============================================================ */}
       {!searchQuery.trim() && (
         <div className="pt-2">
@@ -2198,6 +2316,14 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             setDailyReminderEnabled(enabled);
             setDailyReminderTime(time);
           }}
+        />
+
+        <AppUpdateModal
+          isOpen={appUpdateOpen}
+          onClose={() => setAppUpdateOpen(false)}
+          releaseInfo={releaseInfo}
+          checking={checkingUpdate}
+          onCheckAgain={() => handleCheckForUpdate(false)}
         />
       </Suspense>
     </div>

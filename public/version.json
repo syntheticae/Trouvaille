@@ -1,0 +1,23 @@
+{
+  "version": "1.2.0",
+  "build": 120,
+  "releaseDate": "2026-09-28",
+  "name": "Trouvaille v1.2.0",
+  "changelog": [
+    "Fitur setel ulang kata sandi (Reset Password) langsung via surel",
+    "Penyelarasan deep link Google OAuth khusus SideStore (.ipa) & Android (.apk)",
+    "Pemeriksa pembaruan aplikasi otomatis di dalam Pengaturan",
+    "Pengerasan keamanan fungsi basis data & optimasi indeks kueri"
+  ],
+  "changelog_en": [
+    "End-to-end password reset via recovery email",
+    "Native Google OAuth deep link flow for SideStore (.ipa) & Android (.apk)",
+    "In-app automatic update checker in Settings",
+    "Database RPC function hardening & query index optimization"
+  ],
+  "downloads": {
+    "androidApk": "https://iqjcmqkgrfmopznrfikx.supabase.co/storage/v1/object/public/app-releases/Trouvaille-latest.apk",
+    "iosIpa": "https://github.com/syntheticae/Trouvaille/releases/download/latest/Trouvaille.ipa",
+    "sideStoreSourceUrl": "https://trouvaille-drab.vercel.app/sidestore.json"
+  }
+}

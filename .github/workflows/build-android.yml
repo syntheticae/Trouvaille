@@ -71,3 +71,20 @@ jobs:
           else
             echo "Notice: Storage response was $HTTP_STATUS. Please ensure app-releases bucket policy is applied."
           fi
+
+          echo "Publishing version.json & sidestore.json to Supabase CDN..."
+          curl -s -o /dev/null -X POST \
+            "${SUPABASE_URL}/storage/v1/object/app-releases/version.json" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "x-upsert: true" \
+            --data-binary "@public/version.json" || true
+
+          curl -s -o /dev/null -X POST \
+            "${SUPABASE_URL}/storage/v1/object/app-releases/sidestore.json" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "x-upsert: true" \
+            --data-binary "@public/sidestore.json" || true

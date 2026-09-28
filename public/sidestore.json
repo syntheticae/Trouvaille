@@ -1,0 +1,20 @@
+{
+  "name": "Trouvaille Community",
+  "identifier": "com.alhafidz.trouvaille.source",
+  "sourceURL": "https://trouvaille-drab.vercel.app/sidestore.json",
+  "apps": [
+    {
+      "name": "Trouvaille",
+      "bundleIdentifier": "com.alhafidz.trouvaille",
+      "developerName": "Syntheticae",
+      "version": "1.2.0",
+      "versionDate": "2026-09-28T00:00:00Z",
+      "versionDescription": "Trouvaille v1.2.0: Reset Password, Deep Link OAuth for SideStore & APK, and Database Hardening.",
+      "downloadURL": "https://github.com/syntheticae/Trouvaille/releases/download/latest/Trouvaille.ipa",
+      "localizedDescription": "Minimalist luxury personal finance tracking and portfolio intelligence.",
+      "iconURL": "https://trouvaille-drab.vercel.app/icons/icon-192.png",
+      "tintColor": "121214",
+      "size": 15000000
+    }
+  ]
+}
