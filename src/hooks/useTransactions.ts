@@ -244,10 +244,10 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
 export const TX_BACKUP_STORAGE_KEY = "TROUVAILLE_TX_BACKUP_V1";
 
 export const TRANSACTION_SELECT_COLUMNS =
-  "id, user_id, amount, type, category_id, wallet_id, to_wallet_id, note, occurred_on, created_at, space_id, ledger_id, created_by_name, created_by_user_id, categories(id, name, emoji, type)";
+  "id, user_id, amount, type, category_id, wallet_id, to_wallet_id, note, occurred_on, created_at, ledger_id, created_by_name, created_by_user_id, categories(id, name, emoji, type)";
 
 export const TRANSACTION_FALLBACK_COLUMNS =
-  "id, user_id, amount, type, category_id, wallet_id, to_wallet_id, note, occurred_on, created_at, space_id, ledger_id, created_by_name, created_by_user_id";
+  "id, user_id, amount, type, category_id, wallet_id, to_wallet_id, note, occurred_on, created_at, ledger_id, created_by_name, created_by_user_id";
 
 import { useAuth } from "../contexts/AuthContext";
 import { emitSyncStatus } from "../components/ui/SyncStatusPill";
@@ -347,7 +347,28 @@ async function fetchTransactionChunk(
         if (filters?.endDate) fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate);
 
         const fallbackRes = await withTimeout(fallbackQuery, 15000);
-        if (fallbackRes.error) throw fallbackRes.error;
+        if (fallbackRes.error) {
+          let starQuery = supabase
+            .from("transactions")
+            .select("*")
+            .order("occurred_on", { ascending: false })
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, to);
+
+          if (filters?.ledgerId && filters.ledgerId !== "all") {
+            starQuery = starQuery.eq("ledger_id", filters.ledgerId);
+          } else if (filters?.filterByUserIdOnly && filters?.userId) {
+            starQuery = starQuery.eq("user_id", filters.userId);
+          }
+          if (filters?.categoryId) starQuery = starQuery.eq("category_id", filters.categoryId);
+          if (filters?.startDate) starQuery = starQuery.gte("occurred_on", filters.startDate);
+          if (filters?.endDate) starQuery = starQuery.lte("occurred_on", filters.endDate);
+
+          const starRes = await withTimeout(starQuery, 15000);
+          if (starRes.error) throw starRes.error;
+          return (starRes.data as unknown as Transaction[]) || [];
+        }
         return (fallbackRes.data as unknown as Transaction[]) || [];
       }
       return (data as unknown as Transaction[]) || [];
@@ -456,11 +477,34 @@ export async function fetchAllTransactionsFromSupabase(
         if (filters?.endDate) fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate);
 
         const fallbackRes = await withTimeout(fallbackQuery, 15000);
-        if (fallbackRes.error) throw fallbackRes.error;
-        if (fallbackRes.data && Array.isArray(fallbackRes.data)) {
+        if (fallbackRes.error) {
+          let starQuery = supabase
+            .from("transactions")
+            .select("*", { count: "exact" })
+            .order("occurred_on", { ascending: false })
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(0, pageSize - 1);
+
+          if (filters?.ledgerId && filters.ledgerId !== "all") {
+            starQuery = starQuery.eq("ledger_id", filters.ledgerId);
+          } else if (filters?.filterByUserIdOnly && filters?.userId) {
+            starQuery = starQuery.eq("user_id", filters.userId);
+          }
+          if (filters?.categoryId) starQuery = starQuery.eq("category_id", filters.categoryId);
+          if (filters?.startDate) starQuery = starQuery.gte("occurred_on", filters.startDate);
+          if (filters?.endDate) starQuery = starQuery.lte("occurred_on", filters.endDate);
+
+          const starRes = await withTimeout(starQuery, 15000);
+          if (starRes.error) throw starRes.error;
+          if (starRes.data && Array.isArray(starRes.data)) {
+            allRecords.push(...(starRes.data as unknown as Transaction[]));
+          }
+          totalCount = typeof starRes.count === "number" ? starRes.count : null;
+        } else if (fallbackRes.data && Array.isArray(fallbackRes.data)) {
           allRecords.push(...(fallbackRes.data as unknown as Transaction[]));
+          totalCount = typeof fallbackRes.count === "number" ? fallbackRes.count : null;
         }
-        totalCount = typeof fallbackRes.count === "number" ? fallbackRes.count : null;
       } else if (data && Array.isArray(data)) {
         allRecords.push(...(data as unknown as Transaction[]));
         totalCount = typeof count === "number" ? count : null;
@@ -626,14 +670,21 @@ export async function fetchAllTransactionsFromSupabase(
       console.warn("[fetchAllTransactionsFromSupabase] IndexedDB write warning:", e),
     );
 
-    // Keep lightweight localStorage slice as zero-delay synchronous backup
+    // Keep full synchronous backup in localStorage, slicing ONLY if QuotaExceeded
     try {
       localStorage.setItem(
         TX_BACKUP_STORAGE_KEY,
-        JSON.stringify(uniqueRecords.slice(0, 300)),
+        JSON.stringify(uniqueRecords),
       );
-    } catch (e) {
-      console.warn("[fetchAllTransactionsFromSupabase] Failed to write backup snapshot:", e);
+    } catch {
+      try {
+        localStorage.setItem(
+          TX_BACKUP_STORAGE_KEY,
+          JSON.stringify(uniqueRecords.slice(0, 1000)),
+        );
+      } catch (e) {
+        console.warn("[fetchAllTransactionsFromSupabase] Failed to write backup snapshot:", e);
+      }
     }
   }
 
@@ -678,7 +729,18 @@ export function useRecentTransactions(limit = 10) {
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
           .limit(limit);
-        if (fbErr) throw fbErr;
+        if (fbErr) {
+          const { data: starData, error: starErr } = await supabase
+            .from("transactions")
+            .select("*")
+            .eq("user_id", userId)
+            .order("occurred_on", { ascending: false })
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .limit(limit);
+          if (starErr) throw starErr;
+          return ((starData || []) as unknown) as Transaction[];
+        }
         return ((fallback || []) as unknown) as Transaction[];
       }
       return ((data || []) as unknown) as Transaction[];
@@ -755,7 +817,16 @@ export function useDayTransactions(date: string) {
           .eq("user_id", userId)
           .eq("occurred_on", date)
           .order("created_at", { ascending: false });
-        if (fbErr) throw fbErr;
+        if (fbErr) {
+          const { data: starData, error: starErr } = await supabase
+            .from("transactions")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("occurred_on", date)
+            .order("created_at", { ascending: false });
+          if (starErr) throw starErr;
+          return ((starData || []) as unknown) as Transaction[];
+        }
         return ((fb || []) as unknown) as Transaction[];
       }
       return ((data || []) as unknown) as Transaction[];
