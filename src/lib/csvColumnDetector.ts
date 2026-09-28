@@ -1,7 +1,7 @@
 // ======================================================================
 // TROUVAILLE SMART CSV COLUMN AUTO-DETECTOR
-// Detects date, description, debit, credit, amount, type & balance columns
-// from arbitrary CSV/Excel headers and data-row heuristics.
+// Detects date, description, debit, credit, amount, type, wallet,
+// category & balance columns from arbitrary CSV/Excel headers and data-row heuristics.
 // ======================================================================
 
 import { parseLocalizedNumber } from "./statementParser";
@@ -19,6 +19,10 @@ export interface DetectedColumnMap {
   amountCol: number | null;
   /** 0-based index of a type/direction column (DB/CR/D/K), or null */
   typeCol: number | null;
+  /** 0-based index of the wallet/account column (for multi-account files), or null */
+  walletCol: number | null;
+  /** 0-based index of the category column (from other finance apps), or null */
+  categoryCol: number | null;
   /** 0-based index of the balance/saldo column (informational only), or null */
   balanceCol: number | null;
   /** 0.0 – 1.0 confidence: 1.0 = all key columns found, lower = partial */
@@ -59,7 +63,17 @@ const AMOUNT_KEYWORDS = [
 
 const TYPE_KEYWORDS = [
   "jenis", "type", "tipe", "direction", "d/k", "db/cr",
-  "debet/kredit", "kategori", "status",
+  "debet/kredit", "status",
+];
+
+const WALLET_KEYWORDS = [
+  "akun", "account", "wallet", "dompet", "rekening", "sumber dana",
+  "source", "payment method", "metode pembayaran", "metode", "bank",
+];
+
+const CATEGORY_KEYWORDS = [
+  "kategori", "category", "pos", "kategori transaksi", "pos pengeluaran",
+  "group", "kelompok", "subkategori", "classification",
 ];
 
 const BALANCE_KEYWORDS = [
@@ -120,6 +134,8 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
     { name: "credit", keywords: CREDIT_KEYWORDS },
     { name: "amount", keywords: AMOUNT_KEYWORDS },
     { name: "type", keywords: TYPE_KEYWORDS },
+    { name: "wallet", keywords: WALLET_KEYWORDS },
+    { name: "category", keywords: CATEGORY_KEYWORDS },
     { name: "balance", keywords: BALANCE_KEYWORDS },
   ] as const;
 
@@ -132,6 +148,8 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
     credit: [],
     amount: [],
     type: [],
+    wallet: [],
+    category: [],
     balance: [],
   };
 
@@ -175,7 +193,7 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
           scores.credit[col] += 0.3;
         }
         if (textMatches >= sampleCount * 0.6 && numericMatches === 0 && dateMatches === 0) {
-          scores.desc[col] += 0.6;
+          scores.desc[col] += 0.4;
         }
       }
     }
@@ -207,6 +225,8 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
   const creditCol = pickBest("credit");
   const amountCol = pickBest("amount");
   const typeCol = pickBest("type");
+  const walletCol = pickBest("wallet");
+  const categoryCol = pickBest("category");
   const balanceCol = pickBest("balance");
 
   // Fallback positional heuristics if nothing assigned
@@ -237,6 +257,8 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
     creditCol,
     amountCol: finalAmountCol,
     typeCol,
+    walletCol,
+    categoryCol,
     balanceCol,
     confidence,
   };
@@ -253,6 +275,8 @@ export type ColumnRole =
   | "credit"
   | "amount"
   | "type"
+  | "wallet"
+  | "category"
   | "balance"
   | "ignore";
 
@@ -264,6 +288,8 @@ export function columnRoleLabel(role: ColumnRole, isIndonesian: boolean): string
     credit: ["Kredit (Masuk)", "Credit (In)"],
     amount: ["Jumlah", "Amount"],
     type: ["Jenis (DB/CR)", "Type (DB/CR)"],
+    wallet: ["Dompet / Akun", "Wallet / Account"],
+    category: ["Kategori", "Category"],
     balance: ["Saldo", "Balance"],
     ignore: ["Abaikan", "Ignore"],
   };

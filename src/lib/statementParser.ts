@@ -21,6 +21,8 @@ export interface ParsedStatementItem {
   cleanDescription: string;
   amount: number;
   type: TransactionType; // "income" | "expense" | "transfer"
+  walletId?: string | null;
+  walletName?: string | null;
   destinationWalletId?: string | null;
   destinationWalletName?: string | null;
   balance?: number;
@@ -54,6 +56,10 @@ export interface ParseStatementResult {
   items: ParsedStatementItem[];
   /** Detected column mapping (only set for CSV/Excel inputs) */
   columnMap?: DetectedColumnMap;
+  /** Unique wallet/account names found in the file that do not exist yet */
+  newWalletsDetected: string[];
+  /** Unique category names found in the file that do not exist yet */
+  newCategoriesDetected: string[];
   summary: {
     totalInflow: number;
     totalOutflow: number;
@@ -61,7 +67,7 @@ export interface ParseStatementResult {
     duplicateCount: number;
     validCount: number;
   };
-}
+};
 
 // -----------------------------------------------------------------------
 // Number Parser — handles Indonesian & US number formats
@@ -277,6 +283,8 @@ export function parseStatementText(
     return {
       detectedFormat: "generic_csv",
       items: [],
+      newWalletsDetected: [],
+      newCategoriesDetected: [],
       summary: { totalInflow: 0, totalOutflow: 0, totalTransfer: 0, duplicateCount: 0, validCount: 0 },
     };
   }
@@ -372,6 +380,57 @@ export function parseStatementText(
       const normalizedDate = normalizeDateString(dateStr || new Date().toISOString());
       const cleanDesc = cleanBankNarration(description);
 
+      // Multi-wallet extraction from row (if file has an account/wallet column)
+      let itemWalletId: string | null = null;
+      let itemWalletName: string | null = null;
+
+      if (cm.walletCol !== null && cols[cm.walletCol]) {
+        const rawWallet = cols[cm.walletCol].trim();
+        if (rawWallet) {
+          itemWalletName = rawWallet;
+          const matchedW = wallets.find(
+            (w) => w.name.toLowerCase().trim() === rawWallet.toLowerCase()
+          );
+          if (matchedW) {
+            itemWalletId = matchedW.id;
+            itemWalletName = matchedW.name;
+          }
+        }
+      }
+
+      // Category extraction from row (if file has a category column)
+      let itemCategoryId: string | null = null;
+      let itemCategoryName: string | null = null;
+      let itemCategoryEmoji: string | null = null;
+
+      if (cm.categoryCol !== null && cols[cm.categoryCol]) {
+        const rawCat = cols[cm.categoryCol].trim();
+        if (rawCat) {
+          itemCategoryName = rawCat;
+          const matchedC = categories.find(
+            (c) => c.name.toLowerCase().trim() === rawCat.toLowerCase()
+          );
+          if (matchedC) {
+            itemCategoryId = matchedC.id;
+            itemCategoryName = matchedC.name;
+            itemCategoryEmoji = matchedC.emoji;
+          }
+        }
+      }
+
+      // If category not explicitly defined in row, resolve via semantic classifier
+      if (!itemCategoryName) {
+        const mockTx: Partial<Transaction> = {
+          note: `${cleanDesc} ${description}`,
+          type,
+          amount,
+        };
+        const resolvedCat = resolveTransactionCategory(mockTx, categories);
+        itemCategoryId = resolvedCat.id || null;
+        itemCategoryName = resolvedCat.name;
+        itemCategoryEmoji = resolvedCat.emoji;
+      }
+
       // Transfer vs Expense check
       let destinationWalletId: string | null = null;
       let destinationWalletName: string | null = null;
@@ -385,13 +444,6 @@ export function parseStatementText(
           destinationWalletName = matched.name;
         }
       }
-
-      const mockTx: Partial<Transaction> = {
-        note: `${cleanDesc} ${description}`,
-        type,
-        amount,
-      };
-      const resolvedCat = resolveTransactionCategory(mockTx, categories);
 
       const roundedAmt = Math.round(amount / 1000) * 1000;
       const noteSlug = cleanDesc.toLowerCase().replace(/\s+/g, "").slice(0, 20);
@@ -409,11 +461,13 @@ export function parseStatementText(
         cleanDescription: cleanDesc,
         amount,
         type,
+        walletId: itemWalletId,
+        walletName: itemWalletName,
         destinationWalletId,
         destinationWalletName,
-        suggestedCategoryId: resolvedCat.id || null,
-        suggestedCategoryName: resolvedCat.name,
-        suggestedCategoryEmoji: resolvedCat.emoji,
+        suggestedCategoryId: itemCategoryId,
+        suggestedCategoryName: itemCategoryName,
+        suggestedCategoryEmoji: itemCategoryEmoji,
         isDuplicate,
         duplicateReason,
         selected: !isDuplicate,
@@ -426,9 +480,23 @@ export function parseStatementText(
     const totalTransfer = items.filter((it) => it.selected && it.type === "transfer").reduce((s, it) => s + it.amount, 0);
     const duplicateCount = items.filter((it) => it.isDuplicate).length;
 
+    // Detect new wallets and categories from CSV
+    const newWalletsSet = new Set<string>();
+    const newCategoriesSet = new Set<string>();
+    for (const it of items) {
+      if (it.walletName && !it.walletId) {
+        newWalletsSet.add(it.walletName);
+      }
+      if (it.suggestedCategoryName && !it.suggestedCategoryId) {
+        newCategoriesSet.add(it.suggestedCategoryName);
+      }
+    }
+
     return {
       detectedFormat,
       columnMap: resolvedColumnMap,
+      newWalletsDetected: Array.from(newWalletsSet),
+      newCategoriesDetected: Array.from(newCategoriesSet),
       items,
       summary: { totalInflow, totalOutflow, totalTransfer, duplicateCount, validCount: items.length },
     };
@@ -647,6 +715,8 @@ export function parseStatementText(
   return {
     detectedFormat,
     columnMap,
+    newWalletsDetected: [],
+    newCategoriesDetected: [],
     items,
     summary: { totalInflow, totalOutflow, totalTransfer, duplicateCount, validCount: items.length },
   };

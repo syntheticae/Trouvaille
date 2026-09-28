@@ -37,12 +37,18 @@ import {
   Eye,
   EyeOff,
   UploadCloud,
+  Search,
+  Landmark,
+  Smartphone,
+  Coins,
+  Building2,
+  TrendingUp,
 } from "lucide-react";
 import { parseStatementText, type ParsedStatementItem, type StatementFormat } from "../../lib/statementParser";
 import { detectColumns, columnRoleLabel, type DetectedColumnMap, type ColumnRole } from "../../lib/csvColumnDetector";
 import { parseDelimitedText } from "../../lib/csvParser";
-import { useWallets } from "../../hooks/useWallets";
-import { useCategories } from "../../hooks/useCategories";
+import { useWallets, useAddWallet } from "../../hooks/useWallets";
+import { useCategories, useAddCategory } from "../../hooks/useCategories";
 import { useAllTransactions, useBatchAddTransactions } from "../../hooks/useTransactions";
 import { useSpace } from "../../contexts/SpaceContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -98,6 +104,8 @@ const ALL_COLUMN_ROLES: ColumnRole[] = [
   "credit",
   "amount",
   "type",
+  "wallet",
+  "category",
   "balance",
   "ignore",
 ];
@@ -111,6 +119,8 @@ function buildColumnAssignment(map: DetectedColumnMap, headerCount: number): Col
   if (map.creditCol !== null && map.creditCol < headerCount) roles[map.creditCol] = "credit";
   if (map.amountCol !== null && map.amountCol < headerCount) roles[map.amountCol] = "amount";
   if (map.typeCol !== null && map.typeCol < headerCount) roles[map.typeCol] = "type";
+  if (map.walletCol !== null && map.walletCol !== undefined && map.walletCol < headerCount) roles[map.walletCol] = "wallet";
+  if (map.categoryCol !== null && map.categoryCol !== undefined && map.categoryCol < headerCount) roles[map.categoryCol] = "category";
   if (map.balanceCol !== null && map.balanceCol < headerCount) roles[map.balanceCol] = "balance";
   return { roles, userModified: false };
 }
@@ -125,10 +135,22 @@ function assignmentToColumnMap(assignment: ColumnAssignment): DetectedColumnMap 
     creditCol: roles.includes("credit") ? roles.indexOf("credit") : null,
     amountCol: roles.includes("amount") ? roles.indexOf("amount") : null,
     typeCol: roles.includes("type") ? roles.indexOf("type") : null,
+    walletCol: roles.includes("wallet") ? roles.indexOf("wallet") : null,
+    categoryCol: roles.includes("category") ? roles.indexOf("category") : null,
     balanceCol: roles.includes("balance") ? roles.indexOf("balance") : null,
     confidence: 1.0,
   };
 }
+
+const WALLET_ICON_MAP: Record<string, React.ElementType> = {
+  Landmark,
+  CreditCard,
+  Smartphone,
+  Coins,
+  TrendingUp,
+  Building2,
+  Wallet: CreditCard,
+};
 
 // -----------------------------------------------------------------------
 // Component
@@ -143,6 +165,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
   const { data: categories = [] } = useCategories();
   const { data: allTxs = [] } = useAllTransactions();
   const batchAddTx = useBatchAddTransactions();
+  const addWallet = useAddWallet();
+  const addCategory = useAddCategory();
   const { showToast } = useToast();
 
   // --- Step & Navigation State ---
@@ -153,9 +177,14 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMsg, setProcessingMsg] = useState("");
 
-  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(() =>
-    wallets.length > 0 ? wallets[0].id : null
-  );
+  // Target wallet selection is optional: null represents "Otomatis dari File / Auto-Detect"
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
+  const [walletSearchQuery, setWalletSearchQuery] = useState("");
+
+  // Detected entities for auto-creation
+  const [newWallets, setNewWallets] = useState<string[]>([]);
+  const [newCategories, setNewCategories] = useState<string[]>([]);
+  const [autoCreateNewEntities, setAutoCreateNewEntities] = useState(true);
 
   // --- Parsed Results ---
   const [parsedFormat, setParsedFormat] = useState<StatementFormat>("generic_csv");
@@ -179,9 +208,19 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
   const [destWalletSheetOpen, setDestWalletSheetOpen] = useState(false);
 
   const activeWallet = useMemo(
-    () => wallets.find((w) => w.id === selectedWalletId) || wallets[0] || null,
+    () => (selectedWalletId ? wallets.find((w) => w.id === selectedWalletId) || null : null),
     [wallets, selectedWalletId]
   );
+
+  const filteredWallets = useMemo(() => {
+    if (!walletSearchQuery.trim()) return wallets;
+    const q = walletSearchQuery.toLowerCase().trim();
+    return wallets.filter(
+      (w) =>
+        w.name.toLowerCase().includes(q) ||
+        (w.classification && w.classification.toLowerCase().includes(q))
+    );
+  }, [wallets, walletSearchQuery]);
 
   // --- Filtered and Metric Calculations ---
   const visibleItems = useMemo(
@@ -390,6 +429,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
 
       setParsedFormat(result.detectedFormat);
       setParsedItems(result.items);
+      setNewWallets(result.newWalletsDetected || []);
+      setNewCategories(result.newCategoriesDetected || []);
       setStep("review");
       triggerHaptic("medium");
     },
@@ -517,6 +558,50 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
     setStep("importing");
     triggerHaptic("heavy");
 
+    // 1. Auto-create new wallets & categories if enabled
+    const newWalletMap: Record<string, string> = {};
+    const newCategoryMap: Record<string, string> = {};
+
+    if (autoCreateNewEntities) {
+      // Auto-create missing wallets
+      for (const name of newWallets) {
+        const existing = wallets.find((w) => w.name.trim().toLowerCase() === name.trim().toLowerCase());
+        if (existing) {
+          newWalletMap[name.trim().toLowerCase()] = existing.id;
+        } else {
+          try {
+            const created = await addWallet.mutateAsync({ name });
+            if (created?.id) {
+              newWalletMap[name.trim().toLowerCase()] = created.id;
+            }
+          } catch (err) {
+            console.warn("[StatementImport] Auto-create wallet failed:", name, err);
+          }
+        }
+      }
+
+      // Auto-create missing categories
+      for (const name of newCategories) {
+        const existing = categories.find((c) => c.name.trim().toLowerCase() === name.trim().toLowerCase());
+        if (existing) {
+          newCategoryMap[name.trim().toLowerCase()] = existing.id;
+        } else {
+          try {
+            const created = await addCategory.mutateAsync({
+              name,
+              emoji: "🏷️",
+              type: "expense",
+            });
+            if (created?.id) {
+              newCategoryMap[name.trim().toLowerCase()] = created.id;
+            }
+          } catch (err) {
+            console.warn("[StatementImport] Auto-create category failed:", name, err);
+          }
+        }
+      }
+    }
+
     const CHUNK_SIZE = 50;
     const total = selectedItems.length;
     let imported = 0;
@@ -524,17 +609,49 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
     for (let i = 0; i < selectedItems.length; i += CHUNK_SIZE) {
       const chunk = selectedItems.slice(i, i + CHUNK_SIZE);
 
-      const payload = chunk.map((item) => ({
-        amount: item.amount,
-        type: item.type,
-        category_id: item.suggestedCategoryId,
-        wallet_id: selectedWalletId,
-        to_wallet_id: item.type === "transfer" ? item.destinationWalletId || null : null,
-        occurred_on: item.date,
-        note: item.cleanDescription || item.description,
-        ledger_id: activeSpaceId !== "all" ? activeSpaceId : "personal",
-        space_id: activeSpaceId !== "all" ? activeSpaceId : null,
-      }));
+      const payload = chunk.map((item) => {
+        // Resolve wallet
+        let finalWalletId: string | null = selectedWalletId;
+        if (!finalWalletId) {
+          if (item.walletId) {
+            finalWalletId = item.walletId;
+          } else if (item.walletName && newWalletMap[item.walletName.trim().toLowerCase()]) {
+            finalWalletId = newWalletMap[item.walletName.trim().toLowerCase()];
+          } else if (item.walletName) {
+            const matched = wallets.find(
+              (w) => w.name.trim().toLowerCase() === item.walletName!.trim().toLowerCase()
+            );
+            finalWalletId = matched ? matched.id : wallets[0]?.id || null;
+          } else {
+            finalWalletId = wallets[0]?.id || null;
+          }
+        }
+
+        // Resolve category
+        let finalCategoryId: string | null = item.suggestedCategoryId || null;
+        if (!finalCategoryId && item.suggestedCategoryName) {
+          if (newCategoryMap[item.suggestedCategoryName.trim().toLowerCase()]) {
+            finalCategoryId = newCategoryMap[item.suggestedCategoryName.trim().toLowerCase()];
+          } else {
+            const matchedCat = categories.find(
+              (c) => c.name.trim().toLowerCase() === item.suggestedCategoryName!.trim().toLowerCase()
+            );
+            if (matchedCat) finalCategoryId = matchedCat.id;
+          }
+        }
+
+        return {
+          amount: item.amount,
+          type: item.type,
+          category_id: finalCategoryId,
+          wallet_id: finalWalletId,
+          to_wallet_id: item.type === "transfer" ? item.destinationWalletId || null : null,
+          occurred_on: item.date,
+          note: item.cleanDescription || item.description,
+          ledger_id: activeSpaceId !== "all" ? activeSpaceId : "personal",
+          space_id: activeSpaceId !== "all" ? activeSpaceId : null,
+        };
+      });
 
       try {
         await batchAddTx.mutateAsync(payload);
@@ -569,6 +686,11 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
     setImportProgress(0);
     setHideDuplicates(false);
     setInputTab("file");
+    setNewWallets([]);
+    setNewCategories([]);
+    setWalletSearchQuery("");
+    setAutoCreateNewEntities(true);
+    setSelectedWalletId(null);
     onClose();
   };
 
@@ -677,9 +799,17 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  <CreditCard size={14} style={{ color: "var(--text-secondary)" }} />
+                  {selectedWalletId ? (
+                    <CreditCard size={14} style={{ color: "var(--text-secondary)" }} />
+                  ) : (
+                    <Sparkles size={14} style={{ color: "var(--accent)" }} />
+                  )}
                   <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {activeWallet?.name || (isIndonesian ? "Pilih Dompet" : "Select Wallet")}
+                    {selectedWalletId
+                      ? activeWallet?.name || (isIndonesian ? "Pilih Dompet" : "Select Wallet")
+                      : isIndonesian
+                      ? "Otomatis dari File"
+                      : "Auto-Detect"}
                   </span>
                   <ChevronDown size={12} style={{ color: "var(--text-tertiary)" }} />
                 </button>
@@ -1136,6 +1266,81 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                 </div>
               </div>
 
+              {/* Auto-detected Entities Badge & Toggle */}
+              {(newWallets.length > 0 || newCategories.length > 0) && (
+                <div
+                  className="mx-4 mt-3 p-3 rounded-2xl flex items-center justify-between gap-3 shrink-0"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--glass-border)",
+                        color: "var(--accent)",
+                      }}
+                    >
+                      <Sparkles size={13} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold truncate" style={{ color: "var(--text-primary)" }}>
+                        {[
+                          newWallets.length > 0
+                            ? `${newWallets.length} ${isIndonesian ? "Akun Baru" : "New Accounts"}`
+                            : null,
+                          newCategories.length > 0
+                            ? `${newCategories.length} ${isIndonesian ? "Kategori Baru" : "New Categories"}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                      <p className="text-[10px] truncate font-mono mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                        {[
+                          newWallets.length > 0
+                            ? `${isIndonesian ? "Akun" : "Accounts"}: ${newWallets.join(", ")}`
+                            : null,
+                          newCategories.length > 0
+                            ? `${isIndonesian ? "Kategori" : "Categories"}: ${newCategories.join(", ")}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" | ")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setAutoCreateNewEntities(!autoCreateNewEntities);
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-[10px] font-semibold shrink-0 cursor-pointer active:scale-95 transition-all"
+                    style={{
+                      background: autoCreateNewEntities ? "var(--accent)" : "var(--bg-elevated)",
+                      borderColor: autoCreateNewEntities ? "transparent" : "var(--glass-border)",
+                      color: autoCreateNewEntities ? "var(--accent-ink)" : "var(--text-secondary)",
+                    }}
+                  >
+                    {autoCreateNewEntities && <Check size={11} strokeWidth={2.5} />}
+                    <span>
+                      {autoCreateNewEntities
+                        ? isIndonesian
+                          ? "Buat Otomatis"
+                          : "Auto-Create"
+                        : isIndonesian
+                        ? "Lewati"
+                        : "Skip"}
+                    </span>
+                  </button>
+                </div>
+              )}
+
               {/* Transactions List */}
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {visibleItems.map((item) => {
@@ -1222,8 +1427,27 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                           {item.cleanDescription}
                         </p>
 
-                        {/* Badges: Category & Destination Wallet */}
+                        {/* Badges: Wallet, Category & Destination Wallet */}
                         <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          {/* Wallet badge */}
+                          {(item.walletName || (!selectedWalletId && item.walletId)) && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold truncate max-w-[130px]"
+                              style={{
+                                background: "var(--bg-elevated)",
+                                borderColor: "var(--glass-border)",
+                                color: "var(--text-secondary)",
+                              }}
+                            >
+                              <CreditCard size={10} />
+                              <span className="truncate">
+                                {item.walletName ||
+                                  wallets.find((w) => w.id === item.walletId)?.name ||
+                                  (isIndonesian ? "Dompet" : "Wallet")}
+                              </span>
+                            </span>
+                          )}
+
                           {/* Category pill */}
                           <button
                             type="button"
@@ -1429,41 +1653,154 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
       {/* Target Ingestion Wallet Drawer */}
       <BottomSheet
         isOpen={walletSheetOpen}
-        onClose={() => setWalletSheetOpen(false)}
-        title={isIndonesian ? "Pilih Dompet Ingestion" : "Select Destination Wallet"}
+        onClose={() => {
+          setWalletSheetOpen(false);
+          setWalletSearchQuery("");
+        }}
+        title={isIndonesian ? "Pilih Akun / Dompet" : "Select Account / Wallet"}
       >
         <div
-          className="space-y-2 p-2"
+          className="space-y-3 p-2"
           style={{
             paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px)",
           }}
         >
-          {wallets.map((w) => (
+          {/* Search Box */}
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-2xl"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <Search size={14} style={{ color: "var(--text-tertiary)" }} />
+            <input
+              type="text"
+              value={walletSearchQuery}
+              onChange={(e) => setWalletSearchQuery(e.target.value)}
+              placeholder={isIndonesian ? "Cari akun atau dompet…" : "Search account or wallet…"}
+              className="bg-transparent flex-1 text-[12px] outline-none placeholder:text-zinc-500"
+              style={{ color: "var(--text-primary)" }}
+            />
+            {walletSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setWalletSearchQuery("")}
+                className="text-[11px] p-1 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white cursor-pointer"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          {/* Option 1: Otomatis dari File (Multi-Akun) */}
+          {!walletSearchQuery && (
             <button
-              key={w.id}
               type="button"
               onClick={() => {
                 triggerHaptic("light");
-                setSelectedWalletId(w.id);
+                setSelectedWalletId(null);
                 setWalletSheetOpen(false);
+                setWalletSearchQuery("");
               }}
-              className="w-full p-3.5 rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-98"
-              style={{
-                background: selectedWalletId === w.id ? "var(--glass-fill-strong)" : "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-              }}
+              className={`w-full p-3.5 rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-98 border ${
+                selectedWalletId === null
+                  ? "border-white/20 bg-white/[0.08] shadow-sm"
+                  : "border-[var(--glass-border)] bg-[var(--glass-fill)]"
+              }`}
             >
               <div className="flex items-center gap-3">
-                <CreditCard size={16} style={{ color: "var(--text-secondary)" }} />
-                <span className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
-                  {w.name}
-                </span>
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--accent)",
+                  }}
+                >
+                  <Sparkles size={16} />
+                </div>
+                <div className="text-left">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
+                      {isIndonesian ? "Otomatis dari File (Multi-Akun)" : "Auto-Detect from File"}
+                    </span>
+                    <span
+                      className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-semibold"
+                      style={{
+                        background: "var(--glass-fill)",
+                        border: "1px solid var(--glass-border)",
+                        color: "var(--accent)",
+                      }}
+                    >
+                      {isIndonesian ? "Rekomendasi" : "Recommended"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                    {isIndonesian
+                      ? "Gunakan kolom akun dari file untuk memetakan dompet tiap transaksi"
+                      : "Route transactions to respective accounts specified in the file"}
+                  </p>
+                </div>
               </div>
-              {selectedWalletId === w.id && (
-                <Check size={16} style={{ color: "var(--accent)" }} />
-              )}
+              {selectedWalletId === null && <Check size={16} style={{ color: "var(--accent)" }} />}
             </button>
-          ))}
+          )}
+
+          {/* Wallet List */}
+          <div className="space-y-2">
+            {filteredWallets.map((w) => {
+              const isSelected = selectedWalletId === w.id;
+              const IconComp = WALLET_ICON_MAP[w.icon || ""] || CreditCard;
+              return (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setSelectedWalletId(w.id);
+                    setWalletSheetOpen(false);
+                    setWalletSearchQuery("");
+                  }}
+                  className={`w-full p-3.5 rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-98 border ${
+                    isSelected
+                      ? "border-white/20 bg-white/[0.08] shadow-sm"
+                      : "border-[var(--glass-border)] bg-[var(--glass-fill)]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--glass-border)",
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <IconComp size={16} strokeWidth={1.75} />
+                    </div>
+                    <div className="text-left">
+                      <span className="text-[13px] font-bold block" style={{ color: "var(--text-primary)" }}>
+                        {w.name}
+                      </span>
+                      <span
+                        className="text-[9px] font-mono uppercase tracking-wider"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {w.classification || "liquid"}
+                      </span>
+                    </div>
+                  </div>
+                  {isSelected && <Check size={16} style={{ color: "var(--accent)" }} />}
+                </button>
+              );
+            })}
+            {filteredWallets.length === 0 && (
+              <div className="py-8 text-center text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                {isIndonesian ? "Tidak ada dompet ditemukan" : "No wallets found"}
+              </div>
+            )}
+          </div>
         </div>
       </BottomSheet>
 
@@ -1481,26 +1818,46 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
         >
           {wallets
             .filter((w) => w.id !== selectedWalletId)
-            .map((w) => (
-              <button
-                key={w.id}
-                type="button"
-                onClick={() => handleSelectDestWallet(w)}
-                className="w-full p-3.5 rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-98"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <CreditCard size={16} style={{ color: "var(--text-secondary)" }} />
-                  <span className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
-                    {w.name}
-                  </span>
-                </div>
-                <ArrowRight size={14} style={{ color: "var(--text-tertiary)" }} />
-              </button>
-            ))}
+            .map((w) => {
+              const IconComp = WALLET_ICON_MAP[w.icon || ""] || CreditCard;
+              return (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => handleSelectDestWallet(w)}
+                  className="w-full p-3.5 rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-98"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--glass-border)",
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <IconComp size={16} strokeWidth={1.75} />
+                    </div>
+                    <div className="text-left">
+                      <span className="text-[13px] font-bold block" style={{ color: "var(--text-primary)" }}>
+                        {w.name}
+                      </span>
+                      <span
+                        className="text-[9px] font-mono uppercase tracking-wider"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {w.classification || "liquid"}
+                      </span>
+                    </div>
+                  </div>
+                  <ArrowRight size={14} style={{ color: "var(--text-tertiary)" }} />
+                </button>
+              );
+            })}
         </div>
       </BottomSheet>
     </div>
