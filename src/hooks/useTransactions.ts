@@ -131,14 +131,17 @@ export function upsertTransactionAcrossCaches(
   qc: ReturnType<typeof useQueryClient>,
   tx: Transaction,
 ) {
-  // 1. Update in-memory snapshot (RAM only — NOT written to localStorage/IndexedDB here).
-  // Persistent storage is written exclusively by fetchAllTransactionsFromSupabase after
-  // Supabase confirms the record. This prevents phantom transactions from surviving
-  // app restarts when a network request fails partway through.
+  // 1. Immediately update in-memory snapshot and offline vault backup so fresh queries always see the item
   try {
     const current = inMemoryTransactionsSnapshot || [];
     const withoutTx = current.filter((item) => item.id !== tx.id);
     inMemoryTransactionsSnapshot = sortTransactionsDesc([tx, ...withoutTx]);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(inMemoryTransactionsSnapshot));
+      } catch {}
+      setVaultItem(TX_BACKUP_STORAGE_KEY, inMemoryTransactionsSnapshot).catch(() => {});
+    }
   } catch {}
 
   // 2. Update active React Query caches
@@ -195,11 +198,16 @@ export function removeTransactionFromCaches(
   qc: ReturnType<typeof useQueryClient>,
   id: string,
 ) {
-  // Update in-memory snapshot (RAM only — persistent storage is rewritten by the
-  // next fetchAllTransactionsFromSupabase call which will exclude the deleted record)
+  // Update in-memory snapshot and offline vault backup
   try {
     if (inMemoryTransactionsSnapshot) {
       inMemoryTransactionsSnapshot = inMemoryTransactionsSnapshot.filter((item) => item.id !== id);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(inMemoryTransactionsSnapshot));
+        } catch {}
+        setVaultItem(TX_BACKUP_STORAGE_KEY, inMemoryTransactionsSnapshot).catch(() => {});
+      }
     }
   } catch {}
 
@@ -213,7 +221,6 @@ export function removeTransactionFromCaches(
     );
   });
 }
-
 
 export function findTransactionInCache(
   qc: ReturnType<typeof useQueryClient>,
@@ -683,18 +690,12 @@ export async function fetchAllTransactionsFromSupabase(
     }
   }
 
-  // Build a server-only deduplicated map (no unconfirmed pending inserts).
-  // This is the source-of-truth used for persistent storage so phantom
-  // transactions from failed network requests never corrupt the cache.
-  const serverOnlyMap = new Map<string, Transaction>();
-  for (const item of allRecords) serverOnlyMap.set(item.id, item);
-
   let uniqueRecords: Transaction[];
 
   if (filters?.skipPendingOverlay) {
-    uniqueRecords = sortTransactionsDesc(Array.from(serverOnlyMap.values()));
+    uniqueRecords = sortTransactionsDesc(allRecords);
   } else {
-    // Overlay local pending mutations onto server data for optimistic display
+    // Deduplicate and overlay local pending mutations
     const pendingMutations = getPendingMutations();
     const pendingDeletes = new Set<string>();
     const pendingUpserts = new Map<string, Transaction>();
@@ -708,10 +709,14 @@ export async function fetchAllTransactionsFromSupabase(
       }
     }
 
-    const recordMap = new Map<string, Transaction>(serverOnlyMap);
-    for (const id of pendingDeletes) recordMap.delete(id);
+    const recordMap = new Map<string, Transaction>();
+    for (const item of allRecords) {
+      if (!pendingDeletes.has(item.id)) {
+        recordMap.set(item.id, item);
+      }
+    }
 
-    // Overlay pending inserts/updates for optimistic UI (display only, not persisted)
+    // Preserve and overlay all local pending inserts/updates
     for (const [id, pendingTx] of pendingUpserts) {
       if (!pendingDeletes.has(id)) {
         recordMap.set(id, pendingTx);
@@ -728,8 +733,7 @@ export async function fetchAllTransactionsFromSupabase(
     );
   }
 
-  // Dataset Integrity Guard — compare server-confirmed count (not overlaid count)
-  // against Supabase totalCount to avoid false truncation positives from pending inserts
+  // Dataset Integrity Guard: If a known totalCount exists, ensure we didn't receive an incomplete partial slice
   const isTruncatedFetch =
     totalCount !== null &&
     totalCount > 0 &&
@@ -737,10 +741,10 @@ export async function fetchAllTransactionsFromSupabase(
     !filters?.startDate &&
     !filters?.endDate &&
     !filters?.search &&
-    serverOnlyMap.size < totalCount;
+    uniqueRecords.length < totalCount;
 
   if (isTruncatedFetch) {
-    console.warn(`[fetchAllTransactionsFromSupabase] Incomplete sync detected: ${serverOnlyMap.size}/${totalCount} server records.`);
+    console.warn(`[fetchAllTransactionsFromSupabase] Incomplete sync detected: ${uniqueRecords.length}/${totalCount} records.`);
     if (inMemoryTransactionsSnapshot && inMemoryTransactionsSnapshot.length > uniqueRecords.length) {
       console.warn(`[fetchAllTransactionsFromSupabase] Preserving healthier local snapshot of ${inMemoryTransactionsSnapshot.length} records.`);
       emitSyncStatus({ status: "error", message: "Sinkronisasi belum lengkap" });
@@ -748,33 +752,32 @@ export async function fetchAllTransactionsFromSupabase(
     }
   }
 
-  // Persist full dataset to IndexedDB and localStorage.
-  // IMPORTANT: Only write server-confirmed records to persistent storage.
-  // Pending mutations are stored separately in TROUVAILLE_PENDING_MUTATIONS_V2
-  // and re-overlaid at fetch time — this prevents phantom transactions from
-  // surviving app restarts after a failed Supabase upsert.
+  // Persist full 100% dataset (all 2,534+ transactions) to IndexedDB off-main-thread!
   if (
     !filters?.categoryId &&
     !filters?.startDate &&
     !filters?.endDate &&
     !filters?.search &&
-    serverOnlyMap.size > 0 &&
+    uniqueRecords.length > 0 &&
     !isTruncatedFetch
   ) {
-    // In-memory snapshot includes pending overlay for immediate placeholder rendering
     inMemoryTransactionsSnapshot = uniqueRecords;
-
-    // Persistent storage stores ONLY server-confirmed records
-    const confirmedRecords = sortTransactionsDesc(Array.from(serverOnlyMap.values()));
-    setVaultItem(TX_BACKUP_STORAGE_KEY, confirmedRecords).catch((e) =>
+    setVaultItem(TX_BACKUP_STORAGE_KEY, uniqueRecords).catch((e) =>
       console.warn("[fetchAllTransactionsFromSupabase] IndexedDB write warning:", e),
     );
 
+    // Keep full synchronous backup in localStorage, slicing ONLY if QuotaExceeded
     try {
-      localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(confirmedRecords));
+      localStorage.setItem(
+        TX_BACKUP_STORAGE_KEY,
+        JSON.stringify(uniqueRecords),
+      );
     } catch {
       try {
-        localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(confirmedRecords.slice(0, 1000)));
+        localStorage.setItem(
+          TX_BACKUP_STORAGE_KEY,
+          JSON.stringify(uniqueRecords.slice(0, 1000)),
+        );
       } catch (e) {
         console.warn("[fetchAllTransactionsFromSupabase] Failed to write backup snapshot:", e);
       }
@@ -790,7 +793,6 @@ export async function fetchAllTransactionsFromSupabase(
 
   return uniqueRecords;
 }
-
 
 export function useRecentTransactions(limit = 10) {
   const { user } = useAuth();
@@ -983,6 +985,21 @@ export function useAddTransaction() {
         session?.user?.email?.split("@")[0] ||
         null;
 
+      // Sanitize occurred_on: must be YYYY-MM-DD with year between 2000 and 2100
+      let cleanOccurredOn = input.occurred_on;
+      if (!cleanOccurredOn || !/^20\d{2}-\d{2}-\d{2}$/.test(cleanOccurredOn)) {
+        cleanOccurredOn = format(new Date(), "yyyy-MM-dd");
+      }
+      let cleanCreatedAt = input.created_at;
+      if (cleanCreatedAt) {
+        const parsedCreated = new Date(cleanCreatedAt);
+        if (isNaN(parsedCreated.getTime()) || parsedCreated.getFullYear() < 2000 || parsedCreated.getFullYear() > 2100) {
+          cleanCreatedAt = new Date().toISOString();
+        }
+      } else {
+        cleanCreatedAt = new Date().toISOString();
+      }
+
       const fullTx: Transaction = {
         id: effectiveId,
         user_id: currentUser?.id || userId || "",
@@ -992,8 +1009,8 @@ export function useAddTransaction() {
         wallet_id: cleanWalletId,
         to_wallet_id: cleanToWalletId,
         note: input.note || null,
-        occurred_on: input.occurred_on,
-        created_at: input.created_at || new Date().toISOString(),
+        occurred_on: cleanOccurredOn,
+        created_at: cleanCreatedAt,
         categories: categoryObj,
         ledger_id: assignedLedger,
         space_id: assignedLedger,
@@ -1020,8 +1037,8 @@ export function useAddTransaction() {
           wallet_id: cleanWalletId,
           to_wallet_id: cleanToWalletId,
           note: input.note || null,
-          occurred_on: input.occurred_on,
-          created_at: input.created_at || new Date().toISOString(),
+          occurred_on: cleanOccurredOn,
+          created_at: cleanCreatedAt,
           ledger_id: assignedLedger,
         };
 
@@ -1078,6 +1095,21 @@ export function useAddTransaction() {
       const cleanToWalletId = newTx.type === "transfer" && newTx.to_wallet_id && isUUID(newTx.to_wallet_id) ? newTx.to_wallet_id : null;
       const assignedLedger = newTx.ledger_id || newTx.space_id || "personal";
 
+      // Sanitize occurred_on: must be YYYY-MM-DD with year between 2000 and 2100
+      let cleanOccurredOn = newTx.occurred_on;
+      if (!cleanOccurredOn || !/^20\d{2}-\d{2}-\d{2}$/.test(cleanOccurredOn)) {
+        cleanOccurredOn = format(new Date(), "yyyy-MM-dd");
+      }
+      let cleanCreatedAt = newTx.created_at;
+      if (cleanCreatedAt) {
+        const parsedCreated = new Date(cleanCreatedAt);
+        if (isNaN(parsedCreated.getTime()) || parsedCreated.getFullYear() < 2000 || parsedCreated.getFullYear() > 2100) {
+          cleanCreatedAt = new Date().toISOString();
+        }
+      } else {
+        cleanCreatedAt = new Date().toISOString();
+      }
+
       const optimisticItem: Transaction = {
         id: effectiveId,
         user_id: userId || "",
@@ -1087,8 +1119,8 @@ export function useAddTransaction() {
         wallet_id: cleanWalletId,
         to_wallet_id: cleanToWalletId,
         note: newTx.note || null,
-        occurred_on: newTx.occurred_on,
-        created_at: newTx.created_at || new Date().toISOString(),
+        occurred_on: cleanOccurredOn,
+        created_at: cleanCreatedAt,
         categories: categoryObj,
         ledger_id: assignedLedger,
         space_id: assignedLedger,

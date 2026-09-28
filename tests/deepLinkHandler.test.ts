@@ -189,6 +189,19 @@ describe("DeepLink & iOS Shortcuts URL Scheme Handler", () => {
     expect(result.prefilledValues?.time).toBe("14:15");
   });
 
+  it("sanitizes single day numbers and prevents year 0028 bug", () => {
+    const dialogText = "Nominal: 20.000\nKategori: Makanan\nAkun: BCA\nTanggal: 28";
+    const url = `trouvaille://add?text=${encodeURIComponent(dialogText)}&autosave=true`;
+    const result = parseDeepLink(url, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.prefilledValues?.amount).toBe(20000);
+    expect(result.prefilledValues?.date).toBeInstanceOf(Date);
+    // Year MUST be current year (>= 2024), NEVER year 0028!
+    expect(result.prefilledValues?.date?.getFullYear()).toBeGreaterThanOrEqual(2024);
+    expect(result.prefilledValues?.date?.getDate()).toBe(28);
+  });
+
   it("returns none action on empty or invalid inputs", () => {
     expect(parseDeepLink("").action).toBe("none");
     expect(parseDeepLink("random-string-without-scheme").action).toBe("none");

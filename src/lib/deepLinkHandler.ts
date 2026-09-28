@@ -61,15 +61,6 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
 
   const timeComp = extractTimeComponents(clean);
 
-  // Try standard JS parse first (e.g. ISO 8601 or YYYY-MM-DD)
-  const stdDate = new Date(clean);
-  if (!isNaN(stdDate.getTime()) && !/^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(clean)) {
-    if (timeComp && stdDate.getHours() === 0 && stdDate.getMinutes() === 0) {
-      stdDate.setHours(timeComp.hours, timeComp.minutes, 0, 0);
-    }
-    return stdDate;
-  }
-
   const monthMap: Record<string, number> = {
     jan: 0, januari: 0, january: 0,
     feb: 1, februari: 1, february: 1,
@@ -87,15 +78,44 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
 
   let resolvedDate: Date | undefined;
 
+  // Try standard JS parse only if it has reasonable year (e.g. ISO 8601 or YYYY-MM-DD)
+  // NEVER allow loose JS parse on strings like "28" which JS parses as Year 0028 AD!
+  if (!/^\d{1,2}$/.test(clean)) {
+    const stdDate = new Date(clean);
+    if (
+      !isNaN(stdDate.getTime()) &&
+      !/^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(clean) &&
+      stdDate.getFullYear() >= 2000 &&
+      stdDate.getFullYear() <= 2100
+    ) {
+      if (timeComp && stdDate.getHours() === 0 && stdDate.getMinutes() === 0) {
+        stdDate.setHours(timeComp.hours, timeComp.minutes, 0, 0);
+      }
+      return stdDate;
+    }
+  }
+
+  // Pattern 0: Single day number (e.g. "28" or "28 at 09:30") -> interpret as current month & year
+  const singleDayMatch = clean.match(/^(\d{1,2})(?:\s+(?:at|pukul|jam)?\s*[\d:.]+)?$/i);
+  if (singleDayMatch) {
+    const day = parseInt(singleDayMatch[1], 10);
+    if (day >= 1 && day <= 31) {
+      const now = new Date();
+      resolvedDate = new Date(now.getFullYear(), now.getMonth(), day);
+    }
+  }
+
   // Pattern A: "28/09/2026", "28-09-2026", "28/09/26" (DD/MM/YYYY or DD-MM-YYYY)
-  const numMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
-  if (numMatch) {
-    const d = parseInt(numMatch[1], 10);
-    const m = parseInt(numMatch[2], 10);
-    let y = parseInt(numMatch[3], 10);
-    if (y < 100) y += 2000;
-    if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 2000 && y <= 2100) {
-      resolvedDate = new Date(y, m - 1, d);
+  if (!resolvedDate) {
+    const numMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+    if (numMatch) {
+      const d = parseInt(numMatch[1], 10);
+      const m = parseInt(numMatch[2], 10);
+      let y = parseInt(numMatch[3], 10);
+      if (y < 100) y += 2000;
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 2000 && y <= 2100) {
+        resolvedDate = new Date(y, m - 1, d);
+      }
     }
   }
 
@@ -116,6 +136,20 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
     }
   }
 
+  // Pattern B2: "28 Sep", "28 September" without year -> infer current year
+  if (!resolvedDate) {
+    const textNoYearMatch = clean.match(/^(\d{1,2})\s+([a-zA-Z]+)(?:\s+(?:at|pukul|jam)?\s*[\d:.]+)?$/i);
+    if (textNoYearMatch) {
+      const d = parseInt(textNoYearMatch[1], 10);
+      const mStr = textNoYearMatch[2].toLowerCase();
+      const m = monthMap[mStr];
+      if (m !== undefined && d >= 1 && d <= 31) {
+        const now = new Date();
+        resolvedDate = new Date(now.getFullYear(), m, d);
+      }
+    }
+  }
+
   // Pattern C: YYYY-MM-DD
   if (!resolvedDate) {
     const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -123,11 +157,17 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
       const y = parseInt(isoMatch[1], 10);
       const m = parseInt(isoMatch[2], 10);
       const d = parseInt(isoMatch[3], 10);
-      resolvedDate = new Date(y, m - 1, d);
+      if (y >= 2000 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+        resolvedDate = new Date(y, m - 1, d);
+      }
     }
   }
 
   if (resolvedDate) {
+    // Sanity check year: clamp strictly between 2000 and 2100
+    if (resolvedDate.getFullYear() < 2000 || resolvedDate.getFullYear() > 2100) {
+      resolvedDate = new Date();
+    }
     if (timeComp) {
       resolvedDate.setHours(timeComp.hours, timeComp.minutes, 0, 0);
     }
