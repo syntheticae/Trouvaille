@@ -244,10 +244,91 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
 export const TX_BACKUP_STORAGE_KEY = "TROUVAILLE_TX_BACKUP_V1";
 
 import { useAuth } from "../contexts/AuthContext";
+import { emitSyncStatus } from "../components/ui/SyncStatusPill";
 
 /**
- * Deterministic chunked pagination fetcher for Supabase transactions.
+ * Retrieve cached local transactions snapshot for instantaneous 0ms cold-start rendering.
+ */
+export function getStoredTransactionsSnapshot(userId?: string): Transaction[] | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = localStorage.getItem(TX_BACKUP_STORAGE_KEY);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      if (userId && userId !== "guest_local_user") {
+        const filtered = parsed.filter((t: Transaction) => !t.user_id || t.user_id === userId);
+        return filtered.length > 0 ? filtered : parsed;
+      }
+      return parsed;
+    }
+  } catch {}
+  return undefined;
+}
+
+/**
+ * Helper to fetch a single transaction slice with 3-attempt exponential backoff retry.
+ */
+async function fetchTransactionChunk(
+  from: number,
+  to: number,
+  filters?: TransactionFilters,
+): Promise<Transaction[]> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      let query = supabase
+        .from("transactions")
+        .select("*, categories(*)")
+        .order("occurred_on", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to);
+
+      if (filters?.ledgerId && filters.ledgerId !== "all") {
+        query = query.eq("ledger_id", filters.ledgerId);
+      } else if (filters?.filterByUserIdOnly && filters?.userId) {
+        query = query.eq("user_id", filters.userId);
+      }
+      if (filters?.categoryId) query = query.eq("category_id", filters.categoryId);
+      if (filters?.startDate) query = query.gte("occurred_on", filters.startDate);
+      if (filters?.endDate) query = query.lte("occurred_on", filters.endDate);
+
+      let { data, error } = await withTimeout(query, 15000);
+      if (error) {
+        let fallbackQuery = supabase
+          .from("transactions")
+          .select("*")
+          .order("occurred_on", { ascending: false })
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, to);
+
+        if (filters?.ledgerId && filters.ledgerId !== "all") {
+          fallbackQuery = fallbackQuery.eq("ledger_id", filters.ledgerId);
+        } else if (filters?.filterByUserIdOnly && filters?.userId) {
+          fallbackQuery = fallbackQuery.eq("user_id", filters.userId);
+        }
+        if (filters?.categoryId) fallbackQuery = fallbackQuery.eq("category_id", filters.categoryId);
+        if (filters?.startDate) fallbackQuery = fallbackQuery.gte("occurred_on", filters.startDate);
+        if (filters?.endDate) fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate);
+
+        const fallbackRes = await withTimeout(fallbackQuery, 15000);
+        if (fallbackRes.error) throw fallbackRes.error;
+        data = fallbackRes.data;
+      }
+      return (data as Transaction[]) || [];
+    } catch (err) {
+      if (attempt === 3) throw err;
+      await delay(250 * attempt);
+    }
+  }
+  return [];
+}
+
+/**
+ * High-performance progressive parallel chunked pagination fetcher for Supabase transactions.
  * Guarantees 100% retrieval across arbitrarily large datasets without PostgREST row limits.
+ * Uses exact count on the first slice to download remaining chunks in parallel via Promise.all.
  * Resilient against network timeouts, flakiness, and offline cold starts with local backup snapshots.
  */
 export async function fetchAllTransactionsFromSupabase(
@@ -261,10 +342,9 @@ export async function fetchAllTransactionsFromSupabase(
   const effectiveUserId = filters?.userId || user?.id;
 
   const pageSize = 500;
-  let from = 0;
   const allRecords: Transaction[] = [];
-  let hasMore = true;
 
+  // Offline / Guest Local Mode: Fast path
   if (effectiveUserId === "guest_local_user" || localStorage.getItem("trouvaille_guest_mode") === "true") {
     const pendingMutations = getPendingMutations();
     const pendingDeletes = new Set<string>();
@@ -295,151 +375,170 @@ export async function fetchAllTransactionsFromSupabase(
     return all.filter((t) => matchesTransactionFilters(t, filters));
   }
 
-  while (hasMore) {
-    let chunk: Transaction[] = [];
-    let fetchError: unknown = null;
+  // Cloud Mode: Notify floating pill of sync start
+  emitSyncStatus({ status: "syncing" });
 
-    // Resilient chunk fetcher with auto-retry up to 3 attempts
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        let query = supabase
+  let totalCount: number | null = null;
+  let fetchError: unknown = null;
+
+  // Stage 1: Fetch initial page with exact count header
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      let query = supabase
+        .from("transactions")
+        .select("*, categories(*)", { count: "exact" })
+        .order("occurred_on", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(0, pageSize - 1);
+
+      if (filters?.ledgerId && filters.ledgerId !== "all") {
+        query = query.eq("ledger_id", filters.ledgerId);
+      } else if (filters?.filterByUserIdOnly && filters?.userId) {
+        query = query.eq("user_id", filters.userId);
+      }
+      if (filters?.categoryId) query = query.eq("category_id", filters.categoryId);
+      if (filters?.startDate) query = query.gte("occurred_on", filters.startDate);
+      if (filters?.endDate) query = query.lte("occurred_on", filters.endDate);
+
+      let { data, error, count } = await withTimeout(query, 15000);
+      if (error) {
+        // Fallback to flat query without join for speed and resilience
+        let fallbackQuery = supabase
           .from("transactions")
-          .select("*, categories(*)")
+          .select("*", { count: "exact" })
           .order("occurred_on", { ascending: false })
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
-          .range(from, from + pageSize - 1);
+          .range(0, pageSize - 1);
 
         if (filters?.ledgerId && filters.ledgerId !== "all") {
-          query = query.eq("ledger_id", filters.ledgerId);
+          fallbackQuery = fallbackQuery.eq("ledger_id", filters.ledgerId);
         } else if (filters?.filterByUserIdOnly && filters?.userId) {
-          query = query.eq("user_id", filters.userId);
+          fallbackQuery = fallbackQuery.eq("user_id", filters.userId);
         }
-        if (filters?.categoryId)
-          query = query.eq("category_id", filters.categoryId);
-        if (filters?.startDate)
-          query = query.gte("occurred_on", filters.startDate);
-        if (filters?.endDate) query = query.lte("occurred_on", filters.endDate);
+        if (filters?.categoryId) fallbackQuery = fallbackQuery.eq("category_id", filters.categoryId);
+        if (filters?.startDate) fallbackQuery = fallbackQuery.gte("occurred_on", filters.startDate);
+        if (filters?.endDate) fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate);
 
-        let { data, error } = await withTimeout(query, 15000);
-        if (error) {
-          // Fallback to flat query without join for speed and resilience
-          let fallbackQuery = supabase
-            .from("transactions")
-            .select("*")
-            .order("occurred_on", { ascending: false })
-            .order("created_at", { ascending: false })
-            .order("id", { ascending: false })
-            .range(from, from + pageSize - 1);
+        const fallbackRes = await withTimeout(fallbackQuery, 15000);
+        if (fallbackRes.error) throw fallbackRes.error;
+        data = fallbackRes.data;
+        count = fallbackRes.count;
+      }
 
-          if (filters?.ledgerId && filters.ledgerId !== "all") {
-            fallbackQuery = fallbackQuery.eq("ledger_id", filters.ledgerId);
-          } else if (filters?.filterByUserIdOnly && filters?.userId) {
-            fallbackQuery = fallbackQuery.eq("user_id", filters.userId);
-          }
-          if (filters?.categoryId)
-            fallbackQuery = fallbackQuery.eq("category_id", filters.categoryId);
-          if (filters?.startDate)
-            fallbackQuery = fallbackQuery.gte("occurred_on", filters.startDate);
-          if (filters?.endDate)
-            fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate);
-
-          const fallbackRes = await withTimeout(fallbackQuery, 15000);
-          if (fallbackRes.error) throw fallbackRes.error;
-          data = fallbackRes.data;
-        }
-
-        chunk = (data as Transaction[]) || [];
-        fetchError = null;
-        break;
-      } catch (err) {
-        fetchError = err;
-        if (attempt < 3) {
-          await delay(300 * attempt);
-        }
+      if (data && Array.isArray(data)) {
+        allRecords.push(...(data as Transaction[]));
+      }
+      totalCount = typeof count === "number" ? count : null;
+      fetchError = null;
+      break;
+    } catch (err) {
+      fetchError = err;
+      if (attempt < 3) {
+        await delay(300 * attempt);
       }
     }
+  }
 
-    if (fetchError && chunk.length === 0) {
-      // If initial page fails, attempt recovery from local backup snapshot
-      if (from === 0) {
-        try {
-          const rawBackup = localStorage.getItem(TX_BACKUP_STORAGE_KEY);
-          if (rawBackup) {
-            const parsed = JSON.parse(rawBackup);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              console.warn(
-                "[fetchAllTransactionsFromSupabase] Network unreachable, successfully recovered from local snapshot:",
-                fetchError,
-              );
-              let restored = parsed as Transaction[];
-              if (filters?.categoryId) {
-                restored = restored.filter((t) => t.category_id === filters.categoryId);
-              }
-              if (filters?.startDate) {
-                restored = restored.filter((t) => t.occurred_on >= filters.startDate!);
-              }
-              if (filters?.endDate) {
-                restored = restored.filter((t) => t.occurred_on <= filters.endDate!);
-              }
-              if (filters?.search) {
-                const s = filters.search.toLowerCase();
-                restored = restored.filter(
-                  (t) =>
-                    t.categories?.name.toLowerCase().includes(s) ||
-                    t.note?.toLowerCase().includes(s),
-                );
-              }
-              // Overlay pending mutations onto restored backup
-              const pendingMutations = getPendingMutations();
-              const pendingDeletes = new Set<string>();
-              const pendingUpserts = new Map<string, Transaction>();
-              for (const m of pendingMutations) {
-                if (m.type === "delete") {
-                  const id = m.payload?.id || m.payload;
-                  if (id) pendingDeletes.add(id);
-                } else if ((m.type === "insert" || m.type === "update") && m.payload?.id) {
-                  pendingUpserts.set(m.payload.id, m.payload as Transaction);
-                }
-              }
-              const map = new Map<string, Transaction>();
-              for (const item of restored) {
-                if (!pendingDeletes.has(item.id)) map.set(item.id, item);
-              }
-              for (const [id, tx] of pendingUpserts) {
-                if (!pendingDeletes.has(id)) map.set(id, tx);
-              }
-              return sortTransactionsDesc(Array.from(map.values()));
+  // Network Failure Recovery
+  if (fetchError && allRecords.length === 0) {
+    try {
+      const rawBackup = localStorage.getItem(TX_BACKUP_STORAGE_KEY);
+      if (rawBackup) {
+        const parsed = JSON.parse(rawBackup);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          console.warn(
+            "[fetchAllTransactionsFromSupabase] Network unreachable, successfully recovered from local snapshot:",
+            fetchError,
+          );
+          let restored = parsed as Transaction[];
+          if (filters?.categoryId) {
+            restored = restored.filter((t) => t.category_id === filters.categoryId);
+          }
+          if (filters?.startDate) {
+            restored = restored.filter((t) => t.occurred_on >= filters.startDate!);
+          }
+          if (filters?.endDate) {
+            restored = restored.filter((t) => t.occurred_on <= filters.endDate!);
+          }
+          if (filters?.search) {
+            const s = filters.search.toLowerCase();
+            restored = restored.filter(
+              (t) =>
+                t.categories?.name.toLowerCase().includes(s) ||
+                t.note?.toLowerCase().includes(s),
+            );
+          }
+          // Overlay pending mutations onto restored backup
+          const pendingMutations = getPendingMutations();
+          const pendingDeletes = new Set<string>();
+          const pendingUpserts = new Map<string, Transaction>();
+          for (const m of pendingMutations) {
+            if (m.type === "delete") {
+              const id = m.payload?.id || m.payload;
+              if (id) pendingDeletes.add(id);
+            } else if ((m.type === "insert" || m.type === "update") && m.payload?.id) {
+              pendingUpserts.set(m.payload.id, m.payload as Transaction);
             }
           }
-        } catch (backupErr) {
-          console.warn("[fetchAllTransactionsFromSupabase] Backup read failed:", backupErr);
+          const map = new Map<string, Transaction>();
+          for (const item of restored) {
+            if (!pendingDeletes.has(item.id)) map.set(item.id, item);
+          }
+          for (const [id, tx] of pendingUpserts) {
+            if (!pendingDeletes.has(id)) map.set(id, tx);
+          }
+          emitSyncStatus({ status: "synced", count: map.size });
+          return sortTransactionsDesc(Array.from(map.values()));
         }
-
-        // If no backup exists, throw the error so React Query marks query as error
-        // instead of empty success, preserving any existing cached transactions!
-        throw fetchError;
       }
-
-      // If subsequent page fails, throw so we never return a partial/truncated dataset
-      throw fetchError;
+    } catch (backupErr) {
+      console.warn("[fetchAllTransactionsFromSupabase] Backup read failed:", backupErr);
     }
 
-    if (chunk.length === 0) {
-      hasMore = false;
-      break;
+    emitSyncStatus({ status: "error", message: "Network unavailable" });
+    throw fetchError;
+  }
+
+  if (onPageFetched) {
+    onPageFetched(allRecords.length, totalCount);
+  }
+
+  // Stage 2: Parallel chunk fetching if dataset exceeds 1 page
+  if (totalCount !== null && totalCount > pageSize) {
+    const chunkPromises: Promise<Transaction[]>[] = [];
+    for (let offset = pageSize; offset < totalCount; offset += pageSize) {
+      const to = Math.min(offset + pageSize - 1, totalCount - 1);
+      chunkPromises.push(fetchTransactionChunk(offset, to, filters));
     }
 
-    allRecords.push(...chunk);
-
-    if (onPageFetched) {
-      onPageFetched(allRecords.length, null);
+    const remainingChunks = await Promise.all(chunkPromises);
+    for (const chunk of remainingChunks) {
+      allRecords.push(...chunk);
+      if (onPageFetched) {
+        onPageFetched(allRecords.length, totalCount);
+      }
     }
-
-    if (chunk.length < pageSize) {
-      hasMore = false;
-    } else {
-      from += pageSize;
+  } else if (totalCount === null && allRecords.length === pageSize) {
+    // Fallback: Sequential loop if count header was not returned
+    let from = pageSize;
+    let hasMore = true;
+    while (hasMore) {
+      const chunk = await fetchTransactionChunk(from, from + pageSize - 1, filters);
+      if (chunk.length === 0) {
+        hasMore = false;
+        break;
+      }
+      allRecords.push(...chunk);
+      if (onPageFetched) {
+        onPageFetched(allRecords.length, null);
+      }
+      if (chunk.length < pageSize) {
+        hasMore = false;
+      } else {
+        from += pageSize;
+      }
     }
   }
 
@@ -480,7 +579,7 @@ export async function fetchAllTransactionsFromSupabase(
     );
   }
 
-  // Persist healthy full dataset to local backup if unfiltered
+  // Persist healthy full dataset to local backup if unfiltered (up to 500 records for fast instant cold-start)
   if (
     !filters?.categoryId &&
     !filters?.startDate &&
@@ -489,15 +588,17 @@ export async function fetchAllTransactionsFromSupabase(
     uniqueRecords.length > 0
   ) {
     try {
-      // LocalStorage Quota Guard: Cap at 250 transactions (~150KB) to prevent QuotaExceededError
       localStorage.setItem(
         TX_BACKUP_STORAGE_KEY,
-        JSON.stringify(uniqueRecords.slice(0, 250)),
+        JSON.stringify(uniqueRecords.slice(0, 500)),
       );
     } catch (e) {
       console.warn("[fetchAllTransactionsFromSupabase] Failed to write backup snapshot:", e);
     }
   }
+
+  // Inform status pill that sync has cleanly completed
+  emitSyncStatus({ status: "synced", count: uniqueRecords.length });
 
   return uniqueRecords;
 }
@@ -544,6 +645,11 @@ export function useRecentTransactions(limit = 10) {
     },
     enabled: !!userId,
     staleTime: 60 * 1000,
+    placeholderData: (previousData) => {
+      if (previousData) return previousData;
+      const snapshot = getStoredTransactionsSnapshot(userId);
+      return snapshot ? snapshot.slice(0, limit) : undefined;
+    },
   });
 }
 
@@ -578,6 +684,13 @@ export function useAllTransactions(
     queryFn: () => fetchAllTransactionsFromSupabase({ ...filters, userId }),
     enabled: (options?.enabled ?? true) && !!userId,
     staleTime: 60 * 1000,
+    placeholderData: (previousData) => {
+      if (previousData) return previousData;
+      if (!filters || (!filters.categoryId && !filters.startDate && !filters.endDate && !filters.search)) {
+        return getStoredTransactionsSnapshot(userId);
+      }
+      return undefined;
+    },
   });
 }
 

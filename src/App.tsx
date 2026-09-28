@@ -15,6 +15,7 @@ import {
 import { useAllTransactions, useAddTransaction, transactionKeys } from "./hooks/useTransactions";
 import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen";
+import { SyncStatusPill } from "./components/ui/SyncStatusPill";
 import { ClipboardTransactionBanner } from "./components/common/ClipboardTransactionBanner";
 import { App as CapApp } from "@capacitor/app";
 import { parseDeepLink } from "./lib/deepLinkHandler";
@@ -941,6 +942,9 @@ function AppShell() {
           />
         </Suspense>
       )}
+
+      {/* Dynamic Notch Subtle Floating Frosted Glass Background Sync Status Indicator */}
+      <SyncStatusPill isBlocked={!!recordedShortcutTx} />
 
       {/* Dynamic Island Floating Glass HUD Capsule for Auto-saved Shortcut & Live Partner Transactions */}
       <DynamicIslandHUD

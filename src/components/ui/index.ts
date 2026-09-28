@@ -7,3 +7,4 @@ export * from "./LoadingScreen";
 export * from "./MonochromeIconPickerModal";
 export * from "./NotificationSheet";
 export * from "./PullToRefreshIndicator";
+export * from "./SyncStatusPill";
