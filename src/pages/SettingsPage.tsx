@@ -40,6 +40,7 @@ import {
   AlertCircle,
   RotateCcw,
   Trash2,
+  Scale,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -2261,6 +2262,106 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
               </div>
             )}
 
+            {/* Bersihkan Cache & Tarik Cloud */}
+            {showCloudSync && (
+              <button
+                type="button"
+                onClick={handleDiscardPendingAndRestore}
+                disabled={syncStatus === "syncing"}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <RotateCcw size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block truncate leading-tight"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Bersihkan Cache & Tarik Cloud"
+                        : "Purge Cache & Fetch Cloud"}
+                    </span>
+                    <span
+                      className="text-[10px] font-normal block truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Hapus antrean lokal dan pulihkan data murni dari cloud"
+                        : "Clear local pending queue and restore pure cloud data"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {isIndonesian ? "Tarik Bersih" : "Pure Sync"}
+                  </span>
+                </div>
+              </button>
+            )}
+
+            {/* Rekonsiliasi & Sesuaikan Saldo */}
+            {showWallets && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setWalletsOpen(true);
+                }}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Scale size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0">
+                    <span
+                      className="text-[13px] font-semibold block truncate leading-tight"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Rekonsiliasi & Sesuaikan Saldo"
+                        : "Reconcile & Adjust Balance"}
+                    </span>
+                    <span
+                      className="text-[10px] font-normal block truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Kalibrasi ulang saldo dompet agar sesuai saldo riil rekening"
+                        : "Recalibrate wallet balances to match real bank balances"}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight
+                  size={15}
+                  style={{ color: "var(--text-tertiary)" }}
+                />
+              </button>
+            )}
+
             {/* Pending Offline Mutations Banner */}
             {session?.user && pendingMutations.length > 0 && (
               <div
@@ -2324,7 +2425,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   >
                     <Trash2 size={12} strokeWidth={1.75} />
                     <span>
-                      {isIndonesian ? "Batalkan & Pulihkan Saldo" : "Discard & Restore Balance"}
+                      {isIndonesian ? "Buang Antrean & Reset Saldo" : "Discard Queue & Reset Balance"}
                     </span>
                   </button>
                   <button
