@@ -567,7 +567,7 @@ export async function fetchAllTransactionsFromSupabase(
           for (const [id, tx] of pendingUpserts) {
             if (!pendingDeletes.has(id)) map.set(id, tx);
           }
-          emitSyncStatus({ status: "synced", count: map.size });
+          emitSyncStatus({ status: "error", message: "Bekerja secara offline" });
           return sortTransactionsDesc(Array.from(map.values()));
         }
       }
@@ -591,11 +591,26 @@ export async function fetchAllTransactionsFromSupabase(
       chunkPromises.push(fetchTransactionChunk(offset, to, filters));
     }
 
-    const remainingChunks = await Promise.all(chunkPromises);
-    for (const chunk of remainingChunks) {
-      allRecords.push(...chunk);
-      if (onPageFetched) {
-        onPageFetched(allRecords.length, totalCount);
+    try {
+      const remainingChunks = await Promise.all(chunkPromises);
+      for (const chunk of remainingChunks) {
+        allRecords.push(...chunk);
+        if (onPageFetched) {
+          onPageFetched(allRecords.length, totalCount);
+        }
+      }
+    } catch (stage2Err) {
+      console.warn("[fetchAllTransactionsFromSupabase] Parallel fetch warning, falling back to sequential retry:", stage2Err);
+      let from = allRecords.length;
+      while (from < totalCount) {
+        const to = Math.min(from + pageSize - 1, totalCount - 1);
+        const chunk = await fetchTransactionChunk(from, to, filters);
+        if (chunk.length === 0) break;
+        allRecords.push(...chunk);
+        if (onPageFetched) {
+          onPageFetched(allRecords.length, totalCount);
+        }
+        from += pageSize;
       }
     }
   } else if (totalCount === null && allRecords.length === pageSize) {
@@ -657,13 +672,33 @@ export async function fetchAllTransactionsFromSupabase(
     );
   }
 
-  // Persist full 100% dataset (all 2,345+ transactions) to IndexedDB off-main-thread!
+  // Dataset Integrity Guard: If a known totalCount exists, ensure we didn't receive an incomplete partial slice
+  const isTruncatedFetch =
+    totalCount !== null &&
+    totalCount > 0 &&
+    !filters?.categoryId &&
+    !filters?.startDate &&
+    !filters?.endDate &&
+    !filters?.search &&
+    uniqueRecords.length < totalCount;
+
+  if (isTruncatedFetch) {
+    console.warn(`[fetchAllTransactionsFromSupabase] Incomplete sync detected: ${uniqueRecords.length}/${totalCount} records.`);
+    if (inMemoryTransactionsSnapshot && inMemoryTransactionsSnapshot.length > uniqueRecords.length) {
+      console.warn(`[fetchAllTransactionsFromSupabase] Preserving healthier local snapshot of ${inMemoryTransactionsSnapshot.length} records.`);
+      emitSyncStatus({ status: "error", message: "Sinkronisasi belum lengkap" });
+      return inMemoryTransactionsSnapshot;
+    }
+  }
+
+  // Persist full 100% dataset (all 2,534+ transactions) to IndexedDB off-main-thread!
   if (
     !filters?.categoryId &&
     !filters?.startDate &&
     !filters?.endDate &&
     !filters?.search &&
-    uniqueRecords.length > 0
+    uniqueRecords.length > 0 &&
+    !isTruncatedFetch
   ) {
     inMemoryTransactionsSnapshot = uniqueRecords;
     setVaultItem(TX_BACKUP_STORAGE_KEY, uniqueRecords).catch((e) =>
@@ -689,7 +724,11 @@ export async function fetchAllTransactionsFromSupabase(
   }
 
   // Inform status pill that sync has cleanly completed
-  emitSyncStatus({ status: "synced", count: uniqueRecords.length });
+  if (!isTruncatedFetch) {
+    emitSyncStatus({ status: "synced", count: uniqueRecords.length });
+  } else {
+    emitSyncStatus({ status: "error", message: "Sinkronisasi belum lengkap" });
+  }
 
   return uniqueRecords;
 }

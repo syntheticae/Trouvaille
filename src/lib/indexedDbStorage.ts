@@ -124,11 +124,14 @@ export async function setVaultItem<T>(key: string, value: T): Promise<void> {
   try {
     const db = await getDb();
     if (!db) {
-      // Fallback: Cap at reasonable size for localStorage quota
       try {
-        const payload = Array.isArray(value) ? value.slice(0, 500) : value;
-        localStorage.setItem(key, JSON.stringify(payload));
-      } catch {}
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        try {
+          const payload = Array.isArray(value) ? value.slice(0, 1000) : value;
+          localStorage.setItem(key, JSON.stringify(payload));
+        } catch {}
+      }
       return;
     }
 
