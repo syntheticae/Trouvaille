@@ -1100,6 +1100,8 @@ export function useBatchAddTransactions() {
         const categoryObj =
           allCategories?.find((c) => c.id === input.category_id) || null;
 
+        const assignedLedger = input.ledger_id || input.space_id || "personal";
+
         const fullTx: Transaction = {
           id: effectiveId,
           user_id: currentUser?.id || userId || "",
@@ -1112,6 +1114,10 @@ export function useBatchAddTransactions() {
           occurred_on: input.occurred_on,
           created_at: input.created_at || new Date().toISOString(),
           categories: categoryObj,
+          ledger_id: assignedLedger,
+          space_id: assignedLedger,
+          created_by_name: input.created_by_name || null,
+          created_by_user_id: currentUser?.id || userId || null,
         };
 
         const mutation = enqueuePendingMutation("insert", fullTx);
@@ -1171,6 +1177,8 @@ export function useBatchAddTransactions() {
         const categoryObj =
           allCategories?.find((c) => c.id === newTx.category_id) || null;
 
+        const assignedLedger = newTx.ledger_id || newTx.space_id || "personal";
+
         const optimisticItem: Transaction = {
           id: effectiveId,
           user_id: userId || "",
@@ -1183,6 +1191,8 @@ export function useBatchAddTransactions() {
           occurred_on: newTx.occurred_on,
           created_at: newTx.created_at || new Date().toISOString(),
           categories: categoryObj,
+          ledger_id: assignedLedger,
+          space_id: assignedLedger,
         };
 
         upsertTransactionAcrossCaches(qc, optimisticItem);

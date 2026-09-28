@@ -1,8 +1,10 @@
 // ======================================================================
 // TROUVAILLE SMART CSV COLUMN AUTO-DETECTOR
 // Detects date, description, debit, credit, amount, type & balance columns
-// from arbitrary CSV/Excel headers without any pre-configured templates.
+// from arbitrary CSV/Excel headers and data-row heuristics.
 // ======================================================================
+
+import { parseLocalizedNumber } from "./statementParser";
 
 export interface DetectedColumnMap {
   /** 0-based index of the date column */
@@ -35,7 +37,7 @@ const DATE_KEYWORDS = [
 const DESC_KEYWORDS = [
   "deskripsi", "keterangan", "narasi", "description", "remark",
   "uraian", "memo", "information", "transaksi", "detail",
-  "transaction description", "note", "catatan",
+  "transaction description", "note", "catatan", "merchant", "penerima",
 ];
 
 const DEBIT_KEYWORDS = [
@@ -57,7 +59,7 @@ const AMOUNT_KEYWORDS = [
 
 const TYPE_KEYWORDS = [
   "jenis", "type", "tipe", "direction", "d/k", "db/cr",
-  "debet/kredit",
+  "debet/kredit", "kategori", "status",
 ];
 
 const BALANCE_KEYWORDS = [
@@ -66,46 +68,62 @@ const BALANCE_KEYWORDS = [
 ];
 
 // -----------------------------------------------------------------------
-// Score a single header string against a keyword list
+// Header keyword score
 // -----------------------------------------------------------------------
 
 function scoreHeader(header: string, keywords: string[]): number {
+  if (!header) return 0;
   const h = header.toLowerCase().trim();
   for (const kw of keywords) {
-    if (h === kw) return 1.0;          // exact match
-    if (h.includes(kw)) return 0.75;   // substring match
-    // Check if the keyword contains the header word (e.g. header="tgl", kw="tgl transaksi")
+    if (h === kw) return 1.0;
+    if (h.includes(kw)) return 0.75;
     if (kw.includes(h) && h.length >= 3) return 0.5;
   }
   return 0;
 }
 
 // -----------------------------------------------------------------------
-// Main detector
+// Sample Row Data-Type Evaluation
+// -----------------------------------------------------------------------
+
+function isDateLike(val: string): boolean {
+  const v = val.trim();
+  if (/^\d{1,4}[/\-.]\d{1,2}[/\-.]\d{1,4}$/.test(v)) return true;
+  if (/^\d{1,2}\s+[a-zA-Z]{3}(?:\s+\d{2,4})?$/.test(v)) return true;
+  return false;
+}
+
+function isTypeDirectionLike(val: string): boolean {
+  const v = val.trim().toLowerCase();
+  return /^(cr|db|d|k|kredit|debet|in|out|masuk|keluar|income|expense|transfer)$/i.test(v);
+}
+
+function isNumericLike(val: string): boolean {
+  return parseLocalizedNumber(val) > 0;
+}
+
+// -----------------------------------------------------------------------
+// Main Detector
 // -----------------------------------------------------------------------
 
 /**
- * Given an array of column header strings (from first row of CSV/Excel),
+ * Given an array of column header strings and optional sample data rows,
  * returns the best-guess DetectedColumnMap.
- *
- * The algorithm scores each column against every role's keyword list and
- * assigns the column with the highest score to each role (no duplicates).
  */
-export function detectColumns(headers: string[]): DetectedColumnMap {
+export function detectColumns(headers: string[], sampleRows?: string[][]): DetectedColumnMap {
   const n = headers.length;
 
-  // Build score matrix: scores[roleIndex][colIndex]
   const roles = [
-    { name: "date",    keywords: DATE_KEYWORDS },
-    { name: "desc",    keywords: DESC_KEYWORDS },
-    { name: "debit",   keywords: DEBIT_KEYWORDS },
-    { name: "credit",  keywords: CREDIT_KEYWORDS },
-    { name: "amount",  keywords: AMOUNT_KEYWORDS },
-    { name: "type",    keywords: TYPE_KEYWORDS },
+    { name: "date", keywords: DATE_KEYWORDS },
+    { name: "desc", keywords: DESC_KEYWORDS },
+    { name: "debit", keywords: DEBIT_KEYWORDS },
+    { name: "credit", keywords: CREDIT_KEYWORDS },
+    { name: "amount", keywords: AMOUNT_KEYWORDS },
+    { name: "type", keywords: TYPE_KEYWORDS },
     { name: "balance", keywords: BALANCE_KEYWORDS },
   ] as const;
 
-  type RoleName = typeof roles[number]["name"];
+  type RoleName = (typeof roles)[number]["name"];
 
   const scores: Record<RoleName, number[]> = {
     date: [],
@@ -117,11 +135,53 @@ export function detectColumns(headers: string[]): DetectedColumnMap {
     balance: [],
   };
 
+  // 1. Initial scores from headers
   for (const role of roles) {
     scores[role.name] = headers.map((h) => scoreHeader(h, role.keywords));
   }
 
-  // Greedy assignment: for each role pick best scoring unassigned column
+  // 2. Data row heuristic boosts
+  if (sampleRows && sampleRows.length > 0) {
+    const validSamples = sampleRows.slice(0, 5).filter((r) => r && r.length > 0);
+    const sampleCount = validSamples.length;
+
+    if (sampleCount > 0) {
+      for (let col = 0; col < n; col++) {
+        let dateMatches = 0;
+        let numericMatches = 0;
+        let typeMatches = 0;
+        let textMatches = 0;
+
+        for (const row of validSamples) {
+          const cell = (row[col] || "").trim();
+          if (!cell) continue;
+
+          if (isDateLike(cell)) dateMatches++;
+          else if (isTypeDirectionLike(cell)) typeMatches++;
+          else if (isNumericLike(cell)) numericMatches++;
+          else if (cell.length > 2) textMatches++;
+        }
+
+        // Boost based on sample data consistency
+        if (dateMatches >= sampleCount * 0.6) {
+          scores.date[col] += 0.8;
+        }
+        if (typeMatches >= sampleCount * 0.6) {
+          scores.type[col] += 0.8;
+        }
+        if (numericMatches >= sampleCount * 0.6) {
+          scores.amount[col] += 0.4;
+          scores.debit[col] += 0.3;
+          scores.credit[col] += 0.3;
+        }
+        if (textMatches >= sampleCount * 0.6 && numericMatches === 0 && dateMatches === 0) {
+          scores.desc[col] += 0.6;
+        }
+      }
+    }
+  }
+
+  // 3. Greedy assignment in priority order
   const assigned = new Set<number>();
 
   function pickBest(roleName: RoleName): number | null {
@@ -141,17 +201,15 @@ export function detectColumns(headers: string[]): DetectedColumnMap {
     return null;
   }
 
-  // Assign in priority order (date and desc are most critical)
-  const dateCol   = pickBest("date");
-  const descCol   = pickBest("desc");
-  const debitCol  = pickBest("debit");
+  const dateCol = pickBest("date");
+  const descCol = pickBest("desc");
+  const debitCol = pickBest("debit");
   const creditCol = pickBest("credit");
   const amountCol = pickBest("amount");
-  const typeCol   = pickBest("type");
+  const typeCol = pickBest("type");
   const balanceCol = pickBest("balance");
 
-  // Fallback heuristic: if dateCol or descCol not found, try positional
-  // (common pattern: col0=date, col1=desc, col2=amount in simple CSVs)
+  // Fallback positional heuristics if nothing assigned
   const finalDateCol = dateCol ?? (n > 0 ? 0 : -1);
   const finalDescCol = descCol ?? (n > 1 ? 1 : -1);
   let finalAmountCol = amountCol;
@@ -160,24 +218,26 @@ export function detectColumns(headers: string[]): DetectedColumnMap {
     assigned.add(2);
   }
 
-  // Confidence: 1.0 if date+desc+amount(or debit/credit) found via keyword match
-  const hasDate   = dateCol !== null;
-  const hasDesc   = descCol !== null;
-  const hasAmount = amountCol !== null || (debitCol !== null && creditCol !== null) || debitCol !== null;
+  const hasDate = dateCol !== null;
+  const hasDesc = descCol !== null;
+  const hasAmount =
+    amountCol !== null ||
+    (debitCol !== null && creditCol !== null) ||
+    debitCol !== null;
 
   let confidence = 0;
-  if (hasDate)   confidence += 0.35;
-  if (hasDesc)   confidence += 0.25;
-  if (hasAmount) confidence += 0.40;
+  if (hasDate) confidence += 0.35;
+  if (hasDesc) confidence += 0.25;
+  if (hasAmount) confidence += 0.4;
 
   return {
-    dateCol:    finalDateCol >= 0 ? finalDateCol : 0,
-    descCol:    finalDescCol >= 0 ? finalDescCol : 1,
-    debitCol:   debitCol,
-    creditCol:  creditCol,
-    amountCol:  finalAmountCol,
-    typeCol:    typeCol,
-    balanceCol: balanceCol,
+    dateCol: finalDateCol >= 0 ? finalDateCol : 0,
+    descCol: finalDescCol >= 0 ? finalDescCol : 1,
+    debitCol,
+    creditCol,
+    amountCol: finalAmountCol,
+    typeCol,
+    balanceCol,
     confidence,
   };
 }
@@ -198,14 +258,14 @@ export type ColumnRole =
 
 export function columnRoleLabel(role: ColumnRole, isIndonesian: boolean): string {
   const map: Record<ColumnRole, [string, string]> = {
-    date:        ["Tanggal",     "Date"],
-    description: ["Deskripsi",   "Description"],
-    debit:       ["Debet (Keluar)", "Debit (Out)"],
-    credit:      ["Kredit (Masuk)", "Credit (In)"],
-    amount:      ["Jumlah",      "Amount"],
-    type:        ["Jenis (DB/CR)", "Type (DB/CR)"],
-    balance:     ["Saldo",       "Balance"],
-    ignore:      ["Abaikan",     "Ignore"],
+    date: ["Tanggal", "Date"],
+    description: ["Deskripsi", "Description"],
+    debit: ["Debet (Keluar)", "Debit (Out)"],
+    credit: ["Kredit (Masuk)", "Credit (In)"],
+    amount: ["Jumlah", "Amount"],
+    type: ["Jenis (DB/CR)", "Type (DB/CR)"],
+    balance: ["Saldo", "Balance"],
+    ignore: ["Abaikan", "Ignore"],
   };
   return isIndonesian ? map[role][0] : map[role][1];
 }

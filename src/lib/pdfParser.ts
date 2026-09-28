@@ -2,6 +2,7 @@
 // TROUVAILLE PDF BANK STATEMENT TEXT EXTRACTOR
 // Uses Mozilla's pdfjs-dist (same engine as Firefox/Chrome) to extract
 // text from PDF mutasi files, 100% client-side — no server involved.
+// Supports safe Capacitor/Vite worker loading and password detection.
 // ======================================================================
 
 export interface ExtractedPDFResult {
@@ -37,27 +38,26 @@ function detectBankFromText(text: string): string | null {
 
 /**
  * Extracts all text from a PDF file using pdfjs-dist.
- *
- * The pdfjs worker is configured to use a CDN URL (via importScripts),
- * which avoids the need to bundle the ~300 KB worker script.
- * All text extraction happens in the browser — the file is never uploaded.
+ * All text extraction happens 100% in the browser — the file is never uploaded.
  */
 export async function extractTextFromPDF(file: File): Promise<ExtractedPDFResult> {
-  // Lazy-load pdfjs-dist — it's ~900 KB, kept out of main bundle
   const pdfjsLib = await import("pdfjs-dist");
 
-  // Use the bundled legacy worker to avoid cross-origin worker issues
-  // in Capacitor/Ionic WebView environments
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url
-  ).toString();
+  // Configure worker URL safely with fallback
+  try {
+    const workerUrl = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).toString();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+  } catch {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+  }
 
   const arrayBuffer = await file.arrayBuffer();
 
   const loadingTask = pdfjsLib.getDocument({
     data: new Uint8Array(arrayBuffer),
-    // Disable external font/image loading for security
     disableFontFace: true,
     verbosity: 0,
   });
@@ -70,8 +70,6 @@ export async function extractTextFromPDF(file: File): Promise<ExtractedPDFResult
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
 
-    // Reconstruct readable lines from text items
-    // pdfjs returns items with x/y positions — we sort by y (row) then x (column)
     type TextItem = {
       str: string;
       transform: number[];
@@ -84,12 +82,11 @@ export async function extractTextFromPDF(file: File): Promise<ExtractedPDFResult
     const lineMap = new Map<number, { x: number; text: string }[]>();
     for (const item of items) {
       if (!item.str.trim()) continue;
-      const y = Math.round(item.transform[5] / 3) * 3; // bucket to 3px
+      const y = Math.round(item.transform[5] / 3) * 3;
       if (!lineMap.has(y)) lineMap.set(y, []);
       lineMap.get(y)!.push({ x: item.transform[4], text: item.str });
     }
 
-    // Sort lines by Y descending (PDF y=0 is bottom) then items by X
     const sortedYs = Array.from(lineMap.keys()).sort((a, b) => b - a);
     const pageLines: string[] = [];
     for (const y of sortedYs) {
