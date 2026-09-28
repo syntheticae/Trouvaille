@@ -274,16 +274,19 @@ function AppShell() {
               ? "transfer"
               : "expense";
 
+          const isGuestUser = !user?.id || user.id === "guest_local_user";
           const rawCatId =
             res.prefilledValues.category_id ||
             categories.find((c) => c.type !== "income")?.id ||
             categories[0]?.id ||
             null;
-          const targetCatId = isUUID(rawCatId) ? rawCatId : null;
+          const targetCatId = isUUID(rawCatId) ? rawCatId : isGuestUser ? rawCatId : null;
 
           const rawWalletId =
             res.prefilledValues.wallet_id || wallets[0]?.id || null;
           const targetWalletId = isUUID(rawWalletId)
+            ? rawWalletId
+            : isGuestUser
             ? rawWalletId
             : (wallets[0]?.id && isUUID(wallets[0].id) ? wallets[0].id : null);
 
@@ -293,7 +296,7 @@ function AppShell() {
                 wallets.find((w) => w.id !== targetWalletId)?.id ||
                 null
               : null;
-          const targetToWalletId = isUUID(rawToWalletId) ? rawToWalletId : null;
+          const targetToWalletId = isUUID(rawToWalletId) ? rawToWalletId : isGuestUser ? rawToWalletId : null;
 
           const txDate = res.prefilledValues.date || new Date();
           const occurred_on = format(txDate, "yyyy-MM-dd");
@@ -348,6 +351,7 @@ function AppShell() {
               wallet_id: targetWalletId,
               to_wallet_id: targetToWalletId,
               occurred_on,
+              created_at: txDate.toISOString(),
               note: note || undefined,
               ledger_id: targetSpaceId,
               space_id: targetSpaceId,

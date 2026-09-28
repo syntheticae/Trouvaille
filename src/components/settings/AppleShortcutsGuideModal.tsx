@@ -21,6 +21,7 @@ import {
   Bell,
   Camera,
   Coffee,
+  Calendar,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
@@ -369,23 +370,34 @@ export function AppleShortcutsGuideModal({
       },
       {
         stepNum: 4,
-        title: isIndonesian ? "Langkah 4: Masukan Catatan & Rangkai Teks" : "Step 4: Notes & Assemble Text",
+        title: isIndonesian ? "Langkah 4: Minta Masukan Tanggal & Waktu" : "Step 4: Ask for Date and Time",
         desc: isIndonesian
-          ? "1. Tambah tindakan 'Minta Masukan' Teks dengan pertanyaan: 'Catatan tambahan?' (opsional, ganti nama variabel menjadi 'Catatan').\n2. Tambah tindakan 'Teks', lalu tempel templat di bawah dan sisipkan variabel biru ke masing-masing baris:"
-          : "1. Add 'Ask for Input' Text: 'Any notes?' (optional, rename variable to 'Notes').\n2. Add 'Text' action, paste the template below and place your blue variables on each line:",
+          ? "Tambah tindakan 'Minta Masukan' › Ubah tipe ke 'Tanggal dan Waktu' › Pertanyaan: 'Kapan transaksi dilakukan?'. Ketuk variabel biru di atas papan ketik lalu ganti nama menjadi 'Tanggal'."
+          : "Add 'Ask for Input' › Change type to 'Date and Time' › Prompt: 'When was this transaction?'. Tap the blue variable above the keyboard and rename it to 'Date'.",
+        actionType: "info",
+        noteText: isIndonesian
+          ? "Tipe Tanggal dan Waktu memunculkan pemilih kalender dan jam asli iOS secara otomatis."
+          : "Date and Time type brings up the native iOS calendar and time picker automatically.",
+      },
+      {
+        stepNum: 5,
+        title: isIndonesian ? "Langkah 5: Masukan Catatan & Rangkai Teks" : "Step 5: Notes & Assemble Text",
+        desc: isIndonesian
+          ? "1. Tambah tindakan 'Minta Masukan' Teks dengan pertanyaan: 'Catatan tambahan?' (opsional, ganti nama variabel menjadi 'Catatan').\n2. Tambah tindakan 'Teks', lalu tempel templat 5 baris di bawah dan sisipkan variabel biru ke masing-masing baris:"
+          : "1. Add 'Ask for Input' Text: 'Any notes?' (optional, rename variable to 'Notes').\n2. Add 'Text' action, paste the 5-line template below and place your blue variables on each line:",
         actionType: "copy",
         copyText: isIndonesian
-          ? "Nominal: [Nominal]\nKategori: [Kategori]\nAkun: [Akun]\nCatatan: [Catatan]"
-          : "Nominal: [Amount]\nKategori: [Category]\nAkun: [Account]\nCatatan: [Notes]",
+          ? "Nominal: [Nominal]\nKategori: [Kategori]\nAkun: [Akun]\nTanggal: [Tanggal]\nCatatan: [Catatan]"
+          : "Nominal: [Amount]\nKategori: [Category]\nAkun: [Account]\nTanggal: [Date]\nCatatan: [Notes]",
         copyLabel: isIndonesian ? "Format Teks Transaksi" : "Transaction Text Format",
         btnText: isIndonesian ? "Salin Format Teks" : "Copy Text Format",
       },
       {
-        stepNum: 5,
-        title: isIndonesian ? "Langkah 5: Enkode URL & Buka Trouvaille" : "Step 5: URL Encode & Open Trouvaille",
+        stepNum: 6,
+        title: isIndonesian ? "Langkah 6: Enkode URL & Buka Trouvaille" : "Step 6: URL Encode & Open Trouvaille",
         desc: isIndonesian
-          ? "1. Tambah tindakan 'Enkode URL' untuk variabel 'Teks' dari Langkah 4.\n2. Tambah tindakan 'Buka URL' di urutan paling akhir dan tempel templat di bawah, lalu ganti [Teks Terenkode] dengan variabel biru 'Teks Terenkode URL':"
-          : "1. Add 'URL Encode' action for the 'Text' variable from Step 4.\n2. Add 'Open URLs' action at the end and paste the template below, replacing [URL Encoded Text] with the blue 'URL Encoded Text' variable:",
+          ? "1. Tambah tindakan 'Enkode URL' untuk variabel 'Teks' dari Langkah 5.\n2. Tambah tindakan 'Buka URL' di urutan paling akhir dan tempel templat di bawah, lalu ganti [Teks Terenkode] dengan variabel biru 'Teks Terenkode URL':"
+          : "1. Add 'URL Encode' action for the 'Text' variable from Step 5.\n2. Add 'Open URLs' action at the end and paste the template below, replacing [URL Encoded Text] with the blue 'URL Encoded Text' variable:",
         actionType: "copy",
         copyText: isIndonesian
           ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
@@ -1843,7 +1855,7 @@ export function AppleShortcutsGuideModal({
                 </div>
               </div>
 
-              {/* DIALOG - SLIDE 4: TANGGAL & CATATAN */}
+              {/* DIALOG - SLIDE 4: TANGGAL & WAKTU */}
               <div
                 style={{
                   position: "absolute",
@@ -1864,18 +1876,88 @@ export function AppleShortcutsGuideModal({
                     <ChevronLeft size={9} strokeWidth={2.5} />
                   </div>
                   <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
-                    {isIndonesian ? "Catatan & Format Teks" : "Notes & Format Text"}
+                    {isIndonesian ? "Tanggal & Waktu Transaksi" : "Transaction Date & Time"}
                   </span>
                 </div>
 
                 {/* Preceding Step 3: Wallet (Dimmed Chain) */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3.5px 7px", opacity: 0.45 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <List size={5.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 6.5, color: "white" }}>{isIndonesian ? "Pilih Akun" : "Choose Account"}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ {isIndonesian ? "Akun" : "Account"}</span>
+                  </div>
+                </div>
+
+                <div style={{ width: 1.5, height: 6, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                {/* Ask for Input: Date and Time Action Card */}
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", padding: "5px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7.5, marginBottom: 3 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 3, background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Calendar size={7} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ color: "white", fontWeight: 600 }}>
+                      {isIndonesian ? "Minta Masukan" : "Ask for Input"}
+                    </span>
+                    <span style={{ background: "#2e1065", border: "1px solid rgba(139,92,246,0.45)", color: "#c4b5fd", borderRadius: 4, padding: "1px 3px", fontSize: 6 }}>
+                      {isIndonesian ? "Tanggal dan Waktu" : "Date and Time"}
+                    </span>
+                  </div>
+                  <div style={{ background: "#18181a", borderRadius: 6, padding: "4px 6px", fontSize: 6.5, color: "rgba(255,255,255,0.85)" }}>
+                    <div style={{ color: "rgba(255,255,255,0.5)", marginBottom: 1 }}>{isIndonesian ? "Pertanyaan" : "Prompt"}:</div>
+                    <div style={{ fontStyle: "italic", color: "white" }}>"{isIndonesian ? "Kapan transaksi dilakukan?" : "When was this transaction?"}"</div>
+                    <div style={{ marginTop: 3, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 6 }}>{isIndonesian ? "Variabel" : "Variable"}:</span>
+                      <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 3, padding: "0.5px 3px", fontSize: 6, fontWeight: 600 }}>➔ {isIndonesian ? "Tanggal" : "Date"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ width: 1.5, height: 6, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                {/* Next preview badge */}
+                <div style={{ background: "#1c1c1e", borderRadius: 8, padding: "3.5px 6px", display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.7 }}>
+                  <span style={{ fontSize: 6, color: "rgba(255,255,255,0.7)" }}>{isIndonesian ? "Lanjut ke Catatan & Rangkai Teks" : "Proceed to Notes & Text Assembly"}</span>
+                  <ChevronRight size={8} className="text-zinc-400" />
+                </div>
+              </div>
+
+              {/* DIALOG - SLIDE 5: CATATAN & RANGKAI TEKS */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: activeTab === "dialog" && currentSlide === 5 ? 1 : 0,
+                  pointerEvents: activeTab === "dialog" && currentSlide === 5 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: activeTab === "dialog" && currentSlide === 5 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={9} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Catatan & Format Teks" : "Notes & Format Text"}
+                  </span>
+                </div>
+
+                {/* Preceding Step 4: Date & Time (Dimmed Chain) */}
                 <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3px 6px", opacity: 0.45 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                    <div style={{ width: 9, height: 9, borderRadius: 2, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <List size={5} className="text-white" />
+                    <div style={{ width: 9, height: 9, borderRadius: 2, background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Calendar size={5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 6, color: "white" }}>{isIndonesian ? "Pilih Akun" : "Choose Account"}</span>
-                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ {isIndonesian ? "Akun" : "Account"}</span>
+                    <span style={{ fontSize: 6, color: "white" }}>{isIndonesian ? "Tanggal & Waktu" : "Date & Time"}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ {isIndonesian ? "Tanggal" : "Date"}</span>
                   </div>
                 </div>
 
@@ -1896,7 +1978,7 @@ export function AppleShortcutsGuideModal({
 
                 <div style={{ width: 1.5, height: 4, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
-                {/* Text Block Assembling Variables */}
+                {/* Text Block Assembling 5 Variables */}
                 <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "4px 6px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 2 }}>
                     <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1908,12 +1990,13 @@ export function AppleShortcutsGuideModal({
                     <div>Nominal: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>Nominal</span></div>
                     <div>{isIndonesian ? "Kategori" : "Category"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Kategori" : "Category"}</span></div>
                     <div>{isIndonesian ? "Akun" : "Account"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Akun" : "Account"}</span></div>
+                    <div>{isIndonesian ? "Tanggal" : "Date"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Tanggal" : "Date"}</span></div>
                     <div>{isIndonesian ? "Catatan" : "Note"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Catatan" : "Notes"}</span></div>
                   </div>
                 </div>
               </div>
 
-              {/* DIALOG - SLIDE 5: URL SCHEME LENGKAP */}
+              {/* DIALOG - SLIDE 6: URL SCHEME LENGKAP */}
               <div
                 style={{
                   position: "absolute",
@@ -1923,10 +2006,10 @@ export function AppleShortcutsGuideModal({
                   flexDirection: "column",
                   borderRadius: 37,
                   overflow: "hidden",
-                  opacity: activeTab === "dialog" && currentSlide === 5 ? 1 : 0,
-                  pointerEvents: activeTab === "dialog" && currentSlide === 5 ? "auto" : "none",
+                  opacity: activeTab === "dialog" && currentSlide === 6 ? 1 : 0,
+                  pointerEvents: activeTab === "dialog" && currentSlide === 6 ? "auto" : "none",
                   transition: "opacity 0.28s ease, transform 0.28s ease",
-                  transform: activeTab === "dialog" && currentSlide === 5 ? "scale(1)" : "scale(0.97)",
+                  transform: activeTab === "dialog" && currentSlide === 6 ? "scale(1)" : "scale(0.97)",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>

@@ -28,8 +28,27 @@ export interface DeepLinkResult {
 }
 
 /**
+ * Extracts hours and minutes from a date-time string.
+ * Supports "17:30", "17.30", "17:30:00", "05:30 PM", "5:30pm", "5.30 am", "at 17:30", etc.
+ */
+export function extractTimeComponents(str?: string | null): { hours: number; minutes: number } | null {
+  if (!str || typeof str !== "string") return null;
+  const match = str.match(/(?:at\s+)?(\d{1,2})[:.](\d{2})(?::\d{2})?(?:\s*([ap]\.?m\.?))?/i);
+  if (!match) return null;
+  let h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const meridian = match[3]?.toLowerCase().replace(/\./g, "");
+  if (meridian === "pm" && h < 12) h += 12;
+  if (meridian === "am" && h === 12) h = 0;
+  if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+    return { hours: h, minutes: m };
+  }
+  return null;
+}
+
+/**
  * Resilient multi-format Indonesian & international date parser.
- * Handles ISO, YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, DD MMM YYYY with Indonesian month names.
+ * Handles ISO, YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, DD MMM YYYY with Indonesian month names and optional time.
  */
 export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
   if (!dateStr || typeof dateStr !== "string") return undefined;
@@ -40,9 +59,14 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
     .trim();
   if (!clean) return undefined;
 
+  const timeComp = extractTimeComponents(clean);
+
   // Try standard JS parse first (e.g. ISO 8601 or YYYY-MM-DD)
   const stdDate = new Date(clean);
   if (!isNaN(stdDate.getTime()) && !/^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(clean)) {
+    if (timeComp && stdDate.getHours() === 0 && stdDate.getMinutes() === 0) {
+      stdDate.setHours(timeComp.hours, timeComp.minutes, 0, 0);
+    }
     return stdDate;
   }
 
@@ -61,6 +85,8 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
     des: 11, desember: 11, dec: 11, december: 11,
   };
 
+  let resolvedDate: Date | undefined;
+
   // Pattern A: "28/09/2026", "28-09-2026", "28/09/26" (DD/MM/YYYY or DD-MM-YYYY)
   const numMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
   if (numMatch) {
@@ -69,32 +95,43 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
     let y = parseInt(numMatch[3], 10);
     if (y < 100) y += 2000;
     if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 2000 && y <= 2100) {
-      return new Date(y, m - 1, d);
+      resolvedDate = new Date(y, m - 1, d);
     }
   }
 
   // Pattern B: "28 Sep 2026", "28 September 2026", "28 Okt 2026", "28-Agu-2026"
-  const textMatch =
-    clean.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{2,4})/i) ||
-    clean.match(/^(\d{1,2})[/-]([a-zA-Z]+)[/-](\d{2,4})/i);
-  if (textMatch) {
-    const d = parseInt(textMatch[1], 10);
-    const mStr = textMatch[2].toLowerCase();
-    const m = monthMap[mStr];
-    let y = parseInt(textMatch[3], 10);
-    if (y < 100) y += 2000;
-    if (m !== undefined && d >= 1 && d <= 31 && y >= 2000 && y <= 2100) {
-      return new Date(y, m, d);
+  if (!resolvedDate) {
+    const textMatch =
+      clean.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{2,4})/i) ||
+      clean.match(/^(\d{1,2})[/-]([a-zA-Z]+)[/-](\d{2,4})/i);
+    if (textMatch) {
+      const d = parseInt(textMatch[1], 10);
+      const mStr = textMatch[2].toLowerCase();
+      const m = monthMap[mStr];
+      let y = parseInt(textMatch[3], 10);
+      if (y < 100) y += 2000;
+      if (m !== undefined && d >= 1 && d <= 31 && y >= 2000 && y <= 2100) {
+        resolvedDate = new Date(y, m, d);
+      }
     }
   }
 
   // Pattern C: YYYY-MM-DD
-  const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (isoMatch) {
-    const y = parseInt(isoMatch[1], 10);
-    const m = parseInt(isoMatch[2], 10);
-    const d = parseInt(isoMatch[3], 10);
-    return new Date(y, m - 1, d);
+  if (!resolvedDate) {
+    const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const y = parseInt(isoMatch[1], 10);
+      const m = parseInt(isoMatch[2], 10);
+      const d = parseInt(isoMatch[3], 10);
+      resolvedDate = new Date(y, m - 1, d);
+    }
+  }
+
+  if (resolvedDate) {
+    if (timeComp) {
+      resolvedDate.setHours(timeComp.hours, timeComp.minutes, 0, 0);
+    }
+    return resolvedDate;
   }
 
   return undefined;
@@ -204,9 +241,13 @@ export function parseStructuredShortcutText(
       ) {
         hasStructuredKey = true;
         rawNote = val;
-      } else if (key === "tanggal" || key === "date") {
+      } else if (key === "tanggal" || key === "date" || key === "datetime" || key === "waktu" || key === "time") {
         hasStructuredKey = true;
-        rawDate = val;
+        if (!rawDate) {
+          rawDate = val;
+        } else {
+          rawDate = `${rawDate} ${val}`;
+        }
       } else if (key === "tipe" || key === "type") {
         hasStructuredKey = true;
         const t = val.toLowerCase();
@@ -263,6 +304,10 @@ export function parseStructuredShortcutText(
     rawType || (matchedToWal ? "transfer" : "expense");
 
   const parsedDate = parseIndonesianDate(rawDate) || new Date();
+  const timeComp = extractTimeComponents(rawDate);
+  const timeStr = timeComp
+    ? `${String(timeComp.hours).padStart(2, "0")}:${String(timeComp.minutes).padStart(2, "0")}`
+    : undefined;
 
   return {
     action: "transaction",
@@ -280,6 +325,7 @@ export function parseStructuredShortcutText(
       to_wallet_id: matchedToWal?.id,
       toWalletId: matchedToWal?.id,
       date: parsedDate,
+      time: timeStr,
     },
   };
 }
@@ -466,7 +512,18 @@ export function parseDeepLink(
         );
       }
 
-      const parsedDate = parseIndonesianDate(directDate) || new Date();
+      let combinedDateStr = directDate;
+      if (directDate && directTime && !directDate.includes(directTime)) {
+        combinedDateStr = `${directDate} ${directTime}`;
+      } else if (!directDate && directTime) {
+        combinedDateStr = directTime;
+      }
+
+      const parsedDate = parseIndonesianDate(combinedDateStr) || new Date();
+      const timeComp = extractTimeComponents(combinedDateStr) || extractTimeComponents(directTime);
+      const effectiveTime = timeComp
+        ? `${String(timeComp.hours).padStart(2, "0")}:${String(timeComp.minutes).padStart(2, "0")}`
+        : directTime || undefined;
 
       const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
       // Auto-save only if explicitly requested (opt-in) to prevent unintended auto-inserts
@@ -496,7 +553,7 @@ export function parseDeepLink(
           to_wallet_id: matchedToWal?.id,
           toWalletId: matchedToWal?.id,
           date: parsedDate,
-          time: directTime || undefined,
+          time: effectiveTime,
         },
       };
     }

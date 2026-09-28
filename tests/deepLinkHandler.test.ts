@@ -138,6 +138,57 @@ describe("DeepLink & iOS Shortcuts URL Scheme Handler", () => {
     expect(parseDeepLink("trouvaille://clean-sync").action).toBe("restore_balance");
   });
 
+  it("parses structured multi-line shortcut text with Date and Time", () => {
+    const dialogText = "Nominal: 75.000\nKategori: Makanan\nAkun: BCA\nTanggal: 28/09/2026, 17:30\nCatatan: Makan malam bersama";
+    const url = `trouvaille://add?text=${encodeURIComponent(dialogText)}&autosave=true`;
+    const result = parseDeepLink(url, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.autoSave).toBe(true);
+    expect(result.prefilledValues?.amount).toBe(75000);
+    expect(result.prefilledValues?.categoryId).toBe("c-food");
+    expect(result.prefilledValues?.walletId).toBe("w-bca");
+    expect(result.prefilledValues?.note).toBe("Makan malam bersama");
+    expect(result.prefilledValues?.date).toBeInstanceOf(Date);
+    expect(result.prefilledValues?.date?.getFullYear()).toBe(2026);
+    expect(result.prefilledValues?.date?.getMonth()).toBe(8); // September is 8
+    expect(result.prefilledValues?.date?.getDate()).toBe(28);
+    expect(result.prefilledValues?.date?.getHours()).toBe(17);
+    expect(result.prefilledValues?.date?.getMinutes()).toBe(30);
+    expect(result.prefilledValues?.time).toBe("17:30");
+  });
+
+  it("parses structured shortcut text with separate Tanggal and Waktu lines", () => {
+    const dialogText = "Nominal: 120.000\nKategori: Makanan\nAkun: BCA\nTanggal: 28 Sep 2026\nWaktu: 19:45\nCatatan: Dinner";
+    const url = `trouvaille://add?text=${encodeURIComponent(dialogText)}&autosave=true`;
+    const result = parseDeepLink(url, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.autoSave).toBe(true);
+    expect(result.prefilledValues?.amount).toBe(120000);
+    expect(result.prefilledValues?.date?.getFullYear()).toBe(2026);
+    expect(result.prefilledValues?.date?.getMonth()).toBe(8);
+    expect(result.prefilledValues?.date?.getDate()).toBe(28);
+    expect(result.prefilledValues?.date?.getHours()).toBe(19);
+    expect(result.prefilledValues?.date?.getMinutes()).toBe(45);
+    expect(result.prefilledValues?.time).toBe("19:45");
+  });
+
+  it("parses direct query scheme with date and time", () => {
+    const rawUrl = "trouvaille://add?amount=50000&category=Makanan&wallet=BCA&date=2026-09-28&time=14:15&autosave=true";
+    const result = parseDeepLink(rawUrl, mockCategories, mockWallets);
+
+    expect(result.action).toBe("transaction");
+    expect(result.autoSave).toBe(true);
+    expect(result.prefilledValues?.amount).toBe(50000);
+    expect(result.prefilledValues?.date?.getFullYear()).toBe(2026);
+    expect(result.prefilledValues?.date?.getMonth()).toBe(8);
+    expect(result.prefilledValues?.date?.getDate()).toBe(28);
+    expect(result.prefilledValues?.date?.getHours()).toBe(14);
+    expect(result.prefilledValues?.date?.getMinutes()).toBe(15);
+    expect(result.prefilledValues?.time).toBe("14:15");
+  });
+
   it("returns none action on empty or invalid inputs", () => {
     expect(parseDeepLink("").action).toBe("none");
     expect(parseDeepLink("random-string-without-scheme").action).toBe("none");
