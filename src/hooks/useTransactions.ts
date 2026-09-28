@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import {
   enqueuePendingMutation,
   removePendingMutation,
+  clearPendingMutations,
   getPendingMutations,
   flushPendingMutations,
 } from "../lib/syncEngine";
@@ -51,6 +52,7 @@ export interface TransactionFilters {
   userId?: string;
   ledgerId?: string;
   filterByUserIdOnly?: boolean;
+  skipPendingOverlay?: boolean;
 }
 
 interface TransactionQueryOptions {
@@ -282,9 +284,31 @@ export const TRANSACTION_FALLBACK_COLUMNS =
 
 import { useAuth } from "../contexts/AuthContext";
 import { emitSyncStatus } from "../components/ui/SyncStatusPill";
-import { getVaultItem, setVaultItem } from "../lib/indexedDbStorage";
+import { getVaultItem, setVaultItem, removeVaultItem } from "../lib/indexedDbStorage";
 
 let inMemoryTransactionsSnapshot: Transaction[] | null = null;
+
+export async function clearLocalTransactionsCache(): Promise<void> {
+  inMemoryTransactionsSnapshot = null;
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(TX_BACKUP_STORAGE_KEY);
+    } catch {}
+    try {
+      await removeVaultItem(TX_BACKUP_STORAGE_KEY);
+    } catch {}
+  }
+}
+
+export async function purgePendingMutationsAndSync(userId?: string): Promise<Transaction[]> {
+  clearPendingMutations();
+  await clearLocalTransactionsCache();
+  const cleanRecords = await fetchAllTransactionsFromSupabase({
+    userId,
+    skipPendingOverlay: true,
+  });
+  return cleanRecords;
+}
 
 // Synchronously prime from localStorage for 0ms initial render
 try {
@@ -666,35 +690,41 @@ export async function fetchAllTransactionsFromSupabase(
     }
   }
 
-  // Deduplicate and overlay local pending mutations
-  const pendingMutations = getPendingMutations();
-  const pendingDeletes = new Set<string>();
-  const pendingUpserts = new Map<string, Transaction>();
+  let uniqueRecords: Transaction[];
 
-  for (const m of pendingMutations) {
-    if (m.type === "delete") {
-      const id = m.payload?.id || m.payload;
-      if (id) pendingDeletes.add(id);
-    } else if ((m.type === "insert" || m.type === "update") && m.payload?.id) {
-      pendingUpserts.set(m.payload.id, m.payload as Transaction);
+  if (filters?.skipPendingOverlay) {
+    uniqueRecords = sortTransactionsDesc(allRecords);
+  } else {
+    // Deduplicate and overlay local pending mutations
+    const pendingMutations = getPendingMutations();
+    const pendingDeletes = new Set<string>();
+    const pendingUpserts = new Map<string, Transaction>();
+
+    for (const m of pendingMutations) {
+      if (m.type === "delete") {
+        const id = m.payload?.id || m.payload;
+        if (id) pendingDeletes.add(id);
+      } else if ((m.type === "insert" || m.type === "update") && m.payload?.id) {
+        pendingUpserts.set(m.payload.id, m.payload as Transaction);
+      }
     }
-  }
 
-  const recordMap = new Map<string, Transaction>();
-  for (const item of allRecords) {
-    if (!pendingDeletes.has(item.id)) {
-      recordMap.set(item.id, item);
+    const recordMap = new Map<string, Transaction>();
+    for (const item of allRecords) {
+      if (!pendingDeletes.has(item.id)) {
+        recordMap.set(item.id, item);
+      }
     }
-  }
 
-  // Preserve and overlay all local pending inserts/updates
-  for (const [id, pendingTx] of pendingUpserts) {
-    if (!pendingDeletes.has(id)) {
-      recordMap.set(id, pendingTx);
+    // Preserve and overlay all local pending inserts/updates
+    for (const [id, pendingTx] of pendingUpserts) {
+      if (!pendingDeletes.has(id)) {
+        recordMap.set(id, pendingTx);
+      }
     }
-  }
 
-  let uniqueRecords = sortTransactionsDesc(Array.from(recordMap.values()));
+    uniqueRecords = sortTransactionsDesc(Array.from(recordMap.values()));
+  }
 
   if (filters?.search) {
     const s = filters.search.toLowerCase();

@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays } from "date-fns"
+import { clearPendingMutations } from "../lib/syncEngine"
+import { clearLocalTransactionsCache } from "./useTransactions"
 
 export type ResetPeriod = "today" | "week" | "month" | "year" | "all"
 
@@ -35,6 +37,9 @@ export function useResetTransactions() {
 
       const { error } = await query
       if (error) throw error
+
+      clearPendingMutations()
+      await clearLocalTransactionsCache()
       return { period }
     },
     onSuccess: () => {

@@ -12,7 +12,12 @@ import {
   useWallets,
   walletKeys,
 } from "./hooks/useWallets";
-import { useAllTransactions, useAddTransaction, transactionKeys } from "./hooks/useTransactions";
+import {
+  useAllTransactions,
+  useAddTransaction,
+  transactionKeys,
+  purgePendingMutationsAndSync,
+} from "./hooks/useTransactions";
 import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen";
 import { SyncStatusPill } from "./components/ui/SyncStatusPill";
@@ -20,6 +25,7 @@ import { ClipboardTransactionBanner } from "./components/common/ClipboardTransac
 import { App as CapApp } from "@capacitor/app";
 import { parseDeepLink } from "./lib/deepLinkHandler";
 import { useLanguage } from "./contexts/LanguageContext";
+import { useToast } from "./contexts/ToastContext";
 import { triggerSuccessHaptic, triggerHaptic } from "./lib/haptics";
 import { format } from "date-fns";
 import { formatRupiah } from "./lib/utils";
@@ -167,6 +173,7 @@ function AppShell() {
   const { data: wallets = [] } = useWallets();
   const addTxMutation = useAddTransaction();
   const { isIndonesian } = useLanguage();
+  const { showToast } = useToast();
   const [recordedShortcutTx, setRecordedShortcutTx] = useState<ShortcutRecordedTxData | null>(null);
   const [joinLedgerOpen, setJoinLedgerOpen] = useState(false);
   const [joinLedgerCode, setJoinLedgerCode] = useState("");
@@ -365,6 +372,46 @@ function AppShell() {
           }
           setAddSheetOpen(true);
         }
+      } else if (res.action === "restore_balance") {
+        triggerSuccessHaptic();
+        showToast(
+          isIndonesian
+            ? "Memulihkan saldo dari Cloud..."
+            : "Restoring wallet balance from Cloud...",
+          "info",
+          null,
+          2000
+        );
+        (async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const cleanTxs = await purgePendingMutationsAndSync(session?.user?.id);
+            queryClient.setQueryData(transactionKeys.all(session?.user?.id), cleanTxs);
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+              queryClient.invalidateQueries({ queryKey: ["wallets"] }),
+              queryClient.invalidateQueries({ queryKey: ["monthSummary"] }),
+            ]);
+            showToast(
+              isIndonesian
+                ? "Saldo dompet berhasil dipulihkan dari Cloud!"
+                : "Wallet balance restored from Cloud!",
+              "update",
+              null,
+              4000
+            );
+          } catch (err) {
+            console.error("[restore_balance] Failed to restore balance:", err);
+            showToast(
+              isIndonesian
+                ? "Gagal memulihkan saldo dari Cloud"
+                : "Failed to restore balance from Cloud",
+              "delete",
+              null,
+              3000
+            );
+          }
+        })();
       } else if (res.action === "voice") {
         setVoiceModalOpen(true);
       } else if (res.action === "scan") {
@@ -381,6 +428,7 @@ function AppShell() {
     activeSpaceId,
     navigate,
     queryClient,
+    showToast,
   ]);
 
   const tryDispatch = useCallback((rawUrl: string) => {

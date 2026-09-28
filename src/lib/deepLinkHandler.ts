@@ -18,7 +18,7 @@ export interface DeepLinkPrefill {
 }
 
 export interface DeepLinkResult {
-  action: "transaction" | "voice" | "scan" | "import" | "navigate" | "none";
+  action: "transaction" | "voice" | "scan" | "import" | "navigate" | "restore_balance" | "none";
   path?: string;
   autoSave?: boolean;
   matchedCategoryName?: string;
@@ -168,6 +168,16 @@ export function parseDeepLink(
     const params = parsed.searchParams;
 
     // 1. Direct modal routing actions (via path, ?mode=, or ?action=)
+    if (
+      actionPath === "restore-balance" ||
+      actionPath === "clean-sync" ||
+      actionPath === "reset-queue" ||
+      params.get("action") === "restore_balance" ||
+      params.get("action") === "clean_sync" ||
+      params.get("mode") === "clean_sync"
+    ) {
+      return { action: "restore_balance" };
+    }
     if (actionPath === "voice" || params.get("mode") === "voice" || params.get("action") === "voice") {
       return { action: "voice" };
     }

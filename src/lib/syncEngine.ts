@@ -83,6 +83,14 @@ export function removePendingMutation(id: string): void {
   savePendingMutations(filtered);
 }
 
+export function clearPendingMutations(): void {
+  try {
+    localStorage.removeItem(PENDING_STORAGE_KEY);
+  } catch (err) {
+    console.error("[syncEngine] Failed to clear pending mutations:", err);
+  }
+}
+
 export function getPendingTransactions(): Transaction[] {
   const mutations = getPendingMutations();
   const txs: Transaction[] = [];
@@ -139,9 +147,15 @@ export async function flushPendingMutations(): Promise<{
     const errors: unknown[] = [];
     const remainingMutations: PendingMutation[] = [];
 
+    const isUUID = (val?: string | null) =>
+      Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
     const sanitizePayload = (p: any) => {
       if (!p || typeof p !== "object") return p;
-      const { categories, wallet, to_wallet, ...clean } = p;
+      const { categories, wallet, to_wallet, space_id, created_by_name, created_by_user_id, ...clean } = p;
+      if (clean.category_id && !isUUID(clean.category_id)) clean.category_id = null;
+      if (clean.wallet_id && !isUUID(clean.wallet_id)) clean.wallet_id = null;
+      if (clean.to_wallet_id && !isUUID(clean.to_wallet_id)) clean.to_wallet_id = null;
       return clean;
     };
 
@@ -149,7 +163,12 @@ export async function flushPendingMutations(): Promise<{
       try {
         if (mutation.type === "insert") {
           const item = sanitizePayload({ ...mutation.payload, user_id: user.id });
-          const { error } = await supabase.from("transactions").upsert(item);
+          let { error } = await supabase.from("transactions").upsert(item);
+          if (error && item.ledger_id) {
+            const { ledger_id: _lid, ...fallbackItem } = item;
+            const retryRes = await supabase.from("transactions").upsert(fallbackItem);
+            error = retryRes.error;
+          }
           if (error) throw error;
           flushedCount++;
         } else if (mutation.type === "update") {
@@ -158,11 +177,20 @@ export async function flushPendingMutations(): Promise<{
           const cleanUpdates = sanitizePayload(updates);
           delete cleanUpdates.id;
           delete cleanUpdates.user_id;
-          const { error } = await supabase
+          let { error } = await supabase
             .from("transactions")
             .update(cleanUpdates)
             .eq("id", id)
             .eq("user_id", user.id);
+          if (error && cleanUpdates.ledger_id) {
+            delete cleanUpdates.ledger_id;
+            const retryRes = await supabase
+              .from("transactions")
+              .update(cleanUpdates)
+              .eq("id", id)
+              .eq("user_id", user.id);
+            error = retryRes.error;
+          }
           if (error) throw error;
           flushedCount++;
         } else if (mutation.type === "delete") {
@@ -183,11 +211,11 @@ export async function flushPendingMutations(): Promise<{
         );
         errors.push(err);
         mutation.retryCount += 1;
-        if (mutation.retryCount <= 10) {
+        if (mutation.retryCount <= 5) {
           remainingMutations.push(mutation);
         } else {
           console.error(
-            `[syncEngine] Dropping corrupt mutation ${mutation.id} after 10 failed retries.`,
+            `[syncEngine] Dropping corrupt mutation ${mutation.id} after 5 failed retries.`,
             mutation,
           );
         }

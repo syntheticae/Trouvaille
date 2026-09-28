@@ -1,6 +1,6 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { Capacitor } from "@capacitor/core";
-import { triggerHaptic } from "../lib/haptics";
+import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics";
 import {
   ChevronRight,
   User as UserIcon,
@@ -38,6 +38,8 @@ import {
   BarChart2,
   PieChart,
   AlertCircle,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -61,6 +63,7 @@ import {
   fetchAllTransactionsFromSupabase,
   useAllTransactions,
   transactionKeys,
+  purgePendingMutationsAndSync,
 } from "../hooks/useTransactions";
 import {
   requestNotificationPermission,
@@ -73,7 +76,11 @@ import {
   cancelMonthEndReviewNotification,
   checkBudgetThresholdAlerts,
 } from "../lib/notifications";
-import { flushPendingMutations } from "../lib/syncEngine";
+import {
+  flushPendingMutations,
+  getPendingMutations,
+  type PendingMutation,
+} from "../lib/syncEngine";
 import { saveBiometricLoginCredentials } from "../lib/biometricAuth";
 
 // Code-split heavy modular sheets and exporters
@@ -478,6 +485,81 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
       return "Just now";
     }
   });
+
+  const [pendingMutations, setPendingMutations] = useState<PendingMutation[]>(() =>
+    getPendingMutations(),
+  );
+
+  const refreshPendingCount = useCallback(() => {
+    setPendingMutations(getPendingMutations());
+  }, []);
+
+  useEffect(() => {
+    refreshPendingCount();
+    window.addEventListener("focus", refreshPendingCount);
+    window.addEventListener("storage", refreshPendingCount);
+    return () => {
+      window.removeEventListener("focus", refreshPendingCount);
+      window.removeEventListener("storage", refreshPendingCount);
+    };
+  }, [refreshPendingCount]);
+
+  const handleDiscardPendingAndRestore = async () => {
+    triggerHaptic("heavy");
+    setSyncStatus("syncing");
+    try {
+      const userId = session?.user?.id;
+      const cleanTxs = await purgePendingMutationsAndSync(userId);
+      setPendingMutations([]);
+
+      const [freshWalletsRes, freshCategoriesRes, freshBillsRes] = await Promise.allSettled([
+        supabase.from("wallets").select("*").eq("user_id", userId).order("name"),
+        supabase.from("categories").select("*").eq("user_id", userId).order("name"),
+        supabase.from("bills").select("*").eq("user_id", userId).order("due_date", { ascending: true }),
+      ]);
+
+      const freshWallets = freshWalletsRes.status === "fulfilled" && !freshWalletsRes.value.error ? freshWalletsRes.value.data : null;
+      const freshCategories = freshCategoriesRes.status === "fulfilled" && !freshCategoriesRes.value.error ? freshCategoriesRes.value.data : null;
+      const freshBills = freshBillsRes.status === "fulfilled" && !freshBillsRes.value.error ? freshBillsRes.value.data : null;
+
+      queryClient.setQueryData(transactionKeys.all(userId), cleanTxs);
+      if (freshWallets) queryClient.setQueryData(walletKeys.all(userId), freshWallets);
+      if (freshCategories) queryClient.setQueryData(categoryKeys.all(userId), freshCategories);
+      if (freshBills) queryClient.setQueryData(["bills", userId], freshBills);
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["wallets"] }),
+        queryClient.invalidateQueries({ queryKey: ["categories"] }),
+        queryClient.invalidateQueries({ queryKey: ["bills"] }),
+        queryClient.invalidateQueries({ queryKey: ["monthSummary"] }),
+      ]);
+
+      if (refreshLedgers) {
+        await refreshLedgers().catch(() => {});
+      }
+
+      setSyncStatus("success");
+      triggerSuccessHaptic();
+      showToast(
+        isIndonesian
+          ? "Antrean mutasi dibatalkan & saldo dompet dipulihkan!"
+          : "Pending queue discarded & wallet balance restored!",
+        "update",
+        () => {},
+      );
+      setTimeout(() => setSyncStatus("idle"), 3000);
+    } catch (err) {
+      console.error("[handleDiscardPendingAndRestore] Error:", err);
+      setSyncStatus("error");
+      showToast(
+        isIndonesian ? "Gagal memulihkan saldo" : "Failed to restore balance",
+        "delete",
+        () => {},
+      );
+      setTimeout(() => setSyncStatus("idle"), 3000);
+    }
+  };
 
   const handleSafeSync = async () => {
     if (syncStatus === "syncing") return;
@@ -2125,37 +2207,141 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     </span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSafeSync}
-                  disabled={syncStatus === "syncing"}
-                  className="px-2.5 py-1 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1 disabled:opacity-60 cursor-pointer shrink-0 border"
-                  style={{
-                    background:
-                      syncStatus === "success"
-                        ? "var(--accent)"
-                        : "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
-                    color:
-                      syncStatus === "success"
-                        ? "var(--accent-ink)"
-                        : "var(--text-secondary)",
-                  }}
-                >
-                  {syncStatus === "syncing" && (
-                    <Loader2 size={11} className="animate-spin" />
-                  )}
-                  {syncStatus === "success" && <Check size={11} />}
-                  <span>
-                    {syncStatus === "syncing"
-                      ? "Syncing"
-                      : syncStatus === "success"
-                        ? "Synced"
-                        : syncStatus === "error"
-                          ? "Retry"
-                          : "Sync Now"}
-                  </span>
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleDiscardPendingAndRestore}
+                    disabled={syncStatus === "syncing"}
+                    title={
+                      isIndonesian
+                        ? "Tarik Ulang Bersih dari Cloud (Abaikan Cache Lokal)"
+                        : "Force Pure Cloud Sync (Bypass Local Cache)"
+                    }
+                    className="w-7 h-7 rounded-full flex items-center justify-center border active:scale-90 transition-all disabled:opacity-60 cursor-pointer"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    <RotateCcw size={12} strokeWidth={1.75} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSafeSync}
+                    disabled={syncStatus === "syncing"}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1 disabled:opacity-60 cursor-pointer shrink-0 border"
+                    style={{
+                      background:
+                        syncStatus === "success"
+                          ? "var(--accent)"
+                          : "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                      color:
+                        syncStatus === "success"
+                          ? "var(--accent-ink)"
+                          : "var(--text-secondary)",
+                    }}
+                  >
+                    {syncStatus === "syncing" && (
+                      <Loader2 size={11} className="animate-spin" />
+                    )}
+                    {syncStatus === "success" && <Check size={11} />}
+                    <span>
+                      {syncStatus === "syncing"
+                        ? (isIndonesian ? "Menyinkronkan" : "Syncing")
+                        : syncStatus === "success"
+                          ? (isIndonesian ? "Tersinkron" : "Synced")
+                          : syncStatus === "error"
+                            ? (isIndonesian ? "Coba Lagi" : "Retry")
+                            : (isIndonesian ? "Sinkronkan" : "Sync Now")}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Pending Offline Mutations Banner */}
+            {session?.user && pendingMutations.length > 0 && (
+              <div
+                className="p-3 mx-3 mb-2 rounded-xl flex flex-col gap-2 border"
+                style={{
+                  background: "rgba(255, 255, 255, 0.03)",
+                  borderColor: "var(--glass-border)",
+                }}
+              >
+                <div className="flex items-start gap-2.5">
+                  <div
+                    className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <RotateCcw size={12} strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="text-[12px] font-semibold block truncate"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {isIndonesian ? "Antrean Mutasi Tertunda" : "Pending Offline Mutations"}
+                      </span>
+                      <span
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
+                        style={{
+                          background: "var(--bg-elevated)",
+                          borderColor: "var(--glass-border)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        {pendingMutations.length}
+                      </span>
+                    </div>
+                    <p
+                      className="text-[11px] font-normal leading-relaxed mt-0.5"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Ada transaksi uji coba atau mutasi lokal yang belum tersimpan di cloud dan sedang memotong saldo Anda. Anda dapat membatalkannya untuk memulihkan saldo dompet seketika."
+                        : "There are local test transactions not saved to cloud that deducted your balance. Discard them to restore your wallet balance immediately."}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={handleDiscardPendingAndRestore}
+                    disabled={syncStatus === "syncing"}
+                    className="flex-1 py-1.5 px-2.5 rounded-lg text-[11px] font-semibold border flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Trash2 size={12} strokeWidth={1.75} />
+                    <span>
+                      {isIndonesian ? "Batalkan & Pulihkan Saldo" : "Discard & Restore Balance"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSafeSync}
+                    disabled={syncStatus === "syncing"}
+                    className="py-1.5 px-2.5 rounded-lg text-[11px] font-semibold border flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                    style={{
+                      background: "rgba(255, 255, 255, 0.05)",
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    <Cloud size={12} strokeWidth={1.75} />
+                    <span>{isIndonesian ? "Kirim ke Cloud" : "Sync to Cloud"}</span>
+                  </button>
+                </div>
               </div>
             )}
 
