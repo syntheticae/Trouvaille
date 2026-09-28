@@ -35,6 +35,9 @@ import {
   Laptop,
   QrCode,
   Sparkles,
+  BarChart2,
+  PieChart,
+  AlertCircle,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -56,6 +59,7 @@ import { format, isToday } from "date-fns";
 import { supabase } from "../lib/supabase";
 import {
   fetchAllTransactionsFromSupabase,
+  useAllTransactions,
   transactionKeys,
 } from "../hooks/useTransactions";
 import {
@@ -63,6 +67,11 @@ import {
   syncBillNotifications,
   cancelAllBillNotifications,
   getDailyStreakReminderTime,
+  syncWeeklyDigestNotification,
+  cancelWeeklyDigestNotification,
+  syncMonthEndReviewNotification,
+  cancelMonthEndReviewNotification,
+  checkBudgetThresholdAlerts,
 } from "../lib/notifications";
 import { flushPendingMutations } from "../lib/syncEngine";
 import { saveBiometricLoginCredentials } from "../lib/biometricAuth";
@@ -193,6 +202,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const { data: bills = [] } = useBills();
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
+  const { data: allTxs = [] } = useAllTransactions();
   const { goals } = useGoals();
   const { session, signOut, isGuest, exitGuestMode } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -377,6 +387,80 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     return getDailyStreakReminderTime();
   });
   const [dailyReminderSheetOpen, setDailyReminderSheetOpen] = useState(false);
+
+  // Weekly Financial Digest toggle
+  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(() => {
+    return localStorage.getItem("trouvaille_weekly_digest_enabled") !== "false";
+  });
+
+  const handleToggleWeeklyDigest = async () => {
+    triggerHaptic("light");
+    if (weeklyDigestEnabled) {
+      setWeeklyDigestEnabled(false);
+      localStorage.setItem("trouvaille_weekly_digest_enabled", "false");
+      await cancelWeeklyDigestNotification();
+      showToast(isIndonesian ? "Rekap mingguan dinonaktifkan" : "Weekly digest turned off", "delete", () => {});
+    } else {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setWeeklyDigestEnabled(true);
+        localStorage.setItem("trouvaille_weekly_digest_enabled", "true");
+        await syncWeeklyDigestNotification(allTxs, isIndonesian);
+        showToast(isIndonesian ? "Rekap mingguan diaktifkan" : "Weekly digest enabled", "add", () => {});
+      } else {
+        showToast(isIndonesian ? "Izin notifikasi ditolak" : "Notification permission denied", "delete", () => {});
+      }
+    }
+  };
+
+  // Month-End Review toggle
+  const [monthEndReviewEnabled, setMonthEndReviewEnabled] = useState(() => {
+    return localStorage.getItem("trouvaille_month_end_review_enabled") !== "false";
+  });
+
+  const handleToggleMonthEndReview = async () => {
+    triggerHaptic("light");
+    if (monthEndReviewEnabled) {
+      setMonthEndReviewEnabled(false);
+      localStorage.setItem("trouvaille_month_end_review_enabled", "false");
+      await cancelMonthEndReviewNotification();
+      showToast(isIndonesian ? "Evaluasi akhir bulan dinonaktifkan" : "Month-end review turned off", "delete", () => {});
+    } else {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setMonthEndReviewEnabled(true);
+        localStorage.setItem("trouvaille_month_end_review_enabled", "true");
+        await syncMonthEndReviewNotification(isIndonesian);
+        showToast(isIndonesian ? "Evaluasi akhir bulan diaktifkan" : "Month-end review enabled", "add", () => {});
+      } else {
+        showToast(isIndonesian ? "Izin notifikasi ditolak" : "Notification permission denied", "delete", () => {});
+      }
+    }
+  };
+
+  // Budget Alerts toggle
+  const [budgetAlertsEnabled, setBudgetAlertsEnabled] = useState(() => {
+    return localStorage.getItem("trouvaille_budget_alerts_enabled") !== "false";
+  });
+
+  const handleToggleBudgetAlerts = async () => {
+    triggerHaptic("light");
+    if (budgetAlertsEnabled) {
+      setBudgetAlertsEnabled(false);
+      localStorage.setItem("trouvaille_budget_alerts_enabled", "false");
+      showToast(isIndonesian ? "Peringatan anggaran dinonaktifkan" : "Budget alerts turned off", "delete", () => {});
+    } else {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setBudgetAlertsEnabled(true);
+        localStorage.setItem("trouvaille_budget_alerts_enabled", "true");
+        await checkBudgetThresholdAlerts(allTxs, categories, isIndonesian);
+        showToast(isIndonesian ? "Peringatan anggaran diaktifkan" : "Budget alerts enabled", "add", () => {});
+      } else {
+        showToast(isIndonesian ? "Izin notifikasi ditolak" : "Notification permission denied", "delete", () => {});
+      }
+    }
+  };
 
   // Safe Sync state
   const [syncStatus, setSyncStatus] = useState<
@@ -593,7 +677,24 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     "Bill Due Alerts",
     "bill reminders scheduled commit due",
   );
-  const hasNotifications = showDailyReminder || showBillReminders;
+  const showWeeklyDigest = matches(
+    "Weekly Financial Digest",
+    "rekap mingguan digest sunday performa",
+  );
+  const showBudgetAlerts = matches(
+    "Budget Threshold Alerts",
+    "peringatan batas anggaran 80% 100%",
+  );
+  const showMonthEndReview = matches(
+    "Month-End Wealth Review",
+    "evaluasi akhir bulan neraca arus kas",
+  );
+  const hasNotifications =
+    showDailyReminder ||
+    showBillReminders ||
+    showWeeklyDigest ||
+    showBudgetAlerts ||
+    showMonthEndReview;
 
   // Section 5: Security & Privacy
   const showPrivacyShield = matches(
@@ -1534,12 +1635,143 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                         ? "Peringatan Tagihan Jatuh Tempo"
                         : "Bill Due Alerts"}
                     </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Pemberitahuan h-1 dan saat tagihan jatuh tempo"
+                        : "Alerts 1 day before and on bill due date"}
+                    </span>
                   </div>
                 </div>
                 <ToggleSwitch
                   checked={billRemindersEnabled}
                   onChange={handleToggleBillReminders}
                   ariaLabel="Toggle bill reminders"
+                />
+              </div>
+            )}
+
+            {/* Weekly Financial Digest */}
+            {showWeeklyDigest && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <BarChart2 size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Rekap Finansial Mingguan"
+                        : "Weekly Financial Digest"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Ringkasan pengeluaran & performa setiap Minggu pukul 19:30"
+                        : "Spending summary & performance every Sunday at 19:30"}
+                    </span>
+                  </div>
+                </div>
+                <ToggleSwitch
+                  checked={weeklyDigestEnabled}
+                  onChange={handleToggleWeeklyDigest}
+                  ariaLabel="Toggle weekly financial digest"
+                />
+              </div>
+            )}
+
+            {/* Budget Threshold Alerts */}
+            {showBudgetAlerts && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <AlertCircle size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Peringatan Batas Anggaran"
+                        : "Budget Threshold Alerts"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Pemberitahuan cerdas saat kategori mencapai 80% dan 100%"
+                        : "Smart alerts when category reaches 80% and 100%"}
+                    </span>
+                  </div>
+                </div>
+                <ToggleSwitch
+                  checked={budgetAlertsEnabled}
+                  onChange={handleToggleBudgetAlerts}
+                  ariaLabel="Toggle budget threshold alerts"
+                />
+              </div>
+            )}
+
+            {/* Month-End Wealth Review */}
+            {showMonthEndReview && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <PieChart size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Evaluasi Kekayaan Akhir Bulan"
+                        : "Month-End Wealth Review"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Pengingat tinjauan Neraca & Arus Kas pada hari terakhir bulan"
+                        : "Balance Sheet & Cash Flow review reminder on month end"}
+                    </span>
+                  </div>
+                </div>
+                <ToggleSwitch
+                  checked={monthEndReviewEnabled}
+                  onChange={handleToggleMonthEndReview}
+                  ariaLabel="Toggle month-end wealth review"
                 />
               </div>
             )}

@@ -18,7 +18,8 @@ export interface DeepLinkPrefill {
 }
 
 export interface DeepLinkResult {
-  action: "transaction" | "voice" | "scan" | "import" | "none";
+  action: "transaction" | "voice" | "scan" | "import" | "navigate" | "none";
+  path?: string;
   autoSave?: boolean;
   matchedCategoryName?: string;
   matchedWalletName?: string;
@@ -96,6 +97,43 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
 }
 
 /**
+ * Normalizes Indonesian & International currency strings into clean numbers.
+ * Handles "Rp 50.000", "50.000", "50,000", "50000", "1.500.000,00", etc.
+ */
+export function parseCurrencyAmount(rawStr?: string | null): number {
+  if (!rawStr || typeof rawStr !== "string") return 0;
+  let clean = rawStr.trim().replace(/^[^\d]+/g, "");
+  if (!clean) return 0;
+
+  if (clean.includes(".") && clean.includes(",")) {
+    const dotIdx = clean.lastIndexOf(".");
+    const commaIdx = clean.lastIndexOf(",");
+    if (commaIdx > dotIdx) {
+      clean = clean.replace(/\./g, "").replace(",", ".");
+    } else {
+      clean = clean.replace(/,/g, "");
+    }
+  } else if (clean.includes(".")) {
+    const parts = clean.split(".");
+    if (parts[parts.length - 1].length === 3 || parts.length > 2) {
+      clean = clean.replace(/\./g, "");
+    }
+  } else if (clean.includes(",")) {
+    const parts = clean.split(",");
+    if (parts[parts.length - 1].length === 3 || parts.length > 2) {
+      clean = clean.replace(/,/g, "");
+    } else {
+      clean = clean.replace(",", ".");
+    }
+  } else {
+    clean = clean.replace(/[^\d.]/g, "");
+  }
+
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+/**
  * Parses incoming URL scheme strings (e.g. `trouvaille://add?text=...`, `trouvaille://voice`, etc.)
  * or standard web search parameters.
  */
@@ -137,6 +175,32 @@ export function parseDeepLink(
       return { action: "transaction" };
     }
 
+    // 2. Direct tab navigation routes
+    if (actionPath === "calendar") {
+      return { action: "navigate", path: "/calendar" };
+    }
+    if (actionPath === "bills" || actionPath === "tagihan") {
+      return { action: "navigate", path: "/bills" };
+    }
+    if (actionPath === "transactions" || actionPath === "history" || actionPath === "riwayat") {
+      return { action: "navigate", path: "/transactions" };
+    }
+    if (actionPath === "statistics" || actionPath === "stats" || actionPath === "statistik") {
+      return { action: "navigate", path: "/statistics" };
+    }
+    if (actionPath === "assets" || actionPath === "wealth" || actionPath === "investments" || actionPath === "aset") {
+      return { action: "navigate", path: "/assets" };
+    }
+    if (actionPath === "settings" || actionPath === "pengaturan") {
+      return { action: "navigate", path: "/settings" };
+    }
+    if (actionPath === "reports" || actionPath === "report" || actionPath === "laporan") {
+      return { action: "navigate", path: "/transactions?open=export" };
+    }
+    if (actionPath === "home" || actionPath === "beranda") {
+      return { action: "navigate", path: "/" };
+    }
+
     // 2. Extract potential parameter tokens
     const rawText =
       params.get("text") ||
@@ -172,7 +236,7 @@ export function parseDeepLink(
 
     // Case A: Direct structured parameters (e.g. from Siri Shortcuts with ask for input / Dialog)
     if (directAmount) {
-      const cleanNum = parseFloat(directAmount.replace(/[^\d.]/g, ""));
+      const cleanNum = parseCurrencyAmount(directAmount);
       let matchedCat = categories.find(
         (c) =>
           (directCategory && c.id.toLowerCase() === directCategory.toLowerCase()) ||

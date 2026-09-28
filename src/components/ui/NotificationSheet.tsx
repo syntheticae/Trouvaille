@@ -1,8 +1,14 @@
 import { BottomSheet } from "./BottomSheet";
-import { Bell, CheckCircle2, Calendar } from "lucide-react";
+import { Bell, CheckCircle2, Calendar, Sparkles, TrendingUp, ShieldAlert } from "lucide-react";
 import { useUpcomingBills, getBillDueStatusLabel } from "../../hooks/useBills";
 import { formatRupiah } from "../../lib/utils";
 import { format } from "date-fns";
+import { useLanguage } from "../../contexts/LanguageContext";
+import {
+  WEEKLY_DIGEST_ENABLED_KEY,
+  MONTH_END_REVIEW_ENABLED_KEY,
+  BUDGET_ALERTS_ENABLED_KEY,
+} from "../../lib/notifications";
 
 interface NotificationSheetProps {
   isOpen: boolean;
@@ -10,15 +16,22 @@ interface NotificationSheetProps {
 }
 
 export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
+  const { isIndonesian } = useLanguage();
   const upcomingBills = useUpcomingBills();
   const lastSyncedAt = localStorage.getItem("trouvaille_last_synced");
   const syncLabel = lastSyncedAt
-    ? format(new Date(lastSyncedAt), "dd MMM yyyy, HH:mm")
+    ? format(new Date(lastSyncedAt), isIndonesian ? "dd MMM yyyy, HH:mm" : "MMM dd, yyyy, HH:mm")
     : null;
+
+  const weeklyDigestEnabled = localStorage.getItem(WEEKLY_DIGEST_ENABLED_KEY) !== "false";
+  const monthEndEnabled = localStorage.getItem(MONTH_END_REVIEW_ENABLED_KEY) !== "false";
+  const budgetAlertsEnabled = localStorage.getItem(BUDGET_ALERTS_ENABLED_KEY) !== "false";
+
+  const activeCount = upcomingBills.length + (weeklyDigestEnabled ? 1 : 0) + (monthEndEnabled ? 1 : 0);
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-28 space-y-4">
+      <div className="p-5 pb-28 space-y-5">
         <div
           className="flex items-center justify-between pb-4"
           style={{ borderBottom: "1px solid var(--glass-border)" }}
@@ -31,43 +44,43 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                 color: "var(--text-primary)",
               }}
             >
-              <Bell size={16} />
+              <Bell size={16} strokeWidth={1.75} />
             </div>
             <div>
               <h3
                 className="font-semibold text-[16px]"
                 style={{ color: "var(--text-primary)" }}
               >
-                Notifications
+                {isIndonesian ? "Notifikasi & Pengingat" : "Notifications & Alerts"}
               </h3>
               <p
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Stay on top of your finances
+                {isIndonesian ? "Pantau arus kas dan jadwal keuangan Anda" : "Stay on top of your cashflow and schedules"}
               </p>
             </div>
           </div>
           <span
-            className="text-[11px] font-bold px-2.5 py-1 rounded-full"
+            className="text-[11px] font-medium px-2.5 py-1 rounded-full"
             style={{
               background: "var(--glass-fill)",
               color: "var(--text-secondary)",
               border: "1px solid var(--glass-border)",
             }}
           >
-            {upcomingBills.length} Active
+            {isIndonesian ? `${activeCount} Aktif` : `${activeCount} Active`}
           </span>
         </div>
 
         {/* Bill Reminders */}
         {upcomingBills.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <span
-              className="text-[12px] font-bold"
+              className="text-[12px] font-semibold"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Bill Reminders
+              {isIndonesian ? "Tagihan Mendatang" : "Upcoming Bills"}
             </span>
             {upcomingBills.map((bill: any) => {
               const dueStatusLabel = getBillDueStatusLabel(bill.due_date);
@@ -87,11 +100,11 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                       color: "var(--text-primary)",
                     }}
                   >
-                    <Calendar size={15} />
+                    <Calendar size={15} strokeWidth={1.75} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
-                      className="text-[13px] font-bold truncate"
+                      className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {bill.title}
@@ -109,13 +122,13 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
           </div>
         )}
 
-        {/* Sync Status */}
-        <div className="space-y-2">
+        {/* Smart Insights & Automations */}
+        <div className="space-y-2.5">
           <span
-            className="text-[12px] font-bold"
+            className="text-[12px] font-semibold"
             style={{ color: "var(--text-tertiary)" }}
           >
-            Sync Status
+            {isIndonesian ? "Pemberitahuan Otomatis" : "Automated Insights"}
           </span>
 
           <div
@@ -128,26 +141,184 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
             <div
               className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
               style={{
-                background: "rgba(255, 255, 255, 0.1)",
+                background: "var(--glass-fill-strong)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <Sparkles size={15} strokeWidth={1.75} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <p
+                  className="text-[13px] font-semibold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian ? "Ringkasan Finansial Mingguan" : "Weekly Financial Digest"}
+                </p>
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{
+                    background: "var(--glass-fill)",
+                    color: weeklyDigestEnabled ? "var(--text-primary)" : "var(--text-tertiary)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  {weeklyDigestEnabled
+                    ? (isIndonesian ? "Minggu 19:30" : "Sun 19:30")
+                    : (isIndonesian ? "Nonaktif" : "Disabled")}
+                </span>
+              </div>
+              <p
+                className="text-[11px] mt-0.5"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian
+                  ? "Rangkuman total pengeluaran dan pemasukan selama sepekan secara otomatis."
+                  : "Automatic recap of total expenses and cash inflow for the past week."}
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="p-3.5 rounded-2xl flex items-start gap-3"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+              style={{
+                background: "var(--glass-fill-strong)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <TrendingUp size={15} strokeWidth={1.75} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <p
+                  className="text-[13px] font-semibold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian ? "Evaluasi Kekayaan Akhir Bulan" : "Month-End Wealth Review"}
+                </p>
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{
+                    background: "var(--glass-fill)",
+                    color: monthEndEnabled ? "var(--text-primary)" : "var(--text-tertiary)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  {monthEndEnabled
+                    ? (isIndonesian ? "Akhir Bulan 20:30" : "Month-End 20:30")
+                    : (isIndonesian ? "Nonaktif" : "Disabled")}
+                </span>
+              </div>
+              <p
+                className="text-[11px] mt-0.5"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian
+                  ? "Pemberitahuan kesiapan neraca keuangan dan arus kas saat bulan berganti."
+                  : "Notification when your balance sheet and cash flow reports are finalized."}
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="p-3.5 rounded-2xl flex items-start gap-3"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+              style={{
+                background: "var(--glass-fill-strong)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <ShieldAlert size={15} strokeWidth={1.75} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <p
+                  className="text-[13px] font-semibold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian ? "Peringatan Ambang Anggaran" : "Budget Threshold Alerts"}
+                </p>
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{
+                    background: "var(--glass-fill)",
+                    color: budgetAlertsEnabled ? "var(--text-primary)" : "var(--text-tertiary)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  {budgetAlertsEnabled
+                    ? (isIndonesian ? "80% & 100%" : "80% & 100%")
+                    : (isIndonesian ? "Nonaktif" : "Disabled")}
+                </span>
+              </div>
+              <p
+                className="text-[11px] mt-0.5"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian
+                  ? "Peringatan proaktif instan saat alokasi anggaran kategori mendekati atau melewati batas."
+                  : "Proactive instant alerts when category spending approaches or exceeds limit."}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Sync Status */}
+        <div className="space-y-2.5">
+          <span
+            className="text-[12px] font-semibold"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            {isIndonesian ? "Status Sinkronisasi" : "Sync Status"}
+          </span>
+
+          <div
+            className="p-3.5 rounded-2xl flex items-start gap-3"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+              style={{
+                background: "var(--glass-fill-strong)",
                 color: "var(--text-secondary)",
               }}
             >
-              <CheckCircle2 size={15} />
+              <CheckCircle2 size={15} strokeWidth={1.75} />
             </div>
             <div className="flex-1 min-w-0">
               <p
-                className="text-[13px] font-bold"
+                className="text-[13px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
-                Cloud Sync
+                {isIndonesian ? "Sinkronisasi Cloud" : "Cloud Sync"}
               </p>
               <p
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {syncLabel
-                  ? `Last synchronized on ${syncLabel}.`
-                  : "No recorded sync timestamp yet."}
+                  ? (isIndonesian
+                      ? `Terakhir disinkronkan pada ${syncLabel}.`
+                      : `Last synchronized on ${syncLabel}.`)
+                  : (isIndonesian
+                      ? "Belum ada catatan waktu sinkronisasi."
+                      : "No recorded sync timestamp yet.")}
               </p>
             </div>
           </div>

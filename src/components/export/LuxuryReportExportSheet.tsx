@@ -9,6 +9,7 @@ import {
   FileJson,
   ArrowUpRight,
   ArrowDownLeft,
+  Calendar,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useAllTransactions } from "../../hooks/useTransactions";
@@ -127,7 +128,16 @@ export function LuxuryReportExportSheet({
           : `Trouvaille - Financial Statement${spaceSegment} - ${safePeriod}.pdf`;
 
         if (action === "share") {
-          const ok = await shareLuxuryPdf(filteredTransactions, summary, wallets, categories, filename, isIndonesian);
+          const ok = await shareLuxuryPdf(
+            filteredTransactions,
+            summary,
+            wallets,
+            categories,
+            filename,
+            isIndonesian,
+            allTxs,
+            filterOptions,
+          );
           if (ok) {
             triggerSuccessHaptic();
             showToast(
@@ -137,7 +147,16 @@ export function LuxuryReportExportSheet({
             );
           }
         } else {
-          await downloadLuxuryPdf(filteredTransactions, summary, wallets, categories, filename, isIndonesian);
+          await downloadLuxuryPdf(
+            filteredTransactions,
+            summary,
+            wallets,
+            categories,
+            filename,
+            isIndonesian,
+            allTxs,
+            filterOptions,
+          );
           triggerSuccessHaptic();
           showToast(
             isIndonesian ? "Laporan PDF berhasil diunduh" : "PDF statement downloaded",
@@ -354,19 +373,36 @@ export function LuxuryReportExportSheet({
 
             {/* Custom Dates (collapsible) */}
             {dateRange === "custom" && (
-              <div className="grid grid-cols-2 gap-2 pt-1 animate-fadeIn">
-                <input
-                  type="date"
-                  value={customStart}
-                  onChange={(e) => setCustomStart(e.target.value)}
-                  className="w-full h-9 px-2.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[12px] text-[var(--text-primary)] outline-none"
-                />
-                <input
-                  type="date"
-                  value={customEnd}
-                  onChange={(e) => setCustomEnd(e.target.value)}
-                  className="w-full h-9 px-2.5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[12px] text-[var(--text-primary)] outline-none"
-                />
+              <div className="grid grid-cols-2 gap-2.5 pt-2 animate-fadeIn">
+                <div className="p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] space-y-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
+                    <Calendar size={12} strokeWidth={1.5} className="shrink-0" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider truncate">
+                      {isIndonesian ? "Dari Tanggal" : "Start Date"}
+                    </span>
+                  </div>
+                  <input
+                    type="date"
+                    value={customStart}
+                    onChange={(e) => setCustomStart(e.target.value)}
+                    className="w-full h-8 px-2 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] text-[12px] font-medium text-[var(--text-primary)] outline-none min-w-0 transition-colors focus:border-[var(--text-secondary)]"
+                  />
+                </div>
+
+                <div className="p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] space-y-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
+                    <Calendar size={12} strokeWidth={1.5} className="shrink-0" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider truncate">
+                      {isIndonesian ? "Hingga Tanggal" : "End Date"}
+                    </span>
+                  </div>
+                  <input
+                    type="date"
+                    value={customEnd}
+                    onChange={(e) => setCustomEnd(e.target.value)}
+                    className="w-full h-8 px-2 rounded-lg bg-[var(--bg-card)] border border-[var(--glass-border)] text-[12px] font-medium text-[var(--text-primary)] outline-none min-w-0 transition-colors focus:border-[var(--text-secondary)]"
+                  />
+                </div>
               </div>
             )}
           </div>

@@ -1,6 +1,7 @@
 import { LocalNotifications } from '@capacitor/local-notifications'
-import type { Bill } from './types'
-import { parseISO, subDays } from 'date-fns'
+import type { Bill, Category, Transaction } from './types'
+import { parseISO, subDays, endOfMonth, addMonths, startOfMonth, format } from 'date-fns'
+import { formatRupiah } from './utils'
 
 export async function requestNotificationPermission(): Promise<boolean> {
   try {
@@ -200,6 +201,214 @@ export async function showNativeLocalNotification({
     });
   } catch (e) {
     console.warn("Failed to fire native local notification:", e);
+  }
+}
+
+export const WEEKLY_DIGEST_NOTIFICATION_ID = 88888;
+export const WEEKLY_DIGEST_ENABLED_KEY = "trouvaille_weekly_digest_enabled";
+
+export async function cancelWeeklyDigestNotification(): Promise<void> {
+  try {
+    const pending = await LocalNotifications.getPending();
+    const exists = pending.notifications.some((n) => n.id === WEEKLY_DIGEST_NOTIFICATION_ID);
+    if (exists) {
+      await LocalNotifications.cancel({ notifications: [{ id: WEEKLY_DIGEST_NOTIFICATION_ID }] });
+    }
+  } catch (e) {
+    console.warn("Failed to cancel weekly digest notification:", e);
+  }
+}
+
+export async function syncWeeklyDigestNotification(
+  transactions: Transaction[] = [],
+  isIndonesian: boolean = true,
+): Promise<void> {
+  try {
+    if (localStorage.getItem(WEEKLY_DIGEST_ENABLED_KEY) === "false") {
+      await cancelWeeklyDigestNotification();
+      return;
+    }
+
+    const granted = await requestNotificationPermission();
+    if (!granted) return;
+
+    await cancelWeeklyDigestNotification();
+
+    const now = new Date();
+    const nextSunday = new Date();
+    const dayOfWeek = now.getDay();
+    const daysUntilSunday = (7 - dayOfWeek) % 7;
+    if (daysUntilSunday === 0 && (now.getHours() > 19 || (now.getHours() === 19 && now.getMinutes() >= 30))) {
+      nextSunday.setDate(now.getDate() + 7);
+    } else {
+      nextSunday.setDate(now.getDate() + (daysUntilSunday === 0 ? 0 : daysUntilSunday));
+    }
+    nextSunday.setHours(19, 30, 0, 0);
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const weekExpense = transactions
+      .filter((t) => t.type === "expense" && (t.occurred_on || t.created_at || "").slice(0, 10) >= sevenDaysAgo)
+      .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+
+    const spendText = weekExpense > 0 ? formatRupiah(weekExpense) : "Rp 0";
+    const notifTitle = isIndonesian ? "Rekap Finansial Mingguan" : "Weekly Financial Digest";
+    const notifBody = isIndonesian
+      ? `Pengeluaran 7 hari terakhir: ${spendText}. Ketuk untuk evaluasi performa dan alokasi kas Anda.`
+      : `Total spend over the last 7 days: ${spendText}. Tap to review your performance.`;
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: WEEKLY_DIGEST_NOTIFICATION_ID,
+          title: notifTitle,
+          body: notifBody,
+          schedule: {
+            at: nextSunday,
+            every: "week",
+            allowWhileIdle: true,
+          },
+          sound: "default",
+        },
+      ],
+    });
+  } catch (e) {
+    console.warn("Failed to sync weekly digest notification:", e);
+  }
+}
+
+export const MONTH_END_NOTIFICATION_ID = 77777;
+export const MONTH_END_REVIEW_ENABLED_KEY = "trouvaille_month_end_review_enabled";
+
+export async function cancelMonthEndReviewNotification(): Promise<void> {
+  try {
+    const pending = await LocalNotifications.getPending();
+    const exists = pending.notifications.some((n) => n.id === MONTH_END_NOTIFICATION_ID);
+    if (exists) {
+      await LocalNotifications.cancel({ notifications: [{ id: MONTH_END_NOTIFICATION_ID }] });
+    }
+  } catch (e) {
+    console.warn("Failed to cancel month-end review notification:", e);
+  }
+}
+
+export async function syncMonthEndReviewNotification(
+  isIndonesian: boolean = true,
+): Promise<void> {
+  try {
+    if (localStorage.getItem(MONTH_END_REVIEW_ENABLED_KEY) === "false") {
+      await cancelMonthEndReviewNotification();
+      return;
+    }
+
+    const granted = await requestNotificationPermission();
+    if (!granted) return;
+
+    await cancelMonthEndReviewNotification();
+
+    const now = new Date();
+    let targetDate = endOfMonth(now);
+    targetDate.setHours(20, 30, 0, 0);
+
+    if (targetDate <= now) {
+      targetDate = endOfMonth(addMonths(now, 1));
+      targetDate.setHours(20, 30, 0, 0);
+    }
+
+    const notifTitle = isIndonesian ? "Evaluasi Akhir Bulan Siap" : "Month-End Wealth Review";
+    const notifBody = isIndonesian
+      ? "Bulan ini telah berakhir. Neraca Keuangan dan Laporan Arus Kas Anda siap ditinjau."
+      : "This month has concluded. Your Balance Sheet and Cash Flow reports are ready.";
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: MONTH_END_NOTIFICATION_ID,
+          title: notifTitle,
+          body: notifBody,
+          schedule: {
+            at: targetDate,
+            allowWhileIdle: true,
+          },
+          sound: "default",
+        },
+      ],
+    });
+  } catch (e) {
+    console.warn("Failed to sync month-end review notification:", e);
+  }
+}
+
+export const BUDGET_ALERTS_ENABLED_KEY = "trouvaille_budget_alerts_enabled";
+
+export async function checkBudgetThresholdAlerts(
+  transactions: Transaction[],
+  categories: Category[],
+  isIndonesian: boolean = true,
+): Promise<void> {
+  try {
+    if (localStorage.getItem(BUDGET_ALERTS_ENABLED_KEY) === "false") return;
+
+    const monthKey = format(new Date(), "yyyy-MM");
+    const storageKey = `trouvaille_budget_alert_history_${monthKey}`;
+    let alertHistory: Record<string, { reached80?: boolean; reached100?: boolean }> = {};
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) alertHistory = JSON.parse(raw);
+    } catch {}
+
+    const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
+    const currentMonthExpenses = transactions.filter(
+      (t) => t.type === "expense" && (t.occurred_on || t.created_at || "").slice(0, 10) >= monthStart,
+    );
+
+    const spendByCategory: Record<string, number> = {};
+    currentMonthExpenses.forEach((t) => {
+      if (t.category_id) {
+        spendByCategory[t.category_id] = (spendByCategory[t.category_id] || 0) + Number(t.amount || 0);
+      }
+    });
+
+    let updated = false;
+
+    for (const cat of categories) {
+      if (!cat.budget_amount || cat.budget_amount <= 0) continue;
+      const spent = spendByCategory[cat.id] || 0;
+      const pct = (spent / cat.budget_amount) * 100;
+      const catRecord = alertHistory[cat.id] || {};
+
+      if (pct >= 100 && !catRecord.reached100) {
+        catRecord.reached100 = true;
+        catRecord.reached80 = true;
+        alertHistory[cat.id] = catRecord;
+        updated = true;
+
+        const title = isIndonesian ? `Batas Anggaran Tercapai: ${cat.name}` : `Budget Exceeded: ${cat.name}`;
+        const body = isIndonesian
+          ? `Pengeluaran telah mencapai 100% (${formatRupiah(spent)} dari anggaran ${formatRupiah(cat.budget_amount)}).`
+          : `Spending reached 100% (${formatRupiah(spent)} of ${formatRupiah(cat.budget_amount)} budget).`;
+
+        await showNativeLocalNotification({ title, body });
+      } else if (pct >= 80 && !catRecord.reached80 && !catRecord.reached100) {
+        catRecord.reached80 = true;
+        alertHistory[cat.id] = catRecord;
+        updated = true;
+
+        const title = isIndonesian ? `Peringatan Anggaran (80%): ${cat.name}` : `Budget Alert (80%): ${cat.name}`;
+        const body = isIndonesian
+          ? `Pengeluaran mencapai ${Math.round(pct)}% (${formatRupiah(spent)} dari anggaran ${formatRupiah(cat.budget_amount)}). Sisa: ${formatRupiah(cat.budget_amount - spent)}.`
+          : `Spending reached ${Math.round(pct)}% (${formatRupiah(spent)} of ${formatRupiah(cat.budget_amount)}). Remaining: ${formatRupiah(cat.budget_amount - spent)}.`;
+
+        await showNativeLocalNotification({ title, body });
+      }
+    }
+
+    if (updated) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(alertHistory));
+      } catch {}
+    }
+  } catch (e) {
+    console.warn("Failed to check budget threshold alerts:", e);
   }
 }
 

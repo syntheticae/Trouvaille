@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense, useEffect, useRef, useState, useCallback } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { BottomTabBar } from "./components/layout/BottomTabBar";
 import { useAuth } from "./contexts/AuthContext";
 import {
@@ -23,7 +23,12 @@ import { useLanguage } from "./contexts/LanguageContext";
 import { triggerSuccessHaptic, triggerHaptic } from "./lib/haptics";
 import { format } from "date-fns";
 import { formatRupiah } from "./lib/utils";
-import { showNativeLocalNotification } from "./lib/notifications";
+import {
+  showNativeLocalNotification,
+  syncWeeklyDigestNotification,
+  syncMonthEndReviewNotification,
+  checkBudgetThresholdAlerts,
+} from "./lib/notifications";
 import {
   DynamicIslandHUD,
   type ShortcutRecordedTxData,
@@ -118,7 +123,8 @@ import { useTheme } from "./contexts/ThemeContext";
 
 function AppShell() {
   const { user, isGuest, exitGuestMode } = useAuth();
-  const { setActiveSpaceId } = useSpace();
+  const { activeSpaceId, setActiveSpaceId } = useSpace();
+  const navigate = useNavigate();
 
   useRealtimeSync(user?.id, {
     onPartnerTransaction: (data) => {
@@ -216,7 +222,7 @@ function AppShell() {
   // Handle iOS Custom URL Scheme (trouvaille://...), Back Tap Shortcuts, and Web Share Target
   // Two-stage design to fix cold-launch race condition:
   //   Stage 1 (this effect): register listeners, queue URL if categories/wallets not yet loaded
-  //   Stage 2 (next effect): drain the queue once data is ready
+  // Handle iOS Custom URL Scheme (trouvaille://...), Back Tap Shortcuts, and Web Share Target
   const handleUrlDispatch = useRef<((rawUrl: string) => void) | null>(null);
 
   useEffect(() => {
@@ -237,6 +243,14 @@ function AppShell() {
       }
 
       const res = parseDeepLink(rawUrl, categories, wallets);
+
+      // Direct tab navigation routing (e.g. trouvaille://reports, trouvaille://bills)
+      if (res.action === "navigate" && res.path) {
+        triggerHaptic("light");
+        navigate(res.path);
+        return;
+      }
+
       if (res.action === "transaction") {
         if (res.autoSave && res.prefilledValues?.amount && res.prefilledValues.amount > 0) {
           const targetAmount = res.prefilledValues.amount;
@@ -262,6 +276,7 @@ function AppShell() {
           const txDate = res.prefilledValues.date || new Date();
           const occurred_on = format(txDate, "yyyy-MM-dd");
           const note = res.prefilledValues.note || "";
+          const targetSpaceId = activeSpaceId && activeSpaceId !== "all" ? activeSpaceId : "personal";
 
           addTxMutation.mutate(
             {
@@ -272,7 +287,9 @@ function AppShell() {
               to_wallet_id: targetToWalletId,
               occurred_on,
               note: note || undefined,
-            },
+              ledger_id: targetSpaceId,
+              space_id: targetSpaceId,
+            } as any,
             {
               onSuccess: () => {
                 triggerSuccessHaptic();
@@ -346,33 +363,63 @@ function AppShell() {
     wallets,
     addTxMutation,
     isIndonesian,
+    activeSpaceId,
+    navigate,
+    queryClient,
   ]);
 
-  // Stage 1: Register Capacitor URL listener + handle web params on load
-  // Queues URL if categories/wallets are not yet loaded; otherwise dispatches immediately.
-  useEffect(() => {
-    const tryDispatch = (rawUrl: string) => {
-      if (categories.length > 0 || wallets.length > 0) {
-        // Data is ready — process now
-        pendingDeepLinkRef.current = null;
-        handleUrlDispatch.current?.(rawUrl);
-      } else {
-        // Data not ready yet — queue for Stage 2
-        pendingDeepLinkRef.current = rawUrl;
-      }
-    };
+  const tryDispatch = useCallback((rawUrl: string) => {
+    if (!rawUrl) return;
+    const lower = rawUrl.toLowerCase();
+    // Fast path: if the deep link is for direct modal or tab navigation, dispatch immediately without waiting for category cache
+    if (
+      lower.includes("voice") ||
+      lower.includes("scan") ||
+      lower.includes("import") ||
+      lower.includes("calendar") ||
+      lower.includes("bills") ||
+      lower.includes("reports") ||
+      lower.includes("report") ||
+      lower.includes("settings") ||
+      lower.includes("assets") ||
+      lower.includes("wealth") ||
+      lower.includes("transactions") ||
+      lower.includes("history") ||
+      lower.includes("home")
+    ) {
+      handleUrlDispatch.current?.(rawUrl);
+      return;
+    }
 
-    // 1. Web / PWA URL params on load (e.g. ?text=...)
-    if (window.location.search) {
+    if (categories.length > 0 || wallets.length > 0) {
+      pendingDeepLinkRef.current = null;
+      handleUrlDispatch.current?.(rawUrl);
+    } else {
+      pendingDeepLinkRef.current = rawUrl;
+    }
+  }, [categories.length, wallets.length]);
+
+  // Stage 1: Register Capacitor URL listener + cold-launch URL inspection
+  useEffect(() => {
+    let isSubscribed = true;
+    let urlListenerHandle: { remove: () => void } | null = null;
+
+    // 1. Cold launch URL capture via CapApp.getLaunchUrl() (Critical for iOS Shortcuts from terminated state)
+    CapApp.getLaunchUrl()
+      .then((launch) => {
+        if (isSubscribed && launch?.url) {
+          tryDispatch(launch.url);
+        }
+      })
+      .catch(() => {});
+
+    // 2. Web / PWA URL params on load (e.g. ?text=...)
+    if (typeof window !== "undefined" && window.location.search) {
       tryDispatch(window.location.href);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    // 2. Native URL scheme (trouvaille://...) via Capacitor App plugin
-    let isSubscribed = true;
-    let urlListenerHandle: { remove: () => void } | null = null;
-    let backListenerHandle: { remove: () => void } | null = null;
-
+    // 3. Warm launch / running background URL scheme events
     CapApp.addListener("appUrlOpen", (event) => {
       if (isSubscribed && event?.url) {
         tryDispatch(event.url);
@@ -381,11 +428,21 @@ function AppShell() {
       .then((handle) => {
         urlListenerHandle = handle;
       })
-      .catch(() => {
-        // Safe fallback in standard browser environment
-      });
+      .catch(() => {});
 
-    // 3. Native Android Hardware/Gesture Back Button listener
+    return () => {
+      isSubscribed = false;
+      if (urlListenerHandle) {
+        urlListenerHandle.remove();
+      }
+    };
+  }, [tryDispatch]);
+
+  // Dedicated Android Hardware/Gesture Back Button listener (isolated from URL listeners)
+  useEffect(() => {
+    let isSubscribed = true;
+    let backListenerHandle: { remove: () => void } | null = null;
+
     CapApp.addListener("backButton", ({ canGoBack }) => {
       if (!isSubscribed) return;
 
@@ -430,29 +487,21 @@ function AppShell() {
       if (canGoBack && window.history.length > 1) {
         window.history.back();
       } else {
-        // At root page with no modals open -> exit/minimize app
         CapApp.exitApp();
       }
     })
       .then((handle) => {
         backListenerHandle = handle;
       })
-      .catch(() => {
-        // Safe fallback on iOS or Web
-      });
+      .catch(() => {});
 
     return () => {
       isSubscribed = false;
-      if (urlListenerHandle) {
-        urlListenerHandle.remove();
-      }
       if (backListenerHandle) {
         backListenerHandle.remove();
       }
     };
   }, [
-    categories,
-    wallets,
     statementImportOpen,
     receiptScanOpen,
     voiceModalOpen,
@@ -464,12 +513,23 @@ function AppShell() {
 
   // Stage 2: Drain queued deep link once categories/wallets have loaded
   useEffect(() => {
-    if (categories.length > 0 && pendingDeepLinkRef.current) {
+    if ((categories.length > 0 || wallets.length > 0) && pendingDeepLinkRef.current) {
       const queued = pendingDeepLinkRef.current;
       pendingDeepLinkRef.current = null;
       handleUrlDispatch.current?.(queued);
     }
   }, [categories, wallets]);
+
+  // Sync smart notifications (Weekly Financial Digest, Month-End Wealth Review, Budget Threshold Alerts)
+  useEffect(() => {
+    if (allTxs.length > 0) {
+      syncWeeklyDigestNotification(allTxs, isIndonesian).catch(() => {});
+      syncMonthEndReviewNotification(isIndonesian).catch(() => {});
+      if (categories.length > 0) {
+        checkBudgetThresholdAlerts(allTxs, categories, isIndonesian).catch(() => {});
+      }
+    }
+  }, [allTxs, categories, isIndonesian]);
 
 
 

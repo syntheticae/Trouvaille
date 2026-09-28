@@ -993,6 +993,8 @@ export function generateLuxuryPdf(
   wallets: Wallet[] = [],
   categories: Category[] = [],
   isIndonesian = true,
+  allTransactions: Transaction[] = [],
+  options?: ReportFilterOptions,
 ): jsPDF {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -1005,8 +1007,27 @@ export function generateLuxuryPdf(
   const margin = 36;
   const contentWidth = pageWidth - margin * 2; // 523.28 pt
 
+  let endDateStr: string | undefined;
+  if (options) {
+    if (options.dateRange === "custom" && options.customEndDate) {
+      endDateStr = format(options.customEndDate, "yyyy-MM-dd");
+    } else if (options.dateRange === "this_month") {
+      endDateStr = format(endOfMonth(new Date()), "yyyy-MM-dd");
+    } else if (options.dateRange === "last_month") {
+      endDateStr = format(endOfMonth(subMonths(new Date(), 1)), "yyyy-MM-dd");
+    } else if (options.dateRange === "ytd") {
+      endDateStr = format(new Date(), "yyyy-MM-dd");
+    } else if (options.dateRange === "last_year") {
+      endDateStr = format(endOfYear(subYears(new Date(), 1)), "yyyy-MM-dd");
+    }
+  }
+
+  const effectiveAllTxs = allTransactions.length > 0 ? allTransactions : transactions;
+
   const reportPkg = generateFinancialReportPackage(wallets, transactions, categories, {
     periodLabel: summary.periodLabel,
+    endDate: endDateStr,
+    allTransactions: effectiveAllTxs,
   });
   const { balanceSheet, cashFlow, calk } = reportPkg;
 
@@ -1811,8 +1832,10 @@ export async function downloadLuxuryPdf(
   categories: Category[] = [],
   filename = "trouvaille_statement.pdf",
   isIndonesian = true,
+  allTransactions: Transaction[] = [],
+  options?: ReportFilterOptions,
 ): Promise<void> {
-  const doc = generateLuxuryPdf(transactions, summary, wallets, categories, isIndonesian);
+  const doc = generateLuxuryPdf(transactions, summary, wallets, categories, isIndonesian, allTransactions, options);
   const blob = doc.output("blob");
 
   // In native Capacitor iOS WKWebView, <a download> is ignored; Web Share API prompts native "Save to Files"
@@ -1848,8 +1871,10 @@ export async function shareLuxuryPdf(
   categories: Category[] = [],
   filename = "trouvaille_statement.pdf",
   isIndonesian = true,
+  allTransactions: Transaction[] = [],
+  options?: ReportFilterOptions,
 ): Promise<boolean> {
-  const doc = generateLuxuryPdf(transactions, summary, wallets, categories, isIndonesian);
+  const doc = generateLuxuryPdf(transactions, summary, wallets, categories, isIndonesian, allTransactions, options);
   const blob = doc.output("blob");
 
   if (navigator.share && navigator.canShare) {
