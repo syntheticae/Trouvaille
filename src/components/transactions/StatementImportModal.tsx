@@ -33,10 +33,10 @@ import {
   AlertCircle,
   Loader2,
   Table2,
-  FileType,
   ArrowLeftRight,
   Eye,
   EyeOff,
+  UploadCloud,
 } from "lucide-react";
 import { parseStatementText, type ParsedStatementItem, type StatementFormat } from "../../lib/statementParser";
 import { detectColumns, columnRoleLabel, type DetectedColumnMap, type ColumnRole } from "../../lib/csvColumnDetector";
@@ -147,6 +147,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
 
   // --- Step & Navigation State ---
   const [step, setStep] = useState<ImportStep>("input");
+  const [inputTab, setInputTab] = useState<"file" | "paste">("file");
   const [importMethod, setImportMethod] = useState<ImportMethod | null>(null);
   const [inputText, setInputText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -567,6 +568,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
     setRawTextForParsing("");
     setImportProgress(0);
     setHideDuplicates(false);
+    setInputTab("file");
     onClose();
   };
 
@@ -657,245 +659,235 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               transition={{ duration: 0.18 }}
               className="flex-1 overflow-y-auto p-5 space-y-4"
             >
-              {/* Privacy Banner */}
+              {/* Compact Inset Bar: Destination Wallet + Compact Privacy Badge */}
               <div
-                className="flex items-start gap-3 px-4 py-3 rounded-2xl"
+                className="p-1.5 rounded-2xl flex items-center justify-between gap-2"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                <ShieldCheck
-                  size={16}
-                  strokeWidth={1.5}
-                  className="shrink-0 mt-0.5"
-                  style={{ color: "var(--text-primary)" }}
-                />
-                <div>
-                  <p className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {isIndonesian ? "100% Diproses di Perangkat Anda" : "100% Processed On Your Device"}
-                  </p>
-                  <p className="text-[10px] leading-relaxed mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    {isIndonesian
-                      ? "File mutasi tidak pernah dikirim ke server manapun. Semua parsing dilakukan secara lokal dan privasi Anda sepenuhnya terlindungi."
-                      : "Your statement files are never sent to any server. All parsing happens locally and your privacy is fully protected."}
-                  </p>
-                </div>
-              </div>
-
-              {/* Destination Wallet Selector */}
-              <div>
-                <label
-                  className="text-[11px] font-bold uppercase tracking-wider block mb-1.5"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Dompet Tujuan Ingestion" : "Destination Wallet"}
-                </label>
+                {/* Left: Destination Wallet Selector Button */}
                 <button
                   type="button"
                   onClick={() => setWalletSheetOpen(true)}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl active:scale-[0.99] transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer active:scale-95"
                   style={{
-                    background: "var(--glass-fill)",
+                    background: "var(--bg-elevated)",
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <CreditCard size={15} style={{ color: "var(--text-secondary)" }} />
-                    <span className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
-                      {activeWallet?.name || (isIndonesian ? "Pilih Dompet" : "Select Wallet")}
-                    </span>
-                  </div>
-                  <ChevronDown size={14} style={{ color: "var(--text-tertiary)" }} />
+                  <CreditCard size={14} style={{ color: "var(--text-secondary)" }} />
+                  <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {activeWallet?.name || (isIndonesian ? "Pilih Dompet" : "Select Wallet")}
+                  </span>
+                  <ChevronDown size={12} style={{ color: "var(--text-tertiary)" }} />
+                </button>
+
+                {/* Right: Compact Privacy Badge */}
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <ShieldCheck size={14} strokeWidth={1.75} style={{ color: "var(--text-primary)" }} />
+                  <span className="text-[11px] font-medium tracking-tight">100% On-Device</span>
+                </div>
+              </div>
+
+              {/* Apple iOS Segmented Control Switcher */}
+              <div
+                className="grid grid-cols-2 p-1 rounded-2xl relative"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setInputTab("file");
+                  }}
+                  className={`py-2 rounded-xl text-[12px] font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    inputTab === "file"
+                      ? "bg-white text-black shadow-sm font-bold"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Table2 size={14} strokeWidth={1.75} />
+                  <span>{isIndonesian ? "Upload File" : "Upload File"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setInputTab("paste");
+                  }}
+                  className={`py-2 rounded-xl text-[12px] font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    inputTab === "paste"
+                      ? "bg-white text-black shadow-sm font-bold"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Clipboard size={14} strokeWidth={1.75} />
+                  <span>{isIndonesian ? "Tempel Teks" : "Paste Text"}</span>
                 </button>
               </div>
 
-              {/* Upload Cards Grid */}
-              <div>
-                <label
-                  className="text-[11px] font-bold uppercase tracking-wider block mb-2"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Pilih Metode Ingestion" : "Choose Ingestion Method"}
-                </label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {/* CSV / Excel — Highlighted Primary Card */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (fileInputRef.current) {
-                        fileInputRef.current.accept = ".csv,.txt,.tsv,.xlsx,.xls";
-                        fileInputRef.current.click();
-                      }
-                    }}
-                    className="col-span-2 flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.99] transition-all cursor-pointer text-left"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                      style={{
-                        background: "var(--bg-elevated)",
-                        border: "1px solid var(--glass-border)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      <Table2 size={18} strokeWidth={1.5} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
-                        {isIndonesian ? "Upload File CSV atau Excel" : "Upload CSV or Excel File"}
-                      </p>
-                      <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                        {isIndonesian
-                          ? ".csv, .xlsx, .tsv · Deteksi kolom cerdas"
-                          : ".csv, .xlsx, .tsv · Smart column mapping"}
-                      </p>
-                    </div>
-                    <div
-                      className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide"
-                      style={{
-                        background: "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      {isIndonesian ? "Disarankan" : "Recommended"}
-                    </div>
-                  </button>
-
-                  {/* PDF Mutasi Bank */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (fileInputRef.current) {
-                        fileInputRef.current.accept = ".pdf";
-                        fileInputRef.current.click();
-                      }
-                    }}
-                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-2xl active:scale-[0.99] transition-all cursor-pointer text-left"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{
-                        background: "var(--bg-elevated)",
-                        border: "1px solid var(--glass-border)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      <FileType size={16} strokeWidth={1.5} />
-                    </div>
-                    <div>
-                      <p className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>
-                        PDF
-                      </p>
-                      <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                        {isIndonesian ? "Mutasi Rekening" : "Bank Statement"}
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Tempel Teks */}
-                  <button
-                    type="button"
-                    onClick={() => setImportMethod("paste")}
-                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-2xl active:scale-[0.99] transition-all cursor-pointer text-left"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{
-                        background: "var(--bg-elevated)",
-                        border: "1px solid var(--glass-border)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      <Clipboard size={16} strokeWidth={1.5} />
-                    </div>
-                    <div>
-                      <p className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>
-                        {isIndonesian ? "Tempel Teks" : "Paste Text"}
-                      </p>
-                      <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                        {isIndonesian ? "Salinan m-banking" : "From m-banking"}
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Hidden file input */}
+              {/* Hidden universal file input */}
               <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
 
-              {/* Paste Textarea */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                    {isIndonesian
-                      ? "Atau tempel baris mutasi rekening langsung"
-                      : "Or paste statement lines directly"}
-                  </span>
+              {/* TAB 1: UPLOAD FILE */}
+              {inputTab === "file" && (
+                <div className="space-y-4">
+                  {/* Apple Liquid Dropzone Card */}
+                  <div
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = ".csv,.txt,.tsv,.xlsx,.xls,.pdf";
+                        fileInputRef.current.click();
+                      }
+                    }}
+                    className="border-2 border-dashed rounded-3xl p-7 flex flex-col items-center justify-center text-center cursor-pointer transition-all active:scale-[0.99] group"
+                    style={{
+                      borderColor: "var(--glass-border)",
+                      background: "var(--glass-fill)",
+                    }}
+                  >
+                    <div
+                      className="w-14 h-14 rounded-3xl flex items-center justify-center mb-3 transition-transform group-hover:scale-105"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--glass-border)",
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <UploadCloud size={24} strokeWidth={1.5} />
+                    </div>
+
+                    <p className="text-[14px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                      {isIndonesian ? "Pilih Dokumen Mutasi" : "Choose Statement Document"}
+                    </p>
+                    <p
+                      className="text-[11px] mt-1 max-w-[260px] leading-relaxed"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Tap untuk membuka file picker. File diproses lokal tanpa diunggah ke server."
+                        : "Tap to open file picker. Files are processed locally without server upload."}
+                    </p>
+
+                    {/* Format Chips */}
+                    <div className="flex items-center gap-1.5 mt-4">
+                      {([".CSV", ".XLSX", ".PDF", ".TSV"] as const).map((ext) => (
+                        <span
+                          key={ext}
+                          className="px-2.5 py-1 rounded-full text-[10px] font-semibold font-mono"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {ext}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bank Compatibility Footnote */}
+                  <div
+                    className="px-3.5 py-2.5 rounded-2xl flex items-center justify-between text-[11px]"
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-tertiary)",
+                    }}
+                  >
+                    <span>{isIndonesian ? "Format Bank yang Dikenali:" : "Recognized Banks:"}</span>
+                    <span className="font-medium" style={{ color: "var(--text-secondary)" }}>
+                      BCA, Mandiri, SeaBank, BRI, BNI + 7
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: TEMPEL TEKS */}
+              {inputTab === "paste" && (
+                <div className="space-y-4">
+                  <div
+                    className="rounded-3xl p-4 space-y-3"
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                        {isIndonesian
+                          ? "Salin dari m-banking atau web e-statement"
+                          : "Copy from m-banking or web e-statement"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handlePasteClipboard}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border active:scale-95 transition-transform cursor-pointer"
+                        style={{
+                          background: "var(--bg-elevated)",
+                          borderColor: "var(--glass-border)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        <Clipboard size={12} />
+                        <span>{isIndonesian ? "Tempel dari Clipboard" : "Paste Clipboard"}</span>
+                      </button>
+                    </div>
+
+                    <textarea
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      placeholder={
+                        isIndonesian
+                          ? "05/09 TRSF E-BANKING CR GAJI 15.000.000,00\n12/09 QRIS KOPI KENANGAN 45.000,00 DB\n..."
+                          : "05/09 TRSF E-BANKING CR SALARY 15.000.000,00\n12/09 QRIS KOPI KENANGAN 45.000,00 DB\n..."
+                      }
+                      rows={5}
+                      className="w-full rounded-2xl p-3 text-[12px] font-mono outline-none resize-none transition-all"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--glass-border)",
+                        color: "var(--text-primary)",
+                      }}
+                    />
+                  </div>
+
+                  {/* Primary Action Button */}
                   <button
                     type="button"
-                    onClick={handlePasteClipboard}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold active:scale-95 transition-transform"
-                    style={{ color: "var(--text-primary)" }}
+                    onClick={() => {
+                      setImportMethod("paste");
+                      processRawText(inputText, "paste");
+                    }}
+                    disabled={!inputText.trim() || isProcessing}
+                    className="w-full py-3.5 rounded-full text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-98 disabled:opacity-40 shadow-lg"
+                    style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
                   >
-                    <Clipboard size={11} />
-                    {isIndonesian ? "Tempel" : "Paste"}
+                    <Sparkles size={15} />
+                    <span>
+                      {isIndonesian ? "Parse & Tinjau Transaksi" : "Parse & Review Transactions"}
+                    </span>
                   </button>
                 </div>
-                <textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={
-                    isIndonesian
-                      ? "05/09 TRSF E-BANKING CR GAJI 15.000.000,00\n12/09 QRIS KOPI KENANGAN 45.000,00 DB\n..."
-                      : "05/09 TRSF E-BANKING CR SALARY 15.000.000,00\n12/09 QRIS KOPI KENANGAN 45.000,00 DB\n..."
-                  }
-                  rows={4}
-                  className="w-full rounded-2xl p-3 text-[12px] font-mono outline-none resize-none transition-all"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-              </div>
+              )}
 
-              {/* Loading Indicator */}
+              {/* Processing Loader */}
               {isProcessing && (
                 <div className="flex items-center gap-2 py-2" style={{ color: "var(--text-secondary)" }}>
                   <Loader2 size={14} className="animate-spin" />
                   <span className="text-[12px] font-medium">{processingMsg}</span>
                 </div>
               )}
-
-              {/* Primary Action Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setImportMethod("paste");
-                  processRawText(inputText, "paste");
-                }}
-                disabled={!inputText.trim() || isProcessing}
-                className="w-full py-3 rounded-full text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-98 disabled:opacity-40"
-                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-              >
-                <Sparkles size={15} />
-                <span>
-                  {isIndonesian ? "Parse & Tinjau Transaksi" : "Parse & Review Transactions"}
-                </span>
-              </button>
             </motion.div>
           )}
 
