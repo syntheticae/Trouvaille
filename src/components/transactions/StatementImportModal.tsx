@@ -45,7 +45,13 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { parseStatementText, type ParsedStatementItem, type StatementFormat } from "../../lib/statementParser";
-import { detectColumns, columnRoleLabel, type DetectedColumnMap, type ColumnRole } from "../../lib/csvColumnDetector";
+import {
+  detectColumns,
+  columnRoleLabel,
+  CORE_COLUMN_ROLES,
+  type DetectedColumnMap,
+  type ColumnRole,
+} from "../../lib/csvColumnDetector";
 import { parseDelimitedText } from "../../lib/csvParser";
 import { useWallets, useAddWallet } from "../../hooks/useWallets";
 import { useCategories, useAddCategory } from "../../hooks/useCategories";
@@ -57,6 +63,7 @@ import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
+import { resolveCategoryVectorIcon } from "../../lib/iconRegistry";
 import type { Category, TransactionType, Wallet } from "../../lib/types";
 
 // -----------------------------------------------------------------------
@@ -77,51 +84,49 @@ interface ColumnAssignment {
 }
 
 // -----------------------------------------------------------------------
-// Constants
+// Constants & Localization Helpers
 // -----------------------------------------------------------------------
 
-const FORMAT_LABELS: Record<StatementFormat, string> = {
-  bca: "BCA E-Statement / Mutasi",
-  mandiri: "Mandiri Livin Mutasi",
-  jenius: "Jenius BTPN Statement",
-  gopay: "GoPay CSV",
-  seabank: "SeaBank Mutasi",
-  ovo: "OVO CSV",
-  dana: "DANA CSV",
-  bri: "BRI BRImo Mutasi",
-  bni: "BNI wondr Mutasi",
-  permata: "PermataNet Mutasi",
-  cimb: "CIMB OCTO Mutasi",
-  shopeepay: "ShopeePay CSV",
-  generic_csv: "CSV / TSV",
-  generic_pdf: "PDF Mutasi Bank",
-};
+function getFormatLabel(format: StatementFormat, isIndo: boolean): string {
+  const map: Record<StatementFormat, [string, string]> = {
+    bca: ["Mutasi BCA", "BCA Statement"],
+    mandiri: ["Mutasi Mandiri Livin", "Mandiri Livin Statement"],
+    jenius: ["Mutasi Jenius BTPN", "Jenius BTPN Statement"],
+    gopay: ["CSV GoPay", "GoPay CSV"],
+    seabank: ["Mutasi SeaBank", "SeaBank Statement"],
+    ovo: ["CSV OVO", "OVO CSV"],
+    dana: ["CSV DANA", "DANA CSV"],
+    bri: ["Mutasi BRI BRImo", "BRI BRImo Statement"],
+    bni: ["Mutasi BNI wondr", "BNI wondr Statement"],
+    permata: ["Mutasi PermataNet", "PermataNet Statement"],
+    cimb: ["Mutasi CIMB OCTO", "CIMB OCTO Statement"],
+    shopeepay: ["CSV ShopeePay", "ShopeePay CSV"],
+    generic_csv: ["Berkas CSV / TSV", "CSV / TSV File"],
+    generic_pdf: ["Berkas PDF Mutasi", "PDF Statement File"],
+  };
+  return map[format] ? map[format][isIndo ? 0 : 1] : format;
+}
 
-const ALL_COLUMN_ROLES: ColumnRole[] = [
-  "date",
-  "description",
-  "debit",
-  "credit",
-  "amount",
-  "type",
-  "wallet",
-  "category",
-  "balance",
-  "ignore",
-];
-
-// Helper — build ColumnAssignment from DetectedColumnMap
+// Helper — build ColumnAssignment from DetectedColumnMap (strictly core schema roles)
 function buildColumnAssignment(map: DetectedColumnMap, headerCount: number): ColumnAssignment {
   const roles: ColumnRole[] = Array(headerCount).fill("ignore");
   if (map.dateCol >= 0 && map.dateCol < headerCount) roles[map.dateCol] = "date";
+  if (map.timeCol !== null && map.timeCol !== undefined && map.timeCol >= 0 && map.timeCol < headerCount) {
+    roles[map.timeCol] = "time";
+  }
   if (map.descCol >= 0 && map.descCol < headerCount) roles[map.descCol] = "description";
-  if (map.debitCol !== null && map.debitCol < headerCount) roles[map.debitCol] = "debit";
-  if (map.creditCol !== null && map.creditCol < headerCount) roles[map.creditCol] = "credit";
-  if (map.amountCol !== null && map.amountCol < headerCount) roles[map.amountCol] = "amount";
+  if (map.amountCol !== null && map.amountCol < headerCount) {
+    roles[map.amountCol] = "amount";
+  } else if (map.debitCol !== null && map.debitCol < headerCount) {
+    roles[map.debitCol] = "amount";
+  }
   if (map.typeCol !== null && map.typeCol < headerCount) roles[map.typeCol] = "type";
-  if (map.walletCol !== null && map.walletCol !== undefined && map.walletCol < headerCount) roles[map.walletCol] = "wallet";
-  if (map.categoryCol !== null && map.categoryCol !== undefined && map.categoryCol < headerCount) roles[map.categoryCol] = "category";
-  if (map.balanceCol !== null && map.balanceCol < headerCount) roles[map.balanceCol] = "balance";
+  if (map.walletCol !== null && map.walletCol !== undefined && map.walletCol < headerCount) {
+    roles[map.walletCol] = "wallet";
+  }
+  if (map.categoryCol !== null && map.categoryCol !== undefined && map.categoryCol < headerCount) {
+    roles[map.categoryCol] = "category";
+  }
   return { roles, userModified: false };
 }
 
@@ -130,6 +135,7 @@ function assignmentToColumnMap(assignment: ColumnAssignment): DetectedColumnMap 
   const { roles } = assignment;
   return {
     dateCol: roles.indexOf("date"),
+    timeCol: roles.includes("time") ? roles.indexOf("time") : null,
     descCol: roles.indexOf("description"),
     debitCol: roles.includes("debit") ? roles.indexOf("debit") : null,
     creditCol: roles.includes("credit") ? roles.indexOf("credit") : null,
@@ -565,14 +571,15 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
     if (autoCreateNewEntities) {
       // Auto-create missing wallets
       for (const name of newWallets) {
-        const existing = wallets.find((w) => w.name.trim().toLowerCase() === name.trim().toLowerCase());
+        const normName = name.trim().toLowerCase();
+        const existing = wallets.find((w) => w.name.trim().toLowerCase() === normName);
         if (existing) {
-          newWalletMap[name.trim().toLowerCase()] = existing.id;
+          newWalletMap[normName] = existing.id;
         } else {
           try {
-            const created = await addWallet.mutateAsync({ name });
+            const created = await addWallet.mutateAsync({ name: name.trim() });
             if (created?.id) {
-              newWalletMap[name.trim().toLowerCase()] = created.id;
+              newWalletMap[normName] = created.id;
             }
           } catch (err) {
             console.warn("[StatementImport] Auto-create wallet failed:", name, err);
@@ -580,20 +587,22 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
         }
       }
 
-      // Auto-create missing categories
+      // Auto-create missing categories with pure Lucide monochrome vector icons (Rule 1)
       for (const name of newCategories) {
-        const existing = categories.find((c) => c.name.trim().toLowerCase() === name.trim().toLowerCase());
+        const normName = name.trim().toLowerCase();
+        const existing = categories.find((c) => c.name.trim().toLowerCase() === normName);
         if (existing) {
-          newCategoryMap[name.trim().toLowerCase()] = existing.id;
+          newCategoryMap[normName] = existing.id;
         } else {
           try {
+            const vectorIcon = resolveCategoryVectorIcon(name.trim());
             const created = await addCategory.mutateAsync({
-              name,
-              emoji: "🏷️",
+              name: name.trim(),
+              emoji: vectorIcon,
               type: "expense",
             });
             if (created?.id) {
-              newCategoryMap[name.trim().toLowerCase()] = created.id;
+              newCategoryMap[normName] = created.id;
             }
           } catch (err) {
             console.warn("[StatementImport] Auto-create category failed:", name, err);
@@ -627,6 +636,21 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
           }
         }
 
+        // Resolve destination wallet for transfer transactions
+        let finalToWalletId: string | null = null;
+        if (item.type === "transfer") {
+          if (item.destinationWalletId) {
+            finalToWalletId = item.destinationWalletId;
+          } else if (item.destinationWalletName && newWalletMap[item.destinationWalletName.trim().toLowerCase()]) {
+            finalToWalletId = newWalletMap[item.destinationWalletName.trim().toLowerCase()];
+          } else if (item.destinationWalletName) {
+            const matchedDst = wallets.find(
+              (w) => w.name.trim().toLowerCase() === item.destinationWalletName!.trim().toLowerCase()
+            );
+            if (matchedDst) finalToWalletId = matchedDst.id;
+          }
+        }
+
         // Resolve category
         let finalCategoryId: string | null = item.suggestedCategoryId || null;
         if (!finalCategoryId && item.suggestedCategoryName) {
@@ -640,14 +664,20 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
           }
         }
 
+        // Include time in occurred_on ISO timestamp if available
+        let occurredOn = item.date;
+        if (item.time) {
+          occurredOn = `${item.date}T${item.time}`;
+        }
+
         return {
           amount: item.amount,
           type: item.type,
           category_id: finalCategoryId,
           wallet_id: finalWalletId,
-          to_wallet_id: item.type === "transfer" ? item.destinationWalletId || null : null,
-          occurred_on: item.date,
-          note: item.cleanDescription || item.description,
+          to_wallet_id: finalToWalletId,
+          occurred_on: occurredOn,
+          note: item.cleanDescription || item.description || "",
           ledger_id: activeSpaceId !== "all" ? activeSpaceId : "personal",
           space_id: activeSpaceId !== "all" ? activeSpaceId : null,
         };
@@ -746,7 +776,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                   ? isIndonesian
                     ? "Konfirmasi pemetaan kolom"
                     : "Confirm column mapping"
-                  : `${FORMAT_LABELS[parsedFormat]} · ${parsedItems.length} ${
+                  : `${getFormatLabel(parsedFormat, isIndonesian)} · ${parsedItems.length} ${
                       isIndonesian ? "transaksi" : "transactions"
                     }`}
               </p>
@@ -820,7 +850,9 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                   style={{ color: "var(--text-secondary)" }}
                 >
                   <ShieldCheck size={14} strokeWidth={1.75} style={{ color: "var(--text-primary)" }} />
-                  <span className="text-[11px] font-medium tracking-tight">100% On-Device</span>
+                  <span className="text-[11px] font-medium tracking-tight">
+                    {isIndonesian ? "100% Di Perangkat" : "100% On-Device"}
+                  </span>
                 </div>
               </div>
 
@@ -845,7 +877,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                   }`}
                 >
                   <Table2 size={14} strokeWidth={1.75} />
-                  <span>{isIndonesian ? "Upload File" : "Upload File"}</span>
+                  <span>{isIndonesian ? "Unggah Berkas" : "Upload File"}</span>
                 </button>
 
                 <button
@@ -904,8 +936,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       {isIndonesian
-                        ? "Tap untuk membuka file picker. File diproses lokal tanpa diunggah ke server."
-                        : "Tap to open file picker. Files are processed locally without server upload."}
+                        ? "Ketuk untuk memilih berkas. Berkas diproses di perangkat tanpa diunggah ke server."
+                        : "Tap to choose file. Files are processed locally without server upload."}
                     </p>
 
                     {/* Format Chips */}
@@ -970,7 +1002,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                         }}
                       >
                         <Clipboard size={12} />
-                        <span>{isIndonesian ? "Tempel dari Clipboard" : "Paste Clipboard"}</span>
+                        <span>{isIndonesian ? "Tempel dari Papan Klip" : "Paste Clipboard"}</span>
                       </button>
                     </div>
 
@@ -1005,7 +1037,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                   >
                     <Sparkles size={15} />
                     <span>
-                      {isIndonesian ? "Parse & Tinjau Transaksi" : "Parse & Review Transactions"}
+                      {isIndonesian ? "Ekstrak & Tinjau Transaksi" : "Extract & Review Transactions"}
                     </span>
                   </button>
                 </div>
@@ -1049,8 +1081,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                   />
                   <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     {isIndonesian
-                      ? "Kolom terdeteksi otomatis dari struktur data Anda. Tap peran kolom untuk mengubahnya bila belum sesuai."
-                      : "Columns detected automatically from your data structure. Tap any column role to adjust if needed."}
+                      ? "Kolom terdeteksi otomatis dari struktur data Anda. Pilih peran kolom agar sesuai skema transaksi."
+                      : "Columns detected automatically from your data structure. Select each column role to match our transaction schema."}
                   </p>
                 </div>
 
@@ -1111,7 +1143,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                             color: "var(--text-primary)",
                           }}
                         >
-                          {ALL_COLUMN_ROLES.map((role) => (
+                          {CORE_COLUMN_ROLES.map((role) => (
                             <option key={role} value={role}>
                               {columnRoleLabel(role, isIndonesian)}
                             </option>
@@ -1122,36 +1154,115 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                   })}
                 </div>
 
-                {/* Preview Rows */}
+                {/* Sample Data Preview (Luxury Horizontal Scrollable Table) */}
                 {csvPreviewRows.length > 0 && (
-                  <div>
-                    <p
-                      className="text-[10px] font-bold uppercase tracking-wider mb-1.5"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian ? "Pratinjau Data Sampel" : "Sample Data Preview"}
-                    </p>
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between">
+                      <p
+                        className="text-[10px] font-bold uppercase tracking-wider"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {isIndonesian ? "Pratinjau Data Sampel" : "Sample Data Preview"}
+                      </p>
+                      <span
+                        className="text-[10px] font-medium"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {isIndonesian ? "Geser menyamping untuk kolom lain" : "Scroll horizontally for more columns"}
+                      </span>
+                    </div>
+
                     <div
                       className="rounded-2xl overflow-hidden"
-                      style={{ border: "1px solid var(--glass-border)" }}
+                      style={{
+                        border: "1px solid var(--glass-border)",
+                        background: "var(--bg-elevated)",
+                      }}
                     >
-                      {csvPreviewRows.slice(0, 3).map((row, ri) => (
-                        <div
-                          key={ri}
-                          className="flex gap-2 px-3 py-2 text-[10px] font-mono"
-                          style={{
-                            background: ri % 2 === 0 ? "var(--glass-fill)" : "transparent",
-                            color: "var(--text-secondary)",
-                            borderBottom: ri < 2 ? "1px solid var(--glass-border)" : undefined,
-                          }}
-                        >
-                          {row.slice(0, Math.min(csvHeaders.length, 5)).map((cell, ci) => (
-                            <span key={ci} className="truncate flex-1">
-                              {cell || "—"}
-                            </span>
-                          ))}
-                        </div>
-                      ))}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-max">
+                          <thead>
+                            <tr
+                              style={{
+                                background: "var(--glass-fill)",
+                                borderBottom: "1px solid var(--glass-border)",
+                              }}
+                            >
+                              {csvHeaders.map((header, ci) => {
+                                const assignedRole = columnAssignment.roles[ci] || "ignore";
+                                return (
+                                  <th
+                                    key={ci}
+                                    className="px-3 py-2 text-[11px] font-semibold whitespace-nowrap"
+                                    style={{
+                                      borderRight:
+                                        ci < csvHeaders.length - 1
+                                          ? "1px solid var(--glass-border)"
+                                          : undefined,
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <span
+                                        className="text-[9px] font-mono font-medium opacity-60"
+                                        style={{ color: "var(--text-tertiary)" }}
+                                      >
+                                        #{ci + 1}
+                                      </span>
+                                      <span style={{ color: "var(--text-primary)" }}>{header}</span>
+                                      <span
+                                        className="text-[9px] px-1.5 py-0.5 rounded-full font-sans font-medium"
+                                        style={{
+                                          background:
+                                            assignedRole === "ignore"
+                                              ? "rgba(255,255,255,0.06)"
+                                              : "var(--glass-border)",
+                                          color:
+                                            assignedRole === "ignore"
+                                              ? "var(--text-tertiary)"
+                                              : "var(--text-primary)",
+                                        }}
+                                      >
+                                        {columnRoleLabel(assignedRole, isIndonesian)}
+                                      </span>
+                                    </div>
+                                  </th>
+                                );
+                              })}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {csvPreviewRows.slice(0, 4).map((row, ri) => (
+                              <tr
+                                key={ri}
+                                style={{
+                                  background:
+                                    ri % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent",
+                                  borderBottom:
+                                    ri < Math.min(csvPreviewRows.length, 4) - 1
+                                      ? "1px solid var(--glass-border)"
+                                      : undefined,
+                                }}
+                              >
+                                {csvHeaders.map((_, ci) => (
+                                  <td
+                                    key={ci}
+                                    className="px-3 py-2 text-[10px] font-mono whitespace-nowrap"
+                                    style={{
+                                      color: "var(--text-secondary)",
+                                      borderRight:
+                                        ci < csvHeaders.length - 1
+                                          ? "1px solid var(--glass-border)"
+                                          : undefined,
+                                    }}
+                                  >
+                                    {row[ci] || "—"}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1190,7 +1301,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                   style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
                 >
                   <Sparkles size={15} />
-                  <span>{isIndonesian ? "Lanjut Parse Transaksi" : "Parse Transactions"}</span>
+                  <span>{isIndonesian ? "Lanjut Tinjau Transaksi" : "Proceed to Review"}</span>
                 </button>
               </div>
             </motion.div>

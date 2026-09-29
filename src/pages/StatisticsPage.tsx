@@ -9,6 +9,7 @@ import {
   useCategories,
   getCategoryParent,
   getParentIcon,
+  getParentDisplayName,
 } from "../hooks/useCategories";
 import {
   Layers,
@@ -1163,7 +1164,8 @@ export function StatisticsPage() {
       .forEach((t) => {
         const resolved = resolveTransactionCategory(t, categories);
         const catName = resolved.name;
-        const parentName = getCategoryParent(catName);
+        const parentRaw = getCategoryParent(catName);
+        const parentName = getParentDisplayName(parentRaw, isIndonesian);
         const meta = userCatMap.get(catName.trim().toLowerCase());
         const emoji =
           resolved.emoji ||
@@ -1177,7 +1179,7 @@ export function StatisticsPage() {
         if (!parentEntry) {
           parentEntry = {
             name: parentName,
-            emoji: getParentIcon(parentName),
+            emoji: getParentIcon(parentRaw),
             total: 0,
             count: 0,
             categoriesList: [],
@@ -1256,7 +1258,7 @@ export function StatisticsPage() {
       const resolved = resolveTransactionCategory(t, categories);
       const key =
         groupMode === "parent"
-          ? getCategoryParent(resolved.name)
+          ? getParentDisplayName(getCategoryParent(resolved.name), isIndonesian)
           : resolved.name;
       prevMap.set(key, (prevMap.get(key) || 0) + Number(t.amount || 0));
     });

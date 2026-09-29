@@ -567,38 +567,101 @@ export function useAddWallet() {
       icon?: string;
       classification?: AccountClassification;
     }) => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) throw new Error("Not authenticated");
       const finalIcon = w.icon || getWalletIcon(w.name);
       const resolvedClassification =
         w.classification || resolveWalletClassification({ name: w.name });
 
+      // 1. Guest / Offline Mode check
+      let isGuest = false;
+      let authUser: any = null;
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        authUser = session?.user;
+        if (
+          !authUser ||
+          authUser.id === "guest_local_user" ||
+          (typeof localStorage !== "undefined" &&
+            localStorage.getItem("trouvaille_guest_mode") === "true")
+        ) {
+          isGuest = true;
+        }
+      } catch {
+        isGuest = true;
+      }
+
+      if (isGuest || !authUser) {
+        const guestWallet: Wallet = {
+          id: `custom-wallet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          user_id: authUser?.id || "guest_local_user",
+          name: w.name.trim(),
+          icon: finalIcon,
+          classification: resolvedClassification,
+          created_at: new Date().toISOString(),
+        };
+
+        try {
+          const raw = localStorage.getItem(WALLETS_BACKUP_STORAGE_KEY);
+          const list = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(list)) {
+            list.push(guestWallet);
+            localStorage.setItem(WALLETS_BACKUP_STORAGE_KEY, JSON.stringify(list));
+          }
+        } catch {}
+
+        saveWalletClassification(guestWallet.id, resolvedClassification);
+        saveWalletClassification(guestWallet.name, resolvedClassification);
+        return guestWallet;
+      }
+
+      // 2. Authenticated Cloud Mode with local offline fallback
       let created: Wallet;
       try {
         const { data, error } = await supabase
           .from("wallets")
           .insert({
-            name: w.name,
+            name: w.name.trim(),
             icon: finalIcon,
-            user_id: user.id,
+            user_id: authUser.id,
             classification: resolvedClassification,
           })
           .select()
           .single();
         if (error) throw error;
         created = data as Wallet;
-      } catch {
+      } catch (cloudErr) {
         // Safe fallback if 'classification' column is not yet migrated in Supabase
-        const { data, error } = await supabase
-          .from("wallets")
-          .insert({ name: w.name, icon: finalIcon, user_id: user.id })
-          .select()
-          .single();
-        if (error) throw error;
-        created = data as Wallet;
+        try {
+          const { data, error } = await supabase
+            .from("wallets")
+            .insert({ name: w.name.trim(), icon: finalIcon, user_id: authUser.id })
+            .select()
+            .single();
+          if (error) throw error;
+          created = data as Wallet;
+        } catch (fallbackErr) {
+          console.warn("[useAddWallet] Cloud insert failed, saving to local backup:", fallbackErr);
+          const localFallback: Wallet = {
+            id: `offline-wallet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            user_id: authUser.id,
+            name: w.name.trim(),
+            icon: finalIcon,
+            classification: resolvedClassification,
+            created_at: new Date().toISOString(),
+          };
+          try {
+            const raw = localStorage.getItem(WALLETS_BACKUP_STORAGE_KEY);
+            const list = raw ? JSON.parse(raw) : [];
+            if (Array.isArray(list)) {
+              list.push(localFallback);
+              localStorage.setItem(WALLETS_BACKUP_STORAGE_KEY, JSON.stringify(list));
+            }
+          } catch {}
+          saveWalletClassification(localFallback.id, resolvedClassification);
+          saveWalletClassification(localFallback.name, resolvedClassification);
+          return localFallback;
+        }
       }
 
       saveWalletClassification(created.id, resolvedClassification);

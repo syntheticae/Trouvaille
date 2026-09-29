@@ -797,3 +797,56 @@ export function autoSuggestIcon(text: string): string | null {
 
   return null;
 }
+
+/**
+ * Resolves a category name to a strictly monochrome Lucide vector icon name.
+ * Strictly complies with GEMINI.md Rule 1 (0% colored system emojis, pure Lucide vector outline).
+ */
+export function resolveCategoryVectorIcon(categoryName: string): string {
+  if (!categoryName || typeof categoryName !== "string") return "Tag";
+  const q = categoryName.trim().toLowerCase();
+  if (!q) return "Tag";
+
+  // High-priority semantic keyword map for Indonesian & English personal finance
+  const SEMANTIC_CATEGORY_MAP: Array<{ keywords: string[]; icon: string }> = [
+    { keywords: ["bensin", "bbm", "spbu", "pertamina", "shell", "fuel", "gas", "bensin motor", "bensin mobil"], icon: "Fuel" },
+    { keywords: ["makanan", "makan", "food", "dining", "kuliner", "restoran", "sarapan", "lunch", "dinner", "snack"], icon: "Utensils" },
+    { keywords: ["minuman", "minum", "kopi", "coffee", "cafe", "kafe", "drink", "beverage", "tea", "teh", "boba"], icon: "Coffee" },
+    { keywords: ["biaya admin", "admin", "fee", "biaya bulanan", "pajak", "tax", "bunga", "charge"], icon: "CreditCard" },
+    { keywords: ["medicine", "obat", "medis", "farmasi", "apotek", "dokter", "kesehatan", "health", "medical", "clinic", "rumah sakit"], icon: "Pill" },
+    { keywords: ["mini market", "minimarket", "supermarket", "indomaret", "alfamart", "groceries", "sembako", "belanja bulanan", "pasar"], icon: "ShoppingCart" },
+    { keywords: ["tagihan", "listrik", "pln", "pdam", "air", "bpjs", "bill", "utility", "utilities", "iuran"], icon: "Receipt" },
+    { keywords: ["laundry", "cuci", "londri", "dry clean", "setrika"], icon: "Sparkles" },
+    { keywords: ["gadget", "elektronik", "handphone", "hp", "baterai", "battery", "device", "laptop", "komputer", "phone"], icon: "Smartphone" },
+    { keywords: ["internet", "wifi", "pulsa", "paket data", "indihome", "biznet", "telkomsel", "kuota"], icon: "Wifi" },
+    { keywords: ["kendaraan", "mobil", "motor", "bengkel", "servis", "parkir", "tol", "transport", "ojol", "grab", "gojek"], icon: "Car" },
+    { keywords: ["hiburan", "game", "nonton", "bioskop", "cinema", "netflix", "spotify", "entertainment", "youtube"], icon: "Gamepad2" },
+    { keywords: ["hobi", "hobby", "musik", "buku", "olahraga", "sport", "gym", "fitness"], icon: "Music" },
+    { keywords: ["liburan", "travel", "hotel", "tiket", "pesawat", "vacation", "holiday", "trip", "wisata"], icon: "Plane" },
+    { keywords: ["gift", "hadiah", "kado", "donasi", "sedekah", "zakat", "charity", "infaq"], icon: "Gift" },
+    { keywords: ["fashion", "baju", "pakaian", "celana", "sepatu", "clothing", "apparel", "tas", "aksesoris"], icon: "Shirt" },
+    { keywords: ["uang bulanan", "gaji", "salary", "allowance", "payroll", "upah", "honor", "income"], icon: "Banknote" },
+    { keywords: ["sampingan", "freelance", "bonus", "komisi", "proyek", "side hustle", "dividen"], icon: "Briefcase" },
+    { keywords: ["pindah saldo", "transfer", "kirim uang", "top up", "topup"], icon: "ArrowRightLeft" },
+    { keywords: ["koreksi saldo", "penyesuaian", "koreksi", "adjustment", "reconcile"], icon: "Scale" },
+    { keywords: ["pendidikan", "kursus", "sekolah", "kuliah", "education", "spp", "les"], icon: "GraduationCap" },
+    { keywords: ["keluarga", "anak", "family", "baby", "orang tua"], icon: "Smile" },
+    { keywords: ["investasi", "investment", "saham", "crypto", "reksadana", "emas", "gold"], icon: "TrendingUp" },
+  ];
+
+  for (const entry of SEMANTIC_CATEGORY_MAP) {
+    for (const kw of entry.keywords) {
+      if (q === kw || q.includes(kw) || kw.includes(q)) {
+        return entry.icon;
+      }
+    }
+  }
+
+  // Fallback to autoSuggestIcon
+  const suggested = autoSuggestIcon(categoryName);
+  if (suggested && ALL_ICONS_MAP[suggested]) {
+    return suggested;
+  }
+
+  return "Tag";
+}

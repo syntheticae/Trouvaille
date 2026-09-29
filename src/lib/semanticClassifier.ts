@@ -16,6 +16,7 @@ export type SemanticConceptId =
   | "HEALTH_MEDICAL"
   | "ENTERTAINMENT_SUBSCRIPTIONS"
   | "SHOPPING_CLOTHING"
+  | "ONLINE_SHOPPING"
   | "PERSONAL_CARE"
   | "EDUCATION"
   | "HOUSING_LODGING"
@@ -109,7 +110,8 @@ export const CONCEPT_TAXONOMY: Record<SemanticConceptId, ConceptDefinition> = {
       "krl", "mrt", "lrt", "kai", "commuter", "busway", "transjakarta", "tj",
       "bus", "angkot", "pesawat", "garuda", "lion", "citilink", "airasia", "bbm",
       "kendaraan", "motor", "mobil", "bengkel", "tambal ban", "cuci motor", "cuci mobil",
-      "service motor", "service mobil", "oli", "ganti oli", "helm", "spion"
+      "service motor", "service mobil", "oli", "ganti oli", "helm", "spion",
+      "perjalanan", "ojek", "ojol", "travel", "ongkos"
     ],
   },
 
@@ -178,16 +180,31 @@ export const CONCEPT_TAXONOMY: Record<SemanticConceptId, ConceptDefinition> = {
   SHOPPING_CLOTHING: {
     id: "SHOPPING_CLOTHING",
     canonicalCategoryNames: {
-      id: ["belanja fashion", "pakaian", "shopping", "lifestyle", "busana"],
-      en: ["shopping", "clothing", "apparel", "fashion", "lifestyle"],
+      id: ["pakaian", "fashion", "busana", "pakaian & aksesoris"],
+      en: ["clothing", "apparel", "fashion", "wardrobe"],
     },
-    categoryNameKeywords: ["belanja", "shop", "pakaian", "cloth", "fashion", "baju", "lifestyle"],
+    categoryNameKeywords: ["pakaian", "cloth", "fashion", "baju", "busana", "apparel", "outfit"],
     keywords: [
       "baju", "celana", "kaos", "kemeja", "jaket", "hoodie", "sweater", "sepatu",
       "sandal", "sneakers", "tas", "dompet", "ransel", "topi", "kacamata hitam",
       "mall", "uniqlo", "zara", "h&m", "pull&bear", "mango", "stradivarius",
-      "cotton on", "shopee", "tokopedia", "tiktok shop", "lazada", "zalora",
-      "blibli", "pakaian", "distro", "thrift", "thrifting", "fashion", "aksesoris"
+      "cotton on", "distro", "thrift", "thrifting", "fashion", "aksesoris",
+      "gamis", "hijab", "jilbab", "mukena", "jas", "blazer", "rok", "jeans"
+    ],
+  },
+
+  ONLINE_SHOPPING: {
+    id: "ONLINE_SHOPPING",
+    canonicalCategoryNames: {
+      id: ["belanja", "belanja online", "shopping", "kebutuhan", "lifestyle"],
+      en: ["shopping", "online shopping", "purchases", "lifestyle"],
+    },
+    categoryNameKeywords: ["belanja", "shop", "online", "kebutuhan", "paket", "lifestyle"],
+    keywords: [
+      "shopee", "tokopedia", "tiktok shop", "lazada", "blibli", "bukalapak",
+      "belanja online", "olshop", "checkout", "pesanan shopee", "spay", "shopeepay",
+      "tokped", "tiktokshop", "amazon", "aliexpress", "zalora", "paket", "ongkir",
+      "marketplace", "e-commerce"
     ],
   },
 
@@ -355,10 +372,29 @@ export function classifySemanticCategory(
     }
   }
 
+  // 1.5 Contextual Disambiguation for E-Commerce / Shopee / Tokopedia
+  const isMarketplace = /shopee|tokopedia|tiktok\s*shop|tokped|lazada|blibli/i.test(rawLower);
+  let forcedConceptHint: SemanticConceptId | null = null;
+  if (isMarketplace) {
+    if (/shopeefood|food|makan|kopi|coffee|resto|restoran|ayam|bakso|mie|burger|pizza|dapur|snack/i.test(rawLower)) {
+      forcedConceptHint = /kopi|coffee|latte|kafe|boba|tea/i.test(rawLower) ? "COFFEE_BEVERAGE" : "FOOD_DINING";
+    } else if (/pln|listrik|pulsa|paket\s*data|kuota|bpjs|tagihan|pdam|telkom|indihome/i.test(rawLower)) {
+      forcedConceptHint = /pulsa|data|kuota/i.test(rawLower) ? "COMMUNICATION_DATA" : "BILLS_UTILITIES";
+    } else if (/baju|celana|kaos|kemeja|jaket|hoodie|sweater|sepatu|sandal|sneakers|tas|gamis|hijab|mukena|rok|jeans/i.test(rawLower)) {
+      forcedConceptHint = "SHOPPING_CLOTHING";
+    } else if (/supermarket|sembako|beras|minyak|gula|telur|sabun|detergen/i.test(rawLower)) {
+      forcedConceptHint = "GROCERIES";
+    } else {
+      forcedConceptHint = "ONLINE_SHOPPING";
+    }
+  }
+
   // 2. Score All Semantic Concepts Against Tokens
-  let bestConceptId: SemanticConceptId | null = null;
-  let bestConceptScore = 0;
-  let bestKeyword: string | null = null;
+  let bestConceptId: SemanticConceptId | null = forcedConceptHint;
+  let bestConceptScore = forcedConceptHint ? 5 : 0;
+  let bestKeyword: string | null = forcedConceptHint
+    ? (forcedConceptHint === "ONLINE_SHOPPING" ? "shopee/marketplace" : "marketplace context")
+    : null;
 
   for (const concept of Object.values(CONCEPT_TAXONOMY)) {
     let score = 0;

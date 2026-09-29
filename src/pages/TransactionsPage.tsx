@@ -17,7 +17,11 @@ import {
   Eye,
   EyeOff,
   Inbox,
+  Sparkles,
+  ArrowRight,
 } from "lucide-react";
+import { useDraftTransactions } from "../lib/draftTransactionService";
+import type { ParsedStatementItem } from "../lib/statementParser";
 import {
   BarChart,
   Bar,
@@ -162,14 +166,17 @@ interface TransactionsPageProps {
   onOpenScan?: () => void;
   onOpenImport?: () => void;
   onOpenVoiceAdd?: () => void;
+  onOpenBatchReview?: (items: ParsedStatementItem[], appName?: string) => void;
 }
 
 export function TransactionsPage({
   onOpenScan: _onOpenScan,
   onOpenImport: _onOpenImport,
   onOpenVoiceAdd: _onOpenVoiceAdd,
+  onOpenBatchReview,
 }: TransactionsPageProps = {}) {
   const { isStealthMode, toggleStealthMode } = usePrivacy();
+  const { items: allDraftItems, count: draftCount, clearAll: clearAllDrafts } = useDraftTransactions();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [search, setSearch] = useState("");
@@ -839,6 +846,77 @@ export function TransactionsPage({
             </button>
           </div>
         </div>
+
+        {/* Draft Inbox Banner */}
+        {draftCount > 0 && (
+          <div
+            className="p-3 rounded-2xl flex items-center justify-between gap-3 border shadow-sm animate-fadeIn mb-3"
+            style={{
+              background: "var(--bg-elevated)",
+              borderColor: "var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
+            }}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <Sparkles size={13} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
+                  {isIndonesian
+                    ? `${draftCount} Transaksi Siap Ditinjau`
+                    : `${draftCount} Transactions Ready to Review`}
+                </p>
+                <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+                  {isIndonesian
+                    ? "Tersimpan di draft · Saldo belum terpotong"
+                    : "Saved in drafts · Balance unchanged"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("medium");
+                  onOpenBatchReview?.(allDraftItems, isIndonesian ? "Draft Transaksi" : "Draft Inbox");
+                }}
+                className="px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-sm"
+                style={{
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
+                }}
+              >
+                <span>{isIndonesian ? "Tinjau" : "Review"}</span>
+                <ArrowRight size={11} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  clearAllDrafts();
+                }}
+                className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-colors"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-tertiary)",
+                }}
+                title={isIndonesian ? "Buang Semua Draft" : "Dismiss All Drafts"}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Active Space Segregation Notice */}
         {activeSpaceId !== "all" && activeSpaceId !== "personal" && (

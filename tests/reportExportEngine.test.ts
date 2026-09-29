@@ -142,24 +142,23 @@ describe("Luxury Financial Report & Tax/Export Engine Test Suite", () => {
       expect(filtered[0].id).toBe("tx-3");
     });
 
-    it("filters by transaction type: 'business_tax'", () => {
-      const opts: ReportFilterOptions = { dateRange: "all", transactionType: "business_tax" };
+    it("filters by transaction type: 'expense'", () => {
+      const opts: ReportFilterOptions = { dateRange: "all", transactionType: "expense" };
       const filtered = filterTransactionsForReport(mockTransactions, opts, refNow);
-      expect(filtered.length).toBe(1);
-      expect(filtered[0].id).toBe("tx-3");
+      expect(filtered.length).toBe(3);
+      expect(filtered.every((t) => t.type === "expense")).toBe(true);
     });
   });
 
   describe("Executive Summary Calculator", () => {
-    it("calculates totals, net savings, and tax deductible expenses", () => {
+    it("calculates totals, net savings, and category rankings", () => {
       const opts: ReportFilterOptions = { dateRange: "this_month" };
       const filtered = filterTransactionsForReport(mockTransactions, opts, refNow);
-      const summary = calculateReportSummary(filtered, opts, mockWallets, refNow);
+      const summary = calculateReportSummary(filtered, opts, mockWallets, true, refNow);
 
       expect(summary.totalIncome).toBe(25000000);
       expect(summary.totalExpense).toBe(1350000); // 150.000 + 1.200.000
       expect(summary.netCashflow).toBe(23650000);
-      expect(summary.taxDeductibleTotal).toBe(1200000);
       expect(summary.transactionCount).toBe(3);
       expect(summary.savingsRate).toBeGreaterThan(90);
       expect(summary.topCategories.length).toBe(2);
@@ -169,9 +168,9 @@ describe("Luxury Financial Report & Tax/Export Engine Test Suite", () => {
 
   describe("CSV Generation", () => {
     it("produces valid UTF-8 BOM CSV with complete metadata", () => {
-      const csv = generateCsvContent(mockTransactions, mockWallets);
+      const csv = generateCsvContent(mockTransactions, mockWallets, false);
       expect(csv.startsWith("\uFEFF")).toBe(true);
-      expect(csv).toContain("Date,Time,Type,Amount (IDR),Category");
+      expect(csv).toContain("Date,Time,Type,Category");
       expect(csv).toContain("Salary Monthly");
       expect(csv).toContain("BCA Main");
       expect(csv).toContain("#business #reimburse");
@@ -202,10 +201,10 @@ describe("Luxury Financial Report & Tax/Export Engine Test Suite", () => {
 
       expect(html).toContain("<!DOCTYPE html>");
       expect(html).toContain("TROUVAILLE");
-      expect(html).toContain("EXECUTIVE FINANCIAL REPORT");
+      expect(html).toContain("Executive Statement");
       expect(html).toContain("TOTAL INFLOW");
       expect(html).toContain("TOTAL OUTFLOW");
-      expect(html).toContain("BUSINESS / TAX DEDUCTIBLE");
+      expect(html).toContain("NET CASH FLOW");
       expect(html).toContain("@media print");
       expect(html).toContain("window.print()");
     });

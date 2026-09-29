@@ -14,7 +14,7 @@ export const categoryKeys = {
 // Expense: everything else
 // ======================================================================
 export const CATEGORY_PARENT_MAP: Record<string, string> = {
-  // Universal Generalized Expense Parents
+  // Universal Generalized Expense Parents (Indonesian)
   "makanan & minuman": "Pangan",
   "groceries & supermarket": "Papan",
   "transportasi & kendaraan": "Transportasi",
@@ -28,6 +28,21 @@ export const CATEGORY_PARENT_MAP: Record<string, string> = {
   "sosial & amal": "Sosial",
   "biaya finansial & pajak": "Biaya",
   "investasi & tabungan": "Keuangan",
+
+  // Universal Generalized Expense Parents (English)
+  "food & dining": "Pangan",
+  "transportation & travel": "Transportasi",
+  "housing & utilities": "Papan",
+  "bills & subscriptions": "Biaya",
+  "shopping & lifestyle": "Sandang",
+  "health & medical": "Sandang",
+  "entertainment & leisure": "Hiburan",
+  "family & personal care": "Keluarga",
+  "education & career": "Sandang",
+  "gifts & donations": "Sosial",
+  "financial fees & taxes": "Biaya",
+  "savings & investments": "Keuangan",
+  "other expenses": "Lainnya",
 
   // Legacy & Specific Expense Mappings (for existing data backward compatibility)
   kerugian: "Biaya",
@@ -44,18 +59,28 @@ export const CATEGORY_PARENT_MAP: Record<string, string> = {
   elektronik: "Papan",
   laundry: "Papan",
   hunian: "Papan",
+  housing: "Papan",
+  utilities: "Papan",
   asuransi: "Sandang",
   fashion: "Sandang",
   perawatan: "Sandang",
   kesehatan: "Sandang",
+  medical: "Sandang",
+  healthcare: "Sandang",
   pendidikan: "Sandang",
+  education: "Sandang",
   zakat: "Sosial",
   hadiah: "Sosial",
   donasi: "Sosial",
+  donations: "Sosial",
   hiburan: "Hiburan",
+  entertainment: "Hiburan",
   subscription: "Hiburan",
+  subscriptions: "Biaya",
+  bills: "Biaya",
   liburan: "Hiburan",
   tabungan: "Keuangan",
+  savings: "Keuangan",
   internet: "Komunikasi",
   lainnya: "Lainnya",
   olahraga: "Olahraga",
@@ -65,11 +90,12 @@ export const CATEGORY_PARENT_MAP: Record<string, string> = {
   cafe: "Pangan",
   gadget: "Personal",
   transportasi: "Transportasi",
+  transportation: "Transportasi",
   bensin: "Transportasi",
   parkir: "Transportasi",
   kendaraan: "Transportasi",
 
-  // Universal Generalized Income Parents
+  // Universal Generalized Income Parents (Indonesian)
   "gaji & upah": "Pendapatan",
   "bisnis & freelance": "Pendapatan",
   "bonus & komisi": "Pendapatan",
@@ -79,20 +105,64 @@ export const CATEGORY_PARENT_MAP: Record<string, string> = {
   "hadiah & hibah": "Pendapatan",
   "pendapatan lainnya": "Pendapatan",
 
+  // Universal Generalized Income Parents (English)
+  "salary & wages": "Pendapatan",
+  "business & freelance": "Pendapatan",
+  "bonuses & commissions": "Pendapatan",
+  "investments & dividends": "Keuangan",
+  "interest & passive income": "Pendapatan",
+  "cashback & refunds": "Pendapatan",
+  "gifts & grants": "Pendapatan",
+  "other income": "Pendapatan",
+
   // Legacy & Specific Income Mappings
   bonus: "Pendapatan",
+  bonuses: "Pendapatan",
   komisi: "Pendapatan",
+  commissions: "Pendapatan",
   saku: "Pendapatan",
   cashback: "Pendapatan",
   refund: "Pendapatan",
+  refunds: "Pendapatan",
   penjualan: "Pendapatan",
   gaji: "Pendapatan",
+  salary: "Pendapatan",
+  wages: "Pendapatan",
   "side job": "Pendapatan",
+  freelance: "Pendapatan",
+  business: "Pendapatan",
   bunga: "Pendapatan",
+  interest: "Pendapatan",
   pemberian: "Pendapatan",
   investasi: "Keuangan",
+  investments: "Keuangan",
   trading: "Keuangan",
+  dividends: "Keuangan",
 };
+
+export const PARENT_NAME_LOCALIZED: Record<string, { id: string; en: string }> = {
+  Pangan: { id: "Pangan", en: "Food & Sustenance" },
+  Papan: { id: "Papan", en: "Housing & Groceries" },
+  Transportasi: { id: "Transportasi", en: "Transportation" },
+  Sandang: { id: "Sandang", en: "Lifestyle & Health" },
+  Biaya: { id: "Biaya", en: "Bills & Fees" },
+  Sosial: { id: "Sosial", en: "Social & Giving" },
+  Hiburan: { id: "Hiburan", en: "Entertainment" },
+  Komunikasi: { id: "Komunikasi", en: "Communications" },
+  Keluarga: { id: "Keluarga", en: "Family & Pets" },
+  Olahraga: { id: "Olahraga", en: "Sports & Fitness" },
+  Keuangan: { id: "Keuangan", en: "Financial & Investment" },
+  Personal: { id: "Personal", en: "Personal Care" },
+  Pendapatan: { id: "Pendapatan", en: "Income" },
+  Lainnya: { id: "Lainnya", en: "Other" },
+};
+
+export function getParentDisplayName(parentName: string, isIndonesian = true): string {
+  if (!parentName) return isIndonesian ? "Lainnya" : "Other";
+  const entry = PARENT_NAME_LOCALIZED[parentName];
+  if (entry) return isIndonesian ? entry.id : entry.en;
+  return parentName;
+}
 
 export const PARENT_ICON_MAP: Record<string, string> = {
   Pangan: "Utensils",
@@ -143,12 +213,23 @@ export const CATEGORY_CASHFLOW_MAP: Record<string, CashflowNature> = {
   elektronik: "investing",
   furnitur: "investing",
   peralatan: "investing",
+  investment: "investing",
+  investments: "investing",
+  "investments & dividends": "investing",
+  "savings & investments": "investing",
+  stocks: "investing",
+  brokerage: "investing",
   cicilan: "financing",
   hutang: "financing",
   pinjaman: "financing",
   liabilitas: "financing",
   "kartu kredit": "financing",
   paylater: "financing",
+  loan: "financing",
+  loans: "financing",
+  mortgage: "financing",
+  "credit card": "financing",
+  liabilities: "financing",
 };
 
 export function getCategoryCashflowNature(
@@ -170,7 +251,8 @@ export function getCategoryCashflowNature(
 // ======================================================================
 // DEFAULT CATEGORIES — Universal, Non-Redundant Luxury Taxonomy
 // ======================================================================
-export const DEFAULT_CATEGORIES: Omit<
+
+export const DEFAULT_CATEGORIES_ID: Omit<
   Category,
   "id" | "user_id" | "created_at"
 >[] = [
@@ -311,6 +393,170 @@ export const DEFAULT_CATEGORIES: Omit<
   },
 ];
 
+export const DEFAULT_CATEGORIES_EN: Omit<
+  Category,
+  "id" | "user_id" | "created_at"
+>[] = [
+  // --- INCOME (8 Universal Streams) ---
+  {
+    name: "Salary & Wages",
+    emoji: "Briefcase",
+    type: "income",
+    is_default: true,
+  },
+  {
+    name: "Business & Freelance",
+    emoji: "Store",
+    type: "income",
+    is_default: true,
+  },
+  {
+    name: "Bonuses & Commissions",
+    emoji: "Gift",
+    type: "income",
+    is_default: true,
+  },
+  {
+    name: "Investments & Dividends",
+    emoji: "TrendingUp",
+    type: "income",
+    is_default: true,
+  },
+  {
+    name: "Interest & Passive Income",
+    emoji: "Percent",
+    type: "income",
+    is_default: true,
+  },
+  {
+    name: "Cashback & Refunds",
+    emoji: "RotateCcw",
+    type: "income",
+    is_default: true,
+  },
+  {
+    name: "Gifts & Grants",
+    emoji: "Trophy",
+    type: "income",
+    is_default: true,
+  },
+  {
+    name: "Other Income",
+    emoji: "Coins",
+    type: "income",
+    is_default: true,
+  },
+
+  // --- EXPENSE (14 Universal Pillars) ---
+  {
+    name: "Food & Dining",
+    emoji: "Utensils",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Groceries & Supermarket",
+    emoji: "ShoppingBag",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Transportation & Travel",
+    emoji: "Car",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Housing & Utilities",
+    emoji: "Home",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Bills & Subscriptions",
+    emoji: "Receipt",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Shopping & Lifestyle",
+    emoji: "Shirt",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Health & Medical",
+    emoji: "HeartPulse",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Entertainment & Leisure",
+    emoji: "Gamepad2",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Family & Personal Care",
+    emoji: "Users",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Education & Career",
+    emoji: "GraduationCap",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Gifts & Donations",
+    emoji: "HeartHandshake",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Financial Fees & Taxes",
+    emoji: "Scale",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Savings & Investments",
+    emoji: "TrendingUp",
+    type: "expense",
+    is_default: true,
+  },
+  {
+    name: "Other Expenses",
+    emoji: "Tag",
+    type: "expense",
+    is_default: true,
+  },
+];
+
+export const DEFAULT_CATEGORIES = DEFAULT_CATEGORIES_ID;
+
+export function getDefaultCategories(options?: {
+  currency?: string | null;
+  isIndo?: boolean;
+}): Omit<Category, "id" | "user_id" | "created_at">[] {
+  let currency = options?.currency;
+  if (!currency && typeof window !== "undefined") {
+    currency = localStorage.getItem("trouvaille_preferred_currency");
+  }
+
+  let isIndo = options?.isIndo;
+  if (isIndo === undefined && typeof window !== "undefined") {
+    const lang = localStorage.getItem("trouvaille_language");
+    isIndo = lang !== "en";
+  }
+
+  if ((currency && currency !== "IDR") || isIndo === false) {
+    return DEFAULT_CATEGORIES_EN;
+  }
+  return DEFAULT_CATEGORIES_ID;
+}
+
 import { useAuth } from "../contexts/AuthContext";
 
 function withTimeout<T>(promise: PromiseLike<T>, ms = 6000): Promise<T> {
@@ -342,17 +588,28 @@ export function useCategories(type?: TransactionType) {
           }
         } catch {}
 
-        const fallbackList: Category[] = DEFAULT_CATEGORIES.filter(
-          (c) => !type || c.type === type,
-        ).map((c, i) => ({
-          id: `fallback-cat-${i}-${c.name.toLowerCase()}`,
-          user_id: "guest_local_user",
-          name: c.name,
-          emoji: c.emoji,
-          type: c.type,
-          is_default: true,
-          created_at: new Date().toISOString(),
-        }));
+        const activeDefaults = getDefaultCategories();
+        const fallbackList: Category[] = activeDefaults
+          .filter((c) => !type || c.type === type)
+          .map((c, i) => ({
+            id: `fallback-cat-${i}-${c.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+            user_id: "guest_local_user",
+            name: c.name,
+            emoji: c.emoji,
+            type: c.type,
+            is_default: true,
+            created_at: new Date().toISOString(),
+          }));
+
+        try {
+          if (!type) {
+            localStorage.setItem(
+              CATEGORIES_BACKUP_STORAGE_KEY,
+              JSON.stringify(fallbackList),
+            );
+          }
+        } catch {}
+
         return fallbackList;
       }
       try {
@@ -398,18 +655,19 @@ export function useCategories(type?: TransactionType) {
           }
         } catch {}
 
-        // Fallback to DEFAULT_CATEGORIES
-        const fallbackList: Category[] = DEFAULT_CATEGORIES.filter(
-          (c) => !type || c.type === type,
-        ).map((c, i) => ({
-          id: `fallback-cat-${i}-${c.name.toLowerCase()}`,
-          user_id: userId || "default",
-          name: c.name,
-          emoji: c.emoji,
-          type: c.type,
-          is_default: c.is_default,
-          created_at: new Date().toISOString(),
-        }));
+        // Fallback to active defaults
+        const activeDefaults = getDefaultCategories();
+        const fallbackList: Category[] = activeDefaults
+          .filter((c) => !type || c.type === type)
+          .map((c, i) => ({
+            id: `fallback-cat-${i}-${c.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+            user_id: userId || "default",
+            name: c.name,
+            emoji: c.emoji,
+            type: c.type,
+            is_default: c.is_default,
+            created_at: new Date().toISOString(),
+          }));
         return fallbackList;
       }
     },
@@ -418,7 +676,10 @@ export function useCategories(type?: TransactionType) {
   });
 }
 
-export function useEnsureDefaultCategories() {
+export function useEnsureDefaultCategories(options?: {
+  currency?: string | null;
+  isIndo?: boolean;
+}) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
@@ -434,13 +695,15 @@ export function useEnsureDefaultCategories() {
           .select("id, name, type")
           .eq("user_id", user.id);
 
+        const targetDefaults = getDefaultCategories(options);
+
         const existingMap = new Set(
           (existing || []).map(
             (c) => `${c.type}_${c.name.trim().toLowerCase()}`,
           ),
         );
 
-        const missing = DEFAULT_CATEGORIES.filter(
+        const missing = targetDefaults.filter(
           (c) => !existingMap.has(`${c.type}_${c.name.trim().toLowerCase()}`),
         );
 

@@ -1,5 +1,6 @@
 import type { Transaction, Category, TransactionType } from "./types";
 import { classifySemanticCategory } from "./semanticClassifier";
+import { getMerchantMemory } from "./merchantCategoryMemory";
 
 export interface ResolvedCategoryInfo {
   id?: string | null;
@@ -93,6 +94,26 @@ export function resolveTransactionCategory(
         emoji: found.emoji || defaultFallback.emoji,
         type: found.type,
       };
+    }
+  }
+
+  // 2.5 Self-Learning Merchant Memory check (Pilar 1)
+  if (tx.note) {
+    const memory = getMerchantMemory(tx.note);
+    if (memory) {
+      const match = categories.find(
+        (c) =>
+          c.id === memory.categoryId ||
+          c.name.toLowerCase() === memory.categoryName.toLowerCase(),
+      );
+      if (match) {
+        return {
+          id: match.id,
+          name: match.name,
+          emoji: match.emoji || defaultFallback.emoji,
+          type: match.type,
+        };
+      }
     }
   }
 

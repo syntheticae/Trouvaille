@@ -175,3 +175,27 @@ export async function removeVaultItem(key: string): Promise<void> {
     localStorage.removeItem(key);
   } catch {}
 }
+
+/**
+ * Completely clear all items stored in the IndexedDB vault store.
+ */
+export async function clearAllVaultItems(): Promise<void> {
+  try {
+    const db = await getDb();
+    if (db) {
+      await new Promise<void>((resolve) => {
+        try {
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          tx.objectStore(STORE_NAME).clear();
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        } catch {
+          resolve();
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("[IndexedDbStorage] clearAllVaultItems error:", err);
+  }
+}
+

@@ -1156,8 +1156,35 @@ export function generateLuxuryPdf(
   y += 12;
 
   const bsColW = (contentWidth - 10) / 2;
-  const bsColH = 152;
   const rightX = margin + bsColW + 10;
+
+  // Calculate dynamic card height to display 100% of accounts without truncation
+  const liquidItems = balanceSheet.liquidAssets.items;
+  const investItems = balanceSheet.investmentAssets.items;
+  const recItems = balanceSheet.receivableAssets.items;
+  const curLiabItems = balanceSheet.currentLiabilities.items;
+  const ltLiabItems = balanceSheet.longTermLiabilities.items;
+
+  // Left card row calculations
+  let leftContentH = 44; // Total assets header + divider line
+  leftContentH += 11 + (liquidItems.length > 0 ? liquidItems.length * 10.5 : 10.5); // Kas & Bank header + items
+  if (investItems.length > 0) {
+    leftContentH += 11 + investItems.length * 10.5;
+  }
+  if (recItems.length > 0) {
+    leftContentH += 11 + recItems.length * 10.5;
+  }
+  leftContentH += 10; // bottom padding
+
+  // Right card row calculations
+  let rightContentH = 44; // Total liabilities header + divider line
+  rightContentH += 11 + (curLiabItems.length > 0 ? curLiabItems.length * 10.5 : 10.5); // Current liab header + items
+  if (ltLiabItems.length > 0) {
+    rightContentH += 11 + ltLiabItems.length * 10.5;
+  }
+  rightContentH += 46; // Net Worth box + divider line + padding
+
+  const bsColH = Math.max(152, Math.max(leftContentH, rightContentH));
 
   // Card A: ASET (Left Card)
   doc.setFillColor(248, 248, 250);
@@ -1190,79 +1217,66 @@ export function generateLuxuryPdf(
 
   let leftY = y + 45;
 
-  // Group 1: Kas & Bank
+  // Group 1: Kas & Bank (100% of accounts rendered, zero truncation)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.setTextColor(82, 82, 91);
   doc.text(isIndonesian ? "Aset Lancar (Kas & Bank)" : "Liquid Assets (Cash & Bank)", margin + 10, leftY);
   leftY += 11;
 
-  const maxLiquid = 4;
-  const displayedLiquid = balanceSheet.liquidAssets.items.slice(0, maxLiquid);
-  displayedLiquid.forEach((item) => {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(39, 39, 42);
-    doc.text(item.name.slice(0, 22), margin + 10, leftY);
-    doc.setTextColor(24, 24, 27);
-    doc.text(formatRupiah(item.balance), margin + bsColW - 10, leftY, { align: "right" });
-    leftY += 11;
-  });
-
-  if (balanceSheet.liquidAssets.items.length > maxLiquid) {
-    const rem = balanceSheet.liquidAssets.items.slice(maxLiquid);
-    const remSum = rem.reduce((sum, it) => sum + it.balance, 0);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(113, 113, 122);
-    doc.text(
-      isIndonesian ? `+ ${rem.length} Akun Kas Lainnya` : `+ ${rem.length} Other Accounts`,
-      margin + 10,
-      leftY
-    );
-    doc.text(formatRupiah(remSum), margin + bsColW - 10, leftY, { align: "right" });
-    leftY += 11;
-  } else if (balanceSheet.liquidAssets.items.length === 0) {
+  if (liquidItems.length > 0) {
+    liquidItems.forEach((item) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(39, 39, 42);
+      doc.text(item.name.slice(0, 26), margin + 10, leftY);
+      doc.setTextColor(24, 24, 27);
+      doc.text(formatRupiah(item.balance), margin + bsColW - 10, leftY, { align: "right" });
+      leftY += 10.5;
+    });
+  } else {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(161, 161, 170);
     doc.text(isIndonesian ? "Tidak ada akun kas/bank" : "No cash/bank accounts", margin + 10, leftY);
-    leftY += 11;
+    leftY += 10.5;
   }
 
-  // Group 2: Investasi
-  if (balanceSheet.investmentAssets.items.length > 0 && leftY < y + bsColH - 18) {
+  // Group 2: Investasi (100% of items rendered)
+  if (investItems.length > 0) {
+    leftY += 2;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(82, 82, 91);
     doc.text(isIndonesian ? "Aset Investasi & Portofolio" : "Investments", margin + 10, leftY);
     leftY += 10;
-    balanceSheet.investmentAssets.items.slice(0, 2).forEach((item) => {
+    investItems.forEach((item) => {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(39, 39, 42);
-      doc.text(item.name.slice(0, 22), margin + 10, leftY);
+      doc.text(item.name.slice(0, 26), margin + 10, leftY);
       doc.setTextColor(24, 24, 27);
       doc.text(formatRupiah(item.balance), margin + bsColW - 10, leftY, { align: "right" });
-      leftY += 11;
+      leftY += 10.5;
     });
   }
 
-  // Group 3: Piutang
-  if (balanceSheet.receivableAssets.items.length > 0 && leftY < y + bsColH - 14) {
+  // Group 3: Piutang (100% of items rendered)
+  if (recItems.length > 0) {
+    leftY += 2;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(82, 82, 91);
     doc.text(isIndonesian ? "Piutang" : "Receivables", margin + 10, leftY);
     leftY += 10;
-    balanceSheet.receivableAssets.items.slice(0, 1).forEach((item) => {
+    recItems.forEach((item) => {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(39, 39, 42);
-      doc.text(item.name.slice(0, 22), margin + 10, leftY);
+      doc.text(item.name.slice(0, 26), margin + 10, leftY);
       doc.setTextColor(24, 24, 27);
       doc.text(formatRupiah(item.balance), margin + bsColW - 10, leftY, { align: "right" });
-      leftY += 11;
+      leftY += 10.5;
     });
   }
 
@@ -1283,7 +1297,7 @@ export function generateLuxuryPdf(
 
   let rightY = y + 45;
 
-  // Group 1: Liabilitas Lancar
+  // Group 1: Liabilitas Lancar (100% of items rendered)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.setTextColor(82, 82, 91);
@@ -1294,39 +1308,40 @@ export function generateLuxuryPdf(
   );
   rightY += 11;
 
-  if (balanceSheet.currentLiabilities.items.length > 0) {
-    balanceSheet.currentLiabilities.items.slice(0, 2).forEach((item) => {
+  if (curLiabItems.length > 0) {
+    curLiabItems.forEach((item) => {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(39, 39, 42);
-      doc.text(item.name.slice(0, 22), rightX + 10, rightY);
+      doc.text(item.name.slice(0, 26), rightX + 10, rightY);
       doc.setTextColor(24, 24, 27);
       doc.text(formatRupiah(item.balance), rightX + bsColW - 10, rightY, { align: "right" });
-      rightY += 11;
+      rightY += 10.5;
     });
   } else {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(161, 161, 170);
     doc.text(isIndonesian ? "Tidak ada liabilitas lancar (Rp 0)" : "No current liabilities (Rp 0)", rightX + 10, rightY);
-    rightY += 11;
+    rightY += 10.5;
   }
 
-  // Group 2: Liabilitas Jangka Panjang
-  if (balanceSheet.longTermLiabilities.items.length > 0) {
+  // Group 2: Liabilitas Jangka Panjang (100% of items rendered)
+  if (ltLiabItems.length > 0) {
+    rightY += 2;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(82, 82, 91);
     doc.text(isIndonesian ? "Liabilitas Jangka Panjang (Pinjaman)" : "Long-Term Liabilities", rightX + 10, rightY);
     rightY += 10;
-    balanceSheet.longTermLiabilities.items.slice(0, 2).forEach((item) => {
+    ltLiabItems.forEach((item) => {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(39, 39, 42);
-      doc.text(item.name.slice(0, 22), rightX + 10, rightY);
+      doc.text(item.name.slice(0, 26), rightX + 10, rightY);
       doc.setTextColor(24, 24, 27);
       doc.text(formatRupiah(item.balance), rightX + bsColW - 10, rightY, { align: "right" });
-      rightY += 11;
+      rightY += 10.5;
     });
   }
 
@@ -1365,8 +1380,15 @@ export function generateLuxuryPdf(
 
   y += bsColH + 16;
 
-  // 3. Top Expense Distribution
-  if (summary.topCategories.length > 0) {
+  // 3. Top Expense Distribution (Rendered on Page 1 if space permits, or dynamically moved to Page 2)
+  const topSpendingNeeded =
+    summary.topCategories.length > 0
+      ? 14 + 14 + Math.min(5, summary.topCategories.length) * 18 + 12
+      : 0;
+  const bottomMarginLimit = pageHeight - margin - 15;
+  const canFitTopSpendingOnPage1 = y + topSpendingNeeded <= bottomMarginLimit;
+
+  if (summary.topCategories.length > 0 && canFitTopSpendingOnPage1) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(18, 18, 20);
@@ -1435,6 +1457,40 @@ export function generateLuxuryPdf(
   doc.line(margin, y, pageWidth - margin, y);
 
   y += 18;
+
+  // If Top Spending didn't fit on Page 1 due to extensive account breakdown, render here gracefully
+  if (summary.topCategories.length > 0 && !canFitTopSpendingOnPage1) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(18, 18, 20);
+    doc.text(isIndonesian ? "DISTRIBUSI PENGELUARAN TERBESAR" : "TOP EXPENSE DISTRIBUTION", margin, y);
+
+    y += 14;
+
+    summary.topCategories.slice(0, 5).forEach((cat) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(39, 39, 42);
+      doc.text(cat.name, margin, y);
+
+      const amtText = `${formatRupiah(cat.amount)}  (${cat.percentage.toFixed(1)}%)`;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(113, 113, 122);
+      doc.text(amtText, pageWidth - margin, y, { align: "right" });
+
+      y += 4;
+      doc.setFillColor(240, 240, 244);
+      doc.roundedRect(margin, y, contentWidth, 3, 1.5, 1.5, "F");
+
+      const fillW = Math.max(3, (contentWidth * Math.min(100, cat.percentage)) / 100);
+      doc.setFillColor(39, 39, 42);
+      doc.roundedRect(margin, y, fillW, 3, 1.5, 1.5, "F");
+
+      y += 14;
+    });
+
+    y += 14;
+  }
 
   // Section: Laporan Arus Kas (3 Activity Cards)
   doc.setFont("helvetica", "bold");

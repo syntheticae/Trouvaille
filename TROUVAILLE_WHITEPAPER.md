@@ -1,8 +1,8 @@
 # Trouvaille: Private Financial Intelligence & Luxury Architectural System
 ### Comprehensive Technical Paper & System Specification
-**Version:** 3.5.0 · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
+**Version:** 3.6.0 · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
 **Author:** DeepMind Agentic Systems & Trouvaille Core Engineering  
-**Revision Date:** September 2026  
+**Revision Date:** Late September 2026  
 
 ---
 
@@ -418,6 +418,22 @@ Trouvaille features a hardware-level iOS automation architecture that bridges Ap
      - `trouvaille://quick-add`
      - `trouvaille://scan`
    - Validates query payloads, executes optimistic balance deductions, and triggers tactile haptic feedback.
+
+### 5.8 Smart Statement & Multi-Bank Ingestion Engine v2.0
+In Version 3.6.0, Trouvaille dramatically elevated its spreadsheet and bank statement intelligence (`src/lib/statementParser.ts`, `src/lib/excelParser.ts`, `src/lib/csvColumnDetector.ts`):
+- **Dual-Engine Ingestion**: Seamlessly ingests both CSV and native Excel (`.xlsx`, `.xls`) documents with streaming SheetJS decoding.
+- **Dynamic Header Auto-Discovery**: Heuristically scans rows 0 through 10 to automatically bypass preliminary metadata headers (legal notices, account numbers, dates of export) and isolate the authentic column mapping array.
+- **Arrow Transfer Splitting (`A → B`)**: Deconstructs compound wallet strings (e.g. `BNI → Blu`, `ShopeePay → Cash`, `Cash → BNI`, `BCA -> Mandiri`) into discrete source and destination accounts with automatic double-entry balance adjustment. Missing accounts are provisioned on-the-fly.
+- **Temporal Date + Time ISO Resolution**: Resolves separate date and time columns, including Excel fractional serial times (`0.875` -> `21:00:00`), assembling unambiguous ISO timestamps (`YYYY-MM-DDTHH:mm:ss`) to preserve intra-day chronology.
+- **Semantic Vector Category Synthesis**: Custom categories identified during import are mapped to monochrome Lucide vector icons (`resolveCategoryVectorIcon()`) based on keyword semantics, completely barring native colored emojis.
+- **Note Cleansing Engine**: Placeholder characters (`"-"`, `"--"`, `"N/A"`) are cleanly stripped to empty strings.
+- **Luxury Horizontal Scrolling Preview**: Replaces cramped mobile previews with a fluid horizontally scrollable inspector table providing total transparency prior to commitment.
+
+### 5.9 Automated Ingestion Review Drawer & Draft Inbox Architecture
+To prevent phantom balance deductions and guarantee user sovereignty (`src/components/transactions/BatchTransactionReviewSheet.tsx`, `src/lib/draftTransactionService.ts`):
+- **Staged Ingestion Protocol**: High-velocity capture streams (Apple Shortcuts Back Tap, clipboard image OCR, live bank push notification interception) do not write blindly to the persistent ledger.
+- **Batch Review Drawer**: Ingested transactions are staged in an Apple luxury glass drawer featuring individual toggle checkboxes, editable category and account pills, and single-tap "Approve All" or "Delete" actions.
+- **Temporal Fuzzy Deduplication**: Applies a 48-hour timestamp and nominal matching window to flag potential duplicate entries with high-contrast monochrome warning badges.
 
 ---
 
@@ -1329,17 +1345,23 @@ Trouvaille delivers a dedicated **11-Slide Financial Wrapped** engine (`Financia
 ### 11.5 Executive Dossier Generation (Luxury PDF Export)
 `LuxuryReportExportSheet.tsx` & `src/lib/reportExportService.ts`:
 - Leverages `jspdf` to render boardroom-ready financial dossiers containing Net Worth Balance Sheets, Operating Income Statements, Capital Allocation breakdowns, and multi-month runway forecasts.
+- Enforces 100% ledger transparency on Page 1 (Neraca / Balance Sheet) by explicitly listing every active user wallet and holding account without truncation or `+account` placeholders.
+
+### 11.6 Multi-Tenant Session Teardown & Cryptographic Asset Isolation
+`src/lib/sessionCleanup.ts`:
+- **Cryptographic Cache Purge**: On user logout or guest mode transition, systematically purges all tenant storage keys, specifically `trouvaille_usdt_*`, `trouvaille_holdings_*`, `trouvaille_market_quotes_*`, `trouvaille_transactions_*`, and `trouvaille_wallets_*`.
+- **Zero-Ghosting Invariant**: Eliminates silent cross-session auto-rescue of crypto balances into fresh guest sessions, ensuring absolute zero data leakage across multi-tenant boundaries.
 
 ---
 
-## 12. Verification, Invariants & Test Coverage (41 Suites, 369 Tests)
+## 12. Verification, Invariants & Test Coverage (48 Suites, 422 Tests)
 
-Trouvaille enforces strict automated testing powered by **Vitest** (`vitest run`). All **41 test suites (369 tests)** pass unconditionally:
+Trouvaille enforces strict automated testing powered by **Vitest** (`vitest run`). All **48 test suites (422 tests)** pass unconditionally:
 
 ```
-Test Files  41 passed (41 total)
-Tests       369 passed (369 total)
-Duration    ~21.6 seconds
+Test Files  48 passed (48 total)
+Tests       422 passed (422 total)
+Duration    ~44.9 seconds
 ```
 
 ### Complete Test Suite Matrix
@@ -1347,47 +1369,54 @@ Duration    ~21.6 seconds
 | # | Test Suite File | Domain Covered | Tests | Status |
 | :-: | :--- | :--- | :-: | :-: |
 | 1 | `tests/financialMath.test.ts` | Floating-point mitigation, savings rate normalization, burn rates | 22 | PASS |
-| 2 | `tests/multiNlpParser.test.ts` | Multi-transaction compound voice decomposition, slang, phonetic gas->cash | 15 | PASS |
-| 3 | `tests/portfolioAnalytics.test.ts` | Dominance bars, 3-tier liquidity allocation, asset runway metrics | 15 | PASS |
-| 4 | `tests/currencyEngine.test.ts` | Multi-currency FX conversion, cross-rates, offline cache fallback | 15 | PASS |
-| 5 | `tests/featureAudit.test.ts` | Comprehensive end-to-end integration audit across all modules | 15 | PASS |
-| 6 | `tests/nlpStemmingAndVoice.test.ts` | Indonesian morphology stemming, colloquial audio tokens | 14 | PASS |
-| 7 | `tests/slipParser.test.ts` | Receipt line item extraction, tax (PPN) & total heuristics | 14 | PASS |
-| 8 | `tests/widgetLayout.test.ts` | 4 modular layout presets (`executive`, `minimal`, `tactical`, `visual`), custom sizing, reordering | 16 | PASS |
-| 9 | `tests/syncIntegrity.test.ts` | Offline mutation queueing & optimistic reconciliation | 13 | PASS |
-| 10 | `tests/statementParser.test.ts` | Bank statement parsing (BCA, Mandiri, Jenius, BNI, CSV/PDF) | 13 | PASS |
-| 11 | `tests/marketPortfolio.test.ts` | Crypto & stock live market price service, holding valuations, DCA average buy price | 17 | PASS |
-| 12 | `tests/mediaPermissions.test.ts` | iOS camera & audio microphone permission lifecycle | 12 | PASS |
-| 13 | `tests/biometricAuth.test.ts` | Apple Face ID / Touch ID hardware fallback & auth gating | 11 | PASS |
-| 14 | `tests/monochromeIconSystem.test.ts` | Strict monochrome icon system, zero-colored-emoji validation | 11 | PASS |
-| 15 | `tests/webAuthSync.test.ts` | Web authentication synchronization & persistent token lifecycle | 10 | PASS |
-| 16 | `tests/nlpParser.test.ts` | Single-clause natural language transaction parser | 10 | PASS |
-| 17 | `tests/moneySpaces.test.ts` | Multi-ledger spaces & collaborative budget segregation | 9 | PASS |
-| 18 | `tests/personalIntelligence.test.ts` | Spending pattern anomalies & burn rate tracking | 8 | PASS |
-| 19 | `tests/reportExportEngine.test.ts` | jsPDF luxury statement generation & table alignments | 8 | PASS |
-| 20 | `tests/vaultEncryption.test.ts` | PBKDF2 derivation, AES-GCM 256-bit cipher & tamper check | 7 | PASS |
-| 21 | `tests/guestOnboarding.test.ts` | Frictionless guest onboarding & 1-click cloud account migration | 7 | PASS |
-| 22 | `tests/wrappedCharts.test.ts` | Stacked cascade categories, heatmap matrix, runway curves | 7 | PASS |
-| 23 | `tests/milestonesAndEmergencyFund.test.ts` | Financial goals, milestone tracking & emergency fund adequacy | 7 | PASS |
-| 24 | `tests/financialInvariants.test.ts` | Mathematical balance equations, transfer conservation | 6 | PASS |
-| 25 | `tests/deepLinkHandler.test.ts` | Custom URL schemes & universal link routing | 7 | PASS |
-| 26 | `tests/keypadHelper.test.ts` | Inline math evaluator & custom numeric keypad formatting | 6 | PASS |
-| 27 | `tests/holdingSyncEngine.test.ts` | Automated USDT reconciliation & holding activity ledger | 6 | PASS |
-| 28 | `tests/languageContext.test.ts` | 100% pure non-mixed EN/ID localization verification | 6 | PASS |
-| 29 | `tests/evaluateMathSafe.test.ts` | Mathematical formula evaluation & divide-by-zero defense | 6 | PASS |
-| 30 | `tests/sunburstChart.test.ts` | Concentric category sunburst arc calculation & layout | 6 | PASS |
-| 31 | `tests/monteCarloEngine.test.ts` | 10,000 stochastic iterations & percentile corridor integrity | 5 | PASS |
-| 32 | `tests/bankNotification.test.ts` | Bank push notification & SMS transfer receipt parser | 5 | PASS |
-| 33 | `tests/cashflowIntelligence.test.ts` | Cash velocity & volatility index scoring | 5 | PASS |
-| 34 | `tests/assetDepreciation.test.ts` | Fixed asset straight-line depreciation & salvage value logic | 5 | PASS |
-| 35 | `tests/calendarForecasting.test.ts` | Daily run-rate calculation & cash balance forecasting | 5 | PASS |
-| 36 | `tests/sankeyEngine.test.ts` | Directed acyclic cashflow graph construction | 5 | PASS |
-| 37 | `tests/transactionEcosystem.test.ts` | Action sheet layout states, note expansion & scan actions | 5 | PASS |
-| 38 | `tests/financialAccounting.test.ts` | Double-entry alignment & opening balance integrity | 5 | PASS |
-| 39 | `tests/splitBillAndGamification.test.ts` | Proportional split bill math & tax/discount distribution | 4 | PASS |
-| 40 | `tests/merchantMemory.test.ts` | Adaptive merchant memory learning & confidence scoring | 3 | PASS |
-| 41 | `tests/emoneyNfc.test.ts` | Contactless E-Money NFC card presets & transit validation | 3 | PASS |
-| **TOTAL** | **41 Test Suites** | **Complete Codebase Domain Verification** | **369** | **100%** |
+| 2 | `tests/marketPortfolio.test.ts` | Crypto & stock live market price service, holding valuations, DCA average buy price | 18 | PASS |
+| 3 | `tests/widgetLayout.test.ts` | 4 modular layout presets (`executive`, `minimal`, `tactical`, `visual`), custom sizing, reordering | 16 | PASS |
+| 4 | `tests/multiNlpParser.test.ts` | Multi-transaction compound voice decomposition, slang, phonetic gas->cash | 15 | PASS |
+| 5 | `tests/portfolioAnalytics.test.ts` | Dominance bars, 3-tier liquidity allocation, asset runway metrics | 15 | PASS |
+| 6 | `tests/currencyEngine.test.ts` | Multi-currency FX conversion, cross-rates, offline cache fallback | 15 | PASS |
+| 7 | `tests/featureAudit.test.ts` | Comprehensive end-to-end integration audit across all modules | 15 | PASS |
+| 8 | `tests/nlpStemmingAndVoice.test.ts` | Indonesian morphology stemming, colloquial audio tokens | 14 | PASS |
+| 9 | `tests/slipParser.test.ts` | Receipt line item extraction, tax (PPN) & total heuristics | 14 | PASS |
+| 10 | `tests/deepLinkHandler.test.ts` | Custom URL schemes & universal link routing | 14 | PASS |
+| 11 | `tests/statementParser.test.ts` | Bank statement parsing (BCA, Mandiri, Jenius, BNI, CSV/PDF) | 13 | PASS |
+| 12 | `tests/syncIntegrity.test.ts` | Offline mutation queueing & optimistic reconciliation | 13 | PASS |
+| 13 | `tests/mediaPermissions.test.ts` | iOS camera & audio microphone permission lifecycle | 12 | PASS |
+| 14 | `src/lib/__tests__/intelligenceAutomation.test.ts` | Bill matching heuristics, draft transaction service, merchant category memory | 12 | PASS |
+| 15 | `tests/biometricAuth.test.ts` | Apple Face ID / Touch ID hardware fallback & auth gating | 11 | PASS |
+| 16 | `tests/monochromeIconSystem.test.ts` | Strict monochrome icon system, zero-colored-emoji validation | 11 | PASS |
+| 17 | `tests/sharedLedger.test.ts` | Shared ledger permissions, invite code generation & security | 11 | PASS |
+| 18 | `tests/webAuthSync.test.ts` | Web authentication synchronization & persistent token lifecycle | 10 | PASS |
+| 19 | `tests/nlpParser.test.ts` | Single-clause natural language transaction parser | 10 | PASS |
+| 20 | `tests/moneySpaces.test.ts` | Multi-ledger spaces & collaborative budget segregation | 9 | PASS |
+| 21 | `tests/sessionCleanupAndCategories.test.ts` | Session teardown, USDT isolation, global category taxonomy | 9 | PASS |
+| 22 | `tests/personalIntelligence.test.ts` | Spending pattern anomalies & burn rate tracking | 8 | PASS |
+| 23 | `tests/reportExportEngine.test.ts` | jsPDF luxury statement generation & full balance sheet account rendering | 8 | PASS |
+| 24 | `tests/vaultEncryption.test.ts` | PBKDF2 derivation, AES-GCM 256-bit cipher & tamper check | 7 | PASS |
+| 25 | `tests/guestOnboarding.test.ts` | Frictionless guest onboarding & 1-click cloud account migration | 7 | PASS |
+| 26 | `tests/wrappedCharts.test.ts` | Stacked cascade categories, heatmap matrix, runway curves | 7 | PASS |
+| 27 | `tests/keypadHelper.test.ts` | Inline math evaluator & custom numeric keypad formatting | 6 | PASS |
+| 28 | `tests/holdingSyncEngine.test.ts` | Automated USDT reconciliation & holding activity ledger | 6 | PASS |
+| 29 | `tests/languageContext.test.ts` | 100% pure non-mixed EN/ID localization verification | 6 | PASS |
+| 30 | `tests/evaluateMathSafe.test.ts` | Mathematical formula evaluation & divide-by-zero defense | 6 | PASS |
+| 31 | `tests/sunburstChart.test.ts` | Concentric category sunburst arc calculation & layout | 6 | PASS |
+| 32 | `tests/milestonesAndEmergencyFund.test.ts` | Financial goals, milestone tracking & emergency fund adequacy | 6 | PASS |
+| 33 | `tests/financialInvariants.test.ts` | Mathematical balance equations, transfer conservation | 6 | PASS |
+| 34 | `tests/monteCarloEngine.test.ts` | 10,000 stochastic iterations & percentile corridor integrity | 5 | PASS |
+| 35 | `tests/bankNotification.test.ts` | Bank push notification & SMS transfer receipt parser | 5 | PASS |
+| 36 | `tests/cashflowIntelligence.test.ts` | Cash velocity & volatility index scoring | 5 | PASS |
+| 37 | `tests/assetDepreciation.test.ts` | Fixed asset straight-line depreciation & salvage value logic | 5 | PASS |
+| 38 | `tests/calendarForecasting.test.ts` | Daily run-rate calculation & cash balance forecasting | 5 | PASS |
+| 39 | `tests/financialAccounting.test.ts` | Double-entry alignment & opening balance integrity | 5 | PASS |
+| 40 | `tests/sankeyEngine.test.ts` | Directed acyclic cashflow graph construction | 5 | PASS |
+| 41 | `tests/transactionEcosystem.test.ts` | Action sheet layout states, note expansion & scan actions | 5 | PASS |
+| 42 | `tests/statementImportAdvancedAndAssetIsolation.test.ts` | Statement import arrow splitting, Excel serial time, asset isolation | 4 | PASS |
+| 43 | `src/lib/__tests__/screenshotHistoryParser.test.ts` | Screenshot history OCR text decomposition & merchant extraction | 4 | PASS |
+| 44 | `tests/statementImportAndReportExport.test.ts` | Multi-bank statement import & exhaustive balance sheet rendering | 4 | PASS |
+| 45 | `tests/splitBillAndGamification.test.ts` | Proportional split bill math & tax/discount distribution | 3 | PASS |
+| 46 | `src/components/onboarding/__tests__/onboardingCurrency.test.ts` | Onboarding initial currency selection and symbol propagation | 3 | PASS |
+| 47 | `tests/merchantMemory.test.ts` | Adaptive merchant memory learning & confidence scoring | 3 | PASS |
+| 48 | `tests/emoneyNfc.test.ts` | Contactless E-Money NFC card presets & transit validation | 3 | PASS |
+| **TOTAL** | **48 Test Suites** | **Complete Codebase Domain Verification** | **422** | **100%** |
 
 ---
 

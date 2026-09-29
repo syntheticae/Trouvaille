@@ -33,6 +33,15 @@ export interface ParsedStatementItem {
   duplicateReason?: string;
   selected: boolean;
   raw: string;
+  confidence?: number;
+  needsReview?: boolean;
+  matchedBill?: {
+    id: string;
+    title: string;
+    amount?: number | null;
+    exactAmountMatch: boolean;
+    confirmedPaid: boolean;
+  } | null;
 }
 
 export type StatementFormat =
@@ -149,6 +158,35 @@ export function normalizeDateString(
   }
 
   return format(new Date(), "yyyy-MM-dd");
+}
+
+/**
+ * Normalizes time string (HH:mm:ss, HH:mm, or 12h) to standard HH:mm:ss.
+ */
+export function normalizeTimeString(timeStr?: string): string | undefined {
+  if (!timeStr) return undefined;
+  const trimmed = timeStr.trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (match) {
+    const [, h, m, s] = match;
+    const hours = h.padStart(2, "0");
+    const minutes = m.padStart(2, "0");
+    const seconds = s ? s.padStart(2, "0") : "00";
+    return `${hours}:${minutes}:${seconds}`;
+  }
+  return undefined;
+}
+
+/**
+ * Sanitizes note by stripping placeholder characters like "-", "--", "n/a" to clean empty string.
+ */
+export function sanitizeNote(note: string): string {
+  if (!note) return "";
+  const trimmed = note.trim();
+  if (/^[-–—\s]+$/.test(trimmed) || /^(n\/a|none|null|\.)$/i.test(trimmed)) {
+    return "";
+  }
+  return trimmed;
 }
 
 // -----------------------------------------------------------------------
@@ -329,6 +367,7 @@ export function parseStatementText(
     for (const cols of rows) {
       if (!cols || cols.length === 0) continue;
       const dateStr = cols[cm.dateCol] || "";
+      const timeStr = cm.timeCol !== null && cols[cm.timeCol] ? cols[cm.timeCol].trim() : "";
       const description = cols[cm.descCol] || "";
       let amount = 0;
       let type: TransactionType = "expense";
@@ -367,33 +406,70 @@ export function parseStatementText(
         amount = parseLocalizedNumber(cols[cm.amountCol] || "");
         if (cm.typeCol !== null) {
           const typeCell = (cols[cm.typeCol] || "").toLowerCase();
-          if (/kredit|cr|income|masuk|pemasukan/.test(typeCell)) type = "income";
-          else if (/debet|db|expense|keluar|pengeluaran/.test(typeCell)) type = "expense";
+          if (/kredit|cr|income|masuk|pemasukan/.test(typeCell)) {
+            type = "income";
+          } else if (/pindah saldo|transfer|antar rekening/.test(typeCell)) {
+            type = "transfer";
+          } else if (/debet|db|expense|keluar|pengeluaran/.test(typeCell)) {
+            type = "expense";
+          }
         } else {
           const rowText = cols.join(" ").toLowerCase();
-          if (/\b(cr|kredit|pemasukan|income|masuk)\b/.test(rowText)) type = "income";
+          if (/\b(pindah saldo|antar rekening)\b/.test(rowText)) type = "transfer";
+          else if (/\b(cr|kredit|pemasukan|income|masuk)\b/.test(rowText)) type = "income";
         }
       }
 
       if (!amount || amount <= 0) continue;
 
       const normalizedDate = normalizeDateString(dateStr || new Date().toISOString());
+      const normalizedTime = normalizeTimeString(timeStr);
       const cleanDesc = cleanBankNarration(description);
+      const sanitizedDescription = sanitizeNote(description);
+      const sanitizedCleanDesc = sanitizeNote(cleanDesc);
 
-      // Multi-wallet extraction from row (if file has an account/wallet column)
+      // Multi-wallet & transfer arrow extraction from row (if file has an account/wallet column)
       let itemWalletId: string | null = null;
       let itemWalletName: string | null = null;
+      let destinationWalletId: string | null = null;
+      let destinationWalletName: string | null = null;
 
       if (cm.walletCol !== null && cols[cm.walletCol]) {
         const rawWallet = cols[cm.walletCol].trim();
         if (rawWallet) {
-          itemWalletName = rawWallet;
-          const matchedW = wallets.find(
-            (w) => w.name.toLowerCase().trim() === rawWallet.toLowerCase()
-          );
-          if (matchedW) {
-            itemWalletId = matchedW.id;
-            itemWalletName = matchedW.name;
+          // Check for transfer arrow pattern: "BNI → Blu", "BNI -> Blu", "BNI to Blu"
+          const arrowMatch = rawWallet.match(/^(.+?)\s*(?:→|->|\bto\b)\s*(.+)$/i);
+          if (arrowMatch) {
+            type = "transfer";
+            const srcName = arrowMatch[1].trim();
+            const dstName = arrowMatch[2].trim();
+            itemWalletName = srcName;
+            destinationWalletName = dstName;
+
+            const matchedSrc = wallets.find(
+              (w) => w.name.toLowerCase().trim() === srcName.toLowerCase()
+            );
+            if (matchedSrc) {
+              itemWalletId = matchedSrc.id;
+              itemWalletName = matchedSrc.name;
+            }
+
+            const matchedDst = wallets.find(
+              (w) => w.name.toLowerCase().trim() === dstName.toLowerCase()
+            );
+            if (matchedDst) {
+              destinationWalletId = matchedDst.id;
+              destinationWalletName = matchedDst.name;
+            }
+          } else {
+            itemWalletName = rawWallet;
+            const matchedW = wallets.find(
+              (w) => w.name.toLowerCase().trim() === rawWallet.toLowerCase()
+            );
+            if (matchedW) {
+              itemWalletId = matchedW.id;
+              itemWalletName = matchedW.name;
+            }
           }
         }
       }
@@ -421,7 +497,7 @@ export function parseStatementText(
       // If category not explicitly defined in row, resolve via semantic classifier
       if (!itemCategoryName) {
         const mockTx: Partial<Transaction> = {
-          note: `${cleanDesc} ${description}`,
+          note: `${sanitizedCleanDesc} ${sanitizedDescription}`.trim(),
           type,
           amount,
         };
@@ -432,10 +508,7 @@ export function parseStatementText(
       }
 
       // Transfer vs Expense check
-      let destinationWalletId: string | null = null;
-      let destinationWalletName: string | null = null;
-
-      const isTransferSignal = /\b(transfer ke|kirim ke|to rekening|ke rek|top.?up|isi saldo)\b/i.test(description);
+      const isTransferSignal = /\b(transfer ke|kirim ke|to rekening|ke rek|top.?up|isi saldo|pindah saldo)\b/i.test(description);
       if (type === "expense" && isTransferSignal) {
         const matched = matchDestinationWallet(description, wallets);
         if (matched) {
@@ -446,7 +519,7 @@ export function parseStatementText(
       }
 
       const roundedAmt = Math.round(amount / 1000) * 1000;
-      const noteSlug = cleanDesc.toLowerCase().replace(/\s+/g, "").slice(0, 20);
+      const noteSlug = (sanitizedCleanDesc || sanitizedDescription || "tx").toLowerCase().replace(/\s+/g, "").slice(0, 20);
       const dedupKey1 = `${normalizedDate}_${Math.round(amount)}_${type}`;
       const dedupKey2 = `${normalizedDate}_${roundedAmt}_${type}_${noteSlug}`;
       const isDuplicate = existingMap.has(dedupKey1) || existingMap.has(dedupKey2);
@@ -457,8 +530,9 @@ export function parseStatementText(
       items.push({
         id: `stmt-tx-${Date.now()}-${idCounter++}`,
         date: normalizedDate,
-        description: description || "Transaction",
-        cleanDescription: cleanDesc,
+        time: normalizedTime,
+        description: sanitizedDescription,
+        cleanDescription: sanitizedCleanDesc,
         amount,
         type,
         walletId: itemWalletId,
@@ -486,6 +560,9 @@ export function parseStatementText(
     for (const it of items) {
       if (it.walletName && !it.walletId) {
         newWalletsSet.add(it.walletName);
+      }
+      if (it.destinationWalletName && !it.destinationWalletId) {
+        newWalletsSet.add(it.destinationWalletName);
       }
       if (it.suggestedCategoryName && !it.suggestedCategoryId) {
         newCategoriesSet.add(it.suggestedCategoryName);

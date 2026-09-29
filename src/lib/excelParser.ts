@@ -73,6 +73,16 @@ export async function parseExcelFile(file: File): Promise<ParsedSpreadsheet> {
             return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
           }
         }
+        // Excel time fraction numbers (0 < cell < 1)
+        if (cell > 0 && cell < 1) {
+          const jsDate = XLSX.SSF.parse_date_code(cell);
+          if (jsDate && (jsDate.H !== undefined || jsDate.M !== undefined)) {
+            const H = String(jsDate.H || 0).padStart(2, "0");
+            const M = String(jsDate.M || 0).padStart(2, "0");
+            const S = String(Math.floor(jsDate.S || 0)).padStart(2, "0");
+            return `${H}:${M}:${S}`;
+          }
+        }
         return String(cell);
       }
       return String(cell).trim();

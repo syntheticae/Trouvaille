@@ -68,6 +68,8 @@ import {
   Moon,
   Sun,
   Settings,
+  Sparkles,
+  ArrowRight,
 } from "lucide-react";
 import { useSpace } from "../contexts/SpaceContext";
 import { ManageLedgersSheet } from "../components/settings/ManageLedgersSheet";
@@ -125,10 +127,13 @@ import {
   calculateDynamicGoalMilestones,
   isCorrectionTx,
 } from "../lib/financialMath";
+import { useDraftTransactions } from "../lib/draftTransactionService";
+import type { ParsedStatementItem } from "../lib/statementParser";
 
 interface HomePageProps {
   onOpenAdd?: () => void;
   onOpenScan?: () => void;
+  onOpenBatchReview?: (items: ParsedStatementItem[], appName?: string) => void;
 }
 
 type StockRange = "1D" | "1W" | "1M" | "6M" | "YTD" | "1Y" | "ALL";
@@ -181,9 +186,11 @@ function formatAxisY(val: number): string {
 export function HomePage({
   onOpenAdd: _onOpenAdd,
   onOpenScan: _onOpenScan,
+  onOpenBatchReview,
 }: HomePageProps) {
   const navigate = useNavigate();
   const { t, isIndonesian } = useLanguage();
+  const { items: allDraftItems, count: draftCount, clearAll: clearAllDrafts } = useDraftTransactions();
   useCurrency();
   const [todayDate, setTodayDate] = useState(() => startOfDay(new Date()));
   const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
@@ -2506,6 +2513,77 @@ export function HomePage({
           >
             {isIndonesian ? "Atur Ulang" : "Reset"}
           </button>
+        </div>
+      )}
+
+      {/* Draft Inbox Banner */}
+      {draftCount > 0 && (
+        <div
+          className="p-3 rounded-2xl flex items-center justify-between gap-3 border shadow-sm animate-fadeIn mb-2"
+          style={{
+            background: "var(--bg-elevated)",
+            borderColor: "var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <Sparkles size={13} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
+                {isIndonesian
+                  ? `${draftCount} Transaksi Siap Ditinjau`
+                  : `${draftCount} Transactions Ready to Review`}
+              </p>
+              <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+                {isIndonesian
+                  ? "Tersimpan di draft · Saldo belum terpotong"
+                  : "Saved in drafts · Balance unchanged"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                onOpenBatchReview?.(allDraftItems, isIndonesian ? "Draft Transaksi" : "Draft Inbox");
+              }}
+              className="px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-sm"
+              style={{
+                background: "var(--text-primary)",
+                color: "var(--bg-base)",
+              }}
+            >
+              <span>{isIndonesian ? "Tinjau" : "Review"}</span>
+              <ArrowRight size={11} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                clearAllDrafts();
+              }}
+              className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-colors"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-tertiary)",
+              }}
+              title={isIndonesian ? "Buang Semua Draft" : "Dismiss All Drafts"}
+            >
+              <X size={12} />
+            </button>
+          </div>
         </div>
       )}
 

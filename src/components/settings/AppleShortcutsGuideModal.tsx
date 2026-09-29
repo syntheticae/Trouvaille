@@ -166,10 +166,10 @@ export function AppleShortcutsGuideModal({
     pindai: [
       {
         isHero: true,
-        title: isIndonesian ? "Pindai Layar Resi Otomatis (Back Tap)" : "Auto Screen Receipt Scanner (Back Tap)",
+        title: isIndonesian ? "Pindai Layar Resi & Riwayat (Back Tap)" : "Auto Screen & History Scanner (Back Tap)",
         desc: isIndonesian
-          ? "Saat berada di layar bukti pembayaran apa pun (BCA, Livin, GoPay, QRIS, dll.), ketuk 2x bodi belakang iPhone Anda. Pintasan otomatis menjepret layar, membaca teks resi via Live Text OCR, lalu menyimpannya langsung ke Trouvaille tanpa jeda."
-          : "While viewing any payment receipt screen (BCA, Livin, GoPay, QRIS, etc.), double tap the back of your iPhone. Shortcuts automatically captures the screen, reads receipt text via Live Text OCR, and logs it directly into Trouvaille.",
+          ? "Saat berada di layar bukti pembayaran tunggal atau layar riwayat transaksi (GoPay, Shopee, BCA, dll.), ketuk 2x bodi belakang iPhone Anda. Pintasan otomatis membaca layar via Live Text OCR. Jika terdeteksi banyak transaksi, Trouvaille otomatis membuka lembar checklist cerdas untuk Anda tinjau sebelum disimpan."
+          : "While viewing any payment receipt or transaction history list (GoPay, Shopee, BCA, etc.), double tap the back of your iPhone. Shortcuts reads the screen via Live Text. If multiple transactions are detected, Trouvaille automatically opens an interactive checklist review sheet before saving.",
         actionType: "test_hud",
         btnText: isIndonesian ? "Uji Dynamic Island HUD" : "Test Dynamic Island HUD",
       },
@@ -192,8 +192,8 @@ export function AppleShortcutsGuideModal({
           : "1. Add 'URL Encode' action for 'Text from Image' variable.\n2. Add 'Open URLs' action and paste the scheme below, replacing [URL Encoded Text] with the blue variable token:",
         actionType: "copy",
         copyText: isIndonesian
-          ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
-          : "trouvaille://add?text=[URL Encoded Text]&autosave=true",
+          ? "trouvaille://capture?text=[Teks Terenkode]&autosave=true"
+          : "trouvaille://capture?text=[URL Encoded Text]&autosave=true",
         copyLabel: isIndonesian ? "Skema Pindai Layar" : "Screen Scan Scheme",
         btnText: isIndonesian ? "Salin Skema Pindai Layar" : "Copy Screen Scan Scheme",
       },

@@ -1,26 +1,45 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, ArrowRight } from "lucide-react";
-import type { Category, Wallet } from "../../lib/types";
+import { Sparkles, X, ArrowRight, Layers } from "lucide-react";
+import type { Category, Wallet, Transaction } from "../../lib/types";
 import {
   parseBankNotification,
   type DetectedBankNotification,
 } from "../../lib/bankNotificationParser";
+import { parseSlipText } from "../../lib/slipParser";
+import {
+  isMultiTransactionHistoryText,
+  parseScreenshotHistory,
+} from "../../lib/screenshotHistoryParser";
+import type { ParsedStatementItem } from "../../lib/statementParser";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface ClipboardTransactionBannerProps {
   categories: Category[];
   wallets: Wallet[];
+  existingTransactions?: Transaction[];
   onAddTransaction: (detected: DetectedBankNotification) => void;
+  onReviewBatch?: (items: ParsedStatementItem[], appName: string) => void;
+}
+
+interface DetectedBatch {
+  appName: string;
+  items: ParsedStatementItem[];
+  rawText: string;
 }
 
 export function ClipboardTransactionBanner({
   categories,
   wallets,
+  existingTransactions = [],
   onAddTransaction,
+  onReviewBatch,
 }: ClipboardTransactionBannerProps) {
-  const [detected, setDetected] = useState<DetectedBankNotification | null>(null);
+  const { isIndonesian } = useLanguage();
+  const [detectedSingle, setDetectedSingle] = useState<DetectedBankNotification | null>(null);
+  const [detectedBatch, setDetectedBatch] = useState<DetectedBatch | null>(null);
   const lastCheckedText = useRef<string>("");
 
   const checkClipboard = useCallback(async () => {
@@ -40,16 +59,68 @@ export function ClipboardTransactionBanner({
         return;
       }
 
-      const res = parseBankNotification(text, categories, wallets);
-      if (res && res.amount > 0) {
+      const trimmed = text.trim();
+
+      // 1. Check for multi-transaction screenshot history first
+      if (isMultiTransactionHistoryText(trimmed)) {
+        const batchItems = parseScreenshotHistory(trimmed, existingTransactions, categories, wallets);
+        if (batchItems && batchItems.length >= 2) {
+          lastCheckedText.current = text;
+          let appName = "Riwayat";
+          const low = trimmed.toLowerCase();
+          if (low.includes("gopay")) appName = "GoPay";
+          else if (low.includes("shopee")) appName = "Shopee";
+          else if (low.includes("bca")) appName = "BCA";
+          else if (low.includes("mandiri") || low.includes("livin")) appName = "Mandiri";
+
+          setDetectedBatch({
+            appName,
+            items: batchItems,
+            rawText: trimmed,
+          });
+          setDetectedSingle(null);
+          triggerHaptic("light");
+          return;
+        }
+      }
+
+      // 2. Check for bank notification
+      const bankRes = parseBankNotification(trimmed, categories, wallets);
+      if (bankRes && bankRes.amount > 0) {
         lastCheckedText.current = text;
-        setDetected(res);
+        setDetectedSingle(bankRes);
+        setDetectedBatch(null);
         triggerHaptic("light");
+        return;
+      }
+
+      // 3. Fallback: Check for single transfer slip / receipt
+      if (trimmed.length > 30) {
+        const slipRes = parseSlipText(trimmed, wallets, categories);
+        if (slipRes && slipRes.amount && slipRes.amount > 0) {
+          lastCheckedText.current = text;
+          setDetectedSingle({
+            rawText: trimmed,
+            sourceApp: slipRes.detectedInstitution || (isIndonesian ? "Resi Pembayaran" : "Payment Slip"),
+            amount: slipRes.amount,
+            merchantOrNote: slipRes.merchantOrRecipient || "",
+            type: slipRes.type,
+            suggestedWalletId: slipRes.sourceWalletId || undefined,
+            suggestedWalletName: slipRes.sourceWalletName || undefined,
+            suggestedToWalletId: slipRes.destinationWalletId || undefined,
+            suggestedToWalletName: slipRes.destinationWalletName || undefined,
+            suggestedCategoryId: slipRes.categoryId || undefined,
+            suggestedCategoryName: slipRes.categoryName || undefined,
+          });
+          setDetectedBatch(null);
+          triggerHaptic("light");
+          return;
+        }
       }
     } catch {
       // Clipboard permission might be denied or unsupported in current context
     }
-  }, [categories, wallets]);
+  }, [categories, wallets, existingTransactions, isIndonesian]);
 
   useEffect(() => {
     checkClipboard();
@@ -69,23 +140,32 @@ export function ClipboardTransactionBanner({
   }, [checkClipboard]);
 
   const handleDismiss = () => {
-    if (detected) {
+    const rawToDismiss = detectedBatch?.rawText || detectedSingle?.rawText;
+    if (rawToDismiss) {
       sessionStorage.setItem(
-        `dismissed_clip_${detected.rawText.slice(0, 30)}`,
-        "true",
+        `dismissed_clip_${rawToDismiss.slice(0, 30)}`,
+        "true"
       );
     }
-    setDetected(null);
+    setDetectedSingle(null);
+    setDetectedBatch(null);
   };
 
-  const handleConfirm = () => {
-    if (!detected) return;
+  const handleConfirmSingle = () => {
+    if (!detectedSingle) return;
     triggerHaptic("medium");
-    onAddTransaction(detected);
+    onAddTransaction(detectedSingle);
     handleDismiss();
   };
 
-  if (!detected) return null;
+  const handleConfirmBatch = () => {
+    if (!detectedBatch || !onReviewBatch) return;
+    triggerHaptic("medium");
+    onReviewBatch(detectedBatch.items, detectedBatch.appName);
+    handleDismiss();
+  };
+
+  if (!detectedSingle && !detectedBatch) return null;
 
   return (
     <AnimatePresence>
@@ -98,10 +178,10 @@ export function ClipboardTransactionBanner({
         className="w-full mb-3 select-none pointer-events-auto"
       >
         <div
-          className="p-3.5 rounded-[22px] glass-surface backdrop-blur-2xl flex items-center justify-between gap-3"
+          className="p-3.5 rounded-[22px] glass-surface backdrop-blur-2xl flex items-center justify-between gap-3 border shadow-sm"
           style={{
             background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
+            borderColor: "var(--glass-border)",
             boxShadow: "var(--shadow-card)",
             fontFamily: "'Urbanist', sans-serif",
             color: "var(--text-primary)",
@@ -117,62 +197,115 @@ export function ClipboardTransactionBanner({
                 color: "var(--text-primary)",
               }}
             >
-              <Sparkles size={14} />
+              {detectedBatch ? (
+                <Layers size={14} />
+              ) : (
+                <Sparkles size={14} />
+              )}
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="text-[10px] font-semibold uppercase tracking-wider"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {detected.sourceApp} Notification
-                </span>
-                {detected.suggestedCategoryName && (
-                  <span
-                    className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                    style={{
-                      background: "var(--glass-fill)",
-                      color: "var(--text-secondary)",
-                      border: "1px solid var(--glass-border)",
-                    }}
+              {detectedBatch ? (
+                /* Multi-Transaction Batch View */
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {detectedBatch.appName} · {isIndonesian ? "Riwayat Transaksi" : "Transaction History"}
+                    </span>
+                  </div>
+                  <p
+                    className="text-[13px] font-semibold truncate mt-0.5"
+                    style={{ color: "var(--text-primary)" }}
                   >
-                    {detected.suggestedCategoryName}
-                  </span>
-                )}
-              </div>
+                    <span>
+                      {detectedBatch.items.length}{" "}
+                      {isIndonesian ? "Transaksi Terdeteksi" : "Transactions Detected"}
+                    </span>
+                    <span
+                      className="font-normal ml-1.5 text-[12px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      · {isIndonesian ? "Ketuk untuk meninjau" : "Tap to review"}
+                    </span>
+                  </p>
+                </div>
+              ) : detectedSingle ? (
+                /* Single Transaction View */
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {detectedSingle.sourceApp} · {isIndonesian ? "Pemberitahuan Baru" : "New Notification"}
+                    </span>
+                    {detectedSingle.suggestedCategoryName && (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                        style={{
+                          background: "var(--glass-fill)",
+                          color: "var(--text-secondary)",
+                          border: "1px solid var(--glass-border)",
+                        }}
+                      >
+                        {detectedSingle.suggestedCategoryName}
+                      </span>
+                    )}
+                  </div>
 
-              <p
-                className="text-[13px] font-semibold truncate mt-0.5"
-                style={{ color: "var(--text-primary)" }}
-              >
-                <span className="amount">
-                  {formatRupiah(detected.amount)}
-                </span>
-                <span
-                  className="font-normal ml-1.5 text-[12px]"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  · {detected.merchantOrNote}
-                </span>
-              </p>
+                  <p
+                    className="text-[13px] font-semibold truncate mt-0.5"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    <span className="amount">
+                      {formatRupiah(detectedSingle.amount)}
+                    </span>
+                    {detectedSingle.merchantOrNote && (
+                      <span
+                        className="font-normal ml-1.5 text-[12px]"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        · {detectedSingle.merchantOrNote}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
 
           {/* Right: Quick Action Buttons */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={handleConfirm}
-              className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1 active:scale-95 transition-all shadow-sm cursor-pointer"
-              style={{
-                background: "var(--text-primary)",
-                color: "var(--bg-base)",
-              }}
-            >
-              <span>Catat</span>
-              <ArrowRight size={12} />
-            </button>
+            {detectedBatch ? (
+              <button
+                type="button"
+                onClick={handleConfirmBatch}
+                className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1 active:scale-95 transition-all shadow-sm cursor-pointer"
+                style={{
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
+                }}
+              >
+                <span>{isIndonesian ? "Tinjau" : "Review"}</span>
+                <ArrowRight size={12} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConfirmSingle}
+                className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1 active:scale-95 transition-all shadow-sm cursor-pointer"
+                style={{
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
+                }}
+              >
+                <span>{isIndonesian ? "Catat" : "Log"}</span>
+                <ArrowRight size={12} />
+              </button>
+            )}
 
             <button
               type="button"

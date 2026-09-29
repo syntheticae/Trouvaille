@@ -9,6 +9,8 @@ import { parseLocalizedNumber } from "./statementParser";
 export interface DetectedColumnMap {
   /** 0-based index of the date column */
   dateCol: number;
+  /** 0-based index of the time column, or null */
+  timeCol: number | null;
   /** 0-based index of the description/narration column */
   descCol: number;
   /** 0-based index of the debit/expense column, or null */
@@ -35,13 +37,18 @@ export interface DetectedColumnMap {
 
 const DATE_KEYWORDS = [
   "tanggal", "tgl", "date", "tgl transaksi", "transaction date",
-  "waktu", "timestamp", "posting date", "value date", "tgl posting",
+  "posting date", "value date", "tgl posting",
+];
+
+const TIME_KEYWORDS = [
+  "jam", "time", "waktu", "pukul", "hour", "transaction time", "jam transaksi",
 ];
 
 const DESC_KEYWORDS = [
   "deskripsi", "keterangan", "narasi", "description", "remark",
-  "uraian", "memo", "information", "transaksi", "detail",
+  "uraian", "memo", "information", "detail",
   "transaction description", "note", "catatan", "merchant", "penerima",
+  "judul", "title", "subjek", "subject", "nama transaksi", "perihal",
 ];
 
 const DEBIT_KEYWORDS = [
@@ -62,8 +69,9 @@ const AMOUNT_KEYWORDS = [
 ];
 
 const TYPE_KEYWORDS = [
-  "jenis", "type", "tipe", "direction", "d/k", "db/cr",
-  "debet/kredit", "status",
+  "jenis transaksi", "tipe transaksi", "jenis", "type", "tipe",
+  "transaction type", "direction", "d/k", "db/cr", "cr/db",
+  "debet/kredit", "status", "status transaksi",
 ];
 
 const WALLET_KEYWORDS = [
@@ -107,6 +115,11 @@ function isDateLike(val: string): boolean {
   return false;
 }
 
+function isTimeLike(val: string): boolean {
+  const v = val.trim();
+  return /^\d{1,2}:\d{2}(?::\d{2})?$/.test(v);
+}
+
 function isTypeDirectionLike(val: string): boolean {
   const v = val.trim().toLowerCase();
   return /^(cr|db|d|k|kredit|debet|in|out|masuk|keluar|income|expense|transfer)$/i.test(v);
@@ -129,6 +142,7 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
 
   const roles = [
     { name: "date", keywords: DATE_KEYWORDS },
+    { name: "time", keywords: TIME_KEYWORDS },
     { name: "desc", keywords: DESC_KEYWORDS },
     { name: "debit", keywords: DEBIT_KEYWORDS },
     { name: "credit", keywords: CREDIT_KEYWORDS },
@@ -143,6 +157,7 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
 
   const scores: Record<RoleName, number[]> = {
     date: [],
+    time: [],
     desc: [],
     debit: [],
     credit: [],
@@ -166,6 +181,7 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
     if (sampleCount > 0) {
       for (let col = 0; col < n; col++) {
         let dateMatches = 0;
+        let timeMatches = 0;
         let numericMatches = 0;
         let typeMatches = 0;
         let textMatches = 0;
@@ -175,6 +191,7 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
           if (!cell) continue;
 
           if (isDateLike(cell)) dateMatches++;
+          else if (isTimeLike(cell)) timeMatches++;
           else if (isTypeDirectionLike(cell)) typeMatches++;
           else if (isNumericLike(cell)) numericMatches++;
           else if (cell.length > 2) textMatches++;
@@ -184,15 +201,18 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
         if (dateMatches >= sampleCount * 0.6) {
           scores.date[col] += 0.8;
         }
+        if (timeMatches >= sampleCount * 0.6) {
+          scores.time[col] += 0.8;
+        }
         if (typeMatches >= sampleCount * 0.6) {
           scores.type[col] += 0.8;
         }
         if (numericMatches >= sampleCount * 0.6) {
           scores.amount[col] += 0.4;
-          scores.debit[col] += 0.3;
-          scores.credit[col] += 0.3;
+          if (scores.debit[col] > 0) scores.debit[col] += 0.3;
+          if (scores.credit[col] > 0) scores.credit[col] += 0.3;
         }
-        if (textMatches >= sampleCount * 0.6 && numericMatches === 0 && dateMatches === 0) {
+        if (textMatches >= sampleCount * 0.6 && numericMatches === 0 && dateMatches === 0 && timeMatches === 0) {
           scores.desc[col] += 0.4;
         }
       }
@@ -220,10 +240,25 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
   }
 
   const dateCol = pickBest("date");
+  const timeCol = pickBest("time");
   const descCol = pickBest("desc");
-  const debitCol = pickBest("debit");
-  const creditCol = pickBest("credit");
-  const amountCol = pickBest("amount");
+
+  // If a type direction column (DB/CR) or strong amount header exists, prioritize amount over separate debit/credit
+  const hasTypeColCandidate = scores.type.some((s) => s >= 0.7);
+  const hasStrongAmountHeader = scores.amount.some((s) => s >= 0.7);
+
+  let amountCol: number | null = null;
+  let debitCol: number | null = null;
+  let creditCol: number | null = null;
+
+  if (hasTypeColCandidate || hasStrongAmountHeader) {
+    amountCol = pickBest("amount");
+  } else {
+    debitCol = pickBest("debit");
+    creditCol = pickBest("credit");
+    amountCol = pickBest("amount");
+  }
+
   const typeCol = pickBest("type");
   const walletCol = pickBest("wallet");
   const categoryCol = pickBest("category");
@@ -252,6 +287,7 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
 
   return {
     dateCol: finalDateCol >= 0 ? finalDateCol : 0,
+    timeCol,
     descCol: finalDescCol >= 0 ? finalDescCol : 1,
     debitCol,
     creditCol,
@@ -270,6 +306,7 @@ export function detectColumns(headers: string[], sampleRows?: string[][]): Detec
 
 export type ColumnRole =
   | "date"
+  | "time"
   | "description"
   | "debit"
   | "credit"
@@ -280,16 +317,32 @@ export type ColumnRole =
   | "balance"
   | "ignore";
 
+/**
+ * The core fields of Trouvaille's transaction schema + Ignore.
+ * Strictly used in user-facing column mapping dropdowns.
+ */
+export const CORE_COLUMN_ROLES: ColumnRole[] = [
+  "date",
+  "time",
+  "description",
+  "amount",
+  "type",
+  "category",
+  "wallet",
+  "ignore",
+];
+
 export function columnRoleLabel(role: ColumnRole, isIndonesian: boolean): string {
   const map: Record<ColumnRole, [string, string]> = {
     date: ["Tanggal", "Date"],
-    description: ["Deskripsi", "Description"],
-    debit: ["Debet (Keluar)", "Debit (Out)"],
-    credit: ["Kredit (Masuk)", "Credit (In)"],
-    amount: ["Jumlah", "Amount"],
-    type: ["Jenis (DB/CR)", "Type (DB/CR)"],
-    wallet: ["Akun", "Account"],
+    time: ["Jam / Waktu", "Time"],
+    description: ["Catatan", "Note"],
+    amount: ["Nominal", "Amount"],
+    type: ["Jenis Transaksi", "Transaction Type"],
     category: ["Kategori", "Category"],
+    wallet: ["Akun", "Account"],
+    debit: ["Debet", "Debit"],
+    credit: ["Kredit", "Credit"],
     balance: ["Saldo", "Balance"],
     ignore: ["Abaikan", "Ignore"],
   };

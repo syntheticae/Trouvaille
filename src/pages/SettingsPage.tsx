@@ -672,7 +672,10 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   };
 
   const handleLogout = async () => {
-    if (confirm("Are you sure you want to sign out?")) {
+    const confirmMsg = isIndonesian
+      ? "Apakah Anda yakin ingin keluar dari akun?"
+      : "Are you sure you want to sign out?";
+    if (confirm(confirmMsg)) {
       await signOut();
     }
   };

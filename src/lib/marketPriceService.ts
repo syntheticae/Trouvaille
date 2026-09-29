@@ -121,8 +121,7 @@ export interface UsdtValuationPref {
 
 /**
  * Retrieve saved USDT valuation preferences scoped to user.
- * Includes auto-rescue: if current user key is empty, scans local storage for any
- * previously configured USDT holdings and adopts them to prevent accidental loss.
+ * Strictly isolated per user / guest session without cross-session leakage.
  */
 export function getSavedUsdtPref(userId?: string): UsdtValuationPref {
   try {
@@ -138,42 +137,6 @@ export function getSavedUsdtPref(userId?: string): UsdtValuationPref {
           rate: rate > 5000 && rate < 50000 ? rate : USD_IDR_ESTIMATE,
           costBasis: Number(parsed.costBasis) || 0,
         };
-      }
-    }
-
-    // Auto-Rescue: If authenticated user has 0 units in target key,
-    // search across all previous keys in localStorage to rescue user's USDT
-    if (typeof localStorage !== "undefined") {
-      const searchKeys = [
-        "trouvaille_usdt_valuation_guest_v1",
-        "trouvaille_usdt_valuation_v2",
-        "trouvaille_usdt_valuation_v1",
-      ];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith("trouvaille_usdt_valuation_") && !searchKeys.includes(k) && k !== key) {
-          searchKeys.push(k);
-        }
-      }
-
-      for (const k of searchKeys) {
-        const raw = safeGetItem(k);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            const units = Number(parsed.units) || 0;
-            if (units > 0) {
-              const rate = Number(parsed.rate);
-              const rescued: UsdtValuationPref = {
-                units,
-                rate: rate > 5000 && rate < 50000 ? rate : USD_IDR_ESTIMATE,
-                costBasis: Number(parsed.costBasis) || 0,
-              };
-              safeSetItem(key, JSON.stringify(rescued));
-              return rescued;
-            }
-          } catch {}
-        }
       }
     }
   } catch {}
@@ -485,7 +448,7 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
 
 /**
  * Retrieve saved investment holdings from localStorage scoped to user.
- * Auto-rescues holdings from guest/legacy storage if user account key is empty.
+ * Strictly isolated per user / guest session without cross-session leakage.
  */
 export function getSavedHoldings(userId?: string): InvestmentHolding[] {
   try {
@@ -495,26 +458,6 @@ export function getSavedHoldings(userId?: string): InvestmentHolding[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
-      }
-    }
-    // Auto-Rescue: If authenticated user has 0 holdings in target key,
-    // search across guest or legacy keys
-    if (typeof localStorage !== "undefined" && key !== "trouvaille_holdings_guest_v1") {
-      const candidateKeys = [
-        "trouvaille_holdings_guest_v1",
-        HOLDINGS_STORAGE_KEY,
-      ];
-      for (const cand of candidateKeys) {
-        const legacy = safeGetItem(cand);
-        if (legacy) {
-          try {
-            const parsed = JSON.parse(legacy);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              safeSetItem(key, legacy);
-              return parsed;
-            }
-          } catch {}
-        }
       }
     }
     return [];

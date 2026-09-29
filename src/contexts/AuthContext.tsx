@@ -9,6 +9,8 @@ import {
   clearPersistentSession,
   clearBiometricLoginCredentials,
 } from "../lib/biometricAuth";
+import { useQueryClient } from "@tanstack/react-query";
+import { clearAllLocalUserSessionData } from "../lib/sessionCleanup";
 
 export const GUEST_USER_ID = "guest_local_user";
 
@@ -78,11 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem("trouvaille_guest_mode") === "true";
   });
 
+  const queryClient = useQueryClient();
+
   const continueAsGuest = () => {
+    clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: true }).catch(() => {});
     try {
       supabase.auth.signOut().catch(() => {});
-      clearPersistentSession();
-      clearBiometricLoginCredentials();
     } catch {}
     setSession(null);
     localStorage.setItem("trouvaille_guest_mode", "true");
@@ -90,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const exitGuestMode = () => {
+    clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: false }).catch(() => {});
     localStorage.removeItem("trouvaille_guest_mode");
     setIsGuest(false);
   };
@@ -359,16 +363,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      localStorage.removeItem("TROUVAILLE_OFFLINE_CACHE_V1");
-      localStorage.removeItem("TROUVAILLE_TX_BACKUP_V1");
-      localStorage.removeItem("TROUVAILLE_WALLETS_BACKUP_V1");
-      localStorage.removeItem("TROUVAILLE_PENDING_MUTATIONS_V2");
-      localStorage.removeItem("trouvaille_guest_mode");
-      localStorage.removeItem("trouvaille_shortcuts");
-      localStorage.removeItem("trouvaille_linked_web_sessions");
-      clearPersistentSession();
-      clearBiometricLoginCredentials();
-    } catch {}
+      await clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: false });
+    } catch (cleanErr) {
+      console.warn("[AuthContext] clearAllLocalUserSessionData warning:", cleanErr);
+    }
     await supabase.auth.signOut();
     setSession(null);
     setIsGuest(false);

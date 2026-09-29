@@ -13,6 +13,7 @@ interface BottomSheetProps {
   onClose: () => void;
   children: React.ReactNode;
   title?: string;
+  zIndex?: number;
 }
 
 export function BottomSheet({
@@ -20,6 +21,7 @@ export function BottomSheet({
   onClose,
   children,
   title,
+  zIndex,
 }: BottomSheetProps) {
   const dragControls = useDragControls();
 
@@ -76,8 +78,9 @@ export function BottomSheet({
               BACKDROP
               ========================================================= */}
           <motion.div
-            className="fixed inset-0 z-[998]"
+            className="fixed inset-0"
             style={{
+              zIndex: zIndex ? zIndex - 1 : 998,
               background: "rgba(0, 0, 0, 0.64)",
               backdropFilter: "blur(7px)",
               WebkitBackdropFilter: "blur(7px)",
@@ -108,13 +111,13 @@ export function BottomSheet({
               bottom-0
               left-0
               right-0
-              z-[999]
               flex
               flex-col
               overflow-hidden
               shadow-2xl
             "
             style={{
+              zIndex: zIndex || 999,
               background: "var(--sheet-bg, var(--bg-base))",
 
               borderTop: "var(--sheet-border, 1px solid var(--glass-border))",

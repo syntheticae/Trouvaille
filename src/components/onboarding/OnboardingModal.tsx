@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -12,6 +12,8 @@ import {
   Coins,
   X,
   Zap,
+  ChevronRight,
+  Search,
 } from "lucide-react";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { DEFAULT_HOME_WIDGETS } from "../../lib/widgetLayoutTypes";
@@ -22,12 +24,94 @@ import {
 } from "../../lib/widgetLayoutEngine";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import {
+  useCurrency,
+  CURRENCY_METADATA,
+  type SupportedCurrency,
+} from "../../contexts/CurrencyContext";
+import { BottomSheet } from "../ui/BottomSheet";
 import { seedOnboardingWallets } from "../../hooks/useWallets";
 import type { OnboardingWalletChoice } from "../../hooks/useWallets";
 import {
   ArchetypeCardSelector,
   getArchetypeItems,
 } from "./ArchetypeCardSelector";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { supabase } from "../../lib/supabase";
+import { generateUUID } from "../../hooks/useTransactions";
+import { getDefaultCategories } from "../../hooks/useCategories";
+import type { Category } from "../../lib/types";
+
+async function seedOnboardingCategories(
+  userId: string | undefined,
+  currency: string,
+  isIndo: boolean,
+  qc: QueryClient,
+) {
+  const categoryDefs = getDefaultCategories({ currency, isIndo });
+  const isGuest = !userId || userId === "guest_local_user";
+
+  const fullCategories: Category[] = categoryDefs.map((c, i) => ({
+    id: isGuest
+      ? `cat-guest-${i}-${c.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`
+      : generateUUID(),
+    user_id: isGuest ? "guest_local_user" : userId,
+    name: c.name,
+    emoji: c.emoji,
+    type: c.type,
+    is_default: true,
+    created_at: new Date().toISOString(),
+  }));
+
+  // 1. Immediately persist to local categories backup
+  try {
+    localStorage.setItem(
+      "TROUVAILLE_CATEGORIES_BACKUP_V1",
+      JSON.stringify(fullCategories),
+    );
+  } catch {}
+
+  // 2. Prime QueryClient so UI reflects the newly selected regional taxonomy immediately
+  qc.setQueryData(
+    ["categories", isGuest ? "guest_local_user" : userId, null],
+    fullCategories,
+  );
+  qc.setQueryData(
+    ["categories", isGuest ? "guest_local_user" : userId, "expense"],
+    fullCategories.filter((c) => c.type === "expense"),
+  );
+  qc.setQueryData(
+    ["categories", isGuest ? "guest_local_user" : userId, "income"],
+    fullCategories.filter((c) => c.type === "income"),
+  );
+  qc.invalidateQueries({ queryKey: ["categories"] });
+
+  // 3. For authenticated cloud accounts, populate the categories table if empty
+  if (!isGuest && userId) {
+    try {
+      const { data: existing } = await supabase
+        .from("categories")
+        .select("id")
+        .eq("user_id", userId)
+        .limit(1);
+
+      if (!existing || existing.length === 0) {
+        await supabase.from("categories").insert(
+          fullCategories.map((c) => ({
+            id: c.id,
+            user_id: userId,
+            name: c.name,
+            emoji: c.emoji,
+            type: c.type,
+            is_default: true,
+          })),
+        );
+      }
+    } catch (e) {
+      console.warn("[seedOnboardingCategories] Cloud insertion warning:", e);
+    }
+  }
+}
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -188,6 +272,7 @@ const ACCOUNT_OPTIONS: AccountOption[] = [
 
 export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { language, setLanguage, isIndonesian } = useLanguage();
   const [step, setStep] = useState<number>(1);
 
@@ -228,6 +313,108 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const [reminderEnabled, setReminderEnabled] = useState<boolean>(true);
   const [reminderHour, setReminderHour] = useState<number>(20); // 20:00 (8 PM)
 
+  // Base Currency Integration
+  const { preferredCurrency, setPreferredCurrency, convertToIdr } = useCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>(
+    () => preferredCurrency || "IDR",
+  );
+  const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState("");
+
+  const activeCurrencyMeta =
+    CURRENCY_METADATA[selectedCurrency] || CURRENCY_METADATA.IDR;
+
+  const filteredCurrencies = useMemo(() => {
+    const list = Object.values(CURRENCY_METADATA);
+    if (!currencySearch.trim()) return list;
+    const q = currencySearch.toLowerCase().trim();
+    return list.filter(
+      (c) =>
+        c.code.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q) ||
+        c.symbol.toLowerCase().includes(q) ||
+        c.countryCode.toLowerCase().includes(q),
+    );
+  }, [currencySearch]);
+
+  const quickIncrements = useMemo(() => {
+    if (selectedCurrency === "IDR") return [250000, 500000, 1000000, 5000000];
+    if (selectedCurrency === "JPY") return [5000, 10000, 50000, 100000];
+    if (["USD", "EUR", "SGD", "GBP", "AUD", "USDT"].includes(selectedCurrency)) {
+      return [100, 500, 1000, 5000];
+    }
+    return [500, 1000, 5000, 10000];
+  }, [selectedCurrency]);
+
+  const handleSelectCurrency = (curr: SupportedCurrency) => {
+    triggerHaptic("medium");
+    setSelectedCurrency(curr);
+    if (curr !== "IDR") {
+      setAccountRegionTab("global");
+      setSelectedAccounts((prev) => ({
+        ...prev,
+        cash: true,
+        wise: true,
+        paypal: true,
+        bca: false,
+        gopay: false,
+      }));
+    } else {
+      setAccountRegionTab("local");
+      setSelectedAccounts((prev) => ({
+        ...prev,
+        cash: true,
+        bca: true,
+        gopay: true,
+        wise: false,
+        paypal: false,
+      }));
+    }
+    setCurrencyPickerOpen(false);
+  };
+
+  const getCuratedWallets = (
+    curr: SupportedCurrency,
+    isIndo: boolean,
+  ): OnboardingWalletChoice[] => {
+    if (curr === "IDR") {
+      return [
+        {
+          name: isIndo ? "Uang Tunai" : "Physical Cash",
+          icon: "Banknote",
+          classification: "liquid",
+        },
+        {
+          name: "BCA",
+          icon: "Landmark",
+          classification: "liquid",
+        },
+        {
+          name: "GoPay",
+          icon: "Smartphone",
+          classification: "liquid",
+        },
+      ];
+    }
+    return [
+      {
+        name: isIndo ? "Uang Tunai" : "Physical Cash",
+        icon: "Banknote",
+        classification: "liquid",
+      },
+      {
+        name: isIndo ? "Rekening Utama" : "Main Bank Account",
+        icon: "Landmark",
+        classification: "liquid",
+      },
+      {
+        name: isIndo ? "Dompet Digital (Wise)" : "Digital Wallet (Wise)",
+        icon: "Globe",
+        classification: "liquid",
+      },
+    ];
+  };
+
   if (!isOpen) return null;
 
   const archetypeItems = getArchetypeItems(isIndonesian);
@@ -256,24 +443,11 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
   const handleQuickStart = async () => {
     triggerSuccessHaptic();
 
-    // 1. Seed standard accounts (Cash, BCA, GoPay)
-    const standardWallets: OnboardingWalletChoice[] = [
-      {
-        name: isIndonesian ? "Uang Tunai" : "Physical Cash",
-        icon: "Banknote",
-        classification: "liquid",
-      },
-      {
-        name: "BCA",
-        icon: "Landmark",
-        classification: "liquid",
-      },
-      {
-        name: "GoPay",
-        icon: "Smartphone",
-        classification: "liquid",
-      },
-    ];
+    // 1. Seed standard accounts (adaptive to currency)
+    const standardWallets: OnboardingWalletChoice[] = getCuratedWallets(
+      selectedCurrency,
+      isIndonesian,
+    );
 
     try {
       await seedOnboardingWallets(user?.id, standardWallets);
@@ -281,7 +455,27 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed quick seeding wallets:", err);
     }
 
-    // 2. Apply standard widget preset
+    // 2. Seed standard categories (adaptive to currency & region)
+    try {
+      await seedOnboardingCategories(
+        user?.id,
+        selectedCurrency,
+        isIndonesian,
+        queryClient,
+      );
+    } catch (err) {
+      console.warn("[OnboardingModal] Failed quick seeding categories:", err);
+    }
+
+    // 3. Set preferred currency
+    try {
+      setPreferredCurrency(selectedCurrency);
+      localStorage.setItem("trouvaille_preferred_currency", selectedCurrency);
+    } catch (e) {
+      console.warn("[OnboardingModal] Failed setting preferred currency:", e);
+    }
+
+    // 3. Apply standard widget preset
     try {
       const stored = loadStoredWidgets(
         localStorage.getItem(STORAGE_KEY),
@@ -293,20 +487,20 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       console.warn("[OnboardingModal] Failed setting widgets:", e);
     }
 
-    // 3. Set default reminder (20:00)
+    // 4. Set default reminder (20:00)
     try {
       localStorage.setItem("trouvaille_streak_reminder_enabled", "true");
       localStorage.setItem("trouvaille_streak_reminder_hour", "20");
     } catch {}
 
-    // 4. Set user name if entered
+    // 5. Set user name if entered
     if (userName.trim()) {
       try {
         localStorage.setItem("trouvaille_user_name", userName.trim());
       } catch {}
     }
 
-    // 5. Mark onboarded
+    // 6. Mark onboarded
     try {
       localStorage.setItem("trouvaille_preset_mode", "default");
       localStorage.setItem("trouvaille_onboarding_focus", "expenses");
@@ -322,20 +516,37 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       setStep(2);
     } else if (step === 2) {
       if (presetMode === "default") {
-        setSelectedAccounts({
-          cash: true,
-          bca: true,
-          gopay: true,
-          mandiri: false,
-          jago: false,
-          dana_ovo: false,
-          saham_idx: false,
-          wise: false,
-          paypal: false,
-          revolut: false,
-          global_broker: false,
-          crypto_vault: false,
-        });
+        if (selectedCurrency === "IDR") {
+          setSelectedAccounts({
+            cash: true,
+            bca: true,
+            gopay: true,
+            mandiri: false,
+            jago: false,
+            dana_ovo: false,
+            saham_idx: false,
+            wise: false,
+            paypal: false,
+            revolut: false,
+            global_broker: false,
+            crypto_vault: false,
+          });
+        } else {
+          setSelectedAccounts({
+            cash: true,
+            bca: false,
+            gopay: false,
+            mandiri: false,
+            jago: false,
+            dana_ovo: false,
+            saham_idx: false,
+            wise: true,
+            paypal: true,
+            revolut: false,
+            global_broker: false,
+            crypto_vault: false,
+          });
+        }
         setStep(4);
       } else {
         setStep(3);
@@ -362,13 +573,18 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     triggerSuccessHaptic();
 
     // 1. Build and seed selected accounts
-    const chosenAccountConfigs: OnboardingWalletChoice[] = ACCOUNT_OPTIONS.filter(
-      (acc) => selectedAccounts[acc.id],
-    ).map((acc) => ({
-      name: isIndonesian ? acc.nameId : acc.nameEn,
-      icon: acc.iconName,
-      classification: acc.classification,
-    }));
+    let chosenAccountConfigs: OnboardingWalletChoice[];
+    if (presetMode === "default") {
+      chosenAccountConfigs = getCuratedWallets(selectedCurrency, isIndonesian);
+    } else {
+      chosenAccountConfigs = ACCOUNT_OPTIONS.filter(
+        (acc) => selectedAccounts[acc.id],
+      ).map((acc) => ({
+        name: isIndonesian ? acc.nameId : acc.nameEn,
+        icon: acc.iconName,
+        classification: acc.classification,
+      }));
+    }
 
     // Fallback if user unselected everything
     if (chosenAccountConfigs.length === 0) {
@@ -379,14 +595,40 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       });
     }
 
+    // Convert starting balance to base IDR
+    const convertedStartingBalance =
+      startingBalance > 0
+        ? Math.round(convertToIdr(startingBalance, selectedCurrency))
+        : undefined;
+
     try {
       await seedOnboardingWallets(
         user?.id,
         chosenAccountConfigs,
-        startingBalance > 0 ? startingBalance : undefined,
+        convertedStartingBalance,
       );
     } catch (err) {
       console.warn("[OnboardingModal] Failed to seed wallets:", err);
+    }
+
+    // 2. Seed standard categories (adaptive to currency & region)
+    try {
+      await seedOnboardingCategories(
+        user?.id,
+        selectedCurrency,
+        isIndonesian,
+        queryClient,
+      );
+    } catch (err) {
+      console.warn("[OnboardingModal] Failed seeding categories:", err);
+    }
+
+    // 3. Set preferred currency
+    try {
+      setPreferredCurrency(selectedCurrency);
+      localStorage.setItem("trouvaille_preferred_currency", selectedCurrency);
+    } catch (e) {
+      console.warn("[OnboardingModal] Failed setting preferred currency:", e);
     }
 
     // 2. Apply widget preset based on chosen focus
@@ -617,7 +859,44 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                 </div>
               </div>
 
-              {/* 3. Preset Selection (Default vs Custom) */}
+              {/* 3. Base Currency Selection */}
+              <div className="space-y-1 pt-0.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10.5px] font-semibold text-white/40 tracking-wider uppercase block">
+                    {isIndonesian ? "Mata Uang Dasar" : "Base Currency"}
+                  </label>
+                  <span className="text-[10.5px] text-white/40 font-mono">
+                    {activeCurrencyMeta.code} ({activeCurrencyMeta.symbol})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setCurrencyPickerOpen(true);
+                  }}
+                  className="w-full py-2.5 px-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] hover:border-white/20 active:scale-[0.99] transition-all flex items-center justify-between cursor-pointer group text-left"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white text-[12px] font-bold shrink-0">
+                      {activeCurrencyMeta.symbol}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-semibold text-white tracking-tight flex items-center gap-1.5 truncate">
+                        <span>{activeCurrencyMeta.code}</span>
+                        <span className="text-white/40 font-normal">·</span>
+                        <span className="text-white/80 font-normal text-[12px] truncate">{activeCurrencyMeta.name}</span>
+                      </div>
+                      <div className="text-[10.5px] text-white/40 truncate">
+                        {isIndonesian ? "Ketuk untuk memilih dari 13 mata uang" : "Tap to choose from 13 currencies"}
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight size={15} className="text-white/40 group-hover:text-white/80 transition-colors shrink-0 ml-2" />
+                </button>
+              </div>
+
+              {/* 4. Preset Selection (Default vs Custom) */}
               <div className="space-y-2 pt-0.5">
                 <div className="flex items-center justify-between">
                   <label className="text-[10.5px] font-semibold text-white/40 tracking-wider uppercase block">
@@ -675,9 +954,13 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-wrap mt-2.5 pt-2 border-t border-white/[0.06]">
-                      {(isIndonesian
-                        ? ["Uang Tunai", "BCA (Bank)", "GoPay (Dompet Digital)", "+14 Kategori Utama"]
-                        : ["Physical Cash", "BCA (Bank)", "GoPay (E-Wallet)", "+14 Core Categories"]
+                      {(selectedCurrency === "IDR"
+                        ? isIndonesian
+                          ? ["Uang Tunai", "BCA (Bank)", "GoPay (Dompet Digital)", "+14 Kategori Utama"]
+                          : ["Physical Cash", "BCA (Bank)", "GoPay (E-Wallet)", "+14 Core Categories"]
+                        : isIndonesian
+                          ? ["Uang Tunai", "Rekening Utama", "Dompet Digital (Wise)", "+14 Kategori Utama"]
+                          : ["Physical Cash", "Main Bank Account", "Digital Wallet (Wise)", "+14 Core Categories"]
                       ).map((item, idx) => (
                         <span
                           key={idx}
@@ -943,17 +1226,19 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               <div className="space-y-6">
                 <div className="space-y-2 border-b border-white/15 pb-3 focus-within:border-white transition-colors">
                   <label className="text-[11px] font-semibold text-white/40 tracking-wider uppercase block">
-                    {isIndonesian ? "Saldo Kas Likuid (IDR)" : "Liquid Balance (IDR)"}
+                    {isIndonesian
+                      ? `Saldo Kas Likuid (${activeCurrencyMeta.code})`
+                      : `Liquid Balance (${activeCurrencyMeta.code})`}
                   </label>
                   <div className="flex items-baseline gap-2">
                     <span className="text-[20px] sm:text-[22px] font-light text-white/40 select-none">
-                      Rp
+                      {activeCurrencyMeta.symbol}
                     </span>
                     <input
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      value={startingBalance === 0 ? "" : startingBalance.toLocaleString("id-ID")}
+                      value={startingBalance === 0 ? "" : startingBalance.toLocaleString(isIndonesian ? "id-ID" : "en-US")}
                       onChange={(e) => {
                         const raw = e.target.value.replace(/[^0-9]/g, "");
                         setStartingBalance(raw ? parseInt(raw, 10) : 0);
@@ -970,14 +1255,14 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                     {isIndonesian ? "Pilihan nominal cepat" : "Quick additive chips"}
                   </span>
                   <div className="flex items-center gap-2 flex-wrap">
-                    {[250000, 500000, 1000000, 5000000].map((inc) => (
+                    {quickIncrements.map((inc) => (
                       <button
                         key={inc}
                         type="button"
                         onClick={() => handleQuickAddBalance(inc)}
                         className="py-1.5 px-3 rounded-full text-[12px] font-medium amount border active:scale-95 transition-all cursor-pointer text-white/80 border-white/15 hover:border-white/40 hover:text-white bg-white/[0.04]"
                       >
-                        +{inc >= 1000000 ? `${inc / 1000000}M` : `${inc / 1000}K`}
+                        +{inc >= 1000000 ? `${inc / 1000000}M` : inc >= 1000 ? `${inc / 1000}K` : inc}
                       </button>
                     ))}
                     {startingBalance > 0 && (
@@ -1181,6 +1466,160 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
           </>
         )}
       </div>
+
+      {/* Currency Selection BottomSheet */}
+      <BottomSheet
+        isOpen={currencyPickerOpen}
+        onClose={() => {
+          setCurrencyPickerOpen(false);
+          setCurrencySearch("");
+        }}
+        zIndex={1100}
+      >
+        <div className="p-5 pb-8 space-y-4 text-left">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <Coins size={16} strokeWidth={1.75} />
+              </div>
+              <div>
+                <h2
+                  className="text-[16px] font-semibold tracking-tight"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian ? "Pilih Mata Uang Dasar" : "Select Base Currency"}
+                </h2>
+                <p
+                  className="text-[11px] font-medium"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian
+                    ? "Mata uang utama untuk seluruh pembukuan"
+                    : "Primary currency for all financial tracking"}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCurrencyPickerOpen(false);
+                setCurrencySearch("");
+              }}
+              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors"
+              style={{
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-tertiary)",
+              }}
+            >
+              <X size={13} />
+            </button>
+          </div>
+
+          {/* Search Box */}
+          <div
+            className="relative flex items-center rounded-xl px-3 py-2 border"
+            style={{
+              background: "var(--bg-elevated)",
+              borderColor: "var(--glass-border)",
+            }}
+          >
+            <Search
+              size={14}
+              style={{ color: "var(--text-tertiary)" }}
+              className="mr-2 shrink-0"
+            />
+            <input
+              type="text"
+              value={currencySearch}
+              onChange={(e) => setCurrencySearch(e.target.value)}
+              placeholder={
+                isIndonesian
+                  ? "Cari nama, kode (mis. USD), atau simbol..."
+                  : "Search name, code (e.g. USD), or symbol..."
+              }
+              className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--text-tertiary)]"
+              style={{ color: "var(--text-primary)" }}
+            />
+            {currencySearch && (
+              <button
+                type="button"
+                onClick={() => setCurrencySearch("")}
+                className="p-1 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Currency List */}
+          <div className="divide-y divide-white/[0.06] border-y border-white/[0.08]">
+            {filteredCurrencies.map((curr) => {
+              const isSelected = curr.code === selectedCurrency;
+              return (
+                <button
+                  key={curr.code}
+                  type="button"
+                  onClick={() => handleSelectCurrency(curr.code)}
+                  className={`w-full py-3 px-2 flex items-center justify-between transition-all active:scale-[0.99] cursor-pointer text-left ${
+                    isSelected ? "bg-white/[0.05]" : "hover:bg-white/[0.02]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-[12px] border ${
+                        isSelected
+                          ? "bg-white text-zinc-950 border-white"
+                          : "bg-white/[0.06] border-white/10 text-white/80"
+                      }`}
+                    >
+                      {curr.symbol}
+                    </div>
+                    <div>
+                      <div className="text-[13px] font-semibold text-white flex items-center gap-2">
+                        <span>{curr.code}</span>
+                        <span className="text-white/40 font-normal">·</span>
+                        <span className="text-white/70 font-normal text-[12px]">
+                          {curr.name}
+                        </span>
+                      </div>
+                      <div className="text-[10.5px] text-white/40">
+                        {curr.countryCode} · {curr.decimals}{" "}
+                        {isIndonesian ? "desimal" : "decimals"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
+                      isSelected
+                        ? "bg-white border-white text-zinc-950"
+                        : "border-white/20 bg-transparent"
+                    }`}
+                  >
+                    {isSelected && <Check size={11} strokeWidth={3} />}
+                  </div>
+                </button>
+              );
+            })}
+            {filteredCurrencies.length === 0 && (
+              <div className="py-8 text-center text-[12px] text-white/40">
+                {isIndonesian
+                  ? "Mata uang tidak ditemukan"
+                  : "No currency found matching search"}
+              </div>
+            )}
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   );
 }

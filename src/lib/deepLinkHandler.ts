@@ -1,7 +1,9 @@
-import type { Category, Wallet, TransactionType } from "./types";
+import type { Category, Wallet, Transaction, TransactionType } from "./types";
 import { parseBankNotification } from "./bankNotificationParser";
 import { parseNaturalTransaction } from "./nlpParser";
 import { parseSlipText } from "./slipParser";
+import { isMultiTransactionHistoryText, parseScreenshotHistory } from "./screenshotHistoryParser";
+import type { ParsedStatementItem } from "./statementParser";
 
 export interface DeepLinkPrefill {
   amount?: number;
@@ -18,13 +20,14 @@ export interface DeepLinkPrefill {
 }
 
 export interface DeepLinkResult {
-  action: "transaction" | "voice" | "scan" | "import" | "navigate" | "restore_balance" | "none";
+  action: "transaction" | "voice" | "scan" | "import" | "navigate" | "restore_balance" | "batch_review" | "none";
   path?: string;
   autoSave?: boolean;
   matchedCategoryName?: string;
   matchedWalletName?: string;
   matchedToWalletName?: string;
   prefilledValues?: DeepLinkPrefill;
+  batchItems?: ParsedStatementItem[];
 }
 
 /**
@@ -377,7 +380,8 @@ export function parseStructuredShortcutText(
 export function parseDeepLink(
   urlString: string,
   categories: Category[] = [],
-  wallets: Wallet[] = []
+  wallets: Wallet[] = [],
+  existingTransactions: Transaction[] = []
 ): DeepLinkResult {
   if (!urlString || typeof urlString !== "string") {
     return { action: "none" };
@@ -451,6 +455,23 @@ export function parseDeepLink(
     }
     if (actionPath === "import" || params.get("mode") === "import" || params.get("action") === "import") {
       return { action: "import" };
+    }
+    if (
+      actionPath === "capture" ||
+      params.get("mode") === "capture" ||
+      params.get("action") === "capture"
+    ) {
+      const captureText =
+        params.get("text") ||
+        params.get("teks") ||
+        params.get("content") ||
+        params.get("ocr");
+      if (captureText && isMultiTransactionHistoryText(captureText)) {
+        const batchItems = parseScreenshotHistory(captureText, existingTransactions, categories, wallets);
+        if (batchItems && batchItems.length > 0) {
+          return { action: "batch_review", batchItems };
+        }
+      }
     }
     if (params.get("action") === "add") {
       return { action: "transaction" };
@@ -603,6 +624,39 @@ export function parseDeepLink(
       const trimmedText = rawText.trim();
       const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
       const isAutoRequested = autoParam === "true" || autoParam === "1" || autoParam === "ya";
+
+      // B-Pre: Multi-Transaction Screenshot History Check (GoPay Riwayat, Shopee, BCA Mutasi)
+      if (isMultiTransactionHistoryText(trimmedText)) {
+        const batchItems = parseScreenshotHistory(trimmedText, existingTransactions, categories, wallets);
+        if (batchItems && batchItems.length >= 2) {
+          return {
+            action: "batch_review",
+            batchItems,
+          };
+        } else if (batchItems && batchItems.length === 1) {
+          const single = batchItems[0];
+          return {
+            action: "transaction",
+            autoSave: isAutoRequested,
+            matchedCategoryName: single.suggestedCategoryName || undefined,
+            matchedWalletName: single.walletName || undefined,
+            matchedToWalletName: single.destinationWalletName || undefined,
+            prefilledValues: {
+              amount: single.amount,
+              type: single.type,
+              note: single.cleanDescription || single.description,
+              category_id: single.type === "transfer" ? undefined : (single.suggestedCategoryId || undefined),
+              categoryId: single.type === "transfer" ? undefined : (single.suggestedCategoryId || undefined),
+              wallet_id: single.walletId || undefined,
+              walletId: single.walletId || undefined,
+              to_wallet_id: single.destinationWalletId || undefined,
+              toWalletId: single.destinationWalletId || undefined,
+              date: single.date ? new Date(single.date) : new Date(),
+              time: single.time,
+            },
+          };
+        }
+      }
 
       // B0: Structured Shortcut Text (from iOS Dialog Shortcuts: "Nominal: ...\nKategori: ...\nAkun: ...\nCatatan: ...")
       const structuredResult = parseStructuredShortcutText(trimmedText, categories, wallets);

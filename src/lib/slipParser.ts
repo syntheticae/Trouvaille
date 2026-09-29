@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import type { Category, Wallet, TransactionType } from "./types";
 import { formatRupiah } from "./utils";
 import { classifySemanticCategory } from "./semanticClassifier";
+import { getMerchantMemory } from "./merchantCategoryMemory";
 
 export interface ParsedSlipResult {
   amount: number | null;
@@ -159,7 +160,9 @@ export const KNOWN_MERCHANT_PATTERNS = [
   { match: (t: string) => /fore\s*coffee/i.test(t), name: "Fore Coffee", categoryKey: "kopi" },
   { match: (t: string) => /tomoro\s*coffee|tomoro/i.test(t), name: "Tomoro Coffee", categoryKey: "kopi" },
   { match: (t: string) => /janji\s*jiwa/i.test(t), name: "Janji Jiwa", categoryKey: "kopi" },
-  { match: (t: string) => /starbucks/i.test(t), name: "Starbucks", categoryKey: "kopi" },
+  { match: (t: string) => /shopeefood|shopee\s*food/i.test(t), name: "ShopeeFood", categoryKey: "makanan" },
+  { match: (t: string) => /grabfood|grab\s*food/i.test(t), name: "GrabFood", categoryKey: "makanan" },
+  { match: (t: string) => /gofood|go-food/i.test(t), name: "GoFood", categoryKey: "makanan" },
   { match: (t: string) => /bukalapak/i.test(t), name: "Bukalapak", categoryKey: "groceries" },
   { match: (t: string) => /tokopedia/i.test(t), name: "Tokopedia", categoryKey: "groceries" },
   { match: (t: string) => /shopee/i.test(t), name: "Shopee", categoryKey: "groceries" },
@@ -825,14 +828,32 @@ export function parseSlipText(
   let matchedCategory: Category | null = null;
   let detectedCategory: string | undefined = undefined;
 
+  // Priority 0: Self-Learning Merchant Memory (Pilar 1)
+  if (merchantOrRecipient) {
+    const memory = getMerchantMemory(merchantOrRecipient);
+    if (memory && userCategories.length > 0) {
+      const match = userCategories.find(
+        (c) =>
+          c.id === memory.categoryId ||
+          c.name.toLowerCase() === memory.categoryName.toLowerCase(),
+      );
+      if (match) {
+        matchedCategory = match;
+        detectedCategory = match.name;
+      }
+    }
+  }
+
   // Semantic Classifier check on merchant name or receipt text
-  const semanticClass = classifySemanticCategory(
-    merchantOrRecipient || rawText,
-    userCategories,
-  );
-  if (semanticClass.category) {
-    matchedCategory = semanticClass.category;
-    detectedCategory = semanticClass.category.name;
+  if (!matchedCategory) {
+    const semanticClass = classifySemanticCategory(
+      merchantOrRecipient || rawText,
+      userCategories,
+    );
+    if (semanticClass.category) {
+      matchedCategory = semanticClass.category;
+      detectedCategory = semanticClass.category.name;
+    }
   }
 
   // Priority 1: Category from recognized merchant brand

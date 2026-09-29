@@ -192,4 +192,27 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - **System Variables Only**: All elements must use `var(--text-primary)`, `var(--text-secondary)`, `var(--text-tertiary)`, `var(--glass-border)`, and `var(--glass-fill)`.
 - **Sole Exception**: Positive financial inflow in cashflow charts / balance metrics (`var(--accent)`), never on buttons, icons, or badges in setting sheets.
 
+---
+
+## 8. Master Rulebook Linkage (STRICT)
+
+> [!IMPORTANT]
+> **CANONICAL REFERENCE: `TROUVAILLE_RULES.md`**  
+> For the exhaustive, unified specification governing UI aesthetics, UX ergonomics, Statement & Ingestion parsing, Full ISO timestamps, Session Teardown, and Financial Report Exports, always adhere strictly to [TROUVAILLE_RULES.md](file:///d:/Project/Trouvaille/TROUVAILLE_RULES.md).
+
+### 8.1 Ingestion & Statement Parser Invariants:
+- Header row auto-discovery: Scan rows 0 to 10 for table header tokens.
+- Arrow Transfer Splitting: Parse `A → B` into source and destination wallets and set type to `'transfer'`. Missing wallets must be auto-created.
+- Category Synthesis: Custom categories must be assigned semantic monochrome vector icons via `resolveCategoryVectorIcon()`, never emojis.
+- Full ISO Timestamps: `occurred_on` must always include full date and time (`YYYY-MM-DDTHH:mm:ss`), resolving Excel fractional serials.
+- Placeholder Note Sanitization: Convert `"-"`, `"--"` to clean empty strings `""`.
+
+### 8.2 Session Teardown & Multi-Tenant Isolation Invariants:
+- On logout or guest session switch, wipe all user tenant storage (`trouvaille_usdt_*`, `trouvaille_holdings_*`, `trouvaille_market_quotes_*`, etc.).
+- Never auto-rescue cross-session assets into a clean guest or new account.
+
+### 8.3 Financial Report Export Invariants:
+- Neraca (Balance Sheet) must list EVERY active user account and holding without truncation or `+account` placeholders.
+
+
 

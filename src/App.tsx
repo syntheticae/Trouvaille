@@ -15,6 +15,7 @@ import {
 import {
   useAllTransactions,
   useAddTransaction,
+  useBatchAddTransactions,
   transactionKeys,
   purgePendingMutationsAndSync,
 } from "./hooks/useTransactions";
@@ -22,6 +23,9 @@ import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen";
 import { SyncStatusPill } from "./components/ui/SyncStatusPill";
 import { ClipboardTransactionBanner } from "./components/common/ClipboardTransactionBanner";
+import { BatchTransactionReviewSheet } from "./components/transactions/BatchTransactionReviewSheet";
+import { saveDraftBatch } from "./lib/draftTransactionService";
+import type { ParsedStatementItem } from "./lib/statementParser";
 import { App as CapApp } from "@capacitor/app";
 import { parseDeepLink } from "./lib/deepLinkHandler";
 import { useLanguage } from "./contexts/LanguageContext";
@@ -172,11 +176,58 @@ function AppShell() {
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
   const addTxMutation = useAddTransaction();
+  const batchAddTx = useBatchAddTransactions();
+  const [batchReviewOpen, setBatchReviewOpen] = useState(false);
+  const [batchReviewItems, setBatchReviewItems] = useState<ParsedStatementItem[]>([]);
+  const [batchSourceTitle, setBatchSourceTitle] = useState("");
   const { isIndonesian } = useLanguage();
   const { showToast } = useToast();
   const [recordedShortcutTx, setRecordedShortcutTx] = useState<ShortcutRecordedTxData | null>(null);
   const [joinLedgerOpen, setJoinLedgerOpen] = useState(false);
   const [joinLedgerCode, setJoinLedgerCode] = useState("");
+
+  const handleConfirmBatchReview = async (selectedItems: ParsedStatementItem[]) => {
+    const payload = selectedItems.map((item) => ({
+      amount: item.amount,
+      type: item.type,
+      category_id: item.type === "transfer" ? null : (item.suggestedCategoryId || null),
+      wallet_id: item.walletId || wallets[0]?.id || null,
+      to_wallet_id: item.type === "transfer" ? (item.destinationWalletId || null) : null,
+      occurred_on: item.date,
+      note: item.cleanDescription || item.description,
+      ledger_id: activeSpaceId !== "all" ? activeSpaceId : "personal",
+      space_id: activeSpaceId !== "all" ? activeSpaceId : null,
+    }));
+
+    await batchAddTx.mutateAsync(payload);
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["wallets"] });
+
+    showToast(
+      isIndonesian
+        ? `${selectedItems.length} transaksi berhasil dicatat!`
+        : `${selectedItems.length} transactions recorded!`,
+      "add",
+      null,
+      3000
+    );
+  };
+
+  const handleSaveDraftReview = (itemsToDraft: ParsedStatementItem[]) => {
+    saveDraftBatch(
+      itemsToDraft,
+      batchSourceTitle || (isIndonesian ? "Tangkapan Layar" : "Screenshot"),
+      "back_tap"
+    );
+    showToast(
+      isIndonesian
+        ? `${itemsToDraft.length} transaksi disimpan ke antrean draft`
+        : `${itemsToDraft.length} transactions saved to draft inbox`,
+      "info",
+      null,
+      3000
+    );
+  };
   // Queue for deep links that arrive before categories/wallets have loaded (cold-launch race condition fix)
   const pendingDeepLinkRef = useRef<string | null>(null);
   const hasHandledColdLaunchUrlRef = useRef(false);
@@ -252,7 +303,15 @@ function AppShell() {
         } catch {}
       }
 
-      const res = parseDeepLink(rawUrl, categories, wallets);
+      const res = parseDeepLink(rawUrl, categories, wallets, allTxs);
+
+      if (res.action === "batch_review" && res.batchItems && res.batchItems.length > 0) {
+        triggerHaptic("medium");
+        setBatchReviewItems(res.batchItems);
+        setBatchSourceTitle(res.matchedWalletName || (isIndonesian ? "Riwayat Layar" : "Screen History"));
+        setBatchReviewOpen(true);
+        return;
+      }
 
       // Direct tab navigation routing (e.g. trouvaille://reports, trouvaille://bills)
       if (res.action === "navigate" && res.path) {
@@ -976,6 +1035,7 @@ function AppShell() {
         <ClipboardTransactionBanner
           categories={categories}
           wallets={wallets}
+          existingTransactions={allTxs}
           onAddTransaction={(detected) => {
             setPrefilledValues({
               amount: detected.amount,
@@ -985,6 +1045,11 @@ function AppShell() {
               wallet_id: detected.suggestedWalletId || "",
             });
             setAddSheetOpen(true);
+          }}
+          onReviewBatch={(items, appName) => {
+            setBatchReviewItems(items);
+            setBatchSourceTitle(appName);
+            setBatchReviewOpen(true);
           }}
         />
       </div>
@@ -1001,6 +1066,11 @@ function AppShell() {
                 <HomePage
                   onOpenAdd={() => setAddSheetOpen(true)}
                   onOpenScan={() => setReceiptScanOpen(true)}
+                  onOpenBatchReview={(items, appName) => {
+                    setBatchReviewItems(items);
+                    setBatchSourceTitle(appName || (isIndonesian ? "Draft Transaksi" : "Draft Inbox"));
+                    setBatchReviewOpen(true);
+                  }}
                 />
               }
             />
@@ -1011,6 +1081,11 @@ function AppShell() {
                   onOpenScan={() => setReceiptScanOpen(true)}
                   onOpenImport={() => setStatementImportOpen(true)}
                   onOpenVoiceAdd={() => setVoiceModalOpen(true)}
+                  onOpenBatchReview={(items, appName) => {
+                    setBatchReviewItems(items);
+                    setBatchSourceTitle(appName || (isIndonesian ? "Draft Transaksi" : "Draft Inbox"));
+                    setBatchReviewOpen(true);
+                  }}
                 />
               }
             />
@@ -1021,6 +1096,11 @@ function AppShell() {
                   onOpenScan={() => setReceiptScanOpen(true)}
                   onOpenImport={() => setStatementImportOpen(true)}
                   onOpenVoiceAdd={() => setVoiceModalOpen(true)}
+                  onOpenBatchReview={(items, appName) => {
+                    setBatchReviewItems(items);
+                    setBatchSourceTitle(appName || (isIndonesian ? "Draft Transaksi" : "Draft Inbox"));
+                    setBatchReviewOpen(true);
+                  }}
                 />
               }
             />
@@ -1098,6 +1178,19 @@ function AppShell() {
             onClose={() => setStatementImportOpen(false)}
           />
         </Suspense>
+      )}
+
+      {batchReviewOpen && (
+        <BatchTransactionReviewSheet
+          isOpen={batchReviewOpen}
+          onClose={() => setBatchReviewOpen(false)}
+          items={batchReviewItems}
+          categories={categories}
+          wallets={wallets}
+          sourceTitle={batchSourceTitle}
+          onConfirmBatch={handleConfirmBatchReview}
+          onSaveDraft={handleSaveDraftReview}
+        />
       )}
 
       {addSheetOpen && (

@@ -27,7 +27,7 @@ export function parseBankNotification(
 ): DetectedBankNotification | null {
   if (!text || typeof text !== "string") return null;
   const clean = text.trim();
-  if (clean.length < 8 || clean.length > 500) return null;
+  if (clean.length < 8 || clean.length > 1000) return null;
 
   const lower = clean.toLowerCase();
 

@@ -57,6 +57,7 @@ import type { TransactionType } from "../../lib/types";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import { GlassDateTimePickerModal } from "../ui/GlassDateTimePickerModal";
+import { saveMerchantMemory } from "../../lib/merchantCategoryMemory";
 
 interface ReceiptScanModalProps {
   isOpen: boolean;
@@ -846,6 +847,14 @@ export function ReceiptScanModal({
     };
 
     triggerSuccessHaptic();
+
+    // Persist learned merchant category to memory (Pilar 1)
+    if (merchant.trim() && effectiveCatId && effectiveCategory) {
+      saveMerchantMemory(merchant.trim(), effectiveCatId, effectiveCategory.name);
+    } else if (finalDescription && effectiveCatId && effectiveCategory) {
+      saveMerchantMemory(finalDescription, effectiveCatId, effectiveCategory.name);
+    }
+
     addTx.mutate(
       {
         type,
