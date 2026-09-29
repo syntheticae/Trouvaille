@@ -316,6 +316,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === "SIGNED_OUT") {
         clearPersistentSession();
         clearBiometricLoginCredentials();
+        clearAllLocalUserSessionData(queryClient).catch(() => {});
         setSession(null);
         setLoading(false);
         return;

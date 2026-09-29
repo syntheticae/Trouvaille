@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import type { Category, TransactionType, CashflowNature } from "../lib/types";
+import { generateUUID } from "../lib/utils";
 
 export const categoryKeys = {
   all: (userId?: string) => ["categories", userId ?? null, null] as const,
@@ -591,8 +592,8 @@ export function useCategories(type?: TransactionType) {
         const activeDefaults = getDefaultCategories();
         const fallbackList: Category[] = activeDefaults
           .filter((c) => !type || c.type === type)
-          .map((c, i) => ({
-            id: `fallback-cat-${i}-${c.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+          .map((c) => ({
+            id: generateUUID(),
             user_id: "guest_local_user",
             name: c.name,
             emoji: c.emoji,
@@ -641,6 +642,42 @@ export function useCategories(type?: TransactionType) {
               JSON.stringify(uniqueList),
             );
           } catch {}
+        } else if (uniqueList.length === 0) {
+          const activeDefaults = getDefaultCategories();
+          const seedCategories: Category[] = activeDefaults
+            .filter((c) => !type || c.type === type)
+            .map((c) => ({
+              id: generateUUID(),
+              user_id: userId || "guest_local_user",
+              name: c.name,
+              emoji: c.emoji,
+              type: c.type,
+              is_default: true,
+              created_at: new Date().toISOString(),
+            }));
+
+          if (userId && userId !== "guest_local_user") {
+            try {
+              const { data: inserted } = await supabase
+                .from("categories")
+                .insert(seedCategories)
+                .select();
+              if (inserted && inserted.length > 0) {
+                return inserted as Category[];
+              }
+            } catch (seedErr) {
+              console.warn("[useCategories] Failed to auto-seed cloud categories:", seedErr);
+            }
+          }
+          if (!type) {
+            try {
+              localStorage.setItem(
+                CATEGORIES_BACKUP_STORAGE_KEY,
+                JSON.stringify(seedCategories),
+              );
+            } catch {}
+          }
+          return seedCategories;
         }
         return uniqueList;
       } catch (err) {
@@ -659,8 +696,8 @@ export function useCategories(type?: TransactionType) {
         const activeDefaults = getDefaultCategories();
         const fallbackList: Category[] = activeDefaults
           .filter((c) => !type || c.type === type)
-          .map((c, i) => ({
-            id: `fallback-cat-${i}-${c.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+          .map((c) => ({
+            id: generateUUID(),
             user_id: userId || "default",
             name: c.name,
             emoji: c.emoji,
@@ -766,7 +803,7 @@ export function useAddCategory() {
 
       if (isCurrentGuest) {
         const newCat: Category = {
-          id: `custom-cat-${Date.now()}-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 6) : Math.random().toString(36).slice(2, 6)}`,
+          id: generateUUID(),
           name: cat.name,
           emoji: cat.emoji,
           type: cat.type,
@@ -837,7 +874,7 @@ export function useAddCategory() {
         console.warn("[useAddCategory] Exception inserting category:", cloudErr);
         // Fallback local return
         const fallbackCat: Category = {
-          id: `custom-cat-${Date.now()}`,
+          id: generateUUID(),
           name: cat.name,
           emoji: cat.emoji,
           type: cat.type,

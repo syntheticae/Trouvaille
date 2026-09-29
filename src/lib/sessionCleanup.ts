@@ -11,6 +11,7 @@ import {
   clearPersistentSession,
   clearBiometricLoginCredentials,
 } from "./biometricAuth";
+import { clearMerchantMemory } from "./merchantCategoryMemory";
 
 export interface SessionCleanupOptions {
   /** If true, preserves 'trouvaille_guest_mode' flag so user stays in guest state */
@@ -37,6 +38,10 @@ export const USER_SESSION_STORAGE_KEYS = [
   "trouvaille_onboarding_focus",
   "trouvaille_active_space_id",
   "trouvaille_spaces_cache",
+  "trouvaille_ledgers_v1",
+  "trouvaille_default_ledger_id",
+  "trouvaille_custom_spaces_v1",
+  "trouvaille_personal_ledger_override_v1",
   "trouvaille_selected_ledger_account_id",
   "trouvaille_wallet_classifications_v1",
   "trouvaille_streak_reminder_enabled",
@@ -103,8 +108,11 @@ export async function clearAllLocalUserSessionData(
             k.startsWith("trouvaille_holdings_") ||
             k.startsWith("trouvaille_usdt_") ||
             k.startsWith("trouvaille_market_quotes_") ||
-            k.startsWith("trouvaille_custom_category_"))
+            k.startsWith("trouvaille_custom_category_") ||
+            k.startsWith("trouvaille_personal_") ||
+            (k.startsWith("trouvaille_") && !k.includes("theme")))
         ) {
+          if (options?.preserveGuestFlag && k === "trouvaille_guest_mode") continue;
           keysToRemove.push(k);
         }
       }
@@ -128,7 +136,14 @@ export async function clearAllLocalUserSessionData(
     console.warn("[SessionCleanup] clearAllVaultItems warning:", idbErr);
   }
 
-  // 6. Clear biometric login tokens and session vaults
+  // 6. Clear merchant category memory and in-memory caches
+  try {
+    clearMerchantMemory();
+  } catch (memErr) {
+    console.warn("[SessionCleanup] clearMerchantMemory warning:", memErr);
+  }
+
+  // 7. Clear biometric login tokens and session vaults
   try {
     clearPersistentSession();
     clearBiometricLoginCredentials();

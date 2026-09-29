@@ -5,6 +5,8 @@
 // 100% client-side — no data ever leaves the device.
 // ======================================================================
 
+import { sanitizeTransferArrowText } from "./statementParser";
+
 export interface ParsedSpreadsheet {
   /** Raw header row strings */
   headers: string[];
@@ -85,7 +87,7 @@ export async function parseExcelFile(file: File): Promise<ParsedSpreadsheet> {
         }
         return String(cell);
       }
-      return String(cell).trim();
+      return sanitizeTransferArrowText(String(cell));
     })
   );
 

@@ -53,7 +53,7 @@ import {
   type ColumnRole,
 } from "../../lib/csvColumnDetector";
 import { parseDelimitedText } from "../../lib/csvParser";
-import { useWallets, useAddWallet } from "../../hooks/useWallets";
+import { useWallets, useAddWallet, getWalletIcon } from "../../hooks/useWallets";
 import { useCategories, useAddCategory } from "../../hooks/useCategories";
 import { useAllTransactions, useBatchAddTransactions } from "../../hooks/useTransactions";
 import { useSpace } from "../../contexts/SpaceContext";
@@ -577,7 +577,11 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
           newWalletMap[normName] = existing.id;
         } else {
           try {
-            const created = await addWallet.mutateAsync({ name: name.trim() });
+            const created = await addWallet.mutateAsync({
+              name: name.trim(),
+              icon: getWalletIcon(name.trim()),
+              classification: "liquid",
+            });
             if (created?.id) {
               newWalletMap[normName] = created.id;
             }

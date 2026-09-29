@@ -144,8 +144,38 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
           } catch {}
         }
 
+        const myPersonalRow = rawData.find(
+          (row: any) =>
+            row.user_id === session.user.id &&
+            (row.id === "personal" || row.id === `personal-${session.user.id}`),
+        );
+        if (myPersonalRow) {
+          const pOverride: Partial<MoneySpace> = {
+            name: myPersonalRow.name,
+            description: myPersonalRow.description,
+            icon: myPersonalRow.icon,
+            currency: myPersonalRow.currency,
+            is_shared: Boolean(myPersonalRow.is_shared),
+            invite_code: myPersonalRow.invite_code,
+            role: "owner",
+          };
+          setPersonalOverride(pOverride);
+          try {
+            localStorage.setItem(
+              "trouvaille_personal_ledger_override_v1",
+              JSON.stringify(pOverride),
+            );
+          } catch {}
+        }
+
         const cloudSpaces: MoneySpace[] = rawData
-          .filter((row: any) => row.id !== "personal" && row.id !== "all")
+          .filter(
+            (row: any) =>
+              !(
+                row.user_id === session.user.id &&
+                (row.id === "personal" || row.id === `personal-${session.user.id}`)
+              ) && row.id !== "all",
+          )
           .map((row: any) => {
             const isOwner = row.user_id === session.user.id;
             const myMembership = Array.isArray(row.ledger_members)
@@ -398,8 +428,9 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user?.id && session.user.id !== "guest_local_user") {
+            const cloudLedgerId = willBeShared ? `personal-${session.user.id}` : "personal";
             await supabase.from("ledgers").upsert({
-              id: "personal",
+              id: cloudLedgerId,
               user_id: session.user.id,
               name: updated.name || "Personal Space",
               description: updated.description || "",
@@ -413,7 +444,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
 
             if (willBeShared) {
               await supabase.from("ledger_members").upsert({
-                ledger_id: "personal",
+                ledger_id: cloudLedgerId,
                 user_id: session.user.id,
                 role: "owner",
                 display_name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Owner",

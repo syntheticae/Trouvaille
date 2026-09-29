@@ -14,6 +14,7 @@ interface ExecutiveWalletCardProps {
   isIndonesian: boolean;
   isDark: boolean;
   wallets?: WalletType[];
+  balancesById?: Record<string, number>;
   holdings?: InvestmentHolding[];
   onDetailAsset?: (holdingOrId?: InvestmentHolding | string) => void;
   userName?: string;
@@ -31,6 +32,7 @@ export function ExecutiveWalletCard({
   isIndonesian,
   isDark,
   wallets = [],
+  balancesById,
   holdings = [],
   onDetailAsset,
   usdtRate = 15850,
@@ -122,17 +124,19 @@ export function ExecutiveWalletCard({
     });
 
     // 3. User's Real Cash Wallets (Wallets with positive balance, not investment/crypto)
-    const realCashWallets = wallets.filter(
-      (w) =>
-        Number(w.balance || 0) > 0 &&
+    const realCashWallets = wallets.filter((w) => {
+      const bal = balancesById ? (balancesById[w.id] ?? 0) : Number(w.balance || 0);
+      return (
+        bal > 0 &&
         w.classification !== "credit" &&
         w.classification !== "loan" &&
         w.classification !== "investment" &&
         !w.name.toLowerCase().includes("crypto") &&
-        !w.name.toLowerCase().includes("usdt"),
-    );
+        !w.name.toLowerCase().includes("usdt")
+      );
+    });
     realCashWallets.forEach((w) => {
-      const bal = Number(w.balance || 0);
+      const bal = balancesById ? (balancesById[w.id] ?? 0) : Number(w.balance || 0);
       const alloc = totalGrossAssets > 0 ? Math.min(100, Math.round((bal / totalGrossAssets) * 100)) : 0;
       list.push({
         id: `card-${w.id}`,
@@ -175,7 +179,7 @@ export function ExecutiveWalletCard({
     }
 
     return list;
-  }, [holdings, wallets, usdtUnits, usdtRate, netWorth, totalGrossAssets, solvencyScore, isIndonesian]);
+  }, [holdings, wallets, balancesById, usdtUnits, usdtRate, netWorth, totalGrossAssets, solvencyScore, isIndonesian]);
 
   const cardCount = rawCards.length;
   const safeActiveIndex = cardCount > 0 ? activeCardIndex % cardCount : 0;

@@ -1533,7 +1533,9 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 inputMode="decimal"
                 value={formUnits}
                 onChange={(e) =>
-                  setFormUnits(e.target.value.replace(/[^0-9.]/g, ""))
+                  setFormUnits(
+                    e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""),
+                  )
                 }
                 placeholder="100"
                 className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
@@ -1550,7 +1552,9 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
                 inputMode="decimal"
                 value={formBuyPrice}
                 onChange={(e) =>
-                  setFormBuyPrice(e.target.value.replace(/[^0-9.]/g, ""))
+                  setFormBuyPrice(
+                    e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""),
+                  )
                 }
                 placeholder={formCurrency === "USD" ? "$0.00" : "Rp"}
                 className="w-full px-3 py-2.5 rounded-2xl text-[13px] font-semibold outline-none border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
@@ -1578,7 +1582,9 @@ export function AssetValuationSheet({ isOpen, onClose }: AssetValuationSheetProp
               inputMode="decimal"
               value={formCurrentPrice}
               onChange={(e) =>
-                setFormCurrentPrice(e.target.value.replace(/[^0-9.]/g, ""))
+                setFormCurrentPrice(
+                  e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""),
+                )
               }
               placeholder={
                 isFetchingCurrentPrice

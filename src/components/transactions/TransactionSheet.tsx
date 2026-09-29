@@ -19,6 +19,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Coins,
+  Lock,
 } from "lucide-react";
 import { TransactionKeypadSheet } from "./TransactionKeypadSheet";
 import { CategorySelectorRibbon } from "./CategorySelectorRibbon";
@@ -246,7 +247,7 @@ export function TransactionSheet({
     return matches ? matches.map((m) => m.toLowerCase()) : [];
   }, [note]);
 
-  const { activeSpace, activeSpaceId } = useSpace();
+  const { activeSpace, activeSpaceId, currentUserRole } = useSpace();
 
   const selectedSpaceId = useMemo<string>(() => {
     if (transaction?.ledger_id) return transaction.ledger_id;
@@ -700,6 +701,16 @@ export function TransactionSheet({
   }, [type, wallets, walletId, toWalletId]);
 
   const handleSave = () => {
+    if (currentUserRole === "viewer") {
+      showToast(
+        isIndonesian
+          ? "Anda tidak memiliki izin untuk menyimpan transaksi (Mode Viewer)."
+          : "You do not have permission to save transactions (Viewer Mode).",
+        "info",
+      );
+      return;
+    }
+
     const isUUID = (id?: string | null) => !!id && id.trim().length > 0;
 
     const numAmount = Number(amount);
@@ -1712,6 +1723,7 @@ export function TransactionSheet({
             type="button"
             onClick={handleSave}
             disabled={
+              currentUserRole === "viewer" ||
               isSaving ||
               Number(amount) <= 0 ||
               addTx.isPending ||
@@ -1732,7 +1744,12 @@ export function TransactionSheet({
               letterSpacing: "-0.01em",
             }}
           >
-            {isSaving || addTx.isPending || updateTx.isPending ? (
+            {currentUserRole === "viewer" ? (
+              <span className="font-semibold flex items-center gap-1.5 opacity-75">
+                <Lock size={15} strokeWidth={2} />
+                {isIndonesian ? "Hanya Lihat (Viewer)" : "Read-Only (Viewer)"}
+              </span>
+            ) : isSaving || addTx.isPending || updateTx.isPending ? (
               <span className="font-semibold">
                 {isIndonesian ? "Menyimpan..." : "Saving..."}
               </span>

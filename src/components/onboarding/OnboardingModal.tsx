@@ -51,10 +51,8 @@ async function seedOnboardingCategories(
   const categoryDefs = getDefaultCategories({ currency, isIndo });
   const isGuest = !userId || userId === "guest_local_user";
 
-  const fullCategories: Category[] = categoryDefs.map((c, i) => ({
-    id: isGuest
-      ? `cat-guest-${i}-${c.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`
-      : generateUUID(),
+  const fullCategories: Category[] = categoryDefs.map((c) => ({
+    id: generateUUID(),
     user_id: isGuest ? "guest_local_user" : userId,
     name: c.name,
     emoji: c.emoji,

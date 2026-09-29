@@ -30,6 +30,7 @@ export interface ConsolidatedBalanceSheetDrawerProps {
   suggestedUsdtUnits: number;
   recordedCryptoBalance: number;
   wallets: WalletType[];
+  balancesById?: Record<string, number>;
   liquidHoldings: InvestmentHolding[];
   fixedHoldings: InvestmentHolding[];
   onOpenUsdtDetail: () => void;
@@ -54,6 +55,7 @@ export function ConsolidatedBalanceSheetDrawer({
   suggestedUsdtUnits,
   recordedCryptoBalance,
   wallets,
+  balancesById,
   liquidHoldings,
   fixedHoldings,
   onOpenUsdtDetail,
@@ -80,16 +82,18 @@ export function ConsolidatedBalanceSheetDrawer({
     (usdtPref.units > 0 || recordedCryptoBalance > 0) &&
     (!query || "usdt".includes(query) || "tether".includes(query));
 
-  const cashWallets = wallets.filter(
-    (w) =>
-      Number(w.balance || 0) > 0 &&
+  const cashWallets = wallets.filter((w) => {
+    const bal = balancesById ? (balancesById[w.id] ?? 0) : Number(w.balance || 0);
+    return (
+      bal > 0 &&
       w.classification !== "credit" &&
       w.classification !== "loan" &&
       w.classification !== "investment" &&
       !w.name.toLowerCase().includes("crypto") &&
       !w.name.toLowerCase().includes("usdt") &&
-      (!query || w.name.toLowerCase().includes(query)),
-  );
+      (!query || w.name.toLowerCase().includes(query))
+    );
+  });
   const hasTier1 = showUsdt || cashWallets.length > 0;
 
   // Tier 2 items
@@ -119,7 +123,7 @@ export function ConsolidatedBalanceSheetDrawer({
   // Liabilities (strictly debtAmt > 0)
   const liabilityWallets = wallets
     .map((w) => {
-      const bal = Number(w.balance || 0);
+      const bal = balancesById ? (balancesById[w.id] ?? 0) : Number(w.balance || 0);
       const debtAmt = Math.abs(
         bal < 0
           ? bal
@@ -401,7 +405,11 @@ export function ConsolidatedBalanceSheetDrawer({
                     <span className="text-[13px] font-bold text-[var(--text-primary)]">
                       {isStealthMode
                         ? "••••••••"
-                        : formatRupiah(Number(w.balance || 0))}
+                        : formatRupiah(
+                            balancesById
+                              ? balancesById[w.id] ?? 0
+                              : Number(w.balance || 0),
+                          )}
                     </span>
                   </div>
                 </div>

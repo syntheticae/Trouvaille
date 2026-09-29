@@ -189,6 +189,23 @@ export function sanitizeNote(note: string): string {
   return trimmed;
 }
 
+/**
+ * Normalizes multi-byte arrow artifacts (â†’, \u2192, \u21D2, -->, ->, =>),
+ * non-breaking spaces (\u00A0), zero-width spaces (\u200B), and language prepositions ('to', 'ke')
+ * into standard clean "→".
+ */
+export function sanitizeTransferArrowText(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\u00A0/g, " ")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/â†’/g, "→")
+    .replace(/[\u2192\u21D2\u2794\u279C\u27A1]/g, "→")
+    .replace(/\s*(?:-->|->|=>|\bto\b|\bke\b)\s*/gi, " → ")
+    .replace(/\s*→\s*/g, " → ")
+    .trim();
+}
+
 // -----------------------------------------------------------------------
 // Bank Narration Cleaner
 // -----------------------------------------------------------------------
@@ -435,14 +452,14 @@ export function parseStatementText(
       let destinationWalletName: string | null = null;
 
       if (cm.walletCol !== null && cols[cm.walletCol]) {
-        const rawWallet = cols[cm.walletCol].trim();
+        const rawWallet = sanitizeTransferArrowText(cols[cm.walletCol]);
         if (rawWallet) {
-          // Check for transfer arrow pattern: "BNI → Blu", "BNI -> Blu", "BNI to Blu"
-          const arrowMatch = rawWallet.match(/^(.+?)\s*(?:→|->|\bto\b)\s*(.+)$/i);
-          if (arrowMatch) {
+          // Check for transfer arrow pattern: "BNI → Blu"
+          const arrowParts = rawWallet.split(" → ");
+          if (arrowParts.length === 2 && arrowParts[0].trim() && arrowParts[1].trim()) {
             type = "transfer";
-            const srcName = arrowMatch[1].trim();
-            const dstName = arrowMatch[2].trim();
+            const srcName = arrowParts[0].trim();
+            const dstName = arrowParts[1].trim();
             itemWalletName = srcName;
             destinationWalletName = dstName;
 

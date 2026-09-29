@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import type { Wallet, AccountClassification } from "../lib/types";
+import { generateUUID } from "../lib/utils";
 
 export const WALLET_CLASSIFICATION_STORAGE_KEY =
   "trouvaille_wallet_classifications_v1";
@@ -372,7 +373,7 @@ export function useEnsureDefaultWallets() {
 
 import { useAuth } from "../contexts/AuthContext";
 import { format } from "date-fns";
-import { generateUUID, TX_BACKUP_STORAGE_KEY } from "./useTransactions";
+import { TX_BACKUP_STORAGE_KEY } from "./useTransactions";
 import type { Transaction } from "../lib/types";
 
 function withTimeout<T>(promise: PromiseLike<T>, ms = 6000): Promise<T> {
@@ -404,8 +405,8 @@ export async function seedOnboardingWallets(
   const now = new Date().toISOString();
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const seeded: Wallet[] = selectedWallets.map((w, idx) => ({
-    id: isGuest ? `wallet-onboard-${idx}-${Date.now()}` : generateUUID(),
+  const seeded: Wallet[] = selectedWallets.map((w) => ({
+    id: generateUUID(),
     user_id: isGuest ? "guest_local_user" : userId!,
     name: w.name,
     icon: w.icon || getWalletIcon(w.name),
@@ -593,7 +594,7 @@ export function useAddWallet() {
 
       if (isGuest || !authUser) {
         const guestWallet: Wallet = {
-          id: `custom-wallet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          id: generateUUID(),
           user_id: authUser?.id || "guest_local_user",
           name: w.name.trim(),
           icon: finalIcon,
@@ -643,7 +644,7 @@ export function useAddWallet() {
         } catch (fallbackErr) {
           console.warn("[useAddWallet] Cloud insert failed, saving to local backup:", fallbackErr);
           const localFallback: Wallet = {
-            id: `offline-wallet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            id: generateUUID(),
             user_id: authUser.id,
             name: w.name.trim(),
             icon: finalIcon,
