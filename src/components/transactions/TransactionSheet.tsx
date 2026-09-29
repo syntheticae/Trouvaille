@@ -700,11 +700,7 @@ export function TransactionSheet({
   }, [type, wallets, walletId, toWalletId]);
 
   const handleSave = () => {
-    const isUUID = (id?: string | null) =>
-      !!id &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        id,
-      );
+    const isUUID = (id?: string | null) => !!id && id.trim().length > 0;
 
     const numAmount = Number(amount);
     if (

@@ -691,7 +691,7 @@ export function calculateWalletBalances(
     }
   });
 
-  const liquidCapital = liquidAccounts.reduce((s, a) => s + Math.max(0, a.balance), 0);
+  const liquidCapital = liquidAccounts.reduce((s, a) => s + a.balance, 0);
   const creditDebt = creditAccounts.reduce((s, a) => s + Math.abs(Math.min(0, a.balance)), 0);
   const liquidNetPosition = liquidCapital - creditDebt;
   const marketAssets = marketAccounts.reduce((s, a) => s + Math.max(0, a.balance), 0);

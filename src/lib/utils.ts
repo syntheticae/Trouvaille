@@ -92,8 +92,14 @@ export function getDateLabel(dateStr: string): string {
 export function formatHoldingUnits(units: number | string | null | undefined): string {
   const val = Number(units);
   if (isNaN(val) || val === 0) return "0";
-  if (Math.abs(val) >= 1) {
-    return Math.round(val).toLocaleString();
-  }
-  return parseFloat(val.toFixed(4)).toString();
+  // Support up to 8 decimal places (crypto like BTC, ETH may have fractional units >= 1)
+  const fmt = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 8,
+  });
+  const formatted = fmt.format(val);
+  // Trim trailing zeros after decimal point
+  return formatted.includes(".")
+    ? formatted.replace(/\.?(0+)$/, "")
+    : formatted;
 }

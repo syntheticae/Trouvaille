@@ -50,6 +50,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useWallets } from "../hooks/useWallets";
+import { useWalletBalances } from "../hooks/useWalletBalances";
 import { useAllTransactions } from "../hooks/useTransactions";
 import {
   fetchCryptoPriceInIDR,
@@ -158,6 +159,7 @@ export function AssetsPage() {
   const [bsRange, setBsRange] = useState<BalanceSheetRange>("7D");
 
   const { data: wallets = [] } = useWallets();
+  const { balancesById } = useWalletBalances();
   const { data: allTxs = [] } = useAllTransactions();
 
   // USDT State
@@ -324,8 +326,8 @@ export function AssetsPage() {
           w.classification !== "investment" &&
           w.id !== cryptoWallet?.id,
       )
-      .reduce((sum, w) => sum + Math.max(0, Number(w.balance || 0)), 0);
-  }, [wallets, cryptoWallet]);
+      .reduce((sum, w) => sum + (balancesById[w.id] ?? 0), 0);
+  }, [wallets, cryptoWallet, balancesById]);
   const liquidAssetsTotal = liquidWalletCash + usdtMarketValue;
 
   // Pillar 2: Market & Growth Assets (Equities, Growth Crypto, Mutual Funds)
@@ -366,10 +368,10 @@ export function AssetsPage() {
         (w) =>
           w.classification === "credit" ||
           w.classification === "loan" ||
-          Number(w.balance || 0) < 0,
+          (balancesById[w.id] ?? 0) < 0,
       )
       .reduce((sum, w) => {
-        const bal = Number(w.balance || 0);
+        const bal = balancesById[w.id] ?? 0;
         return (
           sum +
           Math.abs(
@@ -381,7 +383,7 @@ export function AssetsPage() {
           )
         );
       }, 0);
-  }, [wallets]);
+  }, [wallets, balancesById]);
 
   // Balance Sheet Totals & Solvency Metrics
   const totalGrossAssets =
@@ -546,7 +548,7 @@ export function AssetsPage() {
     wallets
       .filter(
         (w) =>
-          Number(w.balance || 0) > 0 &&
+          (balancesById[w.id] ?? 0) > 0 &&
           w.classification !== "credit" &&
           w.classification !== "loan" &&
           w.classification !== "investment" &&
@@ -559,7 +561,7 @@ export function AssetsPage() {
           sublabel: isIndonesian
             ? "Kas & Rekening Operasional"
             : "Cash & Bank Account",
-          amount: Number(w.balance || 0),
+          amount: balancesById[w.id] ?? 0,
           detail: "IDR",
         });
       });
@@ -688,10 +690,10 @@ export function AssetsPage() {
       (w) =>
         w.classification === "credit" ||
         w.classification === "loan" ||
-        Number(w.balance || 0) < 0,
+        (balancesById[w.id] ?? 0) < 0,
     );
     const items = debtWallets.map((w) => {
-      const bal = Number(w.balance || 0);
+      const bal = balancesById[w.id] ?? 0;
       const debtAmt = Math.abs(
         bal < 0
           ? bal
@@ -2286,9 +2288,12 @@ export function AssetsPage() {
           {/* Category Chips Carousel */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
             {(
-              [
-                { key: "all", label: isIndonesian ? "Semua" : "All" },
+              [\n                { key: "all", label: isIndonesian ? "Semua" : "All" },
                 { key: "crypto", label: "Crypto" },
+                {
+                  key: "valas",
+                  label: isIndonesian ? "Valas" : "FX / Valas",
+                },
                 {
                   key: "stock_us",
                   label: isIndonesian ? "Saham AS" : "US Stocks",

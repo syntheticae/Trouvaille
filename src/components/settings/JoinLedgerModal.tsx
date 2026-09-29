@@ -98,9 +98,9 @@ export function JoinLedgerContent({
     };
   }, [initialCode, stopCameraStream]);
 
-  // Parse raw text extracted from QR
+  // Parse raw text extracted from QR — auto-joins immediately on detection
   const processQrText = useCallback(
-    (raw: string) => {
+    async (raw: string) => {
       let codeToJoin = raw.trim();
 
       // Check if it's a URL (trouvaille://join?code=... or https://trouvaille.app/join?code=...)
@@ -117,13 +117,34 @@ export function JoinLedgerContent({
       const clean = normalizeInviteCode(codeToJoin);
       if (clean) {
         triggerSuccessHaptic();
-        setInviteCodeInput(clean);
-        setActiveTab("code");
         stopCameraStream();
-        showToast(
-          isIndonesian ? "Kode QR terdeteksi!" : "QR code detected!",
-          "add",
-        );
+        // Auto-join immediately without requiring manual submit
+        setIsSubmitting(true);
+        setErrorMessage(null);
+        try {
+          const result = await joinSharedSpace(clean, displayNameInput.trim() || undefined);
+          if (result.success) {
+            showToast(
+              isIndonesian
+                ? `Berhasil bergabung ke '${result.ledger_name || "Space Bersama"}'!`
+                : `Joined '${result.ledger_name || "Shared Space"}' successfully!`,
+              "add",
+            );
+            if (onSuccess) {
+              onSuccess(result.ledger_name);
+            }
+          } else {
+            setErrorMessage(result.message);
+            setInviteCodeInput(clean);
+            setActiveTab("code");
+          }
+        } catch (err: any) {
+          setErrorMessage(err.message || (isIndonesian ? "Gagal memproses kode." : "Failed to process code."));
+          setInviteCodeInput(clean);
+          setActiveTab("code");
+        } finally {
+          setIsSubmitting(false);
+        }
       } else {
         setCameraError(
           isIndonesian
@@ -132,7 +153,7 @@ export function JoinLedgerContent({
         );
       }
     },
-    [isIndonesian, showToast, stopCameraStream],
+    [isIndonesian, showToast, stopCameraStream, joinSharedSpace, displayNameInput, onSuccess],
   );
 
   // Start video stream

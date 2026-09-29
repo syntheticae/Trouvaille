@@ -133,7 +133,7 @@ import { useTheme } from "./contexts/ThemeContext";
 
 function AppShell() {
   const { user, isGuest, exitGuestMode } = useAuth();
-  const { activeSpaceId, setActiveSpaceId } = useSpace();
+  const { activeSpaceId, setActiveSpaceId, currentUserRole } = useSpace();
   const navigate = useNavigate();
 
   useRealtimeSync(user?.id, {
@@ -1127,11 +1127,42 @@ function AppShell() {
       {!addSheetOpen && (
         <BottomTabBar
           onOpenAdd={() => {
+            if (currentUserRole === "viewer") {
+              showToast(
+                isIndonesian
+                  ? "Anda hanya dapat melihat sebagai anggota Viewer."
+                  : "You can only view as a Viewer member.",
+                "info",
+              );
+              return;
+            }
             setPrefilledValues(null);
             setAddSheetOpen(true);
           }}
-          onOpenVoiceAdd={() => setVoiceModalOpen(true)}
-          onOpenScan={() => setReceiptScanOpen(true)}
+          onOpenVoiceAdd={() => {
+            if (currentUserRole === "viewer") {
+              showToast(
+                isIndonesian
+                  ? "Anda hanya dapat melihat sebagai anggota Viewer."
+                  : "You can only view as a Viewer member.",
+                "info",
+              );
+              return;
+            }
+            setVoiceModalOpen(true);
+          }}
+          onOpenScan={() => {
+            if (currentUserRole === "viewer") {
+              showToast(
+                isIndonesian
+                  ? "Anda hanya dapat melihat sebagai anggota Viewer."
+                  : "You can only view as a Viewer member.",
+                "info",
+              );
+              return;
+            }
+            setReceiptScanOpen(true);
+          }}
         />
       )}
 

@@ -7,7 +7,8 @@ export type PresetCategory =
   | "stock_id"
   | "gold"
   | "mutual_fund"
-  | "fixed_asset";
+  | "fixed_asset"
+  | "valas";
 
 export interface PresetAsset {
   symbol: string;
@@ -20,6 +21,14 @@ export interface PresetAsset {
 
 export const PRESET_ASSETS: PresetAsset[] = [
   // Crypto
+  {
+    symbol: "USDT",
+    name: "Tether USD (Stablecoin)",
+    type: "crypto",
+    category: "crypto",
+    suggestedCurrency: "USD",
+    icon: "Coins",
+  },
   {
     symbol: "BTC",
     name: "Bitcoin",
@@ -285,5 +294,71 @@ export const PRESET_ASSETS: PresetAsset[] = [
     category: "fixed_asset",
     suggestedCurrency: "IDR",
     icon: "Coins",
+  },
+
+  // Valas (Foreign Currency Holdings)
+  {
+    symbol: "USD",
+    name: "US Dollar",
+    type: "crypto",
+    category: "valas",
+    suggestedCurrency: "USD",
+    icon: "Banknote",
+  },
+  {
+    symbol: "EUR",
+    name: "Euro",
+    type: "crypto",
+    category: "valas",
+    suggestedCurrency: "USD",
+    icon: "Banknote",
+  },
+  {
+    symbol: "SGD",
+    name: "Singapore Dollar",
+    type: "crypto",
+    category: "valas",
+    suggestedCurrency: "USD",
+    icon: "Banknote",
+  },
+  {
+    symbol: "JPY",
+    name: "Japanese Yen",
+    type: "crypto",
+    category: "valas",
+    suggestedCurrency: "USD",
+    icon: "Banknote",
+  },
+  {
+    symbol: "GBP",
+    name: "British Pound",
+    type: "crypto",
+    category: "valas",
+    suggestedCurrency: "USD",
+    icon: "Banknote",
+  },
+  {
+    symbol: "AUD",
+    name: "Australian Dollar",
+    type: "crypto",
+    category: "valas",
+    suggestedCurrency: "USD",
+    icon: "Banknote",
+  },
+  {
+    symbol: "CNY",
+    name: "Chinese Yuan",
+    type: "crypto",
+    category: "valas",
+    suggestedCurrency: "USD",
+    icon: "Banknote",
+  },
+  {
+    symbol: "MYR",
+    name: "Malaysian Ringgit",
+    type: "crypto",
+    category: "valas",
+    suggestedCurrency: "USD",
+    icon: "Banknote",
   },
 ];

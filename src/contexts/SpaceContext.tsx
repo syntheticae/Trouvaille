@@ -183,6 +183,19 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
             } catch {}
             return merged;
           });
+          // Re-validate activeSpaceId: if it points to a now-loaded space, confirm it
+          // This fixes the race condition where activeSpaceId was set before cloudSpaces loaded
+          setActiveSpaceIdState((curr) => {
+            const savedActive = (() => {
+              try { return localStorage.getItem(ACTIVE_SPACE_KEY) || ""; } catch { return ""; }
+            })();
+            const targetId = savedActive || curr;
+            const allIds = cloudSpaces.map((s) => s.id);
+            if (targetId !== "personal" && allIds.includes(targetId)) {
+              return targetId;
+            }
+            return curr;
+          });
         }
       }
     } catch {
@@ -235,8 +248,11 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
 
   const setDefaultLedger = useCallback(async (targetId: string) => {
     setDefaultSpaceIdState(targetId);
+    // Also switch to this space immediately
+    setActiveSpaceIdState(targetId);
     try {
       localStorage.setItem(DEFAULT_LEDGER_KEY, targetId);
+      localStorage.setItem(ACTIVE_SPACE_KEY, targetId);
     } catch {}
 
     setCustomSpaces((prev) => {
