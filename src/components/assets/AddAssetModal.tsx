@@ -3,11 +3,11 @@ import {
   X,
   Search,
   Loader2,
-  ArrowLeft,
   Building2,
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
+  Wallet as WalletIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -27,6 +27,9 @@ import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useWallets } from "../../hooks/useWallets";
+import { useWalletBalances } from "../../hooks/useWalletBalances";
+import { useAddTransaction } from "../../hooks/useTransactions";
 
 function parseCleanNumber(val: string): number {
   if (!val) return 0;
@@ -128,6 +131,25 @@ export function AddAssetModal({
   const [isDepreciationEnabled, setIsDepreciationEnabled] = useState(false);
   const [annualRate, setAnnualRate] = useState("15");
 
+  // Wallet Funding Source State
+  const { data: wallets = [] } = useWallets();
+  const { balancesById } = useWalletBalances();
+  const addTx = useAddTransaction();
+  const [isDeductFromWallet, setIsDeductFromWallet] = useState(false);
+  const [selectedDeductWalletId, setSelectedDeductWalletId] = useState<string>("");
+
+  const fundingWallets = useMemo(() => {
+    return wallets.filter(
+      (w) => w.classification !== "credit" && w.classification !== "loan",
+    );
+  }, [wallets]);
+
+  useEffect(() => {
+    if (!selectedDeductWalletId && fundingWallets.length > 0) {
+      setSelectedDeductWalletId(fundingWallets[0].id);
+    }
+  }, [fundingWallets, selectedDeductWalletId]);
+
   // Handle ESC key to dismiss modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -142,6 +164,7 @@ export function AddAssetModal({
   // Reset or initialize on open / change
   useEffect(() => {
     if (!isOpen) return;
+    setIsDeductFromWallet(false);
 
     if (editingHolding) {
       setPhase(2);
@@ -294,6 +317,7 @@ export function AddAssetModal({
     setIsDepreciationEnabled(type === "fixed_asset");
     setAnnualRate(type === "fixed_asset" ? "10" : "15");
     setFormPurchaseDate(new Date().toISOString().split("T")[0]);
+    checkDepreciationHeuristic(searchQuery.trim(), type);
     setPhase(2);
   };
 
@@ -316,7 +340,7 @@ export function AddAssetModal({
   }, [formUnits, formBuyPrice, formCurrentPrice]);
 
   // Handle Save
-  const handleSave = () => {
+  const handleSave = async () => {
     const units = parseCleanNumber(formUnits);
     const rawBuy = parseCleanNumber(formBuyPrice);
     const rawCurrent = parseCleanNumber(formCurrentPrice) || rawBuy;
@@ -363,6 +387,29 @@ export function AddAssetModal({
       isDepreciationEnabled && !isNaN(parsedRate) && parsedRate > 0
         ? -Math.abs(parsedRate)
         : undefined;
+
+    // Deduct from wallet if requested
+    if (!editingHolding && isDeductFromWallet && selectedDeductWalletId) {
+      try {
+        const totalOutlay = buyPrice * units;
+        if (totalOutlay > 0) {
+          await addTx.mutateAsync({
+            amount: totalOutlay,
+            type: "expense",
+            wallet_id: selectedDeductWalletId,
+            category_id: null,
+            occurred_on: formPurchaseDate
+              ? `${formPurchaseDate}T12:00:00`
+              : new Date().toISOString(),
+            note: isIndonesian
+              ? `Pembelian Aset: ${formName.trim()} (${units} ${symbol})`
+              : `Asset Purchase: ${formName.trim()} (${units} ${symbol})`,
+          });
+        }
+      } catch (err) {
+        console.warn("[AddAssetModal] Error debiting source wallet:", err);
+      }
+    }
 
     // Special USDT Holding
     if (symbol === "USDT") {
@@ -1271,6 +1318,137 @@ export function AddAssetModal({
                       />
                     )}
                   </div>
+
+                  {/* Funding Source Deduction Toggle */}
+                  {!editingHolding && (
+                    <div
+                      className="p-3.5 rounded-2xl transition-all space-y-3"
+                      style={{
+                        background: isDeductFromWallet
+                          ? isDark
+                            ? "rgba(255,255,255,0.06)"
+                            : "rgba(0,0,0,0.04)"
+                          : controlBg,
+                        border: isDeductFromWallet
+                          ? isDark
+                            ? "1px solid rgba(255,255,255,0.14)"
+                            : "1px solid rgba(0,0,0,0.1)"
+                          : controlBorder,
+                        boxShadow: controlShadow,
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <div
+                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                            style={{
+                              background: isDark
+                                ? "rgba(255,255,255,0.08)"
+                                : "rgba(0,0,0,0.05)",
+                              border: "1px solid var(--glass-border)",
+                            }}
+                          >
+                            <WalletIcon
+                              size={14}
+                              className="text-[var(--text-primary)]"
+                              strokeWidth={1.75}
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[13px] font-semibold text-[var(--text-primary)] block leading-tight">
+                              {isIndonesian
+                                ? "Potong dari Akun Kas / RDN"
+                                : "Deduct from Cash / Brokerage Account"}
+                            </span>
+                            <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
+                              {isIndonesian
+                                ? "Catat transaksi mutasi otomatis agar saldo kas berkurang sesuai nominal modal beli"
+                                : "Automatically record expense transaction to debit source account"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Apple iOS Style Toggle Switch */}
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={isDeductFromWallet}
+                          onClick={() => {
+                            triggerHaptic("light");
+                            setIsDeductFromWallet((prev) => !prev);
+                          }}
+                          className={`relative inline-flex h-5.5 w-10 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${
+                            isDeductFromWallet
+                              ? isDark
+                                ? "bg-white"
+                                : "bg-black"
+                              : isDark
+                                ? "bg-white/20"
+                                : "bg-black/20"
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full shadow-md ring-0 transition duration-200 ease-in-out mt-0.5 ${
+                              isDeductFromWallet
+                                ? isDark
+                                  ? "translate-x-5 bg-black"
+                                  : "translate-x-5 bg-white"
+                                : "translate-x-0.5 bg-white"
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {/* Wallet selector when toggle is enabled */}
+                      {isDeductFromWallet && (
+                        <div className="pt-2 border-t border-[var(--glass-border)] space-y-2">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                            {isIndonesian
+                              ? "Pilih Akun Sumber Dana"
+                              : "Select Source Account"}
+                          </span>
+                          {fundingWallets.length === 0 ? (
+                            <p className="text-[11px] text-[var(--text-tertiary)] italic">
+                              {isIndonesian
+                                ? "Tidak ada rekening kas yang tersedia"
+                                : "No cash accounts available"}
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                              {fundingWallets.map((w) => {
+                                const isSelected = selectedDeductWalletId === w.id;
+                                const bal = balancesById[w.id] ?? 0;
+                                return (
+                                  <button
+                                    key={w.id}
+                                    type="button"
+                                    onClick={() => {
+                                      triggerHaptic("light");
+                                      setSelectedDeductWalletId(w.id);
+                                    }}
+                                    className={`p-2.5 rounded-xl text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                      isSelected
+                                        ? isDark
+                                          ? "bg-white/12 border border-white/25 shadow-sm"
+                                          : "bg-black/10 border border-black/20 shadow-sm"
+                                        : "bg-white/[0.03] border border-[var(--glass-border)] opacity-70 hover:opacity-100"
+                                    }`}
+                                  >
+                                    <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate block">
+                                      {w.name}
+                                    </span>
+                                    <span className="text-[10.5px] font-mono text-[var(--text-secondary)] mt-1">
+                                      {formatRupiah(bal)}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Live Position Valuation Hero Card Preview */}
                   {parseCleanNumber(formUnits) > 0 &&

@@ -23,6 +23,7 @@ import {
   type UsdtValuationPref,
 } from "../../lib/marketPriceService";
 import { useUpdateWallet } from "../../hooks/useWallets";
+import { useWalletBalances } from "../../hooks/useWalletBalances";
 
 export interface ConvertWalletToAssetModalProps {
   isOpen: boolean;
@@ -45,8 +46,9 @@ export function ConvertWalletToAssetModal({
   const { isIndonesian } = useLanguage();
   const updateWallet = useUpdateWallet();
 
+  const { balancesById } = useWalletBalances();
   const effectiveRate = liveRate > 5000 && liveRate < 50000 ? liveRate : 16415;
-  const walletBalance = Number(wallet?.balance || 0);
+  const walletBalance = wallet ? (balancesById[wallet.id] ?? Number(wallet?.balance || 0)) : 0;
 
   // Form State
   const [rateInput, setRateInput] = useState<string>(String(effectiveRate));

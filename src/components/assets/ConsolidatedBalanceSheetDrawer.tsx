@@ -77,24 +77,54 @@ export function ConsolidatedBalanceSheetDrawer({
 
   const query = search.trim().toLowerCase();
 
+  // Determine if crypto/USDT wallet is classified as investment
+  const isCryptoClassifiedAsInvestment = wallets.some(
+    (w) =>
+      (w.name.toLowerCase().includes("usdt") ||
+        w.name.toLowerCase().includes("crypto") ||
+        w.name.toLowerCase().includes("tether") ||
+        w.name.toLowerCase().includes("binance") ||
+        w.name.toLowerCase().includes("tokocrypto") ||
+        w.name.toLowerCase().includes("bybit") ||
+        w.name.toLowerCase().includes("indodax") ||
+        w.name.toLowerCase().includes("pintu")) &&
+      w.classification === "investment",
+  );
+
   // Tier 1 items
-  const showUsdt =
+  const showUsdtInTier1 =
+    !isCryptoClassifiedAsInvestment &&
     (usdtPref.units > 0 || recordedCryptoBalance > 0) &&
     (!query || "usdt".includes(query) || "tether".includes(query));
 
+  // Tier 2 items
+  const showUsdtInTier2 =
+    isCryptoClassifiedAsInvestment &&
+    (usdtPref.units > 0 || recordedCryptoBalance > 0) &&
+    (!query || "usdt".includes(query) || "tether".includes(query));
+
+  const showUsdt = showUsdtInTier1 || showUsdtInTier2;
+
   const cashWallets = wallets.filter((w) => {
     const bal = balancesById ? (balancesById[w.id] ?? 0) : Number(w.balance || 0);
+    const isCrypto =
+      w.name.toLowerCase().includes("crypto") ||
+      w.name.toLowerCase().includes("usdt") ||
+      w.name.toLowerCase().includes("tether") ||
+      w.name.toLowerCase().includes("binance") ||
+      w.name.toLowerCase().includes("tokocrypto") ||
+      w.name.toLowerCase().includes("bybit") ||
+      w.name.toLowerCase().includes("indodax") ||
+      w.name.toLowerCase().includes("pintu");
     return (
       bal > 0 &&
       w.classification !== "credit" &&
       w.classification !== "loan" &&
-      w.classification !== "investment" &&
-      !w.name.toLowerCase().includes("crypto") &&
-      !w.name.toLowerCase().includes("usdt") &&
+      !isCrypto &&
       (!query || w.name.toLowerCase().includes(query))
     );
   });
-  const hasTier1 = showUsdt || cashWallets.length > 0;
+  const hasTier1 = showUsdtInTier1 || cashWallets.length > 0;
 
   // Tier 2 items
   const growthItems = liquidHoldings.filter(
@@ -107,7 +137,7 @@ export function ConsolidatedBalanceSheetDrawer({
         h.name.toLowerCase().includes(query) ||
         h.symbol.toLowerCase().includes(query)),
   );
-  const hasTier2 = growthItems.length > 0;
+  const hasTier2 = showUsdtInTier2 || growthItems.length > 0;
 
   // Tier 3 items
   const fixedItems = fixedHoldings
@@ -318,7 +348,7 @@ export function ConsolidatedBalanceSheetDrawer({
               </div>
 
               {/* USDT Row */}
-              {showUsdt && (
+              {showUsdtInTier1 && (
                 <div
                   onClick={() => {
                     handleClose();
@@ -397,7 +427,18 @@ export function ConsolidatedBalanceSheetDrawer({
                         {w.name}
                       </p>
                       <p className="text-[11px] text-[var(--text-tertiary)] truncate font-sans">
-                        {isIndonesian ? "Kas / Rekening Bank" : "Cash / Bank"}
+                        {w.classification === "investment" ||
+                        w.name.toLowerCase().includes("rdn") ||
+                        w.name.toLowerCase().includes("ajaib") ||
+                        w.name.toLowerCase().includes("stockbit") ||
+                        w.name.toLowerCase().includes("bibit") ||
+                        w.name.toLowerCase().includes("pluang")
+                          ? isIndonesian
+                            ? "Kas RDN / Kustodi Broker"
+                            : "Uninvested Broker Cash"
+                          : isIndonesian
+                            ? "Kas / Rekening Bank"
+                            : "Cash / Bank"}
                       </p>
                     </div>
                   </div>
@@ -444,6 +485,46 @@ export function ConsolidatedBalanceSheetDrawer({
                   {isStealthMode ? "••••••••" : formatRupiah(growthAssetsTotal)}
                 </span>
               </div>
+
+              {/* USDT Row when classified as Investment */}
+              {showUsdtInTier2 && (
+                <div
+                  onClick={() => {
+                    handleClose();
+                    onOpenUsdtDetail();
+                  }}
+                  className="p-3 sm:p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform border border-[var(--glass-border)] hover:bg-[var(--glass-fill-strong)]"
+                  style={{ background: "var(--glass-fill)" }}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0 font-mono font-bold text-sm">
+                      ₮
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-[13px] text-[var(--text-primary)]">
+                          USDT (Tether)
+                        </span>
+                        <span className="text-[8.5px] px-1.5 py-0.5 rounded font-sans font-semibold tracking-wider bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)] uppercase">
+                          INVESTMENT
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5 font-sans">
+                        {usdtPref.units > 0
+                          ? `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`
+                          : `Wallet linked · ${formatHoldingUnits(suggestedUsdtUnits)} USDT`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 pl-2">
+                    <span className="text-[13px] font-mono font-bold text-[var(--text-primary)] block leading-tight">
+                      {isStealthMode
+                        ? "••••••••"
+                        : formatRupiah(usdtMarketValue)}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {growthItems.map((h) => {
                 const val = calculateHoldingValuation(h);

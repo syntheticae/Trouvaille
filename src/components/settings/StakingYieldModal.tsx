@@ -24,6 +24,11 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useAddTransaction } from "../../hooks/useTransactions";
 import { useCategories } from "../../hooks/useCategories";
 import { syncTransactionWithHolding } from "../../lib/holdingSyncEngine";
+import {
+  recordHoldingActivity,
+  upsertHolding,
+  getStandardUsdtHoldingId,
+} from "../../lib/marketPriceService";
 import { format, subDays } from "date-fns";
 import type { Wallet, InvestmentHolding } from "../../lib/types";
 
@@ -393,7 +398,13 @@ export function StakingYieldModal({
         return;
       }
 
-      const defaultNote = `Staking Yield USDT (+${unitsToClaim} USDT · ${isAutoCompound ? "Auto-Compound" : "Payout"})`;
+      const defaultNote = `Staking Yield ${holdingSymbol} (+${unitsToClaim} ${holdingSymbol} · ${
+        isAutoCompound
+          ? "Auto-Compound"
+          : isIndonesian
+            ? "Pencairan Kas"
+            : "Payout"
+      })`;
       const finalNote = claimNote.trim() || defaultNote;
       const newTxId = `tx-staking-${Date.now()}`;
 
@@ -422,6 +433,46 @@ export function StakingYieldModal({
           note: finalNote,
         });
       } else {
+        const cleanSymbol = (holdingSymbol || "USDT").trim().toUpperCase();
+        const targetHolding = (holdings || []).find(
+          (h) => h.symbol?.toUpperCase() === cleanSymbol,
+        );
+        let targetHoldingId = targetHolding?.id;
+        if (!targetHoldingId) {
+          if (cleanSymbol === "USDT") {
+            targetHoldingId = getStandardUsdtHoldingId(userId);
+          } else {
+            targetHoldingId = `holding-${cleanSymbol.toLowerCase()}-${Date.now()}`;
+            upsertHolding(
+              {
+                id: targetHoldingId,
+                user_id: userId,
+                symbol: cleanSymbol,
+                name: cleanSymbol,
+                asset_type: "crypto",
+                units: 0,
+                avg_buy_price: effectiveRate,
+                current_price: effectiveRate,
+                currency: "IDR",
+                icon: "Coins",
+                activities: [],
+              },
+              userId,
+            );
+          }
+        }
+        recordHoldingActivity(
+          targetHoldingId,
+          {
+            type: "buy",
+            units: unitsToClaim,
+            price_per_unit: effectiveRate,
+            total_amount: idrAmount,
+            date: claimDate,
+            note: finalNote,
+          },
+          userId,
+        );
         syncTransactionWithHolding(txPayload, wallets, userId);
       }
 

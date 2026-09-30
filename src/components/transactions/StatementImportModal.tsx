@@ -622,7 +622,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
     for (let i = 0; i < selectedItems.length; i += CHUNK_SIZE) {
       const chunk = selectedItems.slice(i, i + CHUNK_SIZE);
 
-      const payload = chunk.map((item) => {
+      const payload = chunk.map((item, chunkIdx) => {
         // Resolve wallet
         let finalWalletId: string | null = selectedWalletId;
         if (!finalWalletId) {
@@ -668,10 +668,23 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
           }
         }
 
-        // Include time in occurred_on ISO timestamp if available
+        // Include time in occurred_on ISO timestamp (Rule 8.1: full ISO timestamps YYYY-MM-DDTHH:mm:ss)
         let occurredOn = item.date;
         if (item.time) {
-          occurredOn = `${item.date}T${item.time}`;
+          const timeParts = item.time.split(":");
+          const hh = (timeParts[0] || "00").padStart(2, "0");
+          const mm = (timeParts[1] || "00").padStart(2, "0");
+          const ss = (timeParts[2] || "00").padStart(2, "0");
+          occurredOn = `${item.date}T${hh}:${mm}:${ss}`;
+        } else {
+          // If no time provided, synthesize chronological micro-offset from statement row index
+          // so same-day transactions maintain statement sequence and don't collide at 00:00:00
+          const globalIdx = i + chunkIdx;
+          const totalMinutes = Math.min(globalIdx, 1439);
+          const hh = String(Math.floor(totalMinutes / 60) % 24).padStart(2, "0");
+          const mm = String(totalMinutes % 60).padStart(2, "0");
+          const ss = String(globalIdx % 60).padStart(2, "0");
+          occurredOn = `${item.date}T${hh}:${mm}:${ss}`;
         }
 
         return {

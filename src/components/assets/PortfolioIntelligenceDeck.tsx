@@ -27,6 +27,7 @@ import {
   calculateHoldingValuation,
 } from "../../lib/marketPriceService";
 import type { InvestmentHolding, Wallet } from "../../lib/types";
+import { useWalletBalances } from "../../hooks/useWalletBalances";
 
 interface PortfolioIntelligenceDeckProps {
   holdings: InvestmentHolding[];
@@ -52,11 +53,28 @@ export function PortfolioIntelligenceDeck({
 
   // 1. USDT & Recorded Wallet Balances
   const usdtPref = useMemo(() => getSavedUsdtPref(user?.id), [user?.id]);
+  const { balancesById } = useWalletBalances();
   const recordedCryptoBalance = useMemo(() => {
     return wallets
-      .filter((w) => (w as any).type === "crypto" || (w as any).category === "crypto")
-      .reduce((sum, w) => sum + (Number(w.balance) || 0), 0);
-  }, [wallets]);
+      .filter((w) => {
+        const lower = w.name.toLowerCase();
+        return (
+          w.classification === "investment" ||
+          lower.includes("crypto") ||
+          lower.includes("usdt") ||
+          lower.includes("tether") ||
+          lower.includes("binance") ||
+          lower.includes("tokocrypto") ||
+          lower.includes("bybit") ||
+          lower.includes("indodax") ||
+          lower.includes("pintu")
+        );
+      })
+      .reduce(
+        (sum, w) => sum + (balancesById[w.id] ?? Number(w.balance || 0)),
+        0,
+      );
+  }, [wallets, balancesById]);
 
   const usdtCostBasis =
     usdtPref.costBasis && usdtPref.costBasis > 0

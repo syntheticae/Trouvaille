@@ -1337,27 +1337,52 @@ export function TransactionSheet({
           )}
 
           {/* Duplicate Transaction Warning (Monochrome Apple Luxury Alert) */}
-          {isDuplicateDetected && (
+          {(isDuplicateDetected || duplicateWarningAcknowledged) && (
             <motion.div
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-3 mx-2 px-3 py-2 rounded-xl flex items-center gap-2 text-[12px] font-medium"
+              className="mt-3 mx-2 px-3.5 py-2.5 rounded-xl flex items-center justify-between gap-3 text-[12px] font-medium"
               style={{
-                background: "rgba(239, 68, 68, 0.1)",
-                color: "#fca5a5",
-                border: "1px solid rgba(239, 68, 68, 0.2)",
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.06)"
+                  : "rgba(0, 0, 0, 0.04)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--glass-border)",
+                boxShadow: isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.08)"
+                  : "0 2px 8px rgba(0,0,0,0.03)",
               }}
             >
-              <AlertCircle size={14} className="shrink-0" strokeWidth={2} />
-              <span>
-                {isIndonesian
-                  ? "Kemungkinan duplikat: transaksi serupa tercatat dalam 15 menit terakhir"
-                  : "Possible duplicate: similar transaction recorded within 15 mins"}
-              </span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <AlertCircle size={15} className="shrink-0 text-[var(--text-secondary)]" strokeWidth={1.75} />
+                <span className="leading-snug text-[11.5px] text-[var(--text-secondary)]">
+                  {duplicateWarningAcknowledged
+                    ? isIndonesian
+                      ? "Transaksi serupa baru disimpan. Ketuk Simpan sekali lagi jika disengaja."
+                      : "Similar transaction saved just now. Tap Save again to confirm."
+                    : isIndonesian
+                      ? "Kemungkinan duplikat: transaksi serupa tercatat dalam 15 menit terakhir"
+                      : "Possible duplicate: similar transaction recorded within 15 mins"}
+                </span>
+              </div>
+              {duplicateWarningAcknowledged && (
+                <button
+                  type="button"
+                  onClick={() => setDuplicateWarningAcknowledged(false)}
+                  className="px-2 py-1 rounded-lg text-[10.5px] font-semibold shrink-0 cursor-pointer transition-all active:scale-95"
+                  style={{
+                    background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {isIndonesian ? "Batal" : "Dismiss"}
+                </button>
+              )}
             </motion.div>
           )}
 
-          {/* Budget Impact Preview (Live Financial Feedback) */}
+          {/* Budget Impact Preview (Live Financial Feedback - Monochrome Luxury) */}
           {budgetImpact && (
             <motion.div
               initial={{ opacity: 0, y: -4 }}
@@ -1365,14 +1390,12 @@ export function TransactionSheet({
               className="mt-2.5 mx-2 px-3 py-2 rounded-xl flex items-center justify-between text-[11px] font-medium"
               style={{
                 background: budgetImpact.isOver
-                  ? "rgba(239, 68, 68, 0.12)"
+                  ? isDark
+                    ? "rgba(255, 255, 255, 0.08)"
+                    : "rgba(0, 0, 0, 0.06)"
                   : "var(--glass-fill)",
-                border: budgetImpact.isOver
-                  ? "1px solid rgba(239, 68, 68, 0.35)"
-                  : "1px solid var(--glass-border)",
-                color: budgetImpact.isOver
-                  ? "#fca5a5"
-                  : "var(--text-secondary)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-secondary)",
               }}
             >
               <div className="flex items-center gap-1.5 truncate pr-2">
@@ -1380,7 +1403,7 @@ export function TransactionSheet({
                   <AlertTriangle
                     size={13}
                     strokeWidth={1.75}
-                    className="shrink-0 text-red-400"
+                    className="shrink-0 text-[var(--text-primary)]"
                   />
                 ) : (
                   <span

@@ -100,8 +100,35 @@ export function syncTransactionWithHolding(
   const isFromCrypto = isInvestmentOrCryptoWallet(fromWallet);
   const isToCrypto = isInvestmentOrCryptoWallet(toWallet);
 
-  // If neither wallet is an investment/crypto account, nothing to sync
+  // If neither wallet is an investment/crypto account, check if it's an auto-compound yield with custom units
   if (!isFromCrypto && !isToCrypto) {
+    if (tx.type === "income" && tx.customUnits && tx.customUnits > 0) {
+      const usdtPref = getSavedUsdtPref(userId);
+      const rate = tx.customPrice && tx.customPrice > 0 ? tx.customPrice : usdtPref.rate || USD_IDR_ESTIMATE;
+      const holdingId = getStandardUsdtHoldingId(userId);
+      const previousUnits = usdtPref.units;
+      const { updatedHolding } = recordHoldingActivity(
+        holdingId,
+        {
+          type: "buy",
+          units: tx.customUnits,
+          price_per_unit: rate,
+          total_amount: amount,
+          date: tx.occurred_on,
+          note: tx.note || "Auto-Compound Yield",
+        },
+        userId,
+      );
+      return {
+        synced: true,
+        action: "yield",
+        holdingSymbol: "USDT",
+        unitsDelta: tx.customUnits,
+        previousUnits,
+        newUnits: updatedHolding.units,
+        message: `Compounded ${tx.customUnits} USDT`,
+      };
+    }
     return { synced: false, message: "No investment wallet involved" };
   }
 

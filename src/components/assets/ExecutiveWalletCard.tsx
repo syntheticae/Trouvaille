@@ -115,7 +115,11 @@ export function ExecutiveWalletCard({
         balance: val,
         allocation: alloc,
         metadata: `${h.units.toLocaleString()} ${h.symbol} • ${isIndonesian ? "Aktif" : "Active"}`,
-        trendText: h.annual_rate ? `${h.annual_rate >= 0 ? "▲" : "▼"} ${Math.abs(h.annual_rate)}%` : "▲ Aktif",
+        trendText: h.annual_rate
+          ? `${h.annual_rate >= 0 ? "▲" : "▼"} ${Math.abs(h.annual_rate)}%`
+          : isIndonesian
+            ? "▲ Aktif"
+            : "▲ Active",
         livePrice: `${formatRupiah(h.current_price || h.avg_buy_price)} / ${h.symbol}`,
         sparklinePoints: "M 0 20 Q 25 8 50 22 T 80 6 T 100 10",
         sparklineArea: "M 0 20 Q 25 8 50 22 T 80 6 T 100 10 L 100 32 L 0 32 Z",
@@ -123,30 +127,56 @@ export function ExecutiveWalletCard({
       });
     });
 
-    // 3. User's Real Cash Wallets (Wallets with positive balance, not investment/crypto)
+    // 3. User's Real Cash Wallets (Wallets with positive balance, not debt/crypto)
     const realCashWallets = wallets.filter((w) => {
       const bal = balancesById ? (balancesById[w.id] ?? 0) : Number(w.balance || 0);
+      const isCrypto =
+        w.name.toLowerCase().includes("crypto") ||
+        w.name.toLowerCase().includes("usdt") ||
+        w.name.toLowerCase().includes("tether") ||
+        w.name.toLowerCase().includes("binance") ||
+        w.name.toLowerCase().includes("tokocrypto") ||
+        w.name.toLowerCase().includes("bybit") ||
+        w.name.toLowerCase().includes("indodax") ||
+        w.name.toLowerCase().includes("pintu");
       return (
         bal > 0 &&
         w.classification !== "credit" &&
         w.classification !== "loan" &&
-        w.classification !== "investment" &&
-        !w.name.toLowerCase().includes("crypto") &&
-        !w.name.toLowerCase().includes("usdt")
+        !isCrypto
       );
     });
     realCashWallets.forEach((w) => {
       const bal = balancesById ? (balancesById[w.id] ?? 0) : Number(w.balance || 0);
       const alloc = totalGrossAssets > 0 ? Math.min(100, Math.round((bal / totalGrossAssets) * 100)) : 0;
+      const isRdn =
+        w.classification === "investment" ||
+        w.name.toLowerCase().includes("rdn") ||
+        w.name.toLowerCase().includes("ajaib") ||
+        w.name.toLowerCase().includes("stockbit") ||
+        w.name.toLowerCase().includes("bibit") ||
+        w.name.toLowerCase().includes("pluang");
       list.push({
         id: `card-${w.id}`,
         walletRef: w,
         name: w.name,
-        category: isIndonesian ? "KAS & BANK" : "CASH & BANK",
+        category: isRdn
+          ? isIndonesian
+            ? "KAS RDN / BROKER"
+            : "RDN / BROKER CASH"
+          : isIndonesian
+            ? "KAS & BANK"
+            : "CASH & BANK",
         balance: bal,
         allocation: alloc,
-        metadata: isIndonesian ? "Rekening Kas Aktif" : "Active Cash Account",
-        trendText: "▲ Kas",
+        metadata: isRdn
+          ? isIndonesian
+            ? "Kas Mengendap di Sekuritas"
+            : "Uninvested Broker Cash"
+          : isIndonesian
+            ? "Rekening Kas Aktif"
+            : "Active Cash Account",
+        trendText: isIndonesian ? "▲ Kas" : "▲ Cash",
         livePrice: formatRupiah(bal),
         sparklinePoints: "M 0 24 Q 25 28 45 16 T 80 12 T 100 4",
         sparklineArea: "M 0 24 Q 25 28 45 16 T 80 12 T 100 4 L 100 32 L 0 32 Z",
@@ -165,12 +195,12 @@ export function ExecutiveWalletCard({
         metadata:
           solvencyScore >= 100
             ? isIndonesian
-              ? "100% Bebas Utang • Unencumbered"
+              ? "100% Bebas Utang • Tanpa Beban"
               : "100% Debt-Free • Unencumbered"
             : isIndonesian
               ? `Solvabilitas: ${solvencyScore}%`
               : `Solvency: ${solvencyScore}%`,
-        trendText: "▲ Solven",
+        trendText: isIndonesian ? "▲ Solven" : "▲ Solvent",
         livePrice: formatRupiah(netWorth),
         sparklinePoints: "M 0 26 Q 30 24 60 14 T 100 4",
         sparklineArea: "M 0 26 Q 30 24 60 14 T 100 4 L 100 32 L 0 32 Z",

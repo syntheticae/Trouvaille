@@ -63,7 +63,7 @@ export function BottomTabBar({
       setIsFlyoutOpen(true);
       setSelectedOption("voice"); // Default center (1)
       triggerHaptic("heavy");
-    }, 280);
+    }, 320);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -74,7 +74,7 @@ export function BottomTabBar({
 
     if (!isLongPressRef.current) {
       // If moved too much before hold threshold, cancel long press
-      if (Math.hypot(deltaX, deltaY) > 12) {
+      if (Math.hypot(deltaX, deltaY) > 20) {
         clearLongPress();
       }
       return;
@@ -373,8 +373,16 @@ export function BottomTabBar({
                     onPointerCancel={clearLongPress}
                     onClick={handleAddClick}
                     onContextMenu={(e) => e.preventDefault()}
-                    aria-label="Add Transaction (Hold & Glide for Voice/Scan)"
-                    title="Tap to Add, Hold & Glide: Manual, Voice, Scan"
+                    aria-label={
+                      isIndonesian
+                        ? "Tambah Transaksi (Tahan & Geser untuk Suara atau Pindai)"
+                        : "Add Transaction (Hold & Glide for Voice or Scan)"
+                    }
+                    title={
+                      isIndonesian
+                        ? "Ketuk untuk Tambah, Tahan & Geser: Manual, Suara, Pindai"
+                        : "Tap to Add, Hold & Glide: Manual, Voice, Scan"
+                    }
                     className={`w-10 h-10 flex items-center justify-center relative rounded-full active:scale-95 transition-all select-none touch-manipulation cursor-pointer ${
                       isFlyoutOpen ? "scale-105" : ""
                     }`}

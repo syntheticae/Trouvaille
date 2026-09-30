@@ -8,3 +8,4 @@ export * from "./MonochromeIconPickerModal";
 export * from "./NotificationSheet";
 export * from "./PullToRefreshIndicator";
 export * from "./SyncStatusPill";
+export * from "./RingChart";

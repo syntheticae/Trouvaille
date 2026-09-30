@@ -331,6 +331,23 @@ export function parseSlipText(
     const prevLineLower = i > 0 ? lines[i - 1].toLowerCase() : "";
     const contextLower = `${prevLineLower} ${lineLower}`.trim();
 
+    // Skip reference lines / transaction ID / account numbers
+    const isReferenceLine =
+      contextLower.includes("referensi") ||
+      contextLower.includes("no. ref") ||
+      contextLower.includes("ref no") ||
+      contextLower.includes("id transaksi") ||
+      contextLower.includes("no. transaksi") ||
+      contextLower.includes("no. pesanan") ||
+      contextLower.includes("order id") ||
+      contextLower.includes("no. rekening") ||
+      contextLower.includes("nomor rekening") ||
+      contextLower.includes("terminal id") ||
+      contextLower.includes("rrn");
+    if (isReferenceLine && !contextLower.includes("total") && !contextLower.includes("nominal")) {
+      continue;
+    }
+
     // Skip card / account numbers / ref numbers (10+ digits without separator)
     if (/\b\d{10,19}\b/.test(line)) {
       continue;
@@ -375,6 +392,12 @@ export function parseSlipText(
 
         // Ignore small noise (< Rp 1.000) or massive unreasonable numbers (> Rp 500.000.000)
         if (amt < 1000 || amt > 500_000_000) continue;
+
+        // Discard if the raw match is a long digit sequence (>= 11 digits) without Rp indicator
+        const rawDigitsOnly = match.replace(/\D/g, "");
+        if (rawDigitsOnly.length >= 11 && !match.toLowerCase().includes("rp")) {
+          continue;
+        }
 
         let score = 1;
 

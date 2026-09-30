@@ -49,11 +49,27 @@ export const USER_SESSION_STORAGE_KEYS = [
   "trouvaille_sync_initial_done",
   "trouvaille_holdings_v1",
   "trouvaille_holdings_guest_v1",
+  "trouvaille_holdings_state_v1",
+  "trouvaille_active_holding_id",
+  "trouvaille_staking_records_v1",
+  "trouvaille_wallets_backup_guest",
+  "trouvaille_tx_backup_guest",
+  "trouvaille_categories_backup_guest",
   "trouvaille_usdt_valuation_guest_v1",
   "trouvaille_usdt_valuation_v1",
   "trouvaille_usdt_valuation_v2",
   "trouvaille_market_quotes_cache_v2",
 ] as const;
+
+const PRESERVED_SETTINGS_KEYS = new Set([
+  "trouvaille_theme",
+  "trouvaille_language",
+  "trouvaille_currency",
+  "trouvaille_app_currency",
+  "trouvaille_privacy_stealth",
+  "trouvaille_stealth_mode",
+  "trouvaille_haptics_enabled",
+]);
 
 /**
  * Completely purges all local state, offline caches, IndexedDB snapshots,
@@ -100,19 +116,24 @@ export async function clearAllLocalUserSessionData(
       const len = storage.length ?? 0;
       for (let i = 0; i < len; i++) {
         const k = storage.key(i);
+        if (!k) continue;
+        if (options?.preserveGuestFlag && k === "trouvaille_guest_mode") continue;
+        if (PRESERVED_SETTINGS_KEYS.has(k)) continue;
+
         if (
-          k &&
-          (k.startsWith("trouvaille_migrated_guest_") ||
-            k.startsWith("trouvaille:usr_") ||
-            k.startsWith("trouvaille:guest_") ||
-            k.startsWith("trouvaille_holdings_") ||
-            k.startsWith("trouvaille_usdt_") ||
-            k.startsWith("trouvaille_market_quotes_") ||
-            k.startsWith("trouvaille_custom_category_") ||
-            k.startsWith("trouvaille_personal_") ||
-            (k.startsWith("trouvaille_") && !k.includes("theme")))
+          k.startsWith("trouvaille_migrated_guest_") ||
+          k.startsWith("trouvaille:usr_") ||
+          k.startsWith("trouvaille:guest_") ||
+          k.startsWith("trouvaille_holdings_") ||
+          k.startsWith("trouvaille_usdt_") ||
+          k.startsWith("trouvaille_market_quotes_") ||
+          k.startsWith("trouvaille_custom_category_") ||
+          k.startsWith("trouvaille_personal_") ||
+          k.startsWith("trouvaille_wallets_") ||
+          k.startsWith("trouvaille_transactions_") ||
+          k.startsWith("trouvaille_categories_") ||
+          k.startsWith("trouvaille_")
         ) {
-          if (options?.preserveGuestFlag && k === "trouvaille_guest_mode") continue;
           keysToRemove.push(k);
         }
       }

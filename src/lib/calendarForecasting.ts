@@ -88,6 +88,42 @@ export interface CalendarRunwayOptions {
   referenceDate?: Date;
 }
 
+/**
+ * Calculate outlier-resistant daily baseline burn from historical transactions:
+ * 1. Groups expenses by calendar date.
+ * 2. Trims extreme top outliers (e.g. top 10% highest spend days) if >= 4 active days.
+ * 3. Computes the median daily expense of the remaining days.
+ */
+export function calculateOutlierResistantDailyBurn(transactions: Transaction[]): number {
+  const expenseTxs = transactions.filter(
+    (t) => t.type === "expense" && Number(t.amount || 0) > 0,
+  );
+  if (expenseTxs.length === 0) return 0;
+
+  const dailyTotals = new Map<string, number>();
+  expenseTxs.forEach((t) => {
+    const d = (t.occurred_on || "").split("T")[0];
+    if (d) {
+      dailyTotals.set(d, (dailyTotals.get(d) || 0) + Number(t.amount || 0));
+    }
+  });
+
+  const values = Array.from(dailyTotals.values()).sort((a, b) => a - b);
+  if (values.length === 0) return 0;
+
+  // Trim top 10% outlier days to avoid skewing future burn from one-off capital expenditures
+  const trimCount = values.length >= 4 ? Math.floor(values.length * 0.1) || 1 : 0;
+  const trimmed = values.slice(0, values.length - trimCount);
+
+  const mid = Math.floor(trimmed.length / 2);
+  const median =
+    trimmed.length % 2 !== 0
+      ? trimmed[mid]
+      : (trimmed[mid - 1] + trimmed[mid]) / 2;
+
+  return Math.round(median);
+}
+
 export function calculateMonthCalendarRunway(
   options: CalendarRunwayOptions,
 ): MonthRunwayTelemetry {
@@ -101,6 +137,12 @@ export function calculateMonthCalendarRunway(
     dailyBaselineBurn = 0,
     referenceDate = new Date(),
   } = options;
+
+  // Outlier-resistant daily baseline burn
+  const effectiveDailyBurn =
+    dailyBaselineBurn > 0
+      ? dailyBaselineBurn
+      : calculateOutlierResistantDailyBurn(transactions);
 
   // Target month range
   const targetDate = new Date(year, month - 1, 1);
@@ -217,7 +259,7 @@ export function calculateMonthCalendarRunway(
     }
 
     // Baseline daily burn (applied for future days)
-    const estimatedBurn = isFut ? Math.max(0, dailyBaselineBurn) : 0;
+    const estimatedBurn = isFut ? Math.max(0, effectiveDailyBurn) : 0;
 
     // Projected daily change
     const netProjectedDailyChange = isPast

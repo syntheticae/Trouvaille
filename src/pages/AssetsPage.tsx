@@ -322,7 +322,14 @@ export function AssetsPage() {
       .reduce((sum, w) => sum + Math.max(0, balancesById[w.id] ?? 0), 0);
   }, [wallets, allCryptoWalletIds, balancesById]);
 
-  // Pillar 1: Liquid & Current Assets (Operating Cash, RDN Uninvested Cash, and USDT Reserve)
+  // Check whether user's crypto/USDT wallet is classified as investment
+  const isCryptoClassifiedAsInvestment = useMemo(() => {
+    if (cryptoWallet?.classification === "investment") return true;
+    if (allCryptoWallets.some((w) => w.classification === "investment")) return true;
+    return false;
+  }, [cryptoWallet, allCryptoWallets]);
+
+  // Pillar 1: Liquid & Current Assets (Operating Cash, RDN Uninvested Cash, and USDT Reserve if liquid)
   const liquidWalletCash = useMemo(() => {
     return wallets
       .filter(
@@ -334,23 +341,29 @@ export function AssetsPage() {
       )
       .reduce((sum, w) => sum + Math.max(0, balancesById[w.id] ?? 0), 0);
   }, [wallets, allCryptoWalletIds, balancesById]);
-  const liquidAssetsTotal = liquidWalletCash + brokerRdnCash + usdtMarketValue;
 
-  // Pillar 2: Market & Growth Assets (Equities, Growth Crypto, Mutual Funds)
+  const liquidUsdtValue = isCryptoClassifiedAsInvestment ? 0 : usdtMarketValue;
+  const liquidAssetsTotal = liquidWalletCash + brokerRdnCash + liquidUsdtValue;
+
+  // Pillar 2: Market & Growth Assets (Equities, Growth Crypto, Mutual Funds, and USDT if classified as investment)
+  const investmentUsdtValue = isCryptoClassifiedAsInvestment ? usdtMarketValue : 0;
   const growthAssetsTotal = useMemo(() => {
-    return liquidHoldings
-      .filter(
-        (h) =>
-          h.asset_type === "stock" ||
-          (h.asset_type === "crypto" && h.symbol !== "USDT") ||
-          h.asset_type === "mutual_fund" ||
-          h.asset_type === "bond",
-      )
-      .reduce(
-        (sum, h) => sum + h.units * (h.current_price || h.avg_buy_price),
-        0,
-      );
-  }, [liquidHoldings]);
+    return (
+      liquidHoldings
+        .filter(
+          (h) =>
+            h.symbol?.toUpperCase() !== "USDT" &&
+            (h.asset_type === "stock" ||
+              h.asset_type === "crypto" ||
+              h.asset_type === "mutual_fund" ||
+              h.asset_type === "bond"),
+        )
+        .reduce(
+          (sum, h) => sum + h.units * (h.current_price || h.avg_buy_price),
+          0,
+        ) + investmentUsdtValue
+    );
+  }, [liquidHoldings, investmentUsdtValue]);
 
   // Pillar 3: Fixed & Tangible Assets (Property, Physical Gold, Vehicles)
   const fixedAssetsTotal = useMemo(() => {
@@ -519,7 +532,7 @@ export function AssetsPage() {
   const openLiquidDetail = () => {
     triggerHaptic("light");
     const items: any[] = [];
-    if (usdtMarketValue > 0 || usdtPref.units > 0) {
+    if (!isCryptoClassifiedAsInvestment && (usdtMarketValue > 0 || usdtPref.units > 0)) {
       items.push({
         label: "Tether USD (USDT)",
         sublabel: `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`,
@@ -539,16 +552,25 @@ export function AssetsPage() {
           (balancesById[w.id] ?? 0) > 0 &&
           w.classification !== "credit" &&
           w.classification !== "loan" &&
-          w.classification !== "investment" &&
-          !w.name.toLowerCase().includes("crypto") &&
-          !w.name.toLowerCase().includes("usdt"),
+          !allCryptoWalletIds.has(w.id),
       )
       .forEach((w) => {
+        const isRdn =
+          w.classification === "investment" ||
+          w.name.toLowerCase().includes("rdn") ||
+          w.name.toLowerCase().includes("ajaib") ||
+          w.name.toLowerCase().includes("stockbit") ||
+          w.name.toLowerCase().includes("bibit") ||
+          w.name.toLowerCase().includes("pluang");
         items.push({
           label: w.name,
-          sublabel: isIndonesian
-            ? "Kas & Rekening Operasional"
-            : "Cash & Bank Account",
+          sublabel: isRdn
+            ? isIndonesian
+              ? "Kas RDN / Kustodi Broker"
+              : "Uninvested Broker Cash"
+            : isIndonesian
+              ? "Kas & Rekening Operasional"
+              : "Cash & Bank Account",
           amount: balancesById[w.id] ?? 0,
           detail: "IDR",
         });
@@ -597,6 +619,21 @@ export function AssetsPage() {
         },
       };
     });
+
+    if (isCryptoClassifiedAsInvestment && (usdtMarketValue > 0 || usdtPref.units > 0)) {
+      items.unshift({
+        label: "Tether USD (USDT)",
+        sublabel: `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`,
+        amount: usdtMarketValue,
+        detail: isIndonesian
+          ? "Portofolio kripto/investasi"
+          : "Crypto investment portfolio",
+        onClick: () => {
+          setSelectedMetricDrillDown(null);
+          openUsdtDetail();
+        },
+      });
+    }
 
     setSelectedMetricDrillDown({
       title: isIndonesian
