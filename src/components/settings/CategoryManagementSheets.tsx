@@ -494,7 +494,7 @@ export function CategoryManagementSheets({
                                   e.stopPropagation();
                                   handleOpenQuickBudget(cat);
                                 }}
-                                className="font-mono text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 active:scale-95 transition-all truncate cursor-pointer"
+                                className=" text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 active:scale-95 transition-all truncate cursor-pointer"
                                 style={{
                                   background: hasBudget
                                     ? isDark
@@ -522,7 +522,7 @@ export function CategoryManagementSheets({
                                 </span>
                               </button>
                             ) : (
-                              <span className="text-[9.5px] font-mono text-[var(--text-tertiary)]">
+                              <span className="text-[9.5px]  text-[var(--text-tertiary)]">
                                 {isIndonesian ? "Pemasukan" : "Inflow"}
                               </span>
                             )}
@@ -838,7 +838,7 @@ export function CategoryManagementSheets({
               {isIndonesian ? "Nominal Batas Bulanan" : "Monthly Limit Amount"}
             </label>
             <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
-              <span className="text-[12px] font-mono font-semibold text-[var(--text-tertiary)]">
+              <span className="text-[12px]  font-semibold text-[var(--text-tertiary)]">
                 Rp
               </span>
               <input
@@ -856,7 +856,7 @@ export function CategoryManagementSheets({
                   setQuickBudgetValue(e.target.value.replace(/\D/g, ""))
                 }
                 placeholder={isIndonesian ? "0 (kosongkan jika tanpa batas)" : "0 (leave empty for no cap)"}
-                className="w-full min-w-0 bg-transparent outline-none font-mono font-medium text-[14px]"
+                className="w-full min-w-0 bg-transparent outline-none  font-medium text-[14px]"
                 style={{ color: "var(--text-primary)" }}
               />
             </div>
@@ -877,7 +877,7 @@ export function CategoryManagementSheets({
                     triggerHaptic("light");
                     setQuickBudgetValue(p.val === 0 ? "" : String(p.val));
                   }}
-                  className="px-2.5 py-1 rounded-lg text-[10.5px] font-mono border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:border-black/20 dark:hover:border-white/20 active:scale-95 transition-all cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg text-[10.5px]  border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:border-black/20 dark:hover:border-white/20 active:scale-95 transition-all cursor-pointer"
                   style={{
                     color:
                       p.val === 0

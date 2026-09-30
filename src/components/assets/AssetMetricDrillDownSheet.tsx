@@ -56,11 +56,11 @@ export function AssetMetricDrillDownSheet({
                 ? "Nilai Terkonsolidasi"
                 : "Consolidated Valuation"}
             </span>
-            <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-secondary)] font-semibold">
+            <span className="text-[9.5px]  px-2 py-0.5 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-secondary)] font-semibold">
               {data?.badge}
             </span>
           </div>
-          <p className="font-mono text-2xl font-light text-[var(--text-primary)]">
+          <p className=" text-2xl font-light text-[var(--text-primary)]">
             {isStealthMode
               ? "••••••••"
               : formatRupiah(data?.amount || 0)}
@@ -108,7 +108,7 @@ export function AssetMetricDrillDownSheet({
                       </p>
                     )}
                   </div>
-                  <div className="text-right font-mono shrink-0">
+                  <div className="text-right  shrink-0">
                     <p className="text-[12.5px] font-bold text-[var(--text-primary)]">
                       {isStealthMode
                         ? "••••••••"

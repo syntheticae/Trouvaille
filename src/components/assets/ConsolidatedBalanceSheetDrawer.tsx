@@ -205,7 +205,7 @@ export function ConsolidatedBalanceSheetDrawer({
                 ? "Kekayaan Bersih Konsolidasi"
                 : "Consolidated Net Worth"}
             </span>
-            <p className="font-mono text-xl sm:text-2xl font-semibold text-[var(--text-primary)] mt-0.5 tracking-tight">
+            <p className=" text-xl sm:text-2xl font-semibold text-[var(--text-primary)] mt-0.5 tracking-tight">
               {isStealthMode ? "••••••••" : formatRupiah(netWorth)}
             </p>
           </div>
@@ -213,12 +213,12 @@ export function ConsolidatedBalanceSheetDrawer({
             <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold">
               {isIndonesian ? "Total Aset Kotor" : "Total Gross Assets"}
             </span>
-            <span className="font-mono text-[12.5px] font-semibold text-[var(--text-primary)] mt-0.5">
+            <span className=" text-[12.5px] font-semibold text-[var(--text-primary)] mt-0.5">
               {isStealthMode ? "••••••••" : formatRupiah(totalGrossAssets)}
             </span>
             <span className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
               {isIndonesian ? "Liabilitas: " : "Debt: "}
-              <span className="font-mono font-medium text-[var(--text-secondary)]">
+              <span className=" font-medium text-[var(--text-secondary)]">
                 {isStealthMode ? "••••" : formatRupiah(liabilitiesTotal)}
               </span>
             </span>
@@ -342,7 +342,7 @@ export function ConsolidatedBalanceSheetDrawer({
                     ? "Tier 1 · Aset Lancar & Kas"
                     : "Tier 1 · Liquid & Current"}
                 </span>
-                <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
+                <span className=" text-[11px] font-bold text-[var(--text-primary)]">
                   {isStealthMode ? "••••••••" : formatRupiah(liquidAssetsTotal)}
                 </span>
               </div>
@@ -358,7 +358,7 @@ export function ConsolidatedBalanceSheetDrawer({
                   style={{ background: "var(--glass-fill)" }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0 font-mono font-bold text-sm">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0  font-bold text-sm">
                       ₮
                     </div>
                     <div className="min-w-0">
@@ -378,14 +378,14 @@ export function ConsolidatedBalanceSheetDrawer({
                     </div>
                   </div>
                   <div className="text-right shrink-0 pl-2">
-                    <span className="text-[13px] font-mono font-bold text-[var(--text-primary)] block leading-tight">
+                    <span className="text-[13px]  font-bold text-[var(--text-primary)] block leading-tight">
                       {isStealthMode
                         ? "••••••••"
                         : formatRupiah(usdtMarketValue)}
                     </span>
                     <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5 font-sans">
                       <span
-                        className="font-mono font-medium"
+                        className=" font-medium"
                         style={{
                           color:
                             usdtFloatingPnLPct >= 0
@@ -399,7 +399,7 @@ export function ConsolidatedBalanceSheetDrawer({
                       <span className="text-[var(--text-tertiary)] opacity-40">
                         ·
                       </span>
-                      <span className="text-[var(--text-tertiary)] font-mono">
+                      <span className="text-[var(--text-tertiary)] ">
                         {(
                           (usdtMarketValue / (totalGrossAssets || 1)) *
                           100
@@ -442,7 +442,7 @@ export function ConsolidatedBalanceSheetDrawer({
                       </p>
                     </div>
                   </div>
-                  <div className="text-right font-mono shrink-0 pl-2">
+                  <div className="text-right  shrink-0 pl-2">
                     <span className="text-[13px] font-bold text-[var(--text-primary)]">
                       {isStealthMode
                         ? "••••••••"
@@ -481,7 +481,7 @@ export function ConsolidatedBalanceSheetDrawer({
                     ? "Tier 2 · Pasar & Pertumbuhan"
                     : "Tier 2 · Market & Growth"}
                 </span>
-                <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
+                <span className=" text-[11px] font-bold text-[var(--text-primary)]">
                   {isStealthMode ? "••••••••" : formatRupiah(growthAssetsTotal)}
                 </span>
               </div>
@@ -497,7 +497,7 @@ export function ConsolidatedBalanceSheetDrawer({
                   style={{ background: "var(--glass-fill)" }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0 font-mono font-bold text-sm">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0  font-bold text-sm">
                       ₮
                     </div>
                     <div className="min-w-0">
@@ -517,7 +517,7 @@ export function ConsolidatedBalanceSheetDrawer({
                     </div>
                   </div>
                   <div className="text-right shrink-0 pl-2">
-                    <span className="text-[13px] font-mono font-bold text-[var(--text-primary)] block leading-tight">
+                    <span className="text-[13px]  font-bold text-[var(--text-primary)] block leading-tight">
                       {isStealthMode
                         ? "••••••••"
                         : formatRupiah(usdtMarketValue)}
@@ -565,14 +565,14 @@ export function ConsolidatedBalanceSheetDrawer({
                       </div>
                     </div>
                     <div className="text-right shrink-0 pl-2">
-                      <span className="text-[13px] font-mono font-bold text-[var(--text-primary)] block leading-tight">
+                      <span className="text-[13px]  font-bold text-[var(--text-primary)] block leading-tight">
                         {isStealthMode
                           ? "••••••••"
                           : formatRupiah(val.marketValue)}
                       </span>
                       <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5 font-sans">
                         <span
-                          className="font-mono font-medium"
+                          className=" font-medium"
                           style={{
                             color:
                               val.floatingPnLPct >= 0
@@ -586,7 +586,7 @@ export function ConsolidatedBalanceSheetDrawer({
                         <span className="text-[var(--text-tertiary)] opacity-40">
                           ·
                         </span>
-                        <span className="text-[var(--text-tertiary)] font-mono">
+                        <span className="text-[var(--text-tertiary)] ">
                           {weight.toFixed(1)}%
                         </span>
                       </div>
@@ -625,7 +625,7 @@ export function ConsolidatedBalanceSheetDrawer({
                     ? "Tier 3 · Aset Tetap & Riil"
                     : "Tier 3 · Fixed & Tangibles"}
                 </span>
-                <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
+                <span className=" text-[11px] font-bold text-[var(--text-primary)]">
                   {isStealthMode ? "••••••••" : formatRupiah(fixedAssetsTotal)}
                 </span>
               </div>
@@ -659,7 +659,7 @@ export function ConsolidatedBalanceSheetDrawer({
                         </p>
                       </div>
                     </div>
-                    <div className="text-right font-mono shrink-0 pl-2">
+                    <div className="text-right  shrink-0 pl-2">
                       <span className="text-[13px] font-bold text-[var(--text-primary)]">
                         {isStealthMode
                           ? "••••••••"
@@ -700,7 +700,7 @@ export function ConsolidatedBalanceSheetDrawer({
                     ? "Liabilitas & Kewajiban Utang"
                     : "Liabilities & Debt"}
                 </span>
-                <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
+                <span className=" text-[11px] font-bold text-[var(--text-primary)]">
                   {isStealthMode ? "••••••••" : formatRupiah(liabilitiesTotal)}
                 </span>
               </div>
@@ -724,7 +724,7 @@ export function ConsolidatedBalanceSheetDrawer({
                       </p>
                     </div>
                   </div>
-                  <div className="text-right font-mono shrink-0 pl-2">
+                  <div className="text-right  shrink-0 pl-2">
                     <span className="text-[13px] font-bold text-[var(--text-primary)]">
                       {isStealthMode ? "••••••••" : formatRupiah(debtAmt)}
                     </span>
@@ -755,7 +755,7 @@ export function ConsolidatedBalanceSheetDrawer({
                       </p>
                     </div>
                   </div>
-                  <span className="font-mono text-[11.5px] font-semibold text-[var(--text-tertiary)]">
+                  <span className=" text-[11.5px] font-semibold text-[var(--text-tertiary)]">
                     Rp 0
                   </span>
                 </div>

@@ -291,7 +291,7 @@ export function LuxuryReportExportSheet({
               <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-tertiary)] block">
                 {isIndonesian ? "Arus Kas Bersih" : "Net Cashflow"}
               </span>
-              <span className="text-[22px] font-semibold text-[var(--text-primary)] font-mono tracking-tight mt-0.5 block">
+              <span className="text-[22px] font-semibold text-[var(--text-primary)]  tracking-tight mt-0.5 block">
                 {(summary.netCashflow >= 0 ? "+" : "") + formatRupiah(summary.netCashflow)}
               </span>
             </div>
@@ -299,7 +299,7 @@ export function LuxuryReportExportSheet({
               <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-tertiary)] block">
                 {isIndonesian ? "Rasio Tabungan" : "Savings Rate"}
               </span>
-              <span className="text-[18px] font-semibold text-[var(--text-primary)] font-mono tracking-tight mt-0.5 block">
+              <span className="text-[18px] font-semibold text-[var(--text-primary)]  tracking-tight mt-0.5 block">
                 {summary.savingsRate.toFixed(1)}%
               </span>
             </div>
@@ -314,7 +314,7 @@ export function LuxuryReportExportSheet({
                   {isIndonesian ? "Pemasukan" : "Inflow"}
                 </span>
               </div>
-              <div className="font-mono text-[13px] font-semibold text-[var(--text-primary)] tracking-tight">
+              <div className=" text-[13px] font-semibold text-[var(--text-primary)] tracking-tight">
                 +{formatRupiah(summary.totalIncome)}
               </div>
             </div>
@@ -326,7 +326,7 @@ export function LuxuryReportExportSheet({
                   {isIndonesian ? "Pengeluaran" : "Outflow"}
                 </span>
               </div>
-              <div className="font-mono text-[13px] font-semibold text-[var(--text-primary)] tracking-tight">
+              <div className=" text-[13px] font-semibold text-[var(--text-primary)] tracking-tight">
                 -{formatRupiah(summary.totalExpense)}
               </div>
             </div>

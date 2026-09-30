@@ -589,11 +589,11 @@ export function AssetDetailSheet({
               {isIndonesian ? "Total Nilai Pasar" : "Total Market Value"}
             </p>
             <div className="flex items-baseline justify-between flex-wrap gap-2">
-              <h2 className="text-[26px] font-bold tracking-tight text-[var(--text-primary)] font-mono">
+              <h2 className="text-[26px] font-bold tracking-tight text-[var(--text-primary)] ">
                 {formatRupiah(valuation.marketValue)}
               </h2>
               <div
-                className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold font-mono flex items-center gap-1 shrink-0 ${
+                className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold  flex items-center gap-1 shrink-0 ${
                   isProfitable
                     ? "bg-white/[0.06] border-[var(--glass-border)] text-[var(--text-primary)]"
                     : "bg-white/[0.04] border-[var(--glass-border)] text-[var(--text-secondary)]"
@@ -619,7 +619,7 @@ export function AssetDetailSheet({
               <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">
                 {getStockRangeLabel(timeframe, isIndonesian)} · {holding.currency || "IDR"}
               </span>
-              <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+              <span className="text-[10px]  text-[var(--text-tertiary)]">
                 {isIndonesian ? "Langsung:" : "Live:"} {formatRupiah(currentPrice)} / unit
               </span>
             </div>
@@ -768,7 +768,7 @@ export function AssetDetailSheet({
                 <Edit3 size={11} strokeWidth={1.75} />
               </button>
             </div>
-            <div className="text-right font-mono">
+            <div className="text-right ">
               <span className="text-[13px] font-bold text-[var(--text-primary)]">
                 {formatHoldingUnits(holding.units)} {holding.symbol}
               </span>
@@ -784,7 +784,7 @@ export function AssetDetailSheet({
             <span className="text-[12px] text-[var(--text-tertiary)]">
               {isIndonesian ? "Harga Rata-rata" : "Average Price"}
             </span>
-            <span className="text-[13px] font-bold text-[var(--text-primary)] font-mono">
+            <span className="text-[13px] font-bold text-[var(--text-primary)] ">
               {formatRupiah(holding.avg_buy_price)}
             </span>
           </div>
@@ -794,11 +794,11 @@ export function AssetDetailSheet({
             <span className="text-[12px] text-[var(--text-tertiary)]">
               {isIndonesian ? "Harga Pasar" : "Market Price"}
             </span>
-            <div className="text-right font-mono">
+            <div className="text-right ">
               <span className="text-[13px] font-bold text-[var(--text-primary)] block">
                 {formatRupiah(currentPrice)}
               </span>
-              <span className="text-[9.5px] font-mono text-[var(--text-tertiary)]">
+              <span className="text-[9.5px]  text-[var(--text-tertiary)]">
                 Live Market API
               </span>
             </div>
@@ -809,7 +809,7 @@ export function AssetDetailSheet({
             <span className="text-[12px] text-[var(--text-tertiary)]">
               {isIndonesian ? "P&L Belum Terealisasi" : "Unrealized P&L"}
             </span>
-            <div className="text-right font-mono">
+            <div className="text-right ">
               <span className="text-[13px] font-bold text-[var(--text-primary)]">
                 {isProfitable ? "+" : ""}
                 {formatRupiah(valuation.floatingPnL)}
@@ -853,7 +853,7 @@ export function AssetDetailSheet({
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
               {isIndonesian ? "Riwayat Aktivitas" : "Activity History"}
             </h3>
-            <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+            <span className="text-[10px]  text-[var(--text-tertiary)]">
               {activities.length} {isIndonesian ? "entri" : activities.length === 1 ? "entry" : "entries"}
             </span>
           </div>
@@ -890,7 +890,7 @@ export function AssetDetailSheet({
                               ? (isIndonesian ? "Beli Unit" : "Add Units")
                               : (isIndonesian ? "Jual Unit" : "Reduce Units")}
                           </span>
-                          <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+                          <span className="text-[10px]  text-[var(--text-tertiary)]">
                             {act.date}
                           </span>
                         </div>
@@ -901,7 +901,7 @@ export function AssetDetailSheet({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <div className="text-right font-mono">
+                      <div className="text-right ">
                         <p className="text-[12px] font-semibold text-[var(--text-primary)]">
                           {formatRupiah(act.total_amount)}
                         </p>
@@ -1092,7 +1092,7 @@ export function AssetDetailSheet({
                     className="w-full px-3.5 py-2.5 rounded-xl text-[13px] bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
                   />
                   {modalPriceMode === "auto" && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-mono px-2 py-0.5 rounded-md bg-white/[0.08] text-[var(--text-secondary)] border border-[var(--glass-border)] pointer-events-none">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px]  px-2 py-0.5 rounded-md bg-white/[0.08] text-[var(--text-secondary)] border border-[var(--glass-border)] pointer-events-none">
                       {isIndonesian ? "Pasar Langsung" : "Live Spot"}
                     </span>
                   )}
@@ -1218,7 +1218,7 @@ export function AssetDetailSheet({
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                     {isIndonesian ? "Total Unit Riil Baru" : "New Total Units"}
                   </label>
-                  <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+                  <span className="text-[10px]  text-[var(--text-tertiary)]">
                     {isIndonesian ? "Saat ini:" : "Current:"} {holding.units.toLocaleString()} {holding.symbol}
                   </span>
                 </div>

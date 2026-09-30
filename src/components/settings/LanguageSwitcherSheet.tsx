@@ -82,7 +82,7 @@ export function LanguageSwitcherSheet({ isOpen, onClose }: LanguageSwitcherSheet
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-[12px] font-bold font-mono shrink-0"
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-[12px] font-bold  shrink-0"
                     style={{
                       background: "var(--glass-fill)",
                       border: "1px solid var(--glass-border)",

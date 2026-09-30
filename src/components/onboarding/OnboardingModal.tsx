@@ -882,7 +882,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                   <label className="text-[10.5px] font-semibold text-white/40 tracking-wider uppercase block">
                     {isIndonesian ? "Mata Uang Dasar" : "Base Currency"}
                   </label>
-                  <span className="text-[10.5px] text-white/40 font-mono">
+                  <span className="text-[10.5px] text-white/40 ">
                     {activeCurrencyMeta.code} ({activeCurrencyMeta.symbol})
                   </span>
                 </div>

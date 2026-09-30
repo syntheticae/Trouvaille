@@ -334,7 +334,7 @@ export function WalletManagementSheets({
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
                 {isIndonesian ? "Akun Saya" : "My Accounts"}
               </p>
-              <h2 className="amount font-mono text-[28px] font-bold tracking-tight text-[var(--text-primary)] leading-tight mt-0.5">
+              <h2 className="amount  text-[28px] font-bold tracking-tight text-[var(--text-primary)] leading-tight mt-0.5">
                 {formatRupiah(totalAssets)}
               </h2>
               <p className="text-[11px] font-medium text-[var(--text-tertiary)] mt-0.5">
@@ -563,7 +563,7 @@ export function WalletManagementSheets({
                         <div className="flex items-center gap-3 shrink-0 pl-2">
                           <div className="text-right">
                             <p
-                              className={`amount font-mono text-[15px] font-bold leading-tight ${
+                              className={`amount  text-[15px] font-bold leading-tight ${
                                 isZero ? "opacity-40" : ""
                               }`}
                               style={{

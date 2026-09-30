@@ -1,7 +1,7 @@
 // ======================================================================
 // TROUVAILLE CASHFLOW VELOCITY CARD
 // Cadence, Daily Expense pace, Ticket size, & Sankey flow action
-// Strictly compliant with GEMINI.md: Monochrome Apple Luxury Theme (No font-mono)
+// Strictly compliant with GEMINI.md: Monochrome Apple Luxury Theme (No )
 // ======================================================================
 
 import React, { useMemo } from "react";

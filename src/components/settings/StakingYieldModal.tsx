@@ -818,7 +818,7 @@ export function StakingYieldModal({
                             value={bankApyInput}
                             onChange={(e) => setBankApyInput(e.target.value)}
                             placeholder="3.75"
-                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none transition-all font-mono"
+                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none transition-all "
                             style={{
                               background: controlBg,
                               border: controlBorder,
@@ -846,7 +846,7 @@ export function StakingYieldModal({
                                 : "Estimated Daily Payout"}
                             </span>
                           </div>
-                          <span className="text-[16px] font-bold text-[var(--text-primary)] amount font-mono">
+                          <span className="text-[16px] font-bold text-[var(--text-primary)] amount ">
                             +{formatRupiah(bankProjections.daily)}
                           </span>
                         </div>
@@ -858,7 +858,7 @@ export function StakingYieldModal({
                                 ? "Estimasi per Bulan"
                                 : "Monthly Yield"}
                             </span>
-                            <span className="text-[13px] font-semibold text-[var(--text-secondary)] amount font-mono">
+                            <span className="text-[13px] font-semibold text-[var(--text-secondary)] amount ">
                               +{formatRupiah(bankProjections.monthly)}
                             </span>
                           </div>
@@ -868,7 +868,7 @@ export function StakingYieldModal({
                                 ? "Estimasi per Tahun"
                                 : "Annual Yield"}
                             </span>
-                            <span className="text-[13px] font-semibold text-[var(--text-secondary)] amount font-mono">
+                            <span className="text-[13px] font-semibold text-[var(--text-secondary)] amount ">
                               +{formatRupiah(bankProjections.yearly)}
                             </span>
                           </div>
@@ -893,7 +893,7 @@ export function StakingYieldModal({
                             setSelectedStockSymbol(e.target.value.toUpperCase())
                           }
                           placeholder="Contoh: BBCA, BBRI, ASII"
-                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none uppercase font-mono"
+                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none uppercase "
                           style={{
                             background: controlBg,
                             border: controlBorder,
@@ -919,7 +919,7 @@ export function StakingYieldModal({
                             setDividendAmountInput(formatted.display);
                           }}
                           placeholder="Contoh: 350.000"
-                          className="w-full h-11 px-3.5 rounded-2xl text-[15px] font-bold text-[var(--text-primary)] amount font-mono outline-none"
+                          className="w-full h-11 px-3.5 rounded-2xl text-[15px] font-bold text-[var(--text-primary)] amount  outline-none"
                           style={{
                             background: controlBg,
                             border: controlBorder,
@@ -987,7 +987,7 @@ export function StakingYieldModal({
                             value={depositApyInput}
                             onChange={(e) => setDepositApyInput(e.target.value)}
                             placeholder="6.5"
-                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none font-mono"
+                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none "
                             style={{
                               background: controlBg,
                               border: controlBorder,
@@ -1009,7 +1009,7 @@ export function StakingYieldModal({
                                 parseInt(e.target.value, 10) || 1,
                               )
                             }
-                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none font-mono"
+                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none "
                             style={{
                               background: controlBg,
                               border: controlBorder,
@@ -1032,7 +1032,7 @@ export function StakingYieldModal({
                           <span className="text-[var(--text-tertiary)]">
                             {isIndonesian ? "Bunga per Bulan" : "Monthly Yield"}
                           </span>
-                          <span className="font-semibold text-[var(--text-primary)] amount font-mono">
+                          <span className="font-semibold text-[var(--text-primary)] amount ">
                             +{formatRupiah(depositProjections.monthlyNet)}
                           </span>
                         </div>
@@ -1042,7 +1042,7 @@ export function StakingYieldModal({
                               ? "Total Saat Jatuh Tempo"
                               : "Total at Maturity"}
                           </span>
-                          <span className="font-bold text-[var(--text-primary)] amount font-mono">
+                          <span className="font-bold text-[var(--text-primary)] amount ">
                             +{formatRupiah(depositProjections.maturityNet)}
                           </span>
                         </div>
@@ -1078,7 +1078,7 @@ export function StakingYieldModal({
                               ? "Pokok Staking USDT"
                               : "Staked USDT"}
                           </span>
-                          <span className="font-mono text-[var(--text-tertiary)] opacity-80">
+                          <span className=" text-[var(--text-tertiary)] opacity-80">
                             {isIndonesian ? "Tersedia: " : "Available: "}
                             {formatHoldingUnits(availableUnits)} USDT
                           </span>
@@ -1088,7 +1088,7 @@ export function StakingYieldModal({
                           value={customStakedUnits}
                           onChange={(e) => setCustomStakedUnits(e.target.value)}
                           placeholder="1000"
-                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none font-mono"
+                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none "
                           style={{
                             background: controlBg,
                             border: controlBorder,
@@ -1108,7 +1108,7 @@ export function StakingYieldModal({
                           value={cryptoApyInput}
                           onChange={(e) => setCryptoApyInput(e.target.value)}
                           placeholder="8.5"
-                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none font-mono"
+                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none "
                           style={{
                             background: controlBg,
                             border: controlBorder,

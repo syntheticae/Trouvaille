@@ -1039,7 +1039,7 @@ export function FinancialWrappedModal({
                   <Pause size={18} fill="currentColor" strokeWidth={0} />
                 </div>
                 <span
-                  className={`text-[10px] font-mono tracking-[0.25em] uppercase font-bold ${
+                  className={`text-[10px]  tracking-[0.25em] uppercase font-bold ${
                     isDark ? "text-white/90" : "text-[#09090b]/80"
                   }`}
                 >
@@ -1133,7 +1133,7 @@ export function FinancialWrappedModal({
                   {/* Asymmetric Technical Tag */}
                   <div className="flex items-center justify-between">
                     <span
-                      className={`text-[10px] font-mono tracking-[0.25em] uppercase ${
+                      className={`text-[10px]  tracking-[0.25em] uppercase ${
                         isDark ? "text-zinc-400" : "text-zinc-600"
                       }`}
                     >
@@ -1141,7 +1141,7 @@ export function FinancialWrappedModal({
                       {periodTitle.toUpperCase()}
                     </span>
                     <span
-                      className={`text-[11px] font-mono font-medium ${
+                      className={`text-[11px]  font-medium ${
                         isDark ? "text-white/40" : "text-black/40"
                       }`}
                     >
@@ -1186,7 +1186,7 @@ export function FinancialWrappedModal({
                   <div className="pt-2">
                     <div className="flex items-baseline justify-between mb-1.5">
                       <span
-                        className={`text-[10px] font-mono tracking-wider uppercase ${
+                        className={`text-[10px]  tracking-wider uppercase ${
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
@@ -1195,7 +1195,7 @@ export function FinancialWrappedModal({
                           : "TOTAL CAPITAL TURNOVER"}
                       </span>
                       <span
-                        className={`text-[11px] font-mono ${
+                        className={`text-[11px]  ${
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
@@ -1220,7 +1220,7 @@ export function FinancialWrappedModal({
                   >
                     <div>
                       <span
-                        className={`text-[10px] font-mono uppercase tracking-wider block ${
+                        className={`text-[10px]  uppercase tracking-wider block ${
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
@@ -1237,7 +1237,7 @@ export function FinancialWrappedModal({
 
                     <div>
                       <span
-                        className={`text-[10px] font-mono uppercase tracking-wider block ${
+                        className={`text-[10px]  uppercase tracking-wider block ${
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
@@ -1258,7 +1258,7 @@ export function FinancialWrappedModal({
 
                   {/* Geometric Telemetry Footer Pill */}
                   <div
-                    className={`pt-2 flex items-center justify-between text-[10px] font-mono ${
+                    className={`pt-2 flex items-center justify-between text-[10px]  ${
                       isDark ? "text-zinc-400" : "text-zinc-600"
                     }`}
                   >
@@ -1315,7 +1315,7 @@ export function FinancialWrappedModal({
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span
-                        className={`text-[10px] font-mono uppercase tracking-[0.2em] ${
+                        className={`text-[10px]  uppercase tracking-[0.2em] ${
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
@@ -1442,7 +1442,7 @@ export function FinancialWrappedModal({
 
                               {/* Label */}
                               <span
-                                className={`absolute -bottom-5 text-[10px] font-mono text-center truncate w-full ${
+                                className={`absolute -bottom-5 text-[10px]  text-center truncate w-full ${
                                   pt.isPeakOutflow
                                     ? isDark
                                       ? "font-semibold text-white"
@@ -1503,7 +1503,7 @@ export function FinancialWrappedModal({
                   >
                     <div className="min-w-0 pr-2">
                       <span
-                        className={`text-[9px] font-mono uppercase tracking-wider block ${
+                        className={`text-[9px]  uppercase tracking-wider block ${
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
@@ -1590,7 +1590,7 @@ export function FinancialWrappedModal({
                   <div className="flex justify-between items-baseline mb-2">
                     <div>
                       <span
-                        className={`text-[10px] font-mono uppercase tracking-[0.25em] block mb-1 ${
+                        className={`text-[10px]  uppercase tracking-[0.25em] block mb-1 ${
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
@@ -1612,7 +1612,7 @@ export function FinancialWrappedModal({
                       </h2>
                     </div>
                     <span
-                      className={`text-[10px] font-mono px-2.5 py-1 rounded-full border ${
+                      className={`text-[10px]  px-2.5 py-1 rounded-full border ${
                         isDark
                           ? "bg-white/[0.08] text-white/80 border-white/15"
                           : "bg-black/[0.05] text-black/80 border-black/10"
@@ -1841,8 +1841,8 @@ export function FinancialWrappedModal({
                       <span
                         className={
                           isDark
-                            ? "font-mono text-zinc-500"
-                            : "font-mono text-zinc-500"
+                            ? " text-zinc-500"
+                            : " text-zinc-500"
                         }
                       >
                         1)
@@ -1855,8 +1855,8 @@ export function FinancialWrappedModal({
                       <span
                         className={
                           isDark
-                            ? "font-mono text-zinc-500"
-                            : "font-mono text-zinc-500"
+                            ? " text-zinc-500"
+                            : " text-zinc-500"
                         }
                       >
                         2)
@@ -1869,8 +1869,8 @@ export function FinancialWrappedModal({
                       <span
                         className={
                           isDark
-                            ? "font-mono text-zinc-500"
-                            : "font-mono text-zinc-500"
+                            ? " text-zinc-500"
+                            : " text-zinc-500"
                         }
                       >
                         3)
@@ -1883,8 +1883,8 @@ export function FinancialWrappedModal({
                       <span
                         className={
                           isDark
-                            ? "font-mono text-zinc-500"
-                            : "font-mono text-zinc-500"
+                            ? " text-zinc-500"
+                            : " text-zinc-500"
                         }
                       >
                         4)
@@ -1897,8 +1897,8 @@ export function FinancialWrappedModal({
                       <span
                         className={
                           isDark
-                            ? "font-mono text-zinc-500"
-                            : "font-mono text-zinc-500"
+                            ? " text-zinc-500"
+                            : " text-zinc-500"
                         }
                       >
                         5)
@@ -1911,8 +1911,8 @@ export function FinancialWrappedModal({
                       <span
                         className={
                           isDark
-                            ? "font-mono text-zinc-500"
-                            : "font-mono text-zinc-500"
+                            ? " text-zinc-500"
+                            : " text-zinc-500"
                         }
                       >
                         6)
@@ -1941,7 +1941,7 @@ export function FinancialWrappedModal({
                   <div className="space-y-3 sm:space-y-3.5">
                     <div className="flex items-center justify-between">
                       <span
-                        className={`text-[11px] font-mono tracking-widest uppercase ${
+                        className={`text-[11px]  tracking-widest uppercase ${
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
@@ -1986,7 +1986,7 @@ export function FinancialWrappedModal({
                       <div className="flex items-end justify-between">
                         <div>
                           <span
-                            className={`text-[10px] font-mono uppercase tracking-wider block ${
+                            className={`text-[10px]  uppercase tracking-wider block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
@@ -2005,7 +2005,7 @@ export function FinancialWrappedModal({
 
                         <div className="text-right">
                           <span
-                            className={`text-[10px] font-mono uppercase tracking-wider block ${
+                            className={`text-[10px]  uppercase tracking-wider block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
@@ -2030,7 +2030,7 @@ export function FinancialWrappedModal({
                       <div className="grid grid-cols-3 gap-2 text-left pt-0.5">
                         <div>
                           <span
-                            className={`text-[9px] font-mono uppercase tracking-wider block ${
+                            className={`text-[9px]  uppercase tracking-wider block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
@@ -2047,7 +2047,7 @@ export function FinancialWrappedModal({
                         </div>
                         <div>
                           <span
-                            className={`text-[9px] font-mono uppercase tracking-wider block ${
+                            className={`text-[9px]  uppercase tracking-wider block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
@@ -2064,7 +2064,7 @@ export function FinancialWrappedModal({
                         </div>
                         <div>
                           <span
-                            className={`text-[9px] font-mono uppercase tracking-wider block ${
+                            className={`text-[9px]  uppercase tracking-wider block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
@@ -2107,7 +2107,7 @@ export function FinancialWrappedModal({
                           }}
                         >
                           {dominantAssetKey === "liquid" && (
-                            <span className="text-[10px] font-mono font-extrabold tracking-widest uppercase opacity-75">
+                            <span className="text-[10px]  font-extrabold tracking-widest uppercase opacity-75">
                               {isIndonesian ? "DOMINAN" : "DOMINANT"}
                             </span>
                           )}
@@ -2121,7 +2121,7 @@ export function FinancialWrappedModal({
                             {assetPcts.liquid}%
                           </span>
                           <span
-                            className={`text-[10px] font-mono uppercase truncate block ${
+                            className={`text-[10px]  uppercase truncate block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
@@ -2151,7 +2151,7 @@ export function FinancialWrappedModal({
                           }}
                         >
                           {dominantAssetKey === "physical" && (
-                            <span className="text-[10px] font-mono font-extrabold tracking-widest uppercase opacity-75">
+                            <span className="text-[10px]  font-extrabold tracking-widest uppercase opacity-75">
                               {isIndonesian ? "DOMINAN" : "DOMINANT"}
                             </span>
                           )}
@@ -2165,7 +2165,7 @@ export function FinancialWrappedModal({
                             {assetPcts.physical}%
                           </span>
                           <span
-                            className={`text-[10px] font-mono uppercase truncate block ${
+                            className={`text-[10px]  uppercase truncate block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
@@ -2190,11 +2190,11 @@ export function FinancialWrappedModal({
                           }}
                         >
                           {dominantAssetKey === "invest" && (
-                            <span className="text-[10px] font-mono font-extrabold tracking-widest uppercase opacity-75">
+                            <span className="text-[10px]  font-extrabold tracking-widest uppercase opacity-75">
                               {isIndonesian ? "DOMINAN" : "DOMINANT"}
                             </span>
                           )}
-                          <span className="text-xs font-mono font-bold self-end opacity-90 truncate max-w-full">
+                          <span className="text-xs  font-bold self-end opacity-90 truncate max-w-full">
                             {assetPcts.invest}%
                           </span>
                         </div>
@@ -2207,7 +2207,7 @@ export function FinancialWrappedModal({
                             {assetPcts.invest}%
                           </span>
                           <span
-                            className={`text-[10px] font-mono uppercase truncate block ${
+                            className={`text-[10px]  uppercase truncate block ${
                               isDark ? "text-white/40" : "text-black/40"
                             }`}
                           >
@@ -2236,7 +2236,7 @@ export function FinancialWrappedModal({
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span
-                        className={`text-[10px] font-mono uppercase tracking-[0.2em] ${
+                        className={`text-[10px]  uppercase tracking-[0.2em] ${
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
@@ -2293,7 +2293,7 @@ export function FinancialWrappedModal({
                   {mode === "year" ? (
                     <div className="py-2 space-y-3">
                       {/* Month Headers */}
-                      <div className="flex justify-between text-[9px] font-mono px-1 opacity-60">
+                      <div className="flex justify-between text-[9px]  px-1 opacity-60">
                         {(isIndonesian
                           ? [
                               "Jan",
@@ -2387,7 +2387,7 @@ export function FinancialWrappedModal({
 
                       {/* 12-Month Outflow Distribution Bars */}
                       <div className="pt-2 border-t border-black/10 dark:border-white/10">
-                        <div className="flex items-center justify-between text-[10px] font-mono mb-2">
+                        <div className="flex items-center justify-between text-[10px]  mb-2">
                           <span
                             className={
                               isDark ? "text-zinc-400" : "text-zinc-600"
@@ -2439,7 +2439,7 @@ export function FinancialWrappedModal({
                                   title={`${ms.monthName}: ${formatRupiah(ms.amount)} (${ms.activeDaysCount} ${isIndonesian ? "hari aktif" : "active days"})`}
                                 />
                                 <span
-                                  className={`text-[8px] font-mono ${
+                                  className={`text-[8px]  ${
                                     isPeak
                                       ? isDark
                                         ? "font-bold text-white"
@@ -2490,7 +2490,7 @@ export function FinancialWrappedModal({
                         >
                           <div>
                             <span
-                              className={`text-[9px] font-mono uppercase tracking-wider block ${
+                              className={`text-[9px]  uppercase tracking-wider block ${
                                 isDark ? "text-zinc-400" : "text-zinc-600"
                               }`}
                             >
@@ -2533,7 +2533,7 @@ export function FinancialWrappedModal({
                         ).map((label, i) => (
                           <span
                             key={i}
-                            className={`text-[10px] font-mono ${
+                            className={`text-[10px]  ${
                               isDark ? "text-zinc-400" : "text-zinc-600"
                             }`}
                           >
@@ -2588,7 +2588,7 @@ export function FinancialWrappedModal({
 
                       {/* Heatmap Legend */}
                       <div
-                        className={`flex items-center justify-between text-[10px] font-mono pt-3 mt-2 border-t ${
+                        className={`flex items-center justify-between text-[10px]  pt-3 mt-2 border-t ${
                           isDark
                             ? "border-white/10 text-zinc-400"
                             : "border-black/10 text-zinc-600"
@@ -2657,7 +2657,7 @@ export function FinancialWrappedModal({
                         >
                           <div>
                             <span
-                              className={`text-[9px] font-mono uppercase tracking-wider block ${
+                              className={`text-[9px]  uppercase tracking-wider block ${
                                 isDark ? "text-zinc-400" : "text-zinc-600"
                               }`}
                             >
@@ -2707,7 +2707,7 @@ export function FinancialWrappedModal({
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span
-                        className={`text-[10px] font-mono uppercase tracking-[0.2em] ${
+                        className={`text-[10px]  uppercase tracking-[0.2em] ${
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
@@ -2843,7 +2843,7 @@ export function FinancialWrappedModal({
                               }`}
                             >
                               <span
-                                className={`text-2xl sm:text-3xl font-semibold font-mono tracking-tight leading-none ${
+                                className={`text-2xl sm:text-3xl font-semibold  tracking-tight leading-none ${
                                   isHero
                                     ? isDark
                                       ? "text-black"
@@ -2893,7 +2893,7 @@ export function FinancialWrappedModal({
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span
-                        className={`text-[10px] font-mono uppercase tracking-[0.2em] ${
+                        className={`text-[10px]  uppercase tracking-[0.2em] ${
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
@@ -3097,7 +3097,7 @@ export function FinancialWrappedModal({
 
                     {/* Period Timeline Points */}
                     <div
-                      className={`flex justify-between text-[10px] font-mono pt-1 ${
+                      className={`flex justify-between text-[10px]  pt-1 ${
                         isDark ? "text-zinc-400" : "text-zinc-600"
                       }`}
                     >
@@ -3120,7 +3120,7 @@ export function FinancialWrappedModal({
                   >
                     <div>
                       <span
-                        className={`text-[9px] font-mono uppercase tracking-wider block ${
+                        className={`text-[9px]  uppercase tracking-wider block ${
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
@@ -3146,7 +3146,7 @@ export function FinancialWrappedModal({
 
                     <div>
                       <span
-                        className={`text-[9px] font-mono uppercase tracking-wider block ${
+                        className={`text-[9px]  uppercase tracking-wider block ${
                           isDark ? "text-zinc-400" : "text-zinc-600"
                         }`}
                       >
@@ -3211,7 +3211,7 @@ export function FinancialWrappedModal({
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span
-                        className={`text-[10px] font-mono uppercase tracking-[0.2em] ${
+                        className={`text-[10px]  uppercase tracking-[0.2em] ${
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
@@ -3271,7 +3271,7 @@ export function FinancialWrappedModal({
                             className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end"
                           >
                             <span
-                              className={`text-[9px] font-mono ${
+                              className={`text-[9px]  ${
                                 isDark ? "text-zinc-400" : "text-zinc-600"
                               }`}
                             >
@@ -3324,7 +3324,7 @@ export function FinancialWrappedModal({
                     >
                       <div className="min-w-0 pr-3">
                         <span
-                          className={`text-[9px] font-mono uppercase tracking-wider block mb-0.5 ${
+                          className={`text-[9px]  uppercase tracking-wider block mb-0.5 ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
@@ -3341,7 +3341,7 @@ export function FinancialWrappedModal({
                         </p>
                         {stats.maxExpenseDate && (
                           <p
-                            className={`text-[11px] font-mono mt-0.5 ${
+                            className={`text-[11px]  mt-0.5 ${
                               isDark ? "text-zinc-400" : "text-zinc-600"
                             }`}
                           >
@@ -3355,7 +3355,7 @@ export function FinancialWrappedModal({
                       </div>
                       <div className="text-right shrink-0">
                         <span
-                          className={`text-[9px] font-mono uppercase block ${
+                          className={`text-[9px]  uppercase block ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
@@ -3390,7 +3390,7 @@ export function FinancialWrappedModal({
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span
-                        className={`text-[10px] font-mono uppercase tracking-[0.2em] ${
+                        className={`text-[10px]  uppercase tracking-[0.2em] ${
                           isDark ? "text-white/50" : "text-black/50"
                         }`}
                       >
@@ -3421,7 +3421,7 @@ export function FinancialWrappedModal({
 
                   <div className="space-y-4 pt-1">
                     <div
-                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-mono tracking-wider uppercase border ${
+                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px]  tracking-wider uppercase border ${
                         isDark
                           ? "bg-white/[0.08] border-white/15 text-white/90"
                           : "bg-black/[0.05] border-black/15 text-black/90"
@@ -3449,7 +3449,7 @@ export function FinancialWrappedModal({
                     >
                       <div>
                         <p
-                          className={`text-[9px] font-mono uppercase tracking-wider ${
+                          className={`text-[9px]  uppercase tracking-wider ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
@@ -3466,7 +3466,7 @@ export function FinancialWrappedModal({
                       </div>
                       <div>
                         <p
-                          className={`text-[9px] font-mono uppercase tracking-wider ${
+                          className={`text-[9px]  uppercase tracking-wider ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
@@ -3484,7 +3484,7 @@ export function FinancialWrappedModal({
                       </div>
                       <div>
                         <p
-                          className={`text-[9px] font-mono uppercase tracking-wider ${
+                          className={`text-[9px]  uppercase tracking-wider ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
@@ -3500,7 +3500,7 @@ export function FinancialWrappedModal({
                       </div>
                       <div>
                         <p
-                          className={`text-[9px] font-mono uppercase tracking-wider ${
+                          className={`text-[9px]  uppercase tracking-wider ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
@@ -3574,7 +3574,7 @@ export function FinancialWrappedModal({
                     >
                       <div>
                         <p
-                          className={`text-[10px] font-mono tracking-[0.25em] uppercase ${
+                          className={`text-[10px]  tracking-[0.25em] uppercase ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
@@ -3620,7 +3620,7 @@ export function FinancialWrappedModal({
                         }`}
                       >
                         <span
-                          className={`text-[9px] font-mono uppercase tracking-wider block ${
+                          className={`text-[9px]  uppercase tracking-wider block ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
@@ -3643,7 +3643,7 @@ export function FinancialWrappedModal({
                         }`}
                       >
                         <span
-                          className={`text-[9px] font-mono uppercase tracking-wider block ${
+                          className={`text-[9px]  uppercase tracking-wider block ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
@@ -3668,7 +3668,7 @@ export function FinancialWrappedModal({
                         }`}
                       >
                         <span
-                          className={`text-[9px] font-mono uppercase tracking-wider block ${
+                          className={`text-[9px]  uppercase tracking-wider block ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
@@ -3692,7 +3692,7 @@ export function FinancialWrappedModal({
                         }`}
                       >
                         <span
-                          className={`text-[9px] font-mono uppercase tracking-wider block ${
+                          className={`text-[9px]  uppercase tracking-wider block ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >

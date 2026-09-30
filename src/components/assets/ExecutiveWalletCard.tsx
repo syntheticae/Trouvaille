@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Eye, EyeOff, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { getIncludeReceivableInLiquid } from "../../lib/financialMath";
@@ -39,9 +40,9 @@ export function ExecutiveWalletCard({
   usdtRate = 15850,
   usdtUnits = 0,
 }: ExecutiveWalletCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [pageState, setPageState] = useState<[number, number]>([0, 0]);
+  const [page, direction] = pageState;
   const [receivablePrefTick, setReceivablePrefTick] = useState(0);
 
   useEffect(() => {
@@ -49,9 +50,6 @@ export function ExecutiveWalletCard({
     window.addEventListener("trouvaille:receivable-liquid-pref-changed", handlePref);
     return () => window.removeEventListener("trouvaille:receivable-liquid-pref-changed", handlePref);
   }, []);
-
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
 
   // ── DYNAMIC ZERO-DUMMY REAL ASSET CARDS ─────────────────────────────
   // Only display real assets actually owned by the user (USDT, real holdings, real cash wallets, and consolidated equity)
@@ -219,51 +217,44 @@ export function ExecutiveWalletCard({
       });
     }
 
-    return list;
+    // Deduplicate to guarantee no identical card keys
+    const seen = new Set<string>();
+    return list.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
   }, [holdings, wallets, balancesById, usdtUnits, usdtRate, netWorth, totalGrossAssets, solvencyScore, isIndonesian, receivablePrefTick]);
 
   const cardCount = rawCards.length;
-  const safeActiveIndex = cardCount > 0 ? activeCardIndex % cardCount : 0;
+  const safeActiveIndex = cardCount > 0 ? ((page % cardCount) + cardCount) % cardCount : 0;
+  const activeCard = rawCards[safeActiveIndex];
 
-  // Swipe navigation touch handlers
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
+  const paginate = (newDirection: number) => {
+    if (cardCount <= 1) return;
+    triggerHaptic("light");
+    setPageState(([prev]) => [prev + newDirection, newDirection]);
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const deltaY = e.changedTouches[0].clientY - (touchStartY.current || 0);
-
-    if (Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY)) {
-      triggerHaptic("light");
-      if (deltaX < 0) {
-        // Swiped left -> next card
-        setActiveCardIndex((prev) => (prev + 1) % cardCount);
-      } else {
-        // Swiped right -> previous card
-        setActiveCardIndex((prev) => (prev - 1 + cardCount) % cardCount);
-      }
-    }
-    touchStartX.current = null;
-    touchStartY.current = null;
+  const goToCard = (targetIndex: number) => {
+    if (targetIndex === safeActiveIndex || cardCount <= 1) return;
+    triggerHaptic("light");
+    const dir = targetIndex > safeActiveIndex ? 1 : -1;
+    setPageState([targetIndex, dir]);
   };
+
+  const isWhite = !isDark;
 
   return (
     <div
       className="relative w-full max-w-[370px] mx-auto select-none pt-20 pb-1 transition-all duration-300"
       onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => {
-        setIsExpanded(false);
-        setHoveredCardIndex(null);
-      }}
       onClick={() => {
-        triggerHaptic("light");
-        setIsExpanded((prev) => !prev);
+        if (!isExpanded) {
+          triggerHaptic("light");
+          setIsExpanded(true);
+        }
       }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
     >
       {/* ── Outer Artisanal Wallet Holder Body (Backplate) ── */}
       <div
@@ -283,7 +274,7 @@ export function ExecutiveWalletCard({
         {/* Top Header Embossed Title */}
         <div className="absolute top-2.5 inset-x-0 text-center">
           <span
-            className="text-[8.5px] font-mono font-bold tracking-[0.22em] uppercase"
+            className="text-[8.5px]  font-bold tracking-[0.22em] uppercase"
             style={{ color: isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.38)" }}
           >
             {isIndonesian ? "NERACA AKUN EKSEKUTIF" : "EXECUTIVE BALANCE VAULT"}
@@ -304,107 +295,107 @@ export function ExecutiveWalletCard({
         />
       </div>
 
-      {/* ── Cards Stacking Slot (Terselip Di Balik Saku Depan) ── */}
-      {/* Kartu ditaruh di slot absolute dengan z-20 di belakang saku depan (z-30) */}
-
-      {/* ── Cards Stacking Slot (Terselip Di Balik Saku Depan) ── */}
-      {/* Kartu ditaruh di slot absolute dengan z-20 di belakang saku depan (z-30) */}
+      {/* ── Cards Stacking Slot (Clean Animated Single-Active-Card Deck) ── */}
       <div className="absolute inset-x-2 bottom-3 z-20 flex justify-center items-end pointer-events-auto">
-        {rawCards.map((card, index) => {
-          const isHovered = hoveredCardIndex === index;
-          const offset = (index - safeActiveIndex + cardCount) % cardCount;
-          const isFront = offset === 0;
+        {/* Subtle Stack Depth Rim (Frosted outline of cards tucked behind with zero text collision) */}
+        {cardCount > 1 && (
+          <div
+            className="absolute w-[92%] h-[126px] rounded-xl pointer-events-none transition-all duration-400 ease-out"
+            style={{
+              bottom: "54px",
+              transform: isExpanded ? "translateY(-100px) scale(0.96)" : "translateY(0) scale(0.98)",
+              zIndex: 21,
+              background: isWhite
+                ? "linear-gradient(155deg, rgba(245, 245, 248, 0.85) 0%, rgba(230, 231, 238, 0.65) 100%)"
+                : "linear-gradient(155deg, rgba(28, 29, 36, 0.85) 0%, rgba(14, 15, 18, 0.9) 100%)",
+              border: isWhite
+                ? "1px solid rgba(0, 0, 0, 0.08)"
+                : "1px solid rgba(255, 255, 255, 0.12)",
+              boxShadow: isWhite
+                ? "0 4px 14px -2px rgba(0,0,0,0.06)"
+                : "0 8px 20px -4px rgba(0,0,0,0.6)",
+            }}
+          />
+        )}
 
-          // Dynamic bottom, tilt & depth based on cyclic distance from the front card
-          let baseBottom = "54px";
-          let tilt = "-rotate-[1.5deg]";
-          let hoverTilt = "-rotate-[3deg]";
-          let expandedYOffset = "-translate-y-[92px]";
-          let zIndex = 22;
+        {/* Minimalist Top Indicator Dots */}
+        {cardCount > 1 && isExpanded && (
+          <div className="absolute -top-6 inset-x-0 flex items-center justify-center gap-1.5 z-35 pointer-events-auto">
+            {rawCards.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToCard(i);
+                }}
+                aria-label={`Card ${i + 1}`}
+                className={`h-1 rounded-full transition-all cursor-pointer ${
+                  i === safeActiveIndex
+                    ? "w-3.5 bg-[var(--text-primary)]"
+                    : "w-1.5 bg-[var(--text-tertiary)] opacity-35 hover:opacity-75"
+                }`}
+              />
+            ))}
+          </div>
+        )}
 
-          if (offset === 0) {
-            baseBottom = "54px";
-            tilt = "-rotate-[1.5deg]";
-            hoverTilt = "-rotate-[3deg]";
-            expandedYOffset = "-translate-y-[92px]";
-            zIndex = isHovered ? 35 : 24;
-          } else if (offset === 1) {
-            baseBottom = "45px";
-            tilt = "rotate-[2.5deg]";
-            hoverTilt = "rotate-[4deg]";
-            expandedYOffset = "-translate-y-[104px]";
-            zIndex = isHovered ? 35 : 18;
-          } else if (offset === 2) {
-            baseBottom = "38px";
-            tilt = "-rotate-[3deg]";
-            hoverTilt = "-rotate-[5deg]";
-            expandedYOffset = "-translate-y-[116px]";
-            zIndex = isHovered ? 35 : 14;
-          } else {
-            baseBottom = "32px";
-            tilt = "rotate-0";
-            hoverTilt = "rotate-0";
-            expandedYOffset = "-translate-y-[124px]";
-            zIndex = isHovered ? 35 : 10;
-          }
-
-          const currentTransform = isExpanded
-            ? `${expandedYOffset} ${isHovered ? "-translate-y-[115px] scale-[1.02]" : hoverTilt}`
-            : `translate-y-0 ${tilt}`;
-
-          const isWhite = !isDark;
-
-          return (
-            <div
-              key={card.id}
-              onMouseEnter={() => setHoveredCardIndex(index)}
-              onMouseLeave={() => setHoveredCardIndex(null)}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isFront) {
-                  triggerHaptic("light");
-                  setActiveCardIndex(index);
-                  return;
-                }
-
-                // Front active card interaction
-                if (!isExpanded) {
-                  // Saat kartu sedang turun (retracted): tap manapun langsung menaikkan kartu ke atas
-                  triggerHaptic("medium");
-                  setIsExpanded(true);
-                  return;
-                }
-
-                // Saat kartu sudah naik (expanded): tentukan arah berdasarkan posisi ketukan horizontal
-                const rect = e.currentTarget.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const ratio = clickX / rect.width;
-
-                if (ratio < 0.3) {
-                  // 30% Kiri: Kartu sebelumnya (before)
-                  triggerHaptic("light");
-                  setActiveCardIndex((prev) => (prev - 1 + cardCount) % cardCount);
-                } else if (ratio > 0.7) {
-                  // 30% Kanan: Kartu setelahnya (next)
-                  triggerHaptic("light");
-                  setActiveCardIndex((prev) => (prev + 1) % cardCount);
-                } else {
-                  // 40% Tengah: Turunkan kartu kembali ke dalam dompet (retract)
-                  triggerHaptic("medium");
-                  setIsExpanded(false);
+        {/* Active Hero Card with Smooth Spring Transition */}
+        {activeCard && (
+          <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+            <motion.div
+              key={activeCard.id}
+              custom={direction}
+              variants={{
+                enter: (dir: number) => ({
+                  x: dir > 0 ? 140 : -140,
+                  opacity: 0,
+                  scale: 0.95,
+                  rotate: dir > 0 ? 2 : -2,
+                }),
+                center: {
+                  x: 0,
+                  opacity: 1,
+                  scale: 1,
+                  rotate: -1,
+                  transition: {
+                    x: { type: "spring", stiffness: 340, damping: 28 },
+                    opacity: { duration: 0.2 },
+                    rotate: { duration: 0.25 },
+                  },
+                },
+                exit: (dir: number) => ({
+                  x: dir > 0 ? -140 : 140,
+                  opacity: 0,
+                  scale: 0.95,
+                  rotate: dir > 0 ? -2 : 2,
+                  transition: {
+                    x: { type: "spring", stiffness: 340, damping: 28 },
+                    opacity: { duration: 0.2 },
+                  },
+                }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.5}
+              onDragEnd={(_e, { offset, velocity }) => {
+                if (offset.x < -35 || velocity.x < -250) {
+                  paginate(1);
+                } else if (offset.x > 35 || velocity.x > 250) {
+                  paginate(-1);
                 }
               }}
-              className={`absolute w-[92%] h-[126px] rounded-xl p-3 transition-all duration-480 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none ${currentTransform}`}
+              className="absolute w-[92%] h-[126px] rounded-xl p-3 cursor-grab active:cursor-grabbing select-none transition-transform duration-300"
               style={{
-                bottom: baseBottom,
-                zIndex,
+                bottom: "54px",
+                transform: isExpanded ? "translateY(-92px)" : "translateY(0)",
+                zIndex: 25,
                 background: isWhite
                   ? "linear-gradient(155deg, #ffffff 0%, #f6f6f9 55%, #eaeaf0 100%)"
-                  : isFront
-                    ? "linear-gradient(155deg, #2e2f38 0%, #1e1f26 60%, #131418 100%)"
-                    : offset === 1
-                      ? "linear-gradient(155deg, #25262e 0%, #18191e 60%, #0e0f12 100%)"
-                      : "linear-gradient(155deg, #1c1c22 0%, #121215 70%, #0a0a0c 100%)",
+                  : "linear-gradient(155deg, #2e2f38 0%, #1e1f26 60%, #131418 100%)",
                 border: isWhite
                   ? "1px solid rgba(0, 0, 0, 0.14)"
                   : "1px solid rgba(255, 255, 255, 0.2)",
@@ -412,20 +403,28 @@ export function ExecutiveWalletCard({
                 boxShadow: isWhite
                   ? "0 10px 26px -4px rgba(0,0,0,0.22), inset 0 1.5px 0 #ffffff"
                   : "0 14px 34px -4px rgba(0,0,0,0.85), inset 0 1.2px 0 rgba(255,255,255,0.25)",
+                touchAction: "pan-y",
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isExpanded) {
+                  triggerHaptic("medium");
+                  setIsExpanded(true);
+                }
               }}
             >
               <div className="flex flex-col justify-between h-full relative z-10">
-                {/* Top Row: Selalu terlihat utuh dengan napas lega (+14px) di atas saku */}
+                {/* Top Row: Account Name, Category Pill & Apple Titanium Chip */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 min-w-0 pr-1">
                     <span
                       className="text-[11.5px] font-bold tracking-tight truncate"
                       style={{ color: isWhite ? "#000000" : "#ffffff" }}
                     >
-                      {card.name}
+                      {activeCard.name}
                     </span>
                     <span
-                      className="text-[7.5px] font-mono font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider shrink-0"
+                      className="text-[7.5px]  font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider shrink-0"
                       style={{
                         background: isWhite
                           ? "rgba(0, 0, 0, 0.08)"
@@ -436,7 +435,7 @@ export function ExecutiveWalletCard({
                           : "1px solid rgba(255, 255, 255, 0.18)",
                       }}
                     >
-                      {card.category}
+                      {activeCard.category}
                     </span>
                   </div>
 
@@ -469,18 +468,18 @@ export function ExecutiveWalletCard({
                   </div>
                 </div>
 
-                {/* Middle Row: Nominal & Sparkline (Terbuka saat card ditarik keluar saku) */}
+                {/* Middle Row: Nominal & Sparkline Line Chart */}
                 <div className="flex items-center justify-between gap-2 mt-1">
                   <div className="space-y-0.2 min-w-0">
                     <div className="flex items-baseline gap-1.5">
                       <span
-                        className="text-[17px] sm:text-[19px] font-light tracking-tight font-mono leading-none truncate"
+                        className="text-[17px] sm:text-[19px] font-light tracking-tight  leading-none truncate"
                         style={{ color: isWhite ? "#000000" : "#ffffff" }}
                       >
-                        {isStealthMode ? "••••••••" : formatRupiah(card.balance)}
+                        {isStealthMode ? "••••••••" : formatRupiah(activeCard.balance)}
                       </span>
                       <span
-                        className="text-[8px] font-mono font-bold px-1 py-0.2 rounded shrink-0"
+                        className="text-[8px]  font-bold px-1 py-0.2 rounded shrink-0"
                         style={{
                           background: isWhite
                             ? "rgba(0,0,0,0.08)"
@@ -488,17 +487,17 @@ export function ExecutiveWalletCard({
                           color: isWhite ? "#18181b" : "#f4f4f5",
                         }}
                       >
-                        {card.allocation}%
+                        {activeCard.allocation}%
                       </span>
                     </div>
                     <div
                       className="text-[9px] font-medium truncate flex items-center gap-1"
                       style={{ color: isWhite ? "#52525b" : "#a1a1aa" }}
                     >
-                      <span className="truncate">{card.metadata}</span>
+                      <span className="truncate">{activeCard.metadata}</span>
                       <span>•</span>
-                      <span className="font-mono font-semibold shrink-0">
-                        {card.trendText}
+                      <span className=" font-semibold shrink-0">
+                        {activeCard.trendText}
                       </span>
                     </div>
                   </div>
@@ -508,7 +507,7 @@ export function ExecutiveWalletCard({
                     <svg className="w-full h-full overflow-visible" viewBox="0 0 100 32">
                       <defs>
                         <linearGradient
-                          id={`monoSpark-${card.id}`}
+                          id={`monoSpark-${activeCard.id}`}
                           x1="0%"
                           y1="0%"
                           x2="0%"
@@ -527,11 +526,11 @@ export function ExecutiveWalletCard({
                         </linearGradient>
                       </defs>
                       <path
-                        d={card.sparklineArea}
-                        fill={`url(#monoSpark-${card.id})`}
+                        d={activeCard.sparklineArea}
+                        fill={`url(#monoSpark-${activeCard.id})`}
                       />
                       <path
-                        d={card.sparklinePoints}
+                        d={activeCard.sparklinePoints}
                         fill="none"
                         stroke={isWhite ? "#000000" : "#ffffff"}
                         strokeWidth="2"
@@ -539,7 +538,7 @@ export function ExecutiveWalletCard({
                       />
                       <circle
                         cx="100"
-                        cy={card.sparklinePeakY}
+                        cy={activeCard.sparklinePeakY}
                         r="2.5"
                         fill={isWhite ? "#000000" : "#ffffff"}
                       />
@@ -547,7 +546,7 @@ export function ExecutiveWalletCard({
                   </div>
                 </div>
 
-                {/* Bottom Row: Detail Action Pill & Live Market Price */}
+                {/* Bottom Row: Detail Action Button & Live Market Price */}
                 <div
                   className="flex items-center justify-between pt-1 border-t"
                   style={{
@@ -556,19 +555,18 @@ export function ExecutiveWalletCard({
                       : "rgba(255, 255, 255, 0.12)",
                   }}
                 >
-                  {/* Single High-Contrast Monochrome Detail Action Button */}
                   <div>
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         triggerHaptic("light");
-                        if (card.holdingRef) {
-                          onDetailAsset?.(card.holdingRef);
-                        } else if (card.walletRef) {
-                          onDetailAsset?.(card.walletRef);
+                        if (activeCard.holdingRef) {
+                          onDetailAsset?.(activeCard.holdingRef);
+                        } else if (activeCard.walletRef) {
+                          onDetailAsset?.(activeCard.walletRef);
                         } else {
-                          onDetailAsset?.(card.id);
+                          onDetailAsset?.(activeCard.id);
                         }
                       }}
                       className="px-3 py-1 rounded-md text-[9px] font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
@@ -581,10 +579,9 @@ export function ExecutiveWalletCard({
                     </button>
                   </div>
 
-                  {/* Live Market Price in Monochrome */}
                   <div className="text-right">
                     <span
-                      className="text-[9.5px] font-mono font-bold tracking-tight flex items-center gap-1 justify-end"
+                      className="text-[9.5px]  font-bold tracking-tight flex items-center gap-1 justify-end"
                       style={{ color: isWhite ? "#09090b" : "#ffffff" }}
                     >
                       <span
@@ -593,14 +590,50 @@ export function ExecutiveWalletCard({
                           background: isWhite ? "#09090b" : "#ffffff",
                         }}
                       />
-                      {card.livePrice}
+                      {activeCard.livePrice}
                     </span>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            </motion.div>
+          </AnimatePresence>
+        )}
+
+        {/* Discreet Side Chevron Controls */}
+        {cardCount > 1 && isExpanded && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                paginate(-1);
+              }}
+              aria-label="Previous card"
+              className="absolute -left-1.5 top-1/2 -translate-y-[86px] w-6.5 h-6.5 rounded-full glass-surface flex items-center justify-center z-35 border border-[var(--glass-border)] active:scale-90 transition-transform cursor-pointer"
+              style={{
+                background: isDark ? "rgba(22, 22, 28, 0.88)" : "rgba(255, 255, 255, 0.92)",
+                boxShadow: "var(--shadow-card)",
+              }}
+            >
+              <ChevronLeft size={13} strokeWidth={2} style={{ color: "var(--text-secondary)" }} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                paginate(1);
+              }}
+              aria-label="Next card"
+              className="absolute -right-1.5 top-1/2 -translate-y-[86px] w-6.5 h-6.5 rounded-full glass-surface flex items-center justify-center z-35 border border-[var(--glass-border)] active:scale-90 transition-transform cursor-pointer"
+              style={{
+                background: isDark ? "rgba(22, 22, 28, 0.88)" : "rgba(255, 255, 255, 0.92)",
+                boxShadow: "var(--shadow-card)",
+              }}
+            >
+              <ChevronRight size={13} strokeWidth={2} style={{ color: "var(--text-secondary)" }} />
+            </button>
+          </>
+        )}
       </div>
 
       {/* ── Front Artisanal Leather / Milky Glass Pocket Sleeve ── */}
@@ -693,13 +726,13 @@ export function ExecutiveWalletCard({
           >
             <div>
               <span
-                className="text-[8px] font-mono uppercase block font-semibold"
+                className="text-[8px]  uppercase block font-semibold"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {isIndonesian ? "TOTAL ASET" : "GROSS ASSETS"}
               </span>
               <span
-                className="text-[9.5px] font-mono font-bold block mt-0.5"
+                className="text-[9.5px]  font-bold block mt-0.5"
                 style={{ color: isDark ? "#ffffff" : "#09090c" }}
               >
                 {isStealthMode ? "••••••" : formatRupiah(totalGrossAssets)}
@@ -713,13 +746,13 @@ export function ExecutiveWalletCard({
               }}
             >
               <span
-                className="text-[8px] font-mono uppercase block font-semibold"
+                className="text-[8px]  uppercase block font-semibold"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {isIndonesian ? "LIABILITAS" : "LIABILITIES"}
               </span>
               <span
-                className="text-[9.5px] font-mono font-bold block mt-0.5"
+                className="text-[9.5px]  font-bold block mt-0.5"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {isStealthMode ? "••••••" : formatRupiah(liabilitiesTotal)}
@@ -728,13 +761,13 @@ export function ExecutiveWalletCard({
 
             <div>
               <span
-                className="text-[8px] font-mono uppercase block font-semibold"
+                className="text-[8px]  uppercase block font-semibold"
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {isIndonesian ? "SOLVABILITAS" : "SOLVENCY"}
               </span>
               <span
-                className="text-[9.5px] font-mono font-bold flex items-center justify-center gap-1 mt-0.5"
+                className="text-[9.5px]  font-bold flex items-center justify-center gap-1 mt-0.5"
                 style={{ color: isDark ? "#ffffff" : "#09090c" }}
               >
                 {solvencyScore}%

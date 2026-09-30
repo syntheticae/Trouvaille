@@ -268,7 +268,7 @@ export function AppUpdateModal({
                     {isIndonesian ? "Sumber SideStore Resmi:" : "Official SideStore Source:"}
                   </div>
                   <div
-                    className="text-[10px] font-mono truncate"
+                    className="text-[10px]  truncate"
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {releaseInfo?.downloads.sideStoreSourceUrl}

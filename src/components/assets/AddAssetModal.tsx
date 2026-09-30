@@ -783,11 +783,11 @@ export function AddAssetModal({
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 leading-none">
-                            <span className="font-semibold text-[12.5px] text-[var(--text-primary)] font-mono">
+                            <span className="font-semibold text-[12.5px] text-[var(--text-primary)] ">
                               {preset.symbol}
                             </span>
                             {preset.suggestedCurrency && (
-                              <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium bg-white/[0.05] text-[var(--text-secondary)] border border-[var(--glass-border)]">
+                              <span className="text-[9px] px-1.5 py-0.2 rounded  font-medium bg-white/[0.05] text-[var(--text-secondary)] border border-[var(--glass-border)]">
                                 {preset.suggestedCurrency}
                               </span>
                             )}
@@ -799,7 +799,7 @@ export function AddAssetModal({
                       </div>
 
                       {/* Right Tag: Slim & Understated */}
-                      <span className="text-[9px] uppercase font-mono font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-[var(--text-tertiary)] border border-[var(--glass-border)] shrink-0 ml-1">
+                      <span className="text-[9px] uppercase  font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-[var(--text-tertiary)] border border-[var(--glass-border)] shrink-0 ml-1">
                         {getTypeLabel(preset.type, isIndonesian)}
                       </span>
                     </button>
@@ -877,7 +877,7 @@ export function AddAssetModal({
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 leading-none">
-                          <span className="font-bold text-[13.5px] text-[var(--text-primary)] font-mono">
+                          <span className="font-bold text-[13.5px] text-[var(--text-primary)] ">
                             {formSymbol || "ASSET"}
                           </span>
                           <span className="text-[9px] uppercase font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)]">
@@ -956,7 +956,7 @@ export function AddAssetModal({
                           setFormUnits(display);
                         }}
                         placeholder="1.00"
-                        className="w-full h-10 px-3.5 rounded-2xl text-[13px] font-mono font-semibold outline-none transition-all"
+                        className="w-full h-10 px-3.5 rounded-2xl text-[13px]  font-semibold outline-none transition-all"
                         style={{
                           background: controlBg,
                           border: controlBorder,
@@ -985,7 +985,7 @@ export function AddAssetModal({
                           setFormBuyPrice(display);
                         }}
                         placeholder={formCurrency === "USD" ? "$0.00" : "Rp 0"}
-                        className="w-full h-10 px-3.5 rounded-2xl text-[13px] font-mono font-semibold outline-none transition-all"
+                        className="w-full h-10 px-3.5 rounded-2xl text-[13px]  font-semibold outline-none transition-all"
                         style={{
                           background: controlBg,
                           border: controlBorder,
@@ -994,7 +994,7 @@ export function AddAssetModal({
                         }}
                       />
                       {formCurrency === "USD" && formBuyPrice && (
-                        <p className="text-[9.5px] text-[var(--text-tertiary)] font-mono mt-0.5 px-1">
+                        <p className="text-[9.5px] text-[var(--text-tertiary)]  mt-0.5 px-1">
                           ≈{" "}
                           {formatRupiah(
                             parseCleanNumber(formBuyPrice) * usdtRate,
@@ -1100,7 +1100,7 @@ export function AddAssetModal({
                             ? "$0.00"
                             : "Rp 0"
                       }
-                      className="w-full h-10 px-3.5 rounded-2xl text-[13px] font-mono font-semibold outline-none transition-all"
+                      className="w-full h-10 px-3.5 rounded-2xl text-[13px]  font-semibold outline-none transition-all"
                       style={{
                         background: isDark
                           ? "rgba(255, 255, 255, 0.05)"
@@ -1113,7 +1113,7 @@ export function AddAssetModal({
                     />
 
                     {formCurrency === "USD" && formCurrentPrice && (
-                      <p className="text-[9.5px] text-[var(--text-tertiary)] font-mono px-1">
+                      <p className="text-[9.5px] text-[var(--text-tertiary)]  px-1">
                         ≈{" "}
                         {formatRupiah(
                           parseCleanNumber(formCurrentPrice) * usdtRate,
@@ -1173,7 +1173,7 @@ export function AddAssetModal({
 
                     {isDepreciationEnabled && (
                       <div className="pt-2 border-t border-[var(--glass-border)]/40 space-y-1.5 animate-in fade-in duration-150">
-                        <div className="flex items-center justify-between text-[10px] font-mono">
+                        <div className="flex items-center justify-between text-[10px] ">
                           <span className="text-[var(--text-tertiary)]">
                             {isIndonesian
                               ? "Laju Penyusutan Tahunan:"
@@ -1192,7 +1192,7 @@ export function AddAssetModal({
                                 triggerHaptic("light");
                                 setAnnualRate(r);
                               }}
-                              className="flex-1 py-1 rounded-xl text-[10.5px] font-mono font-semibold transition-all cursor-pointer select-none"
+                              className="flex-1 py-1 rounded-xl text-[10.5px]  font-semibold transition-all cursor-pointer select-none"
                               style={{
                                 background:
                                   annualRate === r
@@ -1440,7 +1440,7 @@ export function AddAssetModal({
                                     <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate block">
                                       {w.name}
                                     </span>
-                                    <span className="text-[10.5px] font-mono text-[var(--text-secondary)] mt-1">
+                                    <span className="text-[10.5px]  text-[var(--text-secondary)] mt-1">
                                       {formatRupiah(bal)}
                                     </span>
                                   </button>
@@ -1477,7 +1477,7 @@ export function AddAssetModal({
                                 ? "Total Nilai Pasar"
                                 : "Total Market Value"}
                             </span>
-                            <span className="text-[16px] font-bold text-[var(--text-primary)] font-mono">
+                            <span className="text-[16px] font-bold text-[var(--text-primary)] ">
                               {formCurrency === "USD"
                                 ? `$${totalMarketValue.toLocaleString("en-US", {
                                     minimumFractionDigits: 2,
@@ -1494,7 +1494,7 @@ export function AddAssetModal({
                                 : "Unrealized PnL"}
                             </span>
                             <div
-                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold font-mono mt-0.5"
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold  mt-0.5"
                               style={{
                                 background:
                                   unrealizedDelta >= 0

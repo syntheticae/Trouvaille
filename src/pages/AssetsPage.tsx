@@ -22,7 +22,9 @@ import {
   Settings,
   Coins,
   TrendingUp,
+  X,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { formatRupiah, formatHoldingUnits } from "../lib/utils";
 import { triggerHaptic } from "../lib/haptics";
 import { useToast } from "../contexts/ToastContext";
@@ -102,7 +104,35 @@ export function AssetsPage() {
     useState<InvestmentHolding | null>(null);
   const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dismissedReconciliation, setDismissedReconciliation] = useState(false);
+  const [dismissedReconciliation, setDismissedReconciliation] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`trouvaille_dismissed_recon_${user?.id || "guest"}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Temporary dismissal valid for 24h
+        if (Date.now() - Number(parsed.timestamp || 0) < 24 * 60 * 60 * 1000) {
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  });
+  const [reconDismissDir, setReconDismissDir] = useState(1);
+
+  const handleDismissReconciliation = (direction = 1) => {
+    triggerHaptic("light");
+    setReconDismissDir(direction);
+    setDismissedReconciliation(true);
+    try {
+      localStorage.setItem(
+        `trouvaille_dismissed_recon_${user?.id || "guest"}`,
+        JSON.stringify({
+          timestamp: Date.now(),
+          unreconciledCount: reconciliationAudit.unreconciledTxs.length,
+        }),
+      );
+    } catch {}
+  };
 
   // Consolidated Balance Sheet Drawer & Metric Drill Down State
   const [isConsolidatedDrawerOpen, setIsConsolidatedDrawerOpen] =
@@ -449,6 +479,15 @@ export function AssetsPage() {
       units: res.updatedUnits,
     }));
     setDismissedReconciliation(true);
+    try {
+      localStorage.setItem(
+        `trouvaille_dismissed_recon_${user?.id || "guest"}`,
+        JSON.stringify({
+          timestamp: Date.now(),
+          unreconciledCount: 0,
+        }),
+      );
+    } catch {}
     showToast(
       isIndonesian
         ? `Holding USDT disinkronkan ke ${res.updatedUnits} USDT`
@@ -960,45 +999,86 @@ export function AssetsPage() {
         </button>
       </div>
 
-      {/* ── 3. Auto-Reconciliation Alert Banner ────────────────────────────── */}
-      {reconciliationAudit.hasDiscrepancy && !dismissedReconciliation && (
-        <div
-          className="p-3.5 rounded-3xl glass-surface flex items-center justify-between gap-3 border border-[var(--glass-border)] animate-in fade-in"
-          style={{
-            background: "var(--bg-elevated)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <div className="flex items-start gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-white/[0.08] flex items-center justify-center shrink-0">
-              <Sparkles size={14} className="text-[var(--text-primary)]" />
-            </div>
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
-                {isIndonesian
-                  ? "Sinkronisasi Mutasi USDT Terdeteksi"
-                  : "USDT Discrepancy Detected"}
-              </p>
-              <p className="text-[10.5px] text-[var(--text-secondary)] leading-tight">
-                {isIndonesian
-                  ? `Transaksi transfer keluar (${formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 0)}) belum dikurangkan dari unit holding.`
-                  : "A recent transfer has not yet been reflected in holding units."}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleApplyReconciliation}
-            className="px-3 py-1.5 rounded-xl text-[11px] font-semibold shrink-0 active:scale-95 transition-transform cursor-pointer"
+      {/* ── 3. Auto-Reconciliation Alert Banner (Swipe to dismiss or tap X) ── */}
+      <AnimatePresence>
+        {reconciliationAudit.hasDiscrepancy && !dismissedReconciliation && (
+          <motion.div
+            layout
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{
+              opacity: 0,
+              x: reconDismissDir > 0 ? 280 : -280,
+              height: 0,
+              marginTop: 0,
+              marginBottom: 0,
+              paddingTop: 0,
+              paddingBottom: 0,
+              transition: { duration: 0.22, ease: "easeOut" },
+            }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.65}
+            onDragEnd={(_e, info) => {
+              if (Math.abs(info.offset.x) > 50 || Math.abs(info.velocity.x) > 300) {
+                handleDismissReconciliation(info.offset.x > 0 ? 1 : -1);
+              }
+            }}
+            className="p-3.5 rounded-3xl glass-surface flex items-center justify-between gap-3 border border-[var(--glass-border)] cursor-grab active:cursor-grabbing select-none"
             style={{
-              background: "var(--text-primary)",
-              color: "var(--bg-base)",
+              background: "var(--bg-elevated)",
+              boxShadow: "var(--shadow-card)",
+              touchAction: "pan-y",
             }}
           >
-            {isIndonesian ? "Sinkronkan" : "Sync Now"}
-          </button>
-        </div>
-      )}
+            <div className="flex items-start gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-white/[0.08] flex items-center justify-center shrink-0">
+                <Sparkles size={14} className="text-[var(--text-primary)]" />
+              </div>
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
+                  {isIndonesian
+                    ? "Sinkronisasi Mutasi USDT Terdeteksi"
+                    : "USDT Discrepancy Detected"}
+                </p>
+                <p className="text-[10.5px] text-[var(--text-secondary)] leading-tight">
+                  {isIndonesian
+                    ? `Transaksi transfer keluar (${formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 0)}) belum dikurangkan dari unit holding.`
+                    : "A recent transfer has not yet been reflected in holding units."}
+                </p>
+                <p className="text-[9.5px] text-[var(--text-tertiary)] flex items-center gap-1 pt-0.5">
+                  <span>{isIndonesian ? "Geser ke samping untuk menutup" : "Swipe sideways to dismiss"}</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleApplyReconciliation}
+                className="px-3 py-1.5 rounded-xl text-[11px] font-semibold shrink-0 active:scale-95 transition-transform cursor-pointer"
+                style={{
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
+                }}
+              >
+                {isIndonesian ? "Sinkronkan" : "Sync Now"}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDismissReconciliation(1);
+                }}
+                className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-transform cursor-pointer"
+                title={isIndonesian ? "Tutup notifikasi" : "Dismiss notification"}
+                aria-label="Dismiss"
+              >
+                <X size={13} strokeWidth={2} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Unlinked Legacy Crypto Wallet Smart Banner ── */}
       {unlinkedCryptoWallet && (

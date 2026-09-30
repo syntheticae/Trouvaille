@@ -547,7 +547,7 @@ export function WebDashboardLinkModal({
                             {s.origin || "Trouvaille Web Dashboard"}
                           </p>
                           <p
-                            className="text-[10px] font-mono truncate mt-0.5"
+                            className="text-[10px]  truncate mt-0.5"
                             style={{ color: "var(--text-tertiary)" }}
                           >
                             {format(
@@ -749,7 +749,7 @@ export function WebDashboardLinkModal({
                     {isIndonesian ? "ID Sesi:" : "Session ID:"}
                   </span>
                   <span
-                    className="font-mono"
+                    className=""
                     style={{ color: "var(--text-secondary)" }}
                   >
                     •••• {scannedPayload.sessionId.slice(-6)}

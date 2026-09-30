@@ -406,12 +406,12 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                             {displayLedgerName}
                           </span>
                           {!isConsolidated && ledger.currency && (
-                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-semibold bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)] shrink-0">
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px]  font-semibold bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)] shrink-0">
                               {ledger.currency}
                             </span>
                           )}
                           {isDefault && (
-                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-mono font-medium bg-white/[0.08] text-[var(--text-primary)] border border-[var(--glass-border)] inline-flex items-center gap-1 shrink-0">
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px]  font-medium bg-white/[0.08] text-[var(--text-primary)] border border-[var(--glass-border)] inline-flex items-center gap-1 shrink-0">
                               <Star size={9} className="fill-current" />
                               <span>{isIndonesian ? "Bawaan" : "Default"}</span>
                             </span>
@@ -429,7 +429,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                             </span>
                           )}
                           {isConsolidated && (
-                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-mono font-medium bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)] shrink-0">
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px]  font-medium bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)] shrink-0">
                               {isIndonesian ? "Terkonsolidasi" : "Consolidated"}
                             </span>
                           )}
@@ -437,7 +437,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                         <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
                           {displayLedgerDesc}
                         </p>
-                        <span className="text-[10px] font-mono text-[var(--text-tertiary)] opacity-75 mt-0.5 inline-block">
+                        <span className="text-[10px]  text-[var(--text-tertiary)] opacity-75 mt-0.5 inline-block">
                           {txCount} {isIndonesian ? "transaksi" : "transactions"}
                         </span>
                       </div>
@@ -627,7 +627,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                         triggerHaptic("light");
                         setFormCurrency(curr);
                       }}
-                      className={`py-2 rounded-xl text-[11px] font-mono font-semibold transition-all border cursor-pointer ${
+                      className={`py-2 rounded-xl text-[11px]  font-semibold transition-all border cursor-pointer ${
                         isSelected
                           ? "bg-[var(--text-primary)] text-[var(--bg-elevated)] border-[var(--text-primary)]"
                           : "bg-[var(--glass-fill)] text-[var(--text-secondary)] border-[var(--glass-border)] hover:text-[var(--text-primary)]"

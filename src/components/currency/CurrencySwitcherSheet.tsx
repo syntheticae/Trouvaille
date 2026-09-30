@@ -128,7 +128,7 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
             <ArrowRightLeft size={12} strokeWidth={1.75} className="opacity-70" />
             <span className="font-medium">Market Rates (Open Exchange API)</span>
           </div>
-          <span className="font-mono text-[10px] opacity-70">
+          <span className=" text-[10px] opacity-70">
             Updated {formattedLastUpdated}
           </span>
         </div>
@@ -183,7 +183,7 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-mono font-bold text-[10px] tracking-wider border border-[var(--glass-border)] bg-[var(--glass-fill)]"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0  font-bold text-[10px] tracking-wider border border-[var(--glass-border)] bg-[var(--glass-fill)]"
                         style={{
                           color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
                         }}
@@ -200,7 +200,7 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
                             {currency.code}
                           </span>
                           <span
-                            className="text-[11px] font-mono opacity-70"
+                            className="text-[11px]  opacity-70"
                             style={{ color: "var(--text-tertiary)" }}
                           >
                             ({currency.symbol})
@@ -218,7 +218,7 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
                     <div className="flex items-center gap-2.5 shrink-0">
                       <div className="text-right">
                         <span
-                          className="text-[11px] font-medium font-mono block"
+                          className="text-[11px] font-medium  block"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {currency.code === "IDR"

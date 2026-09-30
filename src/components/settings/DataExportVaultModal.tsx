@@ -47,8 +47,8 @@ export function DataExportVaultModal({
             style={{ color: "var(--text-secondary)" }}
           >
             {isIndonesian
-              ? "Pusat ekspor laporan finansial profesional (PDF, Excel, CSV, JSON) dan pencadangan brankas terenkripsi militer AES-256."
-              : "Unified hub for professional financial reporting (PDF, Excel, CSV, JSON) and AES-256 military-grade encrypted backups."}
+              ? "Pusat ekspor laporan finansial profesional (PDF, CSV, JSON) dan pencadangan brankas terenkripsi militer AES-256."
+              : "Unified hub for professional financial reporting (PDF, CSV, JSON) and AES-256 military-grade encrypted backups."}
           </p>
         </div>
 
@@ -78,8 +78,8 @@ export function DataExportVaultModal({
                   <h4 className="text-[14px] font-semibold text-[var(--text-primary)]">
                     {isIndonesian ? "Ekspor Laporan Keuangan" : "Financial Report Export"}
                   </h4>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-medium">
-                    PDF / CSV / JSON
+                  <span className="text-[10px]  px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-medium">
+                    PDF / CSV
                   </span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
@@ -128,14 +128,14 @@ export function DataExportVaultModal({
                   <h4 className="text-[14px] font-semibold text-[var(--text-primary)]">
                     {isIndonesian ? "Brankas Terenkripsi AES-256" : "AES-256 Encrypted Vault"}
                   </h4>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-medium">
-                    {isIndonesian ? "Brankas Lokal" : "Offline Vault"}
+                  <span className="text-[10px]  px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-medium">
+                    {isIndonesian ? "Database" : "Database"}
                   </span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                   {isIndonesian
-                    ? "Cadangkan seluruh basis data (transaksi, rekening, tagihan, target) ke dalam berkas terenkripsi sandi atau pulihkan data kapan saja."
-                    : "Backup entire database (transactions, accounts, bills, goals) to a password-encrypted offline vault or restore anytime."}
+                    ? "Cadangkan seluruh basis data (transaksi, rekening, tagihan) ke dalam berkas terenkripsi sandi atau pulihkan data kapan saja."
+                    : "Backup entire database (transactions, accounts, bills) to a password-encrypted offline vault or restore anytime."}
                 </p>
               </div>
             </div>

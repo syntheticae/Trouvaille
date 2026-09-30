@@ -770,6 +770,15 @@ export function TransactionSheet({
     return 0;
   }, [amount, amountInput]);
 
+  const lastSaveTriggeredAt = useRef<number>(0);
+
+  const executeSave = () => {
+    const now = Date.now();
+    if (now - lastSaveTriggeredAt.current < 750) return;
+    lastSaveTriggeredAt.current = now;
+    handleSave();
+  };
+
   const handleSave = () => {
     // 1. Immediately dismiss any active software keyboard to prevent layout shift dropping the tap
     if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
@@ -1850,12 +1859,21 @@ export function TransactionSheet({
 
           <button
             type="button"
-            onClick={handleSave}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              executeSave();
+            }}
+            onTouchEnd={(e) => {
+              // Direct touch response on iOS: saves immediately on touch release
+              // preventing iOS 300ms tap delay and keyboard-dismiss dropped clicks
+              e.preventDefault();
+              executeSave();
+            }}
             onPointerDown={(e) => {
+              // Prevent iOS WebKit text callout / double-tap paste popup
               if (e.pointerType === "touch" || e.pointerType === "pen") {
-                if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
-                  document.activeElement.blur();
-                }
+                e.preventDefault();
               }
             }}
             onContextMenu={(e) => {

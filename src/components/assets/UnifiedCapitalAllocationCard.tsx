@@ -203,7 +203,7 @@ export function UnifiedCapitalAllocationCard({
             <RingCenter defaultLabel={`${Math.round(solvencyScore)}%`}>
               {({ isHovered }) => (
                 <div className="flex flex-col items-center justify-center text-center">
-                  <span className="text-[18px] sm:text-[20px] font-bold text-[var(--text-primary)] tabular-nums tracking-tight leading-none amount font-mono">
+                  <span className="text-[18px] sm:text-[20px] font-bold text-[var(--text-primary)] tabular-nums tracking-tight leading-none amount ">
                     {isHovered && hoveredIndex !== null
                       ? `${ringData[hoveredIndex]?.percentage}%`
                       : `${Math.round(solvencyScore)}%`}
@@ -254,7 +254,7 @@ export function UnifiedCapitalAllocationCard({
                     {item.label}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 text-right font-mono">
+                <div className="flex items-center gap-1.5 shrink-0 text-right ">
                   <span className="text-[9.5px] font-medium text-[var(--text-tertiary)] tabular-nums">
                     {item.percentage}%
                   </span>

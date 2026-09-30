@@ -152,7 +152,7 @@ export function DynamicShowcaseCapsule({
             </div>
 
             <div
-              className={`flex items-center justify-between text-[9.5px] font-mono tracking-wider px-1 pt-0.5 border-t ${
+              className={`flex items-center justify-between text-[9.5px]  tracking-wider px-1 pt-0.5 border-t ${
                 isDark ? "border-white/[0.06] text-white/40" : "border-black/[0.06] text-zinc-400"
               }`}
             >
@@ -213,7 +213,7 @@ export function DynamicShowcaseCapsule({
                   />
                 ))}
                 <span
-                  className={`text-[9.5px] font-mono ml-1.5 px-1.5 py-0.5 rounded-md ${
+                  className={`text-[9.5px]  ml-1.5 px-1.5 py-0.5 rounded-md ${
                     isDark ? "bg-white/10 text-white/80" : "bg-black/5 text-zinc-700"
                   }`}
                 >
@@ -292,7 +292,7 @@ export function DynamicShowcaseCapsule({
                 </span>
               </div>
 
-              <span className="text-[11px] font-bold font-mono tracking-tight">
+              <span className="text-[11px] font-bold  tracking-tight">
                 {isIndonesian ? "Rp 50.000" : "$50.00"}
               </span>
             </motion.div>
@@ -451,7 +451,7 @@ export function DynamicShowcaseCapsule({
                     {isIndonesian ? "Pribadi" : "Personal"}
                   </span>
                 </div>
-                <div className="text-[13.5px] font-bold font-mono tracking-tight">
+                <div className="text-[13.5px] font-bold  tracking-tight">
                   {isIndonesian ? "Rp 64,5 Jt" : "$4,250.00"}
                 </div>
                 <span
@@ -482,7 +482,7 @@ export function DynamicShowcaseCapsule({
                     {isIndonesian ? "Usaha" : "Venture"}
                   </span>
                 </div>
-                <div className="text-[13.5px] font-bold font-mono tracking-tight">
+                <div className="text-[13.5px] font-bold  tracking-tight">
                   {isIndonesian ? "Rp 285 Jt" : "$18,920.00"}
                 </div>
                 <span
@@ -562,7 +562,7 @@ export function DynamicShowcaseCapsule({
                   </span>
                 </div>
                 <span
-                  className={`text-[10px] font-mono ${isDark ? "text-white/45" : "text-zinc-500"}`}
+                  className={`text-[10px]  ${isDark ? "text-white/45" : "text-zinc-500"}`}
                 >
                   {isIndonesian ? "Target: 6 Bln" : "Target: 6 Mo"}
                 </span>

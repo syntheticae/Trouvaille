@@ -318,7 +318,7 @@ export function SettingsDataVaultSection({
                           : "Pending Offline Mutations"}
                       </span>
                       <span
-                        className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
+                        className="text-[10px]  px-1.5 py-0.5 rounded border"
                         style={{
                           background: "var(--bg-elevated)",
                           borderColor: "var(--glass-border)",

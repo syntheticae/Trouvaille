@@ -1023,7 +1023,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <span
-                  className="text-[12px] font-mono"
+                  className="text-[12px] "
                   style={{ color: "var(--text-secondary)" }}
                 >
                   {activeSpace?.name || (isIndonesian ? "Space Pribadi" : "Personal Space")}
@@ -1062,7 +1062,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span
-                    className="text-[12px] font-mono"
+                    className="text-[12px] "
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {categories.length}
@@ -1102,7 +1102,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span
-                    className="text-[12px] font-mono"
+                    className="text-[12px] "
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {wallets.length}
@@ -1142,7 +1142,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span
-                    className="text-[12px] font-mono"
+                    className="text-[12px] "
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     {budgetTarget > 0
@@ -1186,7 +1186,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span
-                    className="text-[12px] font-mono"
+                    className="text-[12px] "
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {bills.length} {isIndonesian ? "aktif" : "active"}
@@ -1226,7 +1226,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span
-                    className="text-[12px] font-mono"
+                    className="text-[12px] "
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {goals.length} {isIndonesian ? "target" : "targets"}
@@ -1272,7 +1272,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[12px]"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    {isIndonesian ? "Kripto & Portofolio" : "Crypto & Holdings"}
+                    {isIndonesian ? "Assets & Portofolio" : "Wealth & Holdings"}
                   </span>
                   <ChevronRight
                     size={15}
@@ -1312,7 +1312,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span
-                    className="text-[12px] font-mono"
+                    className="text-[12px] "
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {preferredCurrency} ({currencyMeta.symbol})
@@ -1537,12 +1537,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     >
                       {isIndonesian
                         ? "Sertakan Piutang ke Aset Likuid"
-                        : "Include Receivables in Liquid Cash"}
-                    </span>
-                    <span className="text-[11px] text-[var(--text-tertiary)] truncate">
-                      {isIndonesian
-                        ? "Hitung akun piutang sebagai kas likuid operasional"
-                        : "Count receivable accounts as liquid operating cash"}
+                        : "Receivables in Liquid Cash"}
                     </span>
                   </div>
                 </div>
@@ -1655,8 +1650,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                         ? "Pintasan URL & Otomatisasi"
                         : "URL Shortcuts & Automations"
                       : isIndonesian
-                        ? "Pintasan Apple & Otomatisasi"
-                        : "Apple Shortcuts & Automations"}
+                        ? "Pintasan & Otomatisasi"
+                        : "Shortcuts & Automations"}
                   </span>
                 </div>
               </div>
@@ -1868,8 +1863,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Perisai Privasi (Sensor Saldo)"
-                        : "Privacy Shield (Mask Balances)"}
+                        ? "Privasi Saldo"
+                        : "Privacy Shield"}
                     </span>
                   </div>
                 </div>
@@ -1880,10 +1875,10 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     showToast(
                       isPrivacyShieldEnabled
                         ? isIndonesian
-                          ? "Perisai Privasi dinonaktifkan"
+                          ? "Privasi Saldo dinonaktifkan"
                           : "Privacy Shield disabled"
                         : isIndonesian
-                          ? "Perisai Privasi diaktifkan"
+                          ? "Privasi Saldo diaktifkan"
                           : "Privacy Shield enabled",
                       "update",
                       () => {},
@@ -1914,8 +1909,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Kunci Aplikasi (PIN Keamanan)"
-                        : "Require Security PIN Lock"}
+                        ? "Kunci Aplikasi"
+                        : "Security PIN Lock"}
                     </span>
                   </div>
                 </div>

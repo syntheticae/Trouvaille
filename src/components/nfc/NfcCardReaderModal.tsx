@@ -320,7 +320,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
               <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
                 <span>{isIndonesian ? "Pembaca Kartu Transit & Tol Indonesia" : "Indonesian Transit & Toll Smartcard Reader"}</span>
                 {hasNfcHardware && (
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-semibold bg-white/10 text-[var(--text-primary)] border border-white/15">
+                  <span className="px-1.5 py-0.2 rounded text-[9px]  font-semibold bg-white/10 text-[var(--text-primary)] border border-white/15">
                     {isIndonesian ? "NFC Aktif" : "Web NFC Live"}
                   </span>
                 )}
@@ -403,13 +403,13 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                 <span className="text-[10px] text-zinc-400 font-medium block">
                   {isIndonesian ? "Saldo Kartu Tersimpan" : "Stored Card Balance"}
                 </span>
-                <p className="text-[26px] font-bold font-mono tracking-tight text-white">
+                <p className="text-[26px] font-bold  tracking-tight text-white">
                   {formatRupiah(detectedCard.balance)}
                 </p>
               </div>
 
               {/* Masked UID */}
-              <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px] font-mono text-zinc-400">
+              <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]  text-zinc-400">
                 <span>{detectedCard.cardUid}</span>
                 <span className="text-[10px] uppercase font-bold text-zinc-300">
                   {isIndonesian ? "KETUK NFC" : "NFC TAP"}
@@ -446,7 +446,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
               </div>
 
               <div className="text-right shrink-0">
-                <span className="text-[12px] font-semibold font-mono text-[var(--text-primary)] block">
+                <span className="text-[12px] font-semibold  text-[var(--text-primary)] block">
                   -{formatRupiah(detectedCard.lastTapAmount)}
                 </span>
                 <span className="text-[9px] uppercase font-bold text-[var(--text-tertiary)]">
@@ -530,11 +530,11 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                     <span className="text-[11px] font-semibold text-[var(--text-primary)] truncate">
                       {p.productName}
                     </span>
-                    <span className="text-[9px] font-mono text-[var(--text-tertiary)]">
+                    <span className="text-[9px]  text-[var(--text-tertiary)]">
                       {p.cardType.toUpperCase()}
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono font-medium text-[var(--text-secondary)] block">
+                  <span className="text-[10px]  font-medium text-[var(--text-secondary)] block">
                     {formatRupiah(p.balance)}
                   </span>
                 </button>
