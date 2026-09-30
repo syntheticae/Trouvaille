@@ -563,7 +563,6 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                 onChange={(e) => setFormName(e.target.value)}
                 placeholder={isIndonesian ? "Misal: Bisnis Kopi, Freelance, Tabungan" : "e.g. Business, Side Project, Travel"}
                 className="w-full px-4 py-3 rounded-xl text-[13px] bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-all"
-                autoFocus
               />
             </div>
 

@@ -1206,22 +1206,38 @@ export function setHoldingDirectUnits(
       ? Math.round((anchorCostBasis / sanitizedUnits) * 100) / 100
       : target.avg_buy_price;
 
+  const unitPrice =
+    calibratedAvgBuyPrice || target.current_price || USD_IDR_ESTIMATE;
+  const activityValuation = Math.round(Math.abs(deltaUnits) * unitPrice);
+
   const correctionActivity: HoldingActivity = {
     id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     holding_id: target.id,
     type: deltaUnits >= 0 ? "buy" : "sell",
     date: new Date().toISOString().split("T")[0],
     units: Math.abs(deltaUnits),
-    price_per_unit: calibratedAvgBuyPrice || target.current_price || USD_IDR_ESTIMATE,
-    total_amount:
-      anchorCostBasis && anchorCostBasis > 0
-        ? Math.round(anchorCostBasis)
-        : Math.abs(deltaUnits) * (target.current_price || target.avg_buy_price || USD_IDR_ESTIMATE),
+    price_per_unit: unitPrice,
+    total_amount: activityValuation,
     note,
     created_at: new Date().toISOString(),
   };
 
-  const updatedActivities = deltaUnits !== 0 ? [correctionActivity, ...existingActivities] : existingActivities;
+  // Sanitize any historically distorted correction activities where total_amount was mistakenly set to entire wallet cost basis
+  const sanitizedExistingActivities = existingActivities.map((act) => {
+    if (
+      act.units > 0 &&
+      act.price_per_unit > 0 &&
+      act.total_amount > act.units * act.price_per_unit * 1.5
+    ) {
+      return {
+        ...act,
+        total_amount: Math.round(act.units * act.price_per_unit),
+      };
+    }
+    return act;
+  });
+
+  const updatedActivities = deltaUnits !== 0 ? [correctionActivity, ...sanitizedExistingActivities] : sanitizedExistingActivities;
 
   const updatedHolding: InvestmentHolding = {
     ...target,

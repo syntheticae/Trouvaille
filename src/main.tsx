@@ -322,17 +322,17 @@ createRoot(document.getElementById('root')!).render(
           <AuthProvider>
             <SecurityLockProvider>
               <ThemeProvider>
-                <ToastProvider>
-                  <PrivacyProvider>
-                    <SpaceProvider>
-                      <CurrencyProvider>
-                        <LanguageProvider>
+                <LanguageProvider>
+                  <ToastProvider>
+                    <PrivacyProvider>
+                      <SpaceProvider>
+                        <CurrencyProvider>
                           <App />
-                        </LanguageProvider>
-                      </CurrencyProvider>
-                    </SpaceProvider>
-                  </PrivacyProvider>
-                </ToastProvider>
+                        </CurrencyProvider>
+                      </SpaceProvider>
+                    </PrivacyProvider>
+                  </ToastProvider>
+                </LanguageProvider>
               </ThemeProvider>
             </SecurityLockProvider>
           </AuthProvider>

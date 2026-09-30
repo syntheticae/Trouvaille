@@ -138,7 +138,6 @@ export function GlassSelect({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search..."
                   className="w-full pl-8 pr-3 py-1.5 rounded-xl text-[12px] bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--text-primary)] transition-colors"
-                  autoFocus
                 />
               </div>
             )}

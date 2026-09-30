@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { Plus, Trash2, Scale, Check, ChevronRight, Search, X } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -22,16 +22,18 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { format } from "date-fns";
-import type { AccountClassification } from "../../lib/types";
+import type { Wallet, AccountClassification } from "../../lib/types";
 
 interface WalletManagementSheetsProps {
   isOpen: boolean;
   onClose: () => void;
+  initialWalletToEdit?: Wallet | null;
 }
 
 export function WalletManagementSheets({
   isOpen,
   onClose,
+  initialWalletToEdit,
 }: WalletManagementSheetsProps) {
   const { data: wallets = [] } = useWallets();
   const addWallet = useAddWallet();
@@ -75,6 +77,24 @@ export function WalletManagementSheets({
     icon: string;
     classification?: AccountClassification;
   } | null>(null);
+
+  useEffect(() => {
+    if (initialWalletToEdit && isOpen) {
+      setEditWallet({
+        id: initialWalletToEdit.id,
+        name: initialWalletToEdit.name,
+        icon: initialWalletToEdit.icon || "Wallet",
+        classification: resolveWalletClassification(initialWalletToEdit),
+      });
+    }
+  }, [initialWalletToEdit, isOpen]);
+
+  const handleCloseEditWallet = () => {
+    setEditWallet(null);
+    if (initialWalletToEdit) {
+      onClose();
+    }
+  };
 
   const [correctWallet, setCorrectWallet] = useState<{
     id: string;
@@ -846,7 +866,7 @@ export function WalletManagementSheets({
       </BottomSheet>
 
       {/* Edit Wallet Modal */}
-      <BottomSheet isOpen={!!editWallet} onClose={() => setEditWallet(null)}>
+      <BottomSheet isOpen={!!editWallet} onClose={handleCloseEditWallet}>
         <div className="p-5 pb-12 space-y-4">
           <div className="flex items-center justify-between">
             <h3
@@ -1006,7 +1026,7 @@ export function WalletManagementSheets({
                   },
                   {
                     onSuccess: () => {
-                      setEditWallet(null);
+                      handleCloseEditWallet();
                       showToast(isIndonesian ? "Akun diperbarui" : "Account updated", "update", () => {});
                     },
                   },
@@ -1034,7 +1054,7 @@ export function WalletManagementSheets({
                 }
                 deleteWallet.mutate(editWallet.id, {
                   onSuccess: () => {
-                    setEditWallet(null);
+                    handleCloseEditWallet();
                     showToast(
                       isIndonesian ? "Akun dihapus" : "Account deleted",
                       "delete",

@@ -14,7 +14,6 @@ import { NfcCardReaderModal } from "../nfc/NfcCardReaderModal";
 import { WidgetCustomizationBar } from "../common";
 import { ProfileSheet } from "../settings/ProfileSheet";
 import { WebDashboardLinkModal } from "../settings/WebDashboardLinkModal";
-import { ProductTourOverlay } from "../onboarding/ProductTourOverlay";
 import { GoalDetailModal } from "../goals/GoalDetailModal";
 import type { Goal } from "../../hooks/useGoals";
 import { HOME_PRESETS, getLocalizedWidgetMeta } from "../../lib/widgetLayoutTypes";
@@ -136,8 +135,8 @@ export function HomeModalsContainer({
   onOpenDeleteAccount,
   webDashboardOpen,
   onCloseWebDashboard,
-  isTourOpen,
-  onCloseTour,
+  isTourOpen: _isTourOpen,
+  onCloseTour: _onCloseTour,
 }: HomeModalsContainerProps) {
   return (
     <>
@@ -564,12 +563,6 @@ export function HomeModalsContainer({
           onClose={onCloseWebDashboard}
         />
       )}
-
-      {/* Interactive Feature & Product Introduction Tour */}
-      <ProductTourOverlay
-        isOpen={isTourOpen}
-        onClose={onCloseTour}
-      />
     </>
   );
 }

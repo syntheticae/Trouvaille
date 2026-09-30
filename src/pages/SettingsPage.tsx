@@ -68,7 +68,10 @@ import {
   getPendingMutations,
   type PendingMutation,
 } from "../lib/syncEngine";
-import { saveBiometricLoginCredentials } from "../lib/biometricAuth";
+import {
+  getIncludeReceivableInLiquid,
+  setIncludeReceivableInLiquid,
+} from "../lib/financialMath";
 
 // Code-split heavy modular sheets and exporters
 const CurrencySwitcherSheet = lazy(() =>
@@ -224,8 +227,6 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const {
     securitySettings,
     updateSettings: updateSecuritySettings,
-    isBiometricSupported,
-    enrollBiometric,
   } = useSecurityLock();
   const { isPrivacyShieldEnabled, togglePrivacyShield } = usePrivacy();
   const { preferredCurrency, currencyMeta } = useCurrency();
@@ -277,6 +278,29 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
         : isIndonesian
           ? "Lampiran struk tidak akan disimpan"
           : "Receipt attachments will not be stored",
+      "update",
+      () => {},
+    );
+  };
+
+  // Include Receivables in Liquid Cash toggle
+  const [includeReceivableInLiquid, setIncludeReceivableState] = useState<boolean>(() =>
+    getIncludeReceivableInLiquid(),
+  );
+
+  const handleToggleIncludeReceivable = () => {
+    const next = !includeReceivableInLiquid;
+    setIncludeReceivableState(next);
+    setIncludeReceivableInLiquid(next);
+    triggerHaptic("light");
+    showToast(
+      next
+        ? isIndonesian
+          ? "Piutang disertakan dalam Aset Likuid"
+          : "Receivables included in Liquid Assets"
+        : isIndonesian
+          ? "Piutang dipisahkan dari Aset Likuid"
+          : "Receivables excluded from Liquid Assets",
       "update",
       () => {},
     );
@@ -768,8 +792,16 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     "Save Attachment Files",
     "receipts camera slip images photos",
   );
+  const showReceivableInLiquid = matches(
+    "Include Receivables in Liquid Cash",
+    "receivable piutang kas liquid cash aset likuid operasional balance",
+  );
   const hasPreferences =
-    showTheme || showKeypad || showTags || showSaveAttachments;
+    showTheme ||
+    showKeypad ||
+    showTags ||
+    showSaveAttachments ||
+    showReceivableInLiquid;
 
   // Section 3: Automations & Shortcuts (Unified Single Setting)
   const showAutomations = matches(
@@ -1483,6 +1515,44 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                 />
               </div>
             )}
+
+            {/* Include Receivables in Liquid Cash Toggle */}
+            {showReceivableInLiquid && (
+              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Coins size={14} strokeWidth={1.75} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[13px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Sertakan Piutang ke Aset Likuid"
+                        : "Include Receivables in Liquid Cash"}
+                    </span>
+                    <span className="text-[11px] text-[var(--text-tertiary)] truncate">
+                      {isIndonesian
+                        ? "Hitung akun piutang sebagai kas likuid operasional"
+                        : "Count receivable accounts as liquid operating cash"}
+                    </span>
+                  </div>
+                </div>
+                <ToggleSwitch
+                  checked={includeReceivableInLiquid}
+                  onChange={handleToggleIncludeReceivable}
+                  ariaLabel="Toggle include receivables in liquid cash"
+                />
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -1844,8 +1914,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Kunci Aplikasi (Biometrik / PIN)"
-                        : "Require Face ID / PIN"}
+                        ? "Kunci Aplikasi (PIN Keamanan)"
+                        : "Require Security PIN Lock"}
                     </span>
                   </div>
                 </div>
@@ -1856,8 +1926,8 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       if (!securitySettings.hasPin) {
                         showToast(
                           isIndonesian
-                            ? "Harap atur PIN cadangan terlebih dahulu untuk mengaktifkan kunci aplikasi"
-                            : "Please set up a backup PIN first to enable app lock",
+                            ? "Harap atur PIN keamanan terlebih dahulu untuk mengaktifkan kunci aplikasi"
+                            : "Please set up a security PIN first to enable app lock",
                           "info",
                           null,
                           3000,
@@ -1865,65 +1935,28 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                         setPinModalOpen(true);
                         return;
                       }
-
-                      if (
-                        isBiometricSupported &&
-                        !securitySettings.hasBiometric
-                      ) {
-                        try {
-                          await enrollBiometric(
-                            session?.user?.email || undefined,
-                          );
-                          if (session) {
-                            saveBiometricLoginCredentials(
-                              session.user?.email || "",
-                              session,
-                            );
-                          }
-                          updateSecuritySettings({ enabled: true });
-                          showToast(
-                            isIndonesian
-                              ? "Face ID / Biometrik diaktifkan"
-                              : "Face ID / Biometrics enabled",
-                            "update",
-                            () => {},
-                          );
-                        } catch (err: any) {
-                          showToast(
-                            err?.message ||
-                              (isIndonesian
-                                ? "Pengaturan biometrik gagal. Kunci aplikasi diaktifkan dengan PIN."
-                                : "Biometric setup failed. App lock enabled with PIN."),
-                            "info",
-                            null,
-                            3000,
-                          );
-                          updateSecuritySettings({ enabled: true });
-                        }
-                      } else {
-                        updateSecuritySettings({ enabled: true });
-                        triggerHaptic("medium");
-                        showToast(
-                          isIndonesian
-                            ? "Kunci aplikasi diaktifkan"
-                            : "App lock enabled",
-                          "update",
-                          () => {},
-                        );
-                      }
+                      updateSecuritySettings({ enabled: true });
+                      triggerHaptic("medium");
+                      showToast(
+                        isIndonesian
+                          ? "Kunci PIN Keamanan diaktifkan"
+                          : "Security PIN Lock enabled",
+                        "update",
+                        () => {},
+                      );
                     } else {
                       updateSecuritySettings({ enabled: false });
                       triggerHaptic("light");
                       showToast(
                         isIndonesian
-                          ? "Kunci aplikasi dinonaktifkan"
-                          : "App lock disabled",
+                          ? "Kunci PIN Keamanan dinonaktifkan"
+                          : "Security PIN Lock disabled",
                         "update",
                         () => {},
                       );
                     }
                   }}
-                  ariaLabel="Toggle Face ID or PIN lock"
+                  ariaLabel="Toggle Security PIN lock"
                 />
               </div>
             )}

@@ -2343,7 +2343,18 @@ export function ReceiptScanModal({
                     type="button"
                     disabled={addTx.isPending}
                     onClick={handleSaveTransaction}
-                    className="w-full h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                    onPointerDown={(e) => {
+                      if (e.pointerType === "touch" || e.pointerType === "pen") {
+                        if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+                          document.activeElement.blur();
+                        }
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="w-full h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 select-none"
                     style={{
                       background: isDark
                         ? "linear-gradient(180deg,#ffffff 0%,#e7e7eb 100%)"
@@ -2356,6 +2367,10 @@ export function ReceiptScanModal({
                         ? "inset 0 1px 0 #ffffff, inset 0 -1px 0 rgba(0,0,0,0.08), 0 5px 14px rgba(255,255,255,0.06), 0 14px 30px -8px rgba(0,0,0,0.60)"
                         : "inset 0 1px 0 rgba(255,255,255,0.13), inset 0 -1px 0 rgba(0,0,0,0.18), 0 12px 28px -8px rgba(15,23,42,0.38)",
                       letterSpacing: "-0.01em",
+                      touchAction: "manipulation",
+                      WebkitTouchCallout: "none",
+                      WebkitUserSelect: "none",
+                      userSelect: "none",
                     }}
                   >
                     {addTx.isPending ? (
@@ -2377,7 +2392,7 @@ export function ReceiptScanModal({
                         />
 
                         <span
-                          className="font-semibold"
+                          className="font-semibold select-none"
                           style={{
                             color: isDark ? "#000000" : "#ffffff",
                           }}

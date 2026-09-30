@@ -1,7 +1,8 @@
 // ======================================================================
-// TROUVAILLE INTERACTIVE FEATURE & PRODUCT TOUR OVERLAY
+// TROUVAILLE ESSENTIAL CROSS-PAGE PRODUCT TOUR OVERLAY
 // Ultra-luxury Apple Monochrome Glassmorphism
-// 5-Step Dynamic Spotlight Highlighting Real UI Elements
+// 5-Step Macro Tour traversing:
+// [1] Home (Executive Cockpit) -> [2] Assets (4 Pillars) -> [3] Transactions (Ledger) -> [4] Calendar (Bills) -> [5] Statistics (Diagnostics)
 // Strictly compliant with GEMINI.md:
 // - Vector Lucide outline icons only (zero native colored emojis)
 // - Rule 6: 100% pure localization (zero bilingual mixing)
@@ -10,13 +11,14 @@
 // ======================================================================
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
-  Users,
-  TrendingUp,
-  PieChart,
-  Plus,
+  Home,
   Landmark,
+  History,
+  Calendar,
+  PieChart,
   X,
   ChevronRight,
   ChevronLeft,
@@ -32,70 +34,70 @@ export interface ProductTourOverlayProps {
 }
 
 interface TourStep {
+  path: string;
   selector: string;
   titleId: string;
   titleEn: string;
   descId: string;
   descEn: string;
-  icon: typeof Users;
-  preferredPlacement?: "top" | "bottom";
+  icon: typeof Home;
 }
 
 const TOUR_STEPS: TourStep[] = [
   {
-    selector: '[data-tour="space-capsule"]',
-    titleId: "Space Finansial & Kolaborasi",
-    titleEn: "Financial Spaces & Ledgers",
+    path: "/",
+    selector: '[data-tour="nav-home"]',
+    titleId: "1. Beranda: Pusat Kendali Eksekutif",
+    titleEn: "1. Home: Executive Command Center",
     descId:
-      "Kelola keuangan pribadi, bisnis, hingga space bersama keluarga dalam satu wadah mandiri. Ketuk untuk beralih space kapan saja.",
+      "Pusat kendali kekayaan Anda. Pantau modal likuid operasional, estimasi kekayaan bersih, dan ritme pengeluaran bulanan serta pencatatan kilat 1-ketukan.",
     descEn:
-      "Isolate personal cashflow, business finances, and collaborative shared spaces. Tap to switch spaces anytime.",
-    icon: Users,
-    preferredPlacement: "bottom",
+      "Your central wealth cockpit. Monitor liquid operating cash, net worth trajectory, monthly spending pacing, and 1-tap quick capture.",
+    icon: Home,
   },
   {
-    selector: '[data-tour="net-worth"]',
-    titleId: "Nilai Bersih & Posisi Kas",
-    titleEn: "Net Worth & Cash Position",
-    descId:
-      "Pantau akumulasi modal likuid, kekayaan bersih, dan indikator pertumbuhan aset keuangan Anda secara terpadu.",
-    descEn:
-      "Monitor total liquid capital, net wealth, and your financial growth indicators in real-time.",
-    icon: TrendingUp,
-    preferredPlacement: "bottom",
-  },
-  {
-    selector: '[data-tour="quick-cashflow"]',
-    titleId: "Arus Kas & Analisis Bulanan",
-    titleEn: "Cashflow & Monthly Analytics",
-    descId:
-      "Lacak perbandingan pemasukan, pengeluaran, dan ritme pengeluaran bulanan agar rencana finansial Anda tetap tepat sasaran.",
-    descEn:
-      "Track income vs. expense velocity and pacing to keep your budget on target throughout the month.",
-    icon: PieChart,
-    preferredPlacement: "top",
-  },
-  {
-    selector: '[data-tour="quick-add"]',
-    titleId: "Pencatatan Kilat 1-Ketukan",
-    titleEn: "1-Tap Quick Capture",
-    descId:
-      "Catat transaksi dalam detik. Ketuk untuk pencatatan cepat, atau tahan dan geser untuk asisten suara atau pindai struk.",
-    descEn:
-      "Log transactions in seconds. Tap for rapid manual entry, or hold and glide for voice dictation or receipt scanning.",
-    icon: Plus,
-    preferredPlacement: "top",
-  },
-  {
+    path: "/assets",
     selector: '[data-tour="nav-assets"]',
-    titleId: "4 Pilar Neraca Keuangan",
-    titleEn: "4 Balance Sheet Pillars",
+    titleId: "2. Aset: Neraca 4 Pilar & Portofolio",
+    titleEn: "2. Assets: 4-Pillar Balance Sheet",
     descId:
-      "Akses tab Aset untuk evaluasi portofolio investasi, crypto USDT dengan kurs langsung, aset tetap, dan liabilitas.",
+      "Evaluasi struktur aset secara komprehensif: Kas Likuid, Portofolio Investasi, Aset Tetap, dan Liabilitas. Dilengkapi valuasi crypto USDT dengan kurs pasar real-time.",
     descEn:
-      "Open the Assets tab to evaluate investment holdings, USDT with live market rates, fixed assets, and liabilities.",
+      "Comprehensive balance sheet architecture: Liquid Cash, Investment Holdings, Fixed Assets, and Liabilities, with live USDT market valuation.",
     icon: Landmark,
-    preferredPlacement: "top",
+  },
+  {
+    path: "/transactions",
+    selector: '[data-tour="nav-transactions"]',
+    titleId: "3. Transaksi: Buku Besar Mutasi & Riwayat",
+    titleEn: "3. Transactions: Unified Financial Ledger",
+    descId:
+      "Buku besar mutasi tanpa batas. Telusuri riwayat belanja, filter per kategori atau dompet, dan temukan transaksi seketika dengan pencarian instan.",
+    descEn:
+      "Infinite cashflow ledger. Browse spending history, filter across categories or accounts, and find transactions instantly with real-time search.",
+    icon: History,
+  },
+  {
+    path: "/calendar",
+    selector: '[data-tour="nav-calendar"]',
+    titleId: "4. Kalender: Jadwal Arus Kas & Tagihan",
+    titleEn: "4. Calendar: Cashflow Schedule & Bills",
+    descId:
+      "Visualisasi kalender arus kas harian dan pengingat tagihan berulang. Antisipasi jatuh tempo komitmen finansial agar likuiditas Anda senantiasa aman terlindungi.",
+    descEn:
+      "Interactive daily cashflow calendar and recurring bill commitments. Anticipate upcoming obligations so your liquidity runway is always safeguarded.",
+    icon: Calendar,
+  },
+  {
+    path: "/statistics",
+    selector: '[data-tour="nav-statistics"]',
+    titleId: "5. Statistik: Diagnostik & Analitik Finansial",
+    titleEn: "5. Statistics: Financial Diagnostics & Analytics",
+    descId:
+      "Analisis cerdas pola pengeluaran, rasio tabungan, dan diagnostik kesehatan finansial. Dapatkan gambaran objektif untuk mengakselerasi kemandirian finansial Anda.",
+    descEn:
+      "Intelligent analytics on spending velocity, savings ratios, and wealth health diagnostics to accelerate your financial freedom.",
+    icon: PieChart,
   },
 ];
 
@@ -105,34 +107,30 @@ export function ProductTourOverlay({
   onComplete,
 }: ProductTourOverlayProps) {
   const { isIndonesian } = useLanguage();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const step = useMemo(() => TOUR_STEPS[currentStepIndex], [currentStepIndex]);
 
+  // Navigate to step page whenever currentStepIndex updates
+  useEffect(() => {
+    if (!isOpen || !step) return;
+    if (location.pathname !== step.path) {
+      navigate(step.path);
+    }
+  }, [isOpen, currentStepIndex, step, location.pathname, navigate]);
+
   // Measure target DOM element bounding rectangle
   const measureTarget = useCallback(() => {
     if (!isOpen || !step) return;
     const el = document.querySelector(step.selector);
     if (el) {
-      // Scroll into view gently if outside viewport
       const r = el.getBoundingClientRect();
-      const inView =
-        r.top >= 50 &&
-        r.bottom <= window.innerHeight - 80 &&
-        r.left >= 0 &&
-        r.right <= window.innerWidth;
-
-      if (!inView) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        setTimeout(() => {
-          const freshRect = el.getBoundingClientRect();
-          setTargetRect(freshRect);
-        }, 300);
-      } else {
-        setTargetRect(r);
-      }
+      setTargetRect(r);
     } else {
       setTargetRect(null);
     }
@@ -140,11 +138,15 @@ export function ProductTourOverlay({
 
   useEffect(() => {
     if (isOpen) {
-      measureTarget();
+      // Allow slight render buffer for route transition
+      const timer = setTimeout(() => {
+        measureTarget();
+      }, 160);
       const handleResize = () => measureTarget();
       window.addEventListener("resize", handleResize);
       window.addEventListener("scroll", handleResize, true);
       return () => {
+        clearTimeout(timer);
         window.removeEventListener("resize", handleResize);
         window.removeEventListener("scroll", handleResize, true);
       };
@@ -178,6 +180,7 @@ export function ProductTourOverlay({
       localStorage.setItem("trouvaille_tour_completed", "true");
       localStorage.removeItem("trouvaille_tour_pending");
     } catch {}
+    navigate("/");
     if (onComplete) onComplete();
     onClose();
   };
@@ -188,52 +191,16 @@ export function ProductTourOverlay({
       localStorage.setItem("trouvaille_tour_completed", "true");
       localStorage.removeItem("trouvaille_tour_pending");
     } catch {}
+    navigate("/");
     onClose();
   };
 
   const IconComp = step.icon;
 
-  // Tooltip positioning computation
-  const tooltipStyle = (() => {
-    if (!targetRect) {
-      return {
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        maxWidth: "340px",
-        width: "calc(100vw - 32px)",
-      };
-    }
-
-    const pad = 12;
-    const tooltipWidth = Math.min(340, window.innerWidth - 32);
-    let top = 0;
-
-    if (step.preferredPlacement === "top") {
-      top = Math.max(70, targetRect.top - 200);
-      if (top < 70) {
-        top = Math.min(window.innerHeight - 240, targetRect.bottom + pad);
-      }
-    } else {
-      top = Math.min(window.innerHeight - 240, targetRect.bottom + pad);
-      if (top > window.innerHeight - 220) {
-        top = Math.max(70, targetRect.top - 200);
-      }
-    }
-
-    return {
-      top: `${top}px`,
-      left: "50%",
-      transform: "translateX(-50%)",
-      maxWidth: `${tooltipWidth}px`,
-      width: "calc(100vw - 32px)",
-    };
-  })();
-
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[9999] overflow-hidden select-none"
+      className="fixed inset-0 z-[99999] overflow-hidden select-none font-sans"
       style={{ touchAction: "none" }}
     >
       {/* Dimmed Background Overlay */}
@@ -241,134 +208,166 @@ export function ProductTourOverlay({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/75 transition-opacity"
+        className="absolute inset-0 bg-black/75 backdrop-blur-[4px] transition-opacity"
         onClick={handleSkip}
       />
 
-      {/* Spotlight Cutout Halo around Target Element */}
+      {/* Spotlight Cutout Halo around Target Navigation Element */}
       {targetRect && (
         <motion.div
-          layoutId="tour-spotlight-cutout"
-          transition={{ type: "spring", stiffness: 350, damping: 32 }}
-          className="absolute pointer-events-none rounded-3xl"
+          key={`spotlight-${currentStepIndex}`}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", damping: 25, stiffness: 350 }}
+          className="absolute pointer-events-none rounded-full"
           style={{
             top: targetRect.top - 6,
             left: targetRect.left - 6,
             width: targetRect.width + 12,
             height: targetRect.height + 12,
-            boxShadow:
-              "0 0 0 9999px rgba(0, 0, 0, 0.72), 0 0 24px rgba(255, 255, 255, 0.2)",
-            border: "1.5px solid rgba(255, 255, 255, 0.35)",
+            boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.76), 0 0 24px rgba(255, 255, 255, 0.35)",
+            border: "1.5px solid rgba(255, 255, 255, 0.85)",
           }}
         />
       )}
 
-      {/* Floating Skip Capsule (Safe Area Dynamically Placed) */}
+      {/* Tour Dialogue Card (Fixed cleanly above Bottom Dock) */}
       <div
-        className="absolute right-4 z-10"
+        className="fixed left-4 right-4 z-50 max-w-sm mx-auto pointer-events-auto"
         style={{
-          top: "max(calc(env(safe-area-inset-top, 0px) + 14px), 24px)",
+          bottom: "max(calc(env(safe-area-inset-bottom, 0px) + 82px), 94px)",
         }}
       >
-        <button
-          type="button"
-          onClick={handleSkip}
-          className="py-1.5 px-3.5 rounded-full border border-[var(--glass-border)] bg-[var(--bg-elevated)]/90 backdrop-blur-xl text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1.5"
-        >
-          <span>{isIndonesian ? "Lewati Panduan" : "Skip Tour"}</span>
-          <X size={12} strokeWidth={2} />
-        </button>
-      </div>
-
-      {/* Floating Apple Luxury Step Card */}
-      <div className="absolute z-20 pointer-events-auto" style={tooltipStyle}>
-        <motion.div
-          key={currentStepIndex}
-          initial={{ opacity: 0, y: 8, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -8, scale: 0.98 }}
-          transition={{ duration: 0.2 }}
-          className="p-5 rounded-3xl border shadow-2xl space-y-4 backdrop-blur-2xl"
-          style={{
-            background: "var(--bg-elevated)",
-            borderColor: "var(--glass-border)",
-            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.45)",
-          }}
-        >
-          {/* Header Row: Icon + Step Badge */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--text-primary)] shrink-0">
-                <IconComp size={15} strokeWidth={2} />
-              </div>
-              <span className="text-[10px] font-mono tracking-widest text-[var(--text-tertiary)] uppercase">
-                {isIndonesian ? "LANGKAH" : "STEP"} {currentStepIndex + 1} /{" "}
-                {TOUR_STEPS.length}
-              </span>
-            </div>
-
-            {/* Pagination Dots */}
-            <div className="flex items-center gap-1">
-              {TOUR_STEPS.map((_, idx) => (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`tour-card-${currentStepIndex}`}
+            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.95 }}
+            transition={{ type: "spring", damping: 26, stiffness: 360 }}
+            className="p-5 rounded-[26px] overflow-hidden relative"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "0 24px 60px -12px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.12)",
+              backdropFilter: "blur(32px) saturate(190%)",
+              WebkitBackdropFilter: "blur(32px) saturate(190%)",
+            }}
+          >
+            {/* Top Bar: Icon + Step Counter + Close */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
                 <div
-                  key={idx}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    idx === currentStepIndex
-                      ? "w-4 bg-[var(--text-primary)]"
-                      : "w-1.5 bg-white/20"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
+                  className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--glass-fill)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <IconComp size={15} strokeWidth={2} />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="text-[11px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "var(--glass-fill)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {currentStepIndex + 1} / {TOUR_STEPS.length}
+                  </span>
+                </div>
+              </div>
 
-          {/* Title & Body */}
-          <div className="space-y-1.5">
-            <h3 className="text-[15px] font-semibold text-[var(--text-primary)] tracking-tight">
-              {isIndonesian ? step.titleId : step.titleEn}
-            </h3>
-            <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
-              {isIndonesian ? step.descId : step.descEn}
-            </p>
-          </div>
-
-          {/* Action Row */}
-          <div className="flex items-center justify-between pt-1 gap-2">
-            {currentStepIndex > 0 ? (
               <button
                 type="button"
-                onClick={handlePrev}
-                className="py-2.5 px-3.5 rounded-2xl text-[12px] font-semibold border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                onClick={handleSkip}
+                className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+                style={{
+                  background: "var(--glass-fill)",
+                  color: "var(--text-tertiary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+                aria-label={isIndonesian ? "Lewati Tur" : "Skip Tour"}
               >
-                <ChevronLeft size={13} strokeWidth={2} />
-                <span>{isIndonesian ? "Kembali" : "Back"}</span>
+                <X size={13} strokeWidth={2} />
               </button>
-            ) : (
-              <div />
-            )}
+            </div>
 
-            <button
-              type="button"
-              onClick={handleNext}
-              className="py-2.5 px-4 rounded-2xl text-[12px] font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)] flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-md ml-auto"
+            {/* Title & Body Description */}
+            <h3
+              className="text-[15px] font-bold tracking-tight mb-1.5 leading-snug"
+              style={{ color: "var(--text-primary)" }}
             >
-              <span>
-                {currentStepIndex === TOUR_STEPS.length - 1
-                  ? isIndonesian
-                    ? "Mulai Menjelajah"
-                    : "Get Started"
-                  : isIndonesian
-                    ? "Lanjut"
-                    : "Next"}
-              </span>
-              {currentStepIndex === TOUR_STEPS.length - 1 ? (
-                <Check size={13} strokeWidth={2.5} />
-              ) : (
-                <ChevronRight size={13} strokeWidth={2} />
-              )}
-            </button>
-          </div>
-        </motion.div>
+              {isIndonesian ? step.titleId : step.titleEn}
+            </h3>
+
+            <p
+              className="text-[12px] leading-relaxed font-normal mb-4"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {isIndonesian ? step.descId : step.descEn}
+            </p>
+
+            {/* Step Progress Indicators & Action Buttons */}
+            <div className="flex items-center justify-between pt-1 border-t border-[var(--glass-border)]">
+              {/* Dots */}
+              <div className="flex items-center gap-1.5">
+                {TOUR_STEPS.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="h-1.5 rounded-full transition-all duration-300"
+                    style={{
+                      width: idx === currentStepIndex ? "18px" : "6px",
+                      background:
+                        idx === currentStepIndex
+                          ? "var(--text-primary)"
+                          : "var(--glass-border)",
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex items-center gap-2">
+                {currentStepIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={handlePrev}
+                    className="px-3 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1 active:scale-95 transition-transform cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)]"
+                  >
+                    <ChevronLeft size={13} strokeWidth={2} />
+                    <span>{isIndonesian ? "Sebelumnya" : "Back"}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1.5 active:scale-95 transition-transform cursor-pointer"
+                  style={{
+                    background: "var(--text-primary)",
+                    color: "var(--bg-canvas)",
+                  }}
+                >
+                  {currentStepIndex === TOUR_STEPS.length - 1 ? (
+                    <>
+                      <Check size={13} strokeWidth={2.5} />
+                      <span>{isIndonesian ? "Selesai" : "Done"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{isIndonesian ? "Lanjut" : "Next"}</span>
+                      <ChevronRight size={13} strokeWidth={2} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

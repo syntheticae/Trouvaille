@@ -411,7 +411,17 @@ export function BottomTabBar({
               <NavLink
                 key={tab.path}
                 to={tab.path!}
-                data-tour={tab.path === "/assets" ? "nav-assets" : undefined}
+                data-tour={
+                  tab.path === "/"
+                    ? "nav-home"
+                    : tab.path === "/assets"
+                    ? "nav-assets"
+                    : tab.path === "/transactions"
+                    ? "nav-transactions"
+                    : tab.path === "/statistics"
+                    ? "nav-statistics"
+                    : undefined
+                }
                 onClick={() => triggerHaptic("light")}
                 className="w-10 h-10 flex items-center justify-center relative rounded-full"
               >

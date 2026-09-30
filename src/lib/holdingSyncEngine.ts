@@ -598,15 +598,21 @@ export function estimateHistoricalUsdtBuyRate(
   }
 
   const d = (dateStr || "").slice(0, 7); // YYYY-MM
-  if (!d) return 15950;
-  if (d <= "2022-12") return 15250;
-  if (d <= "2023-06") return 15150;
-  if (d <= "2023-12") return 15550;
-  if (d <= "2024-06") return 15950;
-  if (d <= "2024-12") return 15850;
-  if (d <= "2025-06") return 16200;
-  if (d <= "2025-12") return 16100;
-  return 16150;
+  let baseRate = 16150;
+  if (!d) baseRate = 15950;
+  else if (d <= "2022-12") baseRate = 15250;
+  else if (d <= "2023-06") baseRate = 15150;
+  else if (d <= "2023-12") baseRate = 15550;
+  else if (d <= "2024-06") baseRate = 15950;
+  else if (d <= "2024-12") baseRate = 15850;
+  else if (d <= "2025-06") baseRate = 16200;
+  else if (d <= "2025-09") baseRate = 16120;
+  else if (d <= "2025-12") baseRate = 16280;
+  else if (d <= "2026-03") baseRate = 16350;
+  else if (d <= "2026-06") baseRate = 16420;
+  else baseRate = 16480;
+
+  return baseRate;
 }
 
 /**

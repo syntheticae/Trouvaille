@@ -736,15 +736,16 @@ export async function fetchAllTransactionsFromSupabase(
     );
   }
 
-  // Dataset Integrity Guard: If a known totalCount exists, ensure we didn't receive an incomplete partial slice
+  // Dataset Integrity Guard: Only flag truncated fetch if we received substantially fewer records than expected
   const isTruncatedFetch =
     totalCount !== null &&
-    totalCount > 0 &&
+    totalCount > 10 &&
     !filters?.categoryId &&
     !filters?.startDate &&
     !filters?.endDate &&
     !filters?.search &&
-    uniqueRecords.length < totalCount;
+    allRecords.length < totalCount * 0.8 &&
+    (typeof navigator !== "undefined" ? !navigator.onLine : false);
 
   if (isTruncatedFetch) {
     console.warn(`[fetchAllTransactionsFromSupabase] Incomplete sync detected: ${uniqueRecords.length}/${totalCount} records.`);

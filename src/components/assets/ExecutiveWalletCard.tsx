@@ -1,7 +1,8 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { getIncludeReceivableInLiquid } from "../../lib/financialMath";
 import type { Wallet as WalletType, InvestmentHolding } from "../../lib/types";
 
 interface ExecutiveWalletCardProps {
@@ -16,7 +17,7 @@ interface ExecutiveWalletCardProps {
   wallets?: WalletType[];
   balancesById?: Record<string, number>;
   holdings?: InvestmentHolding[];
-  onDetailAsset?: (holdingOrId?: InvestmentHolding | string) => void;
+  onDetailAsset?: (holdingOrId?: InvestmentHolding | WalletType | string) => void;
   userName?: string;
   usdtRate?: number;
   usdtUnits?: number;
@@ -41,6 +42,13 @@ export function ExecutiveWalletCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [receivablePrefTick, setReceivablePrefTick] = useState(0);
+
+  useEffect(() => {
+    const handlePref = () => setReceivablePrefTick((t) => t + 1);
+    window.addEventListener("trouvaille:receivable-liquid-pref-changed", handlePref);
+    return () => window.removeEventListener("trouvaille:receivable-liquid-pref-changed", handlePref);
+  }, []);
 
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -128,6 +136,7 @@ export function ExecutiveWalletCard({
     });
 
     // 3. User's Real Cash Wallets (Wallets with positive balance, not debt/crypto)
+    const includeReceivable = getIncludeReceivableInLiquid();
     const realCashWallets = wallets.filter((w) => {
       const bal = balancesById ? (balancesById[w.id] ?? 0) : Number(w.balance || 0);
       const isCrypto =
@@ -143,6 +152,8 @@ export function ExecutiveWalletCard({
         bal > 0 &&
         w.classification !== "credit" &&
         w.classification !== "loan" &&
+        w.classification !== "investment" &&
+        (includeReceivable || w.classification !== "receivable") &&
         !isCrypto
       );
     });
@@ -209,7 +220,7 @@ export function ExecutiveWalletCard({
     }
 
     return list;
-  }, [holdings, wallets, balancesById, usdtUnits, usdtRate, netWorth, totalGrossAssets, solvencyScore, isIndonesian]);
+  }, [holdings, wallets, balancesById, usdtUnits, usdtRate, netWorth, totalGrossAssets, solvencyScore, isIndonesian, receivablePrefTick]);
 
   const cardCount = rawCards.length;
   const safeActiveIndex = cardCount > 0 ? activeCardIndex % cardCount : 0;
@@ -349,10 +360,38 @@ export function ExecutiveWalletCard({
               onMouseEnter={() => setHoveredCardIndex(index)}
               onMouseLeave={() => setHoveredCardIndex(null)}
               onClick={(e) => {
+                e.stopPropagation();
                 if (!isFront) {
-                  e.stopPropagation();
                   triggerHaptic("light");
                   setActiveCardIndex(index);
+                  return;
+                }
+
+                // Front active card interaction
+                if (!isExpanded) {
+                  // Saat kartu sedang turun (retracted): tap manapun langsung menaikkan kartu ke atas
+                  triggerHaptic("medium");
+                  setIsExpanded(true);
+                  return;
+                }
+
+                // Saat kartu sudah naik (expanded): tentukan arah berdasarkan posisi ketukan horizontal
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const ratio = clickX / rect.width;
+
+                if (ratio < 0.3) {
+                  // 30% Kiri: Kartu sebelumnya (before)
+                  triggerHaptic("light");
+                  setActiveCardIndex((prev) => (prev - 1 + cardCount) % cardCount);
+                } else if (ratio > 0.7) {
+                  // 30% Kanan: Kartu setelahnya (next)
+                  triggerHaptic("light");
+                  setActiveCardIndex((prev) => (prev + 1) % cardCount);
+                } else {
+                  // 40% Tengah: Turunkan kartu kembali ke dalam dompet (retract)
+                  triggerHaptic("medium");
+                  setIsExpanded(false);
                 }
               }}
               className={`absolute w-[92%] h-[126px] rounded-xl p-3 transition-all duration-480 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none ${currentTransform}`}
@@ -526,6 +565,8 @@ export function ExecutiveWalletCard({
                         triggerHaptic("light");
                         if (card.holdingRef) {
                           onDetailAsset?.(card.holdingRef);
+                        } else if (card.walletRef) {
+                          onDetailAsset?.(card.walletRef);
                         } else {
                           onDetailAsset?.(card.id);
                         }

@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback, useId } from "react";
+import { useState, useEffect, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail,
   Lock,
   ArrowRight,
-  ScanFace,
   Eye,
   EyeOff,
   User,
@@ -18,7 +17,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import {
-  authenticateWithBiometrics,
   getBiometricLoginCredentials,
   saveBiometricLoginCredentials,
   getSecuritySettings,
@@ -69,35 +67,6 @@ export function LoginPage() {
     }, 5500);
     return () => clearInterval(timer);
   }, [showEmailForm, showPinModal, slides.length]);
-
-  const handleBiometricLogin = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setMessage(null);
-    triggerHaptic("medium");
-    try {
-      const res = await authenticateWithBiometrics();
-      if (res.success && res.session) {
-        triggerSuccessHaptic();
-        setSession(res.session);
-        return;
-      }
-
-      if (res.email && !email) {
-        setEmail(res.email);
-      }
-
-      if (res.error) {
-        triggerHaptic("heavy");
-        setError(res.error);
-      }
-    } catch (err: any) {
-      triggerHaptic("heavy");
-      setError(err?.message || (isIndonesian ? "Autentikasi biometrik gagal." : "Biometric authentication failed."));
-    } finally {
-      setLoading(false);
-    }
-  }, [email, setSession, isIndonesian]);
 
   const handleOAuthLogin = async (provider: "google") => {
     setLoading(true);
@@ -1005,42 +974,7 @@ export function LoginPage() {
                 ) : (
                   /* DEFAULT LOGIN BUTTONS */
                   <>
-                    {/* 1. Sign In with Face ID / Passkey */}
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={handleBiometricLogin}
-                      className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer ${
-                        isDark
-                          ? "bg-white text-zinc-950 shadow-xl hover:bg-zinc-100"
-                          : "bg-zinc-950 text-white shadow-xl hover:bg-zinc-900"
-                      }`}
-                      style={{
-                        boxShadow: isDark
-                          ? "0 8px 24px rgba(255, 255, 255, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.8)"
-                          : "0 8px 24px rgba(0, 0, 0, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.2)",
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <ScanFace
-                          size={17}
-                          strokeWidth={1.75}
-                          className={isDark ? "text-zinc-900" : "text-white"}
-                        />
-                        <span>
-                          {isIndonesian
-                            ? "Masuk dengan Face ID / Kunci Sandi"
-                            : "Sign In with Face ID / Passkey"}
-                        </span>
-                      </div>
-                      <ArrowRight
-                        size={15}
-                        strokeWidth={2}
-                        className={isDark ? "text-zinc-500" : "text-zinc-400"}
-                      />
-                    </button>
-
-                    {/* 2. Unlock with Security PIN (If Enrolled) */}
+                    {/* 1. Unlock with Security PIN (If Enrolled) */}
                     {hasVaultPin && (
                       <button
                         type="button"
@@ -1051,57 +985,85 @@ export function LoginPage() {
                           setShowPinModal(true);
                           triggerHaptic("light");
                         }}
-                        className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer border ${
+                        className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer ${
                           isDark
-                            ? "bg-white/[0.055] border-white/16 text-white hover:bg-white/[0.08]"
-                            : "bg-white/90 border-black/10 text-zinc-900 hover:bg-white shadow-sm"
+                            ? "bg-white text-zinc-950 shadow-xl hover:bg-zinc-100"
+                            : "bg-zinc-950 text-white shadow-xl hover:bg-zinc-900"
                         }`}
                         style={{
-                          boxShadow: isDark ? "inset 0 1px 1px rgba(255, 255, 255, 0.15)" : undefined,
+                          boxShadow: isDark
+                            ? "0 8px 24px rgba(255, 255, 255, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.8)"
+                            : "0 8px 24px rgba(0, 0, 0, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.2)",
                         }}
                       >
                         <div className="flex items-center gap-3">
                           <KeyRound
                             size={17}
                             strokeWidth={1.75}
-                            className={isDark ? "text-white/80" : "text-zinc-700"}
+                            className={isDark ? "text-zinc-900" : "text-white"}
                           />
                           <span>{isIndonesian ? "Buka dengan PIN Brankas" : "Unlock with Vault PIN"}</span>
                         </div>
                         <ArrowRight
                           size={15}
                           strokeWidth={2}
-                          className={isDark ? "text-white/40" : "text-zinc-400"}
+                          className={isDark ? "text-zinc-500" : "text-zinc-400"}
                         />
                       </button>
                     )}
 
-                    {/* 3. Log in with Email */}
+                    {/* 2. Log in with Email */}
                     <button
                       type="button"
                       disabled={loading}
                       onClick={handleToggleEmailForm}
-                      className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer border ${
-                        isDark
-                          ? "bg-white/[0.055] border-white/16 text-white hover:bg-white/[0.08]"
-                          : "bg-white/90 border-black/10 text-zinc-900 hover:bg-white shadow-sm"
+                      className={`w-full flex items-center justify-between py-3.5 px-4 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer ${
+                        !hasVaultPin
+                          ? isDark
+                            ? "bg-white text-zinc-950 shadow-xl hover:bg-zinc-100"
+                            : "bg-zinc-950 text-white shadow-xl hover:bg-zinc-900"
+                          : isDark
+                          ? "bg-white/[0.055] border border-white/16 text-white hover:bg-white/[0.08]"
+                          : "bg-white/90 border border-black/10 text-zinc-900 hover:bg-white shadow-sm"
                       }`}
                       style={{
-                        boxShadow: isDark ? "inset 0 1px 1px rgba(255, 255, 255, 0.15)" : undefined,
+                        boxShadow: !hasVaultPin
+                          ? isDark
+                            ? "0 8px 24px rgba(255, 255, 255, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.8)"
+                            : "0 8px 24px rgba(0, 0, 0, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.2)"
+                          : isDark
+                          ? "inset 0 1px 1px rgba(255, 255, 255, 0.15)"
+                          : undefined,
                       }}
                     >
                       <div className="flex items-center gap-3">
                         <Mail
                           size={17}
                           strokeWidth={1.75}
-                          className={isDark ? "text-white/80" : "text-zinc-700"}
+                          className={
+                            !hasVaultPin
+                              ? isDark
+                                ? "text-zinc-900"
+                                : "text-white"
+                              : isDark
+                              ? "text-white/80"
+                              : "text-zinc-700"
+                          }
                         />
                         <span>{isIndonesian ? "Masuk dengan Surel" : "Log in with Email"}</span>
                       </div>
                       <ArrowRight
                         size={15}
                         strokeWidth={2}
-                        className={isDark ? "text-white/40" : "text-zinc-400"}
+                        className={
+                          !hasVaultPin
+                            ? isDark
+                              ? "text-zinc-500"
+                              : "text-zinc-400"
+                            : isDark
+                            ? "text-white/40"
+                            : "text-zinc-400"
+                        }
                       />
                     </button>
 

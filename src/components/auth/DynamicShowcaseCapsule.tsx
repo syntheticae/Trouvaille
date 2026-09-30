@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   TrendingUp,
   Mic,
-  ScanFace,
+  Camera,
+  KeyRound,
   Sparkles,
   Shield,
   Lock,
@@ -239,7 +240,7 @@ export function DynamicShowcaseCapsule({
                     isDark ? "bg-white/12 border-white/20" : "bg-black/6 border-black/12"
                   }`}
                 >
-                  <ScanFace size={13} strokeWidth={2} />
+                  <Camera size={13} strokeWidth={2} />
                 </div>
                 <div>
                   <div className="text-[11.5px] font-bold tracking-tight leading-none">
@@ -370,7 +371,7 @@ export function DynamicShowcaseCapsule({
                   isDark ? "bg-white/[0.04] border-white/10" : "bg-black/[0.03] border-black/8"
                 }`}
               >
-                <ScanFace size={12} className={isDark ? "text-white/80" : "text-zinc-800"} />
+                <KeyRound size={12} className={isDark ? "text-white/80" : "text-zinc-800"} />
                 <span className="text-[10px] font-bold tracking-tight">Enclave</span>
                 <span className={`text-[8.5px] leading-tight ${isDark ? "text-white/50" : "text-zinc-500"}`}>
                   {isIndonesian ? "Kunci Lokal" : "Device Key"}

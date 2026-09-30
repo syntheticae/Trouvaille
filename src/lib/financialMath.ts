@@ -35,6 +35,8 @@ export interface WalletBalancesResult {
   liquidAccounts: AccountBalanceItem[];
   liquidCapital: number;
   liquidNetPosition: number;
+  receivableAccounts: AccountBalanceItem[];
+  receivableCapital: number;
   marketAccounts: AccountBalanceItem[];
   marketAssets: number;
   fixedAssetAccounts: AccountBalanceItem[];
@@ -42,6 +44,30 @@ export interface WalletBalancesResult {
   creditAccounts: AccountBalanceItem[];
   loanAccounts: AccountBalanceItem[];
   totalLiabilities: number;
+}
+
+export const RECEIVABLE_IN_LIQUID_STORAGE_KEY = "trouvaille_include_receivable_in_liquid";
+
+export function getIncludeReceivableInLiquid(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const val = localStorage.getItem(RECEIVABLE_IN_LIQUID_STORAGE_KEY);
+    return val === null ? true : val === "true";
+  } catch {
+    return true;
+  }
+}
+
+export function setIncludeReceivableInLiquid(val: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(RECEIVABLE_IN_LIQUID_STORAGE_KEY, String(val));
+    window.dispatchEvent(
+      new CustomEvent("trouvaille:receivable-liquid-pref-changed", {
+        detail: { includeReceivableInLiquid: val },
+      }),
+    );
+  } catch {}
 }
 
 export interface AssetTrendResult {
@@ -502,6 +528,7 @@ export function getFallbackWalletIcon(name: string): string {
 export function calculateWalletBalances(
   transactions: Transaction[],
   wallets: Wallet[],
+  includeReceivableInLiquid?: boolean,
 ): WalletBalancesResult {
   const walletMap = new Map<string, AccountBalanceItem>();
   const nameToIdMap = new Map<string, string>();
@@ -636,7 +663,13 @@ export function calculateWalletBalances(
   const positiveAccounts = allAccounts.filter((a) => a.balance > 0);
   const zeroAccounts = allAccounts.filter((a) => a.balance <= 0);
   const netWorth = allAccounts.reduce((s, a) => s + a.balance, 0);
+  const shouldIncludeReceivable =
+    includeReceivableInLiquid !== undefined
+      ? includeReceivableInLiquid
+      : getIncludeReceivableInLiquid();
+
   const liquidAccounts: AccountBalanceItem[] = [];
+  const receivableAccounts: AccountBalanceItem[] = [];
   const marketAccounts: AccountBalanceItem[] = [];
   const fixedAssetAccounts: AccountBalanceItem[] = [];
   const creditAccounts: AccountBalanceItem[] = [];
@@ -661,7 +694,10 @@ export function calculateWalletBalances(
       return;
     }
     if (cls === "receivable") {
-      liquidAccounts.push(a);
+      receivableAccounts.push(a);
+      if (shouldIncludeReceivable) {
+        liquidAccounts.push(a);
+      }
       return;
     }
 
@@ -679,7 +715,10 @@ export function calculateWalletBalances(
       n.includes("pinjaman teman")
     ) {
       a.classification = "receivable";
-      liquidAccounts.push(a);
+      receivableAccounts.push(a);
+      if (shouldIncludeReceivable) {
+        liquidAccounts.push(a);
+      }
     } else if (n.includes("kpr") || n.includes("loan") || n.includes("pinjaman")) {
       a.classification = "loan";
       loanAccounts.push(a);
@@ -693,6 +732,7 @@ export function calculateWalletBalances(
   });
 
   const liquidCapital = liquidAccounts.reduce((s, a) => s + a.balance, 0);
+  const receivableCapital = receivableAccounts.reduce((s, a) => s + a.balance, 0);
   const creditDebt = creditAccounts.reduce((s, a) => s + Math.abs(Math.min(0, a.balance)), 0);
   const liquidNetPosition = liquidCapital - creditDebt;
   const marketAssets = marketAccounts.reduce((s, a) => s + Math.max(0, a.balance), 0);
@@ -720,6 +760,8 @@ export function calculateWalletBalances(
     liquidAccounts,
     liquidCapital,
     liquidNetPosition,
+    receivableAccounts,
+    receivableCapital,
     marketAccounts,
     marketAssets,
     fixedAssetAccounts,

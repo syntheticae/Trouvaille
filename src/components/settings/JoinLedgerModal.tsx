@@ -421,7 +421,6 @@ export function JoinLedgerContent({
                   placeholder="TRV-8X2"
                   maxLength={10}
                   className="w-full text-center text-[22px] font-semibold tracking-widest py-3.5 px-4 rounded-2xl border bg-[var(--bg-elevated)] border-[var(--glass-border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--text-primary)] transition-all uppercase"
-                  autoFocus
                 />
                 <p className="text-[11px] text-[var(--text-tertiary)] px-1 text-center">
                   {isIndonesian

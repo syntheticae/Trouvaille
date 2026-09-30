@@ -7,6 +7,7 @@ import { getSavedUsdtPref, getSavedHoldings } from "../lib/marketPriceService";
 import { bridgeCryptoAccountToHolding } from "../lib/holdingSyncEngine";
 import {
   calculateWalletBalances,
+  getIncludeReceivableInLiquid,
   type AccountBalanceItem,
   type WalletBalancesResult,
 } from "../lib/financialMath";
@@ -19,12 +20,17 @@ export function useWalletBalances(targetSpaceId?: string) {
   const spaceCtx = useOptionalSpace();
   const { user } = useAuth();
   const [holdingsTick, setHoldingsTick] = useState(0);
+  const [prefTick, setPrefTick] = useState(0);
 
   useEffect(() => {
     const handleHoldingsUpdated = () => setHoldingsTick((t) => t + 1);
+    const handlePrefChanged = () => setPrefTick((t) => t + 1);
     window.addEventListener("trouvaille_holdings_updated", handleHoldingsUpdated);
-    return () =>
+    window.addEventListener("trouvaille:receivable-liquid-pref-changed", handlePrefChanged);
+    return () => {
       window.removeEventListener("trouvaille_holdings_updated", handleHoldingsUpdated);
+      window.removeEventListener("trouvaille:receivable-liquid-pref-changed", handlePrefChanged);
+    };
   }, []);
 
   useEffect(() => {
@@ -52,7 +58,8 @@ export function useWalletBalances(targetSpaceId?: string) {
         }))
       : wallets;
 
-    const result = calculateWalletBalances(scopedTxs, scopedWallets);
+    const includeReceivable = getIncludeReceivableInLiquid();
+    const result = calculateWalletBalances(scopedTxs, scopedWallets, includeReceivable);
 
     // Identify crypto / USDT wallet to derive recorded crypto cost-basis balance
     const cryptoWallet = scopedWallets.find(
@@ -147,7 +154,7 @@ export function useWalletBalances(targetSpaceId?: string) {
       wallets: scopedWallets,
       allTxs: scopedTxs,
     };
-  }, [wallets, allTxs, activeSpaceId, spaceCtx, user?.id, holdingsTick]);
+  }, [wallets, allTxs, activeSpaceId, spaceCtx, user?.id, holdingsTick, prefTick]);
 }
 
 

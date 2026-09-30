@@ -858,7 +858,6 @@ export function CategoryManagementSheets({
                 placeholder={isIndonesian ? "0 (kosongkan jika tanpa batas)" : "0 (leave empty for no cap)"}
                 className="w-full min-w-0 bg-transparent outline-none font-mono font-medium text-[14px]"
                 style={{ color: "var(--text-primary)" }}
-                autoFocus
               />
             </div>
 

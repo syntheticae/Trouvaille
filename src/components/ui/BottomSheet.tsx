@@ -4,7 +4,7 @@ import {
   type PanInfo,
   useDragControls,
 } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
@@ -24,6 +24,46 @@ export function BottomSheet({
   zIndex,
 }: BottomSheetProps) {
   const dragControls = useDragControls();
+  const sheetContainerRef = useRef<HTMLDivElement>(null);
+  const [lockedMinHeight, setLockedMinHeight] = useState<number | undefined>(undefined);
+
+  /**
+   * Keep track of the maximum height the sheet achieves while open.
+   * This prevents the sheet from collapsing/shrinking when the user searches or filters
+   * items inside, ensuring it doesn't get obscured or jump behind the mobile virtual keyboard.
+   */
+  useEffect(() => {
+    if (!isOpen) {
+      const timer = setTimeout(() => {
+        setLockedMinHeight(undefined);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+
+    if (typeof ResizeObserver === "undefined") return;
+
+    const el = sheetContainerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = Math.round(entry.contentRect.height);
+        if (height > 0) {
+          setLockedMinHeight((prev) => {
+            if (!prev || height > prev) {
+              return height;
+            }
+            return prev;
+          });
+        }
+      }
+    });
+
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+    };
+  }, [isOpen]);
 
   /**
    * Lock the underlying page while the sheet is open.
@@ -106,6 +146,7 @@ export function BottomSheet({
               BOTTOM SHEET
               ========================================================= */}
           <motion.div
+            ref={sheetContainerRef}
             className="
               fixed
               bottom-0
@@ -127,6 +168,10 @@ export function BottomSheet({
               boxShadow: "var(--sheet-shadow, none)",
 
               borderRadius: "28px 28px 0 0",
+
+              minHeight: lockedMinHeight
+                ? `${Math.min(lockedMinHeight, typeof window !== "undefined" ? window.innerHeight * 0.92 : 800)}px`
+                : undefined,
 
               /*
                * Important:

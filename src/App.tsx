@@ -128,6 +128,11 @@ const ResetPasswordModal = lazy(() =>
     default: module.ResetPasswordModal,
   })),
 );
+const ProductTourOverlay = lazy(() =>
+  import("./components/onboarding/ProductTourOverlay").then((module) => ({
+    default: module.ProductTourOverlay,
+  })),
+);
 
 import { useTheme } from "./contexts/ThemeContext";
 
@@ -155,6 +160,20 @@ function AppShell() {
       localStorage.getItem("trouvaille_onboarding_focus") !== null
     );
   });
+  const [isTourOpen, setIsTourOpen] = useState(() => {
+    try {
+      return localStorage.getItem("trouvaille_tour_pending") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const handleStartTour = () => setIsTourOpen(true);
+    window.addEventListener("trouvaille:start-tour", handleStartTour);
+    return () => window.removeEventListener("trouvaille:start-tour", handleStartTour);
+  }, []);
+
   const [prefilledValues, setPrefilledValues] = useState<any>(null);
   const syncStorageKey = user
     ? `trouvaille_initial_synced:${user.id}`
@@ -1286,6 +1305,14 @@ function AppShell() {
           />
         </Suspense>
       )}
+
+      {/* Global Cross-Page Essential Feature & Product Tour */}
+      <Suspense fallback={null}>
+        <ProductTourOverlay
+          isOpen={isTourOpen}
+          onClose={() => setIsTourOpen(false)}
+        />
+      </Suspense>
 
 
       {/* iOS App Switcher / Multitasking Privacy Screen Shield */}

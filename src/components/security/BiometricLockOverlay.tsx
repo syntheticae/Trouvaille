@@ -1,12 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Lock,
-  ScanFace,
-  KeyRound,
   LogOut,
   Delete,
-  RotateCcw,
 } from "lucide-react";
 import { useSecurityLock } from "../../contexts/SecurityLockContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -17,51 +14,14 @@ import { triggerHaptic } from "../../lib/haptics";
 export function BiometricLockOverlay() {
   const {
     isLocked,
-    unlockWithBiometric,
     unlockWithPin,
-    securitySettings,
-    isBiometricSupported,
   } = useSecurityLock();
   const { signOut } = useAuth();
   const { isIndonesian } = useLanguage();
 
-  const [pinMode, setPinMode] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
-  const [isVerifying, setIsVerifying] = useState(false);
-
-  const canUseBiometric = securitySettings.hasBiometric || isBiometricSupported;
-  const effectivePinMode =
-    pinMode || (!canUseBiometric && securitySettings.hasPin);
-
-  const handleBiometricUnlock = useCallback(async () => {
-    setIsVerifying(true);
-    triggerHaptic("medium");
-    try {
-      const ok = await unlockWithBiometric();
-      if (!ok && securitySettings.hasPin) {
-        setPinMode(true);
-      }
-    } catch (err) {
-      console.warn("[BiometricLock] Unlock failed:", err);
-      if (securitySettings.hasPin) {
-        setPinMode(true);
-      }
-    } finally {
-      setIsVerifying(false);
-    }
-  }, [unlockWithBiometric, securitySettings.hasPin]);
-
-  // Auto-prompt Face ID / Biometrics upon lock mount
-  useEffect(() => {
-    if (isLocked && !effectivePinMode && canUseBiometric) {
-      const timer = setTimeout(() => {
-        handleBiometricUnlock();
-      }, 350);
-      return () => clearTimeout(timer);
-    }
-  }, [isLocked, effectivePinMode, canUseBiometric, handleBiometricUnlock]);
 
   const handlePinDigit = async (digit: string) => {
     const lockout = getPinLockoutState();
@@ -143,144 +103,49 @@ export function BiometricLockOverlay() {
               ? isIndonesian
                 ? `Terlalu banyak percobaan salah. Coba lagi dalam ${lockoutSeconds} detik.`
                 : `Too many failed attempts. Try again in ${lockoutSeconds}s.`
-              : effectivePinMode
-                ? isIndonesian
-                  ? "Masukkan PIN keamanan Anda untuk membuka kunci"
-                  : "Enter your security PIN to unlock"
-                : isIndonesian
-                  ? "Autentikasi biometrik diperlukan untuk membuka portofolio keuangan Anda"
-                  : "Biometric authentication required to view your financial portfolio"}
+              : isIndonesian
+              ? "Masukkan PIN keamanan 6-digit Anda untuk membuka brankas"
+              : "Enter your 6-digit security PIN to unlock the vault"}
           </p>
         </div>
 
-        {/* Middle Interactive Zone: Biometric or PIN */}
+        {/* Middle Interactive Zone: PIN Numeric Keypad */}
         <div className="w-full max-w-xs flex flex-col items-center justify-center my-auto">
-          {!effectivePinMode ? (
-            <div className="flex flex-col items-center space-y-5 w-full">
-              <motion.button
-                whileTap={{ scale: 0.96 }}
-                type="button"
-                disabled={isVerifying}
-                onClick={handleBiometricUnlock}
-                className="w-full py-4 rounded-[22px] flex items-center justify-center gap-3 font-semibold text-[15px] shadow-xl cursor-pointer"
-                style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
-                  boxShadow: "0 8px 30px var(--shadow-strength)",
-                }}
-              >
-                <ScanFace size={20} strokeWidth={1.75} />
-                <span>
-                  {isVerifying
-                    ? isIndonesian
-                      ? "Memverifikasi..."
-                      : "Verifying..."
-                    : isIndonesian
-                      ? "Buka dengan Biometrik"
-                      : "Unlock with Face ID"}
-                </span>
-              </motion.button>
-
-              {securitySettings.hasPin ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPinMode(true);
-                    setPinInput("");
-                    triggerHaptic("light");
-                  }}
-                  className="flex items-center gap-2 text-[12px] font-semibold transition-opacity hover:opacity-80 cursor-pointer"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  <KeyRound size={14} strokeWidth={1.75} />
-                  <span>
-                    {isIndonesian ? "Gunakan PIN Keamanan" : "Use Security PIN"}
-                  </span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    triggerHaptic("medium");
-                    await signOut();
-                  }}
-                  className="flex items-center gap-2 text-[12px] font-semibold transition-opacity hover:opacity-80 cursor-pointer"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  <RotateCcw size={14} strokeWidth={1.75} />
-                  <span>
-                    {isIndonesian
-                      ? "Reset Kunci lewat Masuk Akun"
-                      : "Reset Lock via Account Sign In"}
-                  </span>
-                </button>
-              )}
-            </div>
-          ) : (
-            /* PIN Numeric Keypad */
-            <div className="w-full space-y-6">
-              {/* PIN Dots Indicator (Strict Monochrome Rule 7) */}
-              <div className="flex items-center justify-center gap-3">
-                {[0, 1, 2, 3, 4, 5].map((i) => {
-                  const isFilled = i < pinInput.length;
-                  return (
-                    <motion.div
-                      key={i}
-                      animate={pinError ? { x: [-6, 6, -4, 4, 0] } : {}}
-                      transition={{ duration: 0.3 }}
-                      className="w-3.5 h-3.5 rounded-full transition-all duration-200"
-                      style={{
-                        background: pinError
-                          ? "var(--text-tertiary)"
-                          : isFilled
-                            ? "var(--text-primary)"
-                            : "var(--glass-fill)",
-                        border: pinError
-                          ? "1px solid var(--text-primary)"
-                          : isFilled
-                            ? "none"
-                            : "1px solid var(--glass-border)",
-                      }}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Number Keypad Grid */}
-              <div className="grid grid-cols-3 gap-3">
-                {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
-                  <button
-                    key={digit}
-                    type="button"
-                    onClick={() => handlePinDigit(digit)}
-                    className="h-14 rounded-2xl flex items-center justify-center font-semibold text-[19px] active:scale-92 transition-all cursor-pointer select-none"
+          <div className="w-full space-y-6">
+            {/* PIN Dots Indicator (Strict Monochrome Rule 7) */}
+            <div className="flex items-center justify-center gap-3">
+              {[0, 1, 2, 3, 4, 5].map((i) => {
+                const isFilled = i < pinInput.length;
+                return (
+                  <motion.div
+                    key={i}
+                    animate={pinError ? { x: [-6, 6, -4, 4, 0] } : {}}
+                    transition={{ duration: 0.3 }}
+                    className="w-3.5 h-3.5 rounded-full transition-all duration-200"
                     style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
+                      background: pinError
+                        ? "var(--text-tertiary)"
+                        : isFilled
+                        ? "var(--text-primary)"
+                        : "var(--glass-fill)",
+                      border: pinError
+                        ? "1px solid var(--text-primary)"
+                        : isFilled
+                        ? "none"
+                        : "1px solid var(--glass-border)",
                     }}
-                  >
-                    {digit}
-                  </button>
-                ))}
+                  />
+                );
+              })}
+            </div>
 
+            {/* Number Keypad Grid */}
+            <div className="grid grid-cols-3 gap-3">
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
                 <button
+                  key={digit}
                   type="button"
-                  onClick={() => {
-                    setPinMode(false);
-                    setPinInput("");
-                    setPinError(false);
-                    triggerHaptic("light");
-                  }}
-                  className="h-14 rounded-2xl flex items-center justify-center text-[11px] font-semibold active:scale-92 transition-all cursor-pointer"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Batal" : "Cancel"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handlePinDigit("0")}
+                  onClick={() => handlePinDigit(digit)}
                   className="h-14 rounded-2xl flex items-center justify-center font-semibold text-[19px] active:scale-92 transition-all cursor-pointer select-none"
                   style={{
                     background: "var(--bg-elevated)",
@@ -288,20 +153,46 @@ export function BiometricLockOverlay() {
                     color: "var(--text-primary)",
                   }}
                 >
-                  0
+                  {digit}
                 </button>
+              ))}
 
-                <button
-                  type="button"
-                  onClick={handlePinDelete}
-                  className="h-14 rounded-2xl flex items-center justify-center active:scale-92 transition-all cursor-pointer"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  <Delete size={20} strokeWidth={1.5} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPinInput("");
+                  setPinError(false);
+                  triggerHaptic("light");
+                }}
+                className="h-14 rounded-2xl flex items-center justify-center text-[11px] font-semibold active:scale-92 transition-all cursor-pointer"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian ? "Hapus" : "Clear"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handlePinDigit("0")}
+                className="h-14 rounded-2xl flex items-center justify-center font-semibold text-[19px] active:scale-92 transition-all cursor-pointer select-none"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                0
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePinDelete}
+                className="h-14 rounded-2xl flex items-center justify-center active:scale-92 transition-all cursor-pointer"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                <Delete size={20} strokeWidth={1.5} />
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Bottom Emergency Sign Out */}
@@ -329,4 +220,3 @@ export function BiometricLockOverlay() {
     </AnimatePresence>
   );
 }
-

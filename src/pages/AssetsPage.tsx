@@ -59,9 +59,13 @@ import {
   type BalanceSheetRange,
   type MetricDrillDownData,
 } from "../components/assets";
-import { calculateAssetTrend } from "../lib/financialMath";
+import {
+  calculateAssetTrend,
+  getIncludeReceivableInLiquid,
+} from "../lib/financialMath";
 import { startOfMonth } from "date-fns";
-import type { InvestmentHolding } from "../lib/types";
+import type { Wallet, InvestmentHolding } from "../lib/types";
+import { WalletManagementSheets } from "../components/settings/WalletManagementSheets";
 import {
   type PresetAsset,
   type PresetCategory,
@@ -110,6 +114,9 @@ export function AssetsPage() {
   const [isAddAssetModalOpen, setIsAddAssetModalOpen] = useState(false);
   // Convert Wallet to Asset State
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+  // Direct Wallet Editing Modal State
+  const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
+  const [isWalletManagementOpen, setIsWalletManagementOpen] = useState(false);
 
   // Initial Sync from Supabase & live rates
   useEffect(() => {
@@ -283,18 +290,28 @@ export function AssetsPage() {
     return true;
   }, [allCryptoWallets]);
 
+  const [receivablePrefTick, setReceivablePrefTick] = useState(0);
+
+  useEffect(() => {
+    const handlePref = () => setReceivablePrefTick((t) => t + 1);
+    window.addEventListener("trouvaille:receivable-liquid-pref-changed", handlePref);
+    return () => window.removeEventListener("trouvaille:receivable-liquid-pref-changed", handlePref);
+  }, []);
+
   // Pillar 1: Liquid & Current Assets (Operating Cash, RDN Uninvested Cash, and USDT Reserve if liquid)
   const liquidWalletCash = useMemo(() => {
+    const includeReceivable = getIncludeReceivableInLiquid();
     return wallets
       .filter(
         (w) =>
           w.classification !== "credit" &&
           w.classification !== "loan" &&
           w.classification !== "investment" &&
+          (includeReceivable || w.classification !== "receivable") &&
           !allCryptoWalletIds.has(w.id),
       )
       .reduce((sum, w) => sum + Math.max(0, balancesById[w.id] ?? 0), 0);
-  }, [wallets, allCryptoWalletIds, balancesById]);
+  }, [wallets, allCryptoWalletIds, balancesById, receivablePrefTick]);
 
   const liquidUsdtValue = isCryptoClassifiedAsInvestment ? 0 : usdtMarketValue;
   const liquidAssetsTotal = liquidWalletCash + brokerRdnCash + liquidUsdtValue;
@@ -839,13 +856,28 @@ export function AssetsPage() {
         onDetailAsset={(item) => {
           triggerHaptic("light");
           if (typeof item === "object" && item !== null) {
+            if ("classification" in item && !("asset_type" in item)) {
+              setEditingWallet(item as Wallet);
+              setIsWalletManagementOpen(true);
+              return;
+            }
             setSelectedDetailHolding(item as InvestmentHolding);
           } else if (
             item === "card-usdt" ||
             (typeof item === "string" && item.includes("usdt"))
           ) {
             openUsdtDetail();
+          } else if (item === "card-equity") {
+            setIsConsolidatedDrawerOpen(true);
           } else {
+            const matchedWallet = wallets.find(
+              (w) => w.id === item || `card-${w.id}` === item,
+            );
+            if (matchedWallet) {
+              setEditingWallet(matchedWallet);
+              setIsWalletManagementOpen(true);
+              return;
+            }
             const found = holdings.find(
               (h) => h.id === item || `card-${h.id}` === item,
             );
@@ -1124,6 +1156,16 @@ export function AssetsPage() {
         isStealthMode={isStealthMode}
         isIndonesian={isIndonesian}
         isDark={isDark}
+      />
+
+      {/* ── 9. Direct Wallet Management Sheet for Account Card Detail ── */}
+      <WalletManagementSheets
+        isOpen={isWalletManagementOpen}
+        onClose={() => {
+          setIsWalletManagementOpen(false);
+          setEditingWallet(null);
+        }}
+        initialWalletToEdit={editingWallet}
       />
     </div>
   );

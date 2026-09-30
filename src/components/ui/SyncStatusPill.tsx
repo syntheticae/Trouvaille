@@ -24,8 +24,22 @@ interface SyncStatusPillProps {
 export function SyncStatusPill({ isBlocked = false }: SyncStatusPillProps) {
   const { isIndonesian } = useLanguage();
   const [status, setStatus] = useState<SyncStatusState>("idle");
+  const [customMessage, setCustomMessage] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  const [isToastActive, setIsToastActive] = useState(false);
+
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const offlineDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Listen to toast activity so SyncStatusPill never clashes with Dynamic Island HUD
+  useEffect(() => {
+    const handleToastActive = (e: Event) => {
+      const custom = e as CustomEvent<{ active: boolean }>;
+      setIsToastActive(!!custom.detail?.active);
+    };
+    window.addEventListener("trouvaille:toast-active", handleToastActive);
+    return () => window.removeEventListener("trouvaille:toast-active", handleToastActive);
+  }, []);
 
   useEffect(() => {
     const handleSyncStatus = (event: Event) => {
@@ -37,40 +51,61 @@ export function SyncStatusPill({ isBlocked = false }: SyncStatusPillProps) {
         clearTimeout(dismissTimerRef.current);
         dismissTimerRef.current = null;
       }
+      if (offlineDebounceRef.current) {
+        clearTimeout(offlineDebounceRef.current);
+        offlineDebounceRef.current = null;
+      }
 
       if (detail.status === "syncing") {
+        setCustomMessage(detail.message || null);
         setStatus("syncing");
         setVisible(true);
       } else if (detail.status === "synced") {
+        setCustomMessage(detail.message || null);
         setStatus("synced");
         setVisible(true);
         dismissTimerRef.current = setTimeout(() => {
           setVisible(false);
           setStatus("idle");
-        }, 2200);
+          setCustomMessage(null);
+        }, 2000);
       } else if (detail.status === "error") {
-        setStatus("error");
-        setVisible(true);
-        dismissTimerRef.current = setTimeout(() => {
+        // If browser is actually online, do not falsely flag as offline
+        const isActuallyOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+        if (isActuallyOnline && (!detail.message || detail.message.toLowerCase().includes("offline"))) {
+          // Suppress false-positive offline warnings when network is active
           setVisible(false);
           setStatus("idle");
+          return;
+        }
+
+        // Apply 2.5s debounce before showing offline pill to absorb momentary network blips
+        offlineDebounceRef.current = setTimeout(() => {
+          setCustomMessage(detail.message || null);
+          setStatus("error");
+          setVisible(true);
+          dismissTimerRef.current = setTimeout(() => {
+            setVisible(false);
+            setStatus("idle");
+            setCustomMessage(null);
+          }, 3000);
         }, 2500);
       } else {
         setVisible(false);
         setStatus("idle");
+        setCustomMessage(null);
       }
     };
 
     window.addEventListener("trouvaille:sync-status", handleSyncStatus);
     return () => {
       window.removeEventListener("trouvaille:sync-status", handleSyncStatus);
-      if (dismissTimerRef.current) {
-        clearTimeout(dismissTimerRef.current);
-      }
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+      if (offlineDebounceRef.current) clearTimeout(offlineDebounceRef.current);
     };
   }, []);
 
-  const shouldRender = visible && !isBlocked && status !== "idle";
+  const shouldRender = visible && !isBlocked && !isToastActive && status !== "idle";
 
   return (
     <AnimatePresence>
@@ -135,7 +170,9 @@ export function SyncStatusPill({ isBlocked = false }: SyncStatusPillProps) {
               className="text-[11.5px] font-medium tracking-tight"
               style={{ color: "var(--text-secondary)" }}
             >
-              {status === "syncing"
+              {customMessage
+                ? customMessage
+                : status === "syncing"
                 ? isIndonesian
                   ? "Menyinkronkan transaksi..."
                   : "Syncing transactions..."

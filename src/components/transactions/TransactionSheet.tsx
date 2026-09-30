@@ -761,7 +761,23 @@ export function TransactionSheet({
     }
   }, [type, wallets, walletId, toWalletId]);
 
+  // Calculate effective numeric amount from either state or raw expression input
+  const currentNumericAmount = useMemo(() => {
+    const direct = Number(amount);
+    if (!isNaN(direct) && direct > 0) return direct;
+    const evaluated = evaluateMathSafe(amountInput);
+    if (!isNaN(evaluated) && evaluated > 0) return evaluated;
+    return 0;
+  }, [amount, amountInput]);
+
   const handleSave = () => {
+    // 1. Immediately dismiss any active software keyboard to prevent layout shift dropping the tap
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    // 2. Dismiss custom liquid keypad drawer if active
+    setIsKeypadOpen(false);
+
     if (currentUserRole === "viewer") {
       showToast(
         isIndonesian
@@ -774,7 +790,10 @@ export function TransactionSheet({
 
     const isUUID = (id?: string | null) => !!id && id.trim().length > 0;
 
-    const rawDisplayAmount = Number(amount);
+    const evaluatedFromInput = evaluateMathSafe(amountInput);
+    const rawDisplayAmount =
+      evaluatedFromInput > 0 ? evaluatedFromInput : Number(amount) || 0;
+
     const numAmount =
       preferredCurrency === "IDR"
         ? Math.round(rawDisplayAmount)
@@ -802,33 +821,6 @@ export function TransactionSheet({
     const effectiveWalletId = matchedFromWallet?.id || null;
     const effectiveToWalletId = matchedToWallet?.id || null;
     const effectiveCatId = matchedCat?.id || null;
-
-    // 5-second duplicate warning protection
-    if (
-      !transaction &&
-      lastSavedPayloadRef.current &&
-      Date.now() - lastSavedTimestampRef.current < 5000
-    ) {
-      const last = lastSavedPayloadRef.current;
-      if (
-        last.amount === numAmount &&
-        last.type === type &&
-        last.walletId === effectiveWalletId &&
-        last.categoryId === effectiveCatId &&
-        last.note === note &&
-        !duplicateWarningAcknowledged
-      ) {
-        showToast(
-          isIndonesian
-            ? "Transaksi serupa baru disimpan. Ketuk Simpan sekali lagi jika disengaja."
-            : "Similar transaction saved seconds ago. Tap Save again if intended.",
-          "info",
-          () => {},
-        );
-        setDuplicateWarningAcknowledged(true);
-        return;
-      }
-    }
 
     isSavingRef.current = true;
     setIsSaving(true);
@@ -1800,16 +1792,20 @@ export function TransactionSheet({
         )}
 
         {/* Action Button Bar: Scan (Left), Save (Center), Quick Add (Right) */}
-        <div className="flex items-center gap-2.5 mt-4 mb-2">
+        <div className="flex items-center gap-2.5 mt-4 mb-2 select-none">
           {transaction ? (
             <button
               type="button"
               onClick={handleDelete}
-              className="w-12 h-12 rounded-2xl flex items-center justify-center active:scale-95 shrink-0 transition-all cursor-pointer"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center active:scale-95 shrink-0 transition-all cursor-pointer select-none"
               style={{
                 background: "var(--glass-fill)",
                 color: "var(--text-secondary)",
                 border: "1px solid var(--glass-border)",
+                touchAction: "manipulation",
+                WebkitTouchCallout: "none",
+                WebkitUserSelect: "none",
+                userSelect: "none",
               }}
               title={isIndonesian ? "Hapus Transaksi" : "Delete Transaction"}
             >
@@ -1832,6 +1828,10 @@ export function TransactionSheet({
                 boxShadow: isDark
                   ? "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
                   : "0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #ffffff",
+                touchAction: "manipulation",
+                WebkitTouchCallout: "none",
+                WebkitUserSelect: "none",
+                userSelect: "none",
               }}
               title={
                 isIndonesian
@@ -1851,14 +1851,25 @@ export function TransactionSheet({
           <button
             type="button"
             onClick={handleSave}
+            onPointerDown={(e) => {
+              if (e.pointerType === "touch" || e.pointerType === "pen") {
+                if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+                  document.activeElement.blur();
+                }
+              }
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             disabled={
               currentUserRole === "viewer" ||
               isSaving ||
-              Number(amount) <= 0 ||
+              currentNumericAmount <= 0 ||
               addTx.isPending ||
               updateTx.isPending
             }
-            className="flex-1 h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="flex-1 h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none"
             style={{
               background: isDark
                 ? "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)"
@@ -1871,21 +1882,25 @@ export function TransactionSheet({
                 ? "inset 0 1px 0 0 #ffffff, inset 0 -1px 0 0 rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.4)"
                 : "inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 4px 14px rgba(0, 0, 0, 0.15)",
               letterSpacing: "-0.01em",
+              touchAction: "manipulation",
+              WebkitTouchCallout: "none",
+              WebkitUserSelect: "none",
+              userSelect: "none",
             }}
           >
             {currentUserRole === "viewer" ? (
-              <span className="font-semibold flex items-center gap-1.5 opacity-75">
+              <span className="font-semibold flex items-center gap-1.5 opacity-75 select-none">
                 <Lock size={15} strokeWidth={2} />
                 {isIndonesian ? "Hanya Lihat (Viewer)" : "Read-Only (Viewer)"}
               </span>
             ) : isSaving || addTx.isPending || updateTx.isPending ? (
-              <span className="font-semibold">
+              <span className="font-semibold select-none">
                 {isIndonesian ? "Menyimpan..." : "Saving..."}
               </span>
             ) : (
               <>
                 <Check size={16} strokeWidth={2.25} />
-                <span className="font-semibold">
+                <span className="font-semibold select-none">
                   {transaction
                     ? isIndonesian
                       ? "Perbarui Transaksi"
