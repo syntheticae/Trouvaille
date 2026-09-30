@@ -6,11 +6,16 @@ import {
   reverseTransactionWithHolding,
   auditUsdtReconciliation,
   applyUsdtReconciliation,
+  bridgeCryptoAccountToHolding,
+  estimateHistoricalUsdtBuyRate,
 } from "../src/lib/holdingSyncEngine";
 import {
   getSavedUsdtPref,
   saveUsdtPref,
+  setHoldingDirectUnits,
 } from "../src/lib/marketPriceService";
+import { resolveWalletClassification } from "../src/hooks/useWallets";
+import { calculateWalletBalances } from "../src/lib/financialMath";
 import type { Wallet, Transaction } from "../src/lib/types";
 
 // Polyfill localStorage in node test environment
@@ -197,4 +202,84 @@ describe("Holding Sync Engine & Crypto Reconciliation", () => {
     // Units should be restored back to 1057
     expect(getSavedUsdtPref().units).toBeCloseTo(1057, 1);
   });
+
+  it("auto-upgrades legacy 'liquid' classification for USDT and Crypto wallets to 'investment'", () => {
+    const legacyUsdtWallet: Wallet = {
+      id: "w-legacy-usdt",
+      user_id: "user-1",
+      name: "USDT",
+      classification: "liquid",
+      created_at: "2026-01-01T00:00:00Z",
+    };
+
+    expect(resolveWalletClassification(legacyUsdtWallet)).toBe("investment");
+
+    const txs: Transaction[] = [
+      {
+        id: "tx-buy-usdt",
+        user_id: "user-1",
+        wallet_id: "w-seabank",
+        to_wallet_id: "w-legacy-usdt",
+        type: "transfer",
+        amount: 16000000,
+        note: "Buy USDT @ 16000",
+        occurred_on: "2024-05-10",
+        created_at: "2024-05-10T10:00:00Z",
+      },
+    ];
+
+    const balResult = calculateWalletBalances(txs, [legacyUsdtWallet, seaBankWallet]);
+    expect(balResult.marketAccounts.some((a) => a.id === "w-legacy-usdt")).toBe(true);
+    expect(balResult.liquidAccounts.some((a) => a.id === "w-legacy-usdt")).toBe(false);
+  });
+
+  it("bridges imported USDT wallet to holding with historical cost basis and anchors manual unit calibration", () => {
+    mockLocalStorage.clear();
+    const legacyUsdtWallet: Wallet = {
+      id: "w-legacy-usdt",
+      user_id: "guest_local_user",
+      name: "USDT",
+      classification: "liquid",
+      created_at: "2026-01-01T00:00:00Z",
+    };
+
+    const txs: Transaction[] = [
+      {
+        id: "tx-in-1",
+        user_id: "guest_local_user",
+        wallet_id: "w-seabank",
+        to_wallet_id: "w-legacy-usdt",
+        type: "transfer",
+        amount: 15950000,
+        note: "Transfer to USDT",
+        occurred_on: "2024-05-15",
+        created_at: "2024-05-15T10:00:00Z",
+      },
+    ];
+
+    expect(estimateHistoricalUsdtBuyRate("2024-05-15", "Transfer to USDT", 15950000)).toBe(15950);
+
+    const bridged = bridgeCryptoAccountToHolding(
+      [legacyUsdtWallet, seaBankWallet],
+      txs,
+      "guest_local_user",
+    );
+    expect(bridged).not.toBeNull();
+    expect(bridged?.symbol).toBe("USDT");
+    expect(bridged?.avg_buy_price).toBe(15950);
+    expect(bridged?.units).toBe(1000);
+
+    // Calibrate manual units while anchoring cost basis to 15,950,000 IDR
+    const calibrated = setHoldingDirectUnits(
+      bridged!.id,
+      1050,
+      "guest_local_user",
+      "Koreksi Saldo Manual",
+      15950000,
+    );
+    expect(calibrated.units).toBe(1050);
+    expect(calibrated.avg_buy_price).toBeCloseTo(15950000 / 1050, 1);
+    expect(getSavedUsdtPref("guest_local_user").costBasis).toBe(15950000);
+  });
 });
+

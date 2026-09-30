@@ -435,7 +435,38 @@ export function AssetDetailSheet({
     }
     triggerHaptic("medium");
     try {
-      setHoldingDirectUnits(holding.id, parsed, user?.id, "Koreksi Saldo Manual");
+      const isUsdt =
+        holding.symbol?.toUpperCase() === "USDT" || holding.id.startsWith("usdt-");
+      let anchorCostBasis: number | undefined;
+      if (isUsdt) {
+        const cryptoWallets = wallets.filter(isInvestmentOrCryptoWallet);
+        const cryptoIds = new Set(cryptoWallets.map((w) => w.id));
+        let netLedger = cryptoWallets.reduce(
+          (acc, w) => acc + (Number((w as any).initial_balance) || 0),
+          0,
+        );
+        for (const tx of allTxs) {
+          const amt = Number(tx.amount) || 0;
+          const isFrom = tx.wallet_id ? cryptoIds.has(tx.wallet_id) : false;
+          const isTo = tx.to_wallet_id ? cryptoIds.has(tx.to_wallet_id) : false;
+          if (tx.type === "income" && isFrom) netLedger += amt;
+          else if (tx.type === "expense" && isFrom) netLedger -= amt;
+          else if (tx.type === "adjustment" && isFrom) netLedger += amt;
+          else if (tx.type === "transfer") {
+            if (isTo && !isFrom) netLedger += amt;
+            else if (isFrom && !isTo) netLedger -= amt;
+          }
+        }
+        if (netLedger > 0) anchorCostBasis = netLedger;
+      }
+
+      setHoldingDirectUnits(
+        holding.id,
+        parsed,
+        user?.id,
+        "Koreksi Saldo Manual",
+        anchorCostBasis,
+      );
       setIsEditingDirectUnits(false);
       onHoldingUpdated();
       showToast(

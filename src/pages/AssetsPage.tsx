@@ -44,7 +44,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useAuth } from "../contexts/AuthContext";
-import { useWallets } from "../hooks/useWallets";
+import { useWallets, resolveWalletClassification } from "../hooks/useWallets";
 import { useWalletBalances } from "../hooks/useWalletBalances";
 import { useAllTransactions } from "../hooks/useTransactions";
 import {
@@ -62,6 +62,7 @@ import {
 import {
   auditUsdtReconciliation,
   applyUsdtReconciliation,
+  bridgeCryptoAccountToHolding,
 } from "../lib/holdingSyncEngine";
 import { IconRenderer } from "../components/ui/IconRenderer";
 import { AssetDetailSheet } from "../components/settings/AssetDetailSheet";
@@ -214,6 +215,17 @@ export function AssetsPage() {
     };
   }, [user?.id]);
 
+  // Zero-Destruction Linked Custodial Bridge:
+  // Automatically convert/bridge imported USDT or Crypto account into an active USDT holding
+  useEffect(() => {
+    if (wallets.length === 0) return;
+    const bridged = bridgeCryptoAccountToHolding(wallets, allTxs, user?.id);
+    if (bridged) {
+      setHoldings(getSavedHoldings(user?.id));
+      setUsdtPref(getSavedUsdtPref(user?.id));
+    }
+  }, [wallets, allTxs, user?.id]);
+
   // Manual Refresh action
   const handleRefreshPrices = async () => {
     triggerHaptic("medium");
@@ -270,22 +282,29 @@ export function AssetsPage() {
 
   const cryptoWallet = allCryptoWallets[0] || null;
 
+  const usdtHolding = useMemo(
+    () => holdings.find((h) => h.symbol?.toUpperCase() === "USDT"),
+    [holdings],
+  );
+  const usdtUnits = usdtHolding?.units || usdtPref.units || 0;
+  const usdtRate = usdtHolding?.current_price || usdtPref.rate || 16300;
+
   // Unlinked legacy crypto wallet detection
   const unlinkedCryptoWallet = useMemo(() => {
-    if (usdtPref.units > 0) return null;
+    if (usdtUnits > 0) return null;
     return (
       allCryptoWallets.find(
         (w) => (balancesById[w.id] ?? Number(w.balance || 0)) > 0,
       ) || null
     );
-  }, [allCryptoWallets, usdtPref.units, balancesById]);
+  }, [allCryptoWallets, usdtUnits, balancesById]);
 
   const recordedCryptoBalance = cryptoWallet
     ? (balancesById[cryptoWallet.id] ?? Number(cryptoWallet.balance || 0))
     : 0;
   const suggestedUsdtUnits =
-    usdtPref.rate > 0
-      ? parseFloat((recordedCryptoBalance / usdtPref.rate).toFixed(2))
+    usdtRate > 0
+      ? parseFloat((recordedCryptoBalance / usdtRate).toFixed(2))
       : 0;
 
   // Split holdings: Liquid vs Fixed
@@ -298,9 +317,14 @@ export function AssetsPage() {
     [holdings],
   );
 
-  const usdtCostBasis = usdtPref.costBasis;
+  const usdtCostBasis =
+    usdtHolding?.avg_buy_price && usdtUnits > 0
+      ? Math.round(usdtUnits * usdtHolding.avg_buy_price)
+      : usdtPref.costBasis && usdtPref.costBasis > 0
+        ? usdtPref.costBasis
+        : recordedCryptoBalance;
   const usdtMarketValue =
-    usdtPref.units > 0 ? usdtPref.units * usdtPref.rate : recordedCryptoBalance;
+    usdtUnits > 0 ? Math.round(usdtUnits * usdtRate) : recordedCryptoBalance;
   const usdtFloatingPnL = usdtMarketValue - usdtCostBasis;
   const usdtFloatingPnLPct =
     usdtCostBasis > 0 ? (usdtFloatingPnL / usdtCostBasis) * 100 : 0;
@@ -324,10 +348,13 @@ export function AssetsPage() {
 
   // Check whether user's crypto/USDT wallet is classified as investment
   const isCryptoClassifiedAsInvestment = useMemo(() => {
-    if (cryptoWallet?.classification === "investment") return true;
-    if (allCryptoWallets.some((w) => w.classification === "investment")) return true;
-    return false;
-  }, [cryptoWallet, allCryptoWallets]);
+    if (allCryptoWallets.length > 0) {
+      return allCryptoWallets.some(
+        (w) => resolveWalletClassification(w) === "investment",
+      );
+    }
+    return true;
+  }, [allCryptoWallets]);
 
   // Pillar 1: Liquid & Current Assets (Operating Cash, RDN Uninvested Cash, and USDT Reserve if liquid)
   const liquidWalletCash = useMemo(() => {
@@ -493,23 +520,23 @@ export function AssetsPage() {
     const existingUsdt = holdings.find(
       (h) => h.symbol?.toUpperCase() === "USDT" || h.id.startsWith("usdt-"),
     );
-    const usdtHolding: InvestmentHolding = {
+    const targetUsdtHolding: InvestmentHolding = {
       id: existingUsdt?.id || getStandardUsdtHoldingId(user?.id),
+      wallet_id: existingUsdt?.wallet_id || cryptoWallet?.id,
       symbol: "USDT",
       name: "Tether USD",
       asset_type: "crypto",
-      units:
-        usdtPref.units > 0
-          ? usdtPref.units
-          : existingUsdt?.units || suggestedUsdtUnits,
+      units: usdtUnits > 0 ? usdtUnits : suggestedUsdtUnits,
       avg_buy_price:
-        usdtPref.units > 0
-          ? Math.round(usdtCostBasis / usdtPref.units)
-          : existingUsdt?.avg_buy_price || usdtPref.rate,
+        existingUsdt?.avg_buy_price && existingUsdt.avg_buy_price > 0
+          ? existingUsdt.avg_buy_price
+          : usdtUnits > 0
+            ? Math.round(usdtCostBasis / usdtUnits)
+            : usdtRate,
       current_price:
         existingUsdt?.is_custom_price && existingUsdt.custom_price
           ? existingUsdt.custom_price
-          : usdtPref.rate,
+          : usdtRate,
       currency: "IDR",
       icon: "Coins",
       activities:
@@ -519,7 +546,7 @@ export function AssetsPage() {
       is_custom_price: existingUsdt?.is_custom_price,
       custom_price: existingUsdt?.custom_price,
     };
-    setSelectedDetailHolding(usdtHolding);
+    setSelectedDetailHolding(targetUsdtHolding);
   };
 
   // Open any Holding in Detail Sheet
@@ -1759,7 +1786,11 @@ export function AssetsPage() {
           setUsdtPref(freshUsdt);
           if (selectedDetailHolding) {
             const refreshed = freshHoldings.find(
-              (x) => x.id === selectedDetailHolding.id,
+              (x) =>
+                x.id === selectedDetailHolding.id ||
+                (x.symbol &&
+                  x.symbol.toUpperCase() ===
+                    selectedDetailHolding.symbol?.toUpperCase()),
             );
             if (refreshed) setSelectedDetailHolding(refreshed);
           }
@@ -1774,8 +1805,8 @@ export function AssetsPage() {
       <StakingYieldModal
         isOpen={isStakingModalOpen}
         onClose={() => setIsStakingModalOpen(false)}
-        holdingUnits={usdtPref.units}
-        liveRate={usdtPref.rate}
+        holdingUnits={usdtUnits}
+        liveRate={usdtRate}
         wallets={wallets}
         holdings={holdings}
         userId={user?.id}
@@ -1795,7 +1826,11 @@ export function AssetsPage() {
         liquidAssetsTotal={liquidAssetsTotal}
         growthAssetsTotal={growthAssetsTotal}
         fixedAssetsTotal={fixedAssetsTotal}
-        usdtPref={usdtPref}
+        usdtPref={{
+          units: usdtUnits,
+          rate: usdtRate,
+          costBasis: usdtCostBasis,
+        }}
         usdtMarketValue={usdtMarketValue}
         usdtFloatingPnLPct={usdtFloatingPnLPct}
         suggestedUsdtUnits={suggestedUsdtUnits}

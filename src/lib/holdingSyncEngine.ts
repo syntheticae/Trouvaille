@@ -1,8 +1,10 @@
-import type { Transaction, Wallet, HoldingActivity } from "./types";
+import { supabase } from "./supabase";
+import type { Transaction, Wallet, HoldingActivity, InvestmentHolding } from "./types";
 import {
   getSavedHoldings,
   getSavedUsdtPref,
   saveUsdtPref,
+  upsertHolding,
   recordHoldingActivity,
   getStandardUsdtHoldingId,
   getReconciledTxIds,
@@ -566,3 +568,273 @@ export function applyUsdtReconciliation(
 
   return { updatedUnits: targetUnits };
 }
+
+/**
+ * Estimate historical USD/IDR purchase rate from transaction date or note.
+ */
+export function estimateHistoricalUsdtBuyRate(
+  dateStr?: string,
+  note?: string | null,
+  amount?: number,
+): number {
+  if (note) {
+    // Check explicit rate in note, e.g. "@ 16200", "kurs 15850", "rate 16.100"
+    const rateMatch = note.match(/(?:@|rate|kurs)\s*(?:rp\.?\s*)?(\d{2}[.,]?\d{3})/i);
+    if (rateMatch) {
+      const parsed = Number(rateMatch[1].replace(/[.,]/g, ""));
+      if (parsed >= 13000 && parsed <= 20000) return parsed;
+    }
+    // Check explicit USDT quantity in note, e.g. "150 USDT"
+    if (amount && amount > 0) {
+      const unitMatch = note.match(/(\d+(?:[.,]\d+)?)\s*usdt/i);
+      if (unitMatch) {
+        const parsedUnits = Number(unitMatch[1].replace(",", "."));
+        if (parsedUnits > 0) {
+          const impliedRate = Math.round(amount / parsedUnits);
+          if (impliedRate >= 13000 && impliedRate <= 20000) return impliedRate;
+        }
+      }
+    }
+  }
+
+  const d = (dateStr || "").slice(0, 7); // YYYY-MM
+  if (!d) return 15950;
+  if (d <= "2022-12") return 15250;
+  if (d <= "2023-06") return 15150;
+  if (d <= "2023-12") return 15550;
+  if (d <= "2024-06") return 15950;
+  if (d <= "2024-12") return 15850;
+  if (d <= "2025-06") return 16200;
+  if (d <= "2025-12") return 16100;
+  return 16150;
+}
+
+/**
+ * Zero-Destruction Linked Custodial Bridge:
+ * Automatically bridges an imported `USDT` / `Crypto` wallet (Layer 1 Account)
+ * into an active `USDT` item in the Investment Holdings & Asset Ledger (Layer 2 Holding).
+ *
+ * - Preserves 100% of historical transactions on the USDT wallet.
+ * - Uses the wallet's net historical IDR balance as the exact Cost Basis (`Modal Beli`).
+ * - Computes historical weighted `avg_buy_price` and `units` from the wallet's inflow transactions.
+ * - Links `wallet_id` so the holding and account never double-count.
+ */
+export function bridgeCryptoAccountToHolding(
+  wallets: Wallet[],
+  transactions: Transaction[],
+  userId?: string,
+): InvestmentHolding | null {
+  if (!wallets || wallets.length === 0) return null;
+
+  const cryptoWallets = wallets.filter((w) => isUsdtWallet(w));
+  if (cryptoWallets.length === 0) return null;
+
+  // Prefer the wallet explicitly named "USDT", otherwise first crypto wallet
+  const primaryWallet =
+    cryptoWallets.find((w) => w.name?.trim().toUpperCase() === "USDT") || cryptoWallets[0];
+  const cryptoWalletIds = new Set(cryptoWallets.map((w) => w.id));
+
+  // Calculate net historical IDR balance (Cost Basis) and historical weighted buy rate
+  let recordedCryptoBalance = cryptoWallets.reduce(
+    (acc, w) => acc + (Number((w as any).initial_balance) || 0),
+    0,
+  );
+
+  let totalInflowIdr = 0;
+  let totalInflowImpliedUnits = 0;
+  const synthesizedActivities: HoldingActivity[] = [];
+  const holdingId = getStandardUsdtHoldingId(userId);
+
+  const sortedTxs = [...transactions].sort((a, b) => {
+    const da = a.occurred_on || a.created_at || "";
+    const db = b.occurred_on || b.created_at || "";
+    return da.localeCompare(db);
+  });
+
+  for (const tx of sortedTxs) {
+    const amt = Number(tx.amount) || 0;
+    if (amt === 0) continue;
+
+    const isFrom = tx.wallet_id ? cryptoWalletIds.has(tx.wallet_id) : false;
+    const isTo = tx.to_wallet_id ? cryptoWalletIds.has(tx.to_wallet_id) : false;
+    if (!isFrom && !isTo) continue;
+
+    const txDate = (tx.occurred_on || tx.created_at || new Date().toISOString()).slice(0, 10);
+    const rateAtTx = estimateHistoricalUsdtBuyRate(txDate, tx.note, Math.abs(amt));
+
+    if (tx.type === "income" && isFrom) {
+      recordedCryptoBalance += amt;
+      totalInflowIdr += amt;
+      const u = amt / rateAtTx;
+      totalInflowImpliedUnits += u;
+      synthesizedActivities.unshift({
+        id: `act-tx-${tx.id}`,
+        holding_id: holdingId,
+        type: "buy",
+        date: txDate,
+        units: Number(u.toFixed(4)),
+        price_per_unit: rateAtTx,
+        total_amount: amt,
+        note: tx.note || "Crypto Income / Yield",
+        created_at: tx.created_at || new Date().toISOString(),
+      });
+    } else if (tx.type === "expense" && isFrom) {
+      recordedCryptoBalance -= amt;
+      const u = amt / rateAtTx;
+      synthesizedActivities.unshift({
+        id: `act-tx-${tx.id}`,
+        holding_id: holdingId,
+        type: "sell",
+        date: txDate,
+        units: Number(u.toFixed(4)),
+        price_per_unit: rateAtTx,
+        total_amount: amt,
+        note: tx.note || "Crypto Expense / Fee",
+        created_at: tx.created_at || new Date().toISOString(),
+      });
+    } else if (tx.type === "adjustment" && isFrom) {
+      recordedCryptoBalance += amt;
+      if (amt > 0) {
+        totalInflowIdr += amt;
+        totalInflowImpliedUnits += amt / rateAtTx;
+      }
+    } else if (tx.type === "transfer") {
+      if (isTo && !isFrom) {
+        recordedCryptoBalance += amt;
+        totalInflowIdr += amt;
+        const u = amt / rateAtTx;
+        totalInflowImpliedUnits += u;
+        synthesizedActivities.unshift({
+          id: `act-tx-${tx.id}`,
+          holding_id: holdingId,
+          type: "buy",
+          date: txDate,
+          units: Number(u.toFixed(4)),
+          price_per_unit: rateAtTx,
+          total_amount: amt,
+          note: tx.note || "Transfer In to USDT",
+          created_at: tx.created_at || new Date().toISOString(),
+        });
+      } else if (isFrom && !isTo) {
+        recordedCryptoBalance -= amt;
+        const u = amt / rateAtTx;
+        synthesizedActivities.unshift({
+          id: `act-tx-${tx.id}`,
+          holding_id: holdingId,
+          type: "sell",
+          date: txDate,
+          units: Number(u.toFixed(4)),
+          price_per_unit: rateAtTx,
+          total_amount: amt,
+          note: tx.note || "Transfer Out from USDT",
+          created_at: tx.created_at || new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  if (recordedCryptoBalance <= 0) {
+    return null;
+  }
+
+  const estimatedAvgBuyPrice =
+    totalInflowImpliedUnits > 0
+      ? Math.round(totalInflowIdr / totalInflowImpliedUnits)
+      : 15950;
+
+  const allHoldings = getSavedHoldings(userId);
+  const existingUsdt = allHoldings.find((h) => h.symbol?.toUpperCase() === "USDT");
+  const usdtPref = getSavedUsdtPref(userId);
+  const liveRate =
+    (existingUsdt?.current_price && existingUsdt.current_price > 5000 ? existingUsdt.current_price : 0) ||
+    (usdtPref.rate > 5000 ? usdtPref.rate : USD_IDR_ESTIMATE);
+
+  // Check if user has already manually calibrated units (via "Manual balance correction" activity)
+  const hasManualUnitCalibration = (existingUsdt?.activities || []).some(
+    (a) =>
+      a.note?.toLowerCase().includes("manual") ||
+      a.note?.toLowerCase().includes("koreksi") ||
+      a.note?.toLowerCase().includes("calibration"),
+  );
+
+  let resolvedUnits: number;
+  let resolvedAvgBuyPrice: number;
+
+  if (existingUsdt && existingUsdt.units > 0 && hasManualUnitCalibration) {
+    // User explicitly set their exact USDT coin count; keep their units and anchor Cost Basis to ledger balance
+    resolvedUnits = existingUsdt.units;
+    resolvedAvgBuyPrice = Math.round((recordedCryptoBalance / resolvedUnits) * 100) / 100;
+  } else if (
+    existingUsdt &&
+    existingUsdt.units > 0 &&
+    existingUsdt.avg_buy_price > 0 &&
+    Math.abs(existingUsdt.avg_buy_price - existingUsdt.current_price) > 5 &&
+    Math.abs(existingUsdt.units * existingUsdt.avg_buy_price - recordedCryptoBalance) < 5000
+  ) {
+    // Already properly bridged and anchored
+    resolvedUnits = existingUsdt.units;
+    resolvedAvgBuyPrice = existingUsdt.avg_buy_price;
+  } else {
+    // Auto-bridge from historical ledger transactions
+    resolvedAvgBuyPrice = estimatedAvgBuyPrice;
+    resolvedUnits = Number((recordedCryptoBalance / resolvedAvgBuyPrice).toFixed(4));
+  }
+
+  const needsUpsert =
+    !existingUsdt ||
+    existingUsdt.units <= 0 ||
+    existingUsdt.wallet_id !== primaryWallet.id ||
+    Math.abs((existingUsdt.avg_buy_price || 0) - resolvedAvgBuyPrice) > 1 ||
+    Math.abs((existingUsdt.current_price || 0) - liveRate) > 1;
+
+  if (!needsUpsert) {
+    return existingUsdt;
+  }
+
+  const bridgedHolding: InvestmentHolding = {
+    ...(existingUsdt || {}),
+    id: existingUsdt?.id || holdingId,
+    user_id: userId,
+    wallet_id: primaryWallet.id,
+    symbol: "USDT",
+    name: "Tether USD",
+    asset_type: "crypto",
+    units: resolvedUnits,
+    avg_buy_price: resolvedAvgBuyPrice,
+    current_price: liveRate,
+    currency: "IDR",
+    icon: existingUsdt?.icon || "Coins",
+    activities:
+      existingUsdt?.activities && existingUsdt.activities.length > 0
+        ? existingUsdt.activities
+        : synthesizedActivities.slice(0, 50),
+    last_price_updated_at: new Date().toISOString(),
+  };
+
+  upsertHolding(bridgedHolding, userId);
+  saveUsdtPref(
+    {
+      units: resolvedUnits,
+      rate: liveRate,
+      costBasis: Math.round(recordedCryptoBalance),
+    },
+    userId,
+  );
+
+  // Also persist classification = 'investment' on the crypto wallet(s) in Supabase so Mobile & Web stay 100% aligned
+  if (userId && userId !== "guest_local_user") {
+    for (const cw of cryptoWallets) {
+      if (cw.classification !== "investment" && cw.id) {
+        supabase
+          .from("wallets")
+          .update({ classification: "investment", icon: "Coins" })
+          .eq("id", cw.id)
+          .eq("user_id", userId)
+          .then(() => {}, () => {});
+      }
+    }
+  }
+
+  return bridgedHolding;
+}
+

@@ -2,7 +2,7 @@
 -- TROUVAILLE SUPABASE MIGRATION: HOLDINGS & WALLETS CONSOLIDATION ADJUSTMENT
 -- 1. Deduplicates multiple holding rows per (user_id, symbol)
 -- 2. Enforces UNIQUE (user_id, symbol) constraint on public.holdings
--- 3. Links sovereign USDT holding to existing crypto/USDT wallet
+-- 3. Links sovereign USDT holding to existing crypto/USDT wallet & upgrades classification
 -- 4. Modernizes legacy PNG file paths in wallets.icon to standard Lucide icons
 -- ==============================================================================
 -- Run this script in: Supabase Dashboard -> SQL Editor
@@ -25,10 +25,16 @@ WHERE id NOT IN (
 );
 
 -- ------------------------------------------------------------------------------
--- 2. CLEAN UP SYMBOL CASING & LINK USDT WALLET
+-- 2. CLEAN UP SYMBOL CASING, UPGRADE CRYPTO WALLET CLASSIFICATION & LINK USDT
 -- ------------------------------------------------------------------------------
 UPDATE public.holdings
 SET symbol = UPPER(TRIM(symbol));
+
+-- Upgrade legacy imported USDT / CRYPTO wallets from generic 'liquid' to 'investment'
+UPDATE public.wallets
+SET classification = 'investment'
+WHERE (UPPER(TRIM(name)) = 'USDT' OR UPPER(TRIM(name)) = 'CRYPTO' OR UPPER(TRIM(name)) LIKE '%USDT%')
+  AND (classification IS NULL OR classification = 'liquid');
 
 -- Auto-link USDT holding to the user's USDT wallet if currently unlinked
 UPDATE public.holdings h
@@ -37,7 +43,7 @@ FROM public.wallets w
 WHERE h.symbol = 'USDT'
   AND h.wallet_id IS NULL
   AND w.user_id = h.user_id
-  AND (UPPER(w.name) = 'USDT' OR UPPER(w.name) = 'CRYPTO');
+  AND (UPPER(TRIM(w.name)) = 'USDT' OR UPPER(TRIM(w.name)) = 'CRYPTO');
 
 -- ------------------------------------------------------------------------------
 -- 3. ENFORCE UNIQUE CONSTRAINT ON (user_id, symbol)
@@ -52,7 +58,8 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = 'uq_holdings_user_symbol_constraint'
-    ) THEN
+    )
+    THEN
         ALTER TABLE public.holdings
             ADD CONSTRAINT uq_holdings_user_symbol_constraint 
             UNIQUE USING INDEX uq_holdings_user_symbol;

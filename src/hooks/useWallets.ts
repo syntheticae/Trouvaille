@@ -107,17 +107,25 @@ export function resolveWalletClassification(wallet: {
   name: string;
   classification?: AccountClassification;
 }): AccountClassification {
+  const defaultByName = getDefaultWalletClassification(wallet.name);
   const savedMap = getSavedWalletClassifications();
+
+  let stored: AccountClassification | undefined;
   if (wallet.id && savedMap[wallet.id.toLowerCase()]) {
-    return savedMap[wallet.id.toLowerCase()];
+    stored = savedMap[wallet.id.toLowerCase()];
+  } else if (wallet.name && savedMap[wallet.name.trim().toLowerCase()]) {
+    stored = savedMap[wallet.name.trim().toLowerCase()];
+  } else if (wallet.classification) {
+    stored = wallet.classification;
   }
-  if (wallet.name && savedMap[wallet.name.trim().toLowerCase()]) {
-    return savedMap[wallet.name.trim().toLowerCase()];
+
+  // If the wallet name explicitly denotes an investment/crypto/debt/receivable account (e.g. "USDT", "Crypto", "Saham")
+  // and its stored classification is still the generic "liquid" default from legacy import, upgrade it automatically.
+  if ((!stored || stored === "liquid") && defaultByName !== "liquid") {
+    return defaultByName;
   }
-  if (wallet.classification) {
-    return wallet.classification;
-  }
-  return getDefaultWalletClassification(wallet.name);
+
+  return stored || defaultByName;
 }
 
 export const walletKeys = {

@@ -643,12 +643,7 @@ export function calculateWalletBalances(
   const loanAccounts: AccountBalanceItem[] = [];
 
   allAccounts.forEach((a) => {
-    // 1. Explicit user/wallet classification takes absolute priority
     const cls = a.classification;
-    if (cls === "liquid") {
-      liquidAccounts.push(a);
-      return;
-    }
     if (cls === "fixed_asset") {
       fixedAssetAccounts.push(a);
       return;
@@ -670,23 +665,29 @@ export function calculateWalletBalances(
       return;
     }
 
-    // 2. Fallback name heuristics if classification not set
+    // Check name heuristics when classification is unset or generic 'liquid' default
     const n = a.name.toLowerCase();
     if (isFixedAssetName(n)) {
+      a.classification = "fixed_asset";
       fixedAssetAccounts.push(a);
     } else if (isMarketInvestmentName(n)) {
+      a.classification = "investment";
       marketAccounts.push(a);
     } else if (
       n.includes("piutang") ||
       n.includes("receivable") ||
       n.includes("pinjaman teman")
     ) {
+      a.classification = "receivable";
       liquidAccounts.push(a);
     } else if (n.includes("kpr") || n.includes("loan") || n.includes("pinjaman")) {
+      a.classification = "loan";
       loanAccounts.push(a);
-    } else if (isCreditOrDebtName(n) || a.balance < 0) {
+    } else if (isCreditOrDebtName(n) || (cls !== "liquid" && a.balance < 0)) {
+      a.classification = "credit";
       creditAccounts.push(a);
     } else {
+      a.classification = "liquid";
       liquidAccounts.push(a);
     }
   });

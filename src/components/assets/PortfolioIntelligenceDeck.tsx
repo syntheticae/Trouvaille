@@ -40,7 +40,7 @@ interface PortfolioIntelligenceDeckProps {
 export function PortfolioIntelligenceDeck({
   holdings = [],
   wallets = [],
-  netWorth = 0,
+  netWorth: _netWorth = 0,
   totalLiabilities = 0,
   monthlyBurnRate = 3500000,
 }: PortfolioIntelligenceDeckProps) {
@@ -52,37 +52,49 @@ export function PortfolioIntelligenceDeck({
   const [activeTelemetryTab, setActiveTelemetryTab] = useState<"performance" | "risk">("performance");
 
   // 1. USDT & Recorded Wallet Balances
-  const usdtPref = useMemo(() => getSavedUsdtPref(user?.id), [user?.id]);
+  const usdtPref = useMemo(() => getSavedUsdtPref(user?.id), [user?.id, holdings]);
+  const usdtHolding = useMemo(
+    () => holdings.find((h) => h.symbol?.toUpperCase() === "USDT"),
+    [holdings],
+  );
   const { balancesById } = useWalletBalances();
+
+  const isCryptoOrInvWallet = (w: Wallet) => {
+    const lower = (w.name || "").toLowerCase();
+    return (
+      w.classification === "investment" ||
+      lower.includes("crypto") ||
+      lower.includes("usdt") ||
+      lower.includes("tether") ||
+      lower.includes("binance") ||
+      lower.includes("tokocrypto") ||
+      lower.includes("bybit") ||
+      lower.includes("indodax") ||
+      lower.includes("pintu")
+    );
+  };
+
   const recordedCryptoBalance = useMemo(() => {
     return wallets
-      .filter((w) => {
-        const lower = w.name.toLowerCase();
-        return (
-          w.classification === "investment" ||
-          lower.includes("crypto") ||
-          lower.includes("usdt") ||
-          lower.includes("tether") ||
-          lower.includes("binance") ||
-          lower.includes("tokocrypto") ||
-          lower.includes("bybit") ||
-          lower.includes("indodax") ||
-          lower.includes("pintu")
-        );
-      })
+      .filter(isCryptoOrInvWallet)
       .reduce(
-        (sum, w) => sum + (balancesById[w.id] ?? Number(w.balance || 0)),
+        (sum, w) => sum + Math.max(0, balancesById[w.id] ?? Number(w.balance || 0)),
         0,
       );
   }, [wallets, balancesById]);
 
+  const usdtUnits = usdtHolding?.units || usdtPref.units || 0;
+  const usdtRate = usdtHolding?.current_price || usdtPref.rate || 16300;
   const usdtCostBasis =
-    usdtPref.costBasis && usdtPref.costBasis > 0
-      ? usdtPref.costBasis
-      : recordedCryptoBalance > 0
-        ? recordedCryptoBalance
-        : 0;
-  const usdtMarketValue = Math.round((usdtPref.units || 0) * (usdtPref.rate || 16000));
+    usdtHolding?.avg_buy_price && usdtUnits > 0
+      ? Math.round(usdtUnits * usdtHolding.avg_buy_price)
+      : usdtPref.costBasis && usdtPref.costBasis > 0
+        ? usdtPref.costBasis
+        : recordedCryptoBalance > 0
+          ? recordedCryptoBalance
+          : 0;
+  const usdtMarketValue =
+    usdtUnits > 0 ? Math.round(usdtUnits * usdtRate) : recordedCryptoBalance;
   const usdtFloatingPnL = usdtMarketValue - usdtCostBasis;
 
   // 2. Other Holdings Valuations
@@ -112,8 +124,20 @@ export function PortfolioIntelligenceDeck({
     totalInvestedCostBasis > 0 ? (totalFloatingPnL / totalInvestedCostBasis) * 100 : 0;
 
   // 3. Risk & Volatility Tiers
-  // Tier 1: Defensive Liquid (Cash, Bank, e-Money)
-  const defensiveLiquid = Math.max(0, netWorth - totalInvestedCostBasis);
+  // Tier 1: Defensive Liquid (Pure operating Cash, Bank, e-Money — excluding Crypto/USDT)
+  const defensiveLiquid = useMemo(() => {
+    return wallets
+      .filter(
+        (w) =>
+          w.classification !== "credit" &&
+          w.classification !== "loan" &&
+          !isCryptoOrInvWallet(w),
+      )
+      .reduce(
+        (sum, w) => sum + Math.max(0, balancesById[w.id] ?? Number(w.balance || 0)),
+        0,
+      );
+  }, [wallets, balancesById]);
 
   // Tier 2: Stable / Fixed Income (Gold, Property, Fixed Assets)
   const stableFixed = otherValuations

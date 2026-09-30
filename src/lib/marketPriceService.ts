@@ -329,26 +329,32 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
       holding.custom_price,
     );
 
-    await supabase.from("holdings").upsert(
-      {
-        id: holdingId,
-        user_id: userId,
-        symbol: holding.symbol?.toUpperCase().trim(),
-        name: holding.name,
-        asset_type: holding.asset_type,
-        units: holding.units,
-        avg_buy_price: holding.avg_buy_price,
-        current_price: holding.current_price,
-        currency: holding.currency || "IDR",
-        notes: serializedNotes || null,
-        icon: holding.icon || "TrendingUp",
-        annual_rate: holding.annual_rate || null,
-        purchase_date: holding.purchase_date || null,
-        wallet_id: validWalletId,
-        last_price_updated_at: holding.last_price_updated_at || new Date().toISOString(),
-      },
-      { onConflict: "user_id,symbol" },
-    );
+    const payload = {
+      id: holdingId,
+      user_id: userId,
+      symbol: holding.symbol?.toUpperCase().trim(),
+      name: holding.name,
+      asset_type: holding.asset_type,
+      units: holding.units,
+      avg_buy_price: holding.avg_buy_price,
+      current_price: holding.current_price,
+      currency: holding.currency || "IDR",
+      notes: serializedNotes || null,
+      icon: holding.icon || "TrendingUp",
+      annual_rate: holding.annual_rate || null,
+      purchase_date: holding.purchase_date || null,
+      wallet_id: validWalletId,
+      last_price_updated_at: holding.last_price_updated_at || new Date().toISOString(),
+    };
+
+    const { error: upsertErr } = await supabase
+      .from("holdings")
+      .upsert(payload, { onConflict: "user_id,symbol" });
+
+    // Safe fallback if unique constraint (user_id, symbol) has not yet been applied in DB
+    if (upsertErr) {
+      await supabase.from("holdings").upsert(payload);
+    }
   } catch (e) {
     console.warn("[syncHoldingToSupabase] Supabase sync notice:", e);
   }
@@ -1137,6 +1143,7 @@ export function setHoldingDirectUnits(
   newUnits: number,
   userId?: string,
   note: string = "Manual balance correction",
+  anchorCostBasis?: number,
 ): InvestmentHolding {
   const allHoldings = getSavedHoldings(userId);
   const isUsdtRef =
@@ -1169,9 +1176,15 @@ export function setHoldingDirectUnits(
     throw new Error(`Holding with id ${holdingId} not found`);
   }
 
+  const sanitizedUnits = Math.max(0, newUnits);
   const prevUnits = target.units;
-  const deltaUnits = Number((newUnits - prevUnits).toFixed(4));
+  const deltaUnits = Number((sanitizedUnits - prevUnits).toFixed(4));
   const existingActivities = target.activities || [];
+
+  const calibratedAvgBuyPrice =
+    anchorCostBasis && anchorCostBasis > 0 && sanitizedUnits > 0
+      ? Math.round((anchorCostBasis / sanitizedUnits) * 100) / 100
+      : target.avg_buy_price;
 
   const correctionActivity: HoldingActivity = {
     id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -1179,8 +1192,11 @@ export function setHoldingDirectUnits(
     type: deltaUnits >= 0 ? "buy" : "sell",
     date: new Date().toISOString().split("T")[0],
     units: Math.abs(deltaUnits),
-    price_per_unit: target.current_price || target.avg_buy_price || USD_IDR_ESTIMATE,
-    total_amount: Math.abs(deltaUnits) * (target.current_price || target.avg_buy_price || USD_IDR_ESTIMATE),
+    price_per_unit: calibratedAvgBuyPrice || target.current_price || USD_IDR_ESTIMATE,
+    total_amount:
+      anchorCostBasis && anchorCostBasis > 0
+        ? Math.round(anchorCostBasis)
+        : Math.abs(deltaUnits) * (target.current_price || target.avg_buy_price || USD_IDR_ESTIMATE),
     note,
     created_at: new Date().toISOString(),
   };
@@ -1189,7 +1205,8 @@ export function setHoldingDirectUnits(
 
   const updatedHolding: InvestmentHolding = {
     ...target,
-    units: Math.max(0, newUnits),
+    units: sanitizedUnits,
+    avg_buy_price: calibratedAvgBuyPrice,
     activities: updatedActivities,
     last_price_updated_at: new Date().toISOString(),
   };
@@ -1197,11 +1214,15 @@ export function setHoldingDirectUnits(
   upsertHolding(updatedHolding, userId);
 
   if (updatedHolding.symbol?.toUpperCase() === "USDT") {
+    const resolvedCostBasis =
+      anchorCostBasis && anchorCostBasis > 0
+        ? Math.round(anchorCostBasis)
+        : Math.round(sanitizedUnits * (updatedHolding.avg_buy_price || USD_IDR_ESTIMATE));
     saveUsdtPref(
       {
-        units: Math.max(0, newUnits),
+        units: sanitizedUnits,
         rate: updatedHolding.current_price || USD_IDR_ESTIMATE,
-        costBasis: Math.round(Math.max(0, newUnits) * (updatedHolding.avg_buy_price || USD_IDR_ESTIMATE)),
+        costBasis: resolvedCostBasis,
       },
       userId,
     );

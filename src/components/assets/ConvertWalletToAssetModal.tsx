@@ -24,6 +24,8 @@ import {
 } from "../../lib/marketPriceService";
 import { useUpdateWallet } from "../../hooks/useWallets";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
+import { useAllTransactions } from "../../hooks/useTransactions";
+import { estimateHistoricalUsdtBuyRate } from "../../lib/holdingSyncEngine";
 
 export interface ConvertWalletToAssetModalProps {
   isOpen: boolean;
@@ -47,13 +49,41 @@ export function ConvertWalletToAssetModal({
   const updateWallet = useUpdateWallet();
 
   const { balancesById } = useWalletBalances();
+  const { data: allTxs = [] } = useAllTransactions();
   const effectiveRate = liveRate > 5000 && liveRate < 50000 ? liveRate : 16415;
   const walletBalance = wallet ? (balancesById[wallet.id] ?? Number(wallet?.balance || 0)) : 0;
+
+  // Estimate weighted historical buy rate from the wallet's inflow transactions
+  const estimatedHistoricalBuyRate = useMemo(() => {
+    if (!wallet?.id || !allTxs.length) return 15950;
+    let totalInflowIdr = 0;
+    let totalInflowImpliedUnits = 0;
+    for (const tx of allTxs) {
+      const amt = Number(tx.amount) || 0;
+      if (amt <= 0) continue;
+      const isFrom = tx.wallet_id === wallet.id;
+      const isTo = tx.to_wallet_id === wallet.id;
+      if (!isFrom && !isTo) continue;
+      const txDate = (tx.occurred_on || tx.created_at || "").slice(0, 10);
+      const rateAtTx = estimateHistoricalUsdtBuyRate(txDate, tx.note, Math.abs(amt));
+      if (
+        (tx.type === "income" && isFrom) ||
+        (tx.type === "transfer" && isTo && !isFrom) ||
+        (tx.type === "adjustment" && isFrom && amt > 0)
+      ) {
+        totalInflowIdr += amt;
+        totalInflowImpliedUnits += amt / rateAtTx;
+      }
+    }
+    return totalInflowImpliedUnits > 0
+      ? Math.round(totalInflowIdr / totalInflowImpliedUnits)
+      : 15950;
+  }, [wallet?.id, allTxs]);
 
   // Form State
   const [rateInput, setRateInput] = useState<string>(String(effectiveRate));
   const [costBasisRateInput, setCostBasisRateInput] = useState<string>(
-    String(effectiveRate),
+    String(estimatedHistoricalBuyRate),
   );
   const [integrationMode, setIntegrationMode] = useState<"linked" | "standalone">(
     "linked",
@@ -62,15 +92,18 @@ export function ConvertWalletToAssetModal({
 
   useEffect(() => {
     if (isOpen) {
-      const initRate = effectiveRate.toLocaleString(
+      const initCurrentRate = effectiveRate.toLocaleString(
         isIndonesian ? "id-ID" : "en-US",
       );
-      setRateInput(initRate);
-      setCostBasisRateInput(initRate);
+      const initCostBasisRate = estimatedHistoricalBuyRate.toLocaleString(
+        isIndonesian ? "id-ID" : "en-US",
+      );
+      setRateInput(initCurrentRate);
+      setCostBasisRateInput(initCostBasisRate);
     }
-  }, [isOpen, effectiveRate, isIndonesian]);
+  }, [isOpen, effectiveRate, estimatedHistoricalBuyRate, isIndonesian]);
 
-  // Derived numeric conversion
+  // Derived numeric conversion (walletBalance is Historical Cost Basis IDR)
   const parsedCurrentRate = useMemo(() => {
     const clean = rateInput.replace(/\D/g, "");
     const val = parseInt(clean, 10);
@@ -80,16 +113,17 @@ export function ConvertWalletToAssetModal({
   const parsedCostBasisRate = useMemo(() => {
     const clean = costBasisRateInput.replace(/\D/g, "");
     const val = parseInt(clean, 10);
-    return isNaN(val) || val <= 0 ? parsedCurrentRate : val;
-  }, [costBasisRateInput, parsedCurrentRate]);
+    return isNaN(val) || val <= 0 ? estimatedHistoricalBuyRate : val;
+  }, [costBasisRateInput, estimatedHistoricalBuyRate]);
 
   const computedUnits = useMemo(() => {
-    if (parsedCurrentRate <= 0 || walletBalance <= 0) return 0;
-    return parseFloat((walletBalance / parsedCurrentRate).toFixed(4));
-  }, [walletBalance, parsedCurrentRate]);
+    if (parsedCostBasisRate <= 0 || walletBalance <= 0) return 0;
+    return parseFloat((walletBalance / parsedCostBasisRate).toFixed(4));
+  }, [walletBalance, parsedCostBasisRate]);
 
-  const totalCostBasis = computedUnits * parsedCostBasisRate;
-  const unrealizedPnL = walletBalance - totalCostBasis;
+  const totalCostBasis = walletBalance;
+  const marketValuation = Math.round(computedUnits * parsedCurrentRate);
+  const unrealizedPnL = marketValuation - totalCostBasis;
   const unrealizedPnLPct =
     totalCostBasis > 0 ? (unrealizedPnL / totalCostBasis) * 100 : 0;
 
@@ -309,7 +343,7 @@ export function ConvertWalletToAssetModal({
               {isIndonesian ? "Valuasi Portofolio" : "Portfolio Valuation"}
             </span>
             <p className="text-[14px] font-bold text-[var(--text-primary)] amount mt-0.5">
-              {formatRupiah(walletBalance)}
+              {formatRupiah(marketValuation)}
             </p>
           </div>
           <div className="text-right">
