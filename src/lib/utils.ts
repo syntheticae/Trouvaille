@@ -119,3 +119,61 @@ export function isUUID(val?: string | null): boolean {
   if (!val) return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 }
+
+/**
+ * Auto-format numeric inputs live as the user types with thousand separators.
+ * - Integer (IDR): 1000000 -> "1.000.000"
+ * - Decimals (USD, Crypto Units, APY): 1234.56 -> "1.234,56" or "1,234.56"
+ */
+export function formatLiveAmountInput(
+  value: string,
+  isIndonesian: boolean = true,
+  allowDecimals: boolean = false,
+  maxDecimals: number = 8,
+): { display: string; rawNumber: number } {
+  if (!value) return { display: "", rawNumber: 0 };
+
+  if (!allowDecimals) {
+    const digits = value.replace(/\D/g, "");
+    if (!digits) return { display: "", rawNumber: 0 };
+    const num = parseInt(digits.slice(0, 15), 10);
+    return {
+      display: num.toLocaleString(isIndonesian ? "id-ID" : "en-US"),
+      rawNumber: num,
+    };
+  }
+
+  // Handle decimals (allows '.' or ',' as decimal separator)
+  const separator = isIndonesian ? "," : ".";
+  const thousandSep = isIndonesian ? "." : ",";
+
+  // Normalize decimal character to standard dot for parsing
+  const normalized = value
+    .replace(new RegExp(`\\${thousandSep}`, "g"), "")
+    .replace(",", ".");
+
+  // Check if trailing decimal was just typed (e.g. "12.")
+  const endsWithDecimal = value.endsWith(".") || value.endsWith(",");
+
+  const parts = normalized.split(".");
+  const intPart = parts[0].replace(/\D/g, "");
+  const decPart =
+    parts.length > 1 ? parts[1].replace(/\D/g, "").slice(0, maxDecimals) : "";
+
+  const intNum = intPart ? parseInt(intPart, 10) : 0;
+  const formattedInt = intPart
+    ? intNum.toLocaleString(isIndonesian ? "id-ID" : "en-US")
+    : endsWithDecimal
+      ? "0"
+      : "";
+
+  let display = formattedInt;
+  if (endsWithDecimal && parts.length === 1) {
+    display = `${formattedInt}${separator}`;
+  } else if (parts.length > 1) {
+    display = `${formattedInt}${separator}${decPart}`;
+  }
+
+  const rawNumber = parseFloat(`${intNum}.${decPart || 0}`) || 0;
+  return { display, rawNumber };
+}

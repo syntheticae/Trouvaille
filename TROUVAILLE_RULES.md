@@ -209,3 +209,16 @@
   - *Open URLs*: Buka URL
   - *URL Encode*: Enkode URL
   - *Show Notification*: Tampilkan Pemberitahuan
+
+---
+
+## 10. Web Repository Isolation & Multi-Session Independence (STRICT)
+
+> [!IMPORTANT]
+> **NO AUTOMATIC CONFIGURATION OR CODE TRANSFER TO `trouvaille-web` WITHOUT EXPLICIT CONFIRMATION**  
+> Under no circumstances should the AI automatically port, copy, sync, configure, or apply changes from the mobile repository (`Trouvaille`) into the web repository (`trouvaille-web`) without prior explicit knowledge and direct confirmation from the user.
+
+### 10.1 Invariants
+- **Independent Agent Sessions**: The web workspace (`trouvaille-web`) operates under its own distinct development session, architecture, and agent context. Unsolicited modifications pollute Git staging, create uncoordinated regressions, and break other agent workflows.
+- **Strict Boundary**: All mobile enhancements (including assets, sheets, modals, math helpers, and UI refinements) must remain strictly scoped to `Trouvaille`.
+- **Explicit Instruction Mandate**: Cross-repo synchronization is strictly prohibited unless the user explicitly prompts: *"sinkronkan ke web"* or *"update web"*, followed by user review and verification before applying.

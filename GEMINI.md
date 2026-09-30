@@ -214,5 +214,15 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ### 8.3 Financial Report Export Invariants:
 - Neraca (Balance Sheet) must list EVERY active user account and holding without truncation or `+account` placeholders.
 
+---
 
+## 9. Web Repository Isolation & No Unsolicited Sync Rule (STRICT)
 
+> [!IMPORTANT]
+> **NO AUTOMATIC CONFIGURATION OR CODE TRANSFER TO `trouvaille-web` WITHOUT EXPLICIT USER CONFIRMATION**
+> Under no circumstances should the AI automatically port, sync, configure, or apply changes from the mobile repository (`Trouvaille`) to the web repository (`trouvaille-web`) without prior explicit knowledge and direct confirmation from the user.
+
+### Isolation Guidelines:
+- **Multi-Session Independence**: The web version (`trouvaille-web`) is developed in its own dedicated sessions or by other AI agents. Unsolicited modifications break work-in-progress, produce merge conflicts, and cause confusion across sessions.
+- **Strict Mobile Focus**: Unless the user explicitly issues a command targeting the web repository in that specific prompt, all changes, fixes, and features must remain strictly contained within the mobile codebase (`Trouvaille`).
+- **Never Assume Parity**: Do NOT assume mobile components, sheets, or states can be blindly duplicated to the web without separate planning and explicit confirmation.

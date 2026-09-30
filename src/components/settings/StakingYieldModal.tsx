@@ -1,17 +1,39 @@
-import { useState, useMemo } from "react";
-import { X, Coins, Sparkles, Calendar, Wallet as WalletIcon } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import {
+  X,
+  Coins,
+  Landmark,
+  ShieldCheck,
+  Building2,
+  ArrowRight,
+  PieChart,
+  Calendar as CalendarIcon,
+  Sparkles,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { GlassSelect, type GlassSelectOption } from "../ui/GlassSelect";
-import { formatRupiah } from "../../lib/utils";
+import {
+  formatRupiah,
+  formatHoldingUnits,
+  formatLiveAmountInput,
+} from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { useAddTransaction } from "../../hooks/useTransactions";
 import { useCategories } from "../../hooks/useCategories";
 import { syncTransactionWithHolding } from "../../lib/holdingSyncEngine";
 import { format, subDays } from "date-fns";
-import type { Wallet } from "../../lib/types";
+import type { Wallet, InvestmentHolding } from "../../lib/types";
 
-export type StakingInputMode = "amount" | "apy";
+export type YieldInstrumentType =
+  | "daily_bank"
+  | "dividend"
+  | "deposit"
+  | "crypto_staking";
+
+export type StakingYieldFrequency = "daily" | "monthly" | "yearly";
 
 interface StakingYieldModalProps {
   isOpen: boolean;
@@ -20,6 +42,7 @@ interface StakingYieldModalProps {
   holdingUnits: number;
   liveRate: number;
   wallets: Wallet[];
+  holdings?: InvestmentHolding[];
   defaultWalletId?: string;
   userId?: string;
   onSuccess?: () => void;
@@ -32,100 +55,220 @@ export function StakingYieldModal({
   holdingUnits,
   liveRate,
   wallets,
-  defaultWalletId,
+  holdings = [],
+  defaultWalletId: _defaultWalletId,
   userId,
   onSuccess,
 }: StakingYieldModalProps) {
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const addTx = useAddTransaction();
   const { data: categories = [] } = useCategories();
 
-  // State: Default to "amount" (Nominal USDT) as it represents 90% of user use cases
-  const [inputMode, setInputMode] = useState<StakingInputMode>("amount");
-  const [amountInput, setAmountInput] = useState<string>("0.15");
-  const [apyInput, setApyInput] = useState<string>("8.5");
-  const [noteInput, setNoteInput] = useState<string>("");
-  const [selectedWalletId, setSelectedWalletId] = useState<string>("");
-  const [dateInput, setDateInput] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
-  const [isYesterday, setIsYesterday] = useState(false);
+  const effectiveRate = liveRate > 0 ? liveRate : 16415;
+  const availableUnits = holdingUnits > 0 ? holdingUnits : 0;
 
-  // Default target wallet to USDT / crypto wallet
-  const defaultCryptoWalletId = useMemo(() => {
-    if (defaultWalletId) return defaultWalletId;
-    const cryptoW = wallets.find(
-      (w) =>
-        w.name.toLowerCase().includes("usdt") ||
-        w.name.toLowerCase().includes("crypto") ||
-        w.classification === "investment",
+  // ESC key dismiss
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // ── Instrument Type Selector ──────────────────────────────────────────────
+  const [instrumentType, setInstrumentType] =
+    useState<YieldInstrumentType>("daily_bank");
+
+  // ── Active Lifecycle Tab: 1 = Projection/Setup, 2 = Claim/Record ──────────
+  const [activeTab, setActiveTab] = useState<"overview" | "claim">("overview");
+
+  // ── 1. Daily Bank Interest State ──────────────────────────────────────────
+  const defaultBankWallet = useMemo(() => {
+    return (
+      wallets.find((w) => {
+        const n = (w.name || "").toLowerCase();
+        return (
+          n.includes("seabank") ||
+          n.includes("krom") ||
+          n.includes("saqu") ||
+          n.includes("jago") ||
+          n.includes("neo")
+        );
+      }) ||
+      wallets.find(
+        (w) =>
+          w.classification !== "credit" &&
+          w.classification !== "loan" &&
+          w.classification !== "investment",
+      ) ||
+      wallets[0]
     );
-    return cryptoW?.id || wallets[0]?.id || "";
-  }, [defaultWalletId, wallets]);
+  }, [wallets]);
 
-  const activeWalletId = selectedWalletId || defaultCryptoWalletId;
+  const [selectedBankWalletId, setSelectedBankWalletId] = useState<string>(
+    defaultBankWallet?.id || "",
+  );
+  const [bankApyInput, setBankApyInput] = useState<string>("3.75");
+  const [customBankPrincipal, setCustomBankPrincipal] = useState<string>("");
 
-  // Wallet options for luxury GlassSelect
+  // ── 2. Stock Dividend State ───────────────────────────────────────────────
+  const stockHoldings = useMemo(() => {
+    return holdings.filter(
+      (h) =>
+        h.asset_type === "stock" ||
+        h.asset_type === "mutual_fund" ||
+        h.symbol !== "USDT",
+    );
+  }, [holdings]);
+
+  const [selectedStockSymbol, setSelectedStockSymbol] = useState<string>(
+    stockHoldings[0]?.symbol || "BBCA",
+  );
+  const [dividendAmountInput, setDividendAmountInput] =
+    useState<string>("350.000");
+  const [dividendPayoutWalletId, setDividendPayoutWalletId] = useState<string>(
+    defaultBankWallet?.id || "",
+  );
+
+  // ── 3. Bank Term Deposit State ────────────────────────────────────────────
+  const [depositPrincipalInput, setDepositPrincipalInput] =
+    useState<string>("10.000.000");
+  const [depositApyInput, setDepositApyInput] = useState<string>("6.5");
+  const [depositTenorMonths, setDepositTenorMonths] = useState<number>(3);
+  const [depositPayoutWalletId, setDepositPayoutWalletId] = useState<string>(
+    defaultBankWallet?.id || "",
+  );
+
+  // ── 4. Crypto Staking State ───────────────────────────────────────────────
+  const [customStakedUnits, setCustomStakedUnits] = useState<string>(
+    availableUnits > 0 ? String(availableUnits) : "1000",
+  );
+  const [cryptoApyInput, setCryptoApyInput] = useState<string>("8.5");
+  const [isAutoCompound, setIsAutoCompound] = useState<boolean>(true);
+  const [cryptoPayoutWalletId, setCryptoPayoutWalletId] = useState<string>(
+    defaultBankWallet?.id || "",
+  );
+
+  // ── Claim & Transaction Form State ────────────────────────────────────────
+  const [claimDate, setClaimDate] = useState<string>(() =>
+    format(new Date(), "yyyy-MM-dd"),
+  );
+  const [isYesterdayDate, setIsYesterdayDate] = useState(false);
+  const [claimNote, setClaimNote] = useState<string>("");
+
+  // Target wallet resolution
+  const activeBankWallet = useMemo(() => {
+    return (
+      wallets.find((w) => w.id === selectedBankWalletId) || defaultBankWallet
+    );
+  }, [wallets, selectedBankWalletId, defaultBankWallet]);
+
+  const activeBankBalance = Number(activeBankWallet?.balance || 0);
+
+  const effectiveBankPrincipal = useMemo(() => {
+    if (customBankPrincipal.trim()) {
+      const clean = customBankPrincipal.replace(/\D/g, "");
+      const val = parseInt(clean, 10);
+      return isNaN(val) ? 0 : val;
+    }
+    return activeBankBalance > 0 ? activeBankBalance : 10000000;
+  }, [customBankPrincipal, activeBankBalance]);
+
+  const effectiveBankApy = useMemo(() => {
+    const parsed = parseFloat(bankApyInput.replace(/,/g, "."));
+    return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+  }, [bankApyInput]);
+
+  // Bank Interest Calculations
+  const bankProjections = useMemo(() => {
+    const annual = effectiveBankPrincipal * (effectiveBankApy / 100);
+    const dailyGross = annual / 365;
+    const monthlyGross = annual / 12;
+    // Pajak bunga bank 20% jika saldo > Rp 7.500.000
+    const taxRate = effectiveBankPrincipal > 7500000 ? 0.2 : 0;
+    return {
+      daily: Math.round(dailyGross * (1 - taxRate)),
+      monthly: Math.round(monthlyGross * (1 - taxRate)),
+      yearly: Math.round(annual * (1 - taxRate)),
+      isTaxed: taxRate > 0,
+    };
+  }, [effectiveBankPrincipal, effectiveBankApy]);
+
+  // Crypto Staking Calculations
+  const effectiveStakedUnits = useMemo(() => {
+    const parsed = parseFloat(customStakedUnits.replace(/,/g, "."));
+    return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+  }, [customStakedUnits]);
+
+  const effectiveCryptoApy = useMemo(() => {
+    const parsed = parseFloat(cryptoApyInput.replace(/,/g, "."));
+    return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+  }, [cryptoApyInput]);
+
+  const cryptoProjections = useMemo(() => {
+    const annualUnits = effectiveStakedUnits * (effectiveCryptoApy / 100);
+    const dailyUnits = annualUnits / 365;
+    const monthlyUnits = annualUnits / 12;
+
+    return {
+      daily: {
+        units: Number(dailyUnits.toFixed(4)),
+        idr: Math.round(dailyUnits * effectiveRate),
+      },
+      monthly: {
+        units: Number(monthlyUnits.toFixed(4)),
+        idr: Math.round(monthlyUnits * effectiveRate),
+      },
+      yearly: {
+        units: Number(annualUnits.toFixed(4)),
+        idr: Math.round(annualUnits * effectiveRate),
+      },
+    };
+  }, [effectiveStakedUnits, effectiveCryptoApy, effectiveRate]);
+
+  // Term Deposit Calculations
+  const effectiveDepositPrincipal = useMemo(() => {
+    const clean = depositPrincipalInput.replace(/\D/g, "");
+    const val = parseInt(clean, 10);
+    return isNaN(val) ? 0 : val;
+  }, [depositPrincipalInput]);
+
+  const effectiveDepositApy = useMemo(() => {
+    const parsed = parseFloat(depositApyInput.replace(/,/g, "."));
+    return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+  }, [depositApyInput]);
+
+  const depositProjections = useMemo(() => {
+    const annual = effectiveDepositPrincipal * (effectiveDepositApy / 100);
+    const monthly = annual / 12;
+    const atMaturity = (annual / 12) * depositTenorMonths;
+    const taxRate = effectiveDepositPrincipal > 7500000 ? 0.2 : 0;
+    return {
+      monthlyNet: Math.round(monthly * (1 - taxRate)),
+      maturityNet: Math.round(atMaturity * (1 - taxRate)),
+    };
+  }, [effectiveDepositPrincipal, effectiveDepositApy, depositTenorMonths]);
+
+  // Wallet options for selects
   const walletOptions: GlassSelectOption[] = useMemo(() => {
     return wallets.map((w) => ({
       value: w.id,
       label: w.name,
-      sublabel: w.classification || "wallet",
+      sublabel: `${w.classification || "wallet"} · ${formatRupiah(Number(w.balance || 0))}`,
       icon: w.icon,
-      badge: w.name.toUpperCase().includes("USDT") ? "Crypto" : undefined,
     }));
   }, [wallets]);
 
-  // Compute calculated units and IDR amount
-  const { finalUnits, finalIdr } = useMemo(() => {
-    const rate = liveRate > 0 ? liveRate : 16415;
-
-    if (inputMode === "apy") {
-      const apy = parseFloat(apyInput) || 0;
-      if (apy <= 0 || holdingUnits <= 0) return { finalUnits: 0, finalIdr: 0 };
-      // Daily yield from APY: (units * (apy / 100)) / 365
-      const dailyYield = (holdingUnits * (apy / 100)) / 365;
-      const idr = Math.round(dailyYield * rate);
-      return {
-        finalUnits: Number(dailyYield.toFixed(4)),
-        finalIdr: idr,
-      };
-    } else {
-      const val = parseFloat(amountInput) || 0;
-      if (val <= 0) return { finalUnits: 0, finalIdr: 0 };
-      return {
-        finalUnits: Number(val.toFixed(4)),
-        finalIdr: Math.round(val * rate),
-      };
-    }
-  }, [inputMode, apyInput, amountInput, holdingUnits, liveRate]);
-
-  if (!isOpen) return null;
-
-  const handleSetToday = () => {
-    triggerHaptic("light");
-    setIsYesterday(false);
-    setDateInput(format(new Date(), "yyyy-MM-dd"));
-  };
-
-  const handleSetYesterday = () => {
-    triggerHaptic("light");
-    setIsYesterday(true);
-    setDateInput(format(subDays(new Date(), 1), "yyyy-MM-dd"));
-  };
-
-  const handleConfirm = () => {
-    if (finalUnits <= 0 || finalIdr <= 0) {
-      showToast(
-        isIndonesian ? "Masukkan nominal yield yang valid" : "Please enter a valid yield amount",
-        "delete",
-        () => {},
-      );
-      return;
-    }
-
+  // ── Execution Handlers ──────────────────────────────────────────────────
+  const handleExecuteRecordYield = () => {
     triggerHaptic("medium");
 
-    // Resolve category
     const incomeCat =
       categories.find(
         (c) =>
@@ -133,361 +276,1063 @@ export function StakingYieldModal({
           (c.name.toLowerCase().includes("invest") ||
             c.name.toLowerCase().includes("passive") ||
             c.name.toLowerCase().includes("yield") ||
-            c.name.toLowerCase().includes("bunga") ||
-            c.name.toLowerCase().includes("lain")),
+            c.name.toLowerCase().includes("bunga")),
       ) || categories.find((c) => c.type === "income");
 
-    const smartNote =
-      noteInput.trim() ||
-      (inputMode === "apy"
-        ? `Staking Yield (${apyInput}% APY · Harian)`
-        : `Staking Yield (${finalUnits} ${holdingSymbol})`);
+    if (instrumentType === "daily_bank") {
+      const amount = bankProjections.daily;
+      if (amount <= 0) {
+        showToast(
+          isIndonesian
+            ? "Nominal bunga tidak valid"
+            : "Invalid interest amount",
+          "delete",
+          () => {},
+        );
+        return;
+      }
+      const note =
+        claimNote.trim() ||
+        `${isIndonesian ? "Bunga Harian" : "Daily Interest"} ${activeBankWallet?.name || "SeaBank"} (+${formatRupiah(amount)})`;
 
-    const newTxId = `tx-staking-${Date.now()}`;
-    const txPayload = {
-      id: newTxId,
-      user_id: userId || "",
-      wallet_id: activeWalletId,
-      category_id: incomeCat?.id || null,
-      type: "income" as const,
-      amount: finalIdr,
-      occurred_on: dateInput,
-      note: smartNote,
-      customUnits: finalUnits,
-      customPrice: liveRate,
-    };
+      addTx.mutate({
+        wallet_id: selectedBankWalletId || activeBankWallet?.id,
+        category_id: incomeCat?.id || null,
+        type: "income",
+        amount,
+        occurred_on: claimDate,
+        note,
+      });
 
-    // 1. Record income transaction in the ledger
-    addTx.mutate({
-      wallet_id: activeWalletId,
-      category_id: incomeCat?.id || null,
-      type: "income",
-      amount: finalIdr,
-      occurred_on: dateInput,
-      note: smartNote,
-    });
+      showToast(
+        isIndonesian
+          ? `Bunga harian ${formatRupiah(amount)} berhasil dicatat ke ${activeBankWallet?.name || "bank"}`
+          : `Daily interest ${formatRupiah(amount)} recorded to ${activeBankWallet?.name || "bank"}`,
+        "add",
+        () => {},
+      );
+    } else if (instrumentType === "dividend") {
+      const clean = dividendAmountInput.replace(/\D/g, "");
+      const amount = parseInt(clean, 10);
+      if (isNaN(amount) || amount <= 0) {
+        showToast(
+          isIndonesian
+            ? "Nominal dividen tidak valid"
+            : "Invalid dividend amount",
+          "delete",
+          () => {},
+        );
+        return;
+      }
+      const note =
+        claimNote.trim() ||
+        `${isIndonesian ? "Dividen Saham" : "Stock Dividend"} ${selectedStockSymbol} (+${formatRupiah(amount)})`;
 
-    // 2. Synchronize holding units
-    syncTransactionWithHolding(txPayload, wallets, userId);
+      addTx.mutate({
+        wallet_id: dividendPayoutWalletId || selectedBankWalletId,
+        category_id: incomeCat?.id || null,
+        type: "income",
+        amount,
+        occurred_on: claimDate,
+        note,
+      });
 
-    showToast(
-      isIndonesian
-        ? `Berhasil mencatat yield +${finalUnits} ${holdingSymbol} (+${formatRupiah(finalIdr)})`
-        : `Staking yield recorded: +${finalUnits} ${holdingSymbol} (+${formatRupiah(finalIdr)})`,
-      "add",
-      () => {},
-    );
+      showToast(
+        isIndonesian
+          ? `Dividen ${selectedStockSymbol} sebesar ${formatRupiah(amount)} berhasil dicatat`
+          : `Dividend of ${formatRupiah(amount)} for ${selectedStockSymbol} recorded`,
+        "add",
+        () => {},
+      );
+    } else if (instrumentType === "deposit") {
+      const amount = depositProjections.monthlyNet;
+      if (amount <= 0) {
+        showToast(
+          isIndonesian ? "Nominal imbal hasil tidak valid" : "Invalid amount",
+          "delete",
+          () => {},
+        );
+        return;
+      }
+      const note =
+        claimNote.trim() ||
+        `${isIndonesian ? "Bunga Deposito" : "Deposit Interest"} (+${formatRupiah(amount)})`;
+
+      addTx.mutate({
+        wallet_id: depositPayoutWalletId || selectedBankWalletId,
+        category_id: incomeCat?.id || null,
+        type: "income",
+        amount,
+        occurred_on: claimDate,
+        note,
+      });
+
+      showToast(
+        isIndonesian
+          ? `Bunga deposito ${formatRupiah(amount)} berhasil dicatat`
+          : `Deposit interest ${formatRupiah(amount)} recorded`,
+        "add",
+        () => {},
+      );
+    } else {
+      // Crypto Staking
+      const unitsToClaim =
+        cryptoProjections.daily.units > 0
+          ? cryptoProjections.daily.units
+          : 0.23;
+      const idrAmount = Math.round(unitsToClaim * effectiveRate);
+
+      if (unitsToClaim <= 0 || idrAmount <= 0) {
+        showToast(
+          isIndonesian
+            ? "Nominal imbal hasil tidak valid"
+            : "Invalid yield amount",
+          "delete",
+          () => {},
+        );
+        return;
+      }
+
+      const defaultNote = `Staking Yield USDT (+${unitsToClaim} USDT · ${isAutoCompound ? "Auto-Compound" : "Payout"})`;
+      const finalNote = claimNote.trim() || defaultNote;
+      const newTxId = `tx-staking-${Date.now()}`;
+
+      const txPayload = {
+        id: newTxId,
+        user_id: userId || "",
+        wallet_id: isAutoCompound
+          ? null
+          : cryptoPayoutWalletId || selectedBankWalletId,
+        category_id: incomeCat?.id || null,
+        type: "income" as const,
+        amount: idrAmount,
+        occurred_on: claimDate,
+        note: finalNote,
+        customUnits: unitsToClaim,
+        customPrice: effectiveRate,
+      };
+
+      if (!isAutoCompound) {
+        addTx.mutate({
+          wallet_id: cryptoPayoutWalletId || selectedBankWalletId,
+          category_id: incomeCat?.id || null,
+          type: "income",
+          amount: idrAmount,
+          occurred_on: claimDate,
+          note: finalNote,
+        });
+      } else {
+        syncTransactionWithHolding(txPayload, wallets, userId);
+      }
+
+      showToast(
+        isIndonesian
+          ? `Yield +${unitsToClaim} ${holdingSymbol} (+${formatRupiah(idrAmount)}) berhasil dicatat`
+          : `Yield +${unitsToClaim} ${holdingSymbol} recorded`,
+        "add",
+        () => {},
+      );
+    }
 
     if (onSuccess) onSuccess();
     onClose();
   };
 
+  // ── Materials ───────────────────────────────────────────────────────────
+  const sheetOuterBg = isDark
+    ? "linear-gradient(180deg, rgba(28,28,33,0.96) 0%, rgba(18,18,22,0.98) 35%, rgba(10,10,14,0.99) 100%)"
+    : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,247,250,0.98) 45%, rgba(238,240,245,0.99) 100%)";
+
+  const sheetOuterBorder = isDark
+    ? "1px solid rgba(255,255,255,0.12)"
+    : "1px solid rgba(0,0,0,0.08)";
+
+  const controlBg = isDark
+    ? "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)"
+    : "linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.70) 100%)";
+
+  const controlBorder = isDark
+    ? "1px solid rgba(255,255,255,0.09)"
+    : "1px solid rgba(0,0,0,0.065)";
+
+  const controlShadow = isDark
+    ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.2)"
+    : "inset 0 1px 0 #ffffff, 0 2px 5px rgba(30,35,50,0.04)";
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 select-none animate-in fade-in duration-200">
-      <div
-        className="w-full sm:max-w-md bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-t-[28px] sm:rounded-2xl p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),20px)] sm:pb-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom-5 duration-200 max-h-[92dvh] overflow-y-auto no-scrollbar"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          boxShadow: "0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
-        }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-1">
-          <div className="flex items-center gap-2.5">
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end">
+          {/* Backdrop: Blur Tipis Jernih */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-all"
+          />
+
+          {/* Bottom Sheet Surface (Docked to Bottom Like Foto Kedua) */}
+          <motion.div
+            initial={{ y: "100%", opacity: 0.5 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{
+              type: "spring",
+              damping: 32,
+              stiffness: 380,
+              mass: 0.8,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative z-10 w-full max-w-lg mx-auto rounded-t-[32px] sm:rounded-t-[36px] overflow-hidden flex flex-col max-h-[90dvh] transition-all"
+            style={{
+              background: sheetOuterBg,
+              borderTop: sheetOuterBorder,
+              borderLeft: sheetOuterBorder,
+              borderRight: sheetOuterBorder,
+              boxShadow: isDark
+                ? "0 -16px 48px -8px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.18)"
+                : "0 -12px 36px -6px rgba(0,0,0,0.12), inset 0 1px 0 #ffffff",
+              backdropFilter: "blur(30px) saturate(180%)",
+              WebkitBackdropFilter: "blur(30px) saturate(180%)",
+            }}
+          >
+            {/* Top Specular Rim Reflection */}
             <div
-              className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
+              aria-hidden="true"
+              className="pointer-events-none absolute left-[8%] right-[8%] top-[1px] h-[2px] rounded-full"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
+                background: isDark
+                  ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.28), rgba(255,255,255,0.45), rgba(255,255,255,0.28), transparent)"
+                  : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
               }}
-            >
-              <Coins size={17} strokeWidth={1.75} />
-            </div>
-            <div>
-              <h3 className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">
-                {isIndonesian ? "Catat Imbal Hasil Staking" : "Record Staking Yield"}
-              </h3>
-              <p className="text-[11px] text-[var(--text-tertiary)]">
-                {isIndonesian
-                  ? `Kredit yield otomatis ke ${holdingSymbol} & saldo kas`
-                  : `Auto-credit yield to ${holdingSymbol} & cash balance`}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <X size={14} strokeWidth={2} />
-          </button>
-        </div>
+            />
 
-        {/* 1. Ultra-Minimalist Hero Yield Display */}
-        <div
-          className="p-4 rounded-2xl text-center space-y-1 relative overflow-hidden"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-          }}
-        >
-          <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-            <Sparkles size={11} strokeWidth={2} />
-            <span>{isIndonesian ? "Imbal Hasil Masuk" : "Yield Credit"}</span>
-          </div>
+            {/* Drag Handle Indicator */}
+            <div className="w-11 h-1.5 rounded-full bg-white/25 mx-auto mt-3 mb-1 shrink-0" />
 
-          <p className="text-[28px] font-bold font-mono tracking-tight text-[var(--text-primary)] leading-tight">
-            +{finalUnits > 0 ? finalUnits.toFixed(4) : "0.0000"}{" "}
-            <span className="text-[14px] font-sans font-semibold text-[var(--text-secondary)]">
-              {holdingSymbol}
-            </span>
-          </p>
-
-          <p className="text-[12px] font-medium text-[var(--text-tertiary)] font-mono">
-            ≈ {formatRupiah(finalIdr)}{" "}
-            <span className="text-[10px] text-[var(--text-tertiary)] opacity-70">
-              (@ {formatRupiah(liveRate)})
-            </span>
-          </p>
-        </div>
-
-        {/* 2. Simplified 2-Way Input Switcher */}
-        <div className="space-y-2">
-          <div
-            className="p-1 rounded-xl flex items-center gap-1"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setInputMode("amount");
-              }}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer text-center ${
-                inputMode === "amount"
-                  ? "bg-[var(--text-primary)] text-[var(--bg-base)] shadow-xs"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              }`}
-            >
-              {isIndonesian ? "Nominal USDT" : "USDT Amount"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setInputMode("apy");
-              }}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer text-center ${
-                inputMode === "apy"
-                  ? "bg-[var(--text-primary)] text-[var(--bg-base)] shadow-xs"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              }`}
-            >
-              {isIndonesian ? "Estimasi APY (%)" : "Estimated APY (%)"}
-            </button>
-          </div>
-
-          {/* Mode 1: Direct USDT Amount */}
-          {inputMode === "amount" ? (
-            <div className="space-y-1.5">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={amountInput}
-                  onChange={(e) => setAmountInput(e.target.value.replace(/[^0-9.]/g, ""))}
-                  placeholder="0.15"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-[15px] font-mono font-semibold outline-none transition-colors"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[12px] font-mono font-bold text-[var(--text-tertiary)]">
-                  {holdingSymbol}
-                </span>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-2 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-white/90 animate-pulse" />
+                <div>
+                  <h3 className="text-[17px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
+                    {isIndonesian
+                      ? "Imbal Hasil & Pendapatan Pasif"
+                      : "Yield & Passive Income"}
+                  </h3>
+                  <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+                    {isIndonesian
+                      ? "Bunga harian bank, dividen saham, deposito & staking"
+                      : "Daily bank yield, stock dividends, deposit & staking"}
+                  </p>
+                </div>
               </div>
 
-              {/* Quick Amount Chips */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
-                {["0.05", "0.10", "0.25", "0.50", "1.00", "2.50"].map((val) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setAmountInput(val);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-mono font-medium shrink-0 transition-all cursor-pointer border ${
-                      amountInput === val
-                        ? "bg-white text-black font-semibold border-white"
-                        : "bg-white/[0.04] text-[var(--text-secondary)] border-white/[0.08] hover:bg-white/[0.08]"
-                    }`}
-                  >
-                    +{val}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            /* Mode 2: Annual APY Percentage */
-            <div className="space-y-1.5">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={apyInput}
-                  onChange={(e) => setApyInput(e.target.value.replace(/[^0-9.]/g, ""))}
-                  placeholder="8.5"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-[15px] font-mono font-semibold outline-none transition-colors"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[12px] font-mono font-bold text-[var(--text-tertiary)]">
-                  % APY
-                </span>
-              </div>
-
-              {/* Quick APY Chips */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
-                {["5.0", "7.5", "8.5", "10.0", "12.0", "15.0"].map((val) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setApyInput(val);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-mono font-medium shrink-0 transition-all cursor-pointer border ${
-                      apyInput === val
-                        ? "bg-white text-black font-semibold border-white"
-                        : "bg-white/[0.04] text-[var(--text-secondary)] border-white/[0.08] hover:bg-white/[0.08]"
-                    }`}
-                  >
-                    {val}%
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 3. Target Wallet Selector */}
-        <div className="space-y-1">
-          <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-0.5 flex items-center gap-1">
-            <WalletIcon size={11} strokeWidth={1.75} />
-            <span>{isIndonesian ? "Akun Penerima" : "Credited Account"}</span>
-          </label>
-          <GlassSelect
-            value={activeWalletId}
-            onChange={(val) => setSelectedWalletId(val)}
-            options={walletOptions}
-            placeholder={isIndonesian ? "Pilih Akun" : "Select Account"}
-          />
-        </div>
-
-        {/* 4. Smart Date Chips & Custom Date */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between px-0.5">
-            <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1">
-              <Calendar size={11} strokeWidth={1.75} />
-              <span>{isIndonesian ? "Tanggal Imbal Hasil" : "Yield Date"}</span>
-            </label>
-            <div className="flex items-center gap-1">
+              {/* Close Button */}
               <button
                 type="button"
-                onClick={handleSetToday}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer border ${
-                  !isYesterday
-                    ? "bg-white text-black font-semibold border-white"
-                    : "bg-white/[0.04] text-[var(--text-secondary)] border-white/[0.08]"
-                }`}
+                onClick={onClose}
+                aria-label={isIndonesian ? "Tutup" : "Close"}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-transform active:scale-90 cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                style={{
+                  background: controlBg,
+                  border: controlBorder,
+                  boxShadow: controlShadow,
+                }}
               >
-                {isIndonesian ? "Hari Ini" : "Today"}
-              </button>
-              <button
-                type="button"
-                onClick={handleSetYesterday}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer border ${
-                  isYesterday
-                    ? "bg-white text-black font-semibold border-white"
-                    : "bg-white/[0.04] text-[var(--text-secondary)] border-white/[0.08]"
-                }`}
-              >
-                {isIndonesian ? "Kemarin" : "Yesterday"}
+                <X size={15} strokeWidth={2} />
               </button>
             </div>
-          </div>
 
-          <input
-            type="date"
-            value={dateInput}
-            onChange={(e) => {
-              setDateInput(e.target.value);
-              setIsYesterday(false);
-            }}
-            className="w-full px-3 py-2 rounded-xl text-[12px] font-medium outline-none transition-colors"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-          />
-        </div>
+            {/* ── 2. Instrument Type Tabs (4 Pillars Vertikal - Anti-Truncation) ── */}
+            <div className="px-6 shrink-0">
+              <div
+                className="grid grid-cols-4 gap-1 p-1 rounded-2xl mb-3.5 transition-all"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.04)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.08)"
+                    : "1px solid rgba(0, 0, 0, 0.06)",
+                }}
+              >
+                {[
+                  {
+                    id: "daily_bank" as YieldInstrumentType,
+                    label: isIndonesian ? "Bunga Bank" : "Bank Yield",
+                    icon: Landmark,
+                  },
+                  {
+                    id: "dividend" as YieldInstrumentType,
+                    label: isIndonesian ? "Dividen" : "Dividends",
+                    icon: PieChart,
+                  },
+                  {
+                    id: "deposit" as YieldInstrumentType,
+                    label: isIndonesian ? "Deposito" : "Deposit",
+                    icon: Building2,
+                  },
+                  {
+                    id: "crypto_staking" as YieldInstrumentType,
+                    label: isIndonesian ? "Staking" : "Staking",
+                    icon: Coins,
+                  },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = instrumentType === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setInstrumentType(tab.id);
+                      }}
+                      className="flex flex-col items-center justify-center py-2 px-1 rounded-xl text-[10.5px] font-semibold transition-all cursor-pointer select-none"
+                      style={{
+                        background: isActive
+                          ? isDark
+                            ? "#ffffff"
+                            : "#18181b"
+                          : "transparent",
+                        color: isActive
+                          ? isDark
+                            ? "#000000"
+                            : "#ffffff"
+                          : "var(--text-tertiary)",
+                        boxShadow: isActive
+                          ? isDark
+                            ? "0 3px 10px rgba(0, 0, 0, 0.35), inset 0 1px 0 #ffffff"
+                            : "0 3px 8px rgba(0, 0, 0, 0.16)"
+                          : "none",
+                      }}
+                    >
+                      <Icon
+                        size={15}
+                        className="mb-1 shrink-0"
+                        strokeWidth={isActive ? 2.2 : 1.75}
+                      />
+                      <span className="leading-tight text-center truncate max-w-full">
+                        {tab.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-        {/* 5. Optional Note */}
-        <div className="space-y-1">
-          <input
-            type="text"
-            value={noteInput}
-            onChange={(e) => setNoteInput(e.target.value)}
-            placeholder={isIndonesian ? "Catatan tambahan (opsional)..." : "Note (optional)..."}
-            className="w-full px-3 py-2 rounded-xl text-[12px] font-medium outline-none transition-colors"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-          />
-        </div>
+              {/* ── 3. Lifecycle Tab Bar (Simulasi vs Catat Pemasukan) ────────── */}
+              <div
+                className="flex p-1 rounded-full mb-4 transition-all"
+                style={{
+                  background: controlBg,
+                  border: controlBorder,
+                  boxShadow: controlShadow,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setActiveTab("overview");
+                  }}
+                  className="flex-1 py-1.5 rounded-full text-[11.5px] font-semibold transition-all cursor-pointer"
+                  style={{
+                    background:
+                      activeTab === "overview"
+                        ? isDark
+                          ? "rgba(255,255,255,0.12)"
+                          : "#ffffff"
+                        : "transparent",
+                    color:
+                      activeTab === "overview"
+                        ? "var(--text-primary)"
+                        : "var(--text-tertiary)",
+                    boxShadow:
+                      activeTab === "overview"
+                        ? isDark
+                          ? "0 2px 6px rgba(0,0,0,0.3)"
+                          : "0 2px 6px rgba(0,0,0,0.06)"
+                        : "none",
+                  }}
+                >
+                  {isIndonesian
+                    ? "1. Simulasi & Proyeksi"
+                    : "1. Setup & Projection"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setActiveTab("claim");
+                  }}
+                  className="flex-1 py-1.5 rounded-full text-[11.5px] font-semibold transition-all cursor-pointer"
+                  style={{
+                    background:
+                      activeTab === "claim"
+                        ? isDark
+                          ? "rgba(255,255,255,0.12)"
+                          : "#ffffff"
+                        : "transparent",
+                    color:
+                      activeTab === "claim"
+                        ? "var(--text-primary)"
+                        : "var(--text-tertiary)",
+                    boxShadow:
+                      activeTab === "claim"
+                        ? isDark
+                          ? "0 2px 6px rgba(0,0,0,0.3)"
+                          : "0 2px 6px rgba(0,0,0,0.06)"
+                        : "none",
+                  }}
+                >
+                  {isIndonesian
+                    ? "2. Catat Penghasilan Masuk"
+                    : "2. Record Income"}
+                </button>
+              </div>
+            </div>
 
-        {/* 6. One-Tap Action Confirmation */}
-        <div className="flex gap-2 pt-1">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            {isIndonesian ? "Batal" : "Cancel"}
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="flex-[2] py-2.5 rounded-xl text-[12px] font-semibold active:scale-95 transition-transform cursor-pointer"
-            style={{
-              background: "var(--text-primary)",
-              color: "var(--bg-base)",
-            }}
-          >
-            {isIndonesian ? "Catat Imbal Hasil" : "Record Yield"}
-          </button>
+            {/* ── 4. Main Scrollable Form Body ─────────────────────────────── */}
+            <div
+              className="flex-1 overflow-y-auto no-scrollbar px-6 space-y-4"
+              style={{
+                paddingBottom:
+                  "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 36px)",
+              }}
+            >
+              {/* TAB 1: OVERVIEW & SIMULATION */}
+              {activeTab === "overview" && (
+                <div className="space-y-4">
+                  {/* Case A: Daily Bank Interest */}
+                  {instrumentType === "daily_bank" && (
+                    <div className="space-y-3.5">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                          {isIndonesian
+                            ? "Pilih Rekening Tabungan"
+                            : "Select Bank Account"}
+                        </label>
+                        <GlassSelect
+                          value={selectedBankWalletId}
+                          onChange={(v) => setSelectedBankWalletId(v)}
+                          options={walletOptions}
+                          placeholder={
+                            isIndonesian ? "Pilih dompet bank" : "Choose wallet"
+                          }
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                            {isIndonesian
+                              ? "Saldo Pokok (Rp)"
+                              : "Principal (Rp)"}
+                          </label>
+                          <input
+                            type="text"
+                            value={
+                              customBankPrincipal ||
+                              (activeBankBalance > 0
+                                ? activeBankBalance.toLocaleString(
+                                    isIndonesian ? "id-ID" : "en-US",
+                                  )
+                                : "")
+                            }
+                            onChange={(e) => {
+                              const formatted = formatLiveAmountInput(
+                                e.target.value,
+                                isIndonesian,
+                              );
+                              setCustomBankPrincipal(formatted.display);
+                            }}
+                            placeholder="Contoh: 25.000.000"
+                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none transition-all"
+                            style={{
+                              background: controlBg,
+                              border: controlBorder,
+                              boxShadow: controlShadow,
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                            {isIndonesian ? "Bunga p.a. (%)" : "Annual APY (%)"}
+                          </label>
+                          <input
+                            type="text"
+                            value={bankApyInput}
+                            onChange={(e) => setBankApyInput(e.target.value)}
+                            placeholder="3.75"
+                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none transition-all font-mono"
+                            style={{
+                              background: controlBg,
+                              border: controlBorder,
+                              boxShadow: controlShadow,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Yield Hero Card */}
+                      <div
+                        className="p-4 rounded-3xl space-y-3"
+                        style={{
+                          background: controlBg,
+                          border: controlBorder,
+                          boxShadow: controlShadow,
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-[var(--text-tertiary)] text-[11px]">
+                            <Sparkles size={12} className="text-zinc-400" />
+                            <span>
+                              {isIndonesian
+                                ? "Estimasi Bunga Harian (Besok)"
+                                : "Estimated Daily Payout"}
+                            </span>
+                          </div>
+                          <span className="text-[16px] font-bold text-[var(--text-primary)] amount font-mono">
+                            +{formatRupiah(bankProjections.daily)}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-[var(--glass-border)]/40">
+                          <div>
+                            <span className="text-[10.5px] text-[var(--text-tertiary)] block">
+                              {isIndonesian
+                                ? "Estimasi per Bulan"
+                                : "Monthly Yield"}
+                            </span>
+                            <span className="text-[13px] font-semibold text-[var(--text-secondary)] amount font-mono">
+                              +{formatRupiah(bankProjections.monthly)}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10.5px] text-[var(--text-tertiary)] block">
+                              {isIndonesian
+                                ? "Estimasi per Tahun"
+                                : "Annual Yield"}
+                            </span>
+                            <span className="text-[13px] font-semibold text-[var(--text-secondary)] amount font-mono">
+                              +{formatRupiah(bankProjections.yearly)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Case B: Stock Dividend */}
+                  {instrumentType === "dividend" && (
+                    <div className="space-y-3.5">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                          {isIndonesian
+                            ? "Kode Saham / Emiten"
+                            : "Stock Symbol"}
+                        </label>
+                        <input
+                          type="text"
+                          value={selectedStockSymbol}
+                          onChange={(e) =>
+                            setSelectedStockSymbol(e.target.value.toUpperCase())
+                          }
+                          placeholder="Contoh: BBCA, BBRI, ASII"
+                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none uppercase font-mono"
+                          style={{
+                            background: controlBg,
+                            border: controlBorder,
+                            boxShadow: controlShadow,
+                          }}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                          {isIndonesian
+                            ? "Nominal Dividen Bersih (Rp)"
+                            : "Net Dividend Amount (Rp)"}
+                        </label>
+                        <input
+                          type="text"
+                          value={dividendAmountInput}
+                          onChange={(e) => {
+                            const formatted = formatLiveAmountInput(
+                              e.target.value,
+                              isIndonesian,
+                            );
+                            setDividendAmountInput(formatted.display);
+                          }}
+                          placeholder="Contoh: 350.000"
+                          className="w-full h-11 px-3.5 rounded-2xl text-[15px] font-bold text-[var(--text-primary)] amount font-mono outline-none"
+                          style={{
+                            background: controlBg,
+                            border: controlBorder,
+                            boxShadow: controlShadow,
+                          }}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                          {isIndonesian
+                            ? "Rekening Pencairan (RDN / Bank)"
+                            : "Payout Destination Account"}
+                        </label>
+                        <GlassSelect
+                          value={dividendPayoutWalletId}
+                          onChange={(v) => setDividendPayoutWalletId(v)}
+                          options={walletOptions}
+                          placeholder={
+                            isIndonesian ? "Pilih RDN / Bank" : "Choose wallet"
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Case C: Term Deposit */}
+                  {instrumentType === "deposit" && (
+                    <div className="space-y-3.5">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                          {isIndonesian
+                            ? "Nominal Pokok Deposito"
+                            : "Deposit Principal"}
+                        </label>
+                        <input
+                          type="text"
+                          value={depositPrincipalInput}
+                          onChange={(e) => {
+                            const formatted = formatLiveAmountInput(
+                              e.target.value,
+                              isIndonesian,
+                            );
+                            setDepositPrincipalInput(formatted.display);
+                          }}
+                          placeholder="Contoh: 10.000.000"
+                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none"
+                          style={{
+                            background: controlBg,
+                            border: controlBorder,
+                            boxShadow: controlShadow,
+                          }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                            {isIndonesian
+                              ? "Bunga p.a. (%)"
+                              : "Interest p.a. (%)"}
+                          </label>
+                          <input
+                            type="text"
+                            value={depositApyInput}
+                            onChange={(e) => setDepositApyInput(e.target.value)}
+                            placeholder="6.5"
+                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none font-mono"
+                            style={{
+                              background: controlBg,
+                              border: controlBorder,
+                              boxShadow: controlShadow,
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                            {isIndonesian ? "Tenor (Bulan)" : "Tenor (Months)"}
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={36}
+                            value={depositTenorMonths}
+                            onChange={(e) =>
+                              setDepositTenorMonths(
+                                parseInt(e.target.value, 10) || 1,
+                              )
+                            }
+                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none font-mono"
+                            style={{
+                              background: controlBg,
+                              border: controlBorder,
+                              boxShadow: controlShadow,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Yield Hero Card */}
+                      <div
+                        className="p-4 rounded-3xl space-y-2.5"
+                        style={{
+                          background: controlBg,
+                          border: controlBorder,
+                          boxShadow: controlShadow,
+                        }}
+                      >
+                        <div className="flex items-center justify-between text-[11.5px]">
+                          <span className="text-[var(--text-tertiary)]">
+                            {isIndonesian ? "Bunga per Bulan" : "Monthly Yield"}
+                          </span>
+                          <span className="font-semibold text-[var(--text-primary)] amount font-mono">
+                            +{formatRupiah(depositProjections.monthlyNet)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11.5px] pt-2 border-t border-[var(--glass-border)]/40">
+                          <span className="text-[var(--text-tertiary)]">
+                            {isIndonesian
+                              ? "Total Saat Jatuh Tempo"
+                              : "Total at Maturity"}
+                          </span>
+                          <span className="font-bold text-[var(--text-primary)] amount font-mono">
+                            +{formatRupiah(depositProjections.maturityNet)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                          {isIndonesian
+                            ? "Rekening Pencairan Deposito"
+                            : "Payout Destination Account"}
+                        </label>
+                        <GlassSelect
+                          value={depositPayoutWalletId}
+                          onChange={(v) => setDepositPayoutWalletId(v)}
+                          options={walletOptions}
+                          placeholder={
+                            isIndonesian
+                              ? "Pilih dompet pencairan"
+                              : "Choose wallet"
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Case D: Crypto Staking */}
+                  {instrumentType === "crypto_staking" && (
+                    <div className="space-y-3.5">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between px-1 text-[11px]">
+                          <span className="font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+                            {isIndonesian
+                              ? "Pokok Staking USDT"
+                              : "Staked USDT"}
+                          </span>
+                          <span className="font-mono text-[var(--text-tertiary)] opacity-80">
+                            {isIndonesian ? "Tersedia: " : "Available: "}
+                            {formatHoldingUnits(availableUnits)} USDT
+                          </span>
+                        </div>
+                        <input
+                          type="text"
+                          value={customStakedUnits}
+                          onChange={(e) => setCustomStakedUnits(e.target.value)}
+                          placeholder="1000"
+                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none font-mono"
+                          style={{
+                            background: controlBg,
+                            border: controlBorder,
+                            boxShadow: controlShadow,
+                          }}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                          {isIndonesian
+                            ? "Estimasi APY (%)"
+                            : "Estimated APY (%)"}
+                        </label>
+                        <input
+                          type="text"
+                          value={cryptoApyInput}
+                          onChange={(e) => setCryptoApyInput(e.target.value)}
+                          placeholder="8.5"
+                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none font-mono"
+                          style={{
+                            background: controlBg,
+                            border: controlBorder,
+                            boxShadow: controlShadow,
+                          }}
+                        />
+                      </div>
+
+                      {/* Mode: Auto-Compound vs Cash Payout */}
+                      <div className="grid grid-cols-2 gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic("light");
+                            setIsAutoCompound(true);
+                          }}
+                          className="p-3 rounded-2xl text-left transition-all cursor-pointer active:scale-[0.98]"
+                          style={{
+                            background: isAutoCompound
+                              ? isDark
+                                ? "#ffffff"
+                                : "#18181b"
+                              : controlBg,
+                            color: isAutoCompound
+                              ? isDark
+                                ? "#000000"
+                                : "#ffffff"
+                              : "var(--text-tertiary)",
+                            border: isAutoCompound
+                              ? isDark
+                                ? "1px solid #ffffff"
+                                : "1px solid #18181b"
+                              : controlBorder,
+                            boxShadow: isAutoCompound
+                              ? "0 3px 10px rgba(0,0,0,0.25)"
+                              : controlShadow,
+                          }}
+                        >
+                          <span className="text-[11.5px] font-bold block">
+                            Auto-Compound
+                          </span>
+                          <span className="text-[10px] opacity-80 mt-0.5 block">
+                            {isIndonesian
+                              ? "Bunga menambah saldo koin"
+                              : "Yield reinvested into coins"}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic("light");
+                            setIsAutoCompound(false);
+                          }}
+                          className="p-3 rounded-2xl text-left transition-all cursor-pointer active:scale-[0.98]"
+                          style={{
+                            background: !isAutoCompound
+                              ? isDark
+                                ? "#ffffff"
+                                : "#18181b"
+                              : controlBg,
+                            color: !isAutoCompound
+                              ? isDark
+                                ? "#000000"
+                                : "#ffffff"
+                              : "var(--text-tertiary)",
+                            border: !isAutoCompound
+                              ? isDark
+                                ? "1px solid #ffffff"
+                                : "1px solid #18181b"
+                              : controlBorder,
+                            boxShadow: !isAutoCompound
+                              ? "0 3px 10px rgba(0,0,0,0.25)"
+                              : controlShadow,
+                          }}
+                        >
+                          <span className="text-[11.5px] font-bold block">
+                            Cash Payout
+                          </span>
+                          <span className="text-[10px] opacity-80 mt-0.5 block">
+                            {isIndonesian
+                              ? "Cairkan ke rekening kas"
+                              : "Payout to cash wallet"}
+                          </span>
+                        </button>
+                      </div>
+
+                      {!isAutoCompound && (
+                        <div className="space-y-1.5 pt-1">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                            {isIndonesian
+                              ? "Rekening Pencairan Payout"
+                              : "Payout Destination Wallet"}
+                          </label>
+                          <GlassSelect
+                            value={cryptoPayoutWalletId}
+                            onChange={(v) => setCryptoPayoutWalletId(v)}
+                            options={walletOptions}
+                            placeholder={
+                              isIndonesian
+                                ? "Pilih dompet kas"
+                                : "Choose wallet"
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action: Next Step */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setActiveTab("claim");
+                      }}
+                      className="w-full h-12 rounded-full font-semibold text-[13px] flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98] select-none"
+                      style={{
+                        background: isDark
+                          ? "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)"
+                          : "linear-gradient(180deg, #18181b 0%, #09090b 100%)",
+                        color: isDark ? "#000000" : "#ffffff",
+                        boxShadow: isDark
+                          ? "0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 #ffffff"
+                          : "0 4px 14px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
+                      }}
+                    >
+                      <span>
+                        {isIndonesian
+                          ? "Lanjut ke Pencatatan"
+                          : "Proceed to Record"}
+                      </span>
+                      <ArrowRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: CLAIM & RECORD TRANSACTION */}
+              {activeTab === "claim" && (
+                <div className="space-y-4">
+                  {/* Target Date Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                      {isIndonesian ? "Tanggal Transaksi" : "Transaction Date"}
+                    </label>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setIsYesterdayDate(false);
+                          setClaimDate(format(new Date(), "yyyy-MM-dd"));
+                        }}
+                        className="h-10 px-4 rounded-full text-[12px] font-semibold transition-all cursor-pointer select-none active:scale-[0.96] flex items-center justify-center gap-1.5"
+                        style={{
+                          background: !isYesterdayDate
+                            ? isDark
+                              ? "#ffffff"
+                              : "#18181b"
+                            : controlBg,
+                          color: !isYesterdayDate
+                            ? isDark
+                              ? "#000000"
+                              : "#ffffff"
+                            : "var(--text-tertiary)",
+                          border: !isYesterdayDate
+                            ? isDark
+                              ? "1px solid #ffffff"
+                              : "1px solid #18181b"
+                            : controlBorder,
+                          boxShadow: !isYesterdayDate
+                            ? "0 3px 10px rgba(0,0,0,0.25)"
+                            : controlShadow,
+                        }}
+                      >
+                        <CalendarIcon size={13} />
+                        <span>{isIndonesian ? "Hari Ini" : "Today"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setIsYesterdayDate(true);
+                          setClaimDate(
+                            format(subDays(new Date(), 1), "yyyy-MM-dd"),
+                          );
+                        }}
+                        className="h-10 px-4 rounded-full text-[12px] font-semibold transition-all cursor-pointer select-none active:scale-[0.96] flex items-center justify-center gap-1.5"
+                        style={{
+                          background: isYesterdayDate
+                            ? isDark
+                              ? "#ffffff"
+                              : "#18181b"
+                            : controlBg,
+                          color: isYesterdayDate
+                            ? isDark
+                              ? "#000000"
+                              : "#ffffff"
+                            : "var(--text-tertiary)",
+                          border: isYesterdayDate
+                            ? isDark
+                              ? "1px solid #ffffff"
+                              : "1px solid #18181b"
+                            : controlBorder,
+                          boxShadow: isYesterdayDate
+                            ? "0 3px 10px rgba(0,0,0,0.25)"
+                            : controlShadow,
+                        }}
+                      >
+                        <CalendarIcon size={13} />
+                        <span>{isIndonesian ? "Kemarin" : "Yesterday"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Note / Memo Input */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                      {isIndonesian ? "Catatan Memo" : "Memo Note"}
+                    </label>
+                    <input
+                      type="text"
+                      value={claimNote}
+                      onChange={(e) => setClaimNote(e.target.value)}
+                      placeholder={
+                        instrumentType === "daily_bank"
+                          ? isIndonesian
+                            ? "Contoh: Bunga Harian SeaBank"
+                            : "e.g. Daily Interest SeaBank"
+                          : instrumentType === "dividend"
+                            ? `${isIndonesian ? "Contoh: Dividen Saham" : "e.g. Stock Dividend"} ${selectedStockSymbol}`
+                            : isIndonesian
+                              ? "Catatan transaksi..."
+                              : "Transaction note..."
+                      }
+                      className="w-full h-11 px-4 rounded-2xl text-[13px] text-[var(--text-primary)] outline-none transition-all placeholder:text-[var(--text-tertiary)]"
+                      style={{
+                        background: controlBg,
+                        border: controlBorder,
+                        boxShadow: controlShadow,
+                      }}
+                    />
+                  </div>
+
+                  {/* Confirm Submit Button */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleExecuteRecordYield}
+                      className="w-full h-12 rounded-full font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer select-none"
+                      style={{
+                        background: isDark
+                          ? "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)"
+                          : "linear-gradient(180deg, #18181b 0%, #09090b 100%)",
+                        color: isDark ? "#000000" : "#ffffff",
+                        boxShadow: isDark
+                          ? "0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 #ffffff"
+                          : "0 4px 14px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
+                      }}
+                    >
+                      <ShieldCheck size={16} strokeWidth={2.2} />
+                      <span>
+                        {isIndonesian
+                          ? "Konfirmasi & Catat Pemasukan"
+                          : "Confirm & Record Income"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 }

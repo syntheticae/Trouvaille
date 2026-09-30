@@ -329,23 +329,26 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
       holding.custom_price,
     );
 
-    await supabase.from("holdings").upsert({
-      id: holdingId,
-      user_id: userId,
-      symbol: holding.symbol,
-      name: holding.name,
-      asset_type: holding.asset_type,
-      units: holding.units,
-      avg_buy_price: holding.avg_buy_price,
-      current_price: holding.current_price,
-      currency: holding.currency || "IDR",
-      notes: serializedNotes || null,
-      icon: holding.icon || "TrendingUp",
-      annual_rate: holding.annual_rate || null,
-      purchase_date: holding.purchase_date || null,
-      wallet_id: validWalletId,
-      last_price_updated_at: holding.last_price_updated_at || new Date().toISOString(),
-    });
+    await supabase.from("holdings").upsert(
+      {
+        id: holdingId,
+        user_id: userId,
+        symbol: holding.symbol?.toUpperCase().trim(),
+        name: holding.name,
+        asset_type: holding.asset_type,
+        units: holding.units,
+        avg_buy_price: holding.avg_buy_price,
+        current_price: holding.current_price,
+        currency: holding.currency || "IDR",
+        notes: serializedNotes || null,
+        icon: holding.icon || "TrendingUp",
+        annual_rate: holding.annual_rate || null,
+        purchase_date: holding.purchase_date || null,
+        wallet_id: validWalletId,
+        last_price_updated_at: holding.last_price_updated_at || new Date().toISOString(),
+      },
+      { onConflict: "user_id,symbol" },
+    );
   } catch (e) {
     console.warn("[syncHoldingToSupabase] Supabase sync notice:", e);
   }
@@ -375,14 +378,31 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
       .from("holdings")
       .select("*")
       .eq("user_id", userId)
-      .order("created_at", { ascending: true });
+      .order("updated_at", { ascending: false });
 
     if (!error && Array.isArray(data)) {
+      // Map deduplicating by normalized symbol, keeping the latest / highest-unit row
+      const symbolMap = new Map<string, any>();
+      for (const row of data) {
+        const sym = (row.symbol || "").toUpperCase().trim();
+        if (!sym) continue;
+        if (!symbolMap.has(sym)) {
+          symbolMap.set(sym, row);
+        } else {
+          // If already encountered, pick the one with positive units or higher units
+          const prev = symbolMap.get(sym);
+          if ((Number(row.units) || 0) > (Number(prev.units) || 0)) {
+            symbolMap.set(sym, row);
+          }
+        }
+      }
+
+      const deduplicatedRows = Array.from(symbolMap.values());
       const nonUsdtHoldings: InvestmentHolding[] = [];
       let foundUsdtRow: any = null;
       let usdtHolding: InvestmentHolding | null = null;
 
-      for (const row of data) {
+      for (const row of deduplicatedRows) {
         const meta = parseHoldingNotes(row.notes);
         if (meta.reconciledTxIds && meta.reconciledTxIds.length > 0) {
           markTxAsReconciled(meta.reconciledTxIds, userId);
@@ -391,7 +411,7 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
         const holdingItem: InvestmentHolding = {
           id: row.id,
           wallet_id: row.wallet_id || undefined,
-          symbol: row.symbol,
+          symbol: (row.symbol || "").toUpperCase().trim(),
           name: row.name,
           asset_type: row.asset_type,
           units: Number(row.units) || 0,
@@ -408,7 +428,7 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
           custom_price: meta.customPrice,
         };
 
-        if (row.symbol === "USDT") {
+        if (holdingItem.symbol === "USDT") {
           foundUsdtRow = row;
           usdtHolding = holdingItem;
         } else {

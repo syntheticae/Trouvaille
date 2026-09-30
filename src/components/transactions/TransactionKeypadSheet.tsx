@@ -5,6 +5,7 @@ import { formatRupiah } from "../../lib/utils";
 import { applyKeypadInput } from "../../lib/keypadHelper";
 import { evaluateMathSafe } from "../../lib/evaluateMathSafe";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface TransactionKeypadSheetProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function TransactionKeypadSheet({
   onDone,
 }: TransactionKeypadSheetProps) {
   const { theme } = useTheme();
+  const { isIndonesian } = useLanguage();
   const isDark = theme !== "light";
 
   if (!isOpen) return null;
@@ -124,7 +126,9 @@ export function TransactionKeypadSheet({
                 }}
               >
                 <span>= {formatRupiah(currentVal)}</span>
-                <span className="text-[9.5px] opacity-70">(Apply)</span>
+                <span className="text-[9.5px] opacity-70">
+                  {isIndonesian ? "(Terapkan)" : "(Apply)"}
+                </span>
               </button>
             ) : expression && expression !== "0" ? (
               <button
@@ -133,11 +137,11 @@ export function TransactionKeypadSheet({
                 className="px-2.5 py-1 rounded-full text-[11px] font-medium flex items-center gap-1 active:scale-95 transition-all text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
               >
                 <RotateCcw size={11} strokeWidth={1.5} />
-                <span>Clear</span>
+                <span>{isIndonesian ? "Hapus" : "Clear"}</span>
               </button>
             ) : (
               <span className="text-[11px] text-[var(--text-tertiary)] font-medium pl-1">
-                Liquid Keypad
+                {isIndonesian ? "Papan Angka" : "Liquid Keypad"}
               </span>
             )}
 
@@ -154,7 +158,7 @@ export function TransactionKeypadSheet({
               }}
             >
               <Check size={12} strokeWidth={2.5} />
-              <span>Done</span>
+              <span>{isIndonesian ? "Selesai" : "Done"}</span>
             </button>
           </div>
 
