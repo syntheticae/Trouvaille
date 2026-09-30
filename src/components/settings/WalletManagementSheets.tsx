@@ -15,11 +15,12 @@ import {
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useCategories } from "../../hooks/useCategories";
 import { useAddTransaction } from "../../hooks/useTransactions";
-import { formatRupiah } from "../../lib/utils";
+import { formatRupiah, formatLiveAmountInput } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { format } from "date-fns";
 import type { AccountClassification } from "../../lib/types";
 
@@ -42,6 +43,14 @@ export function WalletManagementSheets({
   const { showToast } = useToast();
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
+  const {
+    preferredCurrency,
+    currencyMeta,
+    convertToIdr,
+    convertFromIdr,
+  } = useCurrency();
+  const allowDecimals = currencyMeta.decimals > 0;
+  const maxDecimals = currencyMeta.decimals;
   const isDark = theme !== "light";
   const dividerGradient = isDark
     ? "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 20%, rgba(255, 255, 255, 0.06) 80%, transparent 100%)"
@@ -50,6 +59,8 @@ export function WalletManagementSheets({
   const [addWalletOpen, setAddWalletOpen] = useState(false);
   const [walletName, setWalletName] = useState("");
   const [walletIcon, setWalletIcon] = useState("Wallet");
+  const [initialBalanceRaw, setInitialBalanceRaw] = useState("");
+  const [initialBalanceDisplay, setInitialBalanceDisplay] = useState("");
   const [hasCustomPickedWalletIcon, setHasCustomPickedWalletIcon] = useState(false);
   const [iconPickerTarget, setIconPickerTarget] = useState<"add" | "edit" | null>(null);
 
@@ -72,6 +83,7 @@ export function WalletManagementSheets({
     currentBalance: number;
   } | null>(null);
   const [correctTargetBalance, setCorrectTargetBalance] = useState("");
+  const [correctTargetDisplay, setCorrectTargetDisplay] = useState("");
   const [correctNote, setCorrectNote] = useState("");
   const [correctEffectiveDate, setCorrectEffectiveDate] = useState(
     format(new Date(), "yyyy-MM-dd"),
@@ -160,13 +172,38 @@ export function WalletManagementSheets({
     if (!walletName.trim()) return;
     const name = walletName.trim();
     const chosenIcon = walletIcon || getWalletIcon(name) || "Wallet";
+    const initVal = Number(initialBalanceRaw || 0);
+    const initAmountIdr =
+      initVal > 0
+        ? preferredCurrency === "IDR"
+          ? Math.round(initVal)
+          : Math.round(convertToIdr(initVal, preferredCurrency))
+        : 0;
+
     addWallet.mutate(
       { name, icon: chosenIcon },
       {
-        onSuccess: () => {
+        onSuccess: (createdWallet: any) => {
+          if (initAmountIdr > 0 && createdWallet?.id) {
+            const otherCat =
+              categories.find((c) => c.name.toLowerCase() === "lainnya") ||
+              categories[0];
+            const todayStr = format(new Date(), "yyyy-MM-dd");
+            addTx.mutate({
+              type: "income",
+              amount: initAmountIdr,
+              wallet_id: createdWallet.id,
+              note: isIndonesian ? `Saldo Awal (${name})` : `Initial Balance (${name})`,
+              occurred_on: todayStr,
+              created_at: new Date().toISOString(),
+              category_id: otherCat?.id || null,
+            });
+          }
           setAddWalletOpen(false);
           setWalletName("");
           setWalletIcon("Wallet");
+          setInitialBalanceRaw("");
+          setInitialBalanceDisplay("");
           setHasCustomPickedWalletIcon(false);
           showToast(isIndonesian ? "Akun ditambahkan" : "Account added", "add", () => {});
         },
@@ -174,9 +211,17 @@ export function WalletManagementSheets({
     );
   };
 
+  const targetBalanceIdr = useMemo(() => {
+    const rawNum = Number(correctTargetBalance || 0);
+    if (isNaN(rawNum)) return 0;
+    return preferredCurrency === "IDR"
+      ? Math.round(rawNum)
+      : Math.round(convertToIdr(rawNum, preferredCurrency));
+  }, [correctTargetBalance, preferredCurrency, convertToIdr]);
+
   const handleSaveCorrection = () => {
     if (!correctWallet || isSavingCorrection) return;
-    const target = Number(correctTargetBalance || 0);
+    const target = targetBalanceIdr;
     const diff = target - correctWallet.currentBalance;
     if (diff === 0) {
       setCorrectWallet(null);
@@ -191,10 +236,7 @@ export function WalletManagementSheets({
         w.name.toLowerCase() === correctWallet.name.toLowerCase(),
     );
     const isValidUuid = (id?: string | null) =>
-      !!id &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        id,
-      );
+      !!id && id.trim().length > 0;
     const walletIdToSave = isValidUuid(matchingWallet?.id)
       ? matchingWallet!.id
       : null;
@@ -525,6 +567,18 @@ export function WalletManagementSheets({
                               e.stopPropagation();
                               triggerHaptic("light");
                               onClose();
+                              const initDisplayAmt =
+                                preferredCurrency === "IDR"
+                                  ? bal
+                                  : Number(
+                                      convertFromIdr(bal).toFixed(maxDecimals),
+                                    );
+                              const { raw, formatted } = formatLiveAmountInput(
+                                initDisplayAmt > 0 ? String(initDisplayAmt) : "",
+                                isIndonesian && !allowDecimals,
+                                allowDecimals,
+                                maxDecimals,
+                              );
                               setTimeout(() => {
                                 setCorrectWallet({
                                   id: w.id,
@@ -532,7 +586,8 @@ export function WalletManagementSheets({
                                   icon: w.icon || getWalletIcon(w.name),
                                   currentBalance: bal,
                                 });
-                                setCorrectTargetBalance(String(bal));
+                                setCorrectTargetBalance(raw ? String(raw) : "0");
+                                setCorrectTargetDisplay(formatted);
                                 setCorrectNote("");
                                 setCorrectEffectiveDate(format(new Date(), "yyyy-MM-dd"));
                               }, 300);
@@ -569,7 +624,7 @@ export function WalletManagementSheets({
                     <strong className="font-semibold text-[var(--text-secondary)]">
                       {unusedZeroWallets.length} {isIndonesian ? "akun" : "accounts"}
                     </strong>{" "}
-                    {isIndonesian ? "bersaldo Rp 0" : "with Rp 0 balance"}
+                    {isIndonesian ? "bersaldo 0" : "with 0 balance"}
                   </span>
                 </div>
                 <button
@@ -578,8 +633,8 @@ export function WalletManagementSheets({
                     if (
                       !confirm(
                         isIndonesian
-                          ? `Hapus ${unusedZeroWallets.length} akun bersaldo Rp 0? Akun aktif dengan saldo positif tidak akan terpengaruh.`
-                          : `Delete ${unusedZeroWallets.length} accounts with Rp 0 balance? Active accounts with positive balances will not be touched.`,
+                          ? `Hapus ${unusedZeroWallets.length} akun bersaldo 0? Akun aktif dengan saldo positif tidak akan terpengaruh.`
+                          : `Delete ${unusedZeroWallets.length} accounts with 0 balance? Active accounts with positive balances will not be touched.`,
                       )
                     ) {
                       return;
@@ -647,29 +702,44 @@ export function WalletManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {isIndonesian ? "Saldo Sebenarnya / Saldo Baru (IDR)" : "Actual / Correct Balance (IDR)"}
+              {isIndonesian
+                ? `Saldo Sebenarnya / Saldo Baru (${currencyMeta.code})`
+                : `Actual / Correct Balance (${currencyMeta.code})`}
             </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={
-                correctTargetBalance
-                  ? formatRupiah(Number(correctTargetBalance))
-                  : ""
-              }
-              onChange={(e) => {
-                const raw = e.target.value.replace(/[^0-9]/g, "");
-                setCorrectTargetBalance(raw);
-              }}
-              placeholder="Rp 0"
-              className="w-full p-3.5 rounded-2xl outline-none font-bold text-[16px] amount"
+            <div
+              className="w-full p-3.5 rounded-2xl flex items-center gap-2.5"
               style={{
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
               }}
-            />
+            >
+              <span
+                className="text-[15px] font-bold select-none shrink-0"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {currencyMeta.symbol}
+              </span>
+              <input
+                type="text"
+                inputMode={allowDecimals ? "decimal" : "numeric"}
+                value={correctTargetDisplay}
+                onChange={(e) => {
+                  const { raw, formatted } = formatLiveAmountInput(
+                    e.target.value,
+                    isIndonesian && !allowDecimals,
+                    allowDecimals,
+                    maxDecimals,
+                  );
+                  setCorrectTargetBalance(raw ? String(raw) : "0");
+                  setCorrectTargetDisplay(formatted);
+                }}
+                placeholder="0"
+                className="w-full bg-transparent outline-none font-bold text-[16px] amount"
+                style={{
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
           </div>
 
           {/* Difference Preview */}
@@ -691,36 +761,23 @@ export function WalletManagementSheets({
                 className="amount text-[13px] font-semibold"
                 style={{
                   color:
-                    Number(correctTargetBalance || 0) -
-                      correctWallet.currentBalance >
-                    0
+                    targetBalanceIdr - correctWallet.currentBalance > 0
                       ? "var(--text-primary)"
-                      : Number(correctTargetBalance || 0) -
-                            correctWallet.currentBalance <
-                          0
-                        ? "#ef4444"
+                      : targetBalanceIdr - correctWallet.currentBalance < 0
+                        ? "var(--text-secondary)"
                         : "var(--text-tertiary)",
                 }}
               >
-                {Number(correctTargetBalance || 0) -
-                  correctWallet.currentBalance >
-                0
-                  ? "+"
-                  : ""}
-                {formatRupiah(
-                  Number(correctTargetBalance || 0) -
-                    correctWallet.currentBalance,
-                )}{" "}
+                {targetBalanceIdr - correctWallet.currentBalance > 0 ? "+" : ""}
+                {formatRupiah(targetBalanceIdr - correctWallet.currentBalance)}{" "}
                 <span className="text-[10px] font-bold uppercase">
-                  {Number(correctTargetBalance || 0) -
-                    correctWallet.currentBalance >
-                  0
+                  {targetBalanceIdr - correctWallet.currentBalance > 0
                     ? "(+)"
-                    : Number(correctTargetBalance || 0) -
-                          correctWallet.currentBalance <
-                        0
+                    : targetBalanceIdr - correctWallet.currentBalance < 0
                       ? "(-)"
-                      : (isIndonesian ? "(Tidak Ada Perubahan)" : "(No Change)")}
+                      : isIndonesian
+                        ? "(Tidak Ada Perubahan)"
+                        : "(No Change)"}
                 </span>
               </span>
             </div>
@@ -1190,6 +1247,43 @@ export function WalletManagementSheets({
                 }}
                 placeholder={isIndonesian ? "Nama Akun (cth. BCA, GoPay, Tunai)" : "Account Name (e.g. Checking, Savings, Cash)"}
                 className="w-full bg-transparent outline-none font-semibold text-[14px]"
+                style={{ color: "var(--text-primary)" }}
+              />
+            </div>
+
+            <div
+              className="flex items-center gap-2.5 px-3.5 py-3 rounded-2xl"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <span
+                className="text-[13px] font-bold select-none shrink-0"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {currencyMeta.symbol}
+              </span>
+              <input
+                type="text"
+                inputMode={allowDecimals ? "decimal" : "numeric"}
+                value={initialBalanceDisplay}
+                onChange={(e) => {
+                  const { raw, formatted } = formatLiveAmountInput(
+                    e.target.value,
+                    isIndonesian && !allowDecimals,
+                    allowDecimals,
+                    maxDecimals,
+                  );
+                  setInitialBalanceRaw(raw ? String(raw) : "");
+                  setInitialBalanceDisplay(formatted);
+                }}
+                placeholder={
+                  isIndonesian
+                    ? `Saldo Awal Opsional (${currencyMeta.code})`
+                    : `Optional Initial Balance (${currencyMeta.code})`
+                }
+                className="w-full bg-transparent outline-none font-semibold text-[13.5px] amount"
                 style={{ color: "var(--text-primary)" }}
               />
             </div>

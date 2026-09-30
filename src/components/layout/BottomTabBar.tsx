@@ -366,6 +366,7 @@ export function BottomTabBar({
 
                   {/* Center Add Button [C] */}
                   <button
+                    data-tour="quick-add"
                     onPointerDown={handlePointerDown}
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
@@ -410,6 +411,7 @@ export function BottomTabBar({
               <NavLink
                 key={tab.path}
                 to={tab.path!}
+                data-tour={tab.path === "/assets" ? "nav-assets" : undefined}
                 onClick={() => triggerHaptic("light")}
                 className="w-10 h-10 flex items-center justify-center relative rounded-full"
               >

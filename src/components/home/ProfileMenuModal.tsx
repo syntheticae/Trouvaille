@@ -222,8 +222,9 @@ export function ProfileMenuModal({
                 items-center
                 gap-[5px]
 
+                flex-1
                 min-w-0
-                shrink-0
+                overflow-hidden
               "
             >
               {/* ========================================================
@@ -245,10 +246,10 @@ export function ProfileMenuModal({
 
                   flex
                   items-center
-                  gap-[9px]
+                  gap-[8px]
 
                   pl-[4px]
-                  pr-[14px]
+                  pr-[10px]
                   py-[5px]
 
                   rounded-full
@@ -260,9 +261,11 @@ export function ProfileMenuModal({
                   duration-200
 
                   cursor-pointer
-                  shrink-0
+                  min-w-0
+                  shrink
 
-                  max-w-[180px]
+                  max-w-[135px]
+                  sm:max-w-[180px]
                 "
                 title={isIndonesian ? "Profil Pengguna" : "User Profile"}
               >
@@ -398,7 +401,13 @@ export function ProfileMenuModal({
                         leading-none
                       "
                     >
-                      {isGuest ? "Local" : "Sync"}
+                      {isGuest
+                        ? isIndonesian
+                          ? "Lokal"
+                          : "Local"
+                        : isIndonesian
+                          ? "Sinkron"
+                          : "Sync"}
                     </span>
                   </div>
                 </div>
@@ -438,9 +447,9 @@ export function ProfileMenuModal({
                 className="
                   flex
                   items-center
-                  gap-[7px]
+                  gap-[6px]
 
-                  px-[14px]
+                  px-[11px]
                   py-[7px]
 
                   rounded-full
@@ -454,9 +463,11 @@ export function ProfileMenuModal({
                   hover:bg-white/[0.075]
 
                   cursor-pointer
-                  shrink-0
+                  min-w-0
+                  shrink
 
-                  max-w-[210px]
+                  max-w-[120px]
+                  sm:max-w-[180px]
                 "
                 style={{
                   background: isDark
@@ -471,7 +482,7 @@ export function ProfileMenuModal({
                     ? "inset 0 1px 0 rgba(255,255,255,0.05)"
                     : "inset 0 1px 0 rgba(255,255,255,0.72)",
                 }}
-                title={isIndonesian ? "Ganti Space" : "Switch Space"}
+                title={isIndonesian ? "Ganti Ruang" : "Switch Space"}
               >
                 <Layers
                   size={12}
@@ -497,15 +508,6 @@ export function ProfileMenuModal({
                 </span>
               </button>
             </div>
-
-            {/* ==========================================================
-                FLEXIBLE SPACE
-
-                This keeps the right controls attached to the
-                right side while the entire capsule remains floating.
-                ========================================================== */}
-
-            <div className="flex-1 min-w-0" />
 
             {/* ==========================================================
                 RIGHT GROUP

@@ -40,6 +40,7 @@ import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabase";
 import { generateUUID } from "../../hooks/useTransactions";
 import { getDefaultCategories } from "../../hooks/useCategories";
+import { formatLiveAmountInput } from "../../lib/utils";
 import type { Category } from "../../lib/types";
 
 async function seedOnboardingCategories(
@@ -69,31 +70,21 @@ async function seedOnboardingCategories(
     );
   } catch {}
 
-  // 2. Prime QueryClient so UI reflects the newly selected regional taxonomy immediately
-  qc.setQueryData(
-    ["categories", isGuest ? "guest_local_user" : userId, null],
-    fullCategories,
-  );
-  qc.setQueryData(
-    ["categories", isGuest ? "guest_local_user" : userId, "expense"],
-    fullCategories.filter((c) => c.type === "expense"),
-  );
-  qc.setQueryData(
-    ["categories", isGuest ? "guest_local_user" : userId, "income"],
-    fullCategories.filter((c) => c.type === "income"),
-  );
-  qc.invalidateQueries({ queryKey: ["categories"] });
-
-  // 3. For authenticated cloud accounts, populate the categories table if empty
+  // 2. For authenticated cloud accounts, replace default categories with chosen regional taxonomy
   if (!isGuest && userId) {
     try {
-      const { data: existing } = await supabase
-        .from("categories")
-        .select("id")
-        .eq("user_id", userId)
-        .limit(1);
+      const { count: txCount } = await supabase
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
 
-      if (!existing || existing.length === 0) {
+      if (!txCount || txCount === 0) {
+        await supabase
+          .from("categories")
+          .delete()
+          .eq("user_id", userId)
+          .eq("is_default", true);
+
         await supabase.from("categories").insert(
           fullCategories.map((c) => ({
             id: c.id,
@@ -109,6 +100,20 @@ async function seedOnboardingCategories(
       console.warn("[seedOnboardingCategories] Cloud insertion warning:", e);
     }
   }
+
+  // 3. Prime QueryClient so UI reflects the newly selected regional taxonomy immediately
+  qc.setQueryData(
+    ["categories", isGuest ? "guest_local_user" : userId, null],
+    fullCategories,
+  );
+  qc.setQueryData(
+    ["categories", isGuest ? "guest_local_user" : userId, "expense"],
+    fullCategories.filter((c) => c.type === "expense"),
+  );
+  qc.setQueryData(
+    ["categories", isGuest ? "guest_local_user" : userId, "income"],
+    fullCategories.filter((c) => c.type === "income"),
+  );
 }
 
 interface OnboardingModalProps {
@@ -306,6 +311,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
 
   // Step 4: Starting Balance
   const [startingBalance, setStartingBalance] = useState<number>(0);
+  const [startingBalanceDisplay, setStartingBalanceDisplay] = useState<string>("");
 
   // Step 5: Daily Reminder
   const [reminderEnabled, setReminderEnabled] = useState<boolean>(true);
@@ -429,12 +435,23 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
 
   const handleQuickAddBalance = (amount: number) => {
     triggerHaptic("medium");
-    setStartingBalance((prev) => prev + amount);
+    setStartingBalance((prev) => {
+      const next = Number((prev + amount).toFixed(activeCurrencyMeta.decimals));
+      const { formatted } = formatLiveAmountInput(
+        String(next),
+        isIndonesian && activeCurrencyMeta.decimals === 0,
+        activeCurrencyMeta.decimals > 0,
+        activeCurrencyMeta.decimals,
+      );
+      setStartingBalanceDisplay(formatted);
+      return next;
+    });
   };
 
   const handleClearBalance = () => {
     triggerHaptic("light");
     setStartingBalance(0);
+    setStartingBalanceDisplay("");
   };
 
   // 1-Tap Quick Start: Instant zero-friction entry for users
@@ -498,11 +515,12 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       } catch {}
     }
 
-    // 6. Mark onboarded
+    // 6. Mark onboarded and queue product tour
     try {
       localStorage.setItem("trouvaille_preset_mode", "default");
       localStorage.setItem("trouvaille_onboarding_focus", "expenses");
       localStorage.setItem("trouvaille_onboarded", "true");
+      localStorage.setItem("trouvaille_tour_pending", "true");
     } catch {}
 
     onComplete();
@@ -668,10 +686,11 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       localStorage.setItem("trouvaille_preset_mode", presetMode);
     } catch {}
 
-    // 5. Mark onboarded
+    // 5. Mark onboarded and queue product tour
     try {
       localStorage.setItem("trouvaille_onboarding_focus", selectedFocus);
       localStorage.setItem("trouvaille_onboarded", "true");
+      localStorage.setItem("trouvaille_tour_pending", "true");
     } catch {}
 
     onComplete();
@@ -1234,12 +1253,19 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                     </span>
                     <input
                       type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={startingBalance === 0 ? "" : startingBalance.toLocaleString(isIndonesian ? "id-ID" : "en-US")}
+                      inputMode={
+                        activeCurrencyMeta.decimals > 0 ? "decimal" : "numeric"
+                      }
+                      value={startingBalanceDisplay}
                       onChange={(e) => {
-                        const raw = e.target.value.replace(/[^0-9]/g, "");
-                        setStartingBalance(raw ? parseInt(raw, 10) : 0);
+                        const { raw, formatted } = formatLiveAmountInput(
+                          e.target.value,
+                          isIndonesian && activeCurrencyMeta.decimals === 0,
+                          activeCurrencyMeta.decimals > 0,
+                          activeCurrencyMeta.decimals,
+                        );
+                        setStartingBalance(raw || 0);
+                        setStartingBalanceDisplay(formatted);
                       }}
                       placeholder="0"
                       className="w-full text-[34px] sm:text-[40px] font-light tracking-tight text-white amount leading-none bg-transparent outline-none placeholder:text-white/20"

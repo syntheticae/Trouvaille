@@ -5,7 +5,10 @@ import {
   type CurrencyMeta,
   CURRENCY_METADATA,
   DEFAULT_RATES,
+  formatCurrencyAmount,
 } from "../lib/currency";
+
+export { formatCurrencyAmount };
 
 export interface CurrencyContextValue {
   preferredCurrency: SupportedCurrency;

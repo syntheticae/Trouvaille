@@ -40,6 +40,7 @@ import { WebDashboardLinkModal } from "../components/settings/WebDashboardLinkMo
 import { CategoryBudgetDeck } from "../components/home/CategoryBudgetDeck";
 import { CategoryManagementSheets } from "../components/settings/CategoryManagementSheets";
 import { InvestmentPulseCard } from "../components/home/InvestmentPulseCard";
+import { ProductTourOverlay } from "../components/onboarding/ProductTourOverlay";
 
 function formatNetAmount(net: number): string {
   const abs = Math.abs(net);
@@ -252,6 +253,20 @@ export function HomePage({
     (isTxsLoading || isWalletsLoading) && rawAllTxs.length === 0;
   const { goals, depositToGoal, updateGoal, deleteGoal } = useGoals();
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null);
+  const [isTourOpen, setIsTourOpen] = useState(() => {
+    try {
+      return localStorage.getItem("trouvaille_tour_pending") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const handleStartTour = () => setIsTourOpen(true);
+    window.addEventListener("trouvaille:start-tour", handleStartTour);
+    return () => window.removeEventListener("trouvaille:start-tour", handleStartTour);
+  }, []);
+
   const { netWorth, liquidAssets, liquidAccounts } = useWalletBalances();
 
   const [metricDrillDown, setMetricDrillDown] = useState<{
@@ -266,6 +281,7 @@ export function HomePage({
   const {
     activeSpace,
     activeSpaceId,
+    defaultSpaceId,
     setActiveSpaceId,
     filterTransactionsBySpace,
   } = useSpace();
@@ -754,7 +770,10 @@ export function HomePage({
     switch (cardId) {
       case "net_portfolio":
         return (
-          <section className="card-contrast-hero p-4 pb-3 relative overflow-hidden">
+          <section
+            data-tour="net-worth"
+            className="card-contrast-hero p-4 pb-3 relative overflow-hidden"
+          >
             {/* Title Header */}
             <div className="flex items-center justify-between mb-1">
               <h2
@@ -1154,98 +1173,102 @@ export function HomePage({
       case "cashflow_pulse":
         if (size === "half") {
           return (
-            <CompactCashflowPulseHalf
-              netCashflow={intel.netCashflow}
-              consumedPct={intel.consumedPct}
-              isAheadOfPace={intel.isAheadOfPace}
-              onOpenDetail={() => {
-                setMetricDrillDown({
-                  type: "snapshot",
-                  data: {
-                    totalCurrent: intel.netCashflow,
-                    totalPrevious: 0,
-                    delta: intel.netCashflow,
-                    pctChange: 0,
-                    title: isIndonesian ? "Arus Kas Bersih" : "Net Cashflow",
-                    subtitle: isIndonesian
-                      ? `Bulan ini ditutup dengan ${intel.netCashflow >= 0 ? "surplus" : "defisit"} setelah pemasukan ${formatRupiah(intel.totalIncome)} dan pengeluaran ${formatRupiah(intel.totalExpense)}.`
-                      : `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
-                    badge: isIndonesian ? "Bulan Ini" : "Current Month",
-                    ctaLabel: isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown",
-                  },
-                });
-              }}
-            />
+            <div data-tour="quick-cashflow">
+              <CompactCashflowPulseHalf
+                netCashflow={intel.netCashflow}
+                consumedPct={intel.consumedPct}
+                isAheadOfPace={intel.isAheadOfPace}
+                onOpenDetail={() => {
+                  setMetricDrillDown({
+                    type: "snapshot",
+                    data: {
+                      totalCurrent: intel.netCashflow,
+                      totalPrevious: 0,
+                      delta: intel.netCashflow,
+                      pctChange: 0,
+                      title: isIndonesian ? "Arus Kas Bersih" : "Net Cashflow",
+                      subtitle: isIndonesian
+                        ? `Bulan ini ditutup dengan ${intel.netCashflow >= 0 ? "surplus" : "defisit"} setelah pemasukan ${formatRupiah(intel.totalIncome)} dan pengeluaran ${formatRupiah(intel.totalExpense)}.`
+                        : `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
+                      badge: isIndonesian ? "Bulan Ini" : "Current Month",
+                      ctaLabel: isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown",
+                    },
+                  });
+                }}
+              />
+            </div>
           );
         }
         return (
-          <CashflowPulseCard
-            netCashflow={intel.netCashflow}
-            totalIncome={intel.totalIncome}
-            totalExpense={intel.totalExpense}
-            dailyAverage={dailyAverage}
-            daysElapsed={daysInMonth}
-            savingsRate={intel.savingsRate}
-            momentum={intel.momentum}
-            momentumReason={intel.momentumReason}
-            hideBalance={hideBalance}
-            budgetTarget={budgetTarget}
-            budgetRisk={intel.budgetRisk}
-            consumedPct={intel.consumedPct}
-            isAheadOfPace={intel.isAheadOfPace}
-            paceDiff={intel.paceDiff}
-            onOpenDrillDown={(mode) => {
-              if (mode === "budget") {
-                setMetricDrillDown({
-                  type: "budget_risk",
-                  data: {
-                    totalCurrent: totalExpense,
-                    totalPrevious: 0,
-                    delta: 0,
-                    pctChange: 0,
-                    budget: budgetTarget,
-                    consumedPct: intel.consumedPct,
-                    timePct: intel.timePct,
-                    budgetRisk: intel.budgetRisk,
-                    budgetRiskReason: intel.budgetRiskReason,
-                  },
-                });
-              } else if (mode === "net") {
-                setMetricDrillDown({
-                  type: "snapshot",
-                  data: {
-                    totalCurrent: intel.netCashflow,
-                    totalPrevious: 0,
-                    delta: intel.netCashflow,
-                    pctChange: 0,
-                    title: isIndonesian ? "Arus Kas Bersih" : "Net Cashflow",
-                    subtitle: isIndonesian
-                      ? `Bulan ini ditutup dengan ${intel.netCashflow >= 0 ? "surplus" : "defisit"} setelah pemasukan ${formatRupiah(intel.totalIncome)} dan pengeluaran ${formatRupiah(intel.totalExpense)}.`
-                      : `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
-                    badge: isIndonesian ? "Bulan Ini" : "Current Month",
-                    ctaLabel: isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown",
-                  },
-                });
-              } else {
-                const exp = intel.explainExpenseChange();
-                setMetricDrillDown({
-                  type: "snapshot",
-                  data: {
-                    totalCurrent: intel.totalExpense,
-                    totalPrevious: exp.totalPrevious,
-                    delta: exp.delta,
-                    pctChange: exp.pctChange,
-                    title: isIndonesian ? "Total Pengeluaran" : "Total Outflow",
-                    subtitle: isIndonesian
-                      ? `Pengeluaran bulan berjalan adalah ${formatRupiah(intel.totalExpense)}. Dibandingkan bulan sebelumnya, perubahannya ${exp.delta >= 0 ? "meningkat" : "menurun"} sebesar ${formatRupiah(Math.abs(exp.delta))}.`
-                      : `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
-                    badge: isIndonesian ? "Bulan Ini" : "Current Month",
-                    ctaLabel: isIndonesian ? "Lihat Rincian Analisis" : "View Analytics Breakdown",
-                  },
-                });
-              }
-            }}
-          />
+          <div data-tour="quick-cashflow">
+            <CashflowPulseCard
+              netCashflow={intel.netCashflow}
+              totalIncome={intel.totalIncome}
+              totalExpense={intel.totalExpense}
+              dailyAverage={dailyAverage}
+              daysElapsed={daysInMonth}
+              savingsRate={intel.savingsRate}
+              momentum={intel.momentum}
+              momentumReason={intel.momentumReason}
+              hideBalance={hideBalance}
+              budgetTarget={budgetTarget}
+              budgetRisk={intel.budgetRisk}
+              consumedPct={intel.consumedPct}
+              isAheadOfPace={intel.isAheadOfPace}
+              paceDiff={intel.paceDiff}
+              onOpenDrillDown={(mode) => {
+                if (mode === "budget") {
+                  setMetricDrillDown({
+                    type: "budget_risk",
+                    data: {
+                      totalCurrent: totalExpense,
+                      totalPrevious: 0,
+                      delta: 0,
+                      pctChange: 0,
+                      budget: budgetTarget,
+                      consumedPct: intel.consumedPct,
+                      timePct: intel.timePct,
+                      budgetRisk: intel.budgetRisk,
+                      budgetRiskReason: intel.budgetRiskReason,
+                    },
+                  });
+                } else if (mode === "net") {
+                  setMetricDrillDown({
+                    type: "snapshot",
+                    data: {
+                      totalCurrent: intel.netCashflow,
+                      totalPrevious: 0,
+                      delta: intel.netCashflow,
+                      pctChange: 0,
+                      title: isIndonesian ? "Arus Kas Bersih" : "Net Cashflow",
+                      subtitle: isIndonesian
+                        ? `Bulan ini ditutup dengan ${intel.netCashflow >= 0 ? "surplus" : "defisit"} setelah pemasukan ${formatRupiah(intel.totalIncome)} dan pengeluaran ${formatRupiah(intel.totalExpense)}.`
+                        : `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
+                      badge: isIndonesian ? "Bulan Ini" : "Current Month",
+                      ctaLabel: isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown",
+                    },
+                  });
+                } else {
+                  const exp = intel.explainExpenseChange();
+                  setMetricDrillDown({
+                    type: "snapshot",
+                    data: {
+                      totalCurrent: intel.totalExpense,
+                      totalPrevious: exp.totalPrevious,
+                      delta: exp.delta,
+                      pctChange: exp.pctChange,
+                      title: isIndonesian ? "Total Pengeluaran" : "Total Outflow",
+                      subtitle: isIndonesian
+                        ? `Pengeluaran bulan berjalan adalah ${formatRupiah(intel.totalExpense)}. Dibandingkan bulan sebelumnya, perubahannya ${exp.delta >= 0 ? "meningkat" : "menurun"} sebesar ${formatRupiah(Math.abs(exp.delta))}.`
+                        : `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
+                      badge: isIndonesian ? "Bulan Ini" : "Current Month",
+                      ctaLabel: isIndonesian ? "Lihat Rincian Analisis" : "View Analytics Breakdown",
+                    },
+                  });
+                }
+              }}
+            />
+          </div>
         );
 
       case "ai_insights":
@@ -2334,6 +2357,7 @@ export function HomePage({
         <div className="relative flex-1 min-w-0 mr-2">
           <button
             type="button"
+            data-tour="space-capsule"
             onClick={() => {
               triggerHaptic("light");
               setProfileMenuOpen((prev) => !prev);
@@ -2487,34 +2511,35 @@ export function HomePage({
       </header>
 
       {/* Active Ledger Segregation Notice */}
-      {activeSpaceId !== "all" && activeSpaceId !== "personal" && (
-        <div
-          className="px-3.5 py-2 rounded-2xl flex items-center justify-between text-[11px] font-medium animate-fadeIn"
-          style={{
-            background: "var(--glass-fill)",
-            border: "1px solid var(--glass-border)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            <span>
-              {isIndonesian ? "Space Aktif: " : "Active Space: "}
-              <strong className="text-[var(--text-primary)]">
-                {activeSpace.name}
-              </strong>{" "}
-              ({activeSpace.tag})
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveSpaceId("personal")}
-            className="text-[10px] font-semibold text-[var(--text-primary)] hover:underline cursor-pointer"
+      {activeSpaceId !== "all" &&
+        activeSpaceId !== (defaultSpaceId || "personal") && (
+          <div
+            className="px-3.5 py-2 rounded-2xl flex items-center justify-between text-[11px] font-medium animate-fadeIn"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-secondary)",
+            }}
           >
-            {isIndonesian ? "Atur Ulang" : "Reset"}
-          </button>
-        </div>
-      )}
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span>
+                {isIndonesian ? "Ruang Aktif: " : "Active Space: "}
+                <strong className="text-[var(--text-primary)]">
+                  {activeSpace.name}
+                </strong>
+                {activeSpace.tag ? ` (${activeSpace.tag})` : ""}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveSpaceId(defaultSpaceId || "personal")}
+              className="text-[10px] font-semibold text-[var(--text-primary)] hover:underline cursor-pointer"
+            >
+              {isIndonesian ? "Kembali ke Utama" : "Return to Default"}
+            </button>
+          </div>
+        )}
 
       {/* Draft Inbox Banner */}
       {draftCount > 0 && (
@@ -3039,6 +3064,12 @@ export function HomePage({
           onClose={() => setWebDashboardOpen(false)}
         />
       )}
+
+      {/* Interactive Feature & Product Introduction Tour */}
+      <ProductTourOverlay
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+      />
     </div>
   );
 }

@@ -1,14 +1,42 @@
 import { evaluateMathSafe } from "./evaluateMathSafe";
 
+export interface KeypadInputOptions {
+  allowDecimals?: boolean;
+  maxDecimals?: number;
+}
+
+function formatDecimalNumberToken(token: string, maxDecimals: number): string {
+  const cleaned = token.replace(/,/g, "");
+  const parts = cleaned.split(".");
+  const hasDot = parts.length > 1;
+  const intDigits = (parts[0] || "").replace(/\D/g, "").slice(0, 12);
+  const decDigits = hasDot
+    ? parts
+        .slice(1)
+        .join("")
+        .replace(/\D/g, "")
+        .slice(0, maxDecimals)
+    : "";
+  const intFormatted = intDigits
+    ? parseInt(intDigits, 10).toLocaleString("en-US")
+    : hasDot
+      ? "0"
+      : "";
+  return hasDot ? `${intFormatted}.${decDigits}` : intFormatted;
+}
+
 /**
  * Handles keypad input events for transaction amounts.
- * Supports digits (0-9), triple zero ("000"), operators (+, -, ×, ÷), backspace ("backspace"),
- * clear ("clear"), and evaluation ("evaluate" / "=").
+ * Supports digits (0-9), triple zero ("000"), decimal separator ("." / ","),
+ * operators (+, -, ×, ÷), backspace ("backspace"), clear ("clear"), and evaluation ("evaluate" / "=").
  */
 export function applyKeypadInput(
   currentExpr: string,
-  key: string
+  key: string,
+  options?: KeypadInputOptions,
 ): { expression: string; numericValue: number } {
+  const allowDecimals = options?.allowDecimals ?? false;
+  const maxDecimals = options?.maxDecimals ?? 2;
   const trimmed = currentExpr ? currentExpr.trim() : "";
 
   // 1. CLEAR
@@ -29,7 +57,30 @@ export function applyKeypadInput(
       return { expression: next, numericValue: num };
     }
 
-    // Remove last character
+    if (allowDecimals) {
+      const nextRaw = trimmed.slice(0, -1).trim();
+      if (!nextRaw || nextRaw === "0") {
+        return { expression: "", numericValue: 0 };
+      }
+      if (!/[+\-*/×÷]/.test(nextRaw)) {
+        const formatted = formatDecimalNumberToken(nextRaw, maxDecimals);
+        const num = parseFloat(formatted.replace(/,/g, "")) || 0;
+        return { expression: formatted, numericValue: num };
+      } else {
+        const parts = nextRaw.split(/(\s*[+\-*/×÷]\s*)/);
+        const lastToken = parts[parts.length - 1];
+        if (lastToken) {
+          parts[parts.length - 1] = formatDecimalNumberToken(
+            lastToken,
+            maxDecimals,
+          );
+        }
+        const joined = parts.join("");
+        return { expression: joined, numericValue: evaluateMathSafe(joined) };
+      }
+    }
+
+    // Remove last character (integer / IDR mode)
     let next = trimmed.slice(0, -1).trim();
     // If ending with trailing thousand separator dot, remove it too
     if (next.endsWith(".")) {
@@ -81,6 +132,52 @@ export function applyKeypadInput(
     return { expression: next, numericValue: evaluateMathSafe(next) };
   }
 
+  // 3b. DECIMAL POINT: "." or ","
+  if (key === "." || key === ",") {
+    if (!allowDecimals) {
+      return { expression: trimmed, numericValue: evaluateMathSafe(trimmed) };
+    }
+    if (!trimmed || trimmed === "0") {
+      return { expression: "0.", numericValue: 0 };
+    }
+    if (/[+\-*/×÷]\s*$/.test(trimmed)) {
+      const next = `${trimmed}0.`;
+      return { expression: next, numericValue: evaluateMathSafe(next) };
+    }
+    if (!/[+\-*/×÷]/.test(trimmed)) {
+      if (trimmed.includes(".")) {
+        return {
+          expression: trimmed,
+          numericValue: parseFloat(trimmed.replace(/,/g, "")) || 0,
+        };
+      }
+      const formatted = formatDecimalNumberToken(`${trimmed}.`, maxDecimals);
+      return {
+        expression: formatted,
+        numericValue: parseFloat(formatted.replace(/,/g, "")) || 0,
+      };
+    } else {
+      const lastOpIndex = Math.max(
+        trimmed.lastIndexOf("+"),
+        trimmed.lastIndexOf("-"),
+        trimmed.lastIndexOf("×"),
+        trimmed.lastIndexOf("*"),
+        trimmed.lastIndexOf("÷"),
+        trimmed.lastIndexOf("/"),
+      );
+      const prefix = trimmed.slice(0, lastOpIndex + 1);
+      const suffix = trimmed.slice(lastOpIndex + 1).trim();
+      if (suffix.includes(".")) {
+        return { expression: trimmed, numericValue: evaluateMathSafe(trimmed) };
+      }
+      const nextSuffix = suffix
+        ? formatDecimalNumberToken(`${suffix}.`, maxDecimals)
+        : "0.";
+      const next = `${prefix} ${nextSuffix}`;
+      return { expression: next, numericValue: evaluateMathSafe(next) };
+    }
+  }
+
   // 4. TRIPLE ZERO: "000"
   if (key === "000") {
     if (!trimmed || trimmed === "0") {
@@ -91,7 +188,19 @@ export function applyKeypadInput(
       return { expression: trimmed, numericValue: evaluateMathSafe(trimmed) };
     }
 
-    // If pure number
+    if (allowDecimals) {
+      if (!/[+\-*/×÷]/.test(trimmed)) {
+        const formatted = formatDecimalNumberToken(
+          `${trimmed}000`,
+          maxDecimals,
+        );
+        const num = parseFloat(formatted.replace(/,/g, "")) || 0;
+        return { expression: formatted, numericValue: num };
+      }
+      return { expression: trimmed, numericValue: evaluateMathSafe(trimmed) };
+    }
+
+    // If pure number (IDR integer mode)
     if (!/[+\-*/×÷]/.test(trimmed)) {
       const rawDigits = trimmed.replace(/\D/g, "");
       if (!rawDigits || rawDigits === "0") {
@@ -112,7 +221,7 @@ export function applyKeypadInput(
         trimmed.lastIndexOf("×"),
         trimmed.lastIndexOf("*"),
         trimmed.lastIndexOf("÷"),
-        trimmed.lastIndexOf("/")
+        trimmed.lastIndexOf("/"),
       );
       const prefix = trimmed.slice(0, lastOpIndex + 1);
       const suffix = trimmed.slice(lastOpIndex + 1).trim();
@@ -129,6 +238,38 @@ export function applyKeypadInput(
 
   // 5. DIGITS: "0" - "9"
   if (/^[0-9]$/.test(key)) {
+    if (allowDecimals) {
+      if (!trimmed || trimmed === "0") {
+        if (key === "0") return { expression: "", numericValue: 0 };
+        return { expression: key, numericValue: parseInt(key, 10) };
+      }
+      if (!/[+\-*/×÷]/.test(trimmed)) {
+        const formatted = formatDecimalNumberToken(
+          `${trimmed}${key}`,
+          maxDecimals,
+        );
+        const num = parseFloat(formatted.replace(/,/g, "")) || 0;
+        return { expression: formatted, numericValue: num };
+      } else {
+        const lastOpIndex = Math.max(
+          trimmed.lastIndexOf("+"),
+          trimmed.lastIndexOf("-"),
+          trimmed.lastIndexOf("×"),
+          trimmed.lastIndexOf("*"),
+          trimmed.lastIndexOf("÷"),
+          trimmed.lastIndexOf("/"),
+        );
+        const prefix = trimmed.slice(0, lastOpIndex + 1);
+        const suffix = trimmed.slice(lastOpIndex + 1).trim();
+        const formatted = formatDecimalNumberToken(
+          `${suffix}${key}`,
+          maxDecimals,
+        );
+        const next = `${prefix} ${formatted}`;
+        return { expression: next, numericValue: evaluateMathSafe(next) };
+      }
+    }
+
     if (!trimmed || trimmed === "0") {
       if (key === "0") return { expression: "", numericValue: 0 };
       return { expression: key, numericValue: parseInt(key, 10) };
@@ -149,7 +290,7 @@ export function applyKeypadInput(
         trimmed.lastIndexOf("×"),
         trimmed.lastIndexOf("*"),
         trimmed.lastIndexOf("÷"),
-        trimmed.lastIndexOf("/")
+        trimmed.lastIndexOf("/"),
       );
       const prefix = trimmed.slice(0, lastOpIndex + 1);
       const suffix = trimmed.slice(lastOpIndex + 1).trim();
@@ -163,6 +304,17 @@ export function applyKeypadInput(
 
   // 6. EVALUATE / DONE / "="
   if (key === "=" || key === "evaluate" || key === "done") {
+    if (allowDecimals) {
+      const num = Number(evaluateMathSafe(trimmed).toFixed(maxDecimals));
+      const formatted =
+        num === 0
+          ? ""
+          : num.toLocaleString("en-US", {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: maxDecimals,
+            });
+      return { expression: formatted, numericValue: num };
+    }
     const num = evaluateMathSafe(trimmed);
     const formatted = num === 0 ? "" : num.toLocaleString("id-ID");
     return { expression: formatted, numericValue: num };

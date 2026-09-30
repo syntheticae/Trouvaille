@@ -193,7 +193,14 @@ const AppUpdateModal = lazy(() =>
     default: m.AppUpdateModal,
   })),
 );
+const ShortcutManagementSheet = lazy(() =>
+  import("../components/settings/ShortcutManagementSheet").then((m) => ({
+    default: m.ShortcutManagementSheet,
+  })),
+);
 
+import { useShortcuts } from "../hooks/useShortcuts";
+import { useNavigate } from "react-router-dom";
 import {
   checkForAppUpdate,
   type AppReleaseInfo,
@@ -338,6 +345,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   const [dataExportVaultOpen, setDataExportVaultOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [webDashboardModalOpen, setWebDashboardModalOpen] = useState(false);
+  const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false);
+  const { shortcuts } = useShortcuts();
+  const navigate = useNavigate();
   const [appUpdateOpen, setAppUpdateOpen] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [releaseInfo, setReleaseInfo] = useState<AppReleaseInfo | null>(null);
@@ -1566,6 +1576,60 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
               : "Automations & Shortcuts"}
           </h2>
           <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
+            {/* Quick Transaction Presets (In-App Shortcuts) */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setShortcutSheetOpen(true);
+              }}
+              className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Zap size={14} strokeWidth={1.75} />
+                </div>
+                <div className="min-w-0">
+                  <span
+                    className="text-[13px] font-semibold truncate block"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {isIndonesian
+                      ? "Pintasan Transaksi Cepat"
+                      : "Quick Transaction Presets"}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                <span
+                  className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                  style={{
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-secondary)",
+                    background: "var(--bg-elevated)",
+                  }}
+                >
+                  {shortcuts.length}{" "}
+                  {isIndonesian
+                    ? "Preset"
+                    : shortcuts.length === 1
+                      ? "Preset"
+                      : "Presets"}
+                </span>
+                <ChevronRight
+                  size={15}
+                  style={{ color: "var(--text-secondary)" }}
+                />
+              </div>
+            </button>
+
             {/* Apple Shortcuts & Automations (Unified Single Setting) */}
             <button
               type="button"
@@ -1611,6 +1675,58 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                   }}
                 >
                   {isIndonesian ? "5 Mode" : "5 Modes"}
+                </span>
+                <ChevronRight
+                  size={15}
+                  style={{ color: "var(--text-secondary)" }}
+                />
+              </div>
+            </button>
+
+            {/* Replay Interactive Product Tour */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                try {
+                  localStorage.setItem("trouvaille_tour_pending", "true");
+                } catch {}
+                navigate("/");
+              }}
+              className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Sparkles size={14} strokeWidth={1.75} />
+                </div>
+                <div className="min-w-0">
+                  <span
+                    className="text-[13px] font-semibold truncate block"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {isIndonesian
+                      ? "Panduan Fitur & Pengenalan Aplikasi"
+                      : "Interactive Feature Tour"}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                <span
+                  className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+                  style={{
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-secondary)",
+                    background: "var(--bg-elevated)",
+                  }}
+                >
+                  {isIndonesian ? "Putar" : "Replay"}
                 </span>
                 <ChevronRight
                   size={15}
@@ -2609,6 +2725,11 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
           releaseInfo={releaseInfo}
           checking={checkingUpdate}
           onCheckAgain={() => handleCheckForUpdate(false)}
+        />
+
+        <ShortcutManagementSheet
+          isOpen={shortcutSheetOpen}
+          onClose={() => setShortcutSheetOpen(false)}
         />
       </Suspense>
     </div>

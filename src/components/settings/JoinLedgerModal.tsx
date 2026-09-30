@@ -122,12 +122,16 @@ export function JoinLedgerContent({
         setIsSubmitting(true);
         setErrorMessage(null);
         try {
-          const result = await joinSharedSpace(clean, displayNameInput.trim() || undefined);
+          const result = await joinSharedSpace(
+            clean,
+            displayNameInput.trim() || undefined,
+            "qr",
+          );
           if (result.success) {
             showToast(
               isIndonesian
-                ? `Berhasil bergabung ke '${result.ledger_name || "Space Bersama"}'!`
-                : `Joined '${result.ledger_name || "Shared Space"}' successfully!`,
+                ? `Berhasil bergabung otomatis ke '${result.ledger_name || "Space Bersama"}'!`
+                : `Auto-joined '${result.ledger_name || "Shared Space"}' via QR!`,
               "add",
             );
             if (onSuccess) {
@@ -274,13 +278,21 @@ export function JoinLedgerContent({
     setErrorMessage(null);
 
     try {
-      const result = await joinSharedSpace(clean, displayNameInput.trim() || undefined);
+      const result = await joinSharedSpace(
+        clean,
+        displayNameInput.trim() || undefined,
+        "code",
+      );
       if (result.success) {
         triggerSuccessHaptic();
         showToast(
-          isIndonesian
-            ? `Berhasil bergabung ke '${result.ledger_name || "Space Bersama"}'!`
-            : `Joined '${result.ledger_name || "Shared Space"}' successfully!`,
+          result.status === "pending"
+            ? isIndonesian
+              ? `Permintaan bergabung ke '${result.ledger_name || "Space Bersama"}' terkirim! Menunggu persetujuan pemilik.`
+              : `Join request sent to '${result.ledger_name || "Shared Space"}'! Waiting for owner approval.`
+            : isIndonesian
+              ? `Berhasil bergabung ke '${result.ledger_name || "Space Bersama"}'!`
+              : `Joined '${result.ledger_name || "Shared Space"}' successfully!`,
           "add",
         );
         if (onSuccess) {
@@ -310,8 +322,8 @@ export function JoinLedgerContent({
           </h2>
           <p className="text-[12px] text-[var(--text-tertiary)] mt-1 max-w-xs mx-auto leading-relaxed">
             {isIndonesian
-              ? "Masukkan kode 6-karakter atau pindai kode QR untuk mengelola mutasi kas bersama."
-              : "Enter a 6-character code or scan QR code to manage cashflow together."}
+              ? "Masukkan kode 6-karakter (perlu persetujuan pemilik) atau pindai QR untuk bergabung otomatis."
+              : "Enter a 6-character code (requires owner approval) or scan QR to join automatically."}
           </p>
         </div>
       )}
@@ -387,8 +399,8 @@ export function JoinLedgerContent({
 
           {/* Error Banner */}
           {errorMessage && (
-            <div className="p-3 rounded-2xl border border-red-500/20 bg-red-500/5 text-red-400 text-[12px] flex items-start gap-2">
-              <AlertCircle size={15} className="shrink-0 mt-0.5" />
+            <div className="p-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-primary)] text-[12px] flex items-start gap-2">
+              <AlertCircle size={15} className="shrink-0 mt-0.5 text-[var(--text-secondary)]" />
               <span className="leading-snug">{errorMessage}</span>
             </div>
           )}

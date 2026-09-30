@@ -1253,8 +1253,9 @@ export function LoginPage() {
                       />
                       <button
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => setShowPassword(!showPassword)}
-                        className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer ${
+                        className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer select-none ${
                           isDark ? "text-white/40 hover:text-white/80" : "text-zinc-400 hover:text-zinc-700"
                         }`}
                       >
@@ -1331,7 +1332,8 @@ export function LoginPage() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all shadow-md cursor-pointer mt-1 ${
+                      onMouseDown={(e) => e.preventDefault()}
+                      className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all shadow-md cursor-pointer select-none mt-1 ${
                         isDark
                           ? "bg-white text-zinc-950 hover:bg-zinc-100"
                           : "bg-zinc-950 text-white hover:bg-zinc-900"
@@ -1358,12 +1360,13 @@ export function LoginPage() {
                       <button
                         type="button"
                         disabled={loading}
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           setShowEmailForm(false);
                           setError(null);
                           setMessage(null);
                         }}
-                        className={`transition-colors cursor-pointer ${
+                        className={`transition-colors cursor-pointer select-none ${
                           isDark ? "hover:text-white" : "hover:text-zinc-900"
                         }`}
                       >
@@ -1371,13 +1374,14 @@ export function LoginPage() {
                       </button>
                       <button
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           setViewMode("login");
                           setShowEmailForm(true);
                           setError(null);
                           setMessage(null);
                         }}
-                        className={`transition-colors cursor-pointer font-medium ${
+                        className={`transition-colors cursor-pointer select-none font-medium ${
                           isDark ? "text-white/80 hover:text-white" : "text-zinc-800 hover:text-zinc-950"
                         }`}
                       >
@@ -1631,8 +1635,9 @@ export function LoginPage() {
                       />
                       <button
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => setShowPassword(!showPassword)}
-                        className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer ${
+                        className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer select-none ${
                           isDark ? "text-white/40 hover:text-white/80" : "text-zinc-400 hover:text-zinc-700"
                         }`}
                       >
@@ -1666,7 +1671,8 @@ export function LoginPage() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all shadow-md cursor-pointer mt-1 ${
+                      onMouseDown={(e) => e.preventDefault()}
+                      className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all shadow-md cursor-pointer select-none mt-1 ${
                         isDark
                           ? "bg-white text-zinc-950 hover:bg-zinc-100"
                           : "bg-zinc-950 text-white hover:bg-zinc-900"
@@ -1693,12 +1699,13 @@ export function LoginPage() {
                       <button
                         type="button"
                         disabled={loading}
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           setShowEmailForm(false);
                           setError(null);
                           setMessage(null);
                         }}
-                        className={`transition-colors cursor-pointer ${
+                        className={`transition-colors cursor-pointer select-none ${
                           isDark ? "hover:text-white" : "hover:text-zinc-900"
                         }`}
                       >
@@ -1706,8 +1713,9 @@ export function LoginPage() {
                       </button>
                       <button
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={handleForgotPassword}
-                        className={`transition-colors cursor-pointer ${
+                        className={`transition-colors cursor-pointer select-none ${
                           isDark ? "text-white/50 hover:text-white" : "text-zinc-500 hover:text-zinc-800"
                         }`}
                       >
@@ -2000,7 +2008,11 @@ export function LoginPage() {
               </div>
 
               {pinError && (
-                <p className="text-[11.5px] font-medium text-red-400 mb-3 text-center px-2">
+                <p
+                  className={`text-[11.5px] font-medium mb-3 text-center px-2 ${
+                    isDark ? "text-zinc-300" : "text-zinc-700"
+                  }`}
+                >
                   {pinError}
                 </p>
               )}

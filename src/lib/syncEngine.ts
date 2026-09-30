@@ -180,15 +180,13 @@ export async function flushPendingMutations(): Promise<{
           let { error } = await supabase
             .from("transactions")
             .update(cleanUpdates)
-            .eq("id", id)
-            .eq("user_id", user.id);
+            .eq("id", id);
           if (error && cleanUpdates.ledger_id) {
             delete cleanUpdates.ledger_id;
             const retryRes = await supabase
               .from("transactions")
               .update(cleanUpdates)
-              .eq("id", id)
-              .eq("user_id", user.id);
+              .eq("id", id);
             error = retryRes.error;
           }
           if (error) throw error;
@@ -199,8 +197,7 @@ export async function flushPendingMutations(): Promise<{
           const { error } = await supabase
             .from("transactions")
             .delete()
-            .eq("id", id)
-            .eq("user_id", user.id);
+            .eq("id", id);
           if (error) throw error;
           flushedCount++;
         }

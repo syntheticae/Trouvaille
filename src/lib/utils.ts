@@ -125,21 +125,31 @@ export function isUUID(val?: string | null): boolean {
  * - Integer (IDR): 1000000 -> "1.000.000"
  * - Decimals (USD, Crypto Units, APY): 1234.56 -> "1.234,56" or "1,234.56"
  */
+export interface FormattedLiveAmount {
+  display: string;
+  rawNumber: number;
+  formatted: string;
+  raw: number;
+}
+
 export function formatLiveAmountInput(
   value: string,
   isIndonesian: boolean = true,
   allowDecimals: boolean = false,
   maxDecimals: number = 8,
-): { display: string; rawNumber: number } {
-  if (!value) return { display: "", rawNumber: 0 };
+): FormattedLiveAmount {
+  if (!value) return { display: "", rawNumber: 0, formatted: "", raw: 0 };
 
   if (!allowDecimals) {
     const digits = value.replace(/\D/g, "");
-    if (!digits) return { display: "", rawNumber: 0 };
+    if (!digits) return { display: "", rawNumber: 0, formatted: "", raw: 0 };
     const num = parseInt(digits.slice(0, 15), 10);
+    const display = num.toLocaleString(isIndonesian ? "id-ID" : "en-US");
     return {
-      display: num.toLocaleString(isIndonesian ? "id-ID" : "en-US"),
+      display,
       rawNumber: num,
+      formatted: display,
+      raw: num,
     };
   }
 
@@ -175,5 +185,5 @@ export function formatLiveAmountInput(
   }
 
   const rawNumber = parseFloat(`${intNum}.${decPart || 0}`) || 0;
-  return { display, rawNumber };
+  return { display, rawNumber, formatted: display, raw: rawNumber };
 }

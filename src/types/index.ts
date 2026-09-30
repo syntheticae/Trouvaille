@@ -80,12 +80,14 @@ export interface Wallet {
 }
 
 export type LedgerMemberRole = "owner" | "editor" | "viewer";
+export type LedgerMemberStatus = "active" | "pending";
 
 export interface LedgerMember {
   id: string;
   ledger_id: string;
   user_id: string;
   role: LedgerMemberRole;
+  status?: LedgerMemberStatus;
   display_name?: string | null;
   email?: string | null;
   joined_at: string;
@@ -105,6 +107,7 @@ export interface FinancialLedger {
   is_shared?: boolean;
   invite_code?: string | null;
   role?: LedgerMemberRole;
+  member_status?: LedgerMemberStatus;
   members?: LedgerMember[];
 }
 

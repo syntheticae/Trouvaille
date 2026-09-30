@@ -51,23 +51,42 @@ export async function fetchLedgerMembers(ledgerId: string): Promise<LedgerMember
       return cached ? JSON.parse(cached) : [];
     }
 
-    const { data, error } = await supabase
+    const candidateIds =
+      ledgerId === "personal"
+        ? ["personal", `personal-${session.user.id}`]
+        : [ledgerId];
+
+    // Try selecting with status column first, fallback if migration not yet applied
+    let rows: any[] | null = null;
+    const withStatus = await supabase
       .from("ledger_members")
-      .select("id, ledger_id, user_id, role, display_name, email, joined_at")
-      .eq("ledger_id", ledgerId)
+      .select("id, ledger_id, user_id, role, status, display_name, email, joined_at")
+      .in("ledger_id", candidateIds)
       .order("joined_at", { ascending: true });
 
-    if (error) {
-      console.warn("[fetchLedgerMembers] Supabase warning:", error.message);
-      const cached = localStorage.getItem(cacheKey);
-      return cached ? JSON.parse(cached) : [];
+    if (!withStatus.error && withStatus.data) {
+      rows = withStatus.data;
+    } else {
+      const withoutStatus = await supabase
+        .from("ledger_members")
+        .select("id, ledger_id, user_id, role, display_name, email, joined_at")
+        .in("ledger_id", candidateIds)
+        .order("joined_at", { ascending: true });
+
+      if (withoutStatus.error) {
+        console.warn("[fetchLedgerMembers] Supabase warning:", withoutStatus.error.message);
+        const cached = localStorage.getItem(cacheKey);
+        return cached ? JSON.parse(cached) : [];
+      }
+      rows = withoutStatus.data;
     }
 
-    const members: LedgerMember[] = (data || []).map((row) => ({
+    const members: LedgerMember[] = (rows || []).map((row) => ({
       id: row.id,
       ledger_id: row.ledger_id,
       user_id: row.user_id,
       role: row.role as LedgerMemberRole,
+      status: row.status === "pending" ? "pending" : "active",
       display_name: row.display_name,
       email: row.email,
       joined_at: row.joined_at,
@@ -94,15 +113,19 @@ export interface JoinLedgerResult {
   ledger_id?: string;
   ledger_name?: string;
   role?: LedgerMemberRole;
+  status?: "active" | "pending";
   message: string;
 }
 
 /**
  * Joins a shared ledger using its unique invite code.
+ * - joinMethod === "qr": auto-approved ('active')
+ * - joinMethod === "code": requires owner approval ('pending')
  */
 export async function joinLedgerWithCode(
   rawCode: string,
   displayName?: string,
+  joinMethod: "code" | "qr" = "code",
 ): Promise<JoinLedgerResult> {
   const cleanCode = normalizeInviteCode(rawCode);
   if (!cleanCode) {
@@ -121,26 +144,73 @@ export async function joinLedgerWithCode(
       };
     }
 
-    // Call Supabase RPC
-    const { data, error } = await supabase.rpc("join_ledger_by_invite_code", {
+    const resolvedName =
+      displayName ||
+      (session.user.user_metadata?.full_name as string) ||
+      session.user.email?.split("@")[0] ||
+      "Anggota";
+
+    // Attempt 3-parameter RPC (with p_join_method)
+    let rpcData: any = null;
+    let rpcError: any = null;
+
+    const res3 = await supabase.rpc("join_ledger_by_invite_code", {
       p_invite_code: cleanCode,
-      p_display_name: displayName || session.user.email?.split("@")[0] || "Anggota",
+      p_display_name: resolvedName,
+      p_join_method: joinMethod,
     });
 
-    if (error) {
-      console.warn("[joinLedgerWithCode] RPC error:", error.message);
+    if (!res3.error) {
+      rpcData = res3.data;
+    } else {
+      // Fallback to 2-parameter RPC if SQL migration hasn't been executed yet
+      const res2 = await supabase.rpc("join_ledger_by_invite_code", {
+        p_invite_code: cleanCode,
+        p_display_name: resolvedName,
+      });
+      rpcData = res2.data;
+      rpcError = res2.error;
+
+      if (!rpcError && rpcData?.success && rpcData?.ledger_id && joinMethod === "code") {
+        // Best-effort update status to 'pending' if column exists
+        try {
+          await supabase
+            .from("ledger_members")
+            .update({ status: "pending" })
+            .eq("ledger_id", rpcData.ledger_id)
+            .eq("user_id", session.user.id);
+        } catch {}
+      }
+    }
+
+    if (rpcError) {
+      console.warn("[joinLedgerWithCode] RPC error:", rpcError.message);
       return {
         success: false,
-        message: error.message || "Gagal memproses kode undangan.",
+        message: rpcError.message || "Gagal memproses kode undangan.",
       };
     }
 
+    const memberStatus: "active" | "pending" =
+      rpcData?.status === "pending" || rpcData?.status === "active"
+        ? rpcData.status
+        : joinMethod === "qr"
+          ? "active"
+          : "pending";
+
     return {
-      success: Boolean(data?.success),
-      ledger_id: data?.ledger_id,
-      ledger_name: data?.ledger_name,
-      role: data?.role as LedgerMemberRole,
-      message: data?.message || (data?.success ? "Berhasil bergabung!" : "Kode tidak valid."),
+      success: Boolean(rpcData?.success),
+      ledger_id: rpcData?.ledger_id,
+      ledger_name: rpcData?.ledger_name,
+      role: rpcData?.role as LedgerMemberRole,
+      status: memberStatus,
+      message:
+        rpcData?.message ||
+        (rpcData?.success
+          ? memberStatus === "pending"
+            ? "Permintaan bergabung terkirim. Menunggu persetujuan pemilik space."
+            : "Berhasil bergabung!"
+          : "Kode tidak valid."),
     };
   } catch (err: any) {
     console.error("[joinLedgerWithCode] Unexpected error:", err);
@@ -148,6 +218,50 @@ export async function joinLedgerWithCode(
       success: false,
       message: err.message || "Terjadi kesalahan saat memproses permintaan bergabung.",
     };
+  }
+}
+
+/**
+ * Approves a pending member in a shared ledger (Owner only).
+ */
+export async function approveLedgerMember(
+  ledgerId: string,
+  targetUserId: string,
+): Promise<boolean> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const candidateIds =
+      ledgerId === "personal" && session?.user?.id
+        ? ["personal", `personal-${session.user.id}`]
+        : [ledgerId];
+
+    const { error } = await supabase
+      .from("ledger_members")
+      .update({ status: "active" })
+      .in("ledger_id", candidateIds)
+      .eq("user_id", targetUserId);
+
+    if (error) {
+      console.error("[approveLedgerMember] Supabase error:", error);
+      return false;
+    }
+
+    const cacheKey = `${SHARED_MEMBERS_CACHE_PREFIX}${ledgerId}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed: LedgerMember[] = JSON.parse(cached);
+        const updated = parsed.map((m) =>
+          m.user_id === targetUserId ? { ...m, status: "active" as const } : m,
+        );
+        localStorage.setItem(cacheKey, JSON.stringify(updated));
+      }
+    } catch {}
+
+    return true;
+  } catch (err) {
+    console.error("[approveLedgerMember] Error:", err);
+    return false;
   }
 }
 

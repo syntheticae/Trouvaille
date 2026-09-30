@@ -703,16 +703,16 @@ function AppShell() {
     }
   }, [syncStorageKey, user?.id, isGuest, queryClient]);
 
-  // Auto-bypass onboarding trap if user already has categories, wallets, or synced transactions
+  // Auto-bypass onboarding trap if user already has synced transactions from cloud
   useEffect(() => {
-    if (user && !isGuest && !isOnboarded && (categories.length > 0 || wallets.length > 0 || syncedTxCount > 0)) {
+    if (user && !isGuest && !isOnboarded && syncedTxCount > 0) {
       localStorage.setItem("trouvaille_onboarded", "true");
       if (!localStorage.getItem("trouvaille_onboarding_focus")) {
         localStorage.setItem("trouvaille_onboarding_focus", "expenses");
       }
       setIsOnboarded(true);
     }
-  }, [user, isGuest, isOnboarded, categories.length, wallets.length, syncedTxCount]);
+  }, [user, isGuest, isOnboarded, syncedTxCount]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -814,14 +814,14 @@ function AppShell() {
             if (!walletsRes.error) {
               const walletsData = walletsRes.data ?? [];
               queryClient.setQueryData(walletKeys.all(user.id), walletsData);
-              if (walletsData.length === 0) {
+              if (walletsData.length === 0 && isOnboarded) {
                 ensureWallets.mutate();
               }
             }
             if (!categoriesRes.error) {
               const categoriesData = categoriesRes.data ?? [];
               queryClient.setQueryData(categoryKeys.all(user.id), categoriesData);
-              if (categoriesData.length === 0) {
+              if (categoriesData.length === 0 && isOnboarded) {
                 ensureCategories.mutate();
               }
             }
@@ -833,11 +833,14 @@ function AppShell() {
             setSyncProgress(98);
 
             // Cloud Data Detection & Auto-Onboard Bypass:
-            // Existing cloud users should never be forced through the onboarding modal
+            // Existing cloud users with transaction history should not be forced through onboarding modal
             const hasCloudLedger =
               freshTxs.length > 0 ||
-              (walletsRes.data && walletsRes.data.length > 0) ||
-              (categoriesRes.data && categoriesRes.data.length > 0);
+              (walletsRes.data &&
+                walletsRes.data.length > 0 &&
+                categoriesRes.data &&
+                categoriesRes.data.length > 0 &&
+                localStorage.getItem("trouvaille_onboarded") === "true");
             if (hasCloudLedger) {
               localStorage.setItem("trouvaille_onboarded", "true");
               if (!localStorage.getItem("trouvaille_onboarding_focus")) {
@@ -1016,6 +1019,7 @@ function AppShell() {
             queryClient.invalidateQueries({ queryKey: ["categories"] });
             queryClient.invalidateQueries({ queryKey: ["wallets"] });
             queryClient.invalidateQueries({ queryKey: ["transactions"] });
+            navigate("/", { replace: true });
           }}
         />
       </Suspense>

@@ -214,7 +214,7 @@ describe("Bifocal Liquidity Segmentation Rules", () => {
     expect(result.liquidCapital).toBeLessThan(50_000_000);
   });
 
-  it("allows Crypto / USDT wallet to be counted as liquid cash when classified as liquid", () => {
+  it("auto-upgrades Crypto / USDT wallet to investment account by default", () => {
     const wallets: (Wallet & { balance: number })[] = [
       {
         id: "w-crypto",
@@ -223,7 +223,7 @@ describe("Bifocal Liquidity Segmentation Rules", () => {
         icon: "/icons/crypto.png",
         created_at: new Date().toISOString(),
         balance: 14_860_559, // User's actual recorded capital
-        classification: "liquid", // User toggles "Hitung Sebagai Kas Likuid"
+        classification: "liquid", // Database default from legacy import
       },
       {
         id: "w-cash",
@@ -238,10 +238,11 @@ describe("Bifocal Liquidity Segmentation Rules", () => {
 
     const result = calculateWalletBalances([], wallets);
 
-    // Both Cash and Crypto (USDT) are now in liquidAccounts
-    expect(result.liquidAccounts.length).toBe(2);
-    expect(result.liquidCapital).toBe(14_860_559 + 203_000);
-    expect(result.marketAccounts.length).toBe(0);
+    // Crypto is auto-upgraded to marketAccounts
+    expect(result.liquidAccounts.length).toBe(1);
+    expect(result.liquidCapital).toBe(203_000);
+    expect(result.marketAccounts.length).toBe(1);
+    expect(result.marketAssets).toBe(14_860_559);
   });
 
   it("includes receivable (piutang) in liquidAccounts and liquidCapital", () => {

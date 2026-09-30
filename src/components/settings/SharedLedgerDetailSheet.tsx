@@ -20,6 +20,7 @@ import {
   LogOut,
   Link,
   Loader2,
+  Clock,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useSpace, type MoneySpace } from "../../contexts/SpaceContext";
@@ -29,6 +30,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import {
   fetchLedgerMembers,
+  approveLedgerMember,
   updateMemberRole,
   removeMemberFromLedger,
   regenerateInviteCode,
@@ -52,7 +54,7 @@ export function SharedLedgerDetailSheet({
   const { user } = useAuth();
   const { isIndonesian } = useLanguage();
   const { showToast } = useToast();
-  const { leaveSharedSpace, updateCustomSpace, refreshLedgers } = useSpace();
+  const { spaces, leaveSharedSpace, updateCustomSpace, refreshLedgers } = useSpace();
 
   const [members, setMembers] = useState<LedgerMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -63,14 +65,21 @@ export function SharedLedgerDetailSheet({
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
   const [confirmKickMember, setConfirmKickMember] = useState<LedgerMember | null>(null);
 
-  const isOwner = useMemo(() => {
-    if (!ledger) return false;
-    if (ledger.role === "owner") return true;
-    if (user?.id && ledger.user_id === user.id) return true;
-    return false;
-  }, [ledger, user]);
+  // Always resolve the latest reactive space from SpaceContext so newly generated invite_code is never stale
+  const liveLedger = useMemo(() => {
+    if (!ledger) return null;
+    return spaces.find((s) => s.id === ledger.id) || ledger;
+  }, [spaces, ledger]);
 
-  const inviteCode = ledger?.invite_code || "TRV-882";
+  const isOwner = useMemo(() => {
+    if (!liveLedger) return false;
+    if (liveLedger.role === "owner") return true;
+    if (user?.id && liveLedger.user_id === user.id) return true;
+    if (liveLedger.id === "personal") return true;
+    return false;
+  }, [liveLedger, user]);
+
+  const inviteCode = liveLedger?.invite_code || "TRV-882";
   const { webUrl } = useMemo(
     () => buildJoinLedgerUrl(inviteCode),
     [inviteCode],
@@ -78,11 +87,28 @@ export function SharedLedgerDetailSheet({
 
   // Load members and QR code on open
   const loadData = useCallback(async () => {
-    if (!ledger?.id) return;
+    if (!liveLedger?.id) return;
     setLoadingMembers(true);
     try {
-      const list = await fetchLedgerMembers(ledger.id);
-      setMembers(list);
+      const list = await fetchLedgerMembers(liveLedger.id);
+      if (isOwner && user?.id && !list.some((m) => m.user_id === user.id)) {
+        const ownerFallback: LedgerMember = {
+          id: `owner-${user.id}`,
+          ledger_id: liveLedger.id,
+          user_id: user.id,
+          role: "owner",
+          status: "active",
+          display_name:
+            (user.user_metadata?.full_name as string) ||
+            user.email?.split("@")[0] ||
+            (isIndonesian ? "Pemilik" : "Owner"),
+          email: user.email || null,
+          joined_at: new Date().toISOString(),
+        };
+        setMembers([ownerFallback, ...list]);
+      } else {
+        setMembers(list);
+      }
 
       // Generate monochrome Apple SVG QR
       const svg = await generateQrSvg(webUrl, {
@@ -96,19 +122,19 @@ export function SharedLedgerDetailSheet({
     } finally {
       setLoadingMembers(false);
     }
-  }, [ledger?.id, webUrl]);
+  }, [liveLedger?.id, webUrl, isOwner, user, isIndonesian]);
 
   useEffect(() => {
-    if (isOpen && ledger) {
+    if (isOpen && liveLedger) {
       loadData();
       setCopiedCode(false);
       setCopiedLink(false);
       setConfirmLeaveOpen(false);
       setConfirmKickMember(null);
     }
-  }, [isOpen, ledger, loadData]);
+  }, [isOpen, liveLedger?.id, inviteCode, loadData]);
 
-  if (!ledger) return null;
+  if (!liveLedger) return null;
 
   const handleCopyCode = async () => {
     triggerHaptic("light");
@@ -139,13 +165,13 @@ export function SharedLedgerDetailSheet({
   const handleShare = async () => {
     triggerHaptic("medium");
     const shareText = isIndonesian
-      ? `Ayo bergabung ke space bersama '${ledger.name}' di Trouvaille! Masukkan kode: ${inviteCode} atau buka: ${webUrl}`
-      : `Join the shared space '${ledger.name}' on Trouvaille! Use code: ${inviteCode} or open: ${webUrl}`;
+      ? `Ayo bergabung ke space bersama '${liveLedger.name}' di Trouvaille! Masukkan kode: ${inviteCode} atau buka: ${webUrl}`
+      : `Join the shared space '${liveLedger.name}' on Trouvaille! Use code: ${inviteCode} or open: ${webUrl}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Trouvaille - ${ledger.name}`,
+          title: `Trouvaille - ${liveLedger.name}`,
           text: shareText,
           url: webUrl,
         });
@@ -160,9 +186,9 @@ export function SharedLedgerDetailSheet({
     triggerHaptic("medium");
     setIsRegenerating(true);
     try {
-      const newCode = await regenerateInviteCode(ledger.id);
+      const newCode = await regenerateInviteCode(liveLedger.id);
       if (newCode) {
-        updateCustomSpace(ledger.id, { ...ledger, invite_code: newCode });
+        updateCustomSpace(liveLedger.id, { ...liveLedger, invite_code: newCode });
         await refreshLedgers();
         await loadData();
         triggerSuccessHaptic();
@@ -178,10 +204,30 @@ export function SharedLedgerDetailSheet({
     }
   };
 
+  const handleApproveMember = async (targetMember: LedgerMember) => {
+    if (!isOwner) return;
+    triggerHaptic("medium");
+    const success = await approveLedgerMember(liveLedger.id, targetMember.user_id);
+    if (success) {
+      triggerSuccessHaptic();
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.user_id === targetMember.user_id ? { ...m, status: "active" } : m,
+        ),
+      );
+      showToast(
+        isIndonesian
+          ? `${targetMember.display_name || "Anggota"} telah disetujui!`
+          : `${targetMember.display_name || "Member"} approved!`,
+        "add",
+      );
+    }
+  };
+
   const handleChangeRole = async (targetMember: LedgerMember, newRole: LedgerMemberRole) => {
     if (!isOwner) return;
     triggerHaptic("light");
-    const success = await updateMemberRole(ledger.id, targetMember.user_id, newRole);
+    const success = await updateMemberRole(liveLedger.id, targetMember.user_id, newRole);
     if (success) {
       setMembers((prev) =>
         prev.map((m) =>
@@ -200,7 +246,7 @@ export function SharedLedgerDetailSheet({
   const handleKickMember = async (targetMember: LedgerMember) => {
     if (!isOwner) return;
     triggerHaptic("heavy");
-    const success = await removeMemberFromLedger(ledger.id, targetMember.user_id);
+    const success = await removeMemberFromLedger(liveLedger.id, targetMember.user_id);
     if (success) {
       setMembers((prev) => prev.filter((m) => m.user_id !== targetMember.user_id));
       setConfirmKickMember(null);
@@ -213,7 +259,7 @@ export function SharedLedgerDetailSheet({
 
   const handleLeaveLedger = async () => {
     triggerHaptic("heavy");
-    const success = await leaveSharedSpace(ledger.id);
+    const success = await leaveSharedSpace(liveLedger.id);
     if (success) {
       triggerSuccessHaptic();
       showToast(
@@ -235,10 +281,10 @@ export function SharedLedgerDetailSheet({
             <span>{isIndonesian ? "Space Bersama" : "Shared Collaborative Space"}</span>
           </div>
           <h2 className="text-[20px] font-semibold text-[var(--text-primary)] tracking-tight">
-            {ledger.name}
+            {liveLedger.name}
           </h2>
           <p className="text-[12px] text-[var(--text-tertiary)] mt-1 max-w-xs mx-auto leading-relaxed">
-            {ledger.description || (isIndonesian ? "Kelola keuangan dan mutasi kas bersama secara transparan." : "Manage cashflow and expenses together transparently.")}
+            {liveLedger.description || (isIndonesian ? "Kelola keuangan dan mutasi kas bersama secara transparan." : "Manage cashflow and expenses together transparently.")}
           </p>
         </div>
 
@@ -317,7 +363,7 @@ export function SharedLedgerDetailSheet({
         >
           <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
             <QrCode size={13} strokeWidth={1.75} />
-            <span>{isIndonesian ? "Pindai Kode QR Antar-Layar" : "Scan Cross-Device QR"}</span>
+            <span>{isIndonesian ? "Pindai Kode QR Antar-Layar (Otomatis Setuju)" : "Scan Cross-Device QR (Auto-Approve)"}</span>
           </div>
 
           {/* High-Contrast Crisp SVG QR */}
@@ -333,8 +379,8 @@ export function SharedLedgerDetailSheet({
           </div>
           <p className="text-[11px] text-[var(--text-tertiary)]">
             {isIndonesian
-              ? "Buka menu Gabung di ponsel partner atau arahkan kamera bawaan iPhone/Android."
-              : "Open Join menu on partner's phone or aim native iOS/Android camera."}
+              ? "Anggota yang memindai QR langsung aktif otomatis. Anggota via kode teks memerlukan persetujuan Anda."
+              : "Members scanning QR join immediately. Members entering text code require your approval."}
           </p>
         </div>
 
@@ -368,6 +414,7 @@ export function SharedLedgerDetailSheet({
             ) : (
               members.map((member) => {
                 const isMe = member.user_id === user?.id;
+                const isPending = member.status === "pending";
                 const memberInitials = (member.display_name || member.email || "User")
                   .slice(0, 2)
                   .toUpperCase();
@@ -383,7 +430,7 @@ export function SharedLedgerDetailSheet({
                         {memberInitials}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
                             {member.display_name || member.email?.split("@")[0] || "Anggota"}
                           </p>
@@ -392,9 +439,19 @@ export function SharedLedgerDetailSheet({
                               {isIndonesian ? "Saya" : "You"}
                             </span>
                           )}
+                          {isPending && (
+                            <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--glass-border)] inline-flex items-center gap-1">
+                              <Clock size={9} strokeWidth={2} />
+                              <span>{isIndonesian ? "Menunggu" : "Pending"}</span>
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-[var(--text-tertiary)] truncate">
-                          {member.email || (isIndonesian ? "Terhubung" : "Connected")}
+                          {isPending
+                            ? isIndonesian
+                              ? "Menunggu persetujuan pemilik space"
+                              : "Awaiting space owner approval"
+                            : member.email || (isIndonesian ? "Terhubung" : "Connected")}
                         </p>
                       </div>
                     </div>
@@ -402,48 +459,79 @@ export function SharedLedgerDetailSheet({
                     {/* Role Badge / Control */}
                     <div className="flex items-center gap-2 shrink-0">
                       {isOwner && !isMe ? (
-                        <div className="flex items-center gap-1.5">
-                          {/* Role Toggle Button */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleChangeRole(
-                                member,
-                                member.role === "editor" ? "viewer" : "editor",
-                              )
-                            }
-                            className="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] flex items-center gap-1 cursor-pointer transition-colors active:scale-95"
-                          >
-                            {member.role === "editor" ? (
-                              <>
-                                <Edit3 size={10} strokeWidth={2} />
-                                <span>{isIndonesian ? "Pengelola" : "Editor"}</span>
-                              </>
-                            ) : (
-                              <>
-                                <Eye size={10} strokeWidth={2} />
-                                <span>{isIndonesian ? "Pemantau" : "Viewer"}</span>
-                              </>
-                            )}
-                          </button>
+                        isPending ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleApproveMember(member)}
+                              className="px-3 py-1 rounded-full text-[11px] font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)] flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm"
+                            >
+                              <Check size={11} strokeWidth={2.5} />
+                              <span>{isIndonesian ? "Setujui" : "Approve"}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmKickMember(member)}
+                              className="w-7 h-7 rounded-full border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors cursor-pointer"
+                              title={isIndonesian ? "Tolak Permintaan" : "Decline Request"}
+                            >
+                              <UserX size={13} strokeWidth={1.75} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            {/* Role Toggle Button */}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleChangeRole(
+                                  member,
+                                  member.role === "editor" ? "viewer" : "editor",
+                                )
+                              }
+                              className="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] flex items-center gap-1 cursor-pointer transition-colors active:scale-95"
+                            >
+                              {member.role === "editor" ? (
+                                <>
+                                  <Edit3 size={10} strokeWidth={2} />
+                                  <span>{isIndonesian ? "Pengelola" : "Editor"}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Eye size={10} strokeWidth={2} />
+                                  <span>{isIndonesian ? "Pemantau" : "Viewer"}</span>
+                                </>
+                              )}
+                            </button>
 
-                          {/* Kick Button */}
-                          <button
-                            type="button"
-                            onClick={() => setConfirmKickMember(member)}
-                            className="w-7 h-7 rounded-full text-[var(--text-tertiary)] hover:text-red-400 flex items-center justify-center transition-colors cursor-pointer"
-                            title={isIndonesian ? "Keluarkan Anggota" : "Remove Member"}
-                          >
-                            <UserX size={13} strokeWidth={1.75} />
-                          </button>
-                        </div>
+                            {/* Kick Button */}
+                            <button
+                              type="button"
+                              onClick={() => setConfirmKickMember(member)}
+                              className="w-7 h-7 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors cursor-pointer"
+                              title={isIndonesian ? "Keluarkan Anggota" : "Remove Member"}
+                            >
+                              <UserX size={13} strokeWidth={1.75} />
+                            </button>
+                          </div>
+                        )
                       ) : (
                         <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-tertiary)]">
-                          {member.role === "owner"
-                            ? isIndonesian ? "Pemilik" : "Owner"
-                            : member.role === "editor"
-                            ? isIndonesian ? "Pengelola" : "Editor"
-                            : isIndonesian ? "Pemantau" : "Viewer"}
+                          {isPending
+                            ? isIndonesian
+                              ? "Menunggu"
+                              : "Pending"
+                            : member.role === "owner"
+                              ? isIndonesian
+                                ? "Pemilik"
+                                : "Owner"
+                              : member.role === "editor"
+                                ? isIndonesian
+                                  ? "Pengelola"
+                                  : "Editor"
+                                : isIndonesian
+                                  ? "Pemantau"
+                                  : "Viewer"}
                         </span>
                       )}
                     </div>
@@ -459,7 +547,7 @@ export function SharedLedgerDetailSheet({
           {onEditLedger && isOwner && (
             <button
               type="button"
-              onClick={() => onEditLedger(ledger)}
+              onClick={() => onEditLedger(liveLedger)}
               className="w-full py-3 px-4 rounded-2xl text-[13px] font-semibold border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-primary)] transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2"
             >
               <Edit3 size={14} strokeWidth={1.75} />
@@ -471,7 +559,7 @@ export function SharedLedgerDetailSheet({
             <button
               type="button"
               onClick={() => setConfirmLeaveOpen(true)}
-              className="w-full py-3 px-4 rounded-2xl text-[13px] font-semibold border border-red-500/20 bg-red-500/5 text-red-400 transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-2xl text-[13px] font-semibold border border-[var(--glass-border)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2"
             >
               <LogOut size={14} strokeWidth={1.75} />
               <span>{isIndonesian ? "Keluar dari Space Bersama" : "Leave Shared Space"}</span>
@@ -508,7 +596,7 @@ export function SharedLedgerDetailSheet({
                 <button
                   type="button"
                   onClick={() => handleKickMember(confirmKickMember)}
-                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-red-500/20 border border-red-500/30 text-red-400"
+                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)]"
                 >
                   {isIndonesian ? "Keluarkan" : "Remove"}
                 </button>
@@ -546,7 +634,7 @@ export function SharedLedgerDetailSheet({
                 <button
                   type="button"
                   onClick={handleLeaveLedger}
-                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-red-500/20 border border-red-500/30 text-red-400"
+                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)]"
                 >
                   {isIndonesian ? "Keluar" : "Leave"}
                 </button>

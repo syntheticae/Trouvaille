@@ -157,23 +157,36 @@ export function saveUsdtPref(pref: UsdtValuationPref, userId?: string): void {
     safeRemoveItem("trouvaille_usdt_valuation_v2");
     safeRemoveItem("trouvaille_usdt_valuation_v1");
 
-    // Asynchronously synchronize USDT to Supabase holdings table
+    // Asynchronously synchronize USDT to Supabase holdings table ONLY if user has positive units
     if (userId && userId !== "guest_local_user") {
-      syncHoldingToSupabase(
-        {
-          id: `usdt-${userId}`,
-          symbol: "USDT",
-          name: "Tether USD",
-          asset_type: "crypto",
-          units: pref.units,
-          avg_buy_price: pref.units > 0 ? Math.round(pref.costBasis / pref.units) : pref.rate,
-          current_price: pref.rate,
-          currency: "IDR",
-          icon: "Coins",
-          last_price_updated_at: new Date().toISOString(),
-        },
-        userId,
-      ).catch(() => {});
+      if (pref.units > 0) {
+        syncHoldingToSupabase(
+          {
+            id: `usdt-${userId}`,
+            symbol: "USDT",
+            name: "Tether USD",
+            asset_type: "crypto",
+            units: pref.units,
+            avg_buy_price: Math.round(pref.costBasis / pref.units),
+            current_price: pref.rate,
+            currency: "IDR",
+            icon: "Coins",
+            last_price_updated_at: new Date().toISOString(),
+          },
+          userId,
+        ).catch(() => {});
+      } else {
+        // If units are 0 or cleared, clean up any phantom USDT holding in Supabase
+        supabase
+          .from("holdings")
+          .delete()
+          .eq("user_id", userId)
+          .eq("symbol", "USDT")
+          .then(
+            () => {},
+            () => {},
+          );
+      }
     }
 
     if (typeof window !== "undefined") {
@@ -297,6 +310,13 @@ export function markTxAsReconciled(txIds: string[], userId?: string): void {
  */
 export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: string): Promise<void> {
   if (!userId || userId === "guest_local_user") return;
+  // Never persist a 0-unit USDT holding into cloud holdings
+  if (
+    holding.symbol?.toUpperCase() === "USDT" &&
+    (!holding.units || Number(holding.units) <= 0)
+  ) {
+    return;
+  }
   try {
     let holdingId = holding.id;
 
@@ -561,7 +581,7 @@ export async function refreshAllPortfolioPrices(userId?: string): Promise<{
   if (isCustomUsdt) {
     liveUsdtRate = usdtHolding!.custom_price!;
   } else if (liveUsdtRate && liveUsdtRate > 5000 && liveUsdtRate < 50000) {
-    if (currentPref.rate !== liveUsdtRate) {
+    if (currentPref.units > 0 && currentPref.rate !== liveUsdtRate) {
       saveUsdtPref({ ...currentPref, rate: liveUsdtRate }, userId);
     }
   } else {

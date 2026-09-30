@@ -1,6 +1,6 @@
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -20,10 +20,12 @@ import {
   AlertTriangle,
   Coins,
   Lock,
+  Plus,
 } from "lucide-react";
 import { TransactionKeypadSheet } from "./TransactionKeypadSheet";
 import { CategorySelectorRibbon } from "./CategorySelectorRibbon";
 import { WalletSelectorRibbon } from "./WalletSelectorRibbon";
+import { ShortcutManagementSheet } from "../settings/ShortcutManagementSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useCategories } from "../../hooks/useCategories";
@@ -39,7 +41,7 @@ import { useWalletSuggestions } from "../../hooks/useWalletSuggestions";
 import { useMerchantMemory } from "../../hooks/useMerchantMemory";
 import { useBudgetTarget } from "../../hooks/useBudgetTarget";
 import { useToast } from "../../contexts/ToastContext";
-import { formatRupiah } from "../../lib/utils";
+import { formatRupiah, formatLiveAmountInput } from "../../lib/utils";
 import { format, isToday, parseISO } from "date-fns";
 import { IconRenderer } from "../ui/IconRenderer";
 import { GlassDatePicker } from "../ui/GlassDatePicker";
@@ -51,8 +53,9 @@ import { useSpace } from "../../contexts/SpaceContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import {
-  isInvestmentOrCryptoWallet,
+  isUsdtWallet,
   syncTransactionWithHolding,
   reverseTransactionWithHolding,
 } from "../../lib/holdingSyncEngine";
@@ -95,6 +98,25 @@ export function TransactionSheet({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isIndonesian } = useLanguage();
+  const { preferredCurrency, currencyMeta, convertToIdr, convertFromIdr } =
+    useCurrency();
+  const allowDecimals = currencyMeta.decimals > 0;
+  const maxDecimals = currencyMeta.decimals || 2;
+
+  const formatDisplayNumber = useCallback(
+    (num: number) => {
+      if (!num || isNaN(num) || num <= 0) return "";
+      if (allowDecimals) {
+        return num.toLocaleString("en-US", {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: maxDecimals,
+        });
+      }
+      return Math.round(num).toLocaleString("id-ID");
+    },
+    [allowDecimals, maxDecimals],
+  );
+
   const [activeTab, setActiveTab] = useState<TabType>(
     () => transaction?.type || initialValues?.type || "expense",
   );
@@ -110,6 +132,7 @@ export function TransactionSheet({
       : "",
   );
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false);
 
   // Keypad style preference: liquid custom keypad vs default system keyboard
   const [useCustomKeypad] = useState<boolean>(() => {
@@ -172,7 +195,7 @@ export function TransactionSheet({
   const { user } = useAuth();
   const { data: wallets = [] } = useWallets();
 
-  // Crypto Asset Units and Sync State
+  // Crypto Asset Units and Sync State (Strictly USDT / Crypto wallets, never Reksa Dana)
   const fromWallet = useMemo(
     () => wallets.find((w) => w.id === walletId),
     [wallets, walletId],
@@ -183,11 +206,11 @@ export function TransactionSheet({
   );
 
   const isFromCrypto = useMemo(
-    () => isInvestmentOrCryptoWallet(fromWallet),
+    () => isUsdtWallet(fromWallet),
     [fromWallet],
   );
   const isToCrypto = useMemo(
-    () => isInvestmentOrCryptoWallet(toWallet),
+    () => isUsdtWallet(toWallet),
     [toWallet],
   );
   const isCryptoInvolved = isFromCrypto || (type === "transfer" && isToCrypto);
@@ -210,22 +233,30 @@ export function TransactionSheet({
 
   useEffect(() => {
     if (isCryptoInvolved && !isUnitsInputMode) {
-      const num = Number(amount) || 0;
-      if (num > 0 && cryptoRate > 0) {
-        setCryptoUnits(Number((num / cryptoRate).toFixed(4)).toString());
+      const rawNum = Number(amount) || 0;
+      const numInIdr =
+        preferredCurrency === "IDR"
+          ? rawNum
+          : convertToIdr(rawNum, preferredCurrency);
+      if (numInIdr > 0 && cryptoRate > 0) {
+        setCryptoUnits(Number((numInIdr / cryptoRate).toFixed(4)).toString());
       } else {
         setCryptoUnits("");
       }
     }
-  }, [amount, cryptoRate, isCryptoInvolved, isUnitsInputMode]);
+  }, [amount, cryptoRate, isCryptoInvolved, isUnitsInputMode, preferredCurrency, convertToIdr]);
 
   const handleCryptoUnitsChange = (valStr: string) => {
     setCryptoUnits(valStr);
     const u = parseFloat(valStr);
     if (!isNaN(u) && u > 0 && cryptoRate > 0) {
-      const calcAmount = Math.round(u * cryptoRate);
-      setAmount(String(calcAmount));
-      setAmountInput(calcAmount.toLocaleString("id-ID"));
+      const calcAmountIdr = Math.round(u * cryptoRate);
+      const displayAmt =
+        preferredCurrency === "IDR"
+          ? calcAmountIdr
+          : Number(convertFromIdr(calcAmountIdr).toFixed(maxDecimals));
+      setAmount(String(displayAmt));
+      setAmountInput(formatDisplayNumber(displayAmt));
     } else if (!valStr) {
       setAmount("0");
       setAmountInput("");
@@ -344,7 +375,11 @@ export function TransactionSheet({
 
   // Duplicate Transaction Warning Detection (15 min window)
   const isDuplicateDetected = useMemo(() => {
-    const currentVal = evaluateMathSafe(amountInput);
+    const currentValRaw = evaluateMathSafe(amountInput);
+    const currentVal =
+      preferredCurrency === "IDR"
+        ? currentValRaw
+        : Math.round(convertToIdr(currentValRaw, preferredCurrency));
     if (!currentVal || currentVal <= 0 || allTxs.length === 0) return false;
     const refTime = date ? date.getTime() : 0;
     if (!refTime) return false;
@@ -358,17 +393,31 @@ export function TransactionSheet({
       const diffMinutes = Math.abs(refTime - txTime) / (1000 * 60);
       return diffMinutes <= 15;
     });
-  }, [amountInput, allTxs, transaction, type, categoryId, walletId, date]);
+  }, [
+    amountInput,
+    allTxs,
+    transaction,
+    type,
+    categoryId,
+    walletId,
+    date,
+    preferredCurrency,
+    convertToIdr,
+  ]);
 
   // Budget Impact Preview (Expense MTD projection)
   const budgetImpact = useMemo(() => {
     if (type !== "expense" || !categoryId) return null;
     const numFromState = Number(amount);
-    const currentVal = /[+\-*/×÷]/.test(amountInput)
+    const currentValRaw = /[+\-*/×÷]/.test(amountInput)
       ? evaluateMathSafe(amountInput)
       : !isNaN(numFromState) && numFromState > 0
         ? numFromState
         : evaluateMathSafe(amountInput);
+    const currentVal =
+      preferredCurrency === "IDR"
+        ? currentValRaw
+        : Math.round(convertToIdr(currentValRaw, preferredCurrency));
     if (currentVal <= 0) return null;
 
     const now = date || new Date();
@@ -461,6 +510,8 @@ export function TransactionSheet({
     allCategories,
     budgetTarget,
     isIndonesian,
+    preferredCurrency,
+    convertToIdr,
   ]);
 
   const filteredMoreCategories = useMemo(() => {
@@ -545,11 +596,14 @@ export function TransactionSheet({
       if (transaction) {
         setActiveTab(transaction.type);
         setType(transaction.type);
-        setAmount(String(transaction.amount || "0"));
+        const rawTxAmt = Number(transaction.amount || 0);
+        const displayTxAmt =
+          preferredCurrency === "IDR"
+            ? rawTxAmt
+            : Number(convertFromIdr(rawTxAmt).toFixed(maxDecimals));
+        setAmount(String(displayTxAmt || "0"));
         setAmountInput(
-          Number(transaction.amount) > 0
-            ? Number(transaction.amount).toLocaleString("id-ID")
-            : "",
+          displayTxAmt > 0 ? formatDisplayNumber(displayTxAmt) : "",
         );
         setNote(transaction.note || "");
         setDate(
@@ -628,16 +682,19 @@ export function TransactionSheet({
         setToWalletId(resolvedToWalletId);
       } else {
         const initType = initialValues?.type || "expense";
-        const initAmt =
+        const rawInitAmt =
           initialValues?.amount !== undefined && initialValues?.amount !== null
-            ? String(initialValues.amount)
-            : "0";
+            ? Number(initialValues.amount)
+            : 0;
+        const displayInitAmt =
+          rawInitAmt > 0
+            ? preferredCurrency === "IDR"
+              ? rawInitAmt
+              : Number(convertFromIdr(rawInitAmt).toFixed(maxDecimals))
+            : 0;
+        const initAmt = String(displayInitAmt);
         const initAmtInput =
-          initialValues?.amount !== undefined &&
-          initialValues?.amount !== null &&
-          initialValues.amount > 0
-            ? initialValues.amount.toLocaleString("id-ID")
-            : "";
+          displayInitAmt > 0 ? formatDisplayNumber(displayInitAmt) : "";
         const initNote = initialValues?.note || "";
         const initDate = initialValues?.date || new Date();
 
@@ -685,6 +742,10 @@ export function TransactionSheet({
     suggestedCategories,
     suggestedFromWallets,
     suggestedToWallets,
+    preferredCurrency,
+    convertFromIdr,
+    maxDecimals,
+    formatDisplayNumber,
   ]);
 
   // Ensure valid toWalletId when type is transfer
@@ -713,8 +774,13 @@ export function TransactionSheet({
 
     const isUUID = (id?: string | null) => !!id && id.trim().length > 0;
 
-    const numAmount = Number(amount);
+    const rawDisplayAmount = Number(amount);
+    const numAmount =
+      preferredCurrency === "IDR"
+        ? Math.round(rawDisplayAmount)
+        : Math.round(convertToIdr(rawDisplayAmount, preferredCurrency));
     if (
+      rawDisplayAmount <= 0 ||
       numAmount <= 0 ||
       isSavingRef.current ||
       isSaving ||
@@ -1031,9 +1097,9 @@ export function TransactionSheet({
           })}
         </div>
 
-        {/* Quick Add Shortcuts */}
-        {shortcuts.length > 0 && !transaction && (
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
+        {/* Quick Add Shortcuts & + Preset Chip */}
+        {!transaction && (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
             {shortcuts.map((s) => (
               <button
                 key={s.id}
@@ -1041,24 +1107,47 @@ export function TransactionSheet({
                 onClick={() => {
                   setActiveTab(s.type);
                   setType(s.type);
-                  setAmount(String(s.amount));
-                  setAmountInput(Number(s.amount).toLocaleString("id-ID"));
+                  const rawShortcutAmt = Number(s.amount || 0);
+                  const dispAmt =
+                    preferredCurrency === "IDR"
+                      ? rawShortcutAmt
+                      : Number(
+                          convertFromIdr(rawShortcutAmt).toFixed(maxDecimals),
+                        );
+                  setAmount(String(dispAmt));
+                  setAmountInput(dispAmt > 0 ? formatDisplayNumber(dispAmt) : "");
                   setNote(s.note);
                   if (s.category_id) setCategoryId(s.category_id);
                   if (s.wallet_id) setWalletId(s.wallet_id);
                   triggerHaptic("light");
                 }}
-                className="whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
+                className="whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer select-none"
                 style={{
                   background: "var(--glass-fill)",
                   border: "1px solid var(--glass-border)",
                   color: "var(--text-secondary)",
                 }}
               >
-                <Zap size={11} fill="currentColor" />
+                <Zap size={11} strokeWidth={1.75} />
                 <span>{s.title}</span>
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setShortcutSheetOpen(true);
+              }}
+              className="whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer select-none"
+              style={{
+                background: "transparent",
+                border: "1px dashed var(--glass-border)",
+                color: "var(--text-tertiary)",
+              }}
+            >
+              <Plus size={11} strokeWidth={1.75} />
+              <span>{isIndonesian ? "Preset" : "Preset"}</span>
+            </button>
           </div>
         )}
 
@@ -1101,14 +1190,21 @@ export function TransactionSheet({
                 fontFamily: "Urbanist, -apple-system, sans-serif",
               }}
             >
-              Rp
+              {currencyMeta.symbol}
             </span>
             <input
               ref={amountInputRef}
               type="text"
               readOnly={useCustomKeypad}
-              inputMode={useCustomKeypad ? "none" : "numeric"}
-              pattern="[0-9]*"
+              tabIndex={useCustomKeypad ? -1 : 0}
+              inputMode={
+                useCustomKeypad
+                  ? "none"
+                  : allowDecimals
+                    ? "decimal"
+                    : "numeric"
+              }
+              pattern={allowDecimals ? undefined : "[0-9]*"}
               value={amountInput}
               onClick={() => {
                 if (useCustomKeypad) {
@@ -1123,17 +1219,14 @@ export function TransactionSheet({
                     // Math mode: preserve expression like 50.000 + 20.000
                     setAmountInput(val);
                   } else {
-                    // Pure numbers: instant live Indonesian thousand separator formatting
-                    const rawDigits = val.replace(/\D/g, "");
-                    if (!rawDigits) {
-                      setAmount("0");
-                      setAmountInput("");
-                    } else {
-                      const limited = rawDigits.slice(0, 11);
-                      const num = parseInt(limited, 10);
-                      setAmount(String(num));
-                      setAmountInput(num.toLocaleString("id-ID"));
-                    }
+                    const { raw, formatted } = formatLiveAmountInput(
+                      val,
+                      isIndonesian && !allowDecimals,
+                      allowDecimals,
+                      maxDecimals,
+                    );
+                    setAmount(raw ? String(raw) : "0");
+                    setAmountInput(formatted);
                   }
                 }
               }}
@@ -1141,7 +1234,7 @@ export function TransactionSheet({
                 const evaluated = evaluateMathSafe(amountInput);
                 setAmount(String(evaluated));
                 setAmountInput(
-                  evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
+                  evaluated === 0 ? "" : formatDisplayNumber(evaluated),
                 );
               }}
               onKeyDown={(e) => {
@@ -1149,13 +1242,15 @@ export function TransactionSheet({
                   const evaluated = evaluateMathSafe(amountInput);
                   setAmount(String(evaluated));
                   setAmountInput(
-                    evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
+                    evaluated === 0 ? "" : formatDisplayNumber(evaluated),
                   );
                   (e.target as HTMLInputElement).blur();
                 }
               }}
               placeholder="0"
-              className="text-[42px] sm:text-[46px] font-semibold amount tracking-tight leading-none bg-transparent outline-none text-left min-w-[60px] max-w-[240px] cursor-pointer"
+              className={`text-[42px] sm:text-[46px] font-semibold amount tracking-tight leading-none bg-transparent outline-none text-left min-w-[60px] max-w-[240px] cursor-pointer ${
+                useCustomKeypad ? "pointer-events-none select-none" : ""
+              }`}
               style={{
                 color: "var(--text-primary)",
                 fontFamily: "Urbanist, -apple-system, sans-serif",
@@ -1174,7 +1269,7 @@ export function TransactionSheet({
                   const evaluated = evaluateMathSafe(amountInput);
                   setAmount(String(evaluated));
                   setAmountInput(
-                    evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
+                    evaluated === 0 ? "" : formatDisplayNumber(evaluated),
                   );
                 }}
                 className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold inline-flex items-center gap-1.5 active:scale-95 transition-all shadow-md cursor-pointer select-none"
@@ -1185,7 +1280,10 @@ export function TransactionSheet({
                   boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
                 }}
               >
-                <span>= {formatRupiah(evaluateMathSafe(amountInput))}</span>
+                <span>
+                  = {currencyMeta.symbol}{" "}
+                  {formatDisplayNumber(evaluateMathSafe(amountInput))}
+                </span>
                 <span className="text-[10px] opacity-75 font-normal">
                   {isIndonesian ? "(Ketuk untuk terapkan)" : "(Tap to apply)"}
                 </span>
@@ -1195,21 +1293,31 @@ export function TransactionSheet({
 
           {/* Quick Increment Chips: Clean, Single Minimalist Row */}
           <div className="flex items-center justify-center gap-2 mt-3 px-2">
-            {[
-              { label: "+10K", add: 10000 },
-              { label: "+50K", add: 50000 },
-              { label: "+100K", add: 100000 },
-              { label: "+500K", add: 500000 },
-            ].map((preset) => (
+            {(allowDecimals
+              ? [
+                  { label: `+${currencyMeta.symbol}5`, add: 5 },
+                  { label: `+${currencyMeta.symbol}10`, add: 10 },
+                  { label: `+${currencyMeta.symbol}50`, add: 50 },
+                  { label: `+${currencyMeta.symbol}100`, add: 100 },
+                ]
+              : [
+                  { label: "+10K", add: 10000 },
+                  { label: "+50K", add: 50000 },
+                  { label: "+100K", add: 100000 },
+                  { label: "+500K", add: 500000 },
+                ]
+            ).map((preset) => (
               <button
                 key={preset.label}
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
                   const current = evaluateMathSafe(amountInput);
-                  const next = current + preset.add;
+                  const next = Number(
+                    (current + preset.add).toFixed(maxDecimals),
+                  );
                   setAmount(String(next));
-                  setAmountInput(next.toLocaleString("id-ID"));
+                  setAmountInput(formatDisplayNumber(next));
                 }}
                 className="px-3 py-1.5 rounded-xl text-[11px] font-semibold active:scale-95 transition-all cursor-pointer select-none"
                 style={{
@@ -1250,7 +1358,7 @@ export function TransactionSheet({
                     {isFromCrypto && type === "transfer"
                       ? isIndonesian
                         ? "Penarikan P2P"
-                        : "P2P Withdrawal / Penarikan"
+                        : "P2P Withdrawal"
                       : isToCrypto && type === "transfer"
                         ? isIndonesian
                           ? "Pembelian / Setoran P2P"
@@ -1323,8 +1431,8 @@ export function TransactionSheet({
                       color:
                         isFromCrypto &&
                         (type === "transfer" || type === "expense")
-                          ? "#ef4444"
-                          : "var(--accent, #10b981)",
+                          ? "var(--text-secondary)"
+                          : "var(--text-primary)",
                     }}
                   >
                     {isFromCrypto && (type === "transfer" || type === "expense")
@@ -1434,14 +1542,12 @@ export function TransactionSheet({
                     className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                     style={{
                       background: budgetImpact.isOver
-                        ? "rgba(239, 68, 68, 0.25)"
+                        ? isDark
+                          ? "rgba(255, 255, 255, 0.14)"
+                          : "rgba(0, 0, 0, 0.1)"
                         : "var(--bg-elevated)",
-                      color: budgetImpact.isOver
-                        ? "#fca5a5"
-                        : "var(--text-primary)",
-                      border: budgetImpact.isOver
-                        ? "1px solid rgba(239, 68, 68, 0.4)"
-                        : "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                      border: "1px solid var(--glass-border)",
                     }}
                   >
                     {budgetImpact.pct}% {isIndonesian ? "tersisa" : "left"}
@@ -1593,7 +1699,7 @@ export function TransactionSheet({
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 <span>
-                  Space:{" "}
+                  {isIndonesian ? "Ruang:" : "Space:"}{" "}
                   <strong className="text-[var(--text-primary)]">
                     {activeSpace.name}
                   </strong>
@@ -1624,7 +1730,7 @@ export function TransactionSheet({
         {/* Reimbursable Highlight Notice */}
         {activeTags.includes("#reimburse") && (
           <div className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)] shrink-0" />
             <span>
               {isIndonesian ? (
                 <>
@@ -1701,9 +1807,9 @@ export function TransactionSheet({
               onClick={handleDelete}
               className="w-12 h-12 rounded-2xl flex items-center justify-center active:scale-95 shrink-0 transition-all cursor-pointer"
               style={{
-                background: "rgba(239, 68, 68, 0.12)",
-                color: "#ef4444",
-                border: "1px solid rgba(239, 68, 68, 0.25)",
+                background: "var(--glass-fill)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--glass-border)",
               }}
               title={isIndonesian ? "Hapus Transaksi" : "Delete Transaction"}
             >
@@ -2589,9 +2695,15 @@ export function TransactionSheet({
           const evaluated = evaluateMathSafe(amountInput);
           setAmount(String(evaluated));
           setAmountInput(
-            evaluated === 0 ? "" : evaluated.toLocaleString("id-ID"),
+            evaluated === 0 ? "" : formatDisplayNumber(evaluated),
           );
         }}
+      />
+
+      {/* Quick Shortcut Preset Management Sheet */}
+      <ShortcutManagementSheet
+        isOpen={shortcutSheetOpen}
+        onClose={() => setShortcutSheetOpen(false)}
       />
     </BottomSheet>
   );

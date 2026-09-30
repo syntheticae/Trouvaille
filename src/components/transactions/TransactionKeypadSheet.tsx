@@ -1,11 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Delete, Check, RotateCcw } from "lucide-react";
 import { triggerHaptic } from "../../lib/haptics";
-import { formatRupiah } from "../../lib/utils";
 import { applyKeypadInput } from "../../lib/keypadHelper";
 import { evaluateMathSafe } from "../../lib/evaluateMathSafe";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency, formatCurrencyAmount } from "../../contexts/CurrencyContext";
 
 interface TransactionKeypadSheetProps {
   isOpen: boolean;
@@ -24,7 +24,10 @@ export function TransactionKeypadSheet({
 }: TransactionKeypadSheetProps) {
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
+  const { preferredCurrency, currencyMeta } = useCurrency();
   const isDark = theme !== "light";
+  const allowDecimals = currencyMeta.decimals > 0;
+  const maxDecimals = currencyMeta.decimals || 2;
 
   if (!isOpen) return null;
 
@@ -33,13 +36,19 @@ export function TransactionKeypadSheet({
 
   const handleKey = (key: string) => {
     triggerHaptic("light");
-    const res = applyKeypadInput(expression, key);
+    const res = applyKeypadInput(expression, key, {
+      allowDecimals,
+      maxDecimals,
+    });
     onExpressionChange(res.expression, res.numericValue);
   };
 
   const handleDone = () => {
     triggerHaptic("medium");
-    const res = applyKeypadInput(expression, "=");
+    const res = applyKeypadInput(expression, "=", {
+      allowDecimals,
+      maxDecimals,
+    });
     onExpressionChange(res.expression, res.numericValue);
     if (onDone) {
       onDone();
@@ -50,29 +59,23 @@ export function TransactionKeypadSheet({
 
   const handleClear = () => {
     triggerHaptic("light");
-    const res = applyKeypadInput(expression, "clear");
+    const res = applyKeypadInput(expression, "clear", {
+      allowDecimals,
+      maxDecimals,
+    });
     onExpressionChange(res.expression, res.numericValue);
   };
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-auto">
-        {/* Transparent click-outside backdrop: Leaves TransactionSheet nominal view 100% visible */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={handleDone}
-          className="absolute inset-0 bg-black/[0.04] dark:bg-black/[0.12]"
-        />
-
-        {/* Compact Apple Liquid Glass Keypad Dock */}
+      <div className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-none">
+        {/* Compact Apple Liquid Glass Keypad Dock (Non-blocking outside so 1-tap buttons in TransactionSheet work immediately) */}
         <motion.div
           initial={{ y: "100%", opacity: 0.5 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 380 }}
-          className="relative w-full max-w-[440px] rounded-t-[26px] overflow-hidden select-none"
+          className="relative w-full max-w-[440px] rounded-t-[26px] overflow-hidden select-none pointer-events-auto"
           style={{
             background: isDark
               ? "rgba(18, 18, 24, 0.85)"
@@ -125,7 +128,7 @@ export function TransactionKeypadSheet({
                     : "1px solid rgba(0, 0, 0, 0.08)",
                 }}
               >
-                <span>= {formatRupiah(currentVal)}</span>
+                <span>= {formatCurrencyAmount(currentVal, preferredCurrency)}</span>
                 <span className="text-[9.5px] opacity-70">
                   {isIndonesian ? "(Terapkan)" : "(Apply)"}
                 </span>
@@ -350,11 +353,11 @@ export function TransactionKeypadSheet({
               -
             </button>
 
-            {/* Row 4: 000, 0, ⌫, + */}
+            {/* Row 4: Decimal (.) or 000, 0, ⌫, + */}
             <button
               type="button"
-              onClick={() => handleKey("000")}
-              className="h-11 rounded-xl text-[15px] font-semibold flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
+              onClick={() => handleKey(allowDecimals ? "." : "000")}
+              className="h-11 rounded-xl text-[18px] font-semibold flex items-center justify-center active:scale-95 transition-transform text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: isDark
                   ? "rgba(255, 255, 255, 0.07)"
@@ -364,7 +367,7 @@ export function TransactionKeypadSheet({
                   : "1px solid rgba(0, 0, 0, 0.06)",
               }}
             >
-              000
+              {allowDecimals ? "." : "000"}
             </button>
             <button
               type="button"

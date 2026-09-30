@@ -371,6 +371,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setSession(null);
     setIsGuest(false);
+    try {
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", "/");
+        if (window.location.hash) {
+          window.location.hash = "#/";
+        }
+      }
+    } catch {}
   };
 
   const effectiveUser = isGuest ? GUEST_USER : (session?.user ?? null);

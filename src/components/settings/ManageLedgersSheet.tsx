@@ -23,6 +23,7 @@ import {
   Share2,
   Star,
   ArrowLeft,
+  Clock,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
@@ -162,9 +163,21 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
   };
 
   const handleSelectLedger = (id: string) => {
+    const selected = spaces.find((s) => s.id === id);
+    if (selected?.member_status === "pending") {
+      triggerHaptic("heavy");
+      showToast(
+        isIndonesian
+          ? `Space "${selected.name}" masih menunggu persetujuan dari pemilik.`
+          : `Space "${selected.name}" is awaiting owner approval.`,
+        "delete",
+        () => {},
+      );
+      return;
+    }
+
     triggerHaptic("medium");
     setActiveSpaceId(id);
-    const selected = spaces.find((s) => s.id === id);
     showToast(
       isIndonesian
         ? `Space aktif: ${selected?.name || "Space"}`
@@ -374,6 +387,12 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                               <span>{isIndonesian ? "Bersama" : "Shared"}</span>
                             </span>
                           )}
+                          {ledger.member_status === "pending" && (
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-medium bg-white/[0.08] text-[var(--text-secondary)] border border-[var(--glass-border)] inline-flex items-center gap-1 shrink-0">
+                              <Clock size={9} strokeWidth={2} />
+                              <span>{isIndonesian ? "Menunggu" : "Pending"}</span>
+                            </span>
+                          )}
                           {isConsolidated && (
                             <span className="px-2 py-0.5 rounded-full text-[9.5px] font-mono font-medium bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)] shrink-0">
                               {isIndonesian ? "Terkonsolidasi" : "Consolidated"}
@@ -440,7 +459,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                             <button
                               type="button"
                               onClick={(e) => handleOpenDelete(ledger, e)}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-rose-400 hover:bg-white/[0.06] transition-colors cursor-pointer"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] transition-colors cursor-pointer"
                               title={isIndonesian ? "Hapus Space" : "Delete Space"}
                             >
                               <Trash2 size={14} strokeWidth={1.75} />

@@ -17,6 +17,7 @@ export const categoryKeys = {
 export const CATEGORY_PARENT_MAP: Record<string, string> = {
   // Universal Generalized Expense Parents (Indonesian)
   "makanan & minuman": "Pangan",
+  "bahan makanan & pasar": "Papan",
   "groceries & supermarket": "Papan",
   "transportasi & kendaraan": "Transportasi",
   "hunian & utilitas": "Papan",
@@ -25,6 +26,7 @@ export const CATEGORY_PARENT_MAP: Record<string, string> = {
   "kesehatan & medis": "Sandang",
   "hiburan & rekreasi": "Hiburan",
   "keluarga & pribadi": "Keluarga",
+  "pendidikan & karier": "Sandang",
   "pendidikan & karir": "Sandang",
   "sosial & amal": "Sosial",
   "biaya finansial & pajak": "Biaya",
@@ -98,10 +100,13 @@ export const CATEGORY_PARENT_MAP: Record<string, string> = {
 
   // Universal Generalized Income Parents (Indonesian)
   "gaji & upah": "Pendapatan",
+  "bisnis & kerja lepas": "Pendapatan",
   "bisnis & freelance": "Pendapatan",
   "bonus & komisi": "Pendapatan",
   "investasi & dividen": "Keuangan",
+  "bunga & imbal hasil": "Pendapatan",
   "bunga & passive income": "Pendapatan",
+  "pengembalian & diskon": "Pendapatan",
   "cashback & refund": "Pendapatan",
   "hadiah & hibah": "Pendapatan",
   "pendapatan lainnya": "Pendapatan",
@@ -283,13 +288,13 @@ export const DEFAULT_CATEGORIES_ID: Omit<
     is_default: true,
   },
   {
-    name: "Bunga & Passive Income",
+    name: "Bunga & Imbal Hasil",
     emoji: "Percent",
     type: "income",
     is_default: true,
   },
   {
-    name: "Cashback & Refund",
+    name: "Pengembalian & Diskon",
     emoji: "RotateCcw",
     type: "income",
     is_default: true,
@@ -363,7 +368,7 @@ export const DEFAULT_CATEGORIES_ID: Omit<
     is_default: true,
   },
   {
-    name: "Pendidikan & Karir",
+    name: "Pendidikan & Karier",
     emoji: "GraduationCap",
     type: "expense",
     is_default: true,

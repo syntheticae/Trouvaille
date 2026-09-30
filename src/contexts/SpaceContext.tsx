@@ -55,7 +55,11 @@ interface SpaceContextValue {
   createLedger: (space: CreateSpaceInput) => MoneySpace;
   updateLedger: (id: string, space: Partial<CreateSpaceInput>) => void;
   deleteLedger: (id: string, reassignToId?: string) => void;
-  joinSharedSpace: (code: string, displayName?: string) => Promise<JoinLedgerResult>;
+  joinSharedSpace: (
+    code: string,
+    displayName?: string,
+    joinMethod?: "code" | "qr",
+  ) => Promise<JoinLedgerResult>;
   leaveSharedSpace: (ledgerId: string) => Promise<boolean>;
   refreshLedgers: () => Promise<void>;
   filterTransactionsBySpace: (transactions: Transaction[], targetSpaceId?: string) => Transaction[];
@@ -114,23 +118,32 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id || session.user.id === "guest_local_user") return;
 
-      // First try fetching with ledger_members relation
+      // First try fetching with ledger_members relation (including status)
       let rawData: any[] = [];
-      const resWithMembers = await supabase
+      const resWithStatus = await supabase
         .from("ledgers")
-        .select("*, ledger_members(role, user_id, display_name)")
+        .select("*, ledger_members(role, status, user_id, display_name)")
         .order("created_at", { ascending: true });
 
-      if (!resWithMembers.error && resWithMembers.data) {
-        rawData = resWithMembers.data;
+      if (!resWithStatus.error && resWithStatus.data) {
+        rawData = resWithStatus.data;
       } else {
-        // Fallback if ledger_members join isn't established yet
-        const resSimple = await supabase
+        const resWithMembers = await supabase
           .from("ledgers")
-          .select("*")
+          .select("*, ledger_members(role, user_id, display_name)")
           .order("created_at", { ascending: true });
-        if (!resSimple.error && resSimple.data) {
-          rawData = resSimple.data;
+
+        if (!resWithMembers.error && resWithMembers.data) {
+          rawData = resWithMembers.data;
+        } else {
+          // Fallback if ledger_members join isn't established yet
+          const resSimple = await supabase
+            .from("ledgers")
+            .select("*")
+            .order("created_at", { ascending: true });
+          if (!resSimple.error && resSimple.data) {
+            rawData = resSimple.data;
+          }
         }
       }
 
@@ -158,6 +171,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
             is_shared: Boolean(myPersonalRow.is_shared),
             invite_code: myPersonalRow.invite_code,
             role: "owner",
+            member_status: "active",
           };
           setPersonalOverride(pOverride);
           try {
@@ -182,6 +196,11 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
               ? row.ledger_members.find((m: any) => m.user_id === session.user.id)
               : null;
             const role: LedgerMemberRole = isOwner ? "owner" : (myMembership?.role || "editor");
+            const memberStatus: "active" | "pending" = isOwner
+              ? "active"
+              : myMembership?.status === "pending"
+                ? "pending"
+                : "active";
             const isDef = Boolean(row.is_default);
 
             return {
@@ -196,6 +215,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
               is_shared: Boolean(row.is_shared),
               invite_code: row.invite_code || null,
               role,
+              member_status: memberStatus,
               tag: `#${row.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
               created_at: row.created_at,
             };
@@ -205,7 +225,15 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
           setCustomSpaces((prev) => {
             const mergedMap = new Map<string, MoneySpace>();
             prev.forEach((s) => mergedMap.set(s.id, s));
-            cloudSpaces.forEach((s) => mergedMap.set(s.id, s));
+            cloudSpaces.forEach((s) => {
+              const prevSpace = mergedMap.get(s.id);
+              mergedMap.set(s.id, {
+                ...prevSpace,
+                ...s,
+                member_status:
+                  s.member_status || prevSpace?.member_status || "active",
+              });
+            });
             const merged = Array.from(mergedMap.values());
             try {
               localStorage.setItem(LEDGERS_STORAGE_KEY, JSON.stringify(merged));
@@ -213,15 +241,18 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
             } catch {}
             return merged;
           });
-          // Re-validate activeSpaceId: if it points to a now-loaded space, confirm it
-          // This fixes the race condition where activeSpaceId was set before cloudSpaces loaded
+          // Re-validate activeSpaceId: if it points to a now-loaded active space, confirm it
           setActiveSpaceIdState((curr) => {
             const savedActive = (() => {
               try { return localStorage.getItem(ACTIVE_SPACE_KEY) || ""; } catch { return ""; }
             })();
             const targetId = savedActive || curr;
-            const allIds = cloudSpaces.map((s) => s.id);
-            if (targetId !== "personal" && allIds.includes(targetId)) {
+            const matchedSpace = cloudSpaces.find((s) => s.id === targetId);
+            if (
+              targetId !== "personal" &&
+              matchedSpace &&
+              matchedSpace.member_status !== "pending"
+            ) {
               return targetId;
             }
             return curr;
@@ -591,6 +622,14 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
         return transactions;
       }
 
+      // If space is pending owner approval, lock data access
+      if (spaceId !== "personal") {
+        const targetSpace = customSpaces.find((s) => s.id === spaceId);
+        if (targetSpace?.member_status === "pending") {
+          return [];
+        }
+      }
+
       return transactions.filter((t) => {
         // 1. Explicit native ledger_id match
         if (t.ledger_id) {
@@ -685,11 +724,46 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     (activeSpace?.role as LedgerMemberRole) || (activeSpace?.id === "personal" ? "owner" : "editor");
 
   const joinSharedSpace = useCallback(
-    async (code: string, displayName?: string): Promise<JoinLedgerResult> => {
-      const result = await joinLedgerWithCode(code, displayName);
+    async (
+      code: string,
+      displayName?: string,
+      joinMethod: "code" | "qr" = "code",
+    ): Promise<JoinLedgerResult> => {
+      const result = await joinLedgerWithCode(code, displayName, joinMethod);
       if (result.success && result.ledger_id) {
         await syncFromCloud();
-        setActiveSpaceId(result.ledger_id);
+        if (result.status === "pending") {
+          // Ensure pending space is listed in customSpaces with 'pending' status while awaiting owner approval
+          setCustomSpaces((prev) => {
+            const exists = prev.some((s) => s.id === result.ledger_id);
+            const updated = exists
+              ? prev.map((s) =>
+                  s.id === result.ledger_id
+                    ? { ...s, member_status: "pending" as const }
+                    : s,
+                )
+              : [
+                  ...prev,
+                  {
+                    id: result.ledger_id!,
+                    name: result.ledger_name || "Shared Space",
+                    description: "",
+                    icon: "Users",
+                    currency: "IDR",
+                    is_shared: true,
+                    role: result.role || "editor",
+                    member_status: "pending" as const,
+                  },
+                ];
+            try {
+              localStorage.setItem(CUSTOM_SPACES_KEY, JSON.stringify(updated));
+              localStorage.setItem(LEDGERS_STORAGE_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        } else {
+          setActiveSpaceId(result.ledger_id);
+        }
       }
       return result;
     },

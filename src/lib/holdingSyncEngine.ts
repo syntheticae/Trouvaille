@@ -99,8 +99,8 @@ export function syncTransactionWithHolding(
   const fromWallet = tx.wallet_id ? wallets.find((w) => w.id === tx.wallet_id) : null;
   const toWallet = tx.to_wallet_id ? wallets.find((w) => w.id === tx.to_wallet_id) : null;
 
-  const isFromCrypto = isInvestmentOrCryptoWallet(fromWallet);
-  const isToCrypto = isInvestmentOrCryptoWallet(toWallet);
+  const isFromCrypto = isUsdtWallet(fromWallet);
+  const isToCrypto = isUsdtWallet(toWallet);
 
   // If neither wallet is an investment/crypto account, check if it's an auto-compound yield with custom units
   if (!isFromCrypto && !isToCrypto) {
@@ -288,8 +288,8 @@ export function reverseTransactionWithHolding(
   const fromWallet = tx.wallet_id ? wallets.find((w) => w.id === tx.wallet_id) : null;
   const toWallet = tx.to_wallet_id ? wallets.find((w) => w.id === tx.to_wallet_id) : null;
 
-  const isFromCrypto = isInvestmentOrCryptoWallet(fromWallet);
-  const isToCrypto = isInvestmentOrCryptoWallet(toWallet);
+  const isFromCrypto = isUsdtWallet(fromWallet);
+  const isToCrypto = isUsdtWallet(toWallet);
 
   if (!isFromCrypto && !isToCrypto) return { synced: false };
 

@@ -21,6 +21,8 @@ import {
   type SecuritySettings,
 } from "../lib/biometricAuth";
 import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics";
+import { App as CapApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 
 interface SecurityLockContextType {
   isLocked: boolean;
@@ -174,10 +176,32 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
     window.addEventListener("blur", handleBlur);
     window.addEventListener("focus", handleFocus);
 
+    let appStateHandle: { remove: () => void } | null = null;
+    if (Capacitor.isNativePlatform()) {
+      CapApp.addListener("appStateChange", ({ isActive }) => {
+        if (!isActive) {
+          backgroundedAt = Date.now();
+          updateLastActiveTimestamp();
+        } else {
+          if (
+            isLockTimeoutExceeded() ||
+            (securitySettings.timeoutMinutes === 0 && backgroundedAt > 0)
+          ) {
+            setIsLocked(true);
+          }
+        }
+      }).then((handle) => {
+        appStateHandle = handle;
+      });
+    }
+
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("focus", handleFocus);
+      if (appStateHandle) {
+        appStateHandle.remove();
+      }
     };
   }, [securitySettings.enabled, securitySettings.timeoutMinutes]);
 
