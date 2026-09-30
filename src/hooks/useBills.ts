@@ -373,7 +373,7 @@ export function useMarkBillPaid() {
             type: "expense",
             category_id: bill.category_id || null,
             wallet_id: walletId || bill.wallet_id || null,
-            occurred_on: format(new Date(), "yyyy-MM-dd"),
+            occurred_on: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
             note: `Pembayaran tagihan: ${bill.title}`,
           });
         } catch (err) {

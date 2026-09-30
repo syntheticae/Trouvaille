@@ -55,6 +55,7 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
   const setPrivacyShieldEnabled = useCallback((val: boolean) => {
     setIsPrivacyShieldEnabledState(val);
     if (!val) {
+      setIsPrivacyShieldActive(false);
       setIsStealthModeState(false);
       try {
         localStorage.setItem(PRIVACY_STORAGE_KEY, "false");
@@ -72,6 +73,7 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(SHIELD_STORAGE_KEY, String(next));
       } catch {}
       if (!next) {
+        setIsPrivacyShieldActive(false);
         setIsStealthModeState(false);
         try {
           localStorage.setItem(PRIVACY_STORAGE_KEY, "false");
@@ -115,10 +117,22 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
     [isStealthMode, isPrivacyShieldEnabled]
   );
 
+  // Listen to session teardown (Rule 8.2)
+  useEffect(() => {
+    const handleTeardown = () => {
+      setIsPrivacyShieldEnabledState(false);
+      setIsPrivacyShieldActive(false);
+      setIsStealthModeState(false);
+    };
+    window.addEventListener("trouvaille_session_teardown", handleTeardown);
+    return () => {
+      window.removeEventListener("trouvaille_session_teardown", handleTeardown);
+    };
+  }, []);
+
   // iOS App Switcher & Background Privacy Shield overlay listeners
   useEffect(() => {
     if (!isPrivacyShieldEnabled) {
-      setIsPrivacyShieldActive(false);
       return;
     }
 
@@ -202,7 +216,7 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
         isPrivacyShieldEnabled,
         togglePrivacyShield,
         setPrivacyShieldEnabled,
-        isPrivacyShieldActive,
+        isPrivacyShieldActive: isPrivacyShieldEnabled && isPrivacyShieldActive,
         setIsPrivacyShieldActive,
         maskAmount,
       }}

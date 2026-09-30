@@ -184,8 +184,10 @@ export function calculateMonthCalendarRunway(
     const isFut = !isPast && !isTod;
     const dayDateParsed = parseISO(dStr);
 
-    // Actual transactions
-    const dayTxs = transactions.filter((t) => t.occurred_on === dStr);
+    // Actual transactions (normalize full ISO timestamps YYYY-MM-DDTHH:mm:ss per Rule 8.1)
+    const dayTxs = transactions.filter(
+      (t) => (t.occurred_on || "").slice(0, 10) === dStr,
+    );
     const actualInflow = dayTxs
       .filter((t) => t.type === "income")
       .reduce((sum, t) => sum + Number(t.amount || 0), 0);
@@ -204,7 +206,9 @@ export function calculateMonthCalendarRunway(
     }
 
     // Scheduled bills due on this date
-    const dayBills = bills.filter((b) => b.due_date === dStr);
+    const dayBills = bills.filter(
+      (b) => (b.due_date || "").slice(0, 10) === dStr,
+    );
     const unpaidDayBills = dayBills.filter((b) => !b.is_paid);
     const billsTotal = (isFut || isTod
       ? unpaidDayBills

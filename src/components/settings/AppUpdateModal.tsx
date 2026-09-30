@@ -195,8 +195,12 @@ export function AppUpdateModal({
               {platform === "ios"
                 ? "Apple iOS (SideStore / AltStore)"
                 : platform === "android"
-                  ? "Android (APK Langsung)"
-                  : "Peramban Web / Desktop"}
+                  ? isIndonesian
+                    ? "Android (APK Langsung)"
+                    : "Android (Direct APK)"
+                  : isIndonesian
+                    ? "Peramban Web / Desktop"
+                    : "Web / Desktop Browser"}
             </span>
           </div>
 

@@ -166,12 +166,12 @@ export function AppleShortcutsGuideModal({
     pindai: [
       {
         isHero: true,
-        title: isIndonesian ? "Pindai Layar Resi & Riwayat (Back Tap)" : "Auto Screen & History Scanner (Back Tap)",
+        title: isIndonesian ? "Pindai Layar Resi & Riwayat" : "Auto Screen & History Scanner (Back Tap)",
         desc: isIndonesian
-          ? "Saat berada di layar bukti pembayaran tunggal atau layar riwayat transaksi (GoPay, Shopee, BCA, dll.), ketuk 2x bodi belakang iPhone Anda. Pintasan otomatis membaca layar via Live Text OCR. Jika terdeteksi banyak transaksi, Trouvaille otomatis membuka lembar checklist cerdas untuk Anda tinjau sebelum disimpan."
+          ? "Saat berada di layar bukti pembayaran tunggal atau layar riwayat transaksi (GoPay, Shopee, BCA, dll.), ketuk 2x bodi belakang iPhone Anda. Pintasan otomatis membaca layar via Live Text OCR. Jika terdeteksi banyak transaksi, Trouvaille otomatis membuka lembar daftar periksa cerdas untuk Anda tinjau sebelum disimpan."
           : "While viewing any payment receipt or transaction history list (GoPay, Shopee, BCA, etc.), double tap the back of your iPhone. Shortcuts reads the screen via Live Text. If multiple transactions are detected, Trouvaille automatically opens an interactive checklist review sheet before saving.",
         actionType: "test_hud",
-        btnText: isIndonesian ? "Uji Dynamic Island HUD" : "Test Dynamic Island HUD",
+        btnText: isIndonesian ? "Uji Kapsul Notifikasi" : "Test Dynamic Island HUD",
       },
       {
         stepNum: 1,
@@ -217,13 +217,13 @@ export function AppleShortcutsGuideModal({
           ? "Setiap kali notifikasi transaksi masuk dari m-Banking atau dompet digital (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, dll.), iPhone otomatis membaca teks notifikasi dan langsung menyimpannya ke Trouvaille di latar belakang tanpa sentuhan manual."
           : "Whenever a transaction notification arrives from your banking or e-wallet app (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, etc.), your iPhone automatically reads the notification text and saves it directly to Trouvaille in the background without manual touch.",
         actionType: "test_hud",
-        btnText: isIndonesian ? "Uji Dynamic Island HUD" : "Test Dynamic Island HUD",
+        btnText: isIndonesian ? "Uji Kapsul Notifikasi" : "Test Dynamic Island HUD",
       },
       {
         stepNum: 1,
         title: isIndonesian ? "Langkah 1: Buat Automasi Pemberitahuan" : "Step 1: Create Notification Automation",
         desc: isIndonesian
-          ? "1. Buka aplikasi Pintasan › Ketuk tab 'Automasi' di bagian bawah.\n2. Ketuk (+) › Pilih 'Pemberitahuan' (Notification).\n3. Pilih aplikasi bank/e-wallet Anda (BCA, Livin, GoPay, dll.).\n4. Centang 'Jalankan Segera' (Run Immediately)."
+          ? "1. Buka aplikasi Pintasan › Ketuk tab 'Automasi' di bagian bawah.\n2. Ketuk (+) › Pilih 'Pemberitahuan'.\n3. Pilih aplikasi bank/dompet digital Anda (BCA, Livin, GoPay, dll.).\n4. Centang 'Jalankan Segera'."
           : "1. Open Shortcuts app › Tap 'Automation' tab at the bottom.\n2. Tap (+) › Choose 'Notification'.\n3. Select your banking/e-wallet apps (BCA, Livin, GoPay, etc.).\n4. Check 'Run Immediately'.",
         actionType: "info",
         noteText: isIndonesian
@@ -247,11 +247,11 @@ export function AppleShortcutsGuideModal({
         stepNum: 3,
         title: isIndonesian ? "Langkah 3: Jalankan Tanpa Gangguan" : "Step 3: Run Silently Without Interruption",
         desc: isIndonesian
-          ? "Pastikan opsi 'Beri Tahu Saat Dijalankan' dinonaktifkan (Mati). Sekarang, setiap kali Anda bertransaksi di merchant atau menerima transfer, data pengeluaran langsung tercatat secara otomatis!"
+          ? "Pastikan opsi 'Beri Tahu Saat Dijalankan' dinonaktifkan. Sekarang, setiap kali Anda bertransaksi atau menerima transfer, data pengeluaran langsung tercatat secara otomatis!"
           : "Make sure 'Notify When Run' is toggled OFF. Now, whenever you pay at a merchant or receive a transfer, the transaction is automatically recorded!",
         actionType: "info",
         noteText: isIndonesian
-          ? "Parser pintar Trouvaille otomatis memisahkan nominal, merchant, dan akun pembayaran."
+          ? "Pengurai pintar Trouvaille otomatis memisahkan nominal, toko, dan akun pembayaran."
           : "Trouvaille's smart parser automatically extracts amount, merchant, and payment account.",
       },
     ],
@@ -260,7 +260,7 @@ export function AppleShortcutsGuideModal({
         isHero: true,
         title: isIndonesian ? "Pencatatan 1-Ketukan Instan" : "Instant 1-Tap Logging",
         desc: isIndonesian
-          ? "Ketuk 2x bodi belakang iPhone Anda (Back Tap) untuk langsung membuka lembar input nominal Trouvaille secara instan dari aplikasi apa pun tanpa jeda."
+          ? "Ketuk 2x bodi belakang iPhone Anda untuk langsung membuka lembar masukan nominal Trouvaille secara instan dari aplikasi apa pun tanpa jeda."
           : "Double tap the back of your iPhone (Back Tap) to instantly open the Trouvaille amount sheet from anywhere without opening the full app.",
         actionType: "test_url",
         scheme: "trouvaille://add",

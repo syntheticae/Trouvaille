@@ -3,6 +3,7 @@ import { BottomSheet } from "../ui/BottomSheet";
 import { Camera, Image as ImageIcon, ShieldCheck, Check } from "lucide-react";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   checkMediaPermissions,
   requestPhotosPermission,
@@ -20,6 +21,7 @@ export function MediaPermissionsSheet({
   onClose,
 }: MediaPermissionsSheetProps) {
   const { showToast } = useToast();
+  const { isIndonesian } = useLanguage();
   const [permissions, setPermissions] = useState<MediaPermissionsState>({
     camera: "prompt",
     photos: "prompt",
@@ -48,9 +50,21 @@ export function MediaPermissionsSheet({
       const granted = await requestPhotosPermission();
       await refreshPermissions();
       if (granted) {
-        showToast("Photo library access granted", "add", () => {});
+        showToast(
+          isIndonesian
+            ? "Akses galeri foto diberikan"
+            : "Photo library access granted",
+          "add",
+          () => {},
+        );
       } else {
-        showToast("Please allow Photos in iPhone Settings > Trouvaille", "delete", () => {});
+        showToast(
+          isIndonesian
+            ? "Harap izinkan Foto di Pengaturan iPhone > Trouvaille"
+            : "Please allow Photos in iPhone Settings > Trouvaille",
+          "delete",
+          () => {},
+        );
       }
     } catch (err) {
       console.error(err);
@@ -66,9 +80,21 @@ export function MediaPermissionsSheet({
       const granted = await requestCameraPermission();
       await refreshPermissions();
       if (granted) {
-        showToast("Camera access granted", "add", () => {});
+        showToast(
+          isIndonesian
+            ? "Akses kamera diberikan"
+            : "Camera access granted",
+          "add",
+          () => {},
+        );
       } else {
-        showToast("Please allow Camera in iPhone Settings > Trouvaille", "delete", () => {});
+        showToast(
+          isIndonesian
+            ? "Harap izinkan Kamera di Pengaturan iPhone > Trouvaille"
+            : "Please allow Camera in iPhone Settings > Trouvaille",
+          "delete",
+          () => {},
+        );
       }
     } catch (err) {
       console.error(err);
@@ -81,8 +107,17 @@ export function MediaPermissionsSheet({
   const isCameraGranted = permissions.camera === "granted";
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} title="Camera & Gallery Access">
-      <div className="p-4 pb-8 space-y-4" style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}>
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        isIndonesian ? "Akses Kamera & Galeri" : "Camera & Gallery Access"
+      }
+    >
+      <div
+        className="p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] space-y-4"
+        style={{ fontFamily: "Urbanist, -apple-system, sans-serif" }}
+      >
         {/* Header Summary */}
         <div className="flex items-center gap-3 p-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)]">
           <div
@@ -95,18 +130,20 @@ export function MediaPermissionsSheet({
           </div>
           <div>
             <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
-              Hardware & Media Privacy
+              {isIndonesian
+                ? "Privasi Perangkat Keras & Media"
+                : "Hardware & Media Privacy"}
             </h4>
             <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">
-              Trouvaille processes all receipt images on-device with zero cloud telemetry.
+              {isIndonesian
+                ? "Trouvaille memproses semua foto struk secara lokal di perangkat tanpa telemetri cloud."
+                : "Trouvaille processes all receipt images on-device with zero cloud telemetry."}
             </p>
           </div>
         </div>
 
         {/* Permissions Items List */}
-        <div
-          className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] divide-y divide-[var(--glass-border)] overflow-hidden"
-        >
+        <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] divide-y divide-[var(--glass-border)] overflow-hidden">
           {/* Photo Library / Gallery */}
           <div className="p-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -120,20 +157,20 @@ export function MediaPermissionsSheet({
               </div>
               <div className="min-w-0">
                 <span className="text-[13px] font-semibold block text-[var(--text-primary)] truncate">
-                  Photo Library
+                  {isIndonesian ? "Galeri Foto" : "Photo Library"}
                 </span>
                 <span className="text-[11px] text-[var(--text-tertiary)] block mt-0.5">
-                  Import receipts & QRIS slips
+                  {isIndonesian
+                    ? "Impor struk & bukti transaksi QRIS"
+                    : "Import receipts & QRIS slips"}
                 </span>
               </div>
             </div>
 
             {isPhotosGranted ? (
-              <span
-                className="px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold flex items-center gap-1 shrink-0 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400"
-              >
+              <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold flex items-center gap-1 shrink-0 bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)]">
                 <Check size={11} strokeWidth={2.5} />
-                Granted
+                {isIndonesian ? "Diizinkan" : "Granted"}
               </span>
             ) : (
               <button
@@ -142,7 +179,7 @@ export function MediaPermissionsSheet({
                 onClick={handleRequestPhotos}
                 className="px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 cursor-pointer shrink-0 bg-black dark:bg-white text-white dark:text-black shadow-xs"
               >
-                Request Access
+                {isIndonesian ? "Minta Akses" : "Request Access"}
               </button>
             )}
           </div>
@@ -160,20 +197,20 @@ export function MediaPermissionsSheet({
               </div>
               <div className="min-w-0">
                 <span className="text-[13px] font-semibold block text-[var(--text-primary)] truncate">
-                  Camera Device
+                  {isIndonesian ? "Perangkat Kamera" : "Camera Device"}
                 </span>
                 <span className="text-[11px] text-[var(--text-tertiary)] block mt-0.5">
-                  Instant receipt photography
+                  {isIndonesian
+                    ? "Pemotretan struk instan"
+                    : "Instant receipt photography"}
                 </span>
               </div>
             </div>
 
             {isCameraGranted ? (
-              <span
-                className="px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold flex items-center gap-1 shrink-0 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400"
-              >
+              <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold flex items-center gap-1 shrink-0 bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)]">
                 <Check size={11} strokeWidth={2.5} />
-                Granted
+                {isIndonesian ? "Diizinkan" : "Granted"}
               </span>
             ) : (
               <button
@@ -182,17 +219,33 @@ export function MediaPermissionsSheet({
                 onClick={handleRequestCamera}
                 className="px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 cursor-pointer shrink-0 bg-black dark:bg-white text-white dark:text-black shadow-xs"
               >
-                Request Access
+                {isIndonesian ? "Minta Akses" : "Request Access"}
               </button>
             )}
           </div>
         </div>
 
         {/* Guidance Note */}
-        <div
-          className="p-3 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11px] leading-relaxed text-[var(--text-secondary)]"
-        >
-          If access was previously denied, iOS requires permissions to be re-enabled under <span className="font-semibold text-[var(--text-primary)]">Settings &gt; Trouvaille &gt; Photos &amp; Camera</span>.
+        <div className="p-3 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[11px] leading-relaxed text-[var(--text-secondary)]">
+          {isIndonesian ? (
+            <>
+              Jika akses sebelumnya ditolak, iOS mengharuskan izin diaktifkan
+              kembali melalui{" "}
+              <span className="font-semibold text-[var(--text-primary)]">
+                Pengaturan &gt; Trouvaille &gt; Foto &amp; Kamera
+              </span>
+              .
+            </>
+          ) : (
+            <>
+              If access was previously denied, iOS requires permissions to be
+              re-enabled under{" "}
+              <span className="font-semibold text-[var(--text-primary)]">
+                Settings &gt; Trouvaille &gt; Photos &amp; Camera
+              </span>
+              .
+            </>
+          )}
         </div>
 
         <button
@@ -206,7 +259,7 @@ export function MediaPermissionsSheet({
             color: "var(--text-primary)",
           }}
         >
-          Done
+          {isIndonesian ? "Selesai" : "Done"}
         </button>
       </div>
     </BottomSheet>

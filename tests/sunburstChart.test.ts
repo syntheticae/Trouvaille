@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { polarToCartesian, describeArc } from "../src/components/charts/SunburstChart";
+import { polarToCartesian, describeArc } from "../src/archive/components/charts/SunburstChart";
 
 describe("SunburstChart Polar Geometry Engine", () => {
   it("converts polar angles to cartesian coordinates correctly (12 o'clock = 0 deg)", () => {

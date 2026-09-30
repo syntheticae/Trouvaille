@@ -3,10 +3,6 @@ import { Capacitor } from "@capacitor/core";
 import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics";
 import {
   ChevronRight,
-  User as UserIcon,
-  Check,
-  Loader2,
-  LogOut,
   FolderTree,
   CreditCard,
   TrendingUp,
@@ -14,8 +10,6 @@ import {
   Target,
   Zap,
   Smartphone,
-  Cloud,
-  FileSpreadsheet,
   Clock,
   KeyRound,
   Camera,
@@ -32,11 +26,7 @@ import {
   EyeOff,
   ShieldCheck,
   BookOpen,
-  Laptop,
-  QrCode,
   Sparkles,
-  RotateCcw,
-  Trash2,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -204,9 +194,11 @@ import { useNavigate } from "react-router-dom";
 import {
   checkForAppUpdate,
   type AppReleaseInfo,
-  APP_VERSION,
-  APP_BUILD_NUMBER,
 } from "../lib/appUpdateService";
+import {
+  SettingsProfileCard,
+  SettingsDataVaultSection,
+} from "../components/settings/SettingsDataVaultSection";
 
 interface SettingsPageProps {
   onOpenImport?: () => void;
@@ -253,7 +245,13 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     setTagsEnabled(next);
     localStorage.setItem("trouvaille_enable_tags", String(next));
     showToast(
-      next ? "Transaction tags enabled" : "Transaction tags disabled",
+      next
+        ? isIndonesian
+          ? "Label transaksi diaktifkan"
+          : "Transaction tags enabled"
+        : isIndonesian
+          ? "Label transaksi dinonaktifkan"
+          : "Transaction tags disabled",
       "update",
       () => {},
     );
@@ -273,8 +271,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     localStorage.setItem("trouvaille_save_attachments", String(next));
     showToast(
       next
-        ? "Receipt attachments will be saved"
-        : "Receipt attachments will not be stored",
+        ? isIndonesian
+          ? "Lampiran struk akan disimpan"
+          : "Receipt attachments will be saved"
+        : isIndonesian
+          ? "Lampiran struk tidak akan disimpan"
+          : "Receipt attachments will not be stored",
       "update",
       () => {},
     );
@@ -293,7 +295,13 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
     setCustomKeypadEnabled(next);
     localStorage.setItem("trouvaille_keypad_mode", next ? "custom" : "system");
     showToast(
-      next ? "Liquid custom keypad active" : "Default system keyboard active",
+      next
+        ? isIndonesian
+          ? "Keypad angka kustom aktif"
+          : "Liquid custom keypad active"
+        : isIndonesian
+          ? "Papan ketik bawaan sistem aktif"
+          : "Default system keyboard active",
       "update",
       () => {},
     );
@@ -492,14 +500,14 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
   >("idle");
   const [lastSyncedTime, setLastSyncedTime] = useState<string>(() => {
     const saved = localStorage.getItem("trouvaille_last_synced");
-    if (!saved) return "Just now";
+    if (!saved) return isIndonesian ? "Baru saja" : "Just now";
     try {
       const d = new Date(saved);
       return isToday(d)
-        ? `Today, ${format(d, "HH:mm")}`
+        ? `${isIndonesian ? "Hari ini" : "Today"}, ${format(d, "HH:mm")}`
         : format(d, "dd MMM, HH:mm");
     } catch {
-      return "Just now";
+      return isIndonesian ? "Baru saja" : "Just now";
     }
   });
 
@@ -635,7 +643,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
 
       const now = new Date();
       localStorage.setItem("trouvaille_last_synced", now.toISOString());
-      setLastSyncedTime(`Today, ${format(now, "HH:mm")}`);
+      setLastSyncedTime(`${isIndonesian ? "Hari ini" : "Today"}, ${format(now, "HH:mm")}`);
       setSyncStatus("success");
       triggerHaptic("medium");
       showToast(
@@ -908,100 +916,15 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
       {/* 1. PROFILE & ACCOUNT CARD */}
       {/* ============================================================ */}
       {!searchQuery.trim() && (
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              setProfileOpen(true);
-            }}
-            className="w-full glass-surface p-3.5 rounded-2xl flex items-center justify-between border border-[var(--glass-border)] active:scale-[0.99] transition-all cursor-pointer text-left"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center relative shrink-0"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                {isGuest ? (
-                  <Zap size={18} style={{ color: "var(--text-secondary)" }} />
-                ) : avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Avatar"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <UserIcon
-                    size={18}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p
-                  className="font-semibold text-[14px] truncate leading-tight"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {isGuest ? "Local Guest" : displayName}
-                </p>
-                <p
-                  className="text-[11px] font-medium truncate mt-0.5"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {isGuest ? "Offline Device Vault" : session?.user?.email}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <span
-                className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
-                style={{
-                  background: "var(--bg-elevated)",
-                  borderColor: "var(--glass-border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Edit
-              </span>
-              <ChevronRight
-                size={16}
-                style={{ color: "var(--text-secondary)" }}
-              />
-            </div>
-          </button>
-
-          {isGuest && (
-            <div
-              className="px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-3 text-left"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--glass-border)",
-              }}
-            >
-              <p className="text-[11px] font-medium text-[var(--text-tertiary)] truncate">
-                {isIndonesian ? "Data tersimpan offline · Hubungkan untuk cadangkan" : "Data stored offline · Connect to backup"}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("medium");
-                  exitGuestMode();
-                }}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold shrink-0 active:scale-95 transition-transform cursor-pointer border"
-                style={{
-                  background: "var(--accent)",
-                  borderColor: "var(--accent)",
-                  color: "var(--accent-ink)",
-                }}
-              >
-                Connect Cloud
-              </button>
-            </div>
-          )}
-        </div>
+        <SettingsProfileCard
+          isGuest={isGuest}
+          avatarUrl={avatarUrl}
+          displayName={displayName}
+          email={session?.user?.email}
+          isIndonesian={isIndonesian}
+          onOpenProfile={() => setProfileOpen(true)}
+          onExitGuestMode={exitGuestMode}
+        />
       )}
 
       {/* Empty Search State */}
@@ -1015,10 +938,12 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             className="text-[13px] font-semibold"
             style={{ color: "var(--text-primary)" }}
           >
-            No settings found
+            {isIndonesian ? "Pengaturan tidak ditemukan" : "No settings found"}
           </p>
           <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-            No options match &ldquo;{searchQuery}&rdquo;
+            {isIndonesian
+              ? `Tidak ada opsi yang cocok dengan "${searchQuery}"`
+              : `No options match "${searchQuery}"`}
           </p>
         </div>
       )}
@@ -1480,7 +1405,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Liquid Numeric Keypad"
+                        ? "Keypad Angka Kustom"
                         : "Liquid Numeric Keypad"}
                     </span>
                   </div>
@@ -1930,7 +1855,9 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     if (!securitySettings.enabled) {
                       if (!securitySettings.hasPin) {
                         showToast(
-                          "Please set up a backup PIN first to enable app lock",
+                          isIndonesian
+                            ? "Harap atur PIN cadangan terlebih dahulu untuk mengaktifkan kunci aplikasi"
+                            : "Please set up a backup PIN first to enable app lock",
                           "info",
                           null,
                           3000,
@@ -1955,14 +1882,18 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                           }
                           updateSecuritySettings({ enabled: true });
                           showToast(
-                            "Face ID / Biometrics enabled",
+                            isIndonesian
+                              ? "Face ID / Biometrik diaktifkan"
+                              : "Face ID / Biometrics enabled",
                             "update",
                             () => {},
                           );
                         } catch (err: any) {
                           showToast(
                             err?.message ||
-                              "Biometric setup failed. App lock enabled with PIN.",
+                              (isIndonesian
+                                ? "Pengaturan biometrik gagal. Kunci aplikasi diaktifkan dengan PIN."
+                                : "Biometric setup failed. App lock enabled with PIN."),
                             "info",
                             null,
                             3000,
@@ -1972,12 +1903,24 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                       } else {
                         updateSecuritySettings({ enabled: true });
                         triggerHaptic("medium");
-                        showToast("App lock enabled", "update", () => {});
+                        showToast(
+                          isIndonesian
+                            ? "Kunci aplikasi diaktifkan"
+                            : "App lock enabled",
+                          "update",
+                          () => {},
+                        );
                       }
                     } else {
                       updateSecuritySettings({ enabled: false });
                       triggerHaptic("light");
-                      showToast("App lock disabled", "update", () => {});
+                      showToast(
+                        isIndonesian
+                          ? "Kunci aplikasi dinonaktifkan"
+                          : "App lock disabled",
+                        "update",
+                        () => {},
+                      );
                     }
                   }}
                   ariaLabel="Toggle Face ID or PIN lock"
@@ -2005,7 +1948,7 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                         className="text-[13px] font-semibold truncate"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        Lock Timeout
+                        {isIndonesian ? "Batas Waktu Kunci" : "Lock Timeout"}
                       </span>
                     </div>
                     <div className="flex gap-1.5">
@@ -2129,439 +2072,52 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Camera & Media Permissions
-                  </span>
-                </div>
-                <ChevronRight
-                  size={15}
-                  style={{ color: "var(--text-secondary)" }}
-                />
-              </button>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* ============================================================ */}
-      {/* 7. DATA & VAULT */}
-      {/* ============================================================ */}
-      {hasDataVault && (
-        <section className="space-y-1.5">
-          <h2
-            className="text-[11px] font-bold uppercase tracking-wider px-1"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            {isIndonesian ? "Data & Brankas" : "Data & Vault"}
-          </h2>
-          <div className="glass-surface rounded-2xl overflow-hidden border border-[var(--glass-border)] divide-y divide-[var(--glass-border)]">
-            {/* Cloud Sync */}
-            {showCloudSync && (
-              <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px]">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Cloud size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block truncate leading-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian ? "Sinkronisasi Cloud" : "Cloud Sync"}
-                    </span>
-                    <span
-                      className="text-[10px] font-normal block truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {syncStatus === "syncing"
-                        ? (isIndonesian ? "Menyinkronkan..." : "Syncing...")
-                        : syncStatus === "error"
-                          ? (isIndonesian ? "Offline · Tersimpan lokal" : "Offline · Local preserved")
-                          : (isIndonesian ? `Tersinkron ${lastSyncedTime}` : `Synced ${lastSyncedTime}`)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleSafeSync}
-                    disabled={syncStatus === "syncing"}
-                    className="px-2.5 py-1 rounded-full text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1 disabled:opacity-60 cursor-pointer shrink-0 border"
-                    style={{
-                      background:
-                        syncStatus === "success"
-                          ? "var(--accent)"
-                          : "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                      color:
-                        syncStatus === "success"
-                          ? "var(--accent-ink)"
-                          : "var(--text-secondary)",
-                    }}
-                  >
-                    {syncStatus === "syncing" && (
-                      <Loader2 size={11} className="animate-spin" />
-                    )}
-                    {syncStatus === "success" && <Check size={11} />}
-                    <span>
-                      {syncStatus === "syncing"
-                        ? (isIndonesian ? "Menyinkronkan" : "Syncing")
-                        : syncStatus === "success"
-                          ? (isIndonesian ? "Tersinkron" : "Synced")
-                          : syncStatus === "error"
-                            ? (isIndonesian ? "Coba Lagi" : "Retry")
-                            : (isIndonesian ? "Sinkronkan" : "Sync Now")}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Pending Offline Mutations Banner */}
-            {session?.user && pendingMutations.length > 0 && (
-              <div
-                className="p-3 mx-3 mb-2 rounded-xl flex flex-col gap-2 border"
-                style={{
-                  background: "rgba(255, 255, 255, 0.03)",
-                  borderColor: "var(--glass-border)",
-                }}
-              >
-                <div className="flex items-start gap-2.5">
-                  <div
-                    className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <RotateCcw size={12} strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="text-[12px] font-semibold block truncate"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian ? "Antrean Mutasi Tertunda" : "Pending Offline Mutations"}
-                      </span>
-                      <span
-                        className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
-                        style={{
-                          background: "var(--bg-elevated)",
-                          borderColor: "var(--glass-border)",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        {pendingMutations.length}
-                      </span>
-                    </div>
-                    <p
-                      className="text-[11px] font-normal leading-relaxed mt-0.5"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {isIndonesian
-                        ? "Ada transaksi uji coba atau mutasi lokal yang belum tersimpan di cloud dan sedang memotong saldo Anda. Anda dapat membatalkannya untuk memulihkan saldo dompet seketika."
-                        : "There are local test transactions not saved to cloud that deducted your balance. Discard them to restore your wallet balance immediately."}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={handleDiscardPendingAndRestore}
-                    disabled={syncStatus === "syncing"}
-                    className="flex-1 py-1.5 px-2.5 rounded-lg text-[11px] font-semibold border flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Trash2 size={12} strokeWidth={1.75} />
-                    <span>
-                      {isIndonesian ? "Buang Antrean & Reset Saldo" : "Discard Queue & Reset Balance"}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSafeSync}
-                    disabled={syncStatus === "syncing"}
-                    className="py-1.5 px-2.5 rounded-lg text-[11px] font-semibold border flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-                    style={{
-                      background: "rgba(255, 255, 255, 0.05)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    <Cloud size={12} strokeWidth={1.75} />
-                    <span>{isIndonesian ? "Kirim ke Cloud" : "Sync to Cloud"}</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Link Web Dashboard */}
-            {showWebDashboard && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setWebDashboardModalOpen(true);
-                }}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Laptop size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block truncate leading-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Tautkan Web Dashboard"
-                        : "Link Web Dashboard"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border flex items-center gap-1"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    <QrCode size={11} strokeWidth={1.75} />
-                    <span>Scan</span>
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-tertiary)" }}
-                  />
-                </div>
-              </button>
-            )}
-
-            {/* Unified Report Export & Encrypted Vault */}
-            {showExportVault && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setDataExportVaultOpen(true);
-                }}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <FileSpreadsheet size={14} strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0">
-                    <span
-                      className="text-[13px] font-semibold block truncate leading-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Laporan & Cadangan Vault"
-                        : "Report & Data Vault"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 pl-2">
-                  <span
-                    className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
-                    style={{
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-secondary)",
-                      background: "var(--bg-elevated)",
-                    }}
-                  >
-                    {isIndonesian ? "Ekspor & Cadangan" : "Export & Backup"}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
-            )}
-
-            {/* Bank Statement Ingestion */}
-            {onOpenImport && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  onOpenImport();
-                }}
-                className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <FileSpreadsheet size={14} strokeWidth={1.75} />
-                  </div>
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Impor Rekening Koran" : "Import Bank Statement"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[12px]"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian ? "Bank / Mutasi" : "Bank / CSV"}
-                  </span>
-                  <ChevronRight
-                    size={15}
-                    style={{ color: "var(--text-secondary)" }}
-                  />
-                </div>
-              </button>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* ============================================================ */}
-      {/* 8. ABOUT & APP UPDATES */}
-      {/* ============================================================ */}
-      {!searchQuery.trim() && (
-        <section className="space-y-1.5 pt-1">
-          <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-            {isIndonesian ? "Aplikasi & Pembaruan" : "App & Updates"}
-          </div>
-
-          <div
-            className="rounded-2xl overflow-hidden backdrop-blur-md shadow-sm"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => handleCheckForUpdate(true)}
-              disabled={checkingUpdate}
-              className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full disabled:opacity-60"
-            >
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Sparkles size={14} strokeWidth={1.75} />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Trouvaille v{APP_VERSION}
-                  </span>
-                  <span
-                    className="text-[11px] truncate"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
                     {isIndonesian
-                      ? `Build ${APP_BUILD_NUMBER} · Ketuk untuk periksa pembaruan`
-                      : `Build ${APP_BUILD_NUMBER} · Tap to check for updates`}
+                      ? "Izin Kamera & Media"
+                      : "Camera & Media Permissions"}
                   </span>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                {checkingUpdate ? (
-                  <Loader2
-                    size={14}
-                    className="animate-spin"
-                    style={{ color: "var(--text-tertiary)" }}
-                  />
-                ) : releaseInfo?.hasUpdate ? (
-                  <span
-                    className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                    style={{
-                      background: "var(--text-primary)",
-                      color: "var(--bg-primary)",
-                    }}
-                  >
-                    {isIndonesian ? "Pembaruan" : "Update"}
-                  </span>
-                ) : (
-                  <span
-                    className="text-[11px] font-medium"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian ? "Periksa" : "Check"}
-                  </span>
-                )}
                 <ChevronRight
                   size={15}
                   style={{ color: "var(--text-secondary)" }}
                 />
-              </div>
-            </button>
+              </button>
+            )}
           </div>
         </section>
       )}
 
       {/* ============================================================ */}
-      {/* 9. SIGN OUT / EXIT GUEST */}
+      {/* 7. DATA & VAULT + 8. APP UPDATES + 9. SIGN OUT */}
       {/* ============================================================ */}
-      {!searchQuery.trim() && (
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={isGuest ? exitGuestMode : handleLogout}
-            className="w-full py-3 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-          >
-            <LogOut size={15} strokeWidth={1.75} />
-            <span>{isGuest ? "Exit Guest Mode" : "Log Out"}</span>
-          </button>
-        </div>
-      )}
+      <SettingsDataVaultSection
+        hasDataVault={hasDataVault}
+        showCloudSync={showCloudSync}
+        showWebDashboard={showWebDashboard}
+        showExportVault={showExportVault}
+        searchQuery={searchQuery}
+        isIndonesian={isIndonesian}
+        isGuest={isGuest}
+        hasAuthenticatedUser={Boolean(session?.user)}
+        syncStatus={syncStatus}
+        lastSyncedTime={lastSyncedTime}
+        pendingMutationsCount={pendingMutations.length}
+        onSafeSync={handleSafeSync}
+        onDiscardPendingAndRestore={handleDiscardPendingAndRestore}
+        onOpenWebDashboard={() => {
+          triggerHaptic("light");
+          setWebDashboardModalOpen(true);
+        }}
+        onOpenDataExportVault={() => {
+          triggerHaptic("light");
+          setDataExportVaultOpen(true);
+        }}
+        onOpenImport={onOpenImport}
+        checkingUpdate={checkingUpdate}
+        releaseInfo={releaseInfo}
+        onCheckForUpdate={() => handleCheckForUpdate(true)}
+        onSignOut={isGuest ? exitGuestMode : handleLogout}
+      />
 
       {/* ============================================================ */}
       {/* MODULAR BOTTOM SHEETS / MODALS (LAZY LOADED) */}

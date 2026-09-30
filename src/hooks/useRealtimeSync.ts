@@ -38,11 +38,11 @@ export function useRealtimeSync(
     refreshLedgersRef.current = spaceContext?.refreshLedgers;
   }, [spaceContext?.refreshLedgers]);
 
-  // Extract all collaborative shared ledgers
+  // Extract all collaborative shared ledgers (including shared Personal Space)
   const sharedLedgers = useMemo(() => {
     if (!spaces) return [];
     return spaces.filter(
-      (s) => s.is_shared && s.id !== "personal" && s.id !== "all",
+      (s) => s.is_shared && s.id !== "all",
     );
   }, [spaces]);
 
@@ -53,10 +53,10 @@ export function useRealtimeSync(
 
   const sharedLedgerIdsKey = useMemo(() => {
     return sharedLedgers
-      .map((s) => s.id)
+      .map((s) => (s.id === "personal" && userId ? `personal-${userId}` : s.id))
       .sort()
       .join(",");
-  }, [sharedLedgers]);
+  }, [sharedLedgers, userId]);
 
   // 1. Personal User Channel (Personal transactions, wallets, categories, and membership invites)
   useEffect(() => {
@@ -138,7 +138,7 @@ export function useRealtimeSync(
         },
         () => {
           // Cloud membership updated (e.g. joined ledger, role change)
-          refreshLedgersRef.current?.();
+          void refreshLedgersRef.current?.();
         },
       )
       .subscribe((status) => {
@@ -156,14 +156,17 @@ export function useRealtimeSync(
 
   // 2. Collaborative Shared Ledgers Channel (Live sync across all shared ledgers simultaneously)
   useEffect(() => {
-    if (!userId || userId === "guest_local_user" || sharedLedgers.length === 0) {
+    const activeSharedLedgers = sharedLedgersRef.current;
+    if (!userId || userId === "guest_local_user" || !sharedLedgerIdsKey || activeSharedLedgers.length === 0) {
       return;
     }
 
     const sharedChannelName = `realtime-shared-${userId}-${sharedLedgerIdsKey}`;
     let channel = supabase.channel(sharedChannelName);
 
-    sharedLedgers.forEach((ledger) => {
+    activeSharedLedgers.forEach((ledger) => {
+      const targetCloudId = ledger.id === "personal" ? `personal-${userId}` : ledger.id;
+
       // Listen for transaction mutations in this shared ledger
       channel = channel.on(
         "postgres_changes",
@@ -171,7 +174,7 @@ export function useRealtimeSync(
           event: "*",
           schema: "public",
           table: "transactions",
-          filter: `ledger_id=eq.${ledger.id}`,
+          filter: `ledger_id=eq.${targetCloudId}`,
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
@@ -205,6 +208,13 @@ export function useRealtimeSync(
               const partnerDisplayName =
                 rawTx.created_by_name ||
                 ledger.name;
+              const isId = (() => {
+                try {
+                  return localStorage.getItem("trouvaille_language") !== "en";
+                } catch {
+                  return true;
+                }
+              })();
 
               onPartnerTransactionRef.current?.({
                 source: "partner_sync",
@@ -212,7 +222,13 @@ export function useRealtimeSync(
                 type: rawTx.type,
                 categoryName:
                   categoryObj?.name ||
-                  (rawTx.type === "income" ? "Pemasukan" : "Pengeluaran"),
+                  (rawTx.type === "income"
+                    ? isId
+                      ? "Pemasukan"
+                      : "Income"
+                    : isId
+                      ? "Pengeluaran"
+                      : "Expense"),
                 walletName: ledger.name,
                 ledgerId: ledger.id,
                 ledgerName: ledger.name,
@@ -260,10 +276,10 @@ export function useRealtimeSync(
           event: "UPDATE",
           schema: "public",
           table: "ledgers",
-          filter: `id=eq.${ledger.id}`,
+          filter: `id=eq.${targetCloudId}`,
         },
         () => {
-          spaceContext?.refreshLedgers?.();
+          void refreshLedgersRef.current?.();
         },
       );
 
@@ -274,10 +290,10 @@ export function useRealtimeSync(
           event: "*",
           schema: "public",
           table: "ledger_members",
-          filter: `ledger_id=eq.${ledger.id}`,
+          filter: `ledger_id=eq.${targetCloudId}`,
         },
         () => {
-          refreshLedgersRef.current?.();
+          void refreshLedgersRef.current?.();
         },
       );
     });

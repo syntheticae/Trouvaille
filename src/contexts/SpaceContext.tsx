@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef } from "react";
 import type { Transaction, FinancialDomain, FinancialLedger, LedgerMemberRole, LedgerMember } from "../types";
 import { supabase } from "../lib/supabase";
 import {
@@ -111,6 +111,18 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
       return {};
     }
   });
+  const personalOverrideRef = useRef<Partial<MoneySpace>>(personalOverride);
+  useEffect(() => {
+    personalOverrideRef.current = personalOverride;
+  }, [personalOverride]);
+
+  const resetInMemorySpaces = useCallback(() => {
+    setDefaultSpaceIdState("personal");
+    setActiveSpaceIdState("personal");
+    setCustomSpaces([]);
+    setPersonalOverride({});
+    personalOverrideRef.current = {};
+  }, []);
 
   // Attempt to sync custom and shared ledgers from Supabase cloud
   const syncFromCloud = useCallback(async () => {
@@ -174,6 +186,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
             member_status: "active",
           };
           setPersonalOverride(pOverride);
+          personalOverrideRef.current = pOverride;
           try {
             localStorage.setItem(
               "trouvaille_personal_ledger_override_v1",
@@ -224,7 +237,13 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
         if (cloudSpaces.length > 0) {
           setCustomSpaces((prev) => {
             const mergedMap = new Map<string, MoneySpace>();
-            prev.forEach((s) => mergedMap.set(s.id, s));
+            prev.forEach((s) => {
+              // Rule 8.2 Multi-Tenant Isolation: only preserve local offline spaces created by this user
+              // or pending join requests; drop foreign/kicked spaces not returned by cloud
+              if (!s.user_id || s.user_id === session.user.id || s.member_status === "pending") {
+                mergedMap.set(s.id, s);
+              }
+            });
             cloudSpaces.forEach((s) => {
               const prevSpace = mergedMap.get(s.id);
               mergedMap.set(s.id, {
@@ -266,13 +285,39 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
-    if (isMounted) {
-      syncFromCloud();
+    void Promise.resolve().then(() => {
+      if (isMounted) {
+        void syncFromCloud();
+      }
+    });
+
+    const handleSessionTeardown = () => {
+      if (isMounted) {
+        resetInMemorySpaces();
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("trouvaille_session_teardown", handleSessionTeardown);
     }
+
+    const { data: authSubscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+      if (event === "SIGNED_OUT") {
+        resetInMemorySpaces();
+      } else if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session?.user?.id && session.user.id !== "guest_local_user") {
+        void syncFromCloud();
+      }
+    });
+
     return () => {
       isMounted = false;
+      if (typeof window !== "undefined") {
+        window.removeEventListener("trouvaille_session_teardown", handleSessionTeardown);
+      }
+      authSubscription?.subscription?.unsubscribe();
     };
-  }, [syncFromCloud]);
+  }, [syncFromCloud, resetInMemorySpaces]);
 
   const spaces = useMemo(() => {
     const isPersonalDefault = defaultSpaceId === "personal";
@@ -335,6 +380,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
         isDefault: targetId === "personal",
         is_default: targetId === "personal",
       };
+      personalOverrideRef.current = updated;
       try {
         localStorage.setItem("trouvaille_personal_ledger_override_v1", JSON.stringify(updated));
       } catch {}
@@ -376,7 +422,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     const newSpace: MoneySpace = {
       id: typeof crypto !== "undefined" && crypto.randomUUID ? `ledger-${crypto.randomUUID()}` : `ledger-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: spaceData.name.trim(),
-      description: spaceData.description?.trim() || `Dedicated space for ${spaceData.name.trim()}`,
+      description: spaceData.description?.trim() || "",
       tag: formattedTag,
       icon: spaceData.icon || (isShared ? "Users" : "BookOpen"),
       currency: spaceData.currency || "IDR",
@@ -439,17 +485,21 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
 
   const updateCustomSpace = useCallback((id: string, spaceData: Partial<CreateSpaceInput>) => {
     if (id === "personal") {
-      const willBeShared = spaceData.is_shared !== undefined ? Boolean(spaceData.is_shared) : Boolean(personalOverride.is_shared);
-      const inviteCode = willBeShared ? (personalOverride.invite_code || generateInviteCode()) : undefined;
+      const currOverride = personalOverrideRef.current;
+      const willBeShared = spaceData.is_shared !== undefined ? Boolean(spaceData.is_shared) : Boolean(currOverride.is_shared);
+      const inviteCode = willBeShared
+        ? (spaceData.invite_code || currOverride.invite_code || generateInviteCode())
+        : undefined;
       const updated: Partial<MoneySpace> = {
-        ...personalOverride,
-        name: spaceData.name ? spaceData.name.trim() : (personalOverride.name || "Personal Space"),
-        description: spaceData.description !== undefined ? spaceData.description.trim() : personalOverride.description,
-        icon: spaceData.icon || personalOverride.icon || "User",
-        currency: spaceData.currency || personalOverride.currency || "IDR",
+        ...currOverride,
+        name: spaceData.name ? spaceData.name.trim() : (currOverride.name || "Personal Space"),
+        description: spaceData.description !== undefined ? spaceData.description.trim() : currOverride.description,
+        icon: spaceData.icon || currOverride.icon || "User",
+        currency: spaceData.currency || currOverride.currency || "IDR",
         is_shared: willBeShared,
         invite_code: inviteCode,
       };
+      personalOverrideRef.current = updated;
       setPersonalOverride(updated);
       try {
         localStorage.setItem("trouvaille_personal_ledger_override_v1", JSON.stringify(updated));
@@ -500,8 +550,10 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
       const updated = prev.map((s) => {
         if (s.id !== id) return s;
         const willBeShared = spaceData.is_shared !== undefined ? Boolean(spaceData.is_shared) : Boolean(s.is_shared);
-        const inviteCode = willBeShared ? (s.invite_code || generateInviteCode()) : undefined;
-        if (willBeShared && !s.invite_code) {
+        const inviteCode = willBeShared
+          ? (spaceData.invite_code || s.invite_code || generateInviteCode())
+          : undefined;
+        if (willBeShared && (spaceData.invite_code || !s.invite_code)) {
           generatedInviteCode = inviteCode;
         }
         return {
@@ -535,6 +587,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
           if (spaceData.description !== undefined) payload.description = spaceData.description.trim();
           if (spaceData.icon) payload.icon = spaceData.icon;
           if (spaceData.currency) payload.currency = spaceData.currency;
+          if (spaceData.invite_code) payload.invite_code = spaceData.invite_code;
           if (spaceData.is_shared !== undefined) {
             payload.is_shared = spaceData.is_shared;
             if (spaceData.is_shared && generatedInviteCode) {

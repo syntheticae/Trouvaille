@@ -50,11 +50,21 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
     return s.enabled; // Locked initially on app start if enabled
   });
 
-  // Check device biometric capabilities on mount
+  // Check device biometric capabilities on mount & listen for session teardown (Rule 8.2)
   useEffect(() => {
     isBiometricAvailable().then((supported) => {
       setIsBiometricSupported(supported);
     });
+
+    const handleSessionTeardown = () => {
+      setIsLocked(false);
+      setSecuritySettingsState(getSecuritySettings());
+    };
+
+    window.addEventListener("trouvaille_session_teardown", handleSessionTeardown);
+    return () => {
+      window.removeEventListener("trouvaille_session_teardown", handleSessionTeardown);
+    };
   }, []);
 
   // Sync settings helper

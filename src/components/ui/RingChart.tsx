@@ -231,13 +231,13 @@ export function Ring({
   } = useRing();
 
   const item = data[index];
-  if (!item) return null;
-
   const r = getRingRadius(index);
   const strokeWidth = customStrokeWidth ?? defaultStrokeWidth;
-  const color = customColor || item.color || "#FFFFFF";
+  const color = customColor || item?.color || "#FFFFFF";
 
-  const progress = Math.min(1, Math.max(0, item.maxValue > 0 ? item.value / item.maxValue : 0));
+  const progress = item
+    ? Math.min(1, Math.max(0, item.maxValue > 0 ? item.value / item.maxValue : 0))
+    : 0;
   const isHovered = hoveredIndex === index;
   const isFaded = hoveredIndex !== null && !isHovered;
 
@@ -253,6 +253,8 @@ export function Ring({
     if (progress <= 0.001) return "";
     return describeArc(center.x, center.y, r, startAngle, currentEndAngle);
   }, [center.x, center.y, r, startAngle, currentEndAngle, progress]);
+
+  if (!item) return null;
 
   const activeStrokeWidth = isHovered ? strokeWidth + 1.5 : strokeWidth;
 

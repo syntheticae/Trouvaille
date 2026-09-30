@@ -29,7 +29,7 @@ export function DataExportVaultModal({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-6 pb-12 space-y-5 max-w-lg mx-auto">
+      <div className="p-6 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] space-y-5 max-w-lg mx-auto">
         {/* Header */}
         <div className="space-y-1 text-left">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.04] text-[11px] font-medium tracking-wide text-[var(--text-secondary)] mb-1">
@@ -40,7 +40,7 @@ export function DataExportVaultModal({
             className="text-xl font-semibold tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
-            {isIndonesian ? "Ekspor Laporan & Cadangan Vault" : "Report Export & Data Vault"}
+            {isIndonesian ? "Ekspor Laporan & Cadangan Brankas" : "Report Export & Data Vault"}
           </h3>
           <p
             className="text-[13px] leading-relaxed font-normal"
@@ -129,12 +129,12 @@ export function DataExportVaultModal({
                     {isIndonesian ? "Brankas Terenkripsi AES-256" : "AES-256 Encrypted Vault"}
                   </h4>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-medium">
-                    Offline Vault
+                    {isIndonesian ? "Brankas Lokal" : "Offline Vault"}
                   </span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
                   {isIndonesian
-                    ? "Cadangkan seluruh database (transaksi, rekening, tagihan, target) ke dalam file terenkripsi sandi atau pulihkan data kapan saja."
+                    ? "Cadangkan seluruh basis data (transaksi, rekening, tagihan, target) ke dalam berkas terenkripsi sandi atau pulihkan data kapan saja."
                     : "Backup entire database (transactions, accounts, bills, goals) to a password-encrypted offline vault or restore anytime."}
                 </p>
               </div>
@@ -151,7 +151,7 @@ export function DataExportVaultModal({
                 className="py-2.5 px-3 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] active:scale-[0.99] text-[12px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
               >
                 <Download size={13} strokeWidth={1.75} />
-                <span>{isIndonesian ? "Cadangkan File" : "Backup Vault"}</span>
+                <span>{isIndonesian ? "Cadangkan Berkas" : "Backup Vault"}</span>
               </button>
               <button
                 type="button"

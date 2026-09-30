@@ -376,7 +376,7 @@ export function useFinancialIntelligence({
     const uniqueTxDays = new Set(
       transactions
         .filter((t) => t.occurred_on)
-        .map((t) => t.occurred_on)
+        .map((t) => t.occurred_on.slice(0, 10))
     );
     const todayStr = format(now, "yyyy-MM-dd");
     const yesterdayStr = format(subDays(now, 1), "yyyy-MM-dd");

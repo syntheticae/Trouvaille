@@ -78,7 +78,7 @@ export function ConvertWalletToAssetModal({
     return totalInflowImpliedUnits > 0
       ? Math.round(totalInflowIdr / totalInflowImpliedUnits)
       : 15950;
-  }, [wallet?.id, allTxs]);
+  }, [wallet, allTxs]);
 
   // Form State
   const [rateInput, setRateInput] = useState<string>(String(effectiveRate));

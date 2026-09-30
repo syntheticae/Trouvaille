@@ -34,6 +34,7 @@ import {
   updateMemberRole,
   removeMemberFromLedger,
   regenerateInviteCode,
+  generateInviteCode,
 } from "../../lib/sharedLedgerService";
 import { generateQrSvg, buildJoinLedgerUrl } from "../../lib/qrCodeGenerator";
 import type { LedgerMember, LedgerMemberRole } from "../../types";
@@ -71,38 +72,51 @@ export function SharedLedgerDetailSheet({
     return spaces.find((s) => s.id === ledger.id) || ledger;
   }, [spaces, ledger]);
 
+  const liveLedgerId = liveLedger?.id || "";
+  const userId = user?.id || "";
+  const userEmail = user?.email || "";
+  const userFullName = (user?.user_metadata?.full_name as string) || "";
+
   const isOwner = useMemo(() => {
     if (!liveLedger) return false;
     if (liveLedger.role === "owner") return true;
-    if (user?.id && liveLedger.user_id === user.id) return true;
+    if (userId && liveLedger.user_id === userId) return true;
     if (liveLedger.id === "personal") return true;
     return false;
-  }, [liveLedger, user]);
+  }, [liveLedger, userId]);
 
-  const inviteCode = liveLedger?.invite_code || "TRV-882";
+  const fallbackGeneratedCode = useMemo(() => generateInviteCode(), []);
+  const inviteCode = liveLedger?.invite_code || fallbackGeneratedCode;
   const { webUrl } = useMemo(
     () => buildJoinLedgerUrl(inviteCode),
     [inviteCode],
   );
 
+  // Persist generated code if shared ledger had no invite_code yet
+  useEffect(() => {
+    if (isOpen && liveLedgerId && !liveLedger?.invite_code && isOwner) {
+      updateCustomSpace(liveLedgerId, { is_shared: true, invite_code: fallbackGeneratedCode });
+    }
+  }, [isOpen, liveLedgerId, liveLedger?.invite_code, isOwner, updateCustomSpace, fallbackGeneratedCode]);
+
   // Load members and QR code on open
   const loadData = useCallback(async () => {
-    if (!liveLedger?.id) return;
+    if (!liveLedgerId) return;
     setLoadingMembers(true);
     try {
-      const list = await fetchLedgerMembers(liveLedger.id);
-      if (isOwner && user?.id && !list.some((m) => m.user_id === user.id)) {
+      const list = await fetchLedgerMembers(liveLedgerId);
+      if (isOwner && userId && !list.some((m) => m.user_id === userId)) {
         const ownerFallback: LedgerMember = {
-          id: `owner-${user.id}`,
-          ledger_id: liveLedger.id,
-          user_id: user.id,
+          id: `owner-${userId}`,
+          ledger_id: liveLedgerId,
+          user_id: userId,
           role: "owner",
           status: "active",
           display_name:
-            (user.user_metadata?.full_name as string) ||
-            user.email?.split("@")[0] ||
+            userFullName ||
+            userEmail.split("@")[0] ||
             (isIndonesian ? "Pemilik" : "Owner"),
-          email: user.email || null,
+          email: userEmail || null,
           joined_at: new Date().toISOString(),
         };
         setMembers([ownerFallback, ...list]);
@@ -122,17 +136,24 @@ export function SharedLedgerDetailSheet({
     } finally {
       setLoadingMembers(false);
     }
-  }, [liveLedger?.id, webUrl, isOwner, user, isIndonesian]);
+  }, [liveLedgerId, webUrl, isOwner, userId, userFullName, userEmail, isIndonesian]);
 
   useEffect(() => {
-    if (isOpen && liveLedger) {
-      loadData();
-      setCopiedCode(false);
-      setCopiedLink(false);
-      setConfirmLeaveOpen(false);
-      setConfirmKickMember(null);
+    let active = true;
+    if (isOpen && liveLedgerId) {
+      void Promise.resolve().then(() => {
+        if (!active) return;
+        setCopiedCode(false);
+        setCopiedLink(false);
+        setConfirmLeaveOpen(false);
+        setConfirmKickMember(null);
+        void loadData();
+      });
     }
-  }, [isOpen, liveLedger?.id, inviteCode, loadData]);
+    return () => {
+      active = false;
+    };
+  }, [isOpen, liveLedgerId, inviteCode, loadData]);
 
   if (!liveLedger) return null;
 
@@ -197,7 +218,7 @@ export function SharedLedgerDetailSheet({
           "add",
         );
       }
-    } catch (err) {
+    } catch {
       showToast(isIndonesian ? "Gagal memperbarui kode." : "Failed to regenerate code.", "add");
     } finally {
       setIsRegenerating(false);
@@ -272,7 +293,7 @@ export function SharedLedgerDetailSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="space-y-6 pb-6 select-none">
+      <div className="px-5 sm:px-6 space-y-6 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] select-none">
         
         {/* Header Capsule */}
         <div className="text-center pt-1">

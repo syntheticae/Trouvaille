@@ -49,7 +49,14 @@ export function JoinLedgerContent({
 
   const [activeTab, setActiveTab] = useState<"code" | "qr">("code");
   const [inviteCodeInput, setInviteCodeInput] = useState(initialCode);
-  const [displayNameInput, setDisplayNameInput] = useState("");
+  const [displayNameInput, setDisplayNameInput] = useState(() => {
+    if (!user) return "";
+    return (
+      (user.user_metadata?.full_name as string) ||
+      user.email?.split("@")[0] ||
+      ""
+    );
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -62,17 +69,6 @@ export function JoinLedgerContent({
 
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-
-  // Pre-fill display name from user metadata or email
-  useEffect(() => {
-    if (user && !displayNameInput) {
-      const name =
-        (user.user_metadata?.full_name as string) ||
-        user.email?.split("@")[0] ||
-        "";
-      setDisplayNameInput(name);
-    }
-  }, [user, displayNameInput]);
 
   // Stop camera feed and scan loop
   const stopCameraStream = useCallback(() => {
@@ -88,12 +84,17 @@ export function JoinLedgerContent({
   }, []);
 
   useEffect(() => {
-    if (initialCode) {
-      setInviteCodeInput(initialCode);
-    }
-    setErrorMessage(null);
-    setCameraError(null);
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      if (initialCode) {
+        setInviteCodeInput(initialCode);
+      }
+      setErrorMessage(null);
+      setCameraError(null);
+    });
     return () => {
+      active = false;
       stopCameraStream();
     };
   }, [initialCode, stopCameraStream]);

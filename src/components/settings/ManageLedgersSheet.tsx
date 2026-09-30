@@ -43,20 +43,22 @@ interface ManageLedgersSheetProps {
 }
 
 const LEDGER_ICONS = [
-  { name: "BookOpen", label: "General Book", icon: BookOpen },
-  { name: "Users", label: "Shared / Family", icon: Users },
-  { name: "User", label: "Personal", icon: User },
-  { name: "Briefcase", label: "Business", icon: Briefcase },
-  { name: "Store", label: "Merchant / Shop", icon: Store },
-  { name: "Building2", label: "Corporate / Real Estate", icon: Building2 },
-  { name: "Plane", label: "Travel / Trip", icon: Plane },
-  { name: "Sparkles", label: "Lifestyle / Luxury", icon: Sparkles },
-  { name: "Layers", label: "Consolidated", icon: Layers },
-  { name: "Wallet", label: "Savings", icon: Wallet },
-  { name: "Landmark", label: "Tax / Treasury", icon: Landmark },
-  { name: "TrendingUp", label: "Investments", icon: TrendingUp },
-  { name: "Coins", label: "Crypto / Capital", icon: Coins },
+  { name: "BookOpen", label: "General Book", labelId: "Buku Kas Umum", icon: BookOpen },
+  { name: "Users", label: "Shared / Family", labelId: "Bersama / Keluarga", icon: Users },
+  { name: "User", label: "Personal", labelId: "Pribadi", icon: User },
+  { name: "Briefcase", label: "Business", labelId: "Bisnis / Kantor", icon: Briefcase },
+  { name: "Store", label: "Merchant / Shop", labelId: "Toko / Usaha", icon: Store },
+  { name: "Building2", label: "Corporate / Real Estate", labelId: "Properti / Korporasi", icon: Building2 },
+  { name: "Plane", label: "Travel / Trip", labelId: "Perjalanan / Liburan", icon: Plane },
+  { name: "Sparkles", label: "Lifestyle / Luxury", labelId: "Gaya Hidup", icon: Sparkles },
+  { name: "Layers", label: "Consolidated", labelId: "Terkonsolidasi", icon: Layers },
+  { name: "Wallet", label: "Savings", labelId: "Tabungan", icon: Wallet },
+  { name: "Landmark", label: "Tax / Treasury", labelId: "Pajak / Kas Negara", icon: Landmark },
+  { name: "TrendingUp", label: "Investments", labelId: "Investasi", icon: TrendingUp },
+  { name: "Coins", label: "Crypto / Capital", labelId: "Kripto / Modal", icon: Coins },
 ];
+
+const SPACE_CURRENCIES = ["IDR", "USD", "SGD", "EUR", "JPY", "MYR", "AUD"] as const;
 
 export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedgersSheetProps) {
   const {
@@ -305,7 +307,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
             : "Create New Space"
           : viewState === "edit"
             ? isIndonesian
-              ? "Edit Space"
+              ? "Ubah Space"
               : "Edit Space"
             : viewState === "join"
               ? isIndonesian
@@ -343,6 +345,34 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                   ? transactions.length
                   : transactionCounts[ledger.id] || 0;
 
+                const displayLedgerName =
+                  isConsolidated && ledger.name === "All Ledgers"
+                    ? isIndonesian
+                      ? "Semua Space"
+                      : "All Spaces"
+                    : ledger.id === "personal" && ledger.name === "Personal Space"
+                      ? isIndonesian
+                        ? "Space Pribadi"
+                        : "Personal Space"
+                      : ledger.name;
+
+                const displayLedgerDesc =
+                  isConsolidated &&
+                  (!ledger.description ||
+                    ledger.description === "Consolidated balance sheet across all financial ledgers")
+                    ? isIndonesian
+                      ? "Seluruh space aktif terkonsolidasi"
+                      : "All active spaces consolidated"
+                    : ledger.id === "personal" &&
+                        (!ledger.description ||
+                          ledger.description ===
+                            "Daily personal cashflow, necessities, shopping & personal savings")
+                      ? isIndonesian
+                        ? "Arus kas harian pribadi, kebutuhan pokok, belanja & tabungan personal"
+                        : "Daily personal cashflow, necessities, shopping & personal savings"
+                      : ledger.description ||
+                        (isIndonesian ? "Space finansial mandiri" : "Independent financial space");
+
                 return (
                   <div
                     key={ledger.id}
@@ -373,8 +403,13 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[13.5px] font-semibold text-[var(--text-primary)] leading-tight">
-                            {ledger.name}
+                            {displayLedgerName}
                           </span>
+                          {!isConsolidated && ledger.currency && (
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-semibold bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)] shrink-0">
+                              {ledger.currency}
+                            </span>
+                          )}
                           {isDefault && (
                             <span className="px-2 py-0.5 rounded-full text-[9.5px] font-mono font-medium bg-white/[0.08] text-[var(--text-primary)] border border-[var(--glass-border)] inline-flex items-center gap-1 shrink-0">
                               <Star size={9} className="fill-current" />
@@ -400,7 +435,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                           )}
                         </div>
                         <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
-                          {ledger.description || (isConsolidated ? (isIndonesian ? "Seluruh space aktif terkonsolidasi" : "All active spaces consolidated") : (isIndonesian ? "Space finansial mandiri" : "Independent financial space"))}
+                          {displayLedgerDesc}
                         </p>
                         <span className="text-[10px] font-mono text-[var(--text-tertiary)] opacity-75 mt-0.5 inline-block">
                           {txCount} {isIndonesian ? "transaksi" : "transactions"}
@@ -415,7 +450,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                           {/* Toggle Default Ledger Button */}
                           <button
                             type="button"
-                            onClick={(e) => handleSetDefault(ledger.id, ledger.name, e)}
+                            onClick={(e) => handleSetDefault(ledger.id, displayLedgerName, e)}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
                               isDefault
                                 ? "text-[var(--text-primary)] bg-white/[0.08]"
@@ -449,7 +484,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                             type="button"
                             onClick={(e) => handleOpenEdit(ledger, e)}
                             className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] transition-colors cursor-pointer"
-                            title={isIndonesian ? "Edit Space" : "Edit Space"}
+                            title={isIndonesian ? "Ubah Space" : "Edit Space"}
                           >
                             <Edit3 size={14} strokeWidth={1.75} />
                           </button>
@@ -568,9 +603,38 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
                           ? "bg-[var(--text-primary)] text-[var(--bg-elevated)] border-[var(--text-primary)] scale-105"
                           : "bg-[var(--glass-fill)] text-[var(--text-secondary)] border-[var(--glass-border)] hover:text-[var(--text-primary)]"
                       }`}
-                      title={item.label}
+                      title={isIndonesian ? item.labelId : item.label}
                     >
                       <IconComponent size={16} strokeWidth={1.75} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Independent Space Currency Selector */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-0.5">
+                {isIndonesian ? "Mata Uang Dasar Space" : "Space Base Currency"}
+              </label>
+              <div className="grid grid-cols-7 gap-1.5 pt-1">
+                {SPACE_CURRENCIES.map((curr) => {
+                  const isSelected = formCurrency === curr;
+                  return (
+                    <button
+                      key={curr}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setFormCurrency(curr);
+                      }}
+                      className={`py-2 rounded-xl text-[11px] font-mono font-semibold transition-all border cursor-pointer ${
+                        isSelected
+                          ? "bg-[var(--text-primary)] text-[var(--bg-elevated)] border-[var(--text-primary)]"
+                          : "bg-[var(--glass-fill)] text-[var(--text-secondary)] border-[var(--glass-border)] hover:text-[var(--text-primary)]"
+                      }`}
+                    >
+                      {curr}
                     </button>
                   );
                 })}
@@ -648,12 +712,12 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
         )}
 
         {/* ============================================================ */}
-        {/* VIEW 4: DELETE CONFIRMATION */}
+        {/* VIEW 4: DELETE CONFIRMATION (Rule 7 Monochrome Luxury) */}
         {/* ============================================================ */}
         {viewState === "delete_confirm" && selectedLedger && (
           <div className="space-y-4 pt-1">
-            <div className="p-4 rounded-2xl border border-[var(--glass-border)] bg-rose-500/[0.06] flex items-start gap-3">
-              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0 mt-0.5 border border-rose-500/20">
+            <div className="p-4 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill)] flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-[var(--bg-elevated)] text-[var(--text-primary)] flex items-center justify-center shrink-0 mt-0.5 border border-[var(--glass-border)]">
                 <AlertTriangle size={16} strokeWidth={1.75} />
               </div>
               <div className="min-w-0">
@@ -708,7 +772,7 @@ export function ManageLedgersSheet({ isOpen, onClose, onOpenLogin }: ManageLedge
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="flex-1 py-3 px-4 rounded-xl text-[13px] font-semibold bg-rose-500 text-white hover:bg-rose-600 active:scale-[0.99] transition-all cursor-pointer shadow-sm"
+                className="flex-1 py-3 px-4 rounded-xl text-[13px] font-semibold bg-[var(--text-primary)] text-[var(--bg-elevated)] hover:opacity-90 active:scale-[0.99] transition-all cursor-pointer shadow-sm"
               >
                 {isIndonesian ? "Hapus Sekarang" : "Confirm Delete"}
               </button>

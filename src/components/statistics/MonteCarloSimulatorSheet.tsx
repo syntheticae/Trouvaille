@@ -68,6 +68,7 @@ export function MonteCarloSimulatorSheet({
   // Run simulation reactively
   const simulation: MonteCarloSimulationResult = useMemo(() => {
     // seed triggers fresh simulation pass
+    void seed;
     return runMonteCarloSimulation({
       initialNetWorth: Math.max(0, initialNetWorth),
       monthlyContribution: monthlySavings,

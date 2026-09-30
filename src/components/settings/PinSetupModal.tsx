@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { triggerHaptic } from "../../lib/haptics";
 import { useSecurityLock } from "../../contexts/SecurityLockContext";
 import { useToast } from "../../contexts/ToastContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface PinSetupModalProps {
   isOpen: boolean;
@@ -13,18 +14,22 @@ interface PinSetupModalProps {
 export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
   const { securitySettings, enrollPin, removePin } = useSecurityLock();
   const { showToast } = useToast();
+  const { isIndonesian } = useLanguage();
 
   const [pinStep, setPinStep] = useState<"create" | "confirm">("create");
   const [pinSetupValue, setPinSetupValue] = useState("");
   const [pinConfirmValue, setPinConfirmValue] = useState("");
 
-  useEffect(() => {
-    if (isOpen) {
-      setPinStep("create");
-      setPinSetupValue("");
-      setPinConfirmValue("");
-    }
-  }, [isOpen]);
+  const resetForm = () => {
+    setPinStep("create");
+    setPinSetupValue("");
+    setPinConfirmValue("");
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   const handleAction = async () => {
     if (pinStep === "create") {
@@ -33,49 +38,75 @@ export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
       triggerHaptic("light");
     } else {
       if (pinConfirmValue !== pinSetupValue) {
-        showToast("PINs do not match", "delete", () => {});
+        showToast(
+          isIndonesian ? "PIN tidak cocok. Coba lagi." : "PINs do not match",
+          "delete",
+          () => {},
+        );
         setPinConfirmValue("");
         triggerHaptic("heavy");
         return;
       }
       await enrollPin(pinSetupValue);
+      resetForm();
       onClose();
-      showToast("Backup PIN saved successfully", "update", () => {});
+      showToast(
+        isIndonesian
+          ? "PIN cadangan berhasil disimpan"
+          : "Backup PIN saved successfully",
+        "update",
+        () => {},
+      );
     }
   };
 
   const handleRemove = () => {
     removePin();
+    resetForm();
     onClose();
-    showToast("Backup PIN removed", "delete", () => {});
+    showToast(
+      isIndonesian ? "PIN cadangan dihapus" : "Backup PIN removed",
+      "delete",
+      () => {},
+    );
   };
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-10 space-y-4">
+    <BottomSheet isOpen={isOpen} onClose={handleClose}>
+      <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] space-y-4">
         <div className="flex items-center justify-between">
           <h3
             className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
-            {pinStep === "create" ? "Enter Backup PIN" : "Confirm Backup PIN"}
+            {pinStep === "create"
+              ? isIndonesian
+                ? "Buat PIN Cadangan"
+                : "Enter Backup PIN"
+              : isIndonesian
+                ? "Konfirmasi PIN Cadangan"
+                : "Confirm Backup PIN"}
           </h3>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold cursor-pointer"
             style={{
               background: "var(--glass-fill)",
               color: "var(--text-secondary)",
             }}
           >
-            <X size={14} />
+            <X size={14} strokeWidth={1.75} />
           </button>
         </div>
 
         <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
           {pinStep === "create"
-            ? "Choose a 4 to 6-digit numeric PIN to use as an emergency backup unlock."
-            : "Re-enter your PIN to confirm."}
+            ? isIndonesian
+              ? "Pilih 4 hingga 6 digit angka PIN sebagai akses darurat pembuka kunci."
+              : "Choose a 4 to 6-digit numeric PIN to use as an emergency backup unlock."
+            : isIndonesian
+              ? "Masukkan kembali PIN Anda untuk mengonfirmasi."
+              : "Re-enter your PIN to confirm."}
         </p>
 
         <input
@@ -102,13 +133,14 @@ export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
             <button
               type="button"
               onClick={handleRemove}
-              className="py-3.5 px-4 rounded-2xl text-[13px] font-bold cursor-pointer"
+              className="py-3.5 px-4 rounded-2xl text-[13px] font-semibold cursor-pointer transition-all active:scale-95"
               style={{
-                background: "rgba(239, 68, 68, 0.1)",
-                color: "#ef4444",
+                background: "var(--glass-fill)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
               }}
             >
-              Remove PIN
+              {isIndonesian ? "Hapus PIN" : "Remove PIN"}
             </button>
           )}
 
@@ -120,16 +152,23 @@ export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
                 : pinConfirmValue.length < 4
             }
             onClick={handleAction}
-            className="flex-1 py-3.5 rounded-2xl text-[13px] font-bold transition-all disabled:opacity-50 cursor-pointer"
+            className="flex-1 py-3.5 rounded-2xl text-[13px] font-semibold transition-all disabled:opacity-50 cursor-pointer active:scale-95"
             style={{
               background: "var(--accent)",
               color: "var(--accent-ink)",
             }}
           >
-            {pinStep === "create" ? "Continue" : "Save PIN"}
+            {pinStep === "create"
+              ? isIndonesian
+                ? "Lanjutkan"
+                : "Continue"
+              : isIndonesian
+                ? "Simpan PIN"
+                : "Save PIN"}
           </button>
         </div>
       </div>
     </BottomSheet>
   );
 }
+

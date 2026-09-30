@@ -1,9 +1,16 @@
-import { triggerHaptic } from "../lib/haptics";
+import { useState, useMemo } from "react";
 import {
-  useWallets,
-  getWalletIcon,
-  resolveTransactionWallets,
-} from "../hooks/useWallets";
+  format,
+  subDays,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+} from "date-fns";
+import { id as idLocale } from "date-fns/locale";
+import { triggerHaptic } from "../lib/haptics";
+import { useWallets } from "../hooks/useWallets";
 import { resolveTransactionCategory } from "../lib/categoryResolver";
 import {
   useCategories,
@@ -11,22 +18,7 @@ import {
   getParentIcon,
   getParentDisplayName,
 } from "../hooks/useCategories";
-import {
-  Layers,
-  Calendar,
-  ShieldCheck,
-  ChevronRight,
-  ChevronLeft,
-  ChevronDown,
-  Check,
-  Sparkles,
-  SlidersHorizontal,
-  Wallet,
-} from "lucide-react";
-import { useState, useMemo, lazy, Suspense } from "react";
 import { useAllTransactions } from "../hooks/useTransactions";
-import { BottomSheet } from "../components/ui/BottomSheet";
-import { IconRenderer } from "../components/ui/IconRenderer";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -37,73 +29,27 @@ import { useBills } from "../hooks/useBills";
 import { useGoals } from "../hooks/useGoals";
 import { useFinancialIntelligence } from "../hooks/useFinancialIntelligence";
 import { useWalletBalances } from "../hooks/useWalletBalances";
-import { MonthlyReviewSection } from "../components/statistics/MonthlyReviewSection";
-import { PersonalBaselineSection } from "../components/statistics/PersonalBaselineSection";
-import { SpendingPatternsSection } from "../components/statistics/SpendingPatternsSection";
-import { ExpenseStructureCard } from "../components/statistics/ExpenseStructureCard";
-import { DebtPayoffSimulatorCard } from "../components/statistics/DebtPayoffSimulatorCard";
-import { ZeroBasedEnvelopesCard } from "../components/statistics/ZeroBasedEnvelopesCard";
-import { CashflowOutlookCard } from "../components/home/CashflowOutlookCard";
-import { LiquidityHorizonCard } from "../components/home/LiquidityHorizonCard";
+import {
+  MonthlyReviewSection,
+  SpendingPatternsSection,
+  ExpenseStructureCard,
+  FinancialReportSection,
+  MonteCarloCard,
+  FirePlannerCard,
+  CategoryBreakdownCard,
+  InflowOutflowTrendCard,
+  CashflowVelocityCard,
+  StatisticsHeaderBar,
+  HealthScoreHeroCard,
+  CashflowSummaryBentoCard,
+  CategoryAllDetailsSheet,
+  StatisticsModalsContainer,
+  type StatisticsRange,
+  type AnalyticsSubTab,
+} from "../components/statistics";
 import { WhatIfSimulatorCard } from "../components/home/WhatIfSimulatorCard";
 import { PersonalFinancialModelCard } from "../components/home/PersonalFinancialModelCard";
-import { FinancialReportSection } from "../components/statistics/FinancialReportSection";
-import { CashflowSankeySection } from "../components/statistics/CashflowSankeySection";
-import { MonteCarloCard } from "../components/statistics/MonteCarloCard";
-import { FirePlannerCard } from "../components/statistics/FirePlannerCard";
-import { CategoryBreakdownCard } from "../components/statistics/CategoryBreakdownCard";
-import { NetCapitalTrajectoryCard } from "../components/statistics/NetCapitalTrajectoryCard";
-import { InflowOutflowTrendCard } from "../components/statistics/InflowOutflowTrendCard";
-import { CashflowVelocityCard } from "../components/statistics/CashflowVelocityCard";
-
-// Code-split heavy analytics modals and simulators
-const CategoryDrillDownSheet = lazy(() =>
-  import("../components/statistics/CategoryDrillDownSheet").then((m) => ({
-    default: m.CategoryDrillDownSheet,
-  })),
-);
-const FinancialHealthDiagnosticModal = lazy(() =>
-  import("../components/statistics/FinancialHealthDiagnosticModal").then(
-    (m) => ({
-      default: m.FinancialHealthDiagnosticModal,
-    }),
-  ),
-);
-const FinancialWrappedModal = lazy(() =>
-  import("../components/statistics/FinancialWrappedModal").then((m) => ({
-    default: m.FinancialWrappedModal,
-  })),
-);
-const PersonalFinancialModelSheet = lazy(() =>
-  import("../components/home/PersonalFinancialModelSheet").then((m) => ({
-    default: m.PersonalFinancialModelSheet,
-  })),
-);
-const AssetValuationSheet = lazy(() =>
-  import("../components/settings/AssetValuationSheet").then((m) => ({
-    default: m.AssetValuationSheet,
-  })),
-);
-const MonteCarloSimulatorSheet = lazy(() =>
-  import("../components/statistics/MonteCarloSimulatorSheet").then((m) => ({
-    default: m.MonteCarloSimulatorSheet,
-  })),
-);
-const FirePlannerSheet = lazy(() =>
-  import("../components/statistics/FirePlannerSheet").then((m) => ({
-    default: m.FirePlannerSheet,
-  })),
-);
-const WhatIfSimulatorSheet = lazy(() =>
-  import("../components/home/WhatIfSimulatorSheet").then((m) => ({
-    default: m.WhatIfSimulatorSheet,
-  })),
-);
-import {
-  ReorderableWidgetGrid,
-  WidgetCustomizationBar,
-} from "../components/common";
-import { CustomizeStatisticsModal } from "../components/statistics/CustomizeStatisticsModal";
+import { ReorderableWidgetGrid } from "../components/common";
 import { useWidgetLayout } from "../hooks/useWidgetLayout";
 import { STATS_STORAGE_KEY } from "../lib/widgetLayoutEngine";
 import { DEFAULT_STATISTICS_WIDGETS } from "../lib/widgetLayoutTypes";
@@ -112,25 +58,11 @@ import {
   calculateAssetTrend,
   calculateWhatIfScenario,
   isCorrectionTx,
+  type CategoryMoMShift,
 } from "../lib/financialMath";
-import {
-  format,
-  subDays,
-  subMonths,
-  startOfMonth,
-  endOfMonth,
-  startOfYear,
-  endOfYear,
-  eachDayOfInterval,
-  getDay,
-  isToday,
-} from "date-fns";
-import { id as idLocale } from "date-fns/locale";
 
-type Range = "week" | "month" | "year" | "all";
 type BreakdownType = "expense" | "income";
 type GroupMode = "category" | "parent";
-type AnalyticsSubTab = "report" | "intelligence" | "cashflow" | "simulation";
 
 const isTxCorrection = isCorrectionTx;
 
@@ -197,60 +129,6 @@ const GlassTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-function SavingsRing({ rate, size = 130 }: { rate: number; size?: number }) {
-  const { theme } = useTheme();
-  const isDark = theme !== "light";
-  const strokeWidth = 10;
-  const radius = (size - strokeWidth) / 2;
-  const circ = 2 * Math.PI * radius;
-  const strokeDashoffset =
-    circ - (Math.min(100, Math.max(0, rate)) / 100) * circ;
-
-  return (
-    <div
-      className="relative flex items-center justify-center"
-      style={{ width: size, height: size }}
-    >
-      <svg width={size} height={size} className="rotate-[-90deg]">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)"}
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="var(--text-primary)"
-          strokeWidth={strokeWidth}
-          strokeDasharray={circ}
-          strokeDashoffset={isNaN(strokeDashoffset) ? circ : strokeDashoffset}
-          strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 0.8s ease-in-out" }}
-        />
-      </svg>
-      <div className="absolute flex flex-col items-center">
-        <span
-          className="amount text-[20px] font-semibold"
-          style={{ color: "var(--text-primary)" }}
-        >
-          {rate.toFixed(0)}%
-        </span>
-        <span
-          className="text-[10px] font-semibold"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Saved
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function useChartColors() {
   const { theme } = useTheme();
   const isDark = theme !== "light";
@@ -290,7 +168,7 @@ export function StatisticsPage() {
   const { isIndonesian } = useLanguage();
   const { formatWithPreferred, formatCompactWithPreferred } = useCurrency();
   const isDark = theme !== "light";
-  const [range, setRange] = useState<Range>("month");
+  const [range, setRange] = useState<StatisticsRange>("month");
   const [breakdownType, setBreakdownType] = useState<BreakdownType>("expense");
   const [groupMode, setGroupMode] = useState<GroupMode>("category");
   const [allDetailsOpen, setAllDetailsOpen] = useState(false);
@@ -310,16 +188,12 @@ export function StatisticsPage() {
   const { data: bills = [] } = useBills();
   const { goals } = useGoals();
   const { budgetTarget } = useBudgetTarget();
-  const [walletFilterType, setWalletFilterType] = useState<
-    "all" | "expense" | "income"
-  >("all");
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedYear, setSelectedYear] = useState<number>(() =>
     new Date().getFullYear(),
   );
-  const [selectedCategoryShift, setSelectedCategoryShift] = useState<
-    any | null
-  >(null);
+  const [selectedCategoryShift, setSelectedCategoryShift] =
+    useState<CategoryMoMShift | null>(null);
   const [healthDiagnosticOpen, setHealthDiagnosticOpen] = useState(false);
   const [personalModelOpen, setPersonalModelOpen] = useState(false);
   const [wrappedOpen, setWrappedOpen] = useState(false);
@@ -328,8 +202,6 @@ export function StatisticsPage() {
   const [firePlannerOpen, setFirePlannerOpen] = useState(false);
   const [whatIfSheetOpen, setWhatIfSheetOpen] = useState(false);
   const [sankeyOpen, setSankeyOpen] = useState(false);
-  const [categoryBreakdownExpanded, setCategoryBreakdownExpanded] =
-    useState(true);
   const { isStealthMode: hideBalance } = usePrivacy();
   const colors = useChartColors();
 
@@ -352,7 +224,7 @@ export function StatisticsPage() {
     return Array.from(yearSet).sort((a, b) => b - a);
   }, [allTxs, now]);
 
-  // iOS-Style Springboard Widget Layout for Intelligence cards
+  // iOS-Style Springboard Widget Layout for Statistics cards
   const {
     widgets: statsWidgets,
     visibleCards: visibleStatsCards,
@@ -436,7 +308,6 @@ export function StatisticsPage() {
     ];
     const cards = visibleStatsCards.filter((c) => cashflowIds.has(c.id));
 
-    // Ensure core 4 cards exist unless explicitly hidden by the user
     cashflowOrder.forEach((id) => {
       const exists = cards.some((c) => c.id === id);
       const isHidden = hiddenStatsCards.some((c) => c.id === id);
@@ -533,7 +404,6 @@ export function StatisticsPage() {
     visibleSimulationCards.length,
   ]);
 
-  // Derive active tab to auto-fallback if currently selected tab has no visible cards
   const activeSubTab = useMemo(() => {
     if (
       analyticsTabs.length > 0 &&
@@ -559,7 +429,7 @@ export function StatisticsPage() {
     activeMonthDate,
   });
 
-  // 1. Filter by range with exact ISO string boundaries
+  // 1. Filter by range with Rule 8.1 Full ISO Timestamp compatibility (.slice(0, 10))
   const rangeTxs = useMemo(() => {
     let startStr: string;
     let endStr: string;
@@ -579,7 +449,8 @@ export function StatisticsPage() {
     }
     return allTxs.filter((t) => {
       if (!t.occurred_on) return false;
-      return t.occurred_on >= startStr && t.occurred_on <= endStr;
+      const d = t.occurred_on.slice(0, 10);
+      return d >= startStr && d <= endStr;
     });
   }, [allTxs, range, monthOffset, selectedYear, now]);
 
@@ -633,14 +504,16 @@ export function StatisticsPage() {
       ? Math.max(0, ((totalIncome - totalExpense) / totalIncome) * 100)
       : 0;
 
-  // Month-over-Month Delta Calculation (comparing to previous month)
+  // Month-over-Month Delta Calculation (comparing to previous month, Rule 8.1 safe)
   const { prevIncome, prevExpense } = useMemo(() => {
     const prevDate = subMonths(now, monthOffset + 1);
     const start = format(startOfMonth(prevDate), "yyyy-MM-dd");
     const end = format(endOfMonth(prevDate), "yyyy-MM-dd");
-    const pTxs = allTxs.filter(
-      (t) => t.occurred_on && t.occurred_on >= start && t.occurred_on <= end,
-    );
+    const pTxs = allTxs.filter((t) => {
+      if (!t.occurred_on) return false;
+      const d = t.occurred_on.slice(0, 10);
+      return d >= start && d <= end;
+    });
     return {
       prevIncome: pTxs
         .filter((t) => t.type === "income" && !isTxCorrection(t))
@@ -863,15 +736,19 @@ export function StatisticsPage() {
     return map;
   }, [allTxs]);
 
-  // 2. Trend bar chart data with high performance O(1) monthly lookups
+  // 2. Trend bar chart data with Rule 8.1 Full ISO Timestamp compatibility
   const trendData = useMemo(() => {
     if (range === "week") {
       return Array.from({ length: 7 }, (_, i) => {
         const d = subDays(now, 6 - i);
         const dStr = format(d, "yyyy-MM-dd");
-        const txs = allTxs.filter((t) => t.occurred_on === dStr);
+        const txs = allTxs.filter(
+          (t) => (t.occurred_on || "").slice(0, 10) === dStr,
+        );
         return {
-          label: format(d, "EEE"),
+          label: format(d, "EEE", {
+            locale: isIndonesian ? idLocale : undefined,
+          }),
           income: txs
             .filter((t) => t.type === "income" && !isTxCorrection(t))
             .reduce((s, t) => s + Number(t.amount || 0), 0),
@@ -894,7 +771,10 @@ export function StatisticsPage() {
       return weeks.map((w) => {
         const txs = allTxs.filter((t) => {
           if (!t.occurred_on) return false;
-          const [y, m, d] = t.occurred_on.split("-").map(Number);
+          const [y, m, d] = t.occurred_on
+            .slice(0, 10)
+            .split("-")
+            .map(Number);
           if (y !== currentYear || m - 1 !== currentMonth) return false;
           return d >= w.startDay && d <= w.endDay;
         });
@@ -926,8 +806,11 @@ export function StatisticsPage() {
       if (datedTxs.length === 0) return [];
 
       const earliestDate = datedTxs.reduce(
-        (min, tx) => (tx.occurred_on < min ? tx.occurred_on : min),
-        datedTxs[0].occurred_on,
+        (min, tx) => {
+          const d = tx.occurred_on.slice(0, 10);
+          return d < min ? d : min;
+        },
+        datedTxs[0].occurred_on.slice(0, 10),
       );
       const startMonth = new Date(`${earliestDate.slice(0, 7)}-01T00:00:00`);
       const totalMonths =
@@ -960,110 +843,7 @@ export function StatisticsPage() {
     isIndonesian,
   ]);
 
-  // 3. Cumulative Net Worth trend
-  const netWorthData = useMemo(() => {
-    let cumulative = 0;
-    return trendData.map((d) => {
-      cumulative += d.income - d.expense;
-      return { label: d.label, net: cumulative };
-    });
-  }, [trendData]);
-
-  // Most Active Accounts Calculation (Apple macOS Style)
-  const walletUsageStats = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        name: string;
-        icon: string;
-        count: number;
-        totalExpense: number;
-        totalIncome: number;
-      }
-    >();
-
-    rangeTxs.forEach((tx) => {
-      if (tx.type === "transfer") return;
-      const resolved = resolveTransactionWallets(tx, wallets);
-      const walletName = resolved.from || "Cash";
-      const amt = Number(tx.amount || 0);
-
-      const entry = map.get(walletName) || {
-        name: walletName,
-        icon: getWalletIcon(walletName),
-        count: 0,
-        totalExpense: 0,
-        totalIncome: 0,
-      };
-
-      entry.count += 1;
-      if (tx.type === "expense") entry.totalExpense += amt;
-      else if (tx.type === "income") entry.totalIncome += amt;
-
-      map.set(walletName, entry);
-    });
-
-    const list = Array.from(map.values());
-    if (walletFilterType === "expense") {
-      return list
-        .filter((w) => w.totalExpense > 0)
-        .sort((a, b) => b.totalExpense - a.totalExpense);
-    }
-    if (walletFilterType === "income") {
-      return list
-        .filter((w) => w.totalIncome > 0)
-        .sort((a, b) => b.totalIncome - a.totalIncome);
-    }
-    return list.sort(
-      (a, b) =>
-        b.totalExpense + b.totalIncome - (a.totalExpense + a.totalIncome),
-    );
-  }, [rangeTxs, wallets, walletFilterType]);
-
-  const maxWalletVolume = useMemo(() => {
-    if (walletUsageStats.length === 0) return 1;
-    return Math.max(
-      ...walletUsageStats.map((w) =>
-        walletFilterType === "expense"
-          ? w.totalExpense
-          : walletFilterType === "income"
-            ? w.totalIncome
-            : w.totalExpense + w.totalIncome,
-      ),
-    );
-  }, [walletUsageStats, walletFilterType]);
-
-  const renderCustomizedLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    percent,
-  }: any) => {
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos((-midAngle * Math.PI) / 180);
-    const y = cy + radius * Math.sin((-midAngle * Math.PI) / 180);
-    if (percent < 0.05) return null;
-    const isDark =
-      document.documentElement.getAttribute("data-theme") !== "light";
-    return (
-      <text
-        x={x}
-        y={y}
-        fill={isDark ? "#121212" : "#FFFFFF"}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize={10}
-        fontWeight="800"
-        fontFamily="Urbanist"
-      >
-        {`${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
-  };
-
-  // 4. Category breakdown (Detailed) with Envelope Budget metadata
+  // 3. Category breakdown (Detailed) with Envelope Budget metadata
   const categoryStats = useMemo(() => {
     const catMap = new Map<
       string,
@@ -1117,20 +897,7 @@ export function StatisticsPage() {
     return Array.from(catMap.values()).sort((a, b) => b.total - a.total);
   }, [rangeTxs, breakdownType, categories]);
 
-  const categorySpendMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    rangeTxs
-      .filter((t) => t.type === "expense" && !isTxCorrection(t))
-      .forEach((t) => {
-        if (t.category_id) {
-          map[t.category_id] =
-            (map[t.category_id] || 0) + Number(t.amount || 0);
-        }
-      });
-    return map;
-  }, [rangeTxs]);
-
-  // 4b. Macro Parent (Induk) breakdown
+  // 3b. Macro Parent (Induk) breakdown
   const parentCategoryStats = useMemo(() => {
     const parentMap = new Map<
       string,
@@ -1206,7 +973,7 @@ export function StatisticsPage() {
         categoriesList: p.categoriesList.sort((a, b) => b.total - a.total),
       }))
       .sort((a, b) => b.total - a.total);
-  }, [rangeTxs, breakdownType, categories]);
+  }, [rangeTxs, breakdownType, categories, isIndonesian]);
 
   const activeBreakdownData =
     groupMode === "parent" ? parentCategoryStats : categoryStats;
@@ -1215,104 +982,7 @@ export function StatisticsPage() {
     0,
   );
 
-  // 5. Hashtag breakdown
-  const hashtagStats = useMemo(() => {
-    const hashMap = new Map<string, { total: number; count: number }>();
-    rangeTxs.forEach((t) => {
-      const amt = Number(t.amount || 0);
-      if (t.note) {
-        const matches = t.note.match(/#\w+/g);
-        if (matches) {
-          matches.forEach((m) => {
-            const tag = m.toLowerCase();
-            const ex = hashMap.get(tag);
-            if (ex) {
-              ex.total += amt;
-              ex.count++;
-            } else hashMap.set(tag, { total: amt, count: 1 });
-          });
-        }
-      }
-    });
-    return Array.from(hashMap.entries())
-      .map(([tag, data]) => ({ tag, ...data }))
-      .sort((a, b) => b.total - a.total);
-  }, [rangeTxs]);
-
-  // Priority 4: Largest Category Change (MoM)
-  const categoryMoMShifts = useMemo(() => {
-    const prevDate = subMonths(now, monthOffset + 1);
-    const start = format(startOfMonth(prevDate), "yyyy-MM-dd");
-    const end = format(endOfMonth(prevDate), "yyyy-MM-dd");
-    const prevTxs = allTxs.filter(
-      (t) =>
-        t.occurred_on &&
-        t.occurred_on >= start &&
-        t.occurred_on <= end &&
-        t.type === breakdownType &&
-        !isTxCorrection(t),
-    );
-
-    const prevMap = new Map<string, number>();
-    prevTxs.forEach((t) => {
-      const resolved = resolveTransactionCategory(t, categories);
-      const key =
-        groupMode === "parent"
-          ? getParentDisplayName(getCategoryParent(resolved.name), isIndonesian)
-          : resolved.name;
-      prevMap.set(key, (prevMap.get(key) || 0) + Number(t.amount || 0));
-    });
-
-    const shifts: {
-      name: string;
-      current: number;
-      prev: number;
-      diff: number;
-      pct: number;
-    }[] = [];
-    activeBreakdownData.forEach((cat) => {
-      const current = cat.total;
-      const prev = prevMap.get(cat.name) || 0;
-      const diff = current - prev;
-      const pct =
-        prev > 0 ? Math.round((diff / prev) * 100) : current > 0 ? 100 : 0;
-      shifts.push({ name: cat.name, current, prev, diff, pct });
-    });
-
-    const sortedByIncrease = [...shifts]
-      .filter((s) => s.diff > 0)
-      .sort((a, b) => b.diff - a.diff);
-    const sortedByDecrease = [...shifts]
-      .filter((s) => s.diff < 0)
-      .sort((a, b) => a.diff - b.diff);
-
-    return {
-      biggestIncrease: sortedByIncrease[0] || null,
-      biggestDecrease: sortedByDecrease[0] || null,
-    };
-  }, [
-    allTxs,
-    now,
-    monthOffset,
-    breakdownType,
-    groupMode,
-    activeBreakdownData,
-    categories,
-  ]);
-
-  // Priority 5: Expense Frequency vs Volume Insights
-  const frequencyStats = useMemo(() => {
-    if (activeBreakdownData.length === 0) return null;
-    const mostFrequent = [...activeBreakdownData].sort(
-      (a, b) => b.count - a.count,
-    )[0];
-    const largestTicket = [...activeBreakdownData].sort(
-      (a, b) => b.total / Math.max(1, b.count) - a.total / Math.max(1, a.count),
-    )[0];
-    return { mostFrequent, largestTicket };
-  }, [activeBreakdownData]);
-
-  // Priority 6: Average Transaction Size & MoM Comparison
+  // 4. Average Transaction Size & MoM Comparison (Rule 8.1 safe)
   const avgTransactionStats = useMemo(() => {
     const expenseTxs = rangeTxs.filter(
       (t) => t.type === "expense" && !isTxCorrection(t),
@@ -1323,14 +993,12 @@ export function StatisticsPage() {
     const prevDate = subMonths(now, monthOffset + 1);
     const start = format(startOfMonth(prevDate), "yyyy-MM-dd");
     const end = format(endOfMonth(prevDate), "yyyy-MM-dd");
-    const prevExpenseTxs = allTxs.filter(
-      (t) =>
-        t.occurred_on &&
-        t.occurred_on >= start &&
-        t.occurred_on <= end &&
-        t.type === "expense" &&
-        !isTxCorrection(t),
-    );
+    const prevExpenseTxs = allTxs.filter((t) => {
+      if (!t.occurred_on || t.type !== "expense" || isTxCorrection(t))
+        return false;
+      const d = t.occurred_on.slice(0, 10);
+      return d >= start && d <= end;
+    });
     const prevAvgExpense =
       prevExpenseTxs.length > 0
         ? Math.round(prevExpense / prevExpenseTxs.length)
@@ -1343,39 +1011,6 @@ export function StatisticsPage() {
       count: expenseTxs.length,
     };
   }, [rangeTxs, totalExpense, allTxs, now, monthOffset, prevExpense]);
-
-  // Priority 10: Calendar Spending Heatmap Data
-  const calendarSpendingHeatmap = useMemo(() => {
-    const targetMonth = subMonths(now, monthOffset);
-    const start = startOfMonth(targetMonth);
-    const end = endOfMonth(targetMonth);
-    const days = eachDayOfInterval({ start, end });
-
-    const dailySpendMap = new Map<string, number>();
-    days.forEach((d) => dailySpendMap.set(format(d, "yyyy-MM-dd"), 0));
-
-    allTxs.forEach((t) => {
-      if (t.type !== "expense" || !t.occurred_on || isTxCorrection(t)) return;
-      if (dailySpendMap.has(t.occurred_on)) {
-        dailySpendMap.set(
-          t.occurred_on,
-          (dailySpendMap.get(t.occurred_on) || 0) + Number(t.amount || 0),
-        );
-      }
-    });
-
-    const amounts = Array.from(dailySpendMap.values());
-    const maxSpend = Math.max(1, ...amounts);
-    const pad = getDay(start);
-
-    return {
-      days,
-      pad,
-      dailySpendMap,
-      maxSpend,
-      targetMonth,
-    };
-  }, [allTxs, now, monthOffset]);
 
   const rangeTitle = useMemo(() => {
     if (range === "week") return isIndonesian ? "Minggu Ini" : "This Week";
@@ -1398,210 +1033,144 @@ export function StatisticsPage() {
 
   const renderStatisticsCard = (cardId: string, _size: WidgetSize) => {
     switch (cardId) {
+      // --- REPORT TAB CARDS ---
+      case "financial_report":
+        return (
+          <FinancialReportSection
+            wallets={wallets}
+            transactions={rangeTxs}
+            allTransactions={allTxs}
+            categories={categories}
+            startDate={currentPeriodBounds.start}
+            endDate={currentPeriodBounds.end}
+            periodLabel={currentPeriodLabel}
+          />
+        );
+
+      // --- INTELLIGENCE TAB CARDS ---
       case "health_score":
         return (
-          <section
-            className="glass-surface rounded-[24px] p-5 select-none space-y-4"
-            style={{
-              border: "1px solid var(--glass-border)",
-              background: "var(--bg-elevated)",
-              boxShadow: "var(--shadow-card)",
+          <HealthScoreHeroCard
+            isIndonesian={isIndonesian}
+            isDark={isDark}
+            rangeTitle={rangeTitle}
+            healthScore={healthScore}
+            savingsRate={savingsRate}
+            totalIncome={totalIncome}
+            totalExpense={totalExpense}
+            committedPercentage={
+              intel.expenseStructure
+                ? intel.expenseStructure.committedPercentage
+                : 0
+            }
+            hideBalance={hideBalance}
+            formatWithPreferred={formatWithPreferred}
+            onOpenDiagnostic={() => setHealthDiagnosticOpen(true)}
+          />
+        );
+
+      case "monthly_review":
+        if (range !== "month" || !intel.monthlyReview) return null;
+        return (
+          <MonthlyReviewSection
+            review={intel.monthlyReview}
+            healthScore={healthScore}
+            onCategoryClick={(catName) => {
+              const found = intel.categoryShifts.find(
+                (s) => s.name.toLowerCase() === catName.toLowerCase(),
+              );
+              if (found) {
+                setSelectedCategoryShift(found);
+                triggerHaptic("light");
+              }
             }}
-          >
-            {/* ── 1. Header (Single Line) ────────────────────────────────────────── */}
-            <div className="flex items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <ShieldCheck size={16} strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0">
-                  <h3
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian
-                      ? "Indeks Ketahanan Finansial"
-                      : "Financial Health Diagnostic Index"}
-                  </h3>
-                  <p
-                    className="text-[11px] truncate"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian
-                      ? `Evaluasi performa ${rangeTitle} · 6 pilar ketahanan`
-                      : `${rangeTitle} performance · 6-pillar resilience`}
-                  </p>
-                </div>
-              </div>
+          />
+        );
 
-              {/* Status Grade Pill (Single Line) */}
-              <div
-                className="px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1.5"
-                style={{
-                  background: isDark
-                    ? "rgba(255,255,255,0.05)"
-                    : "rgba(0,0,0,0.04)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: isDark ? "#ffffff" : "#18181b" }}
-                />
-                <span
-                  className="text-[11px] font-semibold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {healthScore >= 85
-                    ? isIndonesian
-                      ? "Prima (AAA)"
-                      : "Excellent (AAA)"
-                    : healthScore >= 70
-                      ? isIndonesian
-                        ? "Sehat (AA)"
-                        : "Good (AA)"
-                      : healthScore >= 50
-                        ? isIndonesian
-                          ? "Moderat (A)"
-                          : "Moderate (A)"
-                        : healthScore >= 16
-                          ? isIndonesian
-                            ? "Defisit (BB)"
-                            : "Deficit (BB)"
-                          : isIndonesian
-                            ? "Kritis (C)"
-                            : "Critical (C)"}
-                </span>
-              </div>
-            </div>
+      case "expense_structure":
+        if (range !== "month") return null;
+        return (
+          <ExpenseStructureCard expenseStructure={intel.expenseStructure} />
+        );
 
-            {/* ── 2. Hero Score & View Diagnostic Link ──────────────────────────── */}
-            <div className="flex items-baseline justify-between pt-0.5">
-              <div className="flex items-baseline gap-2">
-                <span
-                  className="text-[34px] sm:text-[38px] font-light tracking-tight leading-none tabular-nums"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {healthScore}
-                </span>
-                <span
-                  className="text-[12px] font-medium"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  / 100 {isIndonesian ? "poin indeks" : "score index"}
-                </span>
-              </div>
+      case "spending_patterns":
+        if (range !== "month") return null;
+        return (
+          <SpendingPatternsSection patterns={intel.behavioralPatterns} />
+        );
 
-              <button
-                type="button"
-                onClick={() => {
-                  setHealthDiagnosticOpen(true);
-                  triggerHaptic("light");
-                }}
-                className="flex items-center gap-1 text-[11px] font-semibold cursor-pointer transition-colors hover:text-[var(--text-primary)]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                <span>
-                  {isIndonesian ? "Buka Diagnostik" : "View Diagnostic"}
-                </span>
-                <ChevronRight size={13} />
-              </button>
-            </div>
+      // --- CASHFLOW TAB CARDS ---
+      case "cashflow_summary":
+        return (
+          <CashflowSummaryBentoCard
+            isIndonesian={isIndonesian}
+            isDark={isDark}
+            range={range}
+            rangeTitle={rangeTitle}
+            totalIncome={totalIncome}
+            totalExpense={totalExpense}
+            incomeDelta={incomeDelta}
+            expenseDelta={expenseDelta}
+            netDelta={netDelta}
+            hideBalance={hideBalance}
+            formatWithPreferred={formatWithPreferred}
+            formatCompactWithPreferred={formatCompactWithPreferred}
+          />
+        );
 
-            {/* ── 3. Sleek Single-Track Progress Gauge ─────────────────────────── */}
-            <div
-              className="w-full h-2 rounded-full overflow-hidden p-0.5"
-              style={{
-                background: isDark
-                  ? "rgba(255,255,255,0.08)"
-                  : "rgba(0,0,0,0.06)",
-              }}
-            >
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{
-                  width: `${Math.max(4, Math.min(100, healthScore))}%`,
-                  background: isDark ? "#FFFFFF" : "#18181B",
-                }}
-              />
-            </div>
+      case "inflow_outflow_trend":
+        return (
+          <InflowOutflowTrendCard
+            rangeTitle={rangeTitle}
+            trendData={trendData}
+            range={range}
+            colors={colors}
+            isDark={isDark}
+            isIndonesian={isIndonesian}
+            GlassTooltip={GlassTooltip}
+          />
+        );
 
-            {/* ── 4. Key 3-Pillar Telemetry Summary ────────────────────────────── */}
-            <div className="grid grid-cols-3 gap-2 pt-0.5">
-              <div
-                className="p-2.5 rounded-xl border text-center"
-                style={{
-                  background: "var(--glass-fill)",
-                  borderColor: "var(--glass-border)",
-                }}
-              >
-                <span
-                  className="text-[9.5px] uppercase font-semibold block truncate"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Laju Tabungan" : "Savings Rate"}
-                </span>
-                <span
-                  className="text-[12px] font-bold tabular-nums block mt-0.5"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {savingsRate.toFixed(0)}%
-                </span>
-              </div>
+      case "category_breakdown":
+        return (
+          <CategoryBreakdownCard
+            breakdownType={breakdownType}
+            setBreakdownType={setBreakdownType}
+            categoryStats={categoryStats}
+            totalBreakdownAmount={totalBreakdownAmount}
+            isDark={isDark}
+            isIndonesian={isIndonesian}
+            setAllDetailsOpen={setAllDetailsOpen}
+          />
+        );
 
-              <div
-                className="p-2.5 rounded-xl border text-center"
-                style={{
-                  background: "var(--glass-fill)",
-                  borderColor: "var(--glass-border)",
-                }}
-              >
-                <span
-                  className="text-[9.5px] uppercase font-semibold block truncate"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Arus Bersih" : "Net Flow"}
-                </span>
-                <span
-                  className="text-[12px] font-bold tabular-nums block mt-0.5"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {totalIncome >= totalExpense ? "+" : ""}
-                  {formatWithPreferred(totalIncome - totalExpense)}
-                </span>
-              </div>
+      case "cashflow_velocity":
+        return (
+          <CashflowVelocityCard
+            savingsRate={savingsRate}
+            avgTransactionStats={avgTransactionStats}
+            range={range}
+            totalExpense={totalExpense}
+            rangeTitle={rangeTitle}
+            isDark={isDark}
+            isIndonesian={isIndonesian}
+            onOpenSankey={() => setSankeyOpen(true)}
+          />
+        );
 
-              <div
-                className="p-2.5 rounded-xl border text-center"
-                style={{
-                  background: "var(--glass-fill)",
-                  borderColor: "var(--glass-border)",
-                }}
-              >
-                <span
-                  className="text-[9.5px] uppercase font-semibold block truncate"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Beban Komitmen" : "Committed"}
-                </span>
-                <span
-                  className="text-[12px] font-bold tabular-nums block mt-0.5"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {intel.expenseStructure
-                    ? `${intel.expenseStructure.committedPercentage.toFixed(0)}%`
-                    : "0%"}
-                </span>
-              </div>
-            </div>
-          </section>
+      // --- SIMULATION TAB CARDS ---
+      case "fire_planner":
+        return (
+          <FirePlannerCard
+            netWorth={netWorth}
+            monthlySavings={Math.max(0, totalIncome - totalExpense)}
+            monthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
+            hideBalance={hideBalance}
+            onOpenPlanner={() => {
+              setFirePlannerOpen(true);
+              triggerHaptic("light");
+            }}
+          />
         );
 
       case "monte_carlo":
@@ -1616,333 +1185,6 @@ export function StatisticsPage() {
             }}
           />
         );
-
-      case "fire_planner":
-        return (
-          <FirePlannerCard
-            netWorth={netWorth}
-            monthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
-            monthlySavings={Math.max(1000000, totalIncome - totalExpense)}
-            hideBalance={hideBalance}
-            onOpenPlanner={() => {
-              setFirePlannerOpen(true);
-              triggerHaptic("light");
-            }}
-          />
-        );
-
-      case "cashflow_outlook":
-        return (
-          <CashflowOutlookCard
-            defaultForecast={intel.cashflowFloor}
-            getCashflowHorizon={intel.getCashflowHorizon}
-            hideBalance={hideBalance}
-          />
-        );
-
-      case "liquidity_horizon":
-        return (
-          <LiquidityHorizonCard
-            liquidityHorizon={intel.liquidityHorizon}
-            hideBalance={hideBalance}
-          />
-        );
-
-      case "zero_based_envelopes":
-        return (
-          <ZeroBasedEnvelopesCard
-            monthlyIncome={intel.totalIncome}
-            categories={categories}
-            bills={bills}
-            goals={goals}
-            categorySpendMap={categorySpendMap}
-            hideBalance={hideBalance}
-          />
-        );
-
-      case "spending_patterns":
-        if (range !== "month") return null;
-        return <SpendingPatternsSection patterns={intel.behavioralPatterns} />;
-
-      case "spending_density_heatmap": {
-        let noSpendDays = 0;
-        let activeSpendDays = 0;
-        let peakDayAmount = 0;
-
-        calendarSpendingHeatmap.days.forEach((d) => {
-          const dStr = format(d, "yyyy-MM-dd");
-          const spent = calendarSpendingHeatmap.dailySpendMap.get(dStr) || 0;
-          if (spent > 0) {
-            activeSpendDays++;
-            if (spent > peakDayAmount) {
-              peakDayAmount = spent;
-            }
-          } else {
-            noSpendDays++;
-          }
-        });
-
-        return (
-          <div className="p-5 rounded-[24px] glass-surface">
-            {/* Header */}
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <Calendar
-                    size={16}
-                    strokeWidth={1.75}
-                    style={{ color: "var(--text-tertiary)" }}
-                  />
-                  <h2
-                    className="text-[13px] font-semibold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian
-                      ? "Kepadatan & Matriks Pengeluaran"
-                      : "Spending Density & Heatmap"}
-                  </h2>
-                </div>
-                <p
-                  className="text-[11px]"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian
-                    ? "Bukti empiris ritme belanja harian"
-                    : "Daily expense rhythm matrix"}{" "}
-                  · {rangeTitle}
-                </p>
-              </div>
-
-              <div
-                className="px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                {noSpendDays} {isIndonesian ? "Hari Hemat" : "No-Spend Days"}
-              </div>
-            </div>
-
-            {/* 3 Metric Glance Cards */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              <div
-                className="p-2.5 rounded-xl text-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <div className="text-[10px] text-[var(--text-tertiary)] mb-0.5">
-                  {isIndonesian ? "Hari Hemat" : "Zero Spend"}
-                </div>
-                <div className="text-[13px] font-semibold text-[var(--text-primary)]">
-                  {noSpendDays}{" "}
-                  <span className="text-[10px] font-normal text-[var(--text-tertiary)]">
-                    {isIndonesian ? "hari" : "days"}
-                  </span>
-                </div>
-              </div>
-
-              <div
-                className="p-2.5 rounded-xl text-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <div className="text-[10px] text-[var(--text-tertiary)] mb-0.5">
-                  {isIndonesian ? "Hari Belanja" : "Active Days"}
-                </div>
-                <div className="text-[13px] font-semibold text-[var(--text-primary)]">
-                  {activeSpendDays}{" "}
-                  <span className="text-[10px] font-normal text-[var(--text-tertiary)]">
-                    {isIndonesian ? "hari" : "days"}
-                  </span>
-                </div>
-              </div>
-
-              <div
-                className="p-2.5 rounded-xl text-center"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <div className="text-[10px] text-[var(--text-tertiary)] mb-0.5">
-                  {isIndonesian ? "Puncak Belanja" : "Peak Spend"}
-                </div>
-                <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
-                  {peakDayAmount > 0
-                    ? hideBalance
-                      ? "••••"
-                      : formatCompactWithPreferred(peakDayAmount)
-                    : formatWithPreferred(0)}
-                </div>
-              </div>
-            </div>
-
-            {/* Calendar Grid Container */}
-            <div
-              className="p-3.5 rounded-2xl"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <div className="grid grid-cols-7 gap-1.5 text-center mb-2">
-                {(isIndonesian
-                  ? ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"]
-                  : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-                ).map((w, i) => (
-                  <div
-                    key={i}
-                    className="text-[10px] font-semibold tracking-wider uppercase"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {w}
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-7 gap-1.5">
-                {Array.from({ length: calendarSpendingHeatmap.pad }).map(
-                  (_, i) => (
-                    <div key={`pad-${i}`} />
-                  ),
-                )}
-                {calendarSpendingHeatmap.days.map((d) => {
-                  const dStr = format(d, "yyyy-MM-dd");
-                  const spent =
-                    calendarSpendingHeatmap.dailySpendMap.get(dStr) || 0;
-                  const intensity =
-                    calendarSpendingHeatmap.maxSpend > 0
-                      ? spent / calendarSpendingHeatmap.maxSpend
-                      : 0;
-                  const isT = isToday(d);
-
-                  let bg = isDark
-                    ? "rgba(255,255,255,0.03)"
-                    : "rgba(0,0,0,0.03)";
-                  let textColor = "var(--text-tertiary)";
-                  let borderColor = "transparent";
-
-                  if (spent > 0) {
-                    if (isDark) {
-                      if (intensity > 0.6) {
-                        bg = "#FFFFFF";
-                        textColor = "#09090C";
-                      } else if (intensity > 0.3) {
-                        bg = "rgba(255,255,255,0.42)";
-                        textColor = "#FFFFFF";
-                      } else {
-                        bg = "rgba(255,255,255,0.14)";
-                        textColor = "rgba(255,255,255,0.9)";
-                      }
-                    } else {
-                      if (intensity > 0.6) {
-                        bg = "#121214";
-                        textColor = "#FFFFFF";
-                      } else if (intensity > 0.3) {
-                        bg = "rgba(18,18,20,0.48)";
-                        textColor = "#FFFFFF";
-                      } else {
-                        bg = "rgba(18,18,20,0.14)";
-                        textColor = "#121214";
-                      }
-                    }
-                  }
-
-                  if (isT) {
-                    borderColor = "var(--accent)";
-                  }
-
-                  return (
-                    <div
-                      key={dStr}
-                      className="aspect-square rounded-[8px] flex flex-col items-center justify-center relative transition-all cursor-default group"
-                      style={{
-                        background: bg,
-                        color: textColor,
-                        border: `1px solid ${borderColor}`,
-                        boxShadow:
-                          isDark && intensity > 0.6
-                            ? "0 0 12px rgba(255,255,255,0.2)"
-                            : undefined,
-                      }}
-                      title={`${format(d, "dd MMM yyyy")}: ${spent > 0 ? formatWithPreferred(spent) : isIndonesian ? "Tidak ada pengeluaran" : "No expense"}`}
-                    >
-                      <span className="text-[11px] font-medium leading-none">
-                        {d.getDate()}
-                      </span>
-                      {spent === 0 && (
-                        <span
-                          className="w-1 h-1 rounded-full mt-1 opacity-30"
-                          style={{
-                            background: isDark ? "#FFFFFF" : "#000000",
-                          }}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Matrix Legend Footer */}
-            <div className="flex items-center justify-between mt-3 px-1 text-[10px] text-[var(--text-tertiary)]">
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="w-2 h-2 rounded-full inline-block"
-                  style={{
-                    background: isDark
-                      ? "rgba(255,255,255,0.2)"
-                      : "rgba(0,0,0,0.2)",
-                  }}
-                />
-                {isIndonesian
-                  ? `Hemat (${formatWithPreferred(0)})`
-                  : "No Spend"}
-              </span>
-
-              <div className="flex items-center gap-2">
-                <span>{isIndonesian ? "Aktivitas" : "Intensity"}</span>
-                <div className="flex items-center gap-1">
-                  <div
-                    className="w-3 h-3 rounded-[3px]"
-                    style={{
-                      background: isDark
-                        ? "rgba(255,255,255,0.14)"
-                        : "rgba(18,18,20,0.14)",
-                    }}
-                    title={isIndonesian ? "Rendah" : "Low"}
-                  />
-                  <div
-                    className="w-3 h-3 rounded-[3px]"
-                    style={{
-                      background: isDark
-                        ? "rgba(255,255,255,0.42)"
-                        : "rgba(18,18,20,0.48)",
-                    }}
-                    title={isIndonesian ? "Sedang" : "Medium"}
-                  />
-                  <div
-                    className="w-3 h-3 rounded-[3px]"
-                    style={{
-                      background: isDark ? "#FFFFFF" : "#121214",
-                    }}
-                    title={isIndonesian ? "Tinggi / Puncak" : "High / Peak"}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      case "debt_payoff":
-        return <DebtPayoffSimulatorCard hideBalance={hideBalance} />;
 
       case "what_if_simulator":
         return (
@@ -1973,414 +1215,6 @@ export function StatisticsPage() {
           />
         );
 
-      // --- REPORT TAB CARDS ---
-      case "financial_report":
-        return (
-          <FinancialReportSection
-            wallets={wallets}
-            transactions={rangeTxs}
-            allTransactions={allTxs}
-            categories={categories}
-            startDate={currentPeriodBounds.start}
-            endDate={currentPeriodBounds.end}
-            periodLabel={currentPeriodLabel}
-          />
-        );
-
-      case "monthly_review":
-        if (range !== "month" || !intel.monthlyReview) return null;
-        return (
-          <MonthlyReviewSection
-            review={intel.monthlyReview}
-            healthScore={healthScore}
-            onCategoryClick={(catName) => {
-              const found = intel.categoryShifts.find(
-                (s) => s.name.toLowerCase() === catName.toLowerCase(),
-              );
-              if (found) {
-                setSelectedCategoryShift(found);
-                triggerHaptic("light");
-              }
-            }}
-          />
-        );
-
-      case "personal_baseline":
-        return (
-          <PersonalBaselineSection
-            baselines={intel.personalBaselines}
-            onCategoryClick={(catName) => {
-              const found = intel.categoryShifts.find(
-                (s) => s.name.toLowerCase() === catName.toLowerCase(),
-              );
-              if (found) {
-                setSelectedCategoryShift(found);
-                triggerHaptic("light");
-              }
-            }}
-          />
-        );
-
-      case "expense_structure":
-        if (range !== "month") return null;
-        return (
-          <ExpenseStructureCard expenseStructure={intel.expenseStructure} />
-        );
-
-      // --- CASHFLOW TAB CARDS ---
-      case "cashflow_summary": {
-        const netValue = totalIncome - totalExpense;
-        const retentionRate =
-          totalIncome > 0 ? Math.max(0, (netValue / totalIncome) * 100) : 0;
-        const totalVolume = totalIncome + totalExpense;
-
-        return (
-          <div
-            className="p-5 rounded-[24px] select-none space-y-4"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "var(--shadow-card)",
-            }}
-          >
-            {/* 1-Line Header with Vector Icon */}
-            <div className="flex items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Wallet size={16} strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0">
-                  <h3
-                    className="text-[13px] font-semibold tracking-tight truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Ringkasan Arus Kas" : "Cashflow Summary"}
-                  </h3>
-                  <p
-                    className="text-[11px] truncate"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian
-                      ? "Retensi kas bersih & pacing likuiditas"
-                      : "Net cash retention & pacing"}{" "}
-                    · {rangeTitle}
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className="px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1.5"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{
-                    background: isDark ? "#FFFFFF" : "#18181B",
-                  }}
-                />
-                <span
-                  className="text-[11px] font-semibold tabular-nums"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {netValue >= 0
-                    ? isIndonesian
-                      ? `Tersimpan ${retentionRate.toFixed(0)}%`
-                      : `Retained ${retentionRate.toFixed(0)}%`
-                    : isIndonesian
-                      ? `Defisit ${((Math.abs(netValue) / (totalIncome || 1)) * 100).toFixed(0)}%`
-                      : `Deficit ${((Math.abs(netValue) / (totalIncome || 1)) * 100).toFixed(0)}%`}
-                </span>
-              </div>
-            </div>
-
-            {/* Large Hero Number & Context Narrative */}
-            <div className="space-y-1">
-              <div
-                className="text-[34px] sm:text-[38px] font-light tracking-tight leading-none tabular-nums"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {netValue < 0
-                  ? `-${formatWithPreferred(Math.abs(netValue))}`
-                  : `+${formatWithPreferred(netValue)}`}
-              </div>
-              <p
-                className="text-[12px] leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {netValue < 0
-                  ? isIndonesian
-                    ? `Arus kas keluar sebesar ${formatWithPreferred(totalExpense)} sedikit melampaui pemasukan ${formatWithPreferred(totalIncome)} pada periode ini.`
-                    : `Outflow of ${formatWithPreferred(totalExpense)} exceeded inflow of ${formatWithPreferred(totalIncome)} for this period.`
-                  : isIndonesian
-                    ? `Surplus bersih sebesar ${formatWithPreferred(netValue)} berhasil dipertahankan (${retentionRate.toFixed(0)}% retensi) pada periode ini.`
-                    : `Net surplus of ${formatWithPreferred(netValue)} retained (${retentionRate.toFixed(0)}% retention) for this period.`}
-              </p>
-            </div>
-
-            {/* Segmented Dual Proportion Bar */}
-            <div className="space-y-1.5 pt-1">
-              <div
-                className="h-2 w-full rounded-full overflow-hidden flex gap-0.5 p-0.5"
-                style={{ background: "var(--glass-fill)" }}
-              >
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${totalVolume > 0 ? (totalIncome / totalVolume) * 100 : 50}%`,
-                    background: isDark ? "#FFFFFF" : "#18181B",
-                  }}
-                />
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${totalVolume > 0 ? (totalExpense / totalVolume) * 100 : 50}%`,
-                    background: isDark
-                      ? "rgba(255,255,255,0.4)"
-                      : "rgba(24,24,27,0.4)",
-                  }}
-                />
-              </div>
-              <div
-                className="flex items-center justify-between text-[10px] tabular-nums"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: isDark ? "#FFFFFF" : "#18181B" }}
-                  />
-                  <span>
-                    {isIndonesian ? "Masuk" : "Inflow"}:{" "}
-                    {formatCompactWithPreferred(totalIncome)} (
-                    {totalVolume > 0
-                      ? ((totalIncome / totalVolume) * 100).toFixed(0)
-                      : 0}
-                    %)
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{
-                      background: isDark
-                        ? "rgba(255,255,255,0.4)"
-                        : "rgba(24,24,27,0.4)",
-                    }}
-                  />
-                  <span>
-                    {isIndonesian ? "Keluar" : "Outflow"}:{" "}
-                    {formatCompactWithPreferred(totalExpense)} (
-                    {totalVolume > 0
-                      ? ((totalExpense / totalVolume) * 100).toFixed(0)
-                      : 0}
-                    %)
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 3-Pillar Micro Cards */}
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              <div
-                className="p-2.5 rounded-2xl text-center"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <span
-                  className="text-[9.5px] uppercase font-semibold block truncate"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Total Masuk" : "Total In"}
-                </span>
-                <span
-                  className="text-[13px] font-semibold tabular-nums block mt-0.5"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {formatCompactWithPreferred(totalIncome)}
-                </span>
-                <span
-                  className="text-[9px] block mt-0.5"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {range === "month" && incomeDelta
-                    ? `${incomeDelta.isUp ? "↑" : "↓"} ${incomeDelta.pct}% vs lalu`
-                    : isIndonesian
-                      ? "Arus positif"
-                      : "Positive inflow"}
-                </span>
-              </div>
-
-              <div
-                className="p-2.5 rounded-2xl text-center"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <span
-                  className="text-[9.5px] uppercase font-semibold block truncate"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Total Keluar" : "Total Out"}
-                </span>
-                <span
-                  className="text-[13px] font-semibold tabular-nums block mt-0.5"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {formatCompactWithPreferred(totalExpense)}
-                </span>
-                <span
-                  className="text-[9px] block mt-0.5"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {range === "month" && expenseDelta
-                    ? `${expenseDelta.isUp ? "↑" : "↓"} ${expenseDelta.pct}% vs lalu`
-                    : isIndonesian
-                      ? "Beban transaksi"
-                      : "Total outflows"}
-                </span>
-              </div>
-
-              <div
-                className="p-2.5 rounded-2xl text-center"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <span
-                  className="text-[9.5px] uppercase font-semibold block truncate"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Saldo Bersih" : "Net Balance"}
-                </span>
-                <span
-                  className="text-[13px] font-semibold tabular-nums block mt-0.5"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {netValue < 0
-                    ? `-${formatCompactWithPreferred(Math.abs(netValue))}`
-                    : `+${formatCompactWithPreferred(netValue)}`}
-                </span>
-                <span
-                  className="text-[9px] block mt-0.5 font-medium truncate"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {range === "month" && netDelta
-                    ? `${netDelta.isUp ? "↑" : "↓"} ${netDelta.pct}% vs lalu`
-                    : netValue >= 0
-                      ? isIndonesian
-                        ? "Surplus Terjaga"
-                        : "Surplus Retained"
-                      : isIndonesian
-                        ? "Defisit Terkendali"
-                        : "Deficit Controlled"}
-                </span>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      case "category_breakdown":
-        return (
-          <CategoryBreakdownCard
-            breakdownType={breakdownType}
-            setBreakdownType={setBreakdownType}
-            categoryStats={categoryStats}
-            activeBreakdownData={activeBreakdownData}
-            groupMode={groupMode}
-            setGroupMode={setGroupMode}
-            rangeTitle={rangeTitle}
-            categoryBreakdownExpanded={categoryBreakdownExpanded}
-            setCategoryBreakdownExpanded={setCategoryBreakdownExpanded}
-            totalBreakdownAmount={totalBreakdownAmount}
-            colors={colors}
-            renderCustomizedLabel={renderCustomizedLabel}
-            GlassTooltip={GlassTooltip}
-            range={range}
-            intel={intel}
-            setSelectedCategoryShift={setSelectedCategoryShift}
-            categoryMoMShifts={categoryMoMShifts}
-            frequencyStats={frequencyStats}
-            isDark={isDark}
-            isIndonesian={isIndonesian}
-            setAllDetailsOpen={setAllDetailsOpen}
-          />
-        );
-
-      case "cashflow_sankey":
-        return (
-          <CashflowSankeySection
-            transactions={rangeTxs}
-            categories={categories}
-            wallets={wallets}
-            periodLabel={rangeTitle}
-          />
-        );
-
-      case "net_capital_trajectory":
-        return (
-          <NetCapitalTrajectoryCard
-            netWorth={netWorth}
-            hideBalance={hideBalance}
-            rangeTitle={rangeTitle}
-            netWorthData={netWorthData}
-            colors={colors}
-            isDark={isDark}
-            isIndonesian={isIndonesian}
-            GlassTooltip={GlassTooltip}
-          />
-        );
-
-      case "inflow_outflow_trend":
-        return (
-          <InflowOutflowTrendCard
-            rangeTitle={rangeTitle}
-            trendData={trendData}
-            range={range}
-            colors={colors}
-            isDark={isDark}
-            isIndonesian={isIndonesian}
-            GlassTooltip={GlassTooltip}
-          />
-        );
-
-      case "cashflow_velocity":
-        return (
-          <CashflowVelocityCard
-            savingsRate={savingsRate}
-            SavingsRing={SavingsRing}
-            avgTransactionStats={avgTransactionStats}
-            range={range}
-            totalExpense={totalExpense}
-            walletUsageStats={walletUsageStats}
-            rangeTitle={rangeTitle}
-            walletFilterType={walletFilterType}
-            setWalletFilterType={setWalletFilterType}
-            maxWalletVolume={maxWalletVolume}
-            hashtagStats={hashtagStats}
-            isDark={isDark}
-            isIndonesian={isIndonesian}
-            onOpenSankey={() => setSankeyOpen(true)}
-          />
-        );
-
-      case "asset_analytics":
-        return null;
-
       default:
         return null;
     }
@@ -2391,537 +1225,27 @@ export function StatisticsPage() {
       className="px-5 py-6 space-y-5 pb-36 max-w-full overflow-x-clip"
       style={{ minHeight: "100dvh" }}
     >
-      {/* Header with Compact Timeframe Selector */}
-      <div className="relative z-20 flex justify-between items-center">
-        <div>
-          <h1
-            className="text-[22px] font-semibold tracking-tight"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {isIndonesian ? "Statistik" : "Analytics"}
-          </h1>
-          <p
-            className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            {isIndonesian
-              ? "Kinerja & Distribusi"
-              : "Performance & Distribution"}
-          </p>
-        </div>
-
-        {/* Action Controls: Customize Button (Icon Only) + Compact Timeframe Dropdown Pill */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              setCustomizeStatsOpen(true);
-            }}
-            className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-all select-none cursor-pointer shrink-0"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-              boxShadow: "var(--shadow-card)",
-            }}
-            aria-label={
-              isIndonesian ? "Kustomisasi Analitik" : "Customize Analytics"
-            }
-            title={
-              isIndonesian ? "Kustomisasi Analitik" : "Customize Analytics"
-            }
-          >
-            <SlidersHorizontal size={14} strokeWidth={1.75} />
-          </button>
-
-          {/* Compact Timeframe Dropdown Pill */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => {
-                setTimeframeMenuOpen((o) => !o);
-                triggerHaptic("light");
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-tight active:scale-95 transition-all select-none"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <span className="truncate max-w-[120px]">{rangeTitle}</span>
-              <ChevronDown
-                size={13}
-                className={`transition-transform duration-200 ${timeframeMenuOpen ? "rotate-180" : ""}`}
-                style={{ color: "var(--text-tertiary)" }}
-              />
-            </button>
-
-            {/* Luxury Apple Glass Timeframe Popover Menu */}
-            {timeframeMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px]"
-                  onClick={() => setTimeframeMenuOpen(false)}
-                />
-                <div
-                  className="absolute right-0 top-full mt-2 w-60 p-2 rounded-2xl z-50 overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150"
-                  style={{
-                    background: isDark ? "#121214" : "#FFFFFF",
-                    border: "1px solid var(--glass-border)",
-                    boxShadow: "0 12px 36px rgba(0,0,0,0.4)",
-                  }}
-                >
-                  <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] border-b border-[var(--glass-border)] mb-1">
-                    {isIndonesian ? "Rentang Waktu" : "Timeframe"}
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <button
-                      onClick={() => {
-                        setRange("week");
-                        setTimeframeMenuOpen(false);
-                        triggerHaptic("light");
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
-                      style={{
-                        color:
-                          range === "week"
-                            ? "var(--accent)"
-                            : "var(--text-primary)",
-                        background:
-                          range === "week"
-                            ? "var(--glass-fill)"
-                            : "transparent",
-                      }}
-                    >
-                      <span>{isIndonesian ? "Minggu Ini" : "This Week"}</span>
-                      {range === "week" && <Check size={14} />}
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setRange("month");
-                        setMonthOffset(0);
-                        setTimeframeMenuOpen(false);
-                        triggerHaptic("light");
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
-                      style={{
-                        color:
-                          range === "month" && monthOffset === 0
-                            ? "var(--accent)"
-                            : "var(--text-primary)",
-                        background:
-                          range === "month" && monthOffset === 0
-                            ? "var(--glass-fill)"
-                            : "transparent",
-                      }}
-                    >
-                      <span>{isIndonesian ? "Bulan Ini" : "This Month"}</span>
-                      {range === "month" && monthOffset === 0 && (
-                        <Check size={14} />
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setRange("year");
-                        setSelectedYear(now.getFullYear());
-                        setTimeframeMenuOpen(false);
-                        triggerHaptic("light");
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
-                      style={{
-                        color:
-                          range === "year" && selectedYear === now.getFullYear()
-                            ? "var(--accent)"
-                            : "var(--text-primary)",
-                        background:
-                          range === "year" && selectedYear === now.getFullYear()
-                            ? "var(--glass-fill)"
-                            : "transparent",
-                      }}
-                    >
-                      <span>{isIndonesian ? "Tahun Ini" : "This Year"}</span>
-                      {range === "year" &&
-                        selectedYear === now.getFullYear() && (
-                          <Check size={14} />
-                        )}
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setRange("all");
-                        setTimeframeMenuOpen(false);
-                        triggerHaptic("light");
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-semibold transition-colors hover:bg-white/5 cursor-pointer"
-                      style={{
-                        color:
-                          range === "all"
-                            ? "var(--accent)"
-                            : "var(--text-primary)",
-                        background:
-                          range === "all" ? "var(--glass-fill)" : "transparent",
-                      }}
-                    >
-                      <span>{isIndonesian ? "Semua Waktu" : "All Time"}</span>
-                      {range === "all" && <Check size={14} />}
-                    </button>
-                  </div>
-
-                  {/* Specific Month Stepper */}
-                  <div className="mt-1 pt-1.5 border-t border-[var(--glass-border)]">
-                    <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center justify-between">
-                      <span>
-                        {isIndonesian ? "Bulan Tertentu" : "Specific Month"}
-                      </span>
-                      {range === "month" && monthOffset > 0 && (
-                        <span className="text-[9px] font-medium text-[var(--accent)]">
-                          {isIndonesian ? "Aktif" : "Active"}
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      className="flex items-center justify-between p-1 rounded-xl mt-1"
-                      style={{ background: "var(--glass-fill)" }}
-                    >
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRange("month");
-                          setMonthOffset((o) => o + 1);
-                          triggerHaptic("light");
-                        }}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-                        style={{ color: "var(--text-secondary)" }}
-                        title={
-                          isIndonesian ? "Bulan Sebelumnya" : "Previous Month"
-                        }
-                      >
-                        <ChevronLeft size={14} />
-                      </button>
-                      <span
-                        onClick={() => {
-                          setRange("month");
-                          setTimeframeMenuOpen(false);
-                          triggerHaptic("light");
-                        }}
-                        className="text-[11px] font-semibold cursor-pointer hover:underline text-center"
-                        style={{
-                          color:
-                            range === "month"
-                              ? "var(--accent)"
-                              : "var(--text-primary)",
-                        }}
-                      >
-                        {format(subMonths(now, monthOffset), "MMM yyyy", {
-                          locale: isIndonesian ? idLocale : undefined,
-                        })}
-                      </span>
-                      <button
-                        disabled={monthOffset === 0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRange("month");
-                          setMonthOffset((o) => Math.max(0, o - 1));
-                          triggerHaptic("light");
-                        }}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer"
-                        style={{ color: "var(--text-secondary)" }}
-                        title={isIndonesian ? "Bulan Berikutnya" : "Next Month"}
-                      >
-                        <ChevronRight size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Specific Year Stepper & Available Years */}
-                  <div className="mt-1 pt-1.5 border-t border-[var(--glass-border)]">
-                    <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center justify-between">
-                      <span>
-                        {isIndonesian ? "Pilih Tahun" : "Select Year"}
-                      </span>
-                      {range === "year" &&
-                        selectedYear !== now.getFullYear() && (
-                          <span className="text-[9px] font-medium text-[var(--accent)]">
-                            {isIndonesian ? "Aktif" : "Active"}
-                          </span>
-                        )}
-                    </div>
-                    <div
-                      className="flex items-center justify-between p-1 rounded-xl mt-1"
-                      style={{ background: "var(--glass-fill)" }}
-                    >
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRange("year");
-                          setSelectedYear((y) => {
-                            const prevYears = availableYears.filter(
-                              (ay) => ay < y,
-                            );
-                            return prevYears.length > 0
-                              ? Math.max(...prevYears)
-                              : y - 1;
-                          });
-                          triggerHaptic("light");
-                        }}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-                        style={{ color: "var(--text-secondary)" }}
-                        title={
-                          isIndonesian ? "Tahun Sebelumnya" : "Previous Year"
-                        }
-                      >
-                        <ChevronLeft size={14} />
-                      </button>
-                      <span
-                        onClick={() => {
-                          setRange("year");
-                          setTimeframeMenuOpen(false);
-                          triggerHaptic("light");
-                        }}
-                        className="text-[11px] font-semibold cursor-pointer hover:underline text-center"
-                        style={{
-                          color:
-                            range === "year"
-                              ? "var(--accent)"
-                              : "var(--text-primary)",
-                        }}
-                      >
-                        {isIndonesian
-                          ? `Tahun ${selectedYear}`
-                          : `Year ${selectedYear}`}
-                      </span>
-                      <button
-                        disabled={selectedYear >= now.getFullYear()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRange("year");
-                          setSelectedYear((y) => {
-                            const nextYears = availableYears.filter(
-                              (ay) => ay > y,
-                            );
-                            return nextYears.length > 0
-                              ? Math.min(...nextYears)
-                              : Math.min(now.getFullYear(), y + 1);
-                          });
-                          triggerHaptic("light");
-                        }}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer"
-                        style={{ color: "var(--text-secondary)" }}
-                        title={isIndonesian ? "Tahun Berikutnya" : "Next Year"}
-                      >
-                        <ChevronRight size={14} />
-                      </button>
-                    </div>
-
-                    {/* Available Year Chips */}
-                    {availableYears.length > 1 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5 px-0.5">
-                        {availableYears.map((yr) => {
-                          const isSelected =
-                            range === "year" && selectedYear === yr;
-                          return (
-                            <button
-                              key={yr}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setRange("year");
-                                setSelectedYear(yr);
-                                setTimeframeMenuOpen(false);
-                                triggerHaptic("light");
-                              }}
-                              className="flex-1 min-w-[50px] py-1 px-2 rounded-lg text-[10.5px] font-semibold text-center transition-all cursor-pointer select-none"
-                              style={{
-                                background: isSelected
-                                  ? "var(--text-primary)"
-                                  : "var(--glass-fill)",
-                                color: isSelected
-                                  ? isDark
-                                    ? "#000000"
-                                    : "#FFFFFF"
-                                  : "var(--text-secondary)",
-                                border: isSelected
-                                  ? "1px solid transparent"
-                                  : "1px solid var(--glass-border)",
-                                boxShadow: isSelected
-                                  ? "0 1px 4px var(--shadow-strength)"
-                                  : "none",
-                              }}
-                            >
-                              {yr}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Financial Wrapped: Flagship Hero Feature Entry (Persistent across Analytics) ── */}
-      <section
-        onClick={() => {
-          setWrappedOpen(true);
-          triggerHaptic("medium");
-        }}
-        className="p-3.5 sm:p-4 rounded-3xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform select-none relative overflow-hidden"
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-primary)",
-            }}
-          >
-            <Sparkles size={18} strokeWidth={1.75} />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p
-                className="text-[13.5px] font-bold tracking-tight truncate"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Financial Wrapped
-              </p>
-              <span
-                className="text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider"
-                style={{
-                  background: "var(--glass-fill-strong)",
-                  color: "var(--text-secondary)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                {range === "year"
-                  ? isIndonesian
-                    ? selectedYear === now.getFullYear()
-                      ? "Kilas Balik Tahun Ini"
-                      : `Kilas Balik ${selectedYear}`
-                    : selectedYear === now.getFullYear()
-                      ? "Year in Review"
-                      : `${selectedYear} Wrapped`
-                  : isIndonesian
-                    ? "Rekap Bulanan"
-                    : "Monthly Recap"}
-              </span>
-              <span className="text-[9px] text-[var(--text-tertiary)] hidden sm:inline">
-                9 chapters
-              </span>
-            </div>
-            <p
-              className="text-[11px] font-medium truncate mt-0.5"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian
-                ? `Kilas balik finansial ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy", { locale: idLocale })}`
-                : `Your financial recap for ${range === "year" ? selectedYear : format(activeMonthDate, "MMMM yyyy")} `}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 shrink-0 text-[var(--text-tertiary)] pl-2">
-          <span className="text-[11px] font-medium hidden sm:inline">
-            {range === "year"
-              ? selectedYear
-              : format(activeMonthDate, "MMM yyyy")}
-          </span>
-          <ChevronRight size={16} />
-        </div>
-      </section>
-
-      {/* 4-Tab Luxury Apple Glass Segmented Control Bar */}
-      <div
-        className="flex items-center p-1 rounded-2xl border border-[var(--glass-border)]"
-        style={{
-          background: "var(--glass-fill)",
-        }}
-      >
-        {analyticsTabs.map((t) => {
-          const isSelected = activeSubTab === t.key;
-          return (
-            <button
-              key={t.key}
-              onClick={() => {
-                setAnalyticsSubTab(t.key);
-                triggerHaptic("light");
-              }}
-              className="flex-1 py-1.5 rounded-xl text-[11px] font-semibold tracking-wide transition-all duration-200 active:scale-95 cursor-pointer select-none text-center truncate"
-              style={{
-                background: isSelected ? "var(--bg-elevated)" : "transparent",
-                color: isSelected
-                  ? "var(--text-primary)"
-                  : "var(--text-tertiary)",
-                boxShadow: isSelected
-                  ? "0 1px 4px var(--shadow-strength)"
-                  : "none",
-                border: isSelected
-                  ? "1px solid var(--glass-border)"
-                  : "1px solid transparent",
-              }}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Fallback Empty State when all cards/tabs are hidden */}
-      {analyticsTabs.length === 0 && (
-        <div
-          className="p-8 rounded-[28px] text-center space-y-3"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <div
-            className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <SlidersHorizontal
-              size={20}
-              style={{ color: "var(--text-tertiary)" }}
-            />
-          </div>
-          <div>
-            <h3 className="text-[15px] font-semibold text-[var(--text-primary)]">
-              {isIndonesian
-                ? "Semua Kartu Dinonaktifkan"
-                : "All Analytics Cards Hidden"}
-            </h3>
-            <p className="text-[12px] text-[var(--text-tertiary)] max-w-xs mx-auto mt-1">
-              {isIndonesian
-                ? "Aktifkan kembali kartu analitik melalui menu kustomisasi untuk melihat data finansial Anda."
-                : "Re-enable analytics cards from the customization menu to view your financial telemetry."}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setCustomizeStatsOpen(true)}
-            className="px-4 py-2 rounded-xl text-[12px] font-semibold text-[var(--bg-base)] bg-[var(--text-primary)] cursor-pointer active:scale-95 transition-transform"
-          >
-            {isIndonesian ? "Buka Kustomisasi" : "Customize Analytics"}
-          </button>
-        </div>
-      )}
+      <StatisticsHeaderBar
+        isIndonesian={isIndonesian}
+        isDark={isDark}
+        range={range}
+        setRange={setRange}
+        monthOffset={monthOffset}
+        setMonthOffset={setMonthOffset}
+        selectedYear={selectedYear}
+        setSelectedYear={setSelectedYear}
+        availableYears={availableYears}
+        now={now}
+        activeMonthDate={activeMonthDate}
+        rangeTitle={rangeTitle}
+        timeframeMenuOpen={timeframeMenuOpen}
+        setTimeframeMenuOpen={setTimeframeMenuOpen}
+        setCustomizeStatsOpen={setCustomizeStatsOpen}
+        setWrappedOpen={setWrappedOpen}
+        analyticsTabs={analyticsTabs}
+        activeSubTab={activeSubTab}
+        setAnalyticsSubTab={setAnalyticsSubTab}
+      />
 
       {/* TAB 1: REPORT */}
       {activeSubTab === "report" && (
@@ -2975,378 +1299,74 @@ export function StatisticsPage() {
         />
       )}
 
-      {/* Comprehensive Category & Parent Breakdown BottomSheet (Phase II Relayout) */}
-      <BottomSheet
+      {/* Comprehensive Category & Parent Breakdown BottomSheet */}
+      <CategoryAllDetailsSheet
         isOpen={allDetailsOpen}
         onClose={() => setAllDetailsOpen(false)}
-      >
-        <div className="p-5 pb-20 space-y-3.5 safe-area-bottom">
-          {/* Header */}
-          <div className="flex justify-between items-start">
-            <div>
-              <h3
-                className="font-semibold text-base"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {breakdownType === "expense"
-                  ? "Expense Breakdown Details"
-                  : "Income Breakdown Details"}
-              </h3>
-              <p
-                className="text-[12px] font-medium mt-0.5"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {groupMode === "parent"
-                  ? parentCategoryStats.length
-                  : categoryStats.length}{" "}
-                {groupMode === "parent" ? "parent groups" : "categories"} ·
-                Total {formatWithPreferred(totalBreakdownAmount)}
-              </p>
-            </div>
-          </div>
+        isIndonesian={isIndonesian}
+        breakdownType={breakdownType}
+        groupMode={groupMode}
+        setGroupMode={setGroupMode}
+        categoryStats={categoryStats}
+        parentCategoryStats={parentCategoryStats}
+        totalBreakdownAmount={totalBreakdownAmount}
+        donutColors={colors.donut}
+        categoryShifts={intel.categoryShifts}
+        onSelectCategoryShift={setSelectedCategoryShift}
+        formatWithPreferred={formatWithPreferred}
+      />
 
-          {/* Group Mode Toggle Inside BottomSheet */}
-          <div
-            className="flex items-center gap-1.5 p-1 rounded-xl w-fit"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-            }}
-          >
-            <button
-              onClick={() => {
-                setGroupMode("category");
-                triggerHaptic("light");
-              }}
-              className="px-3 py-1 rounded-lg text-[11px] font-semibold transition-all"
-              style={{
-                background:
-                  groupMode === "category"
-                    ? "var(--glass-fill-strong)"
-                    : "transparent",
-                color:
-                  groupMode === "category"
-                    ? "var(--text-primary)"
-                    : "var(--text-tertiary)",
-              }}
-            >
-              By Category
-            </button>
-            <button
-              onClick={() => {
-                setGroupMode("parent");
-                triggerHaptic("light");
-              }}
-              className="px-3 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1"
-              style={{
-                background:
-                  groupMode === "parent"
-                    ? "var(--glass-fill-strong)"
-                    : "transparent",
-                color:
-                  groupMode === "parent"
-                    ? "var(--text-primary)"
-                    : "var(--text-tertiary)",
-              }}
-            >
-              <Layers size={11} />
-              By Parent (Induk)
-            </button>
-          </div>
-
-          {/* 2-Column Modern Compact Card Grid */}
-          <div className="grid grid-cols-2 gap-2.5 pb-12 pr-0.5">
-            {groupMode === "category"
-              ? categoryStats.map((cat, i) => {
-                  const pct =
-                    totalBreakdownAmount > 0
-                      ? ((cat.total / totalBreakdownAmount) * 100).toFixed(1)
-                      : "0.0";
-                  const barColor = colors.donut[i % colors.donut.length];
-                  const shift = intel.categoryShifts.find(
-                    (s) => s.name.toLowerCase() === cat.name.toLowerCase(),
-                  );
-
-                  return (
-                    <div
-                      key={cat.name}
-                      onClick={() => {
-                        if (shift) {
-                          setSelectedCategoryShift(shift);
-                          triggerHaptic("light");
-                        }
-                      }}
-                      className="p-3 rounded-2xl flex flex-col justify-between cursor-pointer active:scale-97 transition-all select-none"
-                      style={{
-                        background: "var(--bg-elevated)",
-                        border: "1px solid var(--glass-border)",
-                        minHeight: "105px",
-                      }}
-                    >
-                      {/* Top Row: Icon + Name + Percentage */}
-                      <div>
-                        <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                          <div
-                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                            style={{
-                              background: "var(--glass-fill)",
-                              border: "1px solid var(--glass-border)",
-                            }}
-                          >
-                            <IconRenderer icon={cat.emoji} size="w-4 h-4" />
-                          </div>
-                          <span
-                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full amount shrink-0"
-                            style={{
-                              background: "rgba(255, 255, 255, 0.08)",
-                              color: "var(--text-secondary)",
-                              border: "1px solid var(--glass-border)",
-                            }}
-                          >
-                            {pct}%
-                          </span>
-                        </div>
-                        <p
-                          className="text-[12px] font-semibold truncate"
-                          style={{ color: "var(--text-primary)" }}
-                          title={cat.name}
-                        >
-                          {cat.name}
-                        </p>
-                      </div>
-
-                      {/* Bottom Row: Amount + Sub-detail + Progress */}
-                      <div className="pt-2">
-                        <p
-                          className="amount text-[13px] truncate"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {formatWithPreferred(cat.total)}
-                        </p>
-                        <div
-                          className="flex items-center justify-between text-[10px] mt-0.5 mb-1.5"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          <span>{cat.count} txs</span>
-                          {shift && (
-                            <span
-                              style={{
-                                color: shift.isIncrease
-                                  ? "var(--text-primary)"
-                                  : "var(--text-secondary)",
-                              }}
-                            >
-                              {shift.isIncrease ? "↑" : "↓"}
-                              {shift.pctChange}%
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          className="w-full h-1 rounded-full overflow-hidden"
-                          style={{ background: "rgba(255,255,255,0.06)" }}
-                        >
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%`, background: barColor }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              : parentCategoryStats.map((parent, i) => {
-                  const pct =
-                    totalBreakdownAmount > 0
-                      ? ((parent.total / totalBreakdownAmount) * 100).toFixed(1)
-                      : "0.0";
-                  const barColor = colors.donut[i % colors.donut.length];
-
-                  return (
-                    <div
-                      key={parent.name}
-                      className="p-3 rounded-2xl flex flex-col justify-between select-none"
-                      style={{
-                        background: "var(--bg-elevated)",
-                        border: "1px solid var(--glass-border)",
-                        minHeight: "105px",
-                      }}
-                    >
-                      {/* Top Row: Icon + Name + Percentage */}
-                      <div>
-                        <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                          <div
-                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                            style={{
-                              background: "var(--glass-fill)",
-                              border: "1px solid var(--glass-border)",
-                            }}
-                          >
-                            <IconRenderer icon={parent.emoji} size="w-4 h-4" />
-                          </div>
-                          <span
-                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full amount shrink-0"
-                            style={{
-                              background: "rgba(255, 255, 255, 0.08)",
-                              color: "var(--text-secondary)",
-                              border: "1px solid var(--glass-border)",
-                            }}
-                          >
-                            {pct}%
-                          </span>
-                        </div>
-                        <p
-                          className="text-[12px] font-semibold truncate"
-                          style={{ color: "var(--text-primary)" }}
-                          title={parent.name}
-                        >
-                          {parent.name}
-                        </p>
-                      </div>
-
-                      {/* Bottom Row: Amount + Sub-detail + Progress */}
-                      <div className="pt-2">
-                        <p
-                          className="amount text-[13px] truncate"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {formatWithPreferred(parent.total)}
-                        </p>
-                        <div
-                          className="flex items-center justify-between text-[10px] mt-0.5 mb-1.5"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          <span>{parent.categoriesCount} categories</span>
-                          <span>{parent.count} txs</span>
-                        </div>
-                        <div
-                          className="w-full h-1 rounded-full overflow-hidden"
-                          style={{ background: "rgba(255,255,255,0.06)" }}
-                        >
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%`, background: barColor }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-          </div>
-        </div>
-      </BottomSheet>
-
-      {/* Cashflow Sankey Flow Diagram BottomSheet */}
-      <BottomSheet
-        isOpen={sankeyOpen}
-        onClose={() => setSankeyOpen(false)}
-        title={isIndonesian ? "Diagram Alur Arus Kas" : "Cashflow Sankey Flow"}
-      >
-        <div className="px-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),28px)] space-y-4">
-          <CashflowSankeySection
-            transactions={rangeTxs}
-            categories={categories}
-            wallets={wallets}
-            periodLabel={rangeTitle}
-            hideTitle
-          />
-        </div>
-      </BottomSheet>
-
-      <Suspense fallback={null}>
-        <CategoryDrillDownSheet
-          isOpen={!!selectedCategoryShift}
-          onClose={() => setSelectedCategoryShift(null)}
-          shift={selectedCategoryShift}
-        />
-
-        <PersonalFinancialModelSheet
-          isOpen={personalModelOpen}
-          onClose={() => setPersonalModelOpen(false)}
-          hideBalance={hideBalance}
-          actual={personalFinancialModel.actual}
-          baseline={personalFinancialModel.baseline}
-          scenario={personalFinancialModel.scenario}
-          insights={personalFinancialModel.insights}
-        />
-
-        <FinancialHealthDiagnosticModal
-          isOpen={healthDiagnosticOpen}
-          onClose={() => setHealthDiagnosticOpen(false)}
-          healthScore={healthScore}
-          savingsRate={savingsRate}
-          totalIncome={totalIncome}
-          totalExpense={totalExpense}
-          rangeTitle={rangeTitle}
-          baselines={range === "month" ? intel.personalBaselines : undefined}
-          categoryShifts={range === "month" ? intel.categoryShifts : []}
-        />
-
-        <FinancialWrappedModal
-          isOpen={wrappedOpen}
-          onClose={() => setWrappedOpen(false)}
-          transactions={allTxs}
-          categories={categories}
-          mode={range === "year" ? "year" : "month"}
-          targetDate={
-            range === "year" ? new Date(selectedYear, 0, 1) : activeMonthDate
-          }
-        />
-
-        <AssetValuationSheet
-          isOpen={assetValuationOpen}
-          onClose={() => setAssetValuationOpen(false)}
-        />
-
-        <MonteCarloSimulatorSheet
-          isOpen={monteCarloOpen}
-          onClose={() => setMonteCarloOpen(false)}
-          initialNetWorth={netWorth}
-          defaultMonthlySavings={Math.max(1000000, totalIncome - totalExpense)}
-          defaultMonthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
-          hideBalance={hideBalance}
-        />
-
-        <FirePlannerSheet
-          isOpen={firePlannerOpen}
-          onClose={() => setFirePlannerOpen(false)}
-          initialNetWorth={netWorth}
-          defaultMonthlySavings={Math.max(1000000, totalIncome - totalExpense)}
-          defaultMonthlyBurnRate={intel.totalExpense || totalExpense || 3500000}
-          hideBalance={hideBalance}
-        />
-
-        <WhatIfSimulatorSheet
-          isOpen={whatIfSheetOpen}
-          onClose={() => setWhatIfSheetOpen(false)}
-          monthlyIncome={intel.totalIncome}
-          monthlyExpense={intel.totalExpense}
-          netWorth={netWorth}
-          hideBalance={hideBalance}
-        />
-      </Suspense>
-
-      {/* Floating iOS Springboard Customization Pill for Intelligence Tab */}
-      {isStatsEditMode && (
-        <WidgetCustomizationBar
-          isEditMode={isStatsEditMode}
-          onDone={() => setIsStatsEditMode(false)}
-          onReset={resetStatsLayout}
-          hiddenCards={hiddenStatsCards}
-          onUnhideCard={toggleStatsCardVisibility}
-        />
-      )}
-
-      {/* Intelligence Cards Customization Modal */}
-      <CustomizeStatisticsModal
-        isOpen={customizeStatsOpen}
-        onClose={() => setCustomizeStatsOpen(false)}
-        widgets={statsWidgets}
-        onToggleVisibility={toggleStatsCardVisibility}
-        onReset={resetStatsLayout}
-        onApplyPreset={applyStatsPreset}
-        onEnterGridEdit={() => setIsStatsEditMode(true)}
-        activePresetKey={activeStatsPresetKey}
-        onSelectPresetKey={setActiveStatsPresetKey}
+      {/* All Analytics Modals, Simulators & Customization Sheets */}
+      <StatisticsModalsContainer
+        isIndonesian={isIndonesian}
+        hideBalance={hideBalance}
+        range={range}
+        rangeTitle={rangeTitle}
+        selectedYear={selectedYear}
+        activeMonthDate={activeMonthDate}
+        allTxs={allTxs}
+        rangeTxs={rangeTxs}
+        categories={categories}
+        wallets={wallets}
+        netWorth={netWorth}
+        totalIncome={totalIncome}
+        totalExpense={totalExpense}
+        healthScore={healthScore}
+        savingsRate={savingsRate}
+        intelTotalIncome={intel.totalIncome}
+        intelTotalExpense={intel.totalExpense}
+        personalBaselines={intel.personalBaselines}
+        categoryShifts={intel.categoryShifts}
+        personalFinancialModel={personalFinancialModel}
+        sankeyOpen={sankeyOpen}
+        setSankeyOpen={setSankeyOpen}
+        selectedCategoryShift={selectedCategoryShift}
+        setSelectedCategoryShift={setSelectedCategoryShift}
+        personalModelOpen={personalModelOpen}
+        setPersonalModelOpen={setPersonalModelOpen}
+        healthDiagnosticOpen={healthDiagnosticOpen}
+        setHealthDiagnosticOpen={setHealthDiagnosticOpen}
+        wrappedOpen={wrappedOpen}
+        setWrappedOpen={setWrappedOpen}
+        assetValuationOpen={assetValuationOpen}
+        setAssetValuationOpen={setAssetValuationOpen}
+        monteCarloOpen={monteCarloOpen}
+        setMonteCarloOpen={setMonteCarloOpen}
+        firePlannerOpen={firePlannerOpen}
+        setFirePlannerOpen={setFirePlannerOpen}
+        whatIfSheetOpen={whatIfSheetOpen}
+        setWhatIfSheetOpen={setWhatIfSheetOpen}
+        isStatsEditMode={isStatsEditMode}
+        setIsStatsEditMode={setIsStatsEditMode}
+        resetStatsLayout={resetStatsLayout}
+        hiddenStatsCards={hiddenStatsCards}
+        toggleStatsCardVisibility={toggleStatsCardVisibility}
+        customizeStatsOpen={customizeStatsOpen}
+        setCustomizeStatsOpen={setCustomizeStatsOpen}
+        statsWidgets={statsWidgets}
+        applyStatsPreset={applyStatsPreset}
+        activeStatsPresetKey={activeStatsPresetKey}
+        setActiveStatsPresetKey={setActiveStatsPresetKey}
       />
     </div>
   );

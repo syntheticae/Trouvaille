@@ -209,8 +209,8 @@ export function DynamicIslandHUD({
           }
           className="
             fixed
-            left-3
-            right-3
+            left-4
+            right-4
             z-[100000]
             mx-auto
             max-w-md
@@ -219,7 +219,7 @@ export function DynamicIslandHUD({
             font-sans
           "
           style={{
-            top: "max(calc(env(safe-area-inset-top, 0px) + 10px), 18px)",
+            top: "max(calc(env(safe-area-inset-top, 0px) + 18px), 28px)",
             WebkitFontSmoothing: "antialiased",
           }}
         >

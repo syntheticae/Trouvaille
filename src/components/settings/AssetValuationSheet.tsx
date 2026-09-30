@@ -1509,7 +1509,7 @@ export function AssetValuationSheet({
           </div>
 
           {/* Presets List */}
-          <div className="space-y-2 max-h-[50vh] overflow-y-auto no-scrollbar pr-0.5">
+          <div className="space-y-2 pr-0.5">
             {filteredPresets.map((preset) => (
               <button
                 key={preset.symbol}

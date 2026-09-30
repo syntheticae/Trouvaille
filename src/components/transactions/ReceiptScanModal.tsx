@@ -253,9 +253,9 @@ export function ReceiptScanModal({
     };
   }, [isOpen, step]);
 
-  const shouldSaveAttachments = useMemo(() => {
-    return localStorage.getItem("trouvaille_save_attachments") === "true";
-  }, [isOpen]);
+  const shouldSaveAttachments =
+    typeof window !== "undefined" &&
+    localStorage.getItem("trouvaille_save_attachments") === "true";
 
   // Reset state when modal closed
   useEffect(() => {

@@ -17,26 +17,12 @@ import {
   Plus,
   RefreshCw,
   Sparkles,
-  ChevronRight,
-  Layers,
-  Eye,
-  EyeOff,
-  ArrowUpRight,
   Sun,
   Moon,
   Settings,
   Coins,
   TrendingUp,
 } from "lucide-react";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from "recharts";
 import { formatRupiah, formatHoldingUnits } from "../lib/utils";
 import { triggerHaptic } from "../lib/haptics";
 import { useToast } from "../contexts/ToastContext";
@@ -52,7 +38,6 @@ import {
   getSavedUsdtPref,
   getStandardUsdtHoldingId,
   saveUsdtPref,
-  upsertHolding,
   deleteHolding,
   calculateHoldingValuation,
   fetchHoldingsFromSupabase,
@@ -64,19 +49,16 @@ import {
   applyUsdtReconciliation,
   bridgeCryptoAccountToHolding,
 } from "../lib/holdingSyncEngine";
-import { IconRenderer } from "../components/ui/IconRenderer";
-import { AssetDetailSheet } from "../components/settings/AssetDetailSheet";
-import { StakingYieldModal } from "../components/settings/StakingYieldModal";
-import { AddAssetModal } from "../components/assets/AddAssetModal";
-import { ExecutiveWalletCard } from "../components/assets/ExecutiveWalletCard";
-import { ConsolidatedBalanceSheetDrawer } from "../components/assets/ConsolidatedBalanceSheetDrawer";
-import { PortfolioIntelligenceDeck } from "../components/assets/PortfolioIntelligenceDeck";
-import { UnifiedCapitalAllocationCard } from "../components/assets/UnifiedCapitalAllocationCard";
-import { ConvertWalletToAssetModal } from "../components/assets/ConvertWalletToAssetModal";
 import {
-  AssetMetricDrillDownSheet,
+  ExecutiveWalletCard,
+  PortfolioIntelligenceDeck,
+  UnifiedCapitalAllocationCard,
+  PortfolioHoldingsDeck,
+  WealthHistoryTrajectoryCard,
+  AssetsModalsContainer,
+  type BalanceSheetRange,
   type MetricDrillDownData,
-} from "../components/assets/AssetMetricDrillDownSheet";
+} from "../components/assets";
 import { calculateAssetTrend } from "../lib/financialMath";
 import { startOfMonth } from "date-fns";
 import type { InvestmentHolding } from "../lib/types";
@@ -85,62 +67,7 @@ import {
   type PresetCategory,
 } from "../lib/assetPresets";
 
-export type { PresetCategory, PresetAsset };
-
-export type BalanceSheetRange = "1D" | "7D" | "1M" | "3M" | "6M" | "1Y" | "ALL";
-
-function formatAxisY(val: number): string {
-  if (Math.abs(val) >= 1000000000) return (val / 1000000000).toFixed(1) + "B";
-  if (Math.abs(val) >= 1000000) return (val / 1000000).toFixed(1) + "M";
-  if (Math.abs(val) >= 1000) return (val / 1000).toFixed(0) + "K";
-  return String(val);
-}
-
-interface GlassTooltipProps {
-  active?: boolean;
-  payload?: any[];
-  label?: string;
-  isStealthMode?: boolean;
-}
-
-const GlassTooltip = ({
-  active,
-  payload,
-  label,
-  isStealthMode,
-}: GlassTooltipProps) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--glass-border)",
-        borderRadius: 12,
-        padding: "6px 10px",
-        boxShadow: "var(--shadow-card)",
-      }}
-    >
-      <p
-        style={{
-          color: "var(--text-tertiary)",
-          fontSize: 10,
-          fontWeight: 700,
-        }}
-      >
-        {label}
-      </p>
-      <p
-        style={{
-          color: "var(--text-primary)",
-          fontSize: 13,
-          fontWeight: 700,
-        }}
-      >
-        {isStealthMode ? "••••••••" : formatRupiah(payload[0]?.value ?? 0)}
-      </p>
-    </div>
-  );
-};
+export type { PresetCategory, PresetAsset, BalanceSheetRange };
 
 export function AssetsPage() {
   const navigate = useNavigate();
@@ -765,7 +692,7 @@ export function AssetsPage() {
       title: isIndonesian
         ? "Liabilitas & Kewajiban Utang"
         : "Liabilities & Debt Obligations",
-      badge: `${debtToAssetRatio.toFixed(1)}% Debt-to-Asset`,
+      badge: `${debtToAssetRatio.toFixed(1)}% ${isIndonesian ? "Rasio Utang" : "Debt-to-Asset"}`,
       icon: "ShieldAlert",
       amount: liabilitiesTotal,
       narrative: isIndonesian
@@ -1113,629 +1040,38 @@ export function AssetsPage() {
 
 
       {/* ── 5. Holdings Deck ─────────────────────────────────────────────── */}
-      <section
-        id="holdings-deck"
-        className="p-4 sm:p-5 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3.5 select-none"
-        style={{
-          background: "var(--bg-elevated)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <Layers
-                size={15}
-                strokeWidth={1.75}
-                className="text-[var(--text-primary)]"
-              />
-            </div>
-            <div>
-              <h4 className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)]">
-                {isIndonesian
-                  ? "Daftar Kepemilikan Portofolio"
-                  : "Portfolio Holdings"}
-              </h4>
-              <p className="text-[10.5px] text-[var(--text-tertiary)]">
-                {isIndonesian
-                  ? "Valuasi pasar real-time & alokasi aset"
-                  : "Valuation & asset allocation"}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-[10.5px]  font-semibold px-2 py-0.5 rounded-full bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-secondary)]">
-              {holdings.length +
-                (usdtPref.units > 0 || recordedCryptoBalance > 0 ? 1 : 0)}{" "}
-              {isIndonesian ? "aset" : "assets"}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("medium");
-                setIsAddAssetModalOpen(true);
-              }}
-              className="w-7 h-7 rounded-xl flex items-center justify-center bg-[var(--text-primary)] text-[var(--bg-base)] active:scale-95 transition-transform cursor-pointer"
-              title={isIndonesian ? "Tambah Aset" : "Add Asset"}
-            >
-              <Plus size={14} strokeWidth={2.5} />
-            </button>
-          </div>
-        </div>
-
-        {/* Compact List of Top 3 Assets */}
-        <div className="space-y-2">
-          {/* Core USDT Row */}
-          {(usdtPref.units > 0 || recordedCryptoBalance > 0) && (
-            <div
-              onClick={openUsdtDetail}
-              className="p-3 sm:p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform border border-[var(--glass-border)] hover:bg-[var(--glass-fill-strong)]"
-              style={{ background: "var(--glass-fill)" }}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0  font-semibold text-xs">
-                  ₮
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-semibold text-[13px] text-[var(--text-primary)]">
-                      USDT
-                    </span>
-                    <span className="text-[8.5px] px-1.5 py-0.5 rounded  font-semibold bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
-                      STABLECOIN
-                    </span>
-                  </div>
-                  <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5 ">
-                    {usdtPref.units > 0
-                      ? `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`
-                      : `Wallet linked · ${formatHoldingUnits(suggestedUsdtUnits)} USDT`}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right  shrink-0 pl-2">
-                <span className="text-[13px] font-semibold text-[var(--text-primary)] block leading-tight">
-                  {isStealthMode ? "••••••••" : formatRupiah(usdtMarketValue)}
-                </span>
-                <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5">
-                  <span
-                    style={{
-                      color:
-                        usdtFloatingPnLPct >= 0
-                          ? "var(--accent)"
-                          : "var(--text-tertiary)",
-                    }}
-                  >
-                    {usdtFloatingPnLPct >= 0 ? "+" : ""}
-                    {usdtFloatingPnLPct.toFixed(1)}%
-                  </span>
-                  <span className="text-[var(--text-tertiary)] opacity-60">
-                    ·
-                  </span>
-                  <span className="text-[var(--text-tertiary)]">
-                    {(
-                      (usdtMarketValue / (totalGrossAssets || 1)) *
-                      100
-                    ).toFixed(1)}
-                    %
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Other Holdings (Top 3 in inline view) */}
-          {displayHoldings.slice(0, 3).map((h) => {
-            const val = h.valuation;
-            const weight =
-              totalGrossAssets > 0
-                ? (val.marketValue / totalGrossAssets) * 100
-                : 0;
-            return (
-              <div
-                key={h.id}
-                onClick={() => handleOpenHoldingDetail(h)}
-                className="p-3 sm:p-3.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform border border-[var(--glass-border)] hover:bg-[var(--glass-fill-strong)]"
-                style={{ background: "var(--glass-fill)" }}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--glass-fill)] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0">
-                    <IconRenderer
-                      icon={h.icon || "TrendingUp"}
-                      size="w-4 h-4"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-semibold text-[13px] text-[var(--text-primary)] truncate">
-                        {h.symbol}
-                      </span>
-                      <span className="text-[8.5px] px-1.5 py-0.5 rounded  font-medium bg-white/[0.08] text-[var(--text-tertiary)] uppercase">
-                        {h.asset_type.replace("_", " ")}
-                      </span>
-                    </div>
-                    <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
-                      {h.name} · {formatHoldingUnits(h.units)}{" "}
-                      {isIndonesian ? "unit" : "units"}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right  shrink-0 pl-2">
-                  <span className="text-[13px] font-semibold text-[var(--text-primary)] block leading-tight">
-                    {isStealthMode ? "••••••••" : formatRupiah(val.marketValue)}
-                  </span>
-                  <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5">
-                    <span
-                      style={{
-                        color:
-                          val.floatingPnLPct >= 0
-                            ? "var(--accent)"
-                            : "var(--text-tertiary)",
-                      }}
-                    >
-                      {val.floatingPnLPct >= 0 ? "+" : ""}
-                      {val.floatingPnLPct.toFixed(1)}%
-                    </span>
-                    <span className="text-[var(--text-tertiary)] opacity-60">
-                      ·
-                    </span>
-                    <span className="text-[var(--text-tertiary)]">
-                      {weight.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Button to Open Consolidated Balance Sheet Drawer */}
-          {(displayHoldings.length > 0 ||
-            usdtPref.units > 0 ||
-            recordedCryptoBalance > 0) && (
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setIsConsolidatedDrawerOpen(true);
-              }}
-              className="w-full py-2.5 rounded-2xl bg-[var(--glass-fill)] hover:bg-[var(--glass-fill-strong)] border border-[var(--glass-border)] text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99] transition-all mt-1"
-            >
-              <Layers size={13} strokeWidth={2} />
-              <span>
-                {isIndonesian
-                  ? `Buka Neraca Lengkap (${holdings.length + (usdtPref.units > 0 || recordedCryptoBalance > 0 ? 1 : 0)} Aset & Liabilitas)`
-                  : `Open Consolidated Balance Sheet (${holdings.length + (usdtPref.units > 0 || recordedCryptoBalance > 0 ? 1 : 0)} Assets & Debt)`}
-              </span>
-              <ChevronRight size={13} strokeWidth={2} />
-            </button>
-          )}
-
-          {displayHoldings.length === 0 &&
-            usdtPref.units <= 0 &&
-            recordedCryptoBalance <= 0 && (
-              <div className="py-6 text-center space-y-1 text-[var(--text-tertiary)]">
-                <p className="text-[12.5px] font-semibold text-[var(--text-primary)]">
-                  {isIndonesian
-                    ? "Belum ada aset terdaftar"
-                    : "No registered assets"}
-                </p>
-                <p className="text-[10.5px]">
-                  {isIndonesian
-                    ? "Ketuk tombol (+) di atas untuk menambahkan portofolio."
-                    : "Tap the (+) button above to add investment assets."}
-                </p>
-              </div>
-            )}
-        </div>
-      </section>
+      <PortfolioHoldingsDeck
+        holdings={holdings}
+        displayHoldings={displayHoldings}
+        usdtPref={usdtPref}
+        recordedCryptoBalance={recordedCryptoBalance}
+        suggestedUsdtUnits={suggestedUsdtUnits}
+        usdtMarketValue={usdtMarketValue}
+        usdtFloatingPnLPct={usdtFloatingPnLPct}
+        totalGrossAssets={totalGrossAssets}
+        isStealthMode={isStealthMode}
+        isIndonesian={isIndonesian}
+        onOpenAddAsset={() => setIsAddAssetModalOpen(true)}
+        onOpenUsdtDetail={openUsdtDetail}
+        onOpenHoldingDetail={handleOpenHoldingDetail}
+        onOpenConsolidatedDrawer={() => setIsConsolidatedDrawerOpen(true)}
+      />
 
       {/* ── 6. Wealth History Card — Quiet Wealth × Liquid Island ── */}
-      <section className="card-contrast-hero relative overflow-hidden select-none p-4 pb-3">
-        {/* ─────────────────────────────────────────────
-      Header
-  ───────────────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-2">
-          <h2
-            className={`
-        text-[11px]
-        font-semibold
-        uppercase
-        tracking-[0.075em]
-        leading-none
-        ${isDark ? "text-white/60" : "text-[var(--text-secondary)]"}
-      `}
-          >
-            {isIndonesian ? "Riwayat Akumulasi Kekayaan" : "Wealth History"}
-          </h2>
-
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              toggleStealthMode();
-            }}
-            className={`
-        -mr-1
-        p-1.5
-        rounded-full
-        cursor-pointer
-        transition-all
-        duration-200
-        active:scale-90
-        ${
-          isDark
-            ? "text-white/40 hover:text-white/75 hover:bg-white/[0.05]"
-            : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-black/[0.035]"
-        }
-      `}
-            title={isStealthMode ? "Show Balance" : "Hide Balance"}
-            aria-label={isStealthMode ? "Show Balance" : "Hide Balance"}
-          >
-            {isStealthMode ? (
-              <EyeOff size={15} strokeWidth={1.8} />
-            ) : (
-              <Eye size={15} strokeWidth={1.8} />
-            )}
-          </button>
-        </div>
-
-        {/* ─────────────────────────────────────────────
-      Primary Wealth Value
-      The visual hero of the card.
-  ───────────────────────────────────────────── */}
-        <div className="mb-2">
-          <span
-            className={`
-        amount
-        block
-        text-[25px]
-        leading-[1.05]
-        font-medium
-        tracking-[-0.028em]
-        tabular-nums
-        ${isDark ? "text-white" : "text-[var(--text-primary)]"}
-      `}
-          >
-            {isStealthMode ? "Rp ••••••••" : formatRupiah(netWorth)}
-          </span>
-        </div>
-
-        {/* ─────────────────────────────────────────────
-      Performance / Period
-      Quiet secondary information.
-  ───────────────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div
-            className={`
-        flex
-        min-w-0
-        items-center
-        gap-1
-        text-[11px]
-        font-semibold
-        leading-none
-        tracking-[-0.005em]
-        tabular-nums
-        ${isDark ? "text-white/72" : "text-[var(--text-secondary)]"}
-      `}
-          >
-            <ArrowUpRight
-              size={13}
-              strokeWidth={2.1}
-              className={`
-          shrink-0
-          transition-transform
-          ${assetTrend.diff < 0 ? "rotate-90" : ""}
-        `}
-            />
-
-            <span className="truncate">
-              {isStealthMode
-                ? "••••"
-                : `${assetTrend.diff >= 0 ? "+" : ""}${formatRupiah(
-                    assetTrend.diff,
-                  )}`}
-            </span>
-
-            <span
-              className={`
-          shrink-0
-          font-medium
-          ${isDark ? "text-white/40" : "text-[var(--text-tertiary)]"}
-        `}
-            >
-              (
-              {isStealthMode
-                ? "••••"
-                : `${assetTrend.percent > 0 ? "+" : ""}${assetTrend.percent.toFixed(
-                    2,
-                  )}%`}
-              )
-            </span>
-          </div>
-
-          <span
-            className={`
-        shrink-0
-        text-[10px]
-        font-medium
-        leading-none
-        tracking-[0.01em]
-        ${isDark ? "text-white/38" : "text-[var(--text-tertiary)]"}
-      `}
-          >
-            {bsRangeLabels[bsRange]} · IDR
-          </span>
-        </div>
-
-        {/* ─────────────────────────────────────────────
-      Liquid Island Range Selector
-
-      One surface, one active state.
-      The selector should feel like a control
-      rather than seven individual buttons.
-  ───────────────────────────────────────────── */}
-        <div
-          className={`
-      relative
-      flex
-      items-center
-      w-full
-      h-[30px]
-      p-[3px]
-      rounded-full
-      overflow-hidden
-      ${
-        isDark
-          ? "bg-white/[0.045] border border-white/[0.055]"
-          : "bg-black/[0.025] border border-black/[0.045]"
-      }
-    `}
-          style={{
-            boxShadow: isDark
-              ? "inset 0 1px 0 rgba(255,255,255,0.035)"
-              : "inset 0 1px 0 rgba(255,255,255,0.8)",
-          }}
-        >
-          {(
-            ["1D", "7D", "1M", "3M", "6M", "1Y", "ALL"] as BalanceSheetRange[]
-          ).map((r) => {
-            const isActive = bsRange === r;
-
-            return (
-              <button
-                key={r}
-                type="button"
-                onClick={() => {
-                  setBsRange(r);
-                  triggerHaptic("light");
-                }}
-                className={`
-            relative
-            z-10
-            flex-1
-            h-full
-            min-w-0
-            rounded-full
-            text-[10px]
-            font-semibold
-            leading-none
-            tracking-[-0.005em]
-            cursor-pointer
-            select-none
-            transition-all
-            duration-200
-            active:scale-[0.94]
-            ${
-              isActive
-                ? isDark
-                  ? "text-white"
-                  : "text-[var(--bg-base)]"
-                : isDark
-                  ? "text-white/42 hover:text-white/68"
-                  : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-            }
-          `}
-                style={{
-                  background: isActive
-                    ? isDark
-                      ? "rgba(255,255,255,0.14)"
-                      : "var(--text-primary)"
-                    : "transparent",
-
-                  border: isActive
-                    ? isDark
-                      ? "1px solid rgba(255,255,255,0.10)"
-                      : "1px solid var(--text-primary)"
-                    : "1px solid transparent",
-
-                  boxShadow: isActive
-                    ? isDark
-                      ? "0 1px 3px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08)"
-                      : "0 1px 4px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.10)"
-                    : "none",
-                }}
-              >
-                {r}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Chart with Right Y-Axis & Dotted Grid */}
-        <div className="h-[120px] w-full mt-0.5">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={assetTrend.chartData}
-              margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient
-                  id="wealthHeroGradient"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop
-                    offset="0%"
-                    stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                    stopOpacity={isDark ? 0.25 : 0.12}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                    stopOpacity={0.0}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="2 3"
-                stroke={isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.09)"}
-                vertical={true}
-                horizontal={true}
-              />
-              <XAxis
-                dataKey="label"
-                tick={{
-                  fontSize: 9,
-                  fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
-                  fontFamily: "Urbanist",
-                  fontWeight: 600,
-                }}
-                axisLine={false}
-                tickLine={false}
-                dy={3}
-              />
-              <YAxis
-                orientation="right"
-                width={34}
-                domain={["auto", "auto"]}
-                tick={{
-                  fontSize: 9,
-                  fill: isDark ? "rgba(255,255,255,0.5)" : "#71717a",
-                  fontFamily: "Urbanist",
-                  fontWeight: 700,
-                }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={formatAxisY}
-                dx={-2}
-              />
-              <Tooltip
-                content={<GlassTooltip isStealthMode={isStealthMode} />}
-              />
-              <Area
-                type="monotone"
-                dataKey="balance"
-                stroke={isDark ? "#FFFFFF" : "#18181b"}
-                strokeWidth={2}
-                fill="url(#wealthHeroGradient)"
-                dot={false}
-                activeDot={{
-                  r: 4,
-                  fill: isDark ? "#FFFFFF" : "#18181b",
-                  stroke: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.9)",
-                  strokeWidth: 1.5,
-                }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Stocks-Style Summary Footer (4 columns: Tertinggi, Terendah, Injeksi MTD, Pasar Δ) */}
-        <div
-          className={`grid grid-cols-4 gap-1.5 pt-2.5 mt-1 border-t text-center ${
-            isDark ? "border-white/10" : "border-black/[0.06]"
-          }`}
-        >
-          <div>
-            <p
-              className={`text-[9px] font-semibold uppercase tracking-wider ${
-                isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
-              }`}
-            >
-              {isIndonesian ? "Tertinggi" : "High"}
-            </p>
-            <p
-              className={`text-[11px] font-semibold amount mt-0.5 ${
-                isDark ? "text-white" : "text-[var(--text-primary)]"
-              }`}
-            >
-              {isStealthMode
-                ? "••••"
-                : chartPeak >= 1000
-                  ? "Rp " + formatAxisY(chartPeak)
-                  : formatRupiah(chartPeak)}
-            </p>
-          </div>
-          <div>
-            <p
-              className={`text-[9px] font-semibold uppercase tracking-wider ${
-                isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
-              }`}
-            >
-              {isIndonesian ? "Terendah" : "Low"}
-            </p>
-            <p
-              className={`text-[11px] font-semibold amount mt-0.5 ${
-                isDark ? "text-white" : "text-[var(--text-primary)]"
-              }`}
-            >
-              {isStealthMode
-                ? "••••"
-                : chartTrough >= 1000
-                  ? "Rp " + formatAxisY(chartTrough)
-                  : formatRupiah(chartTrough)}
-            </p>
-          </div>
-          <div>
-            <p
-              className={`text-[9px] font-semibold uppercase tracking-wider ${
-                isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
-              }`}
-            >
-              {isIndonesian ? "Injeksi MTD" : "Inflow MTD"}
-            </p>
-            <p
-              className={`text-[11px] font-semibold amount mt-0.5 ${
-                isDark ? "text-white" : "text-[var(--text-primary)]"
-              }`}
-            >
-              {isStealthMode
-                ? "••••"
-                : capitalDeployment > 0
-                  ? "+Rp " + formatAxisY(capitalDeployment)
-                  : "Rp 0"}
-            </p>
-          </div>
-          <div>
-            <p
-              className={`text-[9px] font-semibold uppercase tracking-wider ${
-                isDark ? "text-white/45" : "text-[var(--text-tertiary)]"
-              }`}
-            >
-              {isIndonesian ? "Ekuitas Δ" : "Equity Δ"}
-            </p>
-            <p
-              className={`text-[11px] font-semibold amount mt-0.5 ${
-                isDark ? "text-white" : "text-[var(--text-primary)]"
-              }`}
-            >
-              {isStealthMode
-                ? "••••"
-                : `${assetTrend.diff >= 0 ? "+" : "-"}Rp ${formatAxisY(Math.abs(assetTrend.diff))}`}
-            </p>
-          </div>
-        </div>
-      </section>
+      <WealthHistoryTrajectoryCard
+        netWorth={netWorth}
+        assetTrend={assetTrend}
+        bsRange={bsRange}
+        onChangeRange={setBsRange}
+        bsRangeLabels={bsRangeLabels}
+        chartPeak={chartPeak}
+        chartTrough={chartTrough}
+        capitalDeployment={capitalDeployment}
+        isStealthMode={isStealthMode}
+        onToggleStealthMode={toggleStealthMode}
+        isIndonesian={isIndonesian}
+        isDark={isDark}
+      />
 
       {/* ── 7. Portfolio Health & Risk Intelligence Deck ── */}
       <PortfolioIntelligenceDeck
@@ -1745,96 +1081,40 @@ export function AssetsPage() {
         totalLiabilities={liabilitiesTotal}
       />
 
-      {/* ── 9. Add Asset Modal (Modular iOS 27 Fluid Glass) ──────────────── */}
-      <AddAssetModal
-        isOpen={isAddAssetModalOpen}
-        onClose={() => setIsAddAssetModalOpen(false)}
-        onSaveHolding={(newH) => {
-          const updated = upsertHolding(newH, user?.id);
-          setHoldings(updated);
-        }}
-        onSaveUsdtPref={(newPref) => {
-          setUsdtPref(newPref);
-          saveUsdtPref(newPref, user?.id);
-        }}
-        usdtRate={usdtPref.rate}
+      {/* ── 8. Modals, Drawers & Drill-Down Sheets Container ── */}
+      <AssetsModalsContainer
         userId={user?.id}
-      />
-
-      {/* ── Convert / Link Legacy Wallet to Asset Modal ──────────────────── */}
-      <ConvertWalletToAssetModal
-        isOpen={isConvertModalOpen}
-        onClose={() => setIsConvertModalOpen(false)}
-        wallet={unlinkedCryptoWallet}
-        liveRate={usdtPref.rate}
-        userId={user?.id}
-        onSuccess={(_h, pref) => {
-          setUsdtPref(pref);
-          setHoldings(getSavedHoldings(user?.id));
-        }}
-      />
-
-      {/* Asset Detail Sheet with Transaction Bridge */}
-      <AssetDetailSheet
-        isOpen={!!selectedDetailHolding}
-        onClose={() => setSelectedDetailHolding(null)}
-        holding={selectedDetailHolding}
-        onHoldingUpdated={() => {
-          const freshHoldings = getSavedHoldings(user?.id);
-          setHoldings(freshHoldings);
-          const freshUsdt = getSavedUsdtPref(user?.id);
-          setUsdtPref(freshUsdt);
-          if (selectedDetailHolding) {
-            const refreshed = freshHoldings.find(
-              (x) =>
-                x.id === selectedDetailHolding.id ||
-                (x.symbol &&
-                  x.symbol.toUpperCase() ===
-                    selectedDetailHolding.symbol?.toUpperCase()),
-            );
-            if (refreshed) setSelectedDetailHolding(refreshed);
-          }
-        }}
-        onDeleteHolding={(id, name) => {
-          handleDeleteHolding(id, name);
-          setSelectedDetailHolding(null);
-        }}
-      />
-
-      {/* Passive Yield & Dividends Modal */}
-      <StakingYieldModal
-        isOpen={isStakingModalOpen}
-        onClose={() => setIsStakingModalOpen(false)}
-        holdingUnits={usdtUnits}
-        liveRate={usdtRate}
-        wallets={wallets}
+        isAddAssetModalOpen={isAddAssetModalOpen}
+        onCloseAddAssetModal={() => setIsAddAssetModalOpen(false)}
+        isConvertModalOpen={isConvertModalOpen}
+        onCloseConvertModal={() => setIsConvertModalOpen(false)}
+        unlinkedCryptoWallet={unlinkedCryptoWallet}
+        selectedDetailHolding={selectedDetailHolding}
+        onSelectDetailHolding={setSelectedDetailHolding}
+        onDeleteHolding={handleDeleteHolding}
+        isStakingModalOpen={isStakingModalOpen}
+        onCloseStakingModal={() => setIsStakingModalOpen(false)}
+        isConsolidatedDrawerOpen={isConsolidatedDrawerOpen}
+        onCloseConsolidatedDrawer={() => setIsConsolidatedDrawerOpen(false)}
+        selectedMetricDrillDown={selectedMetricDrillDown}
+        onCloseMetricDrillDown={() => setSelectedMetricDrillDown(null)}
         holdings={holdings}
-        userId={user?.id}
-        onSuccess={() => {
-          setUsdtPref(getSavedUsdtPref(user?.id));
-          setHoldings(getSavedHoldings(user?.id));
-        }}
-      />
-
-      {/* ── Consolidated Balance Sheet Drawer (All Assets & Liabilities) ── */}
-      <ConsolidatedBalanceSheetDrawer
-        isOpen={isConsolidatedDrawerOpen}
-        onClose={() => setIsConsolidatedDrawerOpen(false)}
+        onHoldingsChange={setHoldings}
+        usdtPref={usdtPref}
+        onUsdtPrefChange={setUsdtPref}
+        usdtUnits={usdtUnits}
+        usdtRate={usdtRate}
+        usdtCostBasis={usdtCostBasis}
+        usdtMarketValue={usdtMarketValue}
+        usdtFloatingPnLPct={usdtFloatingPnLPct}
+        suggestedUsdtUnits={suggestedUsdtUnits}
+        recordedCryptoBalance={recordedCryptoBalance}
         netWorth={netWorth}
         totalGrossAssets={totalGrossAssets}
         liabilitiesTotal={liabilitiesTotal}
         liquidAssetsTotal={liquidAssetsTotal}
         growthAssetsTotal={growthAssetsTotal}
         fixedAssetsTotal={fixedAssetsTotal}
-        usdtPref={{
-          units: usdtUnits,
-          rate: usdtRate,
-          costBasis: usdtCostBasis,
-        }}
-        usdtMarketValue={usdtMarketValue}
-        usdtFloatingPnLPct={usdtFloatingPnLPct}
-        suggestedUsdtUnits={suggestedUsdtUnits}
-        recordedCryptoBalance={recordedCryptoBalance}
         wallets={wallets}
         balancesById={balancesById}
         liquidHoldings={liquidHoldings}
@@ -1844,14 +1124,6 @@ export function AssetsPage() {
         isStealthMode={isStealthMode}
         isIndonesian={isIndonesian}
         isDark={isDark}
-      />
-
-      {/* ── Metric Telemetry Drill-Down Sheet (6 Half-Cards) ── */}
-      <AssetMetricDrillDownSheet
-        data={selectedMetricDrillDown}
-        onClose={() => setSelectedMetricDrillDown(null)}
-        isStealthMode={isStealthMode}
-        isIndonesian={isIndonesian}
       />
     </div>
   );

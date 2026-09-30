@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useWallets } from "../../hooks/useWallets";
 import { useCategories } from "../../hooks/useCategories";
@@ -22,6 +23,7 @@ import { useBudgetTarget } from "../../hooks/useBudgetTarget";
 import { useShortcuts } from "../../hooks/useShortcuts";
 import {
   fetchAllTransactionsFromSupabase,
+  useAllTransactions,
 } from "../../hooks/useTransactions";
 import {
   encryptVault,
@@ -49,8 +51,10 @@ export function EncryptedVaultModal({
 }: EncryptedVaultModalProps) {
   const { session } = useAuth();
   const { showToast } = useToast();
+  const { isIndonesian } = useLanguage();
   const queryClient = useQueryClient();
 
+  const { data: allTransactionsFallback = [] } = useAllTransactions();
   const { data: wallets = [] } = useWallets();
   const { data: categories = [] } = useCategories();
   const { data: bills = [] } = useBills();
@@ -106,35 +110,56 @@ export function EncryptedVaultModal({
     } catch (err: any) {
       triggerHaptic("heavy");
       setRestoreError(
-        err.message || "Invalid or corrupt vault file. Please select a valid .trouvaille backup.",
+        err.message ||
+          (isIndonesian
+            ? "Berkas brankas tidak valid atau rusak. Pilih berkas cadangan .trouvaille yang sah."
+            : "Invalid or corrupt vault file. Please select a valid .trouvaille backup."),
       );
       setSelectedFile(null);
       setParsedPayload(null);
     }
   };
 
-  // Execute Vault Export
+  // Execute Vault Export (Supports both Cloud and Guest/Offline Modes)
   const handleExecuteExport = async () => {
     if (!exportPassphrase || exportPassphrase.length < 4) {
-      showToast("Passphrase must be at least 4 characters", "delete", () => {});
+      showToast(
+        isIndonesian
+          ? "Kata sandi brankas minimal 4 karakter"
+          : "Passphrase must be at least 4 characters",
+        "delete",
+        () => {},
+      );
       triggerHaptic("heavy");
       return;
     }
 
     if (exportPassphrase !== exportConfirmPassphrase) {
-      showToast("Passphrases do not match", "delete", () => {});
+      showToast(
+        isIndonesian
+          ? "Konfirmasi kata sandi tidak cocok"
+          : "Passphrases do not match",
+        "delete",
+        () => {},
+      );
       triggerHaptic("heavy");
       return;
     }
 
     setIsExporting(true);
     try {
-      // 1. Fetch complete transactions from Supabase/cache
-      let allTransactions: any[] = [];
-      if (session?.user?.id) {
-        allTransactions = await fetchAllTransactionsFromSupabase({
-          userId: session.user.id,
+      // 1. Fetch complete transactions from Supabase or local Guest/Offline cache
+      let allTransactions = allTransactionsFallback;
+      try {
+        const fetched = await fetchAllTransactionsFromSupabase({
+          userId: session?.user?.id || "guest_local_user",
+          filterByUserIdOnly: Boolean(session?.user?.id),
         });
+        if (fetched.length > 0 || allTransactionsFallback.length === 0) {
+          allTransactions = fetched;
+        }
+      } catch {
+        allTransactions = allTransactionsFallback;
       }
 
       // 2. Package vault data
@@ -158,12 +183,25 @@ export function EncryptedVaultModal({
       downloadVaultFile(encrypted, `trouvaille_vault_${dateStr}.trouvaille`);
 
       triggerSuccessHaptic();
-      showToast("Encrypted vault exported successfully", "add", () => {});
+      showToast(
+        isIndonesian
+          ? "Brankas terenkripsi berhasil diekspor"
+          : "Encrypted vault exported successfully",
+        "add",
+        () => {},
+      );
       handleClose();
     } catch (err: any) {
       console.error("[VaultExport] Failed:", err);
       triggerHaptic("heavy");
-      showToast(err.message || "Failed to export vault", "delete", () => {});
+      showToast(
+        err.message ||
+          (isIndonesian
+            ? "Gagal mengekspor brankas"
+            : "Failed to export vault"),
+        "delete",
+        () => {},
+      );
     } finally {
       setIsExporting(false);
     }
@@ -172,12 +210,24 @@ export function EncryptedVaultModal({
   // Execute Vault Decrypt & Restore
   const handleExecuteRestore = async () => {
     if (!parsedPayload) {
-      showToast("Please choose a vault backup file", "delete", () => {});
+      showToast(
+        isIndonesian
+          ? "Pilih berkas cadangan brankas terlebih dahulu"
+          : "Please choose a vault backup file",
+        "delete",
+        () => {},
+      );
       return;
     }
 
     if (!restorePassphrase) {
-      showToast("Please enter the decryption passphrase", "delete", () => {});
+      showToast(
+        isIndonesian
+          ? "Masukkan kata sandi dekripsi brankas"
+          : "Please enter the decryption passphrase",
+        "delete",
+        () => {},
+      );
       return;
     }
 
@@ -186,12 +236,18 @@ export function EncryptedVaultModal({
 
     try {
       // 1. Decrypt vault
-      setRestoreProgress({ stage: "Decrypting vault payload...", progress: 10 });
+      setRestoreProgress({
+        stage: isIndonesian
+          ? "Mendekripsi isi brankas..."
+          : "Decrypting vault payload...",
+        progress: 10,
+      });
       const decryptedData = await decryptVault(parsedPayload, restorePassphrase);
 
-      // 2. Restore data into Supabase & localStorage
+      // 2. Restore data into Supabase & localStorage (Cloud & Guest Mode supported)
       const result = await restoreVaultData(decryptedData, {
         mode: restoreMode,
+        isIndonesian,
         onProgress: setRestoreProgress,
       });
 
@@ -205,7 +261,9 @@ export function EncryptedVaultModal({
 
       triggerSuccessHaptic();
       showToast(
-        `Restored ${result.restoredTransactions} transactions & ${result.restoredWallets} wallets`,
+        isIndonesian
+          ? `Dipulihkan: ${result.restoredTransactions} transaksi & ${result.restoredWallets} rekening`
+          : `Restored ${result.restoredTransactions} transactions & ${result.restoredWallets} wallets`,
         "add",
         () => {},
       );
@@ -214,7 +272,10 @@ export function EncryptedVaultModal({
       console.error("[VaultRestore] Failed:", err);
       triggerHaptic("heavy");
       setRestoreError(
-        err.message || "Decryption failed. Please verify your passphrase.",
+        err.message ||
+          (isIndonesian
+            ? "Dekripsi gagal. Periksa kembali kata sandi Anda."
+            : "Decryption failed. Please verify your passphrase."),
       );
     } finally {
       setIsRestoring(false);
@@ -223,7 +284,7 @@ export function EncryptedVaultModal({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={handleClose}>
-      <div className="p-5 pb-10 space-y-5 max-w-lg mx-auto">
+      <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] space-y-5 max-w-lg mx-auto">
         {/* Header */}
         <div className="text-center space-y-1">
           <div
@@ -237,13 +298,15 @@ export function EncryptedVaultModal({
             <Shield size={22} strokeWidth={1.75} />
           </div>
           <h3
-            className="text-[18px] font-bold tracking-tight"
+            className="text-[18px] font-semibold tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
-            Encrypted Local Vault
+            {isIndonesian ? "Brankas Lokal Terenkripsi" : "Encrypted Local Vault"}
           </h3>
           <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
-            Client-side AES-GCM-256 backup with zero-knowledge encryption
+            {isIndonesian
+              ? "Pencadangan sisi perangkat AES-GCM-256 dengan enkripsi tanpa pengetahuan"
+              : "Client-side AES-GCM-256 backup with zero-knowledge encryption"}
           </p>
         </div>
 
@@ -276,7 +339,7 @@ export function EncryptedVaultModal({
             }}
           >
             <Download size={14} strokeWidth={1.75} />
-            <span>Export Vault</span>
+            <span>{isIndonesian ? "Ekspor Brankas" : "Export Vault"}</span>
           </button>
           <button
             type="button"
@@ -299,7 +362,7 @@ export function EncryptedVaultModal({
             }}
           >
             <Upload size={14} strokeWidth={1.75} />
-            <span>Restore Vault</span>
+            <span>{isIndonesian ? "Pulihkan Brankas" : "Restore Vault"}</span>
           </button>
         </div>
 
@@ -321,7 +384,7 @@ export function EncryptedVaultModal({
                   className="text-[12px] font-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Records to Encrypt
+                  {isIndonesian ? "Data yang Akan Dienkripsi" : "Records to Encrypt"}
                 </span>
                 <span
                   className="text-[10px] font-medium px-2 py-0.5 rounded-full"
@@ -335,7 +398,7 @@ export function EncryptedVaultModal({
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <div
                   className="p-2.5 rounded-xl text-center"
                   style={{
@@ -344,7 +407,27 @@ export function EncryptedVaultModal({
                   }}
                 >
                   <span
-                    className="text-[15px] font-bold block"
+                    className="text-[15px] font-semibold block"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {allTransactionsFallback.length}
+                  </span>
+                  <span
+                    className="text-[10px]"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {isIndonesian ? "Transaksi" : "Transactions"}
+                  </span>
+                </div>
+                <div
+                  className="p-2.5 rounded-xl text-center"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                  }}
+                >
+                  <span
+                    className="text-[15px] font-semibold block"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {wallets.length}
@@ -353,7 +436,7 @@ export function EncryptedVaultModal({
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Wallets
+                    {isIndonesian ? "Rekening" : "Wallets"}
                   </span>
                 </div>
                 <div
@@ -364,7 +447,7 @@ export function EncryptedVaultModal({
                   }}
                 >
                   <span
-                    className="text-[15px] font-bold block"
+                    className="text-[15px] font-semibold block"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {categories.length}
@@ -373,7 +456,7 @@ export function EncryptedVaultModal({
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Categories
+                    {isIndonesian ? "Kategori" : "Categories"}
                   </span>
                 </div>
                 <div
@@ -384,7 +467,7 @@ export function EncryptedVaultModal({
                   }}
                 >
                   <span
-                    className="text-[15px] font-bold block"
+                    className="text-[15px] font-semibold block"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {bills.length}
@@ -393,7 +476,7 @@ export function EncryptedVaultModal({
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Bills
+                    {isIndonesian ? "Tagihan" : "Bills"}
                   </span>
                 </div>
               </div>
@@ -402,8 +485,9 @@ export function EncryptedVaultModal({
                 className="text-[11px] leading-relaxed"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                All records, transactions, goals, and categories will be encrypted
-                locally on your device. Only you possess the key.
+                {isIndonesian
+                  ? "Seluruh catatan, transaksi, target, dan kategori akan dienkripsi secara lokal di perangkat Anda. Hanya Anda yang memegang kuncinya."
+                  : "All records, transactions, goals, and categories will be encrypted locally on your device. Only you possess the key."}
               </p>
             </div>
 
@@ -414,7 +498,7 @@ export function EncryptedVaultModal({
                   className="text-[12px] font-semibold block mb-1.5"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Set Vault Passphrase
+                  {isIndonesian ? "Atur Kata Sandi Brankas" : "Set Vault Passphrase"}
                 </label>
                 <div
                   className="flex items-center px-3 py-2.5 rounded-xl transition-all"
@@ -430,7 +514,11 @@ export function EncryptedVaultModal({
                   />
                   <input
                     type={showExportPassphrase ? "text" : "password"}
-                    placeholder="Enter strong passphrase or PIN"
+                    placeholder={
+                      isIndonesian
+                        ? "Masukkan kata sandi atau PIN kuat"
+                        : "Enter strong passphrase or PIN"
+                    }
                     value={exportPassphrase}
                     onChange={(e) => setExportPassphrase(e.target.value)}
                     className="w-full bg-transparent text-[13px] outline-none"
@@ -452,7 +540,7 @@ export function EncryptedVaultModal({
                   className="text-[12px] font-semibold block mb-1.5"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Confirm Passphrase
+                  {isIndonesian ? "Konfirmasi Kata Sandi" : "Confirm Passphrase"}
                 </label>
                 <div
                   className="flex items-center px-3 py-2.5 rounded-xl transition-all"
@@ -468,7 +556,9 @@ export function EncryptedVaultModal({
                   />
                   <input
                     type={showExportPassphrase ? "text" : "password"}
-                    placeholder="Repeat passphrase"
+                    placeholder={
+                      isIndonesian ? "Ulangi kata sandi" : "Repeat passphrase"
+                    }
                     value={exportConfirmPassphrase}
                     onChange={(e) => setExportConfirmPassphrase(e.target.value)}
                     className="w-full bg-transparent text-[13px] outline-none"
@@ -483,21 +573,29 @@ export function EncryptedVaultModal({
               type="button"
               disabled={isExporting || !exportPassphrase || !exportConfirmPassphrase}
               onClick={handleExecuteExport}
-              className="w-full py-3 px-4 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3 px-4 rounded-xl text-[13px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               style={{
                 background: "var(--text-primary)",
-                color: "var(--bg-base)",
+                color: "var(--bg)",
               }}
             >
               {isExporting ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Encrypting & Generating Vault...</span>
+                  <span>
+                    {isIndonesian
+                      ? "Mengenkripsi & Membuat Brankas..."
+                      : "Encrypting & Generating Vault..."}
+                  </span>
                 </>
               ) : (
                 <>
-                  <Download size={16} strokeWidth={2} />
-                  <span>Download Encrypted Vault (.trouvaille)</span>
+                  <Download size={16} strokeWidth={1.75} />
+                  <span>
+                    {isIndonesian
+                      ? "Unduh Brankas Terenkripsi (.trouvaille)"
+                      : "Download Encrypted Vault (.trouvaille)"}
+                  </span>
                 </>
               )}
             </button>
@@ -532,16 +630,16 @@ export function EncryptedVaultModal({
                   <div
                     className="w-10 h-10 rounded-xl mx-auto flex items-center justify-center"
                     style={{
-                      background: "rgba(16, 185, 129, 0.12)",
-                      border: "1px solid rgba(16, 185, 129, 0.25)",
-                      color: "#10b981",
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
                     }}
                   >
-                    <CheckCircle2 size={20} />
+                    <CheckCircle2 size={20} strokeWidth={1.75} />
                   </div>
                   <div>
                     <span
-                      className="text-[13px] font-bold block"
+                      className="text-[13px] font-semibold block"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {selectedFile.name}
@@ -550,13 +648,15 @@ export function EncryptedVaultModal({
                       className="text-[11px]"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      Exported:{" "}
+                      {isIndonesian ? "Diekspor: " : "Exported: "}
                       {parsedPayload.createdAt
                         ? format(
                             new Date(parsedPayload.createdAt),
                             "dd MMM yyyy, HH:mm",
                           )
-                        : "Encrypted Backup"}
+                        : isIndonesian
+                          ? "Cadangan Terenkripsi"
+                          : "Encrypted Backup"}
                     </span>
                   </div>
 
@@ -570,7 +670,8 @@ export function EncryptedVaultModal({
                         color: "var(--text-secondary)",
                       }}
                     >
-                      {parsedPayload.metadata?.itemCounts?.transactions ?? 0} txs
+                      {parsedPayload.metadata?.itemCounts?.transactions ?? 0}{" "}
+                      {isIndonesian ? "transaksi" : "txs"}
                     </span>
                     <span
                       className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -580,7 +681,8 @@ export function EncryptedVaultModal({
                         color: "var(--text-secondary)",
                       }}
                     >
-                      {parsedPayload.metadata?.itemCounts?.wallets ?? 0} wallets
+                      {parsedPayload.metadata?.itemCounts?.wallets ?? 0}{" "}
+                      {isIndonesian ? "rekening" : "wallets"}
                     </span>
                     <span
                       className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -590,7 +692,8 @@ export function EncryptedVaultModal({
                         color: "var(--text-secondary)",
                       }}
                     >
-                      {parsedPayload.metadata?.itemCounts?.categories ?? 0} categories
+                      {parsedPayload.metadata?.itemCounts?.categories ?? 0}{" "}
+                      {isIndonesian ? "kategori" : "categories"}
                     </span>
                   </div>
                 </div>
@@ -598,6 +701,7 @@ export function EncryptedVaultModal({
                 <div className="space-y-1.5 py-2">
                   <Upload
                     size={22}
+                    strokeWidth={1.75}
                     className="mx-auto"
                     style={{ color: "var(--text-tertiary)" }}
                   />
@@ -605,29 +709,33 @@ export function EncryptedVaultModal({
                     className="text-[13px] font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Select Vault File (.trouvaille)
+                    {isIndonesian
+                      ? "Pilih Berkas Brankas (.trouvaille)"
+                      : "Select Vault File (.trouvaille)"}
                   </p>
                   <p
                     className="text-[11px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Tap to browse files on your device
+                    {isIndonesian
+                      ? "Ketuk untuk memilih berkas di perangkat Anda"
+                      : "Tap to browse files on your device"}
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Error Banner if any */}
+            {/* Error Banner if any (Strict Monochrome Rule 7) */}
             {restoreError && (
               <div
                 className="p-3 rounded-xl flex items-center gap-2"
                 style={{
-                  background: "rgba(239, 68, 68, 0.1)",
-                  border: "1px solid rgba(239, 68, 68, 0.2)",
-                  color: "#ef4444",
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
                 }}
               >
-                <AlertCircle size={16} className="shrink-0" />
+                <AlertCircle size={16} strokeWidth={1.75} className="shrink-0" />
                 <span className="text-[11px] font-medium leading-tight">
                   {restoreError}
                 </span>
@@ -640,7 +748,9 @@ export function EncryptedVaultModal({
                 className="text-[12px] font-semibold block mb-1.5"
                 style={{ color: "var(--text-primary)" }}
               >
-                Enter Decryption Passphrase
+                {isIndonesian
+                  ? "Masukkan Kata Sandi Dekripsi"
+                  : "Enter Decryption Passphrase"}
               </label>
               <div
                 className="flex items-center px-3 py-2.5 rounded-xl transition-all"
@@ -656,7 +766,11 @@ export function EncryptedVaultModal({
                 />
                 <input
                   type={showRestorePassphrase ? "text" : "password"}
-                  placeholder="Passphrase used during export"
+                  placeholder={
+                    isIndonesian
+                      ? "Kata sandi yang digunakan saat ekspor"
+                      : "Passphrase used during export"
+                  }
                   value={restorePassphrase}
                   onChange={(e) => setRestorePassphrase(e.target.value)}
                   className="w-full bg-transparent text-[13px] outline-none"
@@ -679,7 +793,7 @@ export function EncryptedVaultModal({
                 className="text-[12px] font-semibold block"
                 style={{ color: "var(--text-primary)" }}
               >
-                Restoration Strategy
+                {isIndonesian ? "Strategi Pemulihan" : "Restoration Strategy"}
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -698,16 +812,18 @@ export function EncryptedVaultModal({
                   }}
                 >
                   <span
-                    className="text-[12px] font-bold block"
+                    className="text-[12px] font-semibold block"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Safe Merge
+                    {isIndonesian ? "Gabung Aman" : "Safe Merge"}
                   </span>
                   <span
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Preserves current data, imports new items
+                    {isIndonesian
+                      ? "Pertahankan data saat ini, impor item baru"
+                      : "Preserves current data, imports new items"}
                   </span>
                 </button>
 
@@ -727,16 +843,18 @@ export function EncryptedVaultModal({
                   }}
                 >
                   <span
-                    className="text-[12px] font-bold block"
+                    className="text-[12px] font-semibold block"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Clean Replace
+                    {isIndonesian ? "Ganti Bersih" : "Clean Replace"}
                   </span>
                   <span
                     className="text-[10px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    Purges existing transactions before import
+                    {isIndonesian
+                      ? "Bersihkan transaksi lama sebelum mengimpor"
+                      : "Purges existing transactions before import"}
                   </span>
                 </button>
               </div>
@@ -750,7 +868,7 @@ export function EncryptedVaultModal({
                     {restoreProgress.stage}
                   </span>
                   <span
-                    className="font-bold"
+                    className="font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {restoreProgress.progress}%
@@ -776,21 +894,29 @@ export function EncryptedVaultModal({
               type="button"
               disabled={isRestoring || !parsedPayload || !restorePassphrase}
               onClick={handleExecuteRestore}
-              className="w-full py-3 px-4 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3 px-4 rounded-xl text-[13px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               style={{
                 background: "var(--text-primary)",
-                color: "var(--bg-base)",
+                color: "var(--bg)",
               }}
             >
               {isRestoring ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Decrypting & Restoring...</span>
+                  <span>
+                    {isIndonesian
+                      ? "Mendekripsi & Memulihkan..."
+                      : "Decrypting & Restoring..."}
+                  </span>
                 </>
               ) : (
                 <>
-                  <Upload size={16} strokeWidth={2} />
-                  <span>Decrypt & Restore Data</span>
+                  <Upload size={16} strokeWidth={1.75} />
+                  <span>
+                    {isIndonesian
+                      ? "Dekripsi & Pulihkan Data"
+                      : "Decrypt & Restore Data"}
+                  </span>
                 </>
               )}
             </button>
@@ -800,3 +926,4 @@ export function EncryptedVaultModal({
     </BottomSheet>
   );
 }
+

@@ -39,6 +39,28 @@ export function normalizeInviteCode(code: string): string {
 }
 
 /**
+ * Resolves candidate ledger IDs for queries/mutations.
+ * When a user shares their Personal Space, it may be stored in Supabase as either
+ * "personal" or "personal-${userId}".
+ */
+export function resolveLedgerCandidateIds(ledgerId: string, userId?: string | null): string[] {
+  if (ledgerId === "personal" && userId) {
+    return ["personal", `personal-${userId}`];
+  }
+  return [ledgerId];
+}
+
+function isIndonesianLocale(explicitFlag?: boolean): boolean {
+  if (typeof explicitFlag === "boolean") return explicitFlag;
+  try {
+    const saved = typeof localStorage !== "undefined" ? localStorage.getItem("trouvaille_language") : null;
+    return saved !== "en";
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Fetches members belonging to a specific ledger from Supabase with offline fallback.
  */
 export async function fetchLedgerMembers(ledgerId: string): Promise<LedgerMember[]> {
@@ -51,10 +73,7 @@ export async function fetchLedgerMembers(ledgerId: string): Promise<LedgerMember
       return cached ? JSON.parse(cached) : [];
     }
 
-    const candidateIds =
-      ledgerId === "personal"
-        ? ["personal", `personal-${session.user.id}`]
-        : [ledgerId];
+    const candidateIds = resolveLedgerCandidateIds(ledgerId, session.user.id);
 
     // Try selecting with status column first, fallback if migration not yet applied
     let rows: any[] | null = null;
@@ -126,12 +145,14 @@ export async function joinLedgerWithCode(
   rawCode: string,
   displayName?: string,
   joinMethod: "code" | "qr" = "code",
+  isIndonesian?: boolean,
 ): Promise<JoinLedgerResult> {
+  const isId = isIndonesianLocale(isIndonesian);
   const cleanCode = normalizeInviteCode(rawCode);
   if (!cleanCode) {
     return {
       success: false,
-      message: "Kode undangan tidak boleh kosong.",
+      message: isId ? "Kode undangan tidak boleh kosong." : "Invite code cannot be empty.",
     };
   }
 
@@ -140,7 +161,9 @@ export async function joinLedgerWithCode(
     if (!session?.user?.id || session.user.id === "guest_local_user") {
       return {
         success: false,
-        message: "Silakan masuk ke akun Trouvaille terlebih dahulu untuk bergabung ke space bersama.",
+        message: isId
+          ? "Silakan masuk ke akun Trouvaille terlebih dahulu untuk bergabung ke space bersama."
+          : "Please sign in to your Trouvaille account first to join a shared space.",
       };
     }
 
@@ -148,7 +171,7 @@ export async function joinLedgerWithCode(
       displayName ||
       (session.user.user_metadata?.full_name as string) ||
       session.user.email?.split("@")[0] ||
-      "Anggota";
+      (isId ? "Anggota" : "Member");
 
     // Attempt 3-parameter RPC (with p_join_method)
     let rpcData: any = null;
@@ -187,7 +210,9 @@ export async function joinLedgerWithCode(
       console.warn("[joinLedgerWithCode] RPC error:", rpcError.message);
       return {
         success: false,
-        message: rpcError.message || "Gagal memproses kode undangan.",
+        message:
+          rpcError.message ||
+          (isId ? "Gagal memproses kode undangan." : "Failed to process invite code."),
       };
     }
 
@@ -208,15 +233,25 @@ export async function joinLedgerWithCode(
         rpcData?.message ||
         (rpcData?.success
           ? memberStatus === "pending"
-            ? "Permintaan bergabung terkirim. Menunggu persetujuan pemilik space."
-            : "Berhasil bergabung!"
-          : "Kode tidak valid."),
+            ? isId
+              ? "Permintaan bergabung terkirim. Menunggu persetujuan pemilik space."
+              : "Join request sent. Awaiting space owner approval."
+            : isId
+              ? "Berhasil bergabung!"
+              : "Joined shared space successfully!"
+          : isId
+            ? "Kode undangan tidak ditemukan atau sudah kedaluwarsa."
+            : "Invite code not found or has expired."),
     };
   } catch (err: any) {
     console.error("[joinLedgerWithCode] Unexpected error:", err);
     return {
       success: false,
-      message: err.message || "Terjadi kesalahan saat memproses permintaan bergabung.",
+      message:
+        err.message ||
+        (isId
+          ? "Terjadi kesalahan saat memproses permintaan bergabung."
+          : "An unexpected error occurred while joining the space."),
     };
   }
 }
@@ -230,10 +265,7 @@ export async function approveLedgerMember(
 ): Promise<boolean> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    const candidateIds =
-      ledgerId === "personal" && session?.user?.id
-        ? ["personal", `personal-${session.user.id}`]
-        : [ledgerId];
+    const candidateIds = resolveLedgerCandidateIds(ledgerId, session?.user?.id);
 
     const { error } = await supabase
       .from("ledger_members")
@@ -274,10 +306,13 @@ export async function updateMemberRole(
   newRole: LedgerMemberRole,
 ): Promise<boolean> {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const candidateIds = resolveLedgerCandidateIds(ledgerId, session?.user?.id);
+
     const { error } = await supabase
       .from("ledger_members")
       .update({ role: newRole })
-      .eq("ledger_id", ledgerId)
+      .in("ledger_id", candidateIds)
       .eq("user_id", targetUserId);
 
     if (error) {
@@ -313,10 +348,13 @@ export async function removeMemberFromLedger(
   targetUserId: string,
 ): Promise<boolean> {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const candidateIds = resolveLedgerCandidateIds(ledgerId, session?.user?.id);
+
     const { error } = await supabase
       .from("ledger_members")
       .delete()
-      .eq("ledger_id", ledgerId)
+      .in("ledger_id", candidateIds)
       .eq("user_id", targetUserId);
 
     if (error) {
@@ -373,10 +411,11 @@ export async function regenerateInviteCode(ledgerId: string): Promise<string | n
         return null;
       }
 
+      const candidateIds = resolveLedgerCandidateIds(ledgerId, session.user.id);
       const { error: updateError } = await supabase
         .from("ledgers")
         .update({ invite_code: newCode, updated_at: new Date().toISOString() })
-        .eq("id", ledgerId)
+        .in("id", candidateIds)
         .eq("user_id", session.user.id);
 
       if (updateError) {
@@ -392,3 +431,4 @@ export async function regenerateInviteCode(ledgerId: string): Promise<string | n
     return null;
   }
 }
+

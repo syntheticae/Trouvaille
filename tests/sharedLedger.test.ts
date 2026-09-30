@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   generateInviteCode,
   normalizeInviteCode,
+  resolveLedgerCandidateIds,
+  joinLedgerWithCode,
 } from "../src/lib/sharedLedgerService";
 import {
   generateQrSvg,
@@ -37,6 +39,27 @@ describe("Shared Ledgers & Collaborative Spaces Suite", () => {
       expect(normalizeInviteCode("trv - 9k2")).toBe("TRV9K2");
       expect(normalizeInviteCode("8X2-9KA")).toBe("8X29KA");
     });
+
+    it("resolves candidate ledger IDs for shared Personal Space vs custom ledgers", () => {
+      expect(resolveLedgerCandidateIds("personal", "usr-889")).toEqual([
+        "personal",
+        "personal-usr-889",
+      ]);
+      expect(resolveLedgerCandidateIds("personal", null)).toEqual(["personal"]);
+      expect(resolveLedgerCandidateIds("ledger-biz-01", "usr-889")).toEqual([
+        "ledger-biz-01",
+      ]);
+    });
+
+    it("returns 100% localized messages for empty invite codes in Indonesian and English (Rule 6)", async () => {
+      const resId = await joinLedgerWithCode("   ", undefined, "code", true);
+      expect(resId.success).toBe(false);
+      expect(resId.message).toBe("Kode undangan tidak boleh kosong.");
+
+      const resEn = await joinLedgerWithCode("   ", undefined, "code", false);
+      expect(resEn.success).toBe(false);
+      expect(resEn.message).toBe("Invite code cannot be empty.");
+    });
   });
 
   describe("QR Code & URL Generation (100% Offline)", () => {
@@ -70,8 +93,6 @@ describe("Shared Ledgers & Collaborative Spaces Suite", () => {
   });
 
   describe("Role Permissions & Domain Isolation", () => {
-    const roles: LedgerMemberRole[] = ["owner", "editor", "viewer"];
-
     it("verifies permissions: owner has full access", () => {
       const ownerRole: LedgerMemberRole = "owner";
       const canManageMembers = ownerRole === "owner";
@@ -130,3 +151,4 @@ describe("Shared Ledgers & Collaborative Spaces Suite", () => {
     });
   });
 });
+

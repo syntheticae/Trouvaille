@@ -475,7 +475,7 @@ export function CategoryManagementSheets({
                                 e.stopPropagation();
                                 handleDeleteCategory(cat.id, cat.name);
                               }}
-                              className="w-6 h-6 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 active:scale-90 transition-all cursor-pointer shrink-0"
+                              className="w-6 h-6 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-fill)] active:scale-90 transition-all cursor-pointer shrink-0"
                               title={isIndonesian ? "Hapus Kategori" : "Delete Category"}
                             >
                               <Trash2 size={12} strokeWidth={1.75} />
@@ -630,7 +630,7 @@ export function CategoryManagementSheets({
                 <button
                   type="button"
                   onClick={() => handleDeleteCategory(editCategory.id, editCategory.name)}
-                  className="w-full h-10 rounded-xl font-semibold text-[12px] active:scale-[0.98] transition-all cursor-pointer border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center gap-1.5"
+                  className="w-full h-10 rounded-xl font-semibold text-[12px] active:scale-[0.98] transition-all cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center gap-1.5"
                 >
                   <Trash2 size={13} strokeWidth={1.5} />
                   <span>{isIndonesian ? "Hapus Kategori" : "Delete Category"}</span>

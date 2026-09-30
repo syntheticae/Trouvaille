@@ -116,7 +116,7 @@ export function LuxuryReportExportSheet({
     try {
       if (action === "print") {
         triggerSuccessHaptic();
-        triggerPrintLuxuryReport(filteredTransactions, summary, wallets);
+        triggerPrintLuxuryReport(filteredTransactions, summary, wallets, isIndonesian);
         showToast(
           isIndonesian ? "Laporan siap dicetak" : "Executive statement ready for print",
           "update",

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   X,
   Search,
@@ -161,6 +161,56 @@ export function AddAssetModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Select Preset Handler
+  const handleSelectPreset = useCallback(
+    async (preset: PresetAsset) => {
+      triggerHaptic("light");
+      setFormSymbol(preset.symbol);
+      setFormName(preset.name);
+      setFormType(preset.type);
+      setFormCurrency(preset.suggestedCurrency || "IDR");
+      setFormPlatform("");
+      setIsCustomBrokerInput(false);
+      setCustomBrokerText("");
+      setFormIcon(preset.icon || "TrendingUp");
+      setFormUnits("");
+      setFormBuyPrice("");
+      setFormCurrentPrice("");
+      setFormPurchaseDate(new Date().toISOString().split("T")[0]);
+      setPriceMode("live");
+      setIsDepreciationEnabled(preset.type === "fixed_asset");
+      setAnnualRate(preset.type === "fixed_asset" ? "10" : "15");
+      setPhase(2);
+
+      setIsFetchingPrice(true);
+      try {
+        let livePrice: number | null = null;
+        if (preset.type === "crypto") {
+          livePrice = await fetchCryptoPriceInIDR(preset.symbol);
+        } else if (preset.type === "stock") {
+          livePrice = await fetchStockPriceInIDR(preset.symbol);
+        }
+
+        if (livePrice && livePrice > 0) {
+          const rate = usdtRate > 0 ? usdtRate : 16415;
+          if (preset.suggestedCurrency === "USD" && rate > 0) {
+            const usdPrice = parseFloat((livePrice / rate).toFixed(2));
+            setFormCurrentPrice(String(usdPrice));
+            setFormBuyPrice(String(usdPrice));
+          } else {
+            setFormCurrentPrice(String(livePrice));
+            setFormBuyPrice(String(livePrice));
+          }
+        }
+      } catch {
+        // ignore network errors
+      } finally {
+        setIsFetchingPrice(false);
+      }
+    },
+    [usdtRate],
+  );
+
   // Reset or initialize on open / change
   useEffect(() => {
     if (!isOpen) return;
@@ -205,7 +255,7 @@ export function AddAssetModal({
       setSearchQuery("");
       setPresetCategory("all");
     }
-  }, [isOpen, editingHolding, initialPreset]);
+  }, [isOpen, editingHolding, initialPreset, handleSelectPreset]);
 
   // Focus search when entering Phase 1
   useEffect(() => {
@@ -245,53 +295,6 @@ export function AddAssetModal({
     if (isPhysicalDepreciable && !isDepreciationEnabled) {
       setIsDepreciationEnabled(true);
       setAnnualRate("15");
-    }
-  };
-
-  // Select Preset Handler
-  const handleSelectPreset = async (preset: PresetAsset) => {
-    triggerHaptic("light");
-    setFormSymbol(preset.symbol);
-    setFormName(preset.name);
-    setFormType(preset.type);
-    setFormCurrency(preset.suggestedCurrency || "IDR");
-    setFormPlatform("");
-    setIsCustomBrokerInput(false);
-    setCustomBrokerText("");
-    setFormIcon(preset.icon || "TrendingUp");
-    setFormUnits("");
-    setFormBuyPrice("");
-    setFormCurrentPrice("");
-    setFormPurchaseDate(new Date().toISOString().split("T")[0]);
-    setPriceMode("live");
-    setIsDepreciationEnabled(preset.type === "fixed_asset");
-    setAnnualRate(preset.type === "fixed_asset" ? "10" : "15");
-    setPhase(2);
-
-    setIsFetchingPrice(true);
-    try {
-      let livePrice: number | null = null;
-      if (preset.type === "crypto") {
-        livePrice = await fetchCryptoPriceInIDR(preset.symbol);
-      } else if (preset.type === "stock") {
-        livePrice = await fetchStockPriceInIDR(preset.symbol);
-      }
-
-      if (livePrice && livePrice > 0) {
-        const rate = usdtRate > 0 ? usdtRate : 16415;
-        if (preset.suggestedCurrency === "USD" && rate > 0) {
-          const usdPrice = parseFloat((livePrice / rate).toFixed(2));
-          setFormCurrentPrice(String(usdPrice));
-          setFormBuyPrice(String(usdPrice));
-        } else {
-          setFormCurrentPrice(String(livePrice));
-          setFormBuyPrice(String(livePrice));
-        }
-      }
-    } catch {
-      // ignore network errors
-    } finally {
-      setIsFetchingPrice(false);
     }
   };
 

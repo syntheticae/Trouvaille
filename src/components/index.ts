@@ -4,7 +4,6 @@
 // ======================================================================
 
 export * from "./bills";
-export * from "./charts";
 export * from "./common";
 export * from "./goals";
 export * from "./home";

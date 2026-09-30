@@ -1,0 +1,363 @@
+import { memo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search,
+  X,
+  SlidersHorizontal,
+  CheckSquare,
+  Calendar,
+  Wallet,
+  Tag,
+} from "lucide-react";
+import { triggerHaptic } from "../../lib/haptics";
+import { formatRupiah } from "../../lib/utils";
+import type { Category } from "../../lib/types";
+import type { FilterType, TimeRangeType } from "./TransactionHorizonBarChart";
+
+export interface TransactionFilterBarProps {
+  search: string;
+  onSearchChange: (val: string) => void;
+  isSearchFocused: boolean;
+  onFocusSearch: () => void;
+  onBlurSearch: () => void;
+  onClearSearch: () => void;
+  filter: FilterType;
+  onFilterChange: (type: FilterType) => void;
+  filterTabs: { key: FilterType; label: string }[];
+  activeFiltersCount: number;
+  onOpenFilterSheet: () => void;
+  isSelectMode: boolean;
+  onToggleSelectMode: () => void;
+  timeRange: TimeRangeType;
+  selectedMonthLabel: string;
+  onResetTimeRange: () => void;
+  selectedWalletName: string | null;
+  onResetWallet: () => void;
+  selectedCategoryIds: string[];
+  categories: Category[];
+  onRemoveCategory: (cid: string) => void;
+  minAmount: string;
+  maxAmount: string;
+  onResetAmount: () => void;
+  onResetAllFilters: () => void;
+  isIndonesian: boolean;
+}
+
+export const TransactionFilterBar = memo(function TransactionFilterBar({
+  search,
+  onSearchChange,
+  isSearchFocused,
+  onFocusSearch,
+  onBlurSearch,
+  onClearSearch,
+  filter,
+  onFilterChange,
+  filterTabs,
+  activeFiltersCount,
+  onOpenFilterSheet,
+  isSelectMode,
+  onToggleSelectMode,
+  timeRange,
+  selectedMonthLabel,
+  onResetTimeRange,
+  selectedWalletName,
+  onResetWallet,
+  selectedCategoryIds,
+  categories,
+  onRemoveCategory,
+  minAmount,
+  maxAmount,
+  onResetAmount,
+  onResetAllFilters,
+  isIndonesian,
+}: TransactionFilterBarProps) {
+  return (
+    <>
+      {/* Full-Width Search Bar with Dynamic Focus Animation */}
+      <div
+        className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-2.5 glass-surface no-pull transition-all duration-200"
+        style={{
+          background: "var(--bg-elevated)",
+          border: isSearchFocused
+            ? "1px solid rgba(255, 255, 255, 0.22)"
+            : "1px solid var(--glass-border)",
+          boxShadow: isSearchFocused
+            ? "0 4px 16px rgba(0, 0, 0, 0.25)"
+            : "none",
+        }}
+      >
+        <Search
+          size={16}
+          className="shrink-0"
+          style={{
+            color: isSearchFocused
+              ? "var(--text-primary)"
+              : "var(--text-tertiary)",
+          }}
+        />
+        <input
+          type="text"
+          value={search}
+          onFocus={onFocusSearch}
+          onBlur={onBlurSearch}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder={isIndonesian ? "Cari transaksi..." : "Search transactions..."}
+          className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold touch-manipulation no-pull min-w-0"
+          style={{ color: "var(--text-primary)" }}
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => {
+              onClearSearch();
+              triggerHaptic("light");
+            }}
+            className="p-1 rounded-full shrink-0 mr-1 touch-manipulation cursor-pointer"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            <X size={14} />
+          </button>
+        )}
+
+        {/* Smooth hiding of side buttons (Filters & Select) when search is focused or active */}
+        <AnimatePresence>
+          {!isSearchFocused && !search && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, width: 0 }}
+              animate={{ opacity: 1, scale: 1, width: "auto" }}
+              exit={{ opacity: 0, scale: 0.9, width: 0 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="flex items-center shrink-0 overflow-hidden"
+            >
+              {/* Filter Trigger Button */}
+              <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenFilterSheet();
+                  triggerHaptic("light");
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
+                style={{
+                  background:
+                    activeFiltersCount > 0
+                      ? "var(--accent)"
+                      : "var(--glass-fill)",
+                  color:
+                    activeFiltersCount > 0
+                      ? "var(--accent-ink)"
+                      : "var(--text-secondary)",
+                  border:
+                    activeFiltersCount > 0
+                      ? "1px solid var(--accent)"
+                      : "1px solid var(--glass-border)",
+                }}
+                title="Advanced Filters"
+              >
+                <SlidersHorizontal size={13} />
+                <span className="text-[11px] font-semibold">
+                  {isIndonesian ? "Filter" : "Filters"}
+                </span>
+                {activeFiltersCount > 0 && (
+                  <span
+                    className="w-4 h-4 rounded-full text-[9px] font-semibold flex items-center justify-center"
+                    style={{
+                      background: "var(--accent-ink)",
+                      color: "var(--accent)",
+                    }}
+                  >
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Select Mode Trigger Button */}
+              <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("medium");
+                  onToggleSelectMode();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
+                style={{
+                  background: isSelectMode
+                    ? "var(--accent)"
+                    : "var(--glass-fill)",
+                  color: isSelectMode
+                    ? "var(--accent-ink)"
+                    : "var(--text-secondary)",
+                  border: isSelectMode
+                    ? "1px solid var(--accent)"
+                    : "1px solid var(--glass-border)",
+                }}
+                title={
+                  isSelectMode ? "Exit Select Mode" : "Select Transactions"
+                }
+              >
+                <CheckSquare size={13} />
+                <span className="text-[11px] font-semibold">
+                  {isSelectMode ? (isIndonesian ? "Selesai" : "Done") : (isIndonesian ? "Pilih" : "Select")}
+                </span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Unified Clean Filter Tabs */}
+      <div
+        className="flex p-1 rounded-full glass-surface no-pull"
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--glass-border)",
+        }}
+      >
+        {filterTabs.map((tab) => {
+          const isSelected = filter === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => {
+                onFilterChange(tab.key);
+                triggerHaptic("light");
+              }}
+              className="flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all touch-manipulation cursor-pointer select-none no-pull"
+              style={{
+                background: isSelected ? "var(--accent)" : "transparent",
+                color: isSelected
+                  ? "var(--accent-ink)"
+                  : "var(--text-secondary)",
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Active Filter Chips Strip */}
+      {activeFiltersCount > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1.5 mt-2">
+          {timeRange !== "this_month" && (
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
+              style={{
+                background: "var(--glass-fill-strong)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <Calendar size={11} className="opacity-70" />
+              <span>{selectedMonthLabel}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  onResetTimeRange();
+                  triggerHaptic("light");
+                }}
+                className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
+              >
+                <X size={10} />
+              </button>
+            </span>
+          )}
+
+          {selectedWalletName && (
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
+              style={{
+                background: "var(--glass-fill-strong)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <Wallet size={11} className="opacity-70" />
+              <span>{selectedWalletName}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  onResetWallet();
+                  triggerHaptic("light");
+                }}
+                className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
+              >
+                <X size={10} />
+              </button>
+            </span>
+          )}
+
+          {selectedCategoryIds.map((cid) => {
+            const cat = categories.find((c) => c.id === cid);
+            return (
+              <span
+                key={cid}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
+                style={{
+                  background: "var(--glass-fill-strong)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <Tag size={11} className="opacity-70" />
+                <span>{cat?.name || "Category"}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRemoveCategory(cid);
+                    triggerHaptic("light");
+                  }}
+                  className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            );
+          })}
+
+          {(minAmount || maxAmount) && (
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
+              style={{
+                background: "var(--glass-fill-strong)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <span>
+                {minAmount && maxAmount
+                  ? `${formatRupiah(Number(minAmount))} - ${formatRupiah(Number(maxAmount))}`
+                  : minAmount
+                    ? `≥ ${formatRupiah(Number(minAmount))}`
+                    : `≤ ${formatRupiah(Number(maxAmount))}`}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  onResetAmount();
+                  triggerHaptic("light");
+                }}
+                className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
+              >
+                <X size={10} />
+              </button>
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={onResetAllFilters}
+            className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 touch-manipulation cursor-pointer select-none"
+            style={{
+              color: "var(--accent)",
+              background: "transparent",
+            }}
+          >
+            {isIndonesian ? "Hapus semua" : "Clear all"}
+          </button>
+        </div>
+      )}
+    </>
+  );
+});

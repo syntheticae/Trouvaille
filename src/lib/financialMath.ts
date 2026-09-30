@@ -750,8 +750,11 @@ export function calculateAssetTrend(
   const earliestDate =
     datedTxs.length > 0
       ? datedTxs.reduce(
-          (min, tx) => (tx.occurred_on < min ? tx.occurred_on : min),
-          datedTxs[0].occurred_on,
+          (min, tx) => {
+            const d = tx.occurred_on.slice(0, 10);
+            return d < min ? d : min;
+          },
+          datedTxs[0].occurred_on.slice(0, 10),
         )
       : format(now, "yyyy-MM-dd");
   const earliestMonth = new Date(`${earliestDate.slice(0, 7)}-01T00:00:00`);
@@ -759,7 +762,7 @@ export function calculateAssetTrend(
   let totalNetEffect = 0;
 
   datedTxs.forEach((tx) => {
-    const dateKey = tx.occurred_on;
+    const dateKey = tx.occurred_on.slice(0, 10);
     const monthKey = dateKey.slice(0, 7);
 
     // INTI PERBAIKAN: Abaikan transaksi buatan (Saldo Awal & Koreksi) dari pergerakan grafik
@@ -1799,14 +1802,15 @@ export function detectBehavioralPatterns(
     if (t.type !== "expense" || isCorrectionTx(t) || !t.occurred_on) return;
     const amt = Number(t.amount || 0);
     if (amt <= 0) return;
-    const dateObj = parseISO(t.occurred_on);
+    const dateKey = t.occurred_on.slice(0, 10);
+    const dateObj = parseISO(dateKey);
     const dayOfWeek = dateObj.getDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) {
       weekendTotal += amt;
-      weekendDays.add(t.occurred_on);
+      weekendDays.add(dateKey);
     } else {
       weekdayTotal += amt;
-      weekdayDays.add(t.occurred_on);
+      weekdayDays.add(dateKey);
     }
   });
 
@@ -2432,8 +2436,8 @@ export function detectRecurringTransactions(
     // Calculate day intervals between consecutive occurrences
     const intervals: number[] = [];
     for (let i = 1; i < sorted.length; i++) {
-      const d1 = new Date(sorted[i - 1].occurred_on + "T00:00:00Z");
-      const d2 = new Date(sorted[i].occurred_on + "T00:00:00Z");
+      const d1 = new Date(sorted[i - 1].occurred_on.slice(0, 10) + "T00:00:00Z");
+      const d2 = new Date(sorted[i].occurred_on.slice(0, 10) + "T00:00:00Z");
       const diffDays = Math.round(
         (d2.getTime() - d1.getTime()) / (1000 * 3600 * 24),
       );
@@ -2488,7 +2492,7 @@ export function detectRecurringTransactions(
     const displayTitle = latestTx.note?.trim() || catName;
 
     // Next expected date calculation
-    const lastDate = new Date(latestTx.occurred_on + "T00:00:00Z");
+    const lastDate = new Date(latestTx.occurred_on.slice(0, 10) + "T00:00:00Z");
     const nextDate = new Date(
       lastDate.getTime() + expectedDays * 24 * 3600 * 1000,
     );
@@ -2546,7 +2550,7 @@ export function detectRecurringTransactions(
         amountRange: [minAmount, maxAmount],
         confidence,
         occurrencesCount: sorted.length,
-        lastOccurrenceDate: latestTx.occurred_on,
+        lastOccurrenceDate: latestTx.occurred_on.slice(0, 10),
         nextExpectedDate,
         status,
         matchingTransactionIds: sorted.map((t) => t.id),

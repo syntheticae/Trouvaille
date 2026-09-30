@@ -1053,7 +1053,7 @@ export function WalletManagementSheets({
                   },
                 });
               }}
-              className="w-full py-3 rounded-2xl font-semibold text-[13px] border border-red-500/20 text-red-400 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              className="w-full py-3 rounded-2xl font-semibold text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
               <Trash2 size={14} />
               <span>{isIndonesian ? "Hapus Akun Ini" : "Delete Account"}</span>
@@ -1116,7 +1116,7 @@ export function WalletManagementSheets({
                   { id: "all", label: isIndonesian ? "Semua" : "All" },
                   { id: "local", label: isIndonesian ? "Lokal (IDR)" : "Local (IDR)" },
                   { id: "global", label: isIndonesian ? "Global (USD/EUR)" : "Global (USD/EUR)" },
-                  { id: "invest", label: isIndonesian ? "Investasi & Vault" : "Invest & Vault" },
+                  { id: "invest", label: isIndonesian ? "Investasi & Brankas" : "Invest & Vault" },
                 ].map((tab) => (
                   <button
                     key={tab.id}

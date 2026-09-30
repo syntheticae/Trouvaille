@@ -99,10 +99,11 @@ export function filterTransactionsForReport(
   const endStr = endDate ? format(endDate, "yyyy-MM-dd") : null;
 
   return transactions.filter((tx) => {
-    const txDate = tx.occurred_on || (tx.created_at ? tx.created_at.slice(0, 10) : "");
+    const rawDate = tx.occurred_on || tx.created_at || "";
+    const txDate = rawDate.slice(0, 10);
     if (!txDate) return false;
 
-    // Date bounds
+    // Date bounds (normalized to YYYY-MM-DD so full ISO timestamps on the end date are included)
     if (startStr && txDate < startStr) return false;
     if (endStr && txDate > endStr) return false;
 
@@ -278,6 +279,25 @@ export function calculateReportSummary(
 }
 
 /**
+ * Normalizes transaction date (YYYY-MM-DD) and time (HH:mm) from Full ISO occurred_on or created_at
+ */
+export function extractTxDateAndTime(tx: Transaction): { dateStr: string; timeStr: string } {
+  const rawDate = tx.occurred_on || tx.created_at || "";
+  const dateStr = rawDate.slice(0, 10);
+  if (tx.occurred_on && tx.occurred_on.length >= 16 && tx.occurred_on.includes("T")) {
+    return { dateStr, timeStr: tx.occurred_on.slice(11, 16) };
+  }
+  if (tx.created_at) {
+    try {
+      return { dateStr, timeStr: format(new Date(tx.created_at), "HH:mm") };
+    } catch {
+      return { dateStr, timeStr: "" };
+    }
+  }
+  return { dateStr, timeStr: "" };
+}
+
+/**
  * Generate CSV formatted string with UTF-8 BOM (pure clean CSV without '#' lines)
  */
 export function generateCsvContent(
@@ -325,8 +345,7 @@ export function generateCsvContent(
   });
 
   const rows = sortedTxs.map((t, idx) => {
-    const dateStr = t.occurred_on || (t.created_at ? t.created_at.slice(0, 10) : "");
-    const timeStr = t.created_at ? format(new Date(t.created_at), "HH:mm") : "";
+    const { dateStr, timeStr } = extractTxDateAndTime(t);
     const typeStr = isIndonesian
       ? t.type === "income"
         ? "Pemasukan"
@@ -433,6 +452,7 @@ export function generateLuxuryPrintableHtml(
   transactions: Transaction[],
   summary: ReportSummary,
   wallets: Wallet[] = [],
+  isIndonesian = false,
 ): string {
   const walletMap = new Map<string, string>();
   wallets.forEach((w) => walletMap.set(w.id, w.name));
@@ -445,20 +465,27 @@ export function generateLuxuryPrintableHtml(
 
   const rowsHtml = sortedTxs
     .map((tx) => {
-      const date = tx.occurred_on || (tx.created_at ? tx.created_at.slice(0, 10) : "");
+      const { dateStr, timeStr } = extractTxDateAndTime(tx);
+      const dateDisplay = timeStr ? `${dateStr} ${timeStr}` : dateStr;
       const isExpense = tx.type === "expense";
       const isIncome = tx.type === "income";
       const sign = isIncome ? "+" : isExpense ? "-" : "⇄";
       const amtColor = isIncome ? "#0d9488" : isExpense ? "#09090c" : "#71717a";
-      const cat = tx.categories?.name || (tx.type === "transfer" ? "Transfer" : "General");
-      const account = tx.wallet_id ? walletMap.get(tx.wallet_id) || "Account" : "-";
-      const toAccount = tx.to_wallet_id ? walletMap.get(tx.to_wallet_id) || "Account" : "";
+      const cat =
+        tx.categories?.name ||
+        (tx.type === "transfer" ? "Transfer" : isIndonesian ? "Umum" : "General");
+      const account = tx.wallet_id
+        ? walletMap.get(tx.wallet_id) || (isIndonesian ? "Akun" : "Account")
+        : "-";
+      const toAccount = tx.to_wallet_id
+        ? walletMap.get(tx.to_wallet_id) || (isIndonesian ? "Akun" : "Account")
+        : "";
       const accountLabel = tx.type === "transfer" && toAccount ? `${account} → ${toAccount}` : account;
       const note = tx.note || "";
 
       return `
         <tr style="border-bottom: 1px solid #f0f0f4; font-size: 11px;">
-          <td style="padding: 9px 8px; color: #71717a; white-space: nowrap;">${date}</td>
+          <td style="padding: 9px 8px; color: #71717a; white-space: nowrap;">${dateDisplay}</td>
           <td style="padding: 9px 8px; font-weight: 500; color: #09090c;">
             <div>${note || cat}</div>
             ${note && note !== cat ? `<div style="font-size: 10px; color: #a1a1aa;">${cat}</div>` : ""}
@@ -493,7 +520,7 @@ export function generateLuxuryPrintableHtml(
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Trouvaille Statement - ${summary.periodLabel}</title>
+  <title>Trouvaille ${isIndonesian ? "Laporan Eksekutif" : "Statement"} - ${summary.periodLabel}</title>
   <style>
     @media print {
       @page { margin: 15mm; size: A4 portrait; }
@@ -514,39 +541,61 @@ export function generateLuxuryPrintableHtml(
   <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1.5px solid #09090c; padding-bottom: 14px; margin-bottom: 24px;">
     <div>
       <div style="font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: #09090c;">TROUVAILLE</div>
-      <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.05em; color: #71717a; text-transform: uppercase; margin-top: 2px;">Private Wealth Architecture · Executive Statement</div>
+      <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.05em; color: #71717a; text-transform: uppercase; margin-top: 2px;">${
+        isIndonesian
+          ? "Arsitektur Kekayaan Privat · Laporan Eksekutif"
+          : "Private Wealth Architecture · Executive Statement"
+      }</div>
     </div>
     <div style="text-align: right;">
       <div style="font-size: 13px; font-weight: 600; color: #09090c;">${summary.periodLabel}</div>
       <div style="font-size: 11px; color: #71717a; margin-top: 2px;">${summary.spaceName}</div>
-      <div style="font-size: 10px; color: #a1a1aa; margin-top: 1px;">Generated on ${format(new Date(), "dd MMMM yyyy, HH:mm")}</div>
+      <div style="font-size: 10px; color: #a1a1aa; margin-top: 1px;">${
+        isIndonesian ? "Dicetak pada" : "Generated on"
+      } ${format(new Date(), "dd MMMM yyyy, HH:mm")}</div>
     </div>
   </div>
 
   <!-- Key Executive Metrics -->
   <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px;">
     <div style="background: #fafafc; border: 1px solid #e4e4e9; border-radius: 12px; padding: 14px 16px;">
-      <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">TOTAL INFLOW</div>
+      <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">${
+        isIndonesian ? "TOTAL PEMASUKAN" : "TOTAL INFLOW"
+      }</div>
       <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">+${formatRupiah(summary.totalIncome)}</div>
-      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Income & credits</div>
+      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">${
+        isIndonesian ? "Pemasukan & kredit" : "Income & credits"
+      }</div>
     </div>
 
     <div style="background: #fafafc; border: 1px solid #e4e4e9; border-radius: 12px; padding: 14px 16px;">
-      <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">TOTAL OUTFLOW</div>
+      <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">${
+        isIndonesian ? "TOTAL PENGELUARAN" : "TOTAL OUTFLOW"
+      }</div>
       <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">-${formatRupiah(summary.totalExpense)}</div>
-      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Expenses & debits</div>
+      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">${
+        isIndonesian ? "Pengeluaran & debit" : "Expenses & debits"
+      }</div>
     </div>
 
     <div style="background: #fafafc; border: 1px solid #e4e4e9; border-radius: 12px; padding: 14px 16px;">
-      <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">NET CASH FLOW</div>
+      <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">${
+        isIndonesian ? "ARUS KAS BERSIH" : "NET CASH FLOW"
+      }</div>
       <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">${(summary.netCashflow >= 0 ? "+" : "") + formatRupiah(summary.netCashflow)}</div>
-      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Net capital movement</div>
+      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">${
+        isIndonesian ? "Pergerakan modal bersih" : "Net capital movement"
+      }</div>
     </div>
 
     <div style="background: #fafafc; border: 1px solid #e4e4e9; border-radius: 12px; padding: 14px 16px;">
-      <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">SAVINGS RATE</div>
+      <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">${
+        isIndonesian ? "RASIO TABUNGAN" : "SAVINGS RATE"
+      }</div>
       <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">${summary.savingsRate.toFixed(1)}%</div>
-      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">Preservation ratio</div>
+      <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">${
+        isIndonesian ? "Rasio retensi dana" : "Preservation ratio"
+      }</div>
     </div>
   </div>
 
@@ -555,7 +604,9 @@ export function generateLuxuryPrintableHtml(
       ? `
   <!-- Top Expense Categories Breakdown -->
   <div style="margin-bottom: 28px; background: #fafafc; border: 1px solid #e4e4e9; border-radius: 12px; padding: 16px 20px;">
-    <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #09090c; margin-bottom: 12px;">Top Spending Categories</div>
+    <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #09090c; margin-bottom: 12px;">${
+      isIndonesian ? "Kategori Pengeluaran Terbesar" : "Top Spending Categories"
+    }</div>
     ${topCatsHtml}
   </div>
   `
@@ -565,28 +616,45 @@ export function generateLuxuryPrintableHtml(
   <!-- Transactions Table -->
   <div style="margin-bottom: 30px;">
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
-      <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #09090c;">Transactions Table</div>
-      <div style="font-size: 11px; color: #71717a;">${summary.transactionCount} records</div>
+      <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #09090c;">${
+        isIndonesian ? "Tabel Transaksi" : "Transactions Table"
+      }</div>
+      <div style="font-size: 11px; color: #71717a;">${summary.transactionCount} ${
+        isIndonesian ? "transaksi" : "records"
+      }</div>
     </div>
     <table style="width: 100%; border-collapse: collapse; text-align: left;">
       <thead>
         <tr style="border-bottom: 1.5px solid #09090c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a;">
-          <th style="padding: 8px; width: 85px;">Date</th>
-          <th style="padding: 8px;">Description / Category</th>
-          <th style="padding: 8px; width: 140px;">Account</th>
-          <th style="padding: 8px; text-align: right; width: 130px;">Amount</th>
+          <th style="padding: 8px; width: 85px;">${isIndonesian ? "Tanggal" : "Date"}</th>
+          <th style="padding: 8px;">${isIndonesian ? "Deskripsi / Kategori" : "Description / Category"}</th>
+          <th style="padding: 8px; width: 140px;">${isIndonesian ? "Akun" : "Account"}</th>
+          <th style="padding: 8px; text-align: right; width: 130px;">${isIndonesian ? "Nominal" : "Amount"}</th>
         </tr>
       </thead>
       <tbody>
-        ${rowsHtml || '<tr><td colspan="4" style="padding: 24px; text-align: center; color: #a1a1aa;">No transactions found in this period.</td></tr>'}
+        ${
+          rowsHtml ||
+          `<tr><td colspan="4" style="padding: 24px; text-align: center; color: #a1a1aa;">${
+            isIndonesian
+              ? "Tidak ada transaksi ditemukan pada periode ini."
+              : "No transactions found in this period."
+          }</td></tr>`
+        }
       </tbody>
     </table>
   </div>
 
   <!-- Confidentiality Statement / Footer -->
   <div style="border-top: 1px solid #e4e4e9; padding-top: 14px; display: flex; justify-content: space-between; font-size: 10px; color: #a1a1aa;">
-    <div>Trouvaille · Private Wealth Architecture</div>
-    <div>Confidential Document · Executive Wealth Summary</div>
+    <div>${
+      isIndonesian ? "Trouvaille · Arsitektur Kekayaan Privat" : "Trouvaille · Private Wealth Architecture"
+    }</div>
+    <div>${
+      isIndonesian
+        ? "Dokumen Rahasia · Ikhtisar Kekayaan Eksekutif"
+        : "Confidential Document · Executive Wealth Summary"
+    }</div>
   </div>
 
   <script>
@@ -607,8 +675,9 @@ export function triggerPrintLuxuryReport(
   transactions: Transaction[],
   summary: ReportSummary,
   wallets: Wallet[] = [],
+  isIndonesian = false,
 ): void {
-  const html = generateLuxuryPrintableHtml(transactions, summary, wallets);
+  const html = generateLuxuryPrintableHtml(transactions, summary, wallets, isIndonesian);
   const printWindow = window.open("", "_blank");
   if (printWindow) {
     printWindow.document.open();
@@ -787,8 +856,7 @@ export async function generateLuxuryExcelBlob(
   ];
 
   sortedTxs.forEach((t, idx) => {
-    const dateStr = t.occurred_on || (t.created_at ? t.created_at.slice(0, 10) : "");
-    const timeStr = t.created_at ? format(new Date(t.created_at), "HH:mm") : "";
+    const { dateStr, timeStr } = extractTxDateAndTime(t);
     const typeStr = isIndonesian
       ? t.type === "income"
         ? "Pemasukan"
@@ -1807,7 +1875,7 @@ export function generateLuxuryPdf(
       doc.rect(margin, y - 1, contentWidth, 16, "F");
     }
 
-    const txDate = tx.occurred_on || tx.created_at?.slice(0, 10) || "";
+    const { dateStr: txDate } = extractTxDateAndTime(tx);
     const fromName = tx.wallet_id ? walletMap.get(tx.wallet_id) || (isIndonesian ? "Akun" : "Account") : "-";
     const toName = tx.to_wallet_id ? walletMap.get(tx.to_wallet_id) || (isIndonesian ? "Akun" : "Account") : "";
     const accountLabel = tx.type === "transfer" && toName ? `${fromName} -> ${toName}` : fromName;

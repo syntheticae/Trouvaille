@@ -8,5 +8,6 @@ export * from "./MediaPermissionsSheet";
 export * from "./PinSetupModal";
 export * from "./ProfileSheet";
 export * from "./ResetTransactionsSheet";
-export * from "./ShortcutManagementSheets";
+export * from "./ShortcutManagementSheet";
 export * from "./WalletManagementSheets";
+

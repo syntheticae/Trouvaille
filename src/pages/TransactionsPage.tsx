@@ -1,53 +1,5 @@
-import { usePullToRefresh } from "../hooks/usePullToRefresh";
-import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator";
-import { triggerHaptic } from "../lib/haptics";
 import { useState, useMemo, useCallback, useDeferredValue } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Search,
-  X,
-  Calendar,
-  ChevronDown,
-  Wallet,
-  SlidersHorizontal,
-  Tag,
-  CheckSquare,
-  Check,
-  Trash2,
-  Eye,
-  EyeOff,
-  Inbox,
-  Sparkles,
-  ArrowRight,
-} from "lucide-react";
-import { useDraftTransactions } from "../lib/draftTransactionService";
-import type { ParsedStatementItem } from "../lib/statementParser";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Tooltip,
-  Cell,
-} from "recharts";
-import {
-  useAllTransactions,
-  useDeleteTransaction,
-  useBatchDeleteTransactions,
-} from "../hooks/useTransactions";
-import { useWallets, resolveTransactionWallets } from "../hooks/useWallets";
-import { useCategories } from "../hooks/useCategories";
-import { useToast } from "../contexts/ToastContext";
-import { usePrivacy } from "../contexts/PrivacyContext";
-import { useSpace } from "../contexts/SpaceContext";
-import { useLanguage } from "../contexts/LanguageContext";
-import { useCurrency } from "../contexts/CurrencyContext";
-import { TransactionSheet } from "../components/transactions/TransactionSheet";
-import { BottomSheet } from "../components/ui/BottomSheet";
-import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
-import { formatRupiah, getDateLabel } from "../lib/utils";
-import { IconRenderer } from "../components/ui/IconRenderer";
+import { Inbox } from "lucide-react";
 import {
   format,
   subDays,
@@ -62,68 +14,47 @@ import {
   eachMonthOfInterval,
 } from "date-fns";
 import { GroupedVirtuoso } from "react-virtuoso";
+
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import { PullToRefreshIndicator } from "../components/ui/PullToRefreshIndicator";
+import { triggerHaptic } from "../lib/haptics";
+import { useDraftTransactions } from "../lib/draftTransactionService";
+import type { ParsedStatementItem } from "../lib/statementParser";
+import {
+  useAllTransactions,
+  useDeleteTransaction,
+  useBatchDeleteTransactions,
+} from "../hooks/useTransactions";
+import { useWallets, resolveTransactionWallets } from "../hooks/useWallets";
+import { useCategories } from "../hooks/useCategories";
+import { useToast } from "../contexts/ToastContext";
+import { usePrivacy } from "../contexts/PrivacyContext";
+import { useSpace } from "../contexts/SpaceContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useCurrency } from "../contexts/CurrencyContext";
+import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
+import { formatRupiah, getDateLabel } from "../lib/utils";
 import { useDeferredRender } from "../hooks/useDeferredRender";
 import { TransactionItem } from "../components/transactions/TransactionItem";
 import { useUnusualSpending } from "../hooks/useUnusualSpending";
 import { isCorrectionTx } from "../lib/financialMath";
 
+import {
+  TransactionHorizonBarChart,
+  type FilterType,
+  type TimeRangeType,
+  type ChartPoint,
+} from "../components/transactions/TransactionHorizonBarChart";
+import { TransactionFilterBar } from "../components/transactions/TransactionFilterBar";
+import { TransactionBatchActionBar } from "../components/transactions/TransactionBatchActionBar";
+import { TransactionModalsContainer } from "../components/transactions/TransactionModalsContainer";
+
 const isTxCorrection = isCorrectionTx;
-
-const GlassTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--glass-border)",
-        borderRadius: 12,
-        padding: "8px 12px",
-        boxShadow: "0 8px 24px var(--shadow-strength)",
-        fontFamily: "Urbanist, sans-serif",
-      }}
-    >
-      <p
-        style={{
-          color: "var(--text-tertiary)",
-          fontSize: 11,
-          fontWeight: 700,
-          marginBottom: 2,
-        }}
-      >
-        {label}
-      </p>
-      <p
-        style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 700 }}
-      >
-        {formatRupiah(payload[0]?.value ?? 0)}
-      </p>
-    </div>
-  );
-};
-
-type FilterType = "all" | "expense" | "income" | "transfer" | "adjustment";
-type TimeRangeType =
-  | "this_month"
-  | "last_month"
-  | "last_30"
-  | "custom_month"
-  | "custom_range"
-  | "all";
-
-type ChartPoint = {
-  dateStr: string;
-  label: string;
-  income: number;
-  expense: number;
-  transfer: number;
-  adjustment: number;
-  activeValue: number;
-};
 
 function summarizeTransactionsForChart(
   txs: Transaction[],
   filter: FilterType,
-  isTxCorrection: (tx: Transaction) => boolean,
+  isTxCorrectionFn: (tx: Transaction) => boolean,
 ) {
   let income = 0;
   let expense = 0;
@@ -132,10 +63,10 @@ function summarizeTransactionsForChart(
 
   txs.forEach((t) => {
     const amt = Number(t.amount || 0);
-    if (t.type === "income" && !isTxCorrection(t)) income += amt;
-    else if (t.type === "expense" && !isTxCorrection(t)) expense += amt;
+    if (t.type === "income" && !isTxCorrectionFn(t)) income += amt;
+    else if (t.type === "expense" && !isTxCorrectionFn(t)) expense += amt;
     else if (t.type === "transfer") transfer += amt;
-    else if (isTxCorrection(t)) adjustment += amt;
+    else if (isTxCorrectionFn(t)) adjustment += amt;
   });
 
   let activeValue = expense + income + transfer + adjustment;
@@ -162,7 +93,7 @@ const MONTHS_LIST = [
   { code: "12", short: "Dec", full: "December" },
 ];
 
-interface TransactionsPageProps {
+export interface TransactionsPageProps {
   onOpenScan?: () => void;
   onOpenImport?: () => void;
   onOpenVoiceAdd?: () => void;
@@ -183,9 +114,7 @@ export function TransactionsPage({
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const deferredSearch = useDeferredValue(search);
   const [filter, setFilter] = useState<FilterType>("all");
-  const [selectedWalletName, setSelectedWalletName] = useState<string | null>(
-    null,
-  );
+  const [selectedWalletName, setSelectedWalletName] = useState<string | null>(null);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
@@ -247,7 +176,7 @@ export function TransactionsPage({
   const { checkUnusual } = useUnusualSpending(visibleTxs);
 
   // 5-second Undo Grace Period for single deletion
-  const handleDeleteTransaction = (tx: Transaction) => {
+  const handleDeleteTransaction = useCallback((tx: Transaction) => {
     setPendingDeletedIds((prev) => new Set(prev).add(tx.id));
     showToast(
       "Transaction deleted",
@@ -272,7 +201,7 @@ export function TransactionsPage({
         });
       },
     );
-  };
+  }, [deleteTx, showToast]);
 
   const handleToggleSelect = useCallback((tx: Transaction) => {
     setSelectedTxIds((prev) => {
@@ -311,7 +240,7 @@ export function TransactionsPage({
   }, []);
 
   // Bulk Deletion with 5-second Undo Grace Period
-  const handleBulkDelete = () => {
+  const handleBulkDelete = useCallback(() => {
     if (selectedTxIds.size === 0) return;
     triggerHaptic("heavy");
     const idsToDelete = Array.from(selectedTxIds);
@@ -346,9 +275,9 @@ export function TransactionsPage({
         });
       },
     );
-  };
+  }, [selectedTxIds, handleExitSelectMode, showToast, batchDeleteTx]);
 
-  const handleDuplicateTransaction = (tx: Transaction) => {
+  const handleDuplicateTransaction = useCallback((tx: Transaction) => {
     setEditingTx({
       ...tx,
       id: "",
@@ -356,7 +285,7 @@ export function TransactionsPage({
       created_at: new Date().toISOString(),
     });
     setSheetOpen(true);
-  };
+  }, []);
 
   const { pullDistance, isRefreshing, threshold } = usePullToRefresh({
     onRefresh: async () => {
@@ -365,9 +294,10 @@ export function TransactionsPage({
   });
 
   const isDark =
-    document.documentElement.getAttribute("data-theme") !== "light";
+    typeof document !== "undefined"
+      ? document.documentElement.getAttribute("data-theme") !== "light"
+      : true;
   const shouldRenderHeavy = useDeferredRender(150);
-
 
   const scrollParent = useMemo(
     () =>
@@ -419,7 +349,7 @@ export function TransactionsPage({
     return txs;
   }, [visibleTxs, timeRange, selectedCustomMonth, customStartDate, customEndDate]);
 
-  // 2. Filter & Search transactions within the active timeframe
+  // Filter & Search transactions within the active timeframe
   const filteredTxs = useMemo(() => {
     let txs = scopedTxs;
 
@@ -542,7 +472,6 @@ export function TransactionsPage({
             });
             return points;
           } else if (intervalDays.length <= 180) {
-            // Adaptive bar chart density: weekly buckets (approx 9 to 26 bars)
             const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
             weeks.forEach((weekStart) => {
               const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
@@ -568,7 +497,6 @@ export function TransactionsPage({
             });
             return points;
           } else {
-            // Adaptive bar chart density: monthly buckets for long ranges (> 180 days)
             const months = eachMonthOfInterval({ start, end });
             months.forEach((monthDate) => {
               const monthKey = format(monthDate, "yyyy-MM");
@@ -586,7 +514,7 @@ export function TransactionsPage({
             return points;
           }
         } catch {
-          // fallback to auto aggregation
+          // fallback
         }
       }
     }
@@ -675,7 +603,7 @@ export function TransactionsPage({
     return dynamicChartData.reduce((s, d) => s + d.activeValue, 0);
   }, [dynamicChartData]);
 
-  // 3. Group by date using all filteredTxs
+  // Group by date using all filteredTxs
   const { groupKeys, groupedTxs, groupCounts, flatTxs } = useMemo(() => {
     const g: Record<string, Transaction[]> = {};
     filteredTxs.forEach((tx) => {
@@ -753,7 +681,7 @@ export function TransactionsPage({
     timeRange,
   ]);
 
-  const handleResetAllFilters = () => {
+  const handleResetAllFilters = useCallback(() => {
     setFilter("all");
     setSelectedWalletName(null);
     setSelectedCategoryIds([]);
@@ -764,7 +692,19 @@ export function TransactionsPage({
     setCustomEndDate("");
     setSearch("");
     triggerHaptic("medium");
-  };
+  }, []);
+
+  const handleSelectAllOrNone = useCallback(() => {
+    triggerHaptic("light");
+    if (
+      selectedTxIds.size === visibleTxs.length &&
+      visibleTxs.length > 0
+    ) {
+      setSelectedTxIds(new Set());
+    } else {
+      setSelectedTxIds(new Set(visibleTxs.map((t) => t.id)));
+    }
+  }, [selectedTxIds.size, visibleTxs]);
 
   return (
     <div
@@ -776,607 +716,80 @@ export function TransactionsPage({
         isRefreshing={isRefreshing}
         threshold={threshold}
       />
-      {/* ====== HEADER ====== */}
+
+      {/* ====== HEADER & FILTERS ====== */}
       <div className="px-5 pt-5 pb-3">
-        <div className="flex items-start justify-between mb-3 gap-3">
-          <div className="min-w-0 flex-1">
-            <p
-              className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] truncate leading-none mb-1.5"
-            >
-              {filter === "income"
-                ? `${selectedMonthLabel} Inflow`
-                : filter === "expense"
-                  ? `${selectedMonthLabel} Outflow`
-                  : filter === "transfer"
-                    ? `${selectedMonthLabel} Transfers`
-                    : filter === "adjustment"
-                      ? `${selectedMonthLabel} Corrections`
-                      : `${selectedMonthLabel} Activity`}
-            </p>
-            <p
-              className="text-[28px] sm:text-[32px] font-bold tracking-tight leading-tight amount whitespace-nowrap"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {isStealthMode ? "Rp ••••••••" : formatRupiah(totalPeriodAmount)}
-            </p>
-            <p
-              className="text-[11px] font-medium mt-1 text-[var(--text-tertiary)] truncate"
-            >
-              {dynamicChartData.length} data points · {selectedMonthLabel}
-            </p>
-          </div>
+        <TransactionHorizonBarChart
+          filter={filter}
+          selectedMonthLabel={selectedMonthLabel}
+          totalPeriodAmount={totalPeriodAmount}
+          dynamicChartData={dynamicChartData}
+          maxBar={maxBar}
+          isStealthMode={isStealthMode}
+          toggleStealthMode={toggleStealthMode}
+          onOpenMonthPicker={() => setMonthPickerOpen(true)}
+          draftCount={draftCount}
+          allDraftItems={allDraftItems}
+          onOpenBatchReview={onOpenBatchReview}
+          clearAllDrafts={clearAllDrafts}
+          activeSpaceId={activeSpaceId}
+          activeSpaceName={activeSpace.name}
+          visibleTxsCount={visibleTxs.length}
+          onResetActiveSpace={() => setActiveSpaceId("all")}
+          shouldRenderHeavy={shouldRenderHeavy}
+          isDark={isDark}
+          isIndonesian={isIndonesian}
+        />
 
-          {/* Header Action Pills: Stealth Mode & Month Selector */}
-          <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-            <button
-              type="button"
-              onClick={toggleStealthMode}
-              className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all touch-manipulation cursor-pointer select-none no-pull"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                color: isStealthMode ? "var(--accent)" : "var(--text-secondary)",
-              }}
-              title={isStealthMode ? "Disable Stealth Mode" : "Enable Stealth Mode (or 3-finger tap)"}
-            >
-              {isStealthMode ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMonthPickerOpen(true);
-                triggerHaptic("light");
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full active:scale-95 transition-all touch-manipulation cursor-pointer select-none no-pull shrink-0 whitespace-nowrap"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "0 2px 8px var(--shadow-strength)",
-              }}
-            >
-              <Calendar size={12} style={{ color: "var(--text-secondary)" }} />
-              <span
-                className="text-[11px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {selectedMonthLabel}
-              </span>
-              <ChevronDown size={11} style={{ color: "var(--text-tertiary)" }} />
-            </button>
-          </div>
-        </div>
-
-        {/* Draft Inbox Banner */}
-        {draftCount > 0 && (
-          <div
-            className="p-3 rounded-2xl flex items-center justify-between gap-3 border shadow-sm animate-fadeIn mb-3"
-            style={{
-              background: "var(--bg-elevated)",
-              borderColor: "var(--glass-border)",
-              boxShadow: "var(--shadow-card)",
-            }}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <Sparkles size={13} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
-                  {isIndonesian
-                    ? `${draftCount} Transaksi Siap Ditinjau`
-                    : `${draftCount} Transactions Ready to Review`}
-                </p>
-                <p className="text-[10px] text-[var(--text-tertiary)] truncate">
-                  {isIndonesian
-                    ? "Tersimpan di draft · Saldo belum terpotong"
-                    : "Saved in drafts · Balance unchanged"}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("medium");
-                  onOpenBatchReview?.(allDraftItems, isIndonesian ? "Draft Transaksi" : "Draft Inbox");
-                }}
-                className="px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-sm"
-                style={{
-                  background: "var(--text-primary)",
-                  color: "var(--bg-base)",
-                }}
-              >
-                <span>{isIndonesian ? "Tinjau" : "Review"}</span>
-                <ArrowRight size={11} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  clearAllDrafts();
-                }}
-                className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-colors"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-tertiary)",
-                }}
-                title={isIndonesian ? "Buang Semua Draft" : "Dismiss All Drafts"}
-              >
-                <X size={12} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Active Space Segregation Notice */}
-        {activeSpaceId !== "all" && activeSpaceId !== "personal" && (
-          <div
-            className="mb-3 px-3 py-1.5 rounded-xl flex items-center justify-between text-[11px] font-medium animate-fadeIn"
-            style={{
-              background: "var(--glass-fill)",
-              border: "1px solid var(--glass-border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse" />
-              <span>
-                {isIndonesian ? (
-                  <>
-                    Difilter ke space <strong>{activeSpace.name}</strong> ({visibleTxs.length} catatan)
-                  </>
-                ) : (
-                  <>
-                    Filtered to <strong>{activeSpace.name}</strong> space ({visibleTxs.length} records)
-                  </>
-                )}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setActiveSpaceId("all");
-              }}
-              className="text-[10px] font-semibold underline underline-offset-2 opacity-80 hover:opacity-100 cursor-pointer"
-              style={{ color: "var(--text-primary)" }}
-            >
-              View All
-            </button>
-          </div>
-        )}
-
-        {/* DYNAMIC TIMEFRAME GRADIENT BAR CHART */}
-        <div className="h-[95px] w-full mb-3.5 flex items-end">
-          {!shouldRenderHeavy ? (
-            <div className="w-full flex justify-around items-end h-full px-2 pb-5">
-              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                <div
-                  key={i}
-                  className="w-8 rounded-md bg-white/5 animate-pulse"
-                  style={{ height: `${[45, 70, 35, 80, 50, 65, 40][(i - 1) % 7]}%` }}
-                />
-              ))}
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={dynamicChartData}
-                margin={{ top: 8, right: 0, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient
-                    id="activeBarGradDark"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#D4D4D8" stopOpacity={0.9} />
-                  </linearGradient>
-                  <linearGradient
-                    id="inactiveBarGradDark"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.65} />
-                    <stop
-                      offset="100%"
-                      stopColor="#FFFFFF"
-                      stopOpacity={0.18}
-                    />
-                  </linearGradient>
-                  <linearGradient
-                    id="activeBarGradLight"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor="#18181B" stopOpacity={1} />
-                    <stop
-                      offset="100%"
-                      stopColor="#3F3F46"
-                      stopOpacity={0.85}
-                    />
-                  </linearGradient>
-                  <linearGradient
-                    id="inactiveBarGradLight"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor="#18181B" stopOpacity={0.5} />
-                    <stop
-                      offset="100%"
-                      stopColor="#18181B"
-                      stopOpacity={0.12}
-                    />
-                  </linearGradient>
-                </defs>
-                <Tooltip
-                  content={<GlassTooltip />}
-                  cursor={{ fill: "transparent" }}
-                />
-                <XAxis
-                  dataKey="label"
-                  axisLine={false}
-                  tickLine={false}
-                  interval={
-                    dynamicChartData.length > 20
-                      ? 4
-                      : dynamicChartData.length > 10
-                        ? 2
-                        : 0
-                  }
-                  tick={{
-                    fill: "var(--text-tertiary)",
-                    fontSize: 9,
-                    fontWeight: 700,
-                  }}
-                />
-                <YAxis hide domain={[0, maxBar * 1.15]} />
-                <Bar
-                  dataKey="activeValue"
-                  radius={[4, 4, 4, 4]}
-                  maxBarSize={
-                    dynamicChartData.length > 20
-                      ? 8
-                      : dynamicChartData.length > 10
-                        ? 16
-                        : 28
-                  }
-                >
-                  {dynamicChartData.map((_, index) => {
-                    const isCurrentDay = index === dynamicChartData.length - 1;
-                    const fillId = isDark
-                      ? isCurrentDay
-                        ? "url(#activeBarGradDark)"
-                        : "url(#inactiveBarGradDark)"
-                      : isCurrentDay
-                        ? "url(#activeBarGradLight)"
-                        : "url(#inactiveBarGradLight)";
-
-                    return (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={fillId}
-                        style={{ transition: "fill 0.3s ease" }}
-                      />
-                    );
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        {/* Full-Width Search Bar with Dynamic Focus Animation */}
-        <div
-          className="flex items-center pl-3.5 pr-2 py-1.5 rounded-2xl mb-2.5 glass-surface no-pull transition-all duration-200"
-          style={{
-            background: "var(--bg-elevated)",
-            border: isSearchFocused
-              ? "1px solid rgba(255, 255, 255, 0.22)"
-              : "1px solid var(--glass-border)",
-            boxShadow: isSearchFocused
-              ? "0 4px 16px rgba(0, 0, 0, 0.25)"
-              : "none",
+        <TransactionFilterBar
+          search={search}
+          onSearchChange={setSearch}
+          isSearchFocused={isSearchFocused}
+          onFocusSearch={() => setIsSearchFocused(true)}
+          onBlurSearch={() => setIsSearchFocused(false)}
+          onClearSearch={() => setSearch("")}
+          filter={filter}
+          onFilterChange={setFilter}
+          filterTabs={filterTabs}
+          activeFiltersCount={activeFiltersCount}
+          onOpenFilterSheet={() => setFilterSheetOpen(true)}
+          isSelectMode={isSelectMode}
+          onToggleSelectMode={() => {
+            if (isSelectMode) {
+              handleExitSelectMode();
+            } else {
+              setIsSelectMode(true);
+            }
           }}
-        >
-          <Search
-            size={16}
-            className="shrink-0"
-            style={{
-              color: isSearchFocused
-                ? "var(--text-primary)"
-                : "var(--text-tertiary)",
-            }}
-          />
-          <input
-            type="text"
-            value={search}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={isIndonesian ? "Cari transaksi..." : "Search transactions..."}
-            className="w-full bg-transparent pl-2.5 pr-2 py-1 text-[13px] outline-none font-semibold touch-manipulation no-pull min-w-0"
-            style={{ color: "var(--text-primary)" }}
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                triggerHaptic("light");
-              }}
-              className="p-1 rounded-full shrink-0 mr-1 touch-manipulation cursor-pointer"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              <X size={14} />
-            </button>
-          )}
-
-          {/* Smooth hiding of side buttons (Filters & Select) when search is focused or active */}
-          <AnimatePresence>
-            {!isSearchFocused && !search && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, width: 0 }}
-                animate={{ opacity: 1, scale: 1, width: "auto" }}
-                exit={{ opacity: 0, scale: 0.9, width: 0 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className="flex items-center shrink-0 overflow-hidden"
-              >
-                {/* Filter Trigger Button */}
-                <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFilterSheetOpen(true);
-                    triggerHaptic("light");
-                  }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
-                  style={{
-                    background:
-                      activeFiltersCount > 0
-                        ? "var(--accent)"
-                        : "var(--glass-fill)",
-                    color:
-                      activeFiltersCount > 0
-                        ? "var(--accent-ink)"
-                        : "var(--text-secondary)",
-                    border:
-                      activeFiltersCount > 0
-                        ? "1px solid var(--accent)"
-                        : "1px solid var(--glass-border)",
-                  }}
-                  title="Advanced Filters"
-                >
-                  <SlidersHorizontal size={13} />
-                  <span className="text-[11px] font-semibold">{isIndonesian ? "Filter" : "Filters"}</span>
-                  {activeFiltersCount > 0 && (
-                    <span
-                      className="w-4 h-4 rounded-full text-[9px] font-semibold flex items-center justify-center"
-                      style={{
-                        background: "var(--accent-ink)",
-                        color: "var(--accent)",
-                      }}
-                    >
-                      {activeFiltersCount}
-                    </span>
-                  )}
-                </button>
-
-                {/* Select Mode Trigger Button */}
-                <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-1" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("medium");
-                    if (isSelectMode) {
-                      handleExitSelectMode();
-                    } else {
-                      setIsSelectMode(true);
-                    }
-                  }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl active:scale-95 transition-all shrink-0 touch-manipulation cursor-pointer select-none no-pull"
-                  style={{
-                    background: isSelectMode
-                      ? "var(--accent)"
-                      : "var(--glass-fill)",
-                    color: isSelectMode
-                      ? "var(--accent-ink)"
-                      : "var(--text-secondary)",
-                    border: isSelectMode
-                      ? "1px solid var(--accent)"
-                      : "1px solid var(--glass-border)",
-                  }}
-                  title={
-                    isSelectMode ? "Exit Select Mode" : "Select Transactions"
-                  }
-                >
-                  <CheckSquare size={13} />
-                  <span className="text-[11px] font-semibold">
-                    {isSelectMode ? (isIndonesian ? "Selesai" : "Done") : (isIndonesian ? "Pilih" : "Select")}
-                  </span>
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Unified Clean Filter Tabs */}
-        <div
-          className="flex p-1 rounded-full glass-surface no-pull"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
+          timeRange={timeRange}
+          selectedMonthLabel={selectedMonthLabel}
+          onResetTimeRange={() => {
+            setTimeRange("this_month");
+            setCustomStartDate("");
+            setCustomEndDate("");
+            triggerHaptic("light");
           }}
-        >
-          {filterTabs.map((tab) => {
-            const isSelected = filter === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  setFilter(tab.key);
-                  triggerHaptic("light");
-                }}
-                className="flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all touch-manipulation cursor-pointer select-none no-pull"
-                style={{
-                  background: isSelected ? "var(--accent)" : "transparent",
-                  color: isSelected
-                    ? "var(--accent-ink)"
-                    : "var(--text-secondary)",
-                }}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Active Filter Chips Strip */}
-        {activeFiltersCount > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1.5 mt-2">
-            {timeRange !== "this_month" && (
-              <span
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
-                style={{
-                  background: "var(--glass-fill-strong)",
-                  color: "var(--text-primary)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <Calendar size={11} className="opacity-70" />
-                <span>{selectedMonthLabel}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTimeRange("this_month");
-                    setCustomStartDate("");
-                    setCustomEndDate("");
-                    triggerHaptic("light");
-                  }}
-                  className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
-                >
-                  <X size={10} />
-                </button>
-              </span>
-            )}
-
-            {selectedWalletName && (
-              <span
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
-                style={{
-                  background: "var(--glass-fill-strong)",
-                  color: "var(--text-primary)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <Wallet size={11} className="opacity-70" />
-                <span>{selectedWalletName}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedWalletName(null);
-                    triggerHaptic("light");
-                  }}
-                  className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
-                >
-                  <X size={10} />
-                </button>
-              </span>
-            )}
-
-            {selectedCategoryIds.map((cid) => {
-              const cat = categories.find((c) => c.id === cid);
-              return (
-                <span
-                  key={cid}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
-                  style={{
-                    background: "var(--glass-fill-strong)",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--glass-border)",
-                  }}
-                >
-                  <Tag size={11} className="opacity-70" />
-                  <span>{cat?.name || "Category"}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCategoryIds((prev) =>
-                        prev.filter((id) => id !== cid),
-                      );
-                      triggerHaptic("light");
-                    }}
-                    className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
-                  >
-                    <X size={10} />
-                  </button>
-                </span>
-              );
-            })}
-
-            {(minAmount || maxAmount) && (
-              <span
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
-                style={{
-                  background: "var(--glass-fill-strong)",
-                  color: "var(--text-primary)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <span>
-                  {minAmount && maxAmount
-                    ? `${formatRupiah(Number(minAmount))} - ${formatRupiah(Number(maxAmount))}`
-                    : minAmount
-                      ? `≥ ${formatRupiah(Number(minAmount))}`
-                      : `≤ ${formatRupiah(Number(maxAmount))}`}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMinAmount("");
-                    setMaxAmount("");
-                    triggerHaptic("light");
-                  }}
-                  className="p-0.5 rounded-full hover:opacity-80 cursor-pointer"
-                >
-                  <X size={10} />
-                </button>
-              </span>
-            )}
-
-            <button
-              type="button"
-              onClick={handleResetAllFilters}
-              className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 touch-manipulation cursor-pointer select-none"
-              style={{
-                color: "var(--accent)",
-                background: "transparent",
-              }}
-            >
-              Clear all
-            </button>
-          </div>
-        )}
+          selectedWalletName={selectedWalletName}
+          onResetWallet={() => {
+            setSelectedWalletName(null);
+            triggerHaptic("light");
+          }}
+          selectedCategoryIds={selectedCategoryIds}
+          categories={categories}
+          onRemoveCategory={(cid) => {
+            setSelectedCategoryIds((prev) => prev.filter((id) => id !== cid));
+            triggerHaptic("light");
+          }}
+          minAmount={minAmount}
+          maxAmount={maxAmount}
+          onResetAmount={() => {
+            setMinAmount("");
+            setMaxAmount("");
+            triggerHaptic("light");
+          }}
+          onResetAllFilters={handleResetAllFilters}
+          isIndonesian={isIndonesian}
+        />
       </div>
 
       {/* ====== TRANSACTION LIST ====== */}
@@ -1484,761 +897,66 @@ export function TransactionsPage({
         )}
       </div>
 
-      {/* Floating Bulk Action Bar (Strict Apple Luxury Aesthetics) */}
-      <AnimatePresence>
-        {isSelectMode && (
-          <motion.div
-            initial={{ opacity: 0, y: 35, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 35, scale: 0.96 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="fixed bottom-[calc(78px+env(safe-area-inset-bottom,16px))] left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-md z-[9999] p-3 rounded-[24px] flex items-center justify-between pointer-events-auto"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "var(--shadow-card), 0 16px 40px rgba(0,0,0,0.35)",
-              backdropFilter: "blur(24px) saturate(180%)",
-              WebkitBackdropFilter: "blur(24px) saturate(180%)",
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className="text-[13px] font-bold px-1.5"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {selectedTxIds.size} {isIndonesian ? "Dipilih" : "Selected"}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  if (
-                    selectedTxIds.size === visibleTxs.length &&
-                    visibleTxs.length > 0
-                  ) {
-                    setSelectedTxIds(new Set());
-                  } else {
-                    setSelectedTxIds(new Set(visibleTxs.map((t) => t.id)));
-                  }
-                }}
-                className="text-[11px] font-semibold px-2.5 py-1 rounded-xl active:scale-95 transition-all cursor-pointer select-none"
-                style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                {selectedTxIds.size === visibleTxs.length &&
-                visibleTxs.length > 0
-                  ? (isIndonesian ? "Batalkan Pilihan" : "Deselect All")
-                  : (isIndonesian ? "Pilih Semua" : "Select All")}
-              </button>
-            </div>
+      {/* Floating Bulk Action Bar */}
+      <TransactionBatchActionBar
+        isSelectMode={isSelectMode}
+        selectedCount={selectedTxIds.size}
+        totalVisibleCount={visibleTxs.length}
+        onSelectAllOrNone={handleSelectAllOrNone}
+        onBulkDelete={handleBulkDelete}
+        onExitSelectMode={handleExitSelectMode}
+        isIndonesian={isIndonesian}
+      />
 
-            <div className="flex items-center gap-2">
-              {selectedTxIds.size > 0 && (
-                <button
-                  type="button"
-                  onClick={handleBulkDelete}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-bold active:scale-95 transition-all cursor-pointer"
-                  style={{
-                    background: "rgba(239, 68, 68, 0.14)",
-                    color: "#fca5a5",
-                    border: "1px solid rgba(239, 68, 68, 0.25)",
-                  }}
-                >
-                  <Trash2 size={13} strokeWidth={2} />
-                  <span>Delete ({selectedTxIds.size})</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleExitSelectMode}
-                className="px-3.5 py-1.5 rounded-xl text-[12px] font-bold active:scale-95 transition-all cursor-pointer"
-                style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
-                }}
-              >
-                Done
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ====== 12-MONTH & YEAR SELECTOR BOTTOM SHEET ====== */}
-      <BottomSheet
-        isOpen={monthPickerOpen}
-        onClose={() => setMonthPickerOpen(false)}
-      >
-        <div className="p-5 pb-16 space-y-4">
-          <div className="flex justify-between items-center mb-1">
-            <div>
-              <h3
-                className="font-semibold text-base"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {isIndonesian ? "Pilih Rentang Waktu" : "Select Timeframe"}
-              </h3>
-              <p
-                className="text-[11px] font-medium"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian
-                  ? "Filter transaksi berdasarkan bulan atau tahun"
-                  : "Filter transactions by month or year"}
-              </p>
-            </div>
-          </div>
-
-          {/* Quick Presets */}
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { key: "this_month", label: isIndonesian ? "Bulan Ini" : "This Month" },
-              { key: "last_month", label: isIndonesian ? "Bulan Lalu" : "Last Month" },
-              { key: "last_30", label: isIndonesian ? "30 Hari Terakhir" : "Last 30 Days" },
-              { key: "all", label: isIndonesian ? "Semua Waktu" : "All Time" },
-            ].map((preset) => {
-              const isSelected = timeRange === preset.key;
-              return (
-                <button
-                  key={preset.key}
-                  type="button"
-                  onClick={() => {
-                    setTimeRange(preset.key as TimeRangeType);
-                    setMonthPickerOpen(false);
-                    triggerHaptic("light");
-                  }}
-                  className="py-2.5 px-3 rounded-2xl text-[12px] font-semibold flex items-center justify-between active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
-                  style={{
-                    background: isSelected
-                      ? "var(--accent)"
-                      : "var(--bg-elevated)",
-                    color: isSelected
-                      ? "var(--accent-ink)"
-                      : "var(--text-primary)",
-                    border: isSelected
-                      ? "1px solid transparent"
-                      : "1px solid var(--glass-border)",
-                  }}
-                >
-                  <span>{preset.label}</span>
-                  {isSelected && <Check size={12} strokeWidth={2.5} />}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Elegant Year Selector Tabs */}
-          <div className="pt-2">
-            <div className="flex justify-between items-center mb-2 px-1">
-              <span
-                className="text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Pilih Bulan dalam Tahun" : "Specific Month in Year"}
-              </span>
-              <span
-                className="text-[12px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {pickerYear}
-              </span>
-            </div>
-
-            {/* Year Selector Bar */}
-            <div
-              className="flex p-1 rounded-2xl mb-3"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {[2026, 2025, 2024, 2023].map((y) => {
-                const isYSelected = pickerYear === y;
-                return (
-                  <button
-                    key={y}
-                    type="button"
-                    onClick={() => {
-                      setPickerYear(y);
-                      triggerHaptic("light");
-                    }}
-                    className="flex-1 py-1.5 rounded-xl text-[12px] font-semibold transition-all touch-manipulation cursor-pointer select-none"
-                    style={{
-                      background: isYSelected ? "var(--accent)" : "transparent",
-                      color: isYSelected
-                        ? "var(--accent-ink)"
-                        : "var(--text-secondary)",
-                    }}
-                  >
-                    {y}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* 12-Month iOS Grid */}
-            <div className="grid grid-cols-4 gap-2">
-              {MONTHS_LIST.map((m) => {
-                const monthKey = `${pickerYear}-${m.code}`;
-                const isSelected =
-                  timeRange === "custom_month" &&
-                  selectedCustomMonth === monthKey;
-                return (
-                  <button
-                    key={m.code}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCustomMonth(monthKey);
-                      setTimeRange("custom_month");
-                      setMonthPickerOpen(false);
-                      triggerHaptic("light");
-                    }}
-                    className="p-3 rounded-2xl text-[12px] font-semibold text-center active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
-                    style={{
-                      background: isSelected
-                        ? "var(--accent)"
-                        : "var(--bg-elevated)",
-                      color: isSelected
-                        ? "var(--accent-ink)"
-                        : "var(--text-primary)",
-                      border: isSelected
-                        ? "1.5px solid var(--accent)"
-                        : "1px solid var(--glass-border)",
-                      boxShadow: isSelected
-                        ? "0 0 0 1px var(--accent-glow)"
-                        : "none",
-                    }}
-                  >
-                    {m.short}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </BottomSheet>
-
-      {sheetOpen && (
-        <TransactionSheet
-          isOpen={sheetOpen}
-          onClose={() => {
-            setSheetOpen(false);
-            setEditingTx(null);
-          }}
-          transaction={editingTx}
-          onOpenScan={_onOpenScan}
-          onOpenVoiceAdd={() => {
-            setSheetOpen(false);
-            setEditingTx(null);
-            _onOpenVoiceAdd?.();
-          }}
-        />
-      )}
-
-      {/* Account Picker Glass Sheet */}
-      <BottomSheet
-        isOpen={accountPickerOpen}
-        onClose={() => setAccountPickerOpen(false)}
-      >
-        <div className="p-5 pb-12 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3
-                className="font-semibold text-base"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Filter by Account
-              </h3>
-              <p
-                className="text-[12px]"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Show transactions from a specific account
-              </p>
-            </div>
-            {selectedWalletName && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedWalletName(null);
-                  setAccountPickerOpen(false);
-                  triggerHaptic("light");
-                }}
-                className="text-[12px] font-bold px-3 py-1 rounded-full touch-manipulation cursor-pointer select-none"
-                style={{
-                  background: "var(--glass-fill)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Reset
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-x-2 gap-y-2.5">
-            {/* All Accounts Option */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedWalletName(null);
-                setAccountPickerOpen(false);
-                triggerHaptic("light");
-              }}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-2xl active:scale-95 transition-transform touch-manipulation cursor-pointer select-none"
-              style={{
-                background:
-                  selectedWalletName === null
-                    ? "var(--glass-fill-strong)"
-                    : "transparent",
-                color: "var(--text-primary)",
-                border:
-                  selectedWalletName === null
-                    ? "1.5px solid var(--accent)"
-                    : "1px solid transparent",
-              }}
-            >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{
-                  background:
-                    selectedWalletName === null
-                      ? "var(--dock-active-pill)"
-                      : "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <Wallet size={18} style={{ color: "var(--text-primary)" }} />
-              </div>
-              <span className="text-[11px] font-bold text-center line-clamp-1">
-                All Accounts
-              </span>
-            </button>
-
-            {/* Wallets */}
-            {wallets.map((w) => {
-              const isSelected = selectedWalletName === w.name;
-              return (
-                <button
-                  key={w.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedWalletName(w.name);
-                    setAccountPickerOpen(false);
-                    triggerHaptic("light");
-                  }}
-                  className="flex flex-col items-center gap-1.5 p-2 rounded-2xl active:scale-95 transition-transform touch-manipulation cursor-pointer select-none"
-                  style={{
-                    background: isSelected
-                      ? "var(--glass-fill-strong)"
-                      : "transparent",
-                    color: "var(--text-primary)",
-                    border: isSelected
-                      ? "1.5px solid var(--accent)"
-                      : "1px solid transparent",
-                  }}
-                >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{
-                      background: isSelected
-                        ? "var(--dock-active-pill)"
-                        : "var(--bg-elevated)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    <IconRenderer icon={w.icon} size="w-6 h-6" />
-                  </div>
-                  <span className="text-[11px] font-bold text-center line-clamp-1">
-                    {w.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </BottomSheet>
-
-      {/* ====== ADVANCED FILTERS BOTTOM SHEET ====== */}
-      <BottomSheet
-        isOpen={filterSheetOpen}
-        onClose={() => setFilterSheetOpen(false)}
-      >
-        <div className="p-5 pb-16 space-y-5">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h3
-                className="font-semibold text-base"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {isIndonesian ? "Filter" : "Filters"}
-              </h3>
-              <p
-                className="text-[11px] font-medium"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Saring berdasarkan waktu, jenis, akun, kategori & nominal" : "Refine by timeframe, type, account, category & amount"}
-              </p>
-            </div>
-            {activeFiltersCount > 0 && (
-              <button
-                type="button"
-                onClick={handleResetAllFilters}
-                className="text-[12px] font-bold px-3 py-1 rounded-full touch-manipulation cursor-pointer select-none active:scale-95 transition-transform"
-                style={{
-                  background: "var(--glass-fill)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                {isIndonesian ? "Reset Semua" : "Reset All"}
-              </button>
-            )}
-          </div>
-
-          {/* 1. Transaction Type */}
-          <div>
-            <label
-              className="text-[11px] font-bold uppercase tracking-wider mb-2 block px-0.5"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Jenis Transaksi" : "Transaction Type"}
-            </label>
-            <div
-              className="flex p-1 rounded-2xl glass-surface"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              {filterTabs.map((tab) => {
-                const isSelected = filter === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => {
-                      setFilter(tab.key);
-                      triggerHaptic("light");
-                    }}
-                    className="flex-1 py-1.5 rounded-xl text-[11px] font-bold transition-all touch-manipulation cursor-pointer select-none"
-                    style={{
-                      background: isSelected ? "var(--accent)" : "transparent",
-                      color: isSelected
-                        ? "var(--accent-ink)"
-                        : "var(--text-secondary)",
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 2. Timeframe & Date Range */}
-          <div>
-            <label
-              className="text-[11px] font-bold uppercase tracking-wider mb-2 block px-0.5"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Rentang Waktu & Tanggal" : "Timeframe & Date Range"}
-            </label>
-            <div className="grid grid-cols-3 gap-1.5 mb-2.5">
-              {[
-                { key: "this_month", label: isIndonesian ? "Bulan Ini" : "This Month" },
-                { key: "last_month", label: isIndonesian ? "Bulan Lalu" : "Last Month" },
-                { key: "last_30", label: isIndonesian ? "30 Hari Terakhir" : "Last 30 Days" },
-                { key: "all", label: isIndonesian ? "Semua Waktu" : "All Time" },
-                { key: "custom_range", label: isIndonesian ? "Rentang Kustom" : "Custom Range" },
-              ].map((preset) => {
-                const isSelected = timeRange === preset.key;
-                return (
-                  <button
-                    key={preset.key}
-                    type="button"
-                    onClick={() => {
-                      setTimeRange(preset.key as TimeRangeType);
-                      triggerHaptic("light");
-                    }}
-                    className="py-2 px-2.5 rounded-xl text-[11px] font-bold text-center active:scale-95 transition-all touch-manipulation cursor-pointer select-none"
-                    style={{
-                      background: isSelected
-                        ? "var(--accent)"
-                        : "var(--bg-elevated)",
-                      color: isSelected
-                        ? "var(--accent-ink)"
-                        : "var(--text-primary)",
-                      border: isSelected
-                        ? "1px solid transparent"
-                        : "1px solid var(--glass-border)",
-                    }}
-                  >
-                    {preset.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {timeRange === "custom_range" && (
-              <div
-                className="grid grid-cols-2 gap-2 p-3 rounded-2xl glass-surface"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <div className="relative p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] min-w-0 transition-colors hover:border-[var(--text-secondary)] flex flex-col justify-center cursor-pointer">
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-wider block mb-1 text-[var(--text-tertiary)]"
-                  >
-                    {isIndonesian ? "Tanggal Mulai" : "Start Date"}
-                  </span>
-                  <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
-                    {customStartDate
-                      ? format(parseISO(customStartDate), isIndonesian ? "d MMM yyyy" : "MMM d, yyyy")
-                      : "-"}
-                  </div>
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                </div>
-                <div className="relative p-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] min-w-0 transition-colors hover:border-[var(--text-secondary)] flex flex-col justify-center cursor-pointer">
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-wider block mb-1 text-[var(--text-tertiary)]"
-                  >
-                    {isIndonesian ? "Tanggal Selesai" : "End Date"}
-                  </span>
-                  <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
-                    {customEndDate
-                      ? format(parseISO(customEndDate), isIndonesian ? "d MMM yyyy" : "MMM d, yyyy")
-                      : "-"}
-                  </div>
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 3. Account / Wallet Filter */}
-          <div>
-            <div className="flex items-center justify-between mb-2 px-0.5">
-              <label
-                className="text-[11px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Akun" : "Account"}
-              </label>
-              {selectedWalletName && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedWalletName(null)}
-                  className="text-[11px] font-bold text-[var(--accent)]"
-                >
-                  {isIndonesian ? "Semua Akun" : "All Accounts"}
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedWalletName(null);
-                  triggerHaptic("light");
-                }}
-                className="px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0 active:scale-95 transition-all cursor-pointer select-none"
-                style={{
-                  background:
-                    selectedWalletName === null
-                      ? "var(--accent)"
-                      : "var(--bg-elevated)",
-                  color:
-                    selectedWalletName === null
-                      ? "var(--accent-ink)"
-                      : "var(--text-primary)",
-                  border:
-                    selectedWalletName === null
-                      ? "1px solid transparent"
-                      : "1px solid var(--glass-border)",
-                }}
-              >
-                {isIndonesian ? "Semua Akun" : "All Accounts"}
-              </button>
-              {wallets.map((w) => {
-                const isSelected = selectedWalletName === w.name;
-                return (
-                  <button
-                    key={w.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedWalletName(isSelected ? null : w.name);
-                      triggerHaptic("light");
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0 active:scale-95 transition-all cursor-pointer select-none"
-                    style={{
-                      background: isSelected
-                        ? "var(--accent)"
-                        : "var(--bg-elevated)",
-                      color: isSelected
-                        ? "var(--accent-ink)"
-                        : "var(--text-primary)",
-                      border: isSelected
-                        ? "1px solid transparent"
-                        : "1px solid var(--glass-border)",
-                    }}
-                  >
-                    <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
-                    <span>{w.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 4. Category Multi-Select Filter */}
-          <div>
-            <div className="flex items-center justify-between mb-2 px-0.5">
-              <label
-                className="text-[11px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Kategori" : "Categories"}
-              </label>
-              {selectedCategoryIds.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategoryIds([])}
-                  className="text-[11px] font-bold text-[var(--accent)]"
-                >
-                  {isIndonesian ? "Hapus Pilihan" : "Clear Categories"}
-                </button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5 py-0.5">
-              {categories.map((c) => {
-                const isSelected = selectedCategoryIds.includes(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCategoryIds((prev) =>
-                        isSelected
-                          ? prev.filter((id) => id !== c.id)
-                          : [...prev, c.id],
-                      );
-                      triggerHaptic("light");
-                    }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold active:scale-95 transition-all cursor-pointer select-none"
-                    style={{
-                      background: isSelected
-                        ? "var(--accent)"
-                        : "var(--bg-elevated)",
-                      color: isSelected
-                        ? "var(--accent-ink)"
-                        : "var(--text-primary)",
-                      border: isSelected
-                        ? "1px solid transparent"
-                        : "1px solid var(--glass-border)",
-                    }}
-                  >
-                    <IconRenderer icon={c.emoji || ""} size="w-3.5 h-3.5" />
-                    <span>{c.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 5. Amount Range (Min / Max) */}
-          <div>
-            <label
-              className="text-[11px] font-bold uppercase tracking-wider mb-2 block px-0.5"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Rentang Nominal" : "Amount Range"}
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <div
-                className="p-3 rounded-2xl glass-surface"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <span
-                  className="text-[10px] font-bold uppercase tracking-wider block mb-1"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Nominal Min" : "Min Amount"}
-                </span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="0"
-                  value={minAmount}
-                  onChange={(e) => setMinAmount(e.target.value)}
-                  className="w-full bg-transparent text-[13px] font-bold outline-none"
-                  style={{ color: "var(--text-primary)" }}
-                />
-              </div>
-              <div
-                className="p-3 rounded-2xl glass-surface"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
-                }}
-              >
-                <span
-                  className="text-[10px] font-bold uppercase tracking-wider block mb-1"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Nominal Maks" : "Max Amount"}
-                </span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder={isIndonesian ? "Tanpa Batas" : "Unlimited"}
-                  value={maxAmount}
-                  onChange={(e) => setMaxAmount(e.target.value)}
-                  className="w-full bg-transparent text-[13px] font-bold outline-none"
-                  style={{ color: "var(--text-primary)" }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setFilterSheetOpen(false);
-              triggerHaptic("medium");
-            }}
-            className="w-full py-3.5 rounded-2xl font-semibold text-[14px] active:scale-95 transition-all shadow-xl mt-2 cursor-pointer"
-            style={{
-              background: "var(--accent)",
-              color: "var(--accent-ink)",
-            }}
-          >
-            {isIndonesian
-              ? `Tampilkan ${filteredTxs.length} Transaksi`
-              : `Show ${filteredTxs.length} Transactions`}
-          </button>
-        </div>
-      </BottomSheet>
+      {/* Bottom Sheets and Modals Container */}
+      <TransactionModalsContainer
+        monthPickerOpen={monthPickerOpen}
+        onCloseMonthPicker={() => setMonthPickerOpen(false)}
+        timeRange={timeRange}
+        setTimeRange={setTimeRange}
+        pickerYear={pickerYear}
+        setPickerYear={setPickerYear}
+        selectedCustomMonth={selectedCustomMonth}
+        setSelectedCustomMonth={setSelectedCustomMonth}
+        monthsList={MONTHS_LIST}
+        accountPickerOpen={accountPickerOpen}
+        onCloseAccountPicker={() => setAccountPickerOpen(false)}
+        selectedWalletName={selectedWalletName}
+        setSelectedWalletName={setSelectedWalletName}
+        wallets={wallets}
+        filterSheetOpen={filterSheetOpen}
+        onCloseFilterSheet={() => setFilterSheetOpen(false)}
+        activeFiltersCount={activeFiltersCount}
+        onResetAllFilters={handleResetAllFilters}
+        filter={filter}
+        setFilter={setFilter}
+        filterTabs={filterTabs}
+        customStartDate={customStartDate}
+        setCustomStartDate={setCustomStartDate}
+        customEndDate={customEndDate}
+        setCustomEndDate={setCustomEndDate}
+        categories={categories}
+        selectedCategoryIds={selectedCategoryIds}
+        setSelectedCategoryIds={setSelectedCategoryIds}
+        minAmount={minAmount}
+        setMinAmount={setMinAmount}
+        maxAmount={maxAmount}
+        setMaxAmount={setMaxAmount}
+        filteredTxsCount={filteredTxs.length}
+        sheetOpen={sheetOpen}
+        onCloseSheet={() => {
+          setSheetOpen(false);
+          setEditingTx(null);
+        }}
+        editingTx={editingTx}
+        onOpenScan={_onOpenScan}
+        onOpenVoiceAdd={() => {
+          setSheetOpen(false);
+          setEditingTx(null);
+          _onOpenVoiceAdd?.();
+        }}
+        isIndonesian={isIndonesian}
+      />
 
       {/* Bottom padding for tabbar */}
       <div className="h-6" />

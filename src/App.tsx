@@ -1355,14 +1355,14 @@ function AppShell() {
                   isDark ? "text-white" : "text-zinc-950"
                 }`}
               >
-                Your wealth
+                {isIndonesian ? "Kekayaan Anda" : "Your wealth"}
               </span>{" "}
               <span
                 className={`font-light ${
                   isDark ? "text-white/35" : "text-zinc-950/35"
                 }`}
               >
-                is
+                {isIndonesian ? "terlindungi" : "is"}
               </span>
               <br />
               <span
@@ -1370,14 +1370,14 @@ function AppShell() {
                   isDark ? "text-white/35" : "text-zinc-950/35"
                 }`}
               >
-                camera shy
+                {isIndonesian ? "dari sorotan" : "camera shy"}
               </span>{" "}
               <span
                 className={`font-semibold ${
                   isDark ? "text-white" : "text-zinc-950"
                 }`}
               >
-                for you
+                {isIndonesian ? "kamera" : "for you"}
               </span>
             </h1>
             <p
@@ -1385,7 +1385,9 @@ function AppShell() {
                 isDark ? "text-white/50" : "text-zinc-950/50"
               }`}
             >
-              Eyes on your own screen · Private by default
+              {isIndonesian
+                ? "Khusus untuk mata Anda · Privasi aktif secara otomatis"
+                : "Eyes on your own screen · Private by default"}
             </p>
           </div>
 
@@ -1404,7 +1406,7 @@ function AppShell() {
                 }`}
               />
               <span className="text-[11px] font-medium tracking-wide">
-                Privacy Shield Active
+                {isIndonesian ? "Layar Privasi Aktif" : "Privacy Shield Active"}
               </span>
             </div>
           </div>

@@ -14,7 +14,7 @@ interface LanguageSwitcherSheetProps {
 }
 
 export function LanguageSwitcherSheet({ isOpen, onClose }: LanguageSwitcherSheetProps) {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t, isIndonesian } = useLanguage();
   const { showToast } = useToast();
 
   const handleSelect = (code: SupportedLanguage) => {
@@ -108,7 +108,7 @@ export function LanguageSwitcherSheet({ isOpen, onClose }: LanguageSwitcherSheet
                             border: "1px solid var(--glass-border)",
                           }}
                         >
-                          Default
+                          {isIndonesian ? "Bawaan" : "Default"}
                         </span>
                       )}
                     </div>

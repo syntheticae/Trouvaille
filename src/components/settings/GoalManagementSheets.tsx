@@ -7,6 +7,7 @@ import { useGoals } from "../../hooks/useGoals";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface GoalManagementSheetsProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function GoalManagementSheets({
 }: GoalManagementSheetsProps) {
   const { goals, addGoal, updateGoal, deleteGoal, depositToGoal } = useGoals();
   const { showToast } = useToast();
+  const { isIndonesian } = useLanguage();
 
   const [addGoalOpen, setAddGoalOpen] = useState(false);
   const [selectedGoalSetting, setSelectedGoalSetting] = useState<any | null>(null);
@@ -35,26 +37,30 @@ export function GoalManagementSheets({
       targetAmount: Number(goalTarget),
       currentAmount: Number(goalSaved || 0),
       icon: goalIcon,
-      color: "#B8FA4E",
+      color: "#ffffff",
     });
     setAddGoalOpen(false);
     setGoalTitle("");
     setGoalTarget("");
     setGoalSaved("");
     setGoalIcon("");
-    showToast("Financial Goal created", "add", () => {});
+    showToast(
+      isIndonesian ? "Target finansial dibuat" : "Financial Goal created",
+      "add",
+      () => {},
+    );
   };
 
   return (
     <>
       <BottomSheet isOpen={isOpen} onClose={onClose}>
-        <div className="p-5 pb-12 space-y-4">
+        <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] space-y-4">
           <div className="flex items-center justify-between sticky top-0 bg-transparent z-10 pb-2">
             <h3
               className="font-semibold text-lg"
               style={{ color: "var(--text-primary)" }}
             >
-              Financial Goals
+              {isIndonesian ? "Target Finansial" : "Financial Goals"}
             </h3>
             <button
               onClick={() => {
@@ -112,10 +118,17 @@ export function GoalManagementSheets({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm(`Delete goal ${g.title}?`)) deleteGoal(g.id);
+                    if (
+                      confirm(
+                        isIndonesian
+                          ? `Hapus target ${g.title}?`
+                          : `Delete goal ${g.title}?`,
+                      )
+                    )
+                      deleteGoal(g.id);
                   }}
                   className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
-                  style={{ color: "#ef4444" }}
+                  style={{ color: "var(--text-secondary)" }}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -126,7 +139,9 @@ export function GoalManagementSheets({
                 className="text-sm text-center py-4"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                No financial goals yet.
+                {isIndonesian
+                  ? "Belum ada target finansial."
+                  : "No financial goals yet."}
               </p>
             )}
           </div>
@@ -134,12 +149,12 @@ export function GoalManagementSheets({
       </BottomSheet>
 
       <BottomSheet isOpen={addGoalOpen} onClose={() => setAddGoalOpen(false)}>
-        <div className="p-5 pb-10 space-y-4">
+        <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] space-y-4">
           <h3
             className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
-            Add Goal
+            {isIndonesian ? "Tambah Target" : "Add Goal"}
           </h3>
           <div className="flex gap-2">
             <input
@@ -156,7 +171,11 @@ export function GoalManagementSheets({
               type="text"
               value={goalTitle}
               onChange={(e) => setGoalTitle(e.target.value)}
-              placeholder="Goal Name (e.g. MacBook)"
+              placeholder={
+                isIndonesian
+                  ? "Nama Target (misal: MacBook)"
+                  : "Goal Name (e.g. MacBook)"
+              }
               className="flex-1 p-3.5 rounded-2xl outline-none font-semibold"
               style={{
                 background: "var(--bg-elevated)",
@@ -171,7 +190,9 @@ export function GoalManagementSheets({
             pattern="[0-9]*"
             value={goalTarget}
             onChange={(e) => setGoalTarget(e.target.value)}
-            placeholder="Target Amount (IDR)"
+            placeholder={
+              isIndonesian ? "Nominal Target (IDR)" : "Target Amount (IDR)"
+            }
             className="w-full p-3.5 rounded-2xl outline-none font-semibold"
             style={{
               background: "var(--bg-elevated)",
@@ -185,7 +206,9 @@ export function GoalManagementSheets({
             pattern="[0-9]*"
             value={goalSaved}
             onChange={(e) => setGoalSaved(e.target.value)}
-            placeholder="Already Saved (IDR)"
+            placeholder={
+              isIndonesian ? "Dana Terkumpul (IDR)" : "Already Saved (IDR)"
+            }
             className="w-full p-3.5 rounded-2xl outline-none font-semibold"
             style={{
               background: "var(--bg-elevated)",
@@ -198,7 +221,7 @@ export function GoalManagementSheets({
             className="w-full py-4 rounded-[20px] font-semibold text-[15px] active:scale-95 cursor-pointer"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
-            Save Goal
+            {isIndonesian ? "Simpan Target" : "Save Goal"}
           </button>
         </div>
       </BottomSheet>

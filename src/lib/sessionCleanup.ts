@@ -171,4 +171,12 @@ export async function clearAllLocalUserSessionData(
   } catch (bioErr) {
     console.warn("[SessionCleanup] Biometric teardown warning:", bioErr);
   }
+
+  // 8. Notify mounted React Contexts (e.g. SpaceProvider) to purge in-memory state immediately
+  try {
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent("trouvaille_session_teardown"));
+    }
+  } catch {}
 }
+

@@ -71,18 +71,6 @@ export function WebDashboardLinkModal({
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
-  // Load linked sessions on modal open
-  useEffect(() => {
-    if (isOpen) {
-      setLinkedSessions(getLinkedWebSessions());
-      setViewMode("overview");
-      setScannedPayload(null);
-      setScanErrorMessage(null);
-    } else {
-      stopCameraStream();
-    }
-  }, [isOpen]);
-
   // Stop camera feed and scan loop
   const stopCameraStream = useCallback(() => {
     if (scanIntervalRef.current) {
@@ -95,6 +83,18 @@ export function WebDashboardLinkModal({
     }
     setIsCameraActive(false);
   }, []);
+
+  // Load linked sessions on modal open
+  useEffect(() => {
+    if (isOpen) {
+      setLinkedSessions(getLinkedWebSessions());
+      setViewMode("overview");
+      setScannedPayload(null);
+      setScanErrorMessage(null);
+    } else {
+      stopCameraStream();
+    }
+  }, [isOpen, stopCameraStream]);
 
   // Process a raw QR string
   const handleProcessQrData = useCallback(
@@ -561,8 +561,8 @@ export function WebDashboardLinkModal({
                       <button
                         type="button"
                         onClick={() => handleRemoveSession(s.sessionId)}
-                        className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-rose-400 active:scale-90 transition-all cursor-pointer shrink-0"
-                        title="Remove session"
+                        className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer shrink-0"
+                        title={isIndonesian ? "Hapus sesi" : "Remove session"}
                       >
                         <Trash2 size={13} strokeWidth={1.75} />
                       </button>
@@ -592,8 +592,10 @@ export function WebDashboardLinkModal({
               {/* Active Camera Live Badge */}
               {isCameraActive && (
                 <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-1.5 text-[10px] text-white/90 z-10 pointer-events-none">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-medium tracking-wide">Live Scan</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  <span className="font-medium tracking-wide">
+                    {isIndonesian ? "Pindai Langsung" : "Live Scan"}
+                  </span>
                 </div>
               )}
 
@@ -628,12 +630,15 @@ export function WebDashboardLinkModal({
               <div
                 className="p-2.5 rounded-xl border flex items-center gap-2 text-left animate-fadeIn"
                 style={{
-                  background: "rgba(239, 68, 68, 0.08)",
-                  borderColor: "rgba(239, 68, 68, 0.25)",
+                  background: "var(--glass-fill)",
+                  borderColor: "var(--glass-border)",
                 }}
               >
-                <AlertCircle size={14} className="text-rose-400 shrink-0" />
-                <p className="text-[11px] font-medium text-rose-300">
+                <AlertCircle
+                  size={14}
+                  className="text-[var(--text-primary)] shrink-0"
+                />
+                <p className="text-[11px] font-medium text-[var(--text-secondary)]">
                   {scanErrorMessage}
                 </p>
               </div>
@@ -735,7 +740,8 @@ export function WebDashboardLinkModal({
                     className="font-semibold truncate max-w-[180px]"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {session?.user?.email || "Signed in user"}
+                    {session?.user?.email ||
+                      (isIndonesian ? "Pengguna masuk" : "Signed in user")}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

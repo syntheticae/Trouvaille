@@ -220,4 +220,47 @@ describe("Calendar Cashflow Runway Forecasting Engine Suite", () => {
     expect(result.daysUntilPayday).toBe(13); // Sep 15 to Sep 28 = 13 days
     expect(result.nextPaydayAmount).toBe(18000000);
   });
+
+  it("matches transactions with full ISO timestamps (YYYY-MM-DDTHH:mm:ss) to their calendar day", () => {
+    const isoTransactions: Transaction[] = [
+      ...mockTransactions,
+      {
+        id: "t-iso-1",
+        user_id: "u1",
+        wallet_id: "w1",
+        category_id: "c-food",
+        amount: 275000,
+        type: "expense",
+        occurred_on: "2026-09-06T14:25:10",
+        created_at: "2026-09-06T14:25:10Z",
+      },
+      {
+        id: "t-iso-2",
+        user_id: "u1",
+        wallet_id: "w1",
+        category_id: "c-bonus",
+        amount: 500000,
+        type: "income",
+        occurred_on: "2026-09-06T19:05:00",
+        created_at: "2026-09-06T19:05:00Z",
+      },
+    ];
+
+    const result = calculateMonthCalendarRunway({
+      year: 2026,
+      month: 9,
+      transactions: isoTransactions,
+      bills: mockBills,
+      currentLiquidAssets: 10000000,
+      recurringItems: mockRecurring,
+      referenceDate,
+    });
+
+    const day6 = result.days.find((d) => d.date === "2026-09-06");
+    expect(day6?.transactionsCount).toBe(2);
+    expect(day6?.actualOutflow).toBe(275000);
+    expect(day6?.actualInflow).toBe(500000);
+    expect(day6?.netActualCashflow).toBe(225000);
+    expect(day6?.isNoSpendDay).toBe(false);
+  });
 });

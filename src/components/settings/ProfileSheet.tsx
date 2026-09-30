@@ -103,9 +103,22 @@ export function ProfileSheet({
       }
       triggerHaptic("medium");
       onClose();
-      showToast("Profile updated successfully", "update", () => {});
+      showToast(
+        isIndonesian
+          ? "Profil berhasil diperbarui"
+          : "Profile updated successfully",
+        "update",
+        () => {},
+      );
     } catch (e: any) {
-      showToast(e.message || "Failed to update profile", "delete", () => {});
+      showToast(
+        e.message ||
+          (isIndonesian
+            ? "Gagal memperbarui profil"
+            : "Failed to update profile"),
+        "delete",
+        () => {},
+      );
     } finally {
       setIsSaving(false);
     }
@@ -116,13 +129,19 @@ export function ProfileSheet({
     navigator.clipboard.writeText(session.user.id);
     setCopiedId(true);
     triggerHaptic("light");
-    showToast("User ID copied to clipboard", "update", () => {});
+    showToast(
+      isIndonesian
+        ? "ID Pengguna disalin ke papan klip"
+        : "User ID copied to clipboard",
+      "update",
+      () => {},
+    );
     setTimeout(() => setCopiedId(false), 2500);
   };
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-10 space-y-4">
+      <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] space-y-4">
         {/* Header */}
         <div className="relative">
           <div className="flex items-center justify-between">
@@ -147,10 +166,10 @@ export function ProfileSheet({
                 }}
                 className={`w-8 h-8 rounded-full flex items-center justify-center glass-surface border transition-all cursor-pointer ${
                   isDangerMenuOpen
-                    ? "border-red-500/40 bg-red-500/10 text-red-500"
+                    ? "border-[var(--text-primary)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
                     : "border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 }`}
-                title={isIndonesian ? "Aksi Data & Vault" : "Data & Vault Actions"}
+                title={isIndonesian ? "Tindakan Data & Brankas" : "Data & Vault Actions"}
                 aria-label="Vault Actions"
               >
                 <MoreVertical size={16} strokeWidth={1.75} />
@@ -190,7 +209,7 @@ export function ProfileSheet({
                       </p>
                       <p className="text-[10px] text-[var(--text-tertiary)] truncate">
                         {isIndonesian
-                          ? "Kosongkan transaksi pada space aktif"
+                          ? "Kosongkan transaksi pada ruang aktif"
                           : "Wipe transactions in active space"}
                       </p>
                     </div>
@@ -215,7 +234,7 @@ export function ProfileSheet({
                       </p>
                       <p className="text-[10px] text-[var(--text-tertiary)] truncate">
                         {isIndonesian
-                          ? "Buka kembali wizard setup awal"
+                          ? "Buka kembali panduan pengaturan awal"
                           : "Re-run initial onboarding wizard"}
                       </p>
                     </div>
@@ -260,16 +279,16 @@ export function ProfileSheet({
                       onClose();
                       onOpenDeleteAccount();
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-red-500/[0.08] transition-colors cursor-pointer group"
+                    className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors cursor-pointer group"
                   >
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center border border-red-500/25 bg-red-500/10 text-red-600 dark:text-red-400 shrink-0">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)] shrink-0">
                       <Trash2 size={13} strokeWidth={1.75} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-red-600 dark:text-red-400">
-                        {isIndonesian ? "Hapus Akun & Reset Vault" : "Delete Account & Reset Vault"}
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)]">
+                        {isIndonesian ? "Hapus Akun & Reset Brankas" : "Delete Account & Reset Vault"}
                       </p>
-                      <p className="text-[10px] text-red-500/70 truncate">
+                      <p className="text-[10px] text-[var(--text-tertiary)] truncate">
                         {isIndonesian
                           ? "Hapus permanen akun & seluruh data"
                           : "Permanently wipe account & all data"}
@@ -308,7 +327,7 @@ export function ProfileSheet({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#18181b] text-white dark:bg-white dark:text-black flex items-center justify-center shadow-lg active:scale-90 transition-transform cursor-pointer border-2 border-[var(--bg-elevated)]"
-              title="Change Photo"
+              title={isIndonesian ? "Ubah Foto" : "Change Photo"}
             >
               <Camera size={13} strokeWidth={2} />
             </button>
@@ -321,7 +340,9 @@ export function ProfileSheet({
             />
           </div>
           <span className="text-[11px] text-[var(--text-tertiary)] mt-2 font-medium">
-            Tap camera to change photo
+            {isIndonesian
+              ? "Ketuk kamera untuk mengubah foto"
+              : "Tap camera to change photo"}
           </span>
         </div>
 
@@ -340,7 +361,7 @@ export function ProfileSheet({
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="e.g. Alex Morgan"
+                placeholder={isIndonesian ? "misal: Alex Morgan" : "e.g. Alex Morgan"}
                 className="w-full min-w-0 px-3 py-2 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors"
                 style={{ color: "var(--text-primary)" }}
               />
@@ -404,7 +425,7 @@ export function ProfileSheet({
               {isGuest ? (
                 <>
                   <HardDrive size={11} strokeWidth={1.5} />
-                  <span>{isIndonesian ? "Vault Lokal (Offline)" : "Local Vault (Offline)"}</span>
+                  <span>{isIndonesian ? "Brankas Lokal" : "Local Vault (Offline)"}</span>
                 </>
               ) : (
                 <>
@@ -422,7 +443,7 @@ export function ProfileSheet({
                 <span>Email</span>
               </span>
               <span className="font-medium text-[var(--text-primary)] truncate max-w-[210px]">
-                {session?.user?.email || (isIndonesian ? "Pengguna Tamu (Offline)" : "Guest User (Offline)")}
+                {session?.user?.email || (isIndonesian ? "Pengguna Tamu" : "Guest User (Offline)")}
               </span>
             </div>
 
@@ -449,7 +470,7 @@ export function ProfileSheet({
             <div className="flex items-center justify-between py-1.5">
               <span className="text-[var(--text-tertiary)] flex items-center gap-1.5">
                 <Shield size={12} strokeWidth={1.5} />
-                <span>{isIndonesian ? "Protokol Vault" : "Vault Protocol"}</span>
+                <span>{isIndonesian ? "Protokol Brankas" : "Vault Protocol"}</span>
               </span>
               <span className="text-[11px] font-medium text-[var(--text-secondary)]">
                 {isGuest ? "IndexedDB + LocalStorage" : "Supabase RLS + AES-GCM"}

@@ -52,7 +52,7 @@ export function PortfolioIntelligenceDeck({
   const [activeTelemetryTab, setActiveTelemetryTab] = useState<"performance" | "risk">("performance");
 
   // 1. USDT & Recorded Wallet Balances
-  const usdtPref = useMemo(() => getSavedUsdtPref(user?.id), [user?.id, holdings]);
+  const usdtPref = getSavedUsdtPref(user?.id);
   const usdtHolding = useMemo(
     () => holdings.find((h) => h.symbol?.toUpperCase() === "USDT"),
     [holdings],

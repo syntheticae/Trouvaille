@@ -54,6 +54,21 @@ describe("Phase III: Cashflow Intelligence Test Suite", () => {
     expect(recurring[0]?.frequency).toBe("weekly")
   })
 
+  it("handles full ISO timestamps (YYYY-MM-DDTHH:mm:ss) in detectRecurringTransactions (Rule 8.1)", () => {
+    const txs: Transaction[] = [
+      { id: "iso1", user_id: "u", amount: 186000, type: "expense", wallet_id: "w1", to_wallet_id: null, category_id: "c-stream", note: "Netflix Premium", occurred_on: "2026-05-15T09:14:22", created_at: "", categories: expenseCategories[3] },
+      { id: "iso2", user_id: "u", amount: 186000, type: "expense", wallet_id: "w1", to_wallet_id: null, category_id: "c-stream", note: "Netflix Premium", occurred_on: "2026-06-15T14:30:00", created_at: "", categories: expenseCategories[3] },
+      { id: "iso3", user_id: "u", amount: 186000, type: "expense", wallet_id: "w1", to_wallet_id: null, category_id: "c-stream", note: "Netflix Premium", occurred_on: "2026-07-15T18:45:10", created_at: "", categories: expenseCategories[3] },
+      { id: "iso4", user_id: "u", amount: 186000, type: "expense", wallet_id: "w1", to_wallet_id: null, category_id: "c-stream", note: "Netflix Premium", occurred_on: "2026-08-15T20:05:00", created_at: "", categories: expenseCategories[3] }
+    ]
+
+    const recurring = detectRecurringTransactions(txs, [], expenseCategories, new Date("2026-08-20T12:00:00Z"))
+    expect(recurring).toHaveLength(1)
+    expect(recurring[0]?.frequency).toBe("monthly")
+    expect(recurring[0]?.lastOccurrenceDate).toBe("2026-08-15")
+    expect(recurring[0]?.nextExpectedDate).toBe("2026-09-14")
+  })
+
   it("classifies expense structure with reconciliation and category overrides", () => {
     const txs: Transaction[] = [
       { id: "e1", user_id: "u", amount: 1000000, type: "expense", wallet_id: "w1", to_wallet_id: null, category_id: "c-hunian", note: "Rent", occurred_on: "2026-08-01", created_at: "", categories: expenseCategories[0] },

@@ -13,6 +13,7 @@ import {
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { useWallets } from "../../hooks/useWallets";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useCategories } from "../../hooks/useCategories";
@@ -101,6 +102,7 @@ interface NfcCardReaderModalProps {
 }
 
 export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps) {
+  const { isIndonesian } = useLanguage();
   const { showToast } = useToast();
   const { data: wallets = [] } = useWallets();
   const { balancesById, balancesByName } = useWalletBalances();
@@ -208,25 +210,35 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
               : `NFC Balance Sync ${detectedCard.productName} (-)`,
           });
           showToast(
-            `Synchronized ${targetWallet.name} to ${formatRupiah(detectedCard.balance)}`,
+            isIndonesian
+              ? `Saldo ${targetWallet.name} disinkronkan ke ${formatRupiah(detectedCard.balance)}`
+              : `Synchronized ${targetWallet.name} to ${formatRupiah(detectedCard.balance)}`,
             "add",
             () => {}
           );
         } catch {
-          showToast("Failed to synchronize balance", "delete", () => {});
+          showToast(
+            isIndonesian ? "Gagal menyinkronkan saldo" : "Failed to synchronize balance",
+            "delete",
+            () => {}
+          );
         } finally {
           setIsSyncing(false);
         }
       } else {
         showToast(
-          `${targetWallet.name} is already up to date (${formatRupiah(detectedCard.balance)})`,
+          isIndonesian
+            ? `Saldo ${targetWallet.name} sudah sesuai (${formatRupiah(detectedCard.balance)})`
+            : `${targetWallet.name} is already up to date (${formatRupiah(detectedCard.balance)})`,
           "update",
           () => {}
         );
       }
     } else {
       showToast(
-        `Verified ${detectedCard.productName}: ${formatRupiah(detectedCard.balance)}. Add wallet "${detectedCard.productName}" to link`,
+        isIndonesian
+          ? `Terverifikasi ${detectedCard.productName}: ${formatRupiah(detectedCard.balance)}. Tambahkan rekening "${detectedCard.productName}" untuk menautkan`
+          : `Verified ${detectedCard.productName}: ${formatRupiah(detectedCard.balance)}. Add wallet "${detectedCard.productName}" to link`,
         "update",
         () => {}
       );
@@ -264,13 +276,19 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
         note: `${detectedCard.lastTapLocation} (${detectedCard.productName}) #transit`,
       });
       showToast(
-        `Logged transit fare ${formatRupiah(detectedCard.lastTapAmount)} from ${targetWallet ? targetWallet.name : "Wallet"}`,
+        isIndonesian
+          ? `Tarif transit dicatat ${formatRupiah(detectedCard.lastTapAmount)} dari ${targetWallet ? targetWallet.name : "Rekening"}`
+          : `Logged transit fare ${formatRupiah(detectedCard.lastTapAmount)} from ${targetWallet ? targetWallet.name : "Wallet"}`,
         "add",
         () => {}
       );
       onClose();
     } catch {
-      showToast("Unable to record transaction", "delete", () => {});
+      showToast(
+        isIndonesian ? "Gagal mencatat transaksi" : "Unable to record transaction",
+        "delete",
+        () => {}
+      );
     }
   };
 
@@ -297,13 +315,13 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
             </div>
             <div>
               <h3 className="text-[14px] font-semibold text-[var(--text-primary)] leading-tight">
-                Contactless E-Money Hub
+                {isIndonesian ? "Pusat Uang Elektronik" : "Contactless E-Money Hub"}
               </h3>
               <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
-                <span>Indonesian Transit & Toll Smartcard Reader</span>
+                <span>{isIndonesian ? "Pembaca Kartu Transit & Tol Indonesia" : "Indonesian Transit & Toll Smartcard Reader"}</span>
                 {hasNfcHardware && (
                   <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-semibold bg-white/10 text-[var(--text-primary)] border border-white/15">
-                    Web NFC Live
+                    {isIndonesian ? "NFC Aktif" : "Web NFC Live"}
                   </span>
                 )}
               </p>
@@ -340,10 +358,12 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
 
             <div className="mt-4 text-center space-y-1">
               <span className="text-[13px] font-semibold text-[var(--text-primary)] block">
-                Ready to Scan Smartcard
+                {isIndonesian ? "Siap Memindai Kartu Pintar" : "Ready to Scan Smartcard"}
               </span>
               <p className="text-[11px] text-[var(--text-tertiary)] max-w-xs px-4">
-                Hold top of device near your Flazz BCA, Mandiri E-Money, TapCash, or Brizzi card
+                {isIndonesian
+                  ? "Dekatkan bagian atas perangkat ke kartu Flazz BCA, Mandiri E-Money, TapCash, atau Brizzi"
+                  : "Hold top of device near your Flazz BCA, Mandiri E-Money, TapCash, or Brizzi card"}
               </p>
             </div>
           </div>
@@ -373,7 +393,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                 <div className="px-2.5 py-1 rounded-full bg-white/10 border border-white/15 flex items-center gap-1.5">
                   <CheckCircle2 size={12} strokeWidth={2.5} className="text-white" />
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-white">
-                    Verified
+                    {isIndonesian ? "Terverifikasi" : "Verified"}
                   </span>
                 </div>
               </div>
@@ -381,7 +401,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
               {/* Balance Hero */}
               <div className="space-y-0.5">
                 <span className="text-[10px] text-zinc-400 font-medium block">
-                  Stored Card Balance
+                  {isIndonesian ? "Saldo Kartu Tersimpan" : "Stored Card Balance"}
                 </span>
                 <p className="text-[26px] font-bold font-mono tracking-tight text-white">
                   {formatRupiah(detectedCard.balance)}
@@ -391,7 +411,9 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
               {/* Masked UID */}
               <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px] font-mono text-zinc-400">
                 <span>{detectedCard.cardUid}</span>
-                <span className="text-[10px] uppercase font-bold text-zinc-300">NFC TAP</span>
+                <span className="text-[10px] uppercase font-bold text-zinc-300">
+                  {isIndonesian ? "KETUK NFC" : "NFC TAP"}
+                </span>
               </div>
             </div>
 
@@ -428,7 +450,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                   -{formatRupiah(detectedCard.lastTapAmount)}
                 </span>
                 <span className="text-[9px] uppercase font-bold text-[var(--text-tertiary)]">
-                  Trip Fare
+                  {isIndonesian ? "Tarif Perjalanan" : "Trip Fare"}
                 </span>
               </div>
             </div>
@@ -441,7 +463,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                 className="w-full py-3 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-2 bg-white text-black active:scale-98 transition-transform cursor-pointer shadow-sm"
               >
                 <Wallet size={15} strokeWidth={2} />
-                <span>Sync Balance to Wallet</span>
+                <span>{isIndonesian ? "Sinkronkan Saldo ke Rekening" : "Sync Balance to Wallet"}</span>
               </button>
 
               <div className="grid grid-cols-2 gap-2">
@@ -455,7 +477,11 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                     color: "var(--text-primary)",
                   }}
                 >
-                  <span>Log Fare ({formatRupiah(detectedCard.lastTapAmount)})</span>
+                  <span>
+                    {isIndonesian
+                      ? `Catat Tarif (${formatRupiah(detectedCard.lastTapAmount)})`
+                      : `Log Fare (${formatRupiah(detectedCard.lastTapAmount)})`}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -468,7 +494,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                   }}
                 >
                   <RefreshCw size={13} strokeWidth={1.75} />
-                  <span>Scan Another Card</span>
+                  <span>{isIndonesian ? "Pindai Kartu Lain" : "Scan Another Card"}</span>
                 </button>
               </div>
             </div>
@@ -479,10 +505,10 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
         <div className="space-y-2 pt-2 border-t border-white/[0.08]">
           <div className="flex items-center justify-between text-[11px]">
             <span className="font-semibold text-[var(--text-secondary)]">
-              Supported Indonesian Smartcards
+              {isIndonesian ? "Kartu Elektronik Indonesia yang Didukung" : "Supported Indonesian Smartcards"}
             </span>
             <span className="text-[10px] text-[var(--text-tertiary)]">
-              Tap card to simulate read
+              {isIndonesian ? "Ketuk kartu untuk simulasi pembacaan" : "Tap card to simulate read"}
             </span>
           </div>
 
@@ -523,7 +549,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
           onClick={onClose}
           className="w-full py-2.5 rounded-xl text-[12px] font-medium text-[var(--text-tertiary)] hover:text-white active:scale-98 transition-colors cursor-pointer"
         >
-          Close Reader
+          {isIndonesian ? "Tutup Pembaca" : "Close Reader"}
         </button>
       </div>
     </div>

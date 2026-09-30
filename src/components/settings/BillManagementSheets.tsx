@@ -420,13 +420,15 @@ export function BillManagementSheets({
                           () => deleteBill.mutate(b.id),
                         );
                       }}
-                      className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 cursor-pointer"
+                      className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 cursor-pointer transition-colors"
                       style={{
-                        background: "rgba(239, 68, 68, 0.12)",
-                        color: "#ef4444",
+                        background: "var(--glass-fill)",
+                        border: "1px solid var(--glass-border)",
+                        color: "var(--text-secondary)",
                       }}
+                      title={isIndonesian ? "Hapus Tagihan" : "Delete Bill"}
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={14} strokeWidth={1.75} />
                     </button>
                   </div>
                 </div>
@@ -473,7 +475,11 @@ export function BillManagementSheets({
               type="text"
               value={billTitle}
               onChange={(e) => setBillTitle(e.target.value)}
-              placeholder="e.g. Netflix, Gym, Internet"
+              placeholder={
+                isIndonesian
+                  ? "Misal: Netflix, Listrik, Internet"
+                  : "e.g. Netflix, Gym, Internet"
+              }
               className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[15px]"
               style={{
                 background: "var(--bg-elevated)",

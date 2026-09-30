@@ -2,12 +2,17 @@ import { describe, it, expect } from "vitest";
 import {
   encryptVault,
   decryptVault,
+  restoreVaultData,
   uint8ToHex,
   hexToUint8,
   uint8ToBase64,
   base64ToUint8,
   type TrouvailleVaultData,
 } from "../src/lib/vaultEncryption";
+import {
+  doesTransactionMatchResetPeriod,
+  getResetPeriodDateBounds,
+} from "../src/hooks/useResetTransactions";
 
 describe("vaultEncryption", () => {
   const sampleVaultData: TrouvailleVaultData = {
@@ -209,4 +214,79 @@ describe("vaultEncryption", () => {
     const restoredFromBase64 = base64ToUint8(base64);
     expect(Array.from(restoredFromBase64)).toEqual([0, 15, 16, 255, 128, 64]);
   });
+
+  it("should restore vault data into local storage when in Guest/Offline Mode", async () => {
+    const store = new Map<string, string>();
+    const mockStorage = {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, val: string) => {
+        store.set(key, val);
+      },
+      removeItem: (key: string) => {
+        store.delete(key);
+      },
+      clear: () => store.clear(),
+      key: (i: number) => Array.from(store.keys())[i] ?? null,
+      get length() {
+        return store.size;
+      },
+    };
+    Object.defineProperty(globalThis, "localStorage", {
+      value: mockStorage,
+      configurable: true,
+      writable: true,
+    });
+
+    localStorage.setItem("trouvaille_guest_mode", "true");
+    localStorage.removeItem("TROUVAILLE_TX_BACKUP_V1");
+    localStorage.removeItem("TROUVAILLE_WALLETS_BACKUP_V1");
+    localStorage.removeItem("TROUVAILLE_CATEGORIES_BACKUP_V1");
+
+    const stages: string[] = [];
+    const result = await restoreVaultData(sampleVaultData, {
+      mode: "replace",
+      isIndonesian: true,
+      onProgress: (p) => stages.push(p.stage),
+    });
+
+    expect(result.restoredTransactions).toBe(2);
+    expect(result.restoredWallets).toBe(1);
+    expect(result.restoredCategories).toBe(2);
+    expect(result.restoredGoals).toBe(1);
+    expect(stages.some((s) => s.includes("Pemulihan selesai"))).toBe(true);
+
+    const savedTxs = JSON.parse(
+      localStorage.getItem("TROUVAILLE_TX_BACKUP_V1") || "[]",
+    );
+    expect(savedTxs).toHaveLength(2);
+  });
+
+  it("should accurately match full ISO timestamps (YYYY-MM-DDTHH:mm:ss) in doesTransactionMatchResetPeriod (Rule 8.1)", () => {
+    const refNow = new Date(2026, 8, 30, 15, 30, 0); // 2026-09-30 15:30:00
+    const bounds = getResetPeriodDateBounds("today", refNow);
+    expect(bounds).toEqual({ startDate: "2026-09-30", endDate: "2026-09-30" });
+
+    // Full ISO timestamp on today must match "today", "week", "month", "year", "all"
+    expect(
+      doesTransactionMatchResetPeriod("2026-09-30T14:25:00", "today", refNow),
+    ).toBe(true);
+    expect(
+      doesTransactionMatchResetPeriod("2026-09-30T23:59:59", "week", refNow),
+    ).toBe(true);
+    expect(
+      doesTransactionMatchResetPeriod("2026-09-30T08:00:00", "month", refNow),
+    ).toBe(true);
+    expect(
+      doesTransactionMatchResetPeriod("2026-09-30T08:00:00", "year", refNow),
+    ).toBe(true);
+
+    // Previous day in same week matches "week" and "month", but not "today"
+    expect(
+      doesTransactionMatchResetPeriod("2026-09-28T19:10:00", "today", refNow),
+    ).toBe(false);
+    expect(
+      doesTransactionMatchResetPeriod("2026-09-28T19:10:00", "week", refNow),
+    ).toBe(true);
+  });
 });
+

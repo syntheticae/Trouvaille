@@ -315,6 +315,10 @@ export async function parseVaultFile(file: File): Promise<EncryptedVaultPayload>
   return json as EncryptedVaultPayload;
 }
 
+import { setVaultItem } from "./indexedDbStorage";
+import { clearPendingMutations } from "./syncEngine";
+import { generateUUID } from "./utils";
+
 export interface RestoreProgress {
   stage: string;
   progress: number; // 0 to 100
@@ -332,16 +336,25 @@ export async function restoreVaultData(
   vaultData: TrouvailleVaultData,
   options: {
     mode: "merge" | "replace";
+    isIndonesian?: boolean;
     onProgress?: (progress: RestoreProgress) => void;
   },
 ): Promise<RestoreVaultResult> {
-  const { mode, onProgress } = options;
-  onProgress?.({ stage: "Preparing vault data...", progress: 5 });
+  const { mode, isIndonesian = false, onProgress } = options;
+  onProgress?.({
+    stage: isIndonesian
+      ? "Menyiapkan data brankas..."
+      : "Preparing vault data...",
+    progress: 5,
+  });
 
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  const userId = session?.user?.id;
+  const isGuestMode =
+    typeof localStorage !== "undefined" &&
+    localStorage.getItem("trouvaille_guest_mode") === "true";
+  const userId = !isGuestMode ? session?.user?.id : undefined;
 
   const walletIdMap: Record<string, string> = {};
   const categoryIdMap: Record<string, string> = {};
@@ -354,9 +367,12 @@ export async function restoreVaultData(
 
   if (userId) {
     // ------------------------------------------------------------------
-    // 1. Wallets
+    // 1. Wallets (Cloud Mode)
     // ------------------------------------------------------------------
-    onProgress?.({ stage: "Restoring wallets...", progress: 15 });
+    onProgress?.({
+      stage: isIndonesian ? "Memulihkan rekening..." : "Restoring wallets...",
+      progress: 15,
+    });
     const { data: existingWallets } = await supabase
       .from("wallets")
       .select("*")
@@ -387,9 +403,14 @@ export async function restoreVaultData(
     }
 
     // ------------------------------------------------------------------
-    // 2. Categories
+    // 2. Categories (Cloud Mode)
     // ------------------------------------------------------------------
-    onProgress?.({ stage: "Restoring categories...", progress: 30 });
+    onProgress?.({
+      stage: isIndonesian
+        ? "Memulihkan kategori..."
+        : "Restoring categories...",
+      progress: 30,
+    });
     const { data: existingCategories } = await supabase
       .from("categories")
       .select("*")
@@ -425,9 +446,14 @@ export async function restoreVaultData(
     }
 
     // ------------------------------------------------------------------
-    // 3. Bills
+    // 3. Bills (Cloud Mode)
     // ------------------------------------------------------------------
-    onProgress?.({ stage: "Restoring scheduled bills...", progress: 45 });
+    onProgress?.({
+      stage: isIndonesian
+        ? "Memulihkan jadwal tagihan..."
+        : "Restoring scheduled bills...",
+      progress: 45,
+    });
     if (mode === "replace") {
       await supabase.from("bills").delete().eq("user_id", userId);
     }
@@ -446,9 +472,14 @@ export async function restoreVaultData(
     }
 
     // ------------------------------------------------------------------
-    // 4. Transactions
+    // 4. Transactions (Cloud Mode)
     // ------------------------------------------------------------------
-    onProgress?.({ stage: "Restoring transactions...", progress: 55 });
+    onProgress?.({
+      stage: isIndonesian
+        ? "Memulihkan transaksi..."
+        : "Restoring transactions...",
+      progress: 55,
+    });
     if (mode === "replace") {
       await supabase.from("transactions").delete().eq("user_id", userId);
     }
@@ -479,16 +510,183 @@ export async function restoreVaultData(
       const currentProgress =
         55 + Math.round(((i + chunk.length) / txsToInsert.length) * 35);
       onProgress?.({
-        stage: `Restoring transactions (${Math.min(i + batchSize, txsToInsert.length)}/${txsToInsert.length})...`,
+        stage: isIndonesian
+          ? `Memulihkan transaksi (${Math.min(i + batchSize, txsToInsert.length)}/${txsToInsert.length})...`
+          : `Restoring transactions (${Math.min(i + batchSize, txsToInsert.length)}/${txsToInsert.length})...`,
         progress: currentProgress,
       });
     }
+  } else if (typeof localStorage !== "undefined") {
+    // ------------------------------------------------------------------
+    // Guest / Offline Local Mode Restoration
+    // ------------------------------------------------------------------
+    onProgress?.({
+      stage: isIndonesian
+        ? "Memulihkan rekening lokal..."
+        : "Restoring local wallets...",
+      progress: 20,
+    });
+    let localWallets: Wallet[] = [];
+    if (mode === "merge") {
+      try {
+        const raw = localStorage.getItem("TROUVAILLE_WALLETS_BACKUP_V1");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) localWallets = parsed;
+        }
+      } catch {}
+    }
+
+    for (const vWallet of vaultData.wallets) {
+      const match = localWallets.find(
+        (w) => w.name.trim().toLowerCase() === vWallet.name.trim().toLowerCase(),
+      );
+      if (match) {
+        walletIdMap[vWallet.id] = match.id;
+      } else {
+        const newId = vWallet.id || generateUUID();
+        walletIdMap[vWallet.id] = newId;
+        localWallets.push({
+          ...vWallet,
+          id: newId,
+          user_id: "guest_local_user",
+          icon: vWallet.icon || "Banknote",
+          classification: vWallet.classification || "liquid",
+          created_at: vWallet.created_at || new Date().toISOString(),
+        });
+        restoredWallets++;
+      }
+    }
+    try {
+      localStorage.setItem(
+        "TROUVAILLE_WALLETS_BACKUP_V1",
+        JSON.stringify(localWallets),
+      );
+    } catch {}
+
+    onProgress?.({
+      stage: isIndonesian
+        ? "Memulihkan kategori lokal..."
+        : "Restoring local categories...",
+      progress: 40,
+    });
+    let localCategories: Category[] = [];
+    if (mode === "merge") {
+      try {
+        const raw = localStorage.getItem("TROUVAILLE_CATEGORIES_BACKUP_V1");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) localCategories = parsed;
+        }
+      } catch {}
+    }
+
+    for (const vCat of vaultData.categories) {
+      const match = localCategories.find(
+        (c) =>
+          c.name.trim().toLowerCase() === vCat.name.trim().toLowerCase() &&
+          c.type === vCat.type,
+      );
+      if (match) {
+        categoryIdMap[vCat.id] = match.id;
+      } else {
+        const newId = vCat.id || generateUUID();
+        categoryIdMap[vCat.id] = newId;
+        localCategories.push({
+          ...vCat,
+          id: newId,
+          user_id: "guest_local_user",
+          emoji: vCat.emoji || "file-text",
+          is_default: vCat.is_default ?? false,
+          created_at: vCat.created_at || new Date().toISOString(),
+        });
+        restoredCategories++;
+      }
+    }
+    try {
+      localStorage.setItem(
+        "TROUVAILLE_CATEGORIES_BACKUP_V1",
+        JSON.stringify(localCategories),
+      );
+    } catch {}
+
+    onProgress?.({
+      stage: isIndonesian
+        ? "Memulihkan transaksi lokal..."
+        : "Restoring local transactions...",
+      progress: 70,
+    });
+    let existingTxs: Transaction[] = [];
+    if (mode === "replace") {
+      clearPendingMutations();
+    } else {
+      try {
+        const raw = localStorage.getItem("TROUVAILLE_TX_BACKUP_V1");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) existingTxs = parsed;
+        }
+      } catch {}
+    }
+
+    const txMap = new Map<string, Transaction>();
+    for (const tx of existingTxs) {
+      if (tx.id) txMap.set(tx.id, tx);
+    }
+
+    for (const tx of vaultData.transactions) {
+      const mappedId = tx.id || generateUUID();
+      const mappedCatId = tx.category_id
+        ? categoryIdMap[tx.category_id] || tx.category_id
+        : null;
+      const matchedCategory =
+        localCategories.find((c) => c.id === mappedCatId) ||
+        tx.categories ||
+        null;
+
+      txMap.set(mappedId, {
+        ...tx,
+        id: mappedId,
+        user_id: "guest_local_user",
+        amount: Number(tx.amount),
+        wallet_id: tx.wallet_id
+          ? walletIdMap[tx.wallet_id] || tx.wallet_id
+          : null,
+        to_wallet_id: tx.to_wallet_id
+          ? walletIdMap[tx.to_wallet_id] || tx.to_wallet_id
+          : null,
+        category_id: mappedCatId,
+        categories: matchedCategory,
+        created_at: tx.created_at || new Date().toISOString(),
+      });
+      restoredTransactions++;
+    }
+
+    const finalLocalTxs = Array.from(txMap.values()).sort((a, b) =>
+      (b.occurred_on || "").localeCompare(a.occurred_on || ""),
+    );
+    try {
+      localStorage.setItem(
+        "TROUVAILLE_TX_BACKUP_V1",
+        JSON.stringify(finalLocalTxs),
+      );
+    } catch {}
+    try {
+      await setVaultItem("TROUVAILLE_TX_BACKUP_V1", finalLocalTxs);
+    } catch {}
+
+    restoredBills = vaultData.bills.length;
   }
 
   // ------------------------------------------------------------------
   // 5. Local Storage Settings & Goals
   // ------------------------------------------------------------------
-  onProgress?.({ stage: "Restoring financial goals & settings...", progress: 95 });
+  onProgress?.({
+    stage: isIndonesian
+      ? "Memulihkan target & pengaturan..."
+      : "Restoring financial goals & settings...",
+    progress: 95,
+  });
   if (vaultData.goals && vaultData.goals.length > 0) {
     try {
       localStorage.setItem(
@@ -533,7 +731,10 @@ export async function restoreVaultData(
     }
   }
 
-  onProgress?.({ stage: "Restoration complete!", progress: 100 });
+  onProgress?.({
+    stage: isIndonesian ? "Pemulihan selesai!" : "Restoration complete!",
+    progress: 100,
+  });
 
   return {
     restoredTransactions,
@@ -543,3 +744,4 @@ export async function restoreVaultData(
     restoredGoals,
   };
 }
+
