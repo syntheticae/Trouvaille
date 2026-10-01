@@ -1195,7 +1195,6 @@ export function AssetsPage() {
         holdings={holdings}
         wallets={wallets}
         netWorth={netWorth}
-        totalLiabilities={liabilitiesTotal}
       />
 
       {/* ── 6. Wealth History Card — Quiet Wealth × Liquid Island ── */}
