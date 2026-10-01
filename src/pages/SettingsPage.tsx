@@ -205,9 +205,10 @@ import {
 
 interface SettingsPageProps {
   onOpenImport?: () => void;
+  onStartTour?: () => void;
 }
 
-export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
+export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = {}) {
   const isAndroid = Capacitor.getPlatform() === "android";
   const queryClient = useQueryClient();
   const { data: bills = [] } = useBills();
@@ -1676,12 +1677,22 @@ export function SettingsPage({ onOpenImport }: SettingsPageProps = {}) {
             {/* Replay Interactive Product Tour */}
             <button
               type="button"
+              onMouseEnter={() => {
+                import("../components/onboarding/ProductTourOverlay");
+              }}
+              onTouchStart={() => {
+                import("../components/onboarding/ProductTourOverlay");
+              }}
               onClick={() => {
                 triggerHaptic("medium");
                 try {
                   localStorage.setItem("trouvaille_tour_pending", "true");
                 } catch {}
-                navigate("/");
+                if (onStartTour) {
+                  onStartTour();
+                }
+                window.dispatchEvent(new CustomEvent("trouvaille:start-tour"));
+                navigate("/", { replace: true });
               }}
               className="flex items-center justify-between py-2.5 px-3.5 min-h-[44px] active:bg-black/[0.03] dark:active:bg-white/[0.04] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-left w-full"
             >

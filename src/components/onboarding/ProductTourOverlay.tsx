@@ -51,7 +51,7 @@ interface TourStep {
   highlightsEn: string[];
 }
 
-const TOUR_STEPS: TourStep[] = [
+export const TOUR_STEPS: TourStep[] = [
   {
     id: "home",
     path: "/",
@@ -234,18 +234,31 @@ export function ProductTourOverlay({
     }
   }, [isOpen, step]);
 
+  const prevIsOpen = useRef(isOpen);
+  useEffect(() => {
+    if (isOpen && !prevIsOpen.current) {
+      setCurrentStepIndex(0);
+      setIsPeekMode(false);
+      setTargetRect(null);
+    }
+    prevIsOpen.current = isOpen;
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
       setIsPeekMode(false);
-      // Allow slight render buffer for route transition
-      const timer = setTimeout(() => {
-        measureTarget();
-      }, 160);
+      // Measure immediately and retry across route/render frame transitions
+      measureTarget();
+      const timers = [60, 160, 320, 600, 1000].map((delay) =>
+        setTimeout(() => {
+          measureTarget();
+        }, delay)
+      );
       const handleResize = () => measureTarget();
       window.addEventListener("resize", handleResize);
       window.addEventListener("scroll", handleResize, true);
       return () => {
-        clearTimeout(timer);
+        timers.forEach(clearTimeout);
         window.removeEventListener("resize", handleResize);
         window.removeEventListener("scroll", handleResize, true);
       };
@@ -254,7 +267,7 @@ export function ProductTourOverlay({
       setTargetRect(null);
       setIsPeekMode(false);
     }
-  }, [isOpen, currentStepIndex, measureTarget]);
+  }, [isOpen, currentStepIndex, measureTarget, location.pathname]);
 
   if (!isOpen) return null;
 

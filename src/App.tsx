@@ -169,9 +169,22 @@ function AppShell() {
   });
 
   useEffect(() => {
-    const handleStartTour = () => setIsTourOpen(true);
+    const handleStartTour = () => {
+      try {
+        localStorage.setItem("trouvaille_tour_pending", "true");
+      } catch {}
+      setIsTourOpen(true);
+    };
     window.addEventListener("trouvaille:start-tour", handleStartTour);
     return () => window.removeEventListener("trouvaille:start-tour", handleStartTour);
+  }, []);
+
+  useEffect(() => {
+    // Preload ProductTourOverlay chunk in background idle time
+    const timer = setTimeout(() => {
+      import("./components/onboarding/ProductTourOverlay");
+    }, 1500);
+    return () => clearTimeout(timer);
   }, []);
 
   const [prefilledValues, setPrefilledValues] = useState<any>(null);
@@ -1035,6 +1048,7 @@ function AppShell() {
           onComplete={() => {
             localStorage.setItem("trouvaille_onboarded", "true");
             setIsOnboarded(true);
+            setIsTourOpen(true);
             queryClient.invalidateQueries({ queryKey: ["categories"] });
             queryClient.invalidateQueries({ queryKey: ["wallets"] });
             queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -1138,6 +1152,12 @@ function AppShell() {
               element={
                 <SettingsPage
                   onOpenImport={() => setStatementImportOpen(true)}
+                  onStartTour={() => {
+                    try {
+                      localStorage.setItem("trouvaille_tour_pending", "true");
+                    } catch {}
+                    setIsTourOpen(true);
+                  }}
                 />
               }
             />
