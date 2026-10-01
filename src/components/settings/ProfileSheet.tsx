@@ -15,12 +15,14 @@ import {
   ShieldCheck,
   Mail,
   Key,
+  X,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { supabase } from "../../lib/supabase";
 import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { triggerHaptic } from "../../lib/haptics";
 
 interface ProfileSheetProps {
@@ -49,6 +51,9 @@ export function ProfileSheet({
   const { session, isGuest, exitGuestMode } = useAuth();
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -139,24 +144,46 @@ export function ProfileSheet({
     setTimeout(() => setCopiedId(false), 2500);
   };
 
+  // ── Liquid Glass Tactile Materials ───────────────────────────────────────
+  const controlBg = isDark
+    ? "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.035) 100%)"
+    : "linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.72) 100%)";
+
+  const controlBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.085)"
+    : "1px solid rgba(0, 0, 0, 0.065)";
+
+  const controlShadow = isDark
+    ? "inset 0 1px 0 rgba(255, 255, 255, 0.085), 0 2px 6px rgba(0, 0, 0, 0.22)"
+    : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.035)";
+
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] space-y-4">
-        {/* Header */}
-        <div className="relative">
-          <div className="flex items-center justify-between">
+      <div
+        className="px-5 sm:px-6 pt-1 space-y-4 select-none max-w-lg mx-auto"
+        style={{
+          paddingBottom:
+            "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+        }}
+      >
+        {/* ── Top Header ────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between pb-1">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-white/90 animate-pulse" />
             <div>
-              <h3
-                className="font-semibold text-base tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <h3 className="text-[16.5px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
                 {isIndonesian ? "Profil Pengguna" : "Personal Profile"}
               </h3>
-              <p className="text-[12px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                {isIndonesian ? "Identitas, sinkronisasi cloud & keamanan" : "Identity, cloud sync & security"}
+              <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+                {isIndonesian
+                  ? "Identitas, sinkronisasi cloud & brankas keamanan"
+                  : "Identity, cloud sync & vault security"}
               </p>
             </div>
+          </div>
 
+          <div className="flex items-center gap-2">
+            {/* 3-Action Danger Menu Button */}
             <div className="relative">
               <button
                 type="button"
@@ -164,28 +191,53 @@ export function ProfileSheet({
                   triggerHaptic("light");
                   setIsDangerMenuOpen((prev) => !prev);
                 }}
-                className={`w-8 h-8 rounded-full flex items-center justify-center glass-surface border transition-all cursor-pointer ${
-                  isDangerMenuOpen
-                    ? "border-[var(--text-primary)] bg-[var(--glass-fill)] text-[var(--text-primary)]"
-                    : "border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
-                title={isIndonesian ? "Tindakan Data & Brankas" : "Data & Vault Actions"}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95"
+                style={{
+                  background: isDangerMenuOpen
+                    ? isDark
+                      ? "#ffffff"
+                      : "#18181b"
+                    : controlBg,
+                  color: isDangerMenuOpen
+                    ? isDark
+                      ? "#000000"
+                      : "#ffffff"
+                    : "var(--text-secondary)",
+                  border: isDangerMenuOpen
+                    ? isDark
+                      ? "1px solid #ffffff"
+                      : "1px solid #18181b"
+                    : controlBorder,
+                  boxShadow: controlShadow,
+                }}
+                title={
+                  isIndonesian
+                    ? "Tindakan Data & Brankas"
+                    : "Data & Vault Actions"
+                }
                 aria-label="Vault Actions"
               >
-                <MoreVertical size={16} strokeWidth={1.75} />
+                <MoreVertical size={15} strokeWidth={1.8} />
               </button>
 
-              {/* 3-Action Danger Menu Dropdown */}
+              {/* Liquid Glass Frosted Popover Menu */}
               {isDangerMenuOpen && (
                 <div
-                  className="absolute right-0 top-10 w-72 rounded-2xl p-1.5 shadow-2xl z-50 border backdrop-blur-2xl space-y-0.5"
+                  className="absolute right-0 top-10 w-72 rounded-3xl p-1.5 shadow-2xl z-50 border backdrop-blur-3xl space-y-1 transition-all"
                   style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--glass-border)",
+                    background: isDark
+                      ? "linear-gradient(180deg, rgba(32,32,38,0.96) 0%, rgba(20,20,24,0.98) 100%)"
+                      : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,247,250,0.98) 100%)",
+                    borderColor: isDark
+                      ? "rgba(255,255,255,0.14)"
+                      : "rgba(0,0,0,0.08)",
+                    boxShadow: isDark
+                      ? "0 20px 50px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.15)"
+                      : "0 16px 36px rgba(0,0,0,0.12), inset 0 1px 0 #ffffff",
                   }}
                 >
-                  <div className="px-2.5 py-1.5 border-b border-[var(--glass-border)] mb-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+                  <div className="px-3 py-1.5 border-b border-[var(--glass-border)]/40 mb-0.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
                       {isIndonesian ? "Tindakan Lanjutan" : "Vault Operations"}
                     </p>
                   </div>
@@ -198,16 +250,25 @@ export function ProfileSheet({
                       onClose();
                       onOpenResetTransactions?.();
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors cursor-pointer group"
+                    className="w-full flex items-center gap-2.5 p-2 rounded-2xl text-left transition-colors cursor-pointer hover:bg-white/[0.06] active:scale-[0.98]"
                   >
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] shrink-0">
-                      <RotateCcw size={13} strokeWidth={1.75} />
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: controlBg,
+                        border: controlBorder,
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      <RotateCcw size={13} strokeWidth={1.8} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-[var(--text-primary)]">
-                        {isIndonesian ? "Atur Ulang Data Transaksi" : "Reset Transaction Data"}
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight">
+                        {isIndonesian
+                          ? "Atur Ulang Transaksi"
+                          : "Reset Transaction Data"}
                       </p>
-                      <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+                      <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
                         {isIndonesian
                           ? "Kosongkan transaksi pada ruang aktif"
                           : "Wipe transactions in active space"}
@@ -223,18 +284,27 @@ export function ProfileSheet({
                       onClose();
                       onReRunCustomization?.();
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors cursor-pointer group"
+                    className="w-full flex items-center gap-2.5 p-2 rounded-2xl text-left transition-colors cursor-pointer hover:bg-white/[0.06] active:scale-[0.98]"
                   >
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] shrink-0">
-                      <Sparkles size={13} strokeWidth={1.75} />
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: controlBg,
+                        border: controlBorder,
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      <Sparkles size={13} strokeWidth={1.8} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-[var(--text-primary)]">
-                        {isIndonesian ? "Jalankan Ulang Kustomisasi" : "Re-run Customization"}
-                      </p>
-                      <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight">
                         {isIndonesian
-                          ? "Buka kembali panduan pengaturan awal"
+                          ? "Jalankan Panduan Awal"
+                          : "Re-run Customization"}
+                      </p>
+                      <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
+                        {isIndonesian
+                          ? "Buka kembali wizard pengaturan"
                           : "Re-run initial onboarding wizard"}
                       </p>
                     </div>
@@ -247,29 +317,36 @@ export function ProfileSheet({
                       setIsDangerMenuOpen(false);
                       onClose();
                       window.dispatchEvent(
-                        new CustomEvent("trouvaille:preview-initial-sync")
+                        new CustomEvent("trouvaille:preview-initial-sync"),
                       );
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors cursor-pointer group"
+                    className="w-full flex items-center gap-2.5 p-2 rounded-2xl text-left transition-colors cursor-pointer hover:bg-white/[0.06] active:scale-[0.98]"
                   >
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] shrink-0">
-                      <ShieldCheck size={13} strokeWidth={1.75} />
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: controlBg,
+                        border: controlBorder,
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      <ShieldCheck size={13} strokeWidth={1.8} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-[var(--text-primary)]">
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight">
                         {isIndonesian
                           ? "Pratinjau Layar Sinkronisasi"
-                          : "Preview Initial Sync Screen"}
+                          : "Preview Sync Screen"}
                       </p>
-                      <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+                      <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
                         {isIndonesian
-                          ? "Lihat animasi sinkronisasi awal tanpa mereset data"
-                          : "View initial sync animation without resetting data"}
+                          ? "Lihat animasi sinkronisasi awal"
+                          : "View initial sync animation"}
                       </p>
                     </div>
                   </button>
 
-                  <div className="border-t border-[var(--glass-border)] my-1" />
+                  <div className="border-t border-[var(--glass-border)]/40 my-1" />
 
                   <button
                     type="button"
@@ -279,54 +356,106 @@ export function ProfileSheet({
                       onClose();
                       onOpenDeleteAccount();
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors cursor-pointer group"
+                    className="w-full flex items-center gap-2.5 p-2 rounded-2xl text-left transition-colors cursor-pointer hover:bg-white/[0.06] active:scale-[0.98]"
                   >
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-primary)] shrink-0">
-                      <Trash2 size={13} strokeWidth={1.75} />
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: controlBg,
+                        border: controlBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Trash2 size={13} strokeWidth={1.8} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-[var(--text-primary)]">
-                        {isIndonesian ? "Hapus Akun & Reset Brankas" : "Delete Account & Reset Vault"}
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight">
+                        {isIndonesian
+                          ? "Hapus Akun & Reset Brankas"
+                          : "Delete Account & Wipe"}
                       </p>
-                      <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+                      <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
                         {isIndonesian
                           ? "Hapus permanen akun & seluruh data"
-                          : "Permanently wipe account & all data"}
+                          : "Permanently wipe account & data"}
                       </p>
                     </div>
                   </button>
                 </div>
               )}
             </div>
+
+            {/* Close Sheet Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={isIndonesian ? "Tutup" : "Close"}
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-transform active:scale-90 cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              style={{
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
+              }}
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
           </div>
         </div>
 
-        {/* 1. Centered Apple-Style Avatar */}
-        <div className="flex flex-col items-center justify-center py-2">
+        {/* 1. Centered Apple macOS ID Avatar Halo */}
+        <div className="flex flex-col items-center justify-center py-1">
           <div className="relative">
-            <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center border-2 border-[var(--glass-border)] bg-[var(--glass-fill)] shadow-md">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <UserIcon
-                  size={36}
-                  style={{ color: "var(--text-secondary)" }}
-                />
-              )}
-              {isUploading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                </div>
-              )}
+            {/* Halo Double Glass Rim */}
+            <div
+              className="w-20 h-20 rounded-full p-1 flex items-center justify-center shadow-lg transition-all"
+              style={{
+                background: isDark
+                  ? "linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 100%)"
+                  : "linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(0,0,0,0.06) 100%)",
+                boxShadow: isDark
+                  ? "0 8px 24px -4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.3)"
+                  : "0 6px 18px -3px rgba(0,0,0,0.08), inset 0 1px 0 #ffffff",
+              }}
+            >
+              <div
+                className="w-full h-full rounded-full overflow-hidden flex items-center justify-center relative"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.03)",
+                }}
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <UserIcon
+                    size={34}
+                    style={{ color: "var(--text-secondary)" }}
+                  />
+                )}
+
+                {isUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-xs rounded-full">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Quick Camera Action Knob */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#18181b] text-white dark:bg-white dark:text-black flex items-center justify-center shadow-lg active:scale-90 transition-transform cursor-pointer border-2 border-[var(--bg-elevated)]"
+              className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer border-2"
+              style={{
+                background: isDark ? "#ffffff" : "#18181b",
+                color: isDark ? "#000000" : "#ffffff",
+                borderColor: isDark ? "#1c1c21" : "#ffffff",
+              }}
               title={isIndonesian ? "Ubah Foto" : "Change Photo"}
             >
               <Camera size={13} strokeWidth={2} />
@@ -339,41 +468,53 @@ export function ProfileSheet({
               className="hidden"
             />
           </div>
+
           <span className="text-[11px] text-[var(--text-tertiary)] mt-2 font-medium">
             {isIndonesian
-              ? "Ketuk kamera untuk mengubah foto"
-              : "Tap camera to change photo"}
+              ? "Ketuk kamera untuk memperbarui avatar"
+              : "Tap camera to change avatar"}
           </span>
         </div>
 
-        {/* 2. Apple iOS Grouped Card: Identity */}
-        <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] overflow-hidden shadow-sm">
-          {/* Row 1: Display Name */}
-          <div className="p-3.5 space-y-1.5">
-            <label
-              className="text-[10px] font-semibold uppercase tracking-wider block"
-              style={{ color: "var(--text-tertiary)" }}
-            >
+        {/* 2. Grouped Inset Card: Identity & Display Name */}
+        <div
+          className="rounded-2xl p-3.5 space-y-2.5 transition-all"
+          style={{
+            background: controlBg,
+            border: controlBorder,
+            boxShadow: controlShadow,
+          }}
+        >
+          <div className="space-y-1">
+            <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1 block">
               {isIndonesian ? "Nama Tampilan" : "Display Name"}
             </label>
-            <div className="w-full min-w-0">
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder={isIndonesian ? "misal: Alex Morgan" : "e.g. Alex Morgan"}
-                className="w-full min-w-0 px-3 py-2 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors"
-                style={{ color: "var(--text-primary)" }}
-              />
-            </div>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder={
+                isIndonesian ? "misal: Alex Morgan" : "e.g. Alex Morgan"
+              }
+              className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold outline-none transition-all placeholder:text-[var(--text-tertiary)]"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.03)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.08)"
+                  : "1px solid rgba(0, 0, 0, 0.06)",
+                color: "var(--text-primary)",
+              }}
+            />
           </div>
 
-          {/* Guest prompt to link account if not signed in */}
+          {/* Guest Link Account Banner */}
           {isGuest && (
-            <div className="p-3.5 pt-0 border-t border-[var(--glass-border)] space-y-2 mt-1">
-              <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)] pt-2">
+            <div className="pt-2 border-t border-[var(--glass-border)]/40 space-y-2">
+              <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)] px-0.5">
                 {isIndonesian
-                  ? "Data tersimpan secara lokal di perangkat. Hubungkan akun Google atau Email untuk sinkronisasi cloud otomatis."
+                  ? "Data tersimpan lokal di perangkat ini. Hubungkan akun Google atau Email untuk mengaktifkan sinkronisasi brankas cloud."
                   : "Your data is stored locally. Connect an email or Google account to seamlessly sync your records to the private cloud vault."}
               </p>
               <button
@@ -382,11 +523,21 @@ export function ProfileSheet({
                   triggerHaptic("medium");
                   exitGuestMode();
                 }}
-                className="w-full py-2 px-3 rounded-xl font-semibold text-[12px] flex items-center justify-center gap-1.5 active:scale-98 transition-all cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
-                style={{ color: "var(--text-primary)" }}
+                className="w-full h-10 px-3 rounded-xl font-semibold text-[11.5px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all cursor-pointer"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.08)"
+                    : "rgba(0, 0, 0, 0.05)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
               >
-                <span>{isIndonesian ? "Hubungkan Akun Google atau Email" : "Connect Google or Email Account"}</span>
-                <ArrowRight size={13} />
+                <span>
+                  {isIndonesian
+                    ? "Hubungkan Akun Google atau Email"
+                    : "Connect Google or Email Account"}
+                </span>
+                <ArrowRight size={13} strokeWidth={2} />
               </button>
             </div>
           )}
@@ -397,10 +548,10 @@ export function ProfileSheet({
           type="button"
           onClick={handleUpdateProfile}
           disabled={isSaving}
-          className="w-full h-11 rounded-xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer shadow-sm flex items-center justify-center disabled:opacity-50"
+          className="w-full h-11 rounded-full font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer shadow-sm flex items-center justify-center disabled:opacity-50 select-none"
           style={{
-            background: "var(--text-primary)",
-            color: "var(--bg-base)",
+            background: isDark ? "#ffffff" : "#18181b",
+            color: isDark ? "#000000" : "#ffffff",
           }}
         >
           {isSaving
@@ -412,53 +563,78 @@ export function ProfileSheet({
               : "Save Profile Changes"}
         </button>
 
-        {/* 4. SECTION: Account & Vault Information */}
-        <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] p-4 space-y-3">
+        {/* 4. Grouped Inset Card: Security & Vault Info */}
+        <div
+          className="rounded-2xl p-4 space-y-3 transition-all"
+          style={{
+            background: controlBg,
+            border: controlBorder,
+            boxShadow: controlShadow,
+          }}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Shield size={14} strokeWidth={1.75} className="text-[var(--text-secondary)]" />
+              <Shield
+                size={14}
+                strokeWidth={1.8}
+                className="text-[var(--text-secondary)]"
+              />
               <span className="text-[12px] font-semibold text-[var(--text-primary)] tracking-tight">
-                {isIndonesian ? "Informasi Akun & Keamanan" : "Account & Security Vault"}
+                {isIndonesian
+                  ? "Informasi Akun & Keamanan"
+                  : "Account & Security Vault"}
               </span>
             </div>
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] flex items-center gap-1.5">
+
+            <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-[var(--glass-border)] bg-white/[0.04] text-[var(--text-secondary)] flex items-center gap-1.5">
               {isGuest ? (
                 <>
-                  <HardDrive size={11} strokeWidth={1.5} />
-                  <span>{isIndonesian ? "Brankas Lokal" : "Local Vault (Offline)"}</span>
+                  <HardDrive size={11} strokeWidth={1.8} />
+                  <span>
+                    {isIndonesian ? "Brankas Lokal" : "Local Vault (Offline)"}
+                  </span>
                 </>
               ) : (
                 <>
-                  <CloudCheck size={11} strokeWidth={1.5} />
-                  <span>{isIndonesian ? "Tersinkronisasi Cloud" : "Cloud Synced"}</span>
+                  <CloudCheck size={11} strokeWidth={1.8} />
+                  <span>
+                    {isIndonesian ? "Tersinkronisasi Cloud" : "Cloud Synced"}
+                  </span>
                 </>
               )}
             </span>
           </div>
 
-          <div className="space-y-1.5 text-[12px] pt-1">
-            <div className="flex items-center justify-between py-1.5 border-b border-[var(--glass-border)]">
+          <div className="space-y-2 text-[12px] pt-1">
+            <div className="flex items-center justify-between py-1 border-b border-[var(--glass-border)]/40">
               <span className="text-[var(--text-tertiary)] flex items-center gap-1.5">
-                <Mail size={12} strokeWidth={1.5} />
+                <Mail size={12} strokeWidth={1.75} />
                 <span>Email</span>
               </span>
               <span className="font-medium text-[var(--text-primary)] truncate max-w-[210px]">
-                {session?.user?.email || (isIndonesian ? "Pengguna Tamu" : "Guest User (Offline)")}
+                {session?.user?.email ||
+                  (isIndonesian ? "Pengguna Tamu" : "Guest User (Offline)")}
               </span>
             </div>
 
-            <div className="flex items-center justify-between py-1.5 border-b border-[var(--glass-border)]">
+            <div className="flex items-center justify-between py-1 border-b border-[var(--glass-border)]/40">
               <span className="text-[var(--text-tertiary)] flex items-center gap-1.5">
-                <Key size={12} strokeWidth={1.5} />
+                <Key size={12} strokeWidth={1.75} />
                 <span>{isIndonesian ? "ID Pengguna" : "User ID"}</span>
               </span>
               <button
                 type="button"
                 onClick={handleCopyId}
                 disabled={!session?.user?.id}
-                className="flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-md border border-[var(--glass-border)] bg-[var(--glass-fill)] active:scale-95 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 text-[11px] font-mono font-medium px-2.5 py-0.5 rounded-full border border-[var(--glass-border)] bg-white/[0.04] active:scale-95 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50 transition-all"
               >
-                <span>{session?.user?.id ? `${session.user.id.slice(0, 8)}...` : (isIndonesian ? "Lokal" : "Local")}</span>
+                <span>
+                  {session?.user?.id
+                    ? `${session.user.id.slice(0, 8)}...`
+                    : isIndonesian
+                      ? "Lokal"
+                      : "Local"}
+                </span>
                 {copiedId ? (
                   <Check size={11} className="text-[var(--text-primary)]" />
                 ) : (
@@ -467,13 +643,17 @@ export function ProfileSheet({
               </button>
             </div>
 
-            <div className="flex items-center justify-between py-1.5">
+            <div className="flex items-center justify-between py-1">
               <span className="text-[var(--text-tertiary)] flex items-center gap-1.5">
-                <Shield size={12} strokeWidth={1.5} />
-                <span>{isIndonesian ? "Protokol Brankas" : "Vault Protocol"}</span>
+                <Shield size={12} strokeWidth={1.75} />
+                <span>
+                  {isIndonesian ? "Protokol Brankas" : "Vault Protocol"}
+                </span>
               </span>
-              <span className="text-[11px] font-medium text-[var(--text-secondary)]">
-                {isGuest ? "IndexedDB + LocalStorage" : "Supabase RLS + AES-GCM"}
+              <span className="text-[11px] font-mono font-medium text-[var(--text-secondary)]">
+                {isGuest
+                  ? "IndexedDB + LocalStorage"
+                  : "Supabase RLS + AES-GCM"}
               </span>
             </div>
           </div>

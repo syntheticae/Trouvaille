@@ -208,7 +208,10 @@ interface SettingsPageProps {
   onStartTour?: () => void;
 }
 
-export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = {}) {
+export function SettingsPage({
+  onOpenImport,
+  onStartTour,
+}: SettingsPageProps = {}) {
   const isAndroid = Capacitor.getPlatform() === "android";
   const queryClient = useQueryClient();
   const { data: bills = [] } = useBills();
@@ -225,10 +228,8 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
     budgetPeriodStart,
     setBudgetPeriodStart,
   } = useBudgetTarget();
-  const {
-    securitySettings,
-    updateSettings: updateSecuritySettings,
-  } = useSecurityLock();
+  const { securitySettings, updateSettings: updateSecuritySettings } =
+    useSecurityLock();
   const { isPrivacyShieldEnabled, togglePrivacyShield } = usePrivacy();
   const { preferredCurrency, currencyMeta } = useCurrency();
   const { language, isIndonesian, t } = useLanguage();
@@ -285,9 +286,8 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
   };
 
   // Include Receivables in Liquid Cash toggle
-  const [includeReceivableInLiquid, setIncludeReceivableState] = useState<boolean>(() =>
-    getIncludeReceivableInLiquid(),
-  );
+  const [includeReceivableInLiquid, setIncludeReceivableState] =
+    useState<boolean>(() => getIncludeReceivableInLiquid());
 
   const handleToggleIncludeReceivable = () => {
     const next = !includeReceivableInLiquid;
@@ -404,7 +404,8 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
   const { activeSpace, refreshLedgers } = useSpace();
 
   // Notification sheets state
-  const [billDailyReminderSheetOpen, setBillDailyReminderSheetOpen] = useState(false);
+  const [billDailyReminderSheetOpen, setBillDailyReminderSheetOpen] =
+    useState(false);
   const [periodicDigestSheetOpen, setPeriodicDigestSheetOpen] = useState(false);
 
   // Notification toggles (Streamlined into 2 combined switches)
@@ -536,8 +537,8 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
     }
   });
 
-  const [pendingMutations, setPendingMutations] = useState<PendingMutation[]>(() =>
-    getPendingMutations(),
+  const [pendingMutations, setPendingMutations] = useState<PendingMutation[]>(
+    () => getPendingMutations(),
   );
 
   const refreshPendingCount = useCallback(() => {
@@ -562,19 +563,44 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
       const cleanTxs = await purgePendingMutationsAndSync(userId);
       setPendingMutations([]);
 
-      const [freshWalletsRes, freshCategoriesRes, freshBillsRes] = await Promise.allSettled([
-        supabase.from("wallets").select("*").eq("user_id", userId).order("name"),
-        supabase.from("categories").select("*").eq("user_id", userId).order("name"),
-        supabase.from("bills").select("*").eq("user_id", userId).order("due_date", { ascending: true }),
-      ]);
+      const [freshWalletsRes, freshCategoriesRes, freshBillsRes] =
+        await Promise.allSettled([
+          supabase
+            .from("wallets")
+            .select("*")
+            .eq("user_id", userId)
+            .order("name"),
+          supabase
+            .from("categories")
+            .select("*")
+            .eq("user_id", userId)
+            .order("name"),
+          supabase
+            .from("bills")
+            .select("*")
+            .eq("user_id", userId)
+            .order("due_date", { ascending: true }),
+        ]);
 
-      const freshWallets = freshWalletsRes.status === "fulfilled" && !freshWalletsRes.value.error ? freshWalletsRes.value.data : null;
-      const freshCategories = freshCategoriesRes.status === "fulfilled" && !freshCategoriesRes.value.error ? freshCategoriesRes.value.data : null;
-      const freshBills = freshBillsRes.status === "fulfilled" && !freshBillsRes.value.error ? freshBillsRes.value.data : null;
+      const freshWallets =
+        freshWalletsRes.status === "fulfilled" && !freshWalletsRes.value.error
+          ? freshWalletsRes.value.data
+          : null;
+      const freshCategories =
+        freshCategoriesRes.status === "fulfilled" &&
+        !freshCategoriesRes.value.error
+          ? freshCategoriesRes.value.data
+          : null;
+      const freshBills =
+        freshBillsRes.status === "fulfilled" && !freshBillsRes.value.error
+          ? freshBillsRes.value.data
+          : null;
 
       queryClient.setQueryData(transactionKeys.all(userId), cleanTxs);
-      if (freshWallets) queryClient.setQueryData(walletKeys.all(userId), freshWallets);
-      if (freshCategories) queryClient.setQueryData(categoryKeys.all(userId), freshCategories);
+      if (freshWallets)
+        queryClient.setQueryData(walletKeys.all(userId), freshWallets);
+      if (freshCategories)
+        queryClient.setQueryData(categoryKeys.all(userId), freshCategories);
       if (freshBills) queryClient.setQueryData(["bills", userId], freshBills);
 
       await Promise.all([
@@ -628,31 +654,44 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
 
       const freshTxs = await fetchAllTransactionsFromSupabase({ userId });
 
-      const [freshWalletsRes, freshCategoriesRes, freshBillsRes] = await Promise.allSettled([
-        supabase
-          .from("wallets")
-          .select("*")
-          .eq("user_id", userId)
-          .order("name"),
-        supabase
-          .from("categories")
-          .select("*")
-          .eq("user_id", userId)
-          .order("name"),
-        supabase
-          .from("bills")
-          .select("*")
-          .eq("user_id", userId)
-          .order("due_date", { ascending: true }),
-      ]);
+      const [freshWalletsRes, freshCategoriesRes, freshBillsRes] =
+        await Promise.allSettled([
+          supabase
+            .from("wallets")
+            .select("*")
+            .eq("user_id", userId)
+            .order("name"),
+          supabase
+            .from("categories")
+            .select("*")
+            .eq("user_id", userId)
+            .order("name"),
+          supabase
+            .from("bills")
+            .select("*")
+            .eq("user_id", userId)
+            .order("due_date", { ascending: true }),
+        ]);
 
-      const freshWallets = freshWalletsRes.status === "fulfilled" && !freshWalletsRes.value.error ? freshWalletsRes.value.data : null;
-      const freshCategories = freshCategoriesRes.status === "fulfilled" && !freshCategoriesRes.value.error ? freshCategoriesRes.value.data : null;
-      const freshBills = freshBillsRes.status === "fulfilled" && !freshBillsRes.value.error ? freshBillsRes.value.data : null;
+      const freshWallets =
+        freshWalletsRes.status === "fulfilled" && !freshWalletsRes.value.error
+          ? freshWalletsRes.value.data
+          : null;
+      const freshCategories =
+        freshCategoriesRes.status === "fulfilled" &&
+        !freshCategoriesRes.value.error
+          ? freshCategoriesRes.value.data
+          : null;
+      const freshBills =
+        freshBillsRes.status === "fulfilled" && !freshBillsRes.value.error
+          ? freshBillsRes.value.data
+          : null;
 
       queryClient.setQueryData(transactionKeys.all(userId), freshTxs);
-      if (freshWallets) queryClient.setQueryData(walletKeys.all(userId), freshWallets);
-      if (freshCategories) queryClient.setQueryData(categoryKeys.all(userId), freshCategories);
+      if (freshWallets)
+        queryClient.setQueryData(walletKeys.all(userId), freshWallets);
+      if (freshCategories)
+        queryClient.setQueryData(categoryKeys.all(userId), freshCategories);
       if (freshBills) queryClient.setQueryData(["bills", userId], freshBills);
 
       await Promise.all([
@@ -668,7 +707,9 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
 
       const now = new Date();
       localStorage.setItem("trouvaille_last_synced", now.toISOString());
-      setLastSyncedTime(`${isIndonesian ? "Hari ini" : "Today"}, ${format(now, "HH:mm")}`);
+      setLastSyncedTime(
+        `${isIndonesian ? "Hari ini" : "Today"}, ${format(now, "HH:mm")}`,
+      );
       setSyncStatus("success");
       triggerHaptic("medium");
       showToast(
@@ -688,8 +729,12 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
       const isAuthErr = err?.message === "Not authenticated";
       showToast(
         isAuthErr
-          ? (isIndonesian ? "Sesi autentikasi berakhir. Silakan masuk kembali." : "Session expired. Please log in again.")
-          : (isIndonesian ? "Sinkronisasi gagal. Data lokal aman." : "Sync failed. Local data preserved."),
+          ? isIndonesian
+            ? "Sesi autentikasi berakhir. Silakan masuk kembali."
+            : "Session expired. Please log in again."
+          : isIndonesian
+            ? "Sinkronisasi gagal. Data lokal aman."
+            : "Sync failed. Local data preserved.",
         "delete",
         () => {},
       );
@@ -1027,7 +1072,8 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
                   className="text-[12px] "
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  {activeSpace?.name || (isIndonesian ? "Space Pribadi" : "Personal Space")}
+                  {activeSpace?.name ||
+                    (isIndonesian ? "Space Pribadi" : "Personal Space")}
                 </span>
                 <ChevronRight
                   size={15}
@@ -1138,7 +1184,9 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
                     className="text-[13px] font-semibold truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {isIndonesian ? "Anggaran Belanja Bulanan" : "Monthly Spending Budget"}
+                    {isIndonesian
+                      ? "Anggaran Belanja Bulanan"
+                      : "Monthly Spending Budget"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -1779,14 +1827,8 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
                     ? "Pengingat Tagihan & Catat Harian"
                     : "Bill & Daily Log Reminders"}
                 </span>
-                <ChevronRight
-                  size={14}
-                  strokeWidth={1.75}
-                  className="shrink-0 mr-1.5 opacity-40 group-hover:opacity-80 transition-opacity"
-                  style={{ color: "var(--text-tertiary)" }}
-                />
               </button>
-              <div className="shrink-0 pl-1 border-l border-[var(--glass-border)]">
+              <div className="shrink-0 pl-1 ">
                 <ToggleSwitch
                   checked={billRemindersEnabled || dailyReminderEnabled}
                   onChange={handleToggleBillAndDailyReminders}
@@ -1823,14 +1865,8 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
                     ? "Rekap & Evaluasi Berkala"
                     : "Periodic Financial Digests"}
                 </span>
-                <ChevronRight
-                  size={14}
-                  strokeWidth={1.75}
-                  className="shrink-0 mr-1.5 opacity-40 group-hover:opacity-80 transition-opacity"
-                  style={{ color: "var(--text-tertiary)" }}
-                />
               </button>
-              <div className="shrink-0 pl-1 border-l border-[var(--glass-border)]">
+              <div className="shrink-0 pl-1 ">
                 <ToggleSwitch
                   checked={weeklyDigestEnabled || monthEndReviewEnabled}
                   onChange={handleTogglePeriodicDigests}
@@ -1873,9 +1909,7 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian
-                        ? "Privasi Saldo"
-                        : "Privacy Shield"}
+                      {isIndonesian ? "Privasi Saldo" : "Privacy Shield"}
                     </span>
                   </div>
                 </div>
@@ -1919,9 +1953,7 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian
-                        ? "Kunci Aplikasi"
-                        : "Security PIN Lock"}
+                      {isIndonesian ? "Kunci Aplikasi" : "Security PIN Lock"}
                     </span>
                   </div>
                 </div>
@@ -2213,7 +2245,6 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
           onClose={() => setWalletsOpen(false)}
         />
 
-
         <AppleShortcutsGuideModal
           isOpen={backTapGuideOpen}
           onClose={() => setBackTapGuideOpen(false)}
@@ -2296,10 +2327,12 @@ export function SettingsPage({ onOpenImport, onStartTour }: SettingsPageProps = 
           bills={bills}
           onSaved={() => {
             setBillRemindersEnabled(
-              localStorage.getItem("trouvaille_bill_reminders_enabled") !== "false",
+              localStorage.getItem("trouvaille_bill_reminders_enabled") !==
+                "false",
             );
             setDailyReminderEnabled(
-              localStorage.getItem("trouvaille_daily_reminder_enabled") !== "false",
+              localStorage.getItem("trouvaille_daily_reminder_enabled") !==
+                "false",
             );
           }}
         />

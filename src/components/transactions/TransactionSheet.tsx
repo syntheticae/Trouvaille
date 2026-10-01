@@ -134,13 +134,11 @@ export function TransactionSheet({
   const amountInputRef = useRef<HTMLInputElement>(null);
   const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false);
 
-  // Keypad style preference: liquid custom keypad vs default system keyboard
   const [useCustomKeypad] = useState<boolean>(() => {
     const saved = localStorage.getItem("trouvaille_keypad_mode");
     return saved !== "system";
   });
 
-  // Keypad & Calculator Pad State
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
 
   useEffect(() => {
@@ -180,7 +178,8 @@ export function TransactionSheet({
     categoryId: string | null;
     note: string;
   } | null>(null);
-  const [duplicateWarningAcknowledged, setDuplicateWarningAcknowledged] = useState(false);
+  const [duplicateWarningAcknowledged, setDuplicateWarningAcknowledged] =
+    useState(false);
 
   const [categoryId, setCategoryId] = useState<string | null>(
     transaction?.category_id || null,
@@ -195,7 +194,6 @@ export function TransactionSheet({
   const { user } = useAuth();
   const { data: wallets = [] } = useWallets();
 
-  // Crypto Asset Units and Sync State (Strictly USDT / Crypto wallets, never Reksa Dana)
   const fromWallet = useMemo(
     () => wallets.find((w) => w.id === walletId),
     [wallets, walletId],
@@ -205,14 +203,8 @@ export function TransactionSheet({
     [wallets, toWalletId],
   );
 
-  const isFromCrypto = useMemo(
-    () => isUsdtWallet(fromWallet),
-    [fromWallet],
-  );
-  const isToCrypto = useMemo(
-    () => isUsdtWallet(toWallet),
-    [toWallet],
-  );
+  const isFromCrypto = useMemo(() => isUsdtWallet(fromWallet), [fromWallet]);
+  const isToCrypto = useMemo(() => isUsdtWallet(toWallet), [toWallet]);
   const isCryptoInvolved = isFromCrypto || (type === "transfer" && isToCrypto);
 
   const [cryptoRate, setCryptoRate] = useState<number>(() => {
@@ -244,7 +236,14 @@ export function TransactionSheet({
         setCryptoUnits("");
       }
     }
-  }, [amount, cryptoRate, isCryptoInvolved, isUnitsInputMode, preferredCurrency, convertToIdr]);
+  }, [
+    amount,
+    cryptoRate,
+    isCryptoInvolved,
+    isUnitsInputMode,
+    preferredCurrency,
+    convertToIdr,
+  ]);
 
   const handleCryptoUnitsChange = (valStr: string) => {
     setCryptoUnits(valStr);
@@ -323,7 +322,6 @@ export function TransactionSheet({
   const deleteTx = useDeleteTransaction();
   const { showToast } = useToast();
 
-  // Smart Contextual & Recency Category Ranking
   const suggestedCategories = useCategorySuggestions({
     categories,
     transactions: allTxs,
@@ -331,7 +329,6 @@ export function TransactionSheet({
     selectedWalletId: walletId,
   });
 
-  // Smart Contextual & Recency Wallet Ranking
   const suggestedFromWallets = useWalletSuggestions({
     wallets,
     transactions: allTxs,
@@ -350,7 +347,6 @@ export function TransactionSheet({
   const { budgetTarget } = useBudgetTarget();
   const { getMemoryForNote } = useMerchantMemory(allTxs);
 
-  // Smart Merchant & Context Memory
   const merchantPrediction = useMemo(() => {
     if (!note || note.trim().length < 2) return null;
     return getMemoryForNote(note);
@@ -358,7 +354,9 @@ export function TransactionSheet({
 
   const predictedCategory = useMemo(() => {
     if (merchantPrediction?.categoryId) {
-      const match = allCategories.find((c) => c.id === merchantPrediction.categoryId);
+      const match = allCategories.find(
+        (c) => c.id === merchantPrediction.categoryId,
+      );
       if (match) return match;
     }
     if (note && note.trim().length >= 2) {
@@ -373,7 +371,6 @@ export function TransactionSheet({
     return wallets.find((w) => w.id === merchantPrediction.walletId) || null;
   }, [merchantPrediction, wallets]);
 
-  // Duplicate Transaction Warning Detection (15 min window)
   const isDuplicateDetected = useMemo(() => {
     const currentValRaw = evaluateMathSafe(amountInput);
     const currentVal =
@@ -405,7 +402,6 @@ export function TransactionSheet({
     convertToIdr,
   ]);
 
-  // Budget Impact Preview (Expense MTD projection)
   const budgetImpact = useMemo(() => {
     if (type !== "expense" || !categoryId) return null;
     const numFromState = Number(amount);
@@ -440,7 +436,6 @@ export function TransactionSheet({
     if (catBudget && catBudget > 0) {
       const isOver = projectedSpent > catBudget;
       const remaining = Math.max(0, catBudget - projectedSpent);
-      // Remaining budget percentage: 100% when full, 0% when empty or over
       const remainingPct = Math.max(
         0,
         Math.round(((catBudget - projectedSpent) / catBudget) * 100),
@@ -537,7 +532,6 @@ export function TransactionSheet({
     searchWalletQuery,
   ]);
 
-  // Resolution 5 Ribbons: Ensure selected items are always present in the horizontal list
   const displayCategories = useMemo(() => {
     if (!categoryId) return suggestedCategories.slice(0, 10);
     const inTop = suggestedCategories
@@ -583,7 +577,6 @@ export function TransactionSheet({
       : suggestedToWallets.slice(0, 8);
   }, [suggestedToWallets, wallets, toWalletId]);
 
-  // Keep track of when modal opens or incoming transaction changes
   const prevOpenRef = useRef(false);
   const prevTxIdRef = useRef<string | null>(null);
 
@@ -617,7 +610,6 @@ export function TransactionSheet({
             : format(new Date(), "HH:mm"),
         );
 
-        // 1. Resolve Category accurately without resetting
         if (transaction.category_id) {
           setCategoryId(transaction.category_id);
         } else if (transaction.categories?.name) {
@@ -644,7 +636,6 @@ export function TransactionSheet({
           );
         }
 
-        // 2. Resolve Wallet (From Account)
         let resolvedFromWalletId: string | null = null;
         if (
           transaction.wallet_id &&
@@ -666,7 +657,6 @@ export function TransactionSheet({
         }
         setWalletId(resolvedFromWalletId);
 
-        // 3. Resolve To Wallet (Transfer)
         let resolvedToWalletId: string | null = null;
         if (
           transaction.to_wallet_id &&
@@ -709,16 +699,16 @@ export function TransactionSheet({
           initialValues?.categoryId !== undefined
             ? initialValues.categoryId
             : initialValues?.category_id !== undefined
-            ? initialValues.category_id
-            : suggestedCategories[0]?.id ||
-              (categories.length > 0 ? categories[0].id : null);
+              ? initialValues.category_id
+              : suggestedCategories[0]?.id ||
+                (categories.length > 0 ? categories[0].id : null);
         const defaultFromId =
           initialValues?.walletId !== undefined
             ? initialValues.walletId
             : initialValues?.wallet_id !== undefined
-            ? initialValues.wallet_id
-            : suggestedFromWallets[0]?.id ||
-              (wallets.length > 0 ? wallets[0].id : null);
+              ? initialValues.wallet_id
+              : suggestedFromWallets[0]?.id ||
+                (wallets.length > 0 ? wallets[0].id : null);
         const defaultToId =
           initialValues?.toWalletId !== undefined
             ? initialValues.toWalletId
@@ -748,7 +738,6 @@ export function TransactionSheet({
     formatDisplayNumber,
   ]);
 
-  // Ensure valid toWalletId when type is transfer
   useEffect(() => {
     if (type === "transfer") {
       if (!toWalletId && wallets.length > 1) {
@@ -761,7 +750,6 @@ export function TransactionSheet({
     }
   }, [type, wallets, walletId, toWalletId]);
 
-  // Calculate effective numeric amount from either state or raw expression input
   const currentNumericAmount = useMemo(() => {
     const direct = Number(amount);
     if (!isNaN(direct) && direct > 0) return direct;
@@ -782,11 +770,12 @@ export function TransactionSheet({
   };
 
   const handleSave = () => {
-    // 1. Immediately dismiss any active software keyboard to prevent layout shift dropping the tap
-    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+    if (
+      typeof document !== "undefined" &&
+      document.activeElement instanceof HTMLElement
+    ) {
       document.activeElement.blur();
     }
-    // 2. Dismiss custom liquid keypad drawer if active
     setIsKeypadOpen(false);
 
     if (currentUserRole === "viewer") {
@@ -819,7 +808,6 @@ export function TransactionSheet({
     )
       return;
 
-    // Ensure valid active database foreign keys
     const matchedFromWallet =
       wallets.find((w) => w.id === walletId) || wallets[0];
     const matchedToWallet =
@@ -889,7 +877,6 @@ export function TransactionSheet({
       return;
     }
 
-    // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);
     const txDate = new Date(date);
     if (!isNaN(h) && !isNaN(m)) {
@@ -926,7 +913,6 @@ export function TransactionSheet({
       );
     }
 
-    // Synchronize with investment holding if crypto/investment wallet is involved
     const effectiveUnits = cryptoUnits ? parseFloat(cryptoUnits) : undefined;
     if (isCryptoInvolved) {
       syncTransactionWithHolding(
@@ -945,7 +931,6 @@ export function TransactionSheet({
       );
     }
 
-    // Close sheet immediately for instant response
     onClose();
 
     if (transaction && transaction.id) {
@@ -957,7 +942,7 @@ export function TransactionSheet({
             setIsSaving(false);
             triggerSuccessHaptic();
             showToast(
-               isIndonesian ? "Transaksi diperbarui" : "Transaction updated",
+              isIndonesian ? "Transaksi diperbarui" : "Transaction updated",
               "update",
               () => {},
             );
@@ -1040,36 +1025,50 @@ export function TransactionSheet({
     });
   };
 
+  // ── Liquid Glass Tactile Materials ───────────────────────────────────────
+  const controlBg = isDark
+    ? "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.035) 100%)"
+    : "linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.72) 100%)";
+
+  const controlBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.085)"
+    : "1px solid rgba(0, 0, 0, 0.065)";
+
+  const controlShadow = isDark
+    ? "inset 0 1px 0 rgba(255, 255, 255, 0.085), 0 2px 6px rgba(0, 0, 0, 0.22)"
+    : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.035)";
+
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div
-        className={`px-5 pt-3.5 transition-all duration-300 ${
-          isKeypadOpen && useCustomKeypad ? "pb-[270px]" : "pb-8"
+        className={`px-5 pt-1 transition-all duration-300 max-w-lg mx-auto ${
+          isKeypadOpen && useCustomKeypad ? "pb-[330px]" : "pb-8"
         }`}
       >
-        {/* Header: Full-Width Segmented Tabs */}
+        {/* ── 1. Top Segmented Switcher (Expense / Income / Transfer) ── */}
         <div
-          className="flex p-1 rounded-full mb-5 glass-surface"
+          className="flex p-1 rounded-full mb-3.5 transition-all select-none"
           style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--glass-border)",
+            background: controlBg,
+            border: controlBorder,
+            boxShadow: controlShadow,
           }}
         >
           {[
             {
               key: "expense" as TabType,
               label: isIndonesian ? "Pengeluaran" : "Expense",
-              icon: <ArrowDownCircle size={13.5} strokeWidth={1.75} />,
+              icon: <ArrowDownCircle size={13} strokeWidth={2} />,
             },
             {
               key: "income" as TabType,
               label: isIndonesian ? "Pemasukan" : "Income",
-              icon: <ArrowUpCircle size={13.5} strokeWidth={1.75} />,
+              icon: <ArrowUpCircle size={13} strokeWidth={2} />,
             },
             {
               key: "transfer" as TabType,
               label: isIndonesian ? "Transfer" : "Transfer",
-              icon: <RefreshCcw size={13.5} strokeWidth={1.75} />,
+              icon: <RefreshCcw size={13} strokeWidth={2} />,
             },
           ].map((t) => {
             const isSelected = activeTab === t.key;
@@ -1082,14 +1081,22 @@ export function TransactionSheet({
                   setType(t.key);
                   triggerHaptic("light");
                 }}
-                className="flex-1 py-1.5 rounded-full text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="flex-1 py-1.5 rounded-full text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-[0.97]"
                 style={{
-                  background: isSelected ? "var(--accent)" : "transparent",
+                  background: isSelected
+                    ? isDark
+                      ? "#ffffff"
+                      : "#18181b"
+                    : "transparent",
                   color: isSelected
-                    ? "var(--accent-ink)"
-                    : "var(--text-secondary)",
+                    ? isDark
+                      ? "#000000"
+                      : "#ffffff"
+                    : "var(--text-tertiary)",
                   boxShadow: isSelected
-                    ? "0 2px 8px rgba(0, 0, 0, 0.15)"
+                    ? isDark
+                      ? "0 3px 10px rgba(0, 0, 0, 0.35), inset 0 1px 0 #ffffff"
+                      : "0 3px 8px rgba(0, 0, 0, 0.16)"
                     : "none",
                 }}
               >
@@ -1100,9 +1107,9 @@ export function TransactionSheet({
           })}
         </div>
 
-        {/* Quick Add Shortcuts & + Preset Chip */}
-        {!transaction && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
+        {/* ── 2. Quick Shortcuts Strip (Preset Chips) ── */}
+        {!transaction && shortcuts.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar mb-3 -mx-1 px-1 select-none">
             {shortcuts.map((s) => (
               <button
                 key={s.id}
@@ -1118,20 +1125,22 @@ export function TransactionSheet({
                           convertFromIdr(rawShortcutAmt).toFixed(maxDecimals),
                         );
                   setAmount(String(dispAmt));
-                  setAmountInput(dispAmt > 0 ? formatDisplayNumber(dispAmt) : "");
+                  setAmountInput(
+                    dispAmt > 0 ? formatDisplayNumber(dispAmt) : "",
+                  );
                   setNote(s.note);
                   if (s.category_id) setCategoryId(s.category_id);
                   if (s.wallet_id) setWalletId(s.wallet_id);
                   triggerHaptic("light");
                 }}
-                className="whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer select-none"
+                className="whitespace-nowrap px-3 py-1 rounded-full text-[10.5px] font-medium shrink-0 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer select-none"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  background: controlBg,
+                  border: controlBorder,
                   color: "var(--text-secondary)",
                 }}
               >
-                <Zap size={11} strokeWidth={1.75} />
+                <Zap size={10.5} strokeWidth={2} />
                 <span>{s.title}</span>
               </button>
             ))}
@@ -1141,21 +1150,21 @@ export function TransactionSheet({
                 triggerHaptic("light");
                 setShortcutSheetOpen(true);
               }}
-              className="whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer select-none"
+              className="whitespace-nowrap px-2.5 py-1 rounded-full text-[10.5px] font-medium shrink-0 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer select-none"
               style={{
                 background: "transparent",
                 border: "1px dashed var(--glass-border)",
                 color: "var(--text-tertiary)",
               }}
             >
-              <Plus size={11} strokeWidth={1.75} />
+              <Plus size={10.5} strokeWidth={2} />
               <span>{isIndonesian ? "Preset" : "Preset"}</span>
             </button>
           </div>
         )}
 
-        {/* Hero Amount Input: Centered, Elongated Luxury Card Capsule */}
-        <div className="text-center py-1 mb-5">
+        {/* ── 3. Hero Amount Display Capsule ── */}
+        <div className="text-center py-0.5 mb-3.5 select-none">
           <div
             onClick={() => {
               if (useCustomKeypad) {
@@ -1165,47 +1174,46 @@ export function TransactionSheet({
                 amountInputRef.current?.focus();
               }
             }}
-            className={`w-full max-w-[320px] sm:max-w-[350px] mx-auto flex items-baseline justify-center gap-2.5 px-6 py-3.5 rounded-2xl sm:rounded-3xl transition-all cursor-pointer select-none ${
+            className={`w-full max-w-[320px] sm:max-w-[340px] mx-auto flex items-baseline justify-center gap-2 px-6 py-3 rounded-3xl transition-all cursor-pointer relative overflow-hidden ${
               isKeypadOpen && useCustomKeypad
-                ? "border-white/35 dark:border-white/40 ring-2 ring-white/10"
-                : "active:border-white/20"
+                ? "ring-2 ring-white/15 border-white/30"
+                : "active:scale-[0.99]"
             }`}
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
+              background: isDark
+                ? "linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)"
+                : "linear-gradient(145deg, rgba(255,255,255,0.98) 0%, rgba(246,247,250,0.85) 100%)",
+              border: controlBorder,
               boxShadow: isDark
-                ? "0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)"
-                : "0 2px 10px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02), inset 0 1px 0 #ffffff",
+                ? "0 8px 24px -6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)"
+                : "0 4px 16px -4px rgba(31,36,48,0.06), inset 0 1px 0 #ffffff",
             }}
           >
-            <span
-              onClick={() => {
-                if (useCustomKeypad) {
-                  triggerHaptic("light");
-                  setIsKeypadOpen(true);
-                } else {
-                  amountInputRef.current?.focus();
-                }
-              }}
-              className="text-[20px] sm:text-[22px] font-bold select-none shrink-0 cursor-pointer"
+            {/* Specular Rim Lighting */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-[10%] right-[10%] top-[1px] h-[1.5px] rounded-full"
               style={{
-                color: "var(--text-tertiary)",
-                fontFamily: "Urbanist, -apple-system, sans-serif",
+                background: isDark
+                  ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), rgba(255,255,255,0.5), rgba(255,255,255,0.3), transparent)"
+                  : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
               }}
+            />
+
+            <span
+              className="text-[18px] sm:text-[20px] font-bold select-none shrink-0"
+              style={{ color: "var(--text-tertiary)" }}
             >
               {currencyMeta.symbol}
             </span>
+
             <input
               ref={amountInputRef}
               type="text"
               readOnly={useCustomKeypad}
               tabIndex={useCustomKeypad ? -1 : 0}
               inputMode={
-                useCustomKeypad
-                  ? "none"
-                  : allowDecimals
-                    ? "decimal"
-                    : "numeric"
+                useCustomKeypad ? "none" : allowDecimals ? "decimal" : "numeric"
               }
               pattern={allowDecimals ? undefined : "[0-9]*"}
               value={amountInput}
@@ -1219,7 +1227,6 @@ export function TransactionSheet({
                 const val = e.target.value;
                 if (/^[0-9+\-*/×÷.,\s]*$/.test(val)) {
                   if (/[+\-*/×÷]/.test(val)) {
-                    // Math mode: preserve expression like 50.000 + 20.000
                     setAmountInput(val);
                   } else {
                     const { raw, formatted } = formatLiveAmountInput(
@@ -1251,51 +1258,18 @@ export function TransactionSheet({
                 }
               }}
               placeholder="0"
-              className={`text-[42px] sm:text-[46px] font-semibold amount tracking-tight leading-none bg-transparent outline-none text-left min-w-[60px] max-w-[240px] cursor-pointer ${
+              className={`text-[38px] sm:text-[42px] font-bold tracking-tight leading-none bg-transparent outline-none text-left min-w-[50px] max-w-[240px] ${
                 useCustomKeypad ? "pointer-events-none select-none" : ""
               }`}
               style={{
                 color: "var(--text-primary)",
-                fontFamily: "Urbanist, -apple-system, sans-serif",
                 width: `${Math.max(1.8, (amountInput || "0").length + 1)}ch`,
               }}
             />
           </div>
 
-          {/* Inline Math Preview Badge (Only if manually typed in system mode) */}
-          {/[+\-*/×÷]/.test(amountInput) && (
-            <div className="mt-2.5 flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  const evaluated = evaluateMathSafe(amountInput);
-                  setAmount(String(evaluated));
-                  setAmountInput(
-                    evaluated === 0 ? "" : formatDisplayNumber(evaluated),
-                  );
-                }}
-                className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold inline-flex items-center gap-1.5 active:scale-95 transition-all shadow-md cursor-pointer select-none"
-                style={{
-                  background:
-                    "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
-                  color: "#000000",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
-                }}
-              >
-                <span>
-                  = {currencyMeta.symbol}{" "}
-                  {formatDisplayNumber(evaluateMathSafe(amountInput))}
-                </span>
-                <span className="text-[10px] opacity-75 font-normal">
-                  {isIndonesian ? "(Ketuk untuk terapkan)" : "(Tap to apply)"}
-                </span>
-              </button>
-            </div>
-          )}
-
-          {/* Quick Increment Chips: Clean, Single Minimalist Row */}
-          <div className="flex items-center justify-center gap-2 mt-3 px-2">
+          {/* Quick Increment Chips (Pill Row) */}
+          <div className="flex items-center justify-center gap-1.5 mt-2.5 px-2">
             {(allowDecimals
               ? [
                   { label: `+${currencyMeta.symbol}5`, add: 5 },
@@ -1322,14 +1296,12 @@ export function TransactionSheet({
                   setAmount(String(next));
                   setAmountInput(formatDisplayNumber(next));
                 }}
-                className="px-3 py-1.5 rounded-xl text-[11px] font-semibold active:scale-95 transition-all cursor-pointer select-none"
+                className="px-3 py-1 rounded-full text-[10.5px] font-semibold active:scale-95 transition-all cursor-pointer select-none"
                 style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
+                  background: controlBg,
+                  border: controlBorder,
+                  boxShadow: controlShadow,
                   color: "var(--text-secondary)",
-                  boxShadow: isDark
-                    ? "0 1px 4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04)"
-                    : "0 1px 3px rgba(0, 0, 0, 0.03), inset 0 1px 0 #ffffff",
                 }}
               >
                 {preset.label}
@@ -1337,65 +1309,51 @@ export function TransactionSheet({
             ))}
           </div>
 
-          {/* Crypto & Asset Execution Helper (Monochrome Apple Luxury) */}
+          {/* Crypto Holding P2P Sync Bar */}
           {isCryptoInvolved && (
             <div
-              className="mt-3.5 p-3 rounded-2xl max-w-[340px] mx-auto text-left space-y-2 select-none"
+              className="mt-3 p-3 rounded-2xl max-w-[340px] mx-auto text-left space-y-2 select-none"
               style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "var(--shadow-card)",
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
               }}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Coins
                     size={13}
-                    strokeWidth={1.75}
-                    style={{ color: "var(--text-secondary)" }}
+                    strokeWidth={1.8}
+                    className="text-[var(--text-secondary)]"
                   />
-                  <span
-                    className="text-[11px] font-semibold tracking-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <span className="text-[11px] font-semibold tracking-tight text-[var(--text-primary)]">
                     {isFromCrypto && type === "transfer"
                       ? isIndonesian
                         ? "Penarikan P2P"
                         : "P2P Withdrawal"
                       : isToCrypto && type === "transfer"
                         ? isIndonesian
-                          ? "Pembelian / Setoran P2P"
-                          : "P2P Purchase / Deposit"
+                          ? "Setoran P2P"
+                          : "P2P Deposit"
                         : type === "income"
                           ? isIndonesian
-                            ? "Hasil Staking / Pemasukan"
-                            : "Staking Yield / Income"
+                            ? "Hasil Staking"
+                            : "Staking Yield"
                           : isIndonesian
-                            ? "Eksekusi Aset Kripto"
-                            : "Crypto Asset Execution"}
+                            ? "Eksekusi Kripto"
+                            : "Crypto Execution"}
                   </span>
                 </div>
-                <span
-                  className="text-[10px] font-mono px-2 py-0.5 rounded-full"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] border border-[var(--glass-border)] text-[var(--text-secondary)]">
                   1 USDT ≈ Rp {cryptoRate.toLocaleString("id-ID")}
                 </span>
               </div>
 
-              {/* Units Input & Live Preview */}
               <div className="flex items-center justify-between gap-3 pt-1 border-t border-[var(--glass-border)]/40">
                 <div className="flex-1">
-                  <div
-                    className="text-[10px] font-medium"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian ? "Kuantitas Koin" : "Coin Quantity"}
-                  </div>
+                  <span className="text-[10px] text-[var(--text-tertiary)] block">
+                    {isIndonesian ? "Kuantitas Koin" : "Coin Units"}
+                  </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <input
                       type="number"
@@ -1405,31 +1363,27 @@ export function TransactionSheet({
                       onBlur={() => setIsUnitsInputMode(false)}
                       onChange={(e) => handleCryptoUnitsChange(e.target.value)}
                       placeholder="0.00"
-                      className="w-full text-[13px] font-mono font-semibold bg-transparent outline-none py-0.5 px-1.5 rounded-md"
+                      className="w-full text-[12.5px] font-mono font-semibold bg-transparent outline-none py-0.5 px-2 rounded-lg"
                       style={{
+                        background: isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : "rgba(0,0,0,0.04)",
+                        border: controlBorder,
                         color: "var(--text-primary)",
-                        background: "var(--glass-fill)",
-                        border: "1px solid var(--glass-border)",
                       }}
                     />
-                    <span
-                      className="text-[11px] font-semibold uppercase shrink-0"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
+                    <span className="text-[10.5px] font-semibold uppercase text-[var(--text-tertiary)] shrink-0">
                       USDT
                     </span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <div
-                    className="text-[10px] font-medium"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {isIndonesian ? "Dampak Kepemilikan" : "Holding Impact"}
-                  </div>
-                  <div
-                    className="text-[12px] font-mono font-semibold mt-1"
+                  <span className="text-[10px] text-[var(--text-tertiary)] block">
+                    {isIndonesian ? "Dampak Unit" : "Units Impact"}
+                  </span>
+                  <span
+                    className="text-[12px] font-mono font-semibold mt-1 block"
                     style={{
                       color:
                         isFromCrypto &&
@@ -1441,49 +1395,50 @@ export function TransactionSheet({
                     {isFromCrypto && (type === "transfer" || type === "expense")
                       ? `-${cryptoUnits || "0"} USDT`
                       : `+${cryptoUnits || "0"} USDT`}
-                  </div>
+                  </span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Duplicate Transaction Warning (Monochrome Apple Luxury Alert) */}
+          {/* Duplicate Transaction Alert */}
           {(isDuplicateDetected || duplicateWarningAcknowledged) && (
             <motion.div
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-3 mx-2 px-3.5 py-2.5 rounded-xl flex items-center justify-between gap-3 text-[12px] font-medium"
+              className="mt-2.5 mx-1 px-3 py-2 rounded-2xl flex items-center justify-between gap-2.5 text-[11.5px] font-medium"
               style={{
-                background: isDark
-                  ? "rgba(255, 255, 255, 0.06)"
-                  : "rgba(0, 0, 0, 0.04)",
-                color: "var(--text-primary)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: isDark
-                  ? "inset 0 1px 0 rgba(255,255,255,0.08)"
-                  : "0 2px 8px rgba(0,0,0,0.03)",
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
               }}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <AlertCircle size={15} className="shrink-0 text-[var(--text-secondary)]" strokeWidth={1.75} />
-                <span className="leading-snug text-[11.5px] text-[var(--text-secondary)]">
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertCircle
+                  size={14}
+                  className="shrink-0 text-[var(--text-secondary)]"
+                  strokeWidth={2}
+                />
+                <span className="leading-snug text-[11px] text-[var(--text-secondary)]">
                   {duplicateWarningAcknowledged
                     ? isIndonesian
-                      ? "Transaksi serupa baru disimpan. Ketuk Simpan sekali lagi jika disengaja."
+                      ? "Transaksi serupa baru disimpan. Ketuk Simpan lagi untuk konfirmasi."
                       : "Similar transaction saved just now. Tap Save again to confirm."
                     : isIndonesian
-                      ? "Kemungkinan duplikat: transaksi serupa tercatat dalam 15 menit terakhir"
-                      : "Possible duplicate: similar transaction recorded within 15 mins"}
+                      ? "Kemungkinan duplikat: transaksi serupa tercatat 15 menit terakhir"
+                      : "Possible duplicate: similar record within 15 mins"}
                 </span>
               </div>
               {duplicateWarningAcknowledged && (
                 <button
                   type="button"
                   onClick={() => setDuplicateWarningAcknowledged(false)}
-                  className="px-2 py-1 rounded-lg text-[10.5px] font-semibold shrink-0 cursor-pointer transition-all active:scale-95"
+                  className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 cursor-pointer active:scale-95"
                   style={{
-                    background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
-                    border: "1px solid var(--glass-border)",
+                    background: isDark
+                      ? "rgba(255,255,255,0.12)"
+                      : "rgba(0,0,0,0.08)",
+                    border: controlBorder,
                     color: "var(--text-primary)",
                   }}
                 >
@@ -1493,77 +1448,56 @@ export function TransactionSheet({
             </motion.div>
           )}
 
-          {/* Budget Impact Preview (Live Financial Feedback - Monochrome Luxury) */}
+          {/* Budget Impact Preview */}
           {budgetImpact && (
             <motion.div
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-2.5 mx-2 px-3 py-2 rounded-xl flex items-center justify-between text-[11px] font-medium"
+              className="mt-2 mx-1 px-3 py-1.5 rounded-2xl flex items-center justify-between text-[11px] font-medium"
               style={{
-                background: budgetImpact.isOver
-                  ? isDark
-                    ? "rgba(255, 255, 255, 0.08)"
-                    : "rgba(0, 0, 0, 0.06)"
-                  : "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
                 color: "var(--text-secondary)",
               }}
             >
               <div className="flex items-center gap-1.5 truncate pr-2">
                 {budgetImpact.isOver ? (
                   <AlertTriangle
-                    size={13}
-                    strokeWidth={1.75}
+                    size={12}
+                    strokeWidth={2}
                     className="shrink-0 text-[var(--text-primary)]"
                   />
                 ) : (
-                  <span
-                    className="font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <span className="font-semibold text-[var(--text-primary)] truncate">
                     {budgetImpact.categoryName}
                   </span>
                 )}
-                <span>·</span>
+                <span className="opacity-50">·</span>
                 <span className="truncate">
                   {budgetImpact.hasBudget
                     ? budgetImpact.isOver
                       ? isIndonesian
-                        ? `Melebihi Anggaran: +${formatRupiah(budgetImpact.diff)}`
-                        : `Budget Exceeded: +${formatRupiah(budgetImpact.diff)}`
+                        ? `Melebihi: +${formatRupiah(budgetImpact.diff)}`
+                        : `Over Budget: +${formatRupiah(budgetImpact.diff)}`
                       : isIndonesian
                         ? `Sisa: ${formatRupiah(budgetImpact.remaining)}`
                         : `Remaining: ${formatRupiah(budgetImpact.remaining)}`
                     : isIndonesian
                       ? `Total Bulan: ${formatRupiah(budgetImpact.projectedSpent)}`
-                      : `Month Total: ${formatRupiah(budgetImpact.projectedSpent)}`}
+                      : `MTD: ${formatRupiah(budgetImpact.projectedSpent)}`}
                 </span>
               </div>
               {budgetImpact.hasBudget && (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                    style={{
-                      background: budgetImpact.isOver
-                        ? isDark
-                          ? "rgba(255, 255, 255, 0.14)"
-                          : "rgba(0, 0, 0, 0.1)"
-                        : "var(--bg-elevated)",
-                      color: "var(--text-primary)",
-                      border: "1px solid var(--glass-border)",
-                    }}
-                  >
-                    {budgetImpact.pct}% {isIndonesian ? "tersisa" : "left"}
-                  </span>
-                </div>
+                <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-white/[0.08] border border-[var(--glass-border)] text-[var(--text-primary)] shrink-0">
+                  {budgetImpact.pct}% {isIndonesian ? "sisa" : "left"}
+                </span>
               )}
             </motion.div>
           )}
         </div>
 
-        {/* Resolution 5: Horizontal Floating Ribbon & Dynamic Island Pill */}
-
-        {/* 1. Category Ribbon (Zero Truncation, 1-Tap Instant Selection) */}
+        {/* ── 4. Category Ribbon ── */}
         {type !== "transfer" && (
           <CategorySelectorRibbon
             categories={displayCategories}
@@ -1573,7 +1507,7 @@ export function TransactionSheet({
           />
         )}
 
-        {/* 2. Account / Wallet Ribbon */}
+        {/* ── 5. Account / Wallet Ribbon ── */}
         <WalletSelectorRibbon
           type={type}
           displayFromWallets={displayFromWallets}
@@ -1587,28 +1521,27 @@ export function TransactionSheet({
             setMoreWalletOpen(true);
           }}
         />
-        {/* 3. Note & Date/Time Compact Island with Dynamic Focus Animation */}
+
+        {/* ── 6. Note & Date/Time Compact Capsule ── */}
         <div
-          className="rounded-2xl p-3 px-4 mb-3.5 flex items-center gap-3 transition-all"
+          className="rounded-2xl p-2.5 px-3.5 mb-3 flex items-center gap-2.5 transition-all"
           style={{
-            background: "var(--bg-elevated)",
+            background: controlBg,
             border: isNoteFocused
               ? isDark
                 ? "1px solid rgba(255, 255, 255, 0.3)"
                 : "1px solid rgba(0, 0, 0, 0.25)"
-              : "1px solid var(--glass-border)",
+              : controlBorder,
             boxShadow: isNoteFocused
               ? isDark
                 ? "0 4px 14px rgba(0, 0, 0, 0.35)"
                 : "0 2px 8px rgba(0, 0, 0, 0.05), inset 0 1px 0 #ffffff"
-              : isDark
-                ? "none"
-                : "0 1px 3px rgba(0, 0, 0, 0.02), inset 0 1px 0 #ffffff",
+              : controlShadow,
           }}
         >
           <PenLine
-            size={14}
-            strokeWidth={1.5}
+            size={13.5}
+            strokeWidth={1.8}
             style={{
               color: isNoteFocused
                 ? "var(--text-primary)"
@@ -1624,23 +1557,19 @@ export function TransactionSheet({
             placeholder={
               isIndonesian
                 ? "Tambah catatan (opsional)..."
-                : "Add a note (optional)..."
+                : "Add note (optional)..."
             }
-            className="bg-transparent text-[13px] placeholder:text-[12px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-60 font-normal flex-1 outline-none min-w-0"
-            style={{
-              color: "var(--text-primary)",
-              fontFamily: "Urbanist, -apple-system, sans-serif",
-            }}
+            className="bg-transparent text-[12.5px] placeholder:text-[12px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-65 font-normal flex-1 outline-none min-w-0"
+            style={{ color: "var(--text-primary)" }}
           />
 
-          {/* Smooth hiding of Date and Time pills when typing note so text expands full width */}
           <AnimatePresence>
             {!isNoteFocused && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, width: 0 }}
+                initial={{ opacity: 0, scale: 0.95, width: 0 }}
                 animate={{ opacity: 1, scale: 1, width: "auto" }}
-                exit={{ opacity: 0, scale: 0.9, width: 0 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, scale: 0.95, width: 0 }}
+                transition={{ duration: 0.18 }}
                 className="flex items-center gap-1.5 shrink-0 overflow-hidden"
               >
                 <button
@@ -1649,17 +1578,19 @@ export function TransactionSheet({
                     triggerHaptic("light");
                     setDateOpen(true);
                   }}
-                  className="px-2.5 py-1 rounded-xl text-[11px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1 rounded-full text-[10.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
                   style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.06)"
+                      : "rgba(0, 0, 0, 0.04)",
+                    border: controlBorder,
                     color: "var(--text-primary)",
                   }}
                 >
                   <CalendarIcon
-                    size={12}
-                    strokeWidth={1.5}
-                    style={{ color: "var(--text-tertiary)" }}
+                    size={11}
+                    strokeWidth={1.8}
+                    className="text-[var(--text-tertiary)]"
                   />
                   <span>
                     {isToday(date)
@@ -1675,30 +1606,32 @@ export function TransactionSheet({
                     triggerHaptic("light");
                     setTimeOpen(true);
                   }}
-                  className="px-2.5 py-1 rounded-xl text-[11px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1 rounded-full text-[10.5px] font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1"
                   style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.06)"
+                      : "rgba(0, 0, 0, 0.04)",
+                    border: controlBorder,
                     color: "var(--text-primary)",
                   }}
                 >
                   <Clock
-                    size={12}
-                    strokeWidth={1.5}
-                    style={{ color: "var(--text-tertiary)" }}
+                    size={11}
+                    strokeWidth={1.8}
+                    className="text-[var(--text-tertiary)]"
                   />
-                  <span className="amount">{time}</span>
+                  <span>{time}</span>
                 </button>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Dedicated Ledger Active Notice */}
+        {/* Dedicated Ledger Notice */}
         {activeSpace &&
           activeSpace.id !== "all" &&
           activeSpace.id !== "personal" && (
-            <div className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center justify-between">
+            <div className="mb-2 px-3 py-1.5 rounded-2xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 <span>
@@ -1724,103 +1657,69 @@ export function TransactionSheet({
                 </button>
               ) : (
                 <span className="text-[10px] font-mono text-[var(--text-secondary)] bg-white/[0.06] border border-white/10 px-2 py-0.5 rounded-full">
-                  {isIndonesian ? "Otomatis tertaut" : "Auto-linked"}
+                  {isIndonesian ? "Otomatis" : "Auto"}
                 </span>
               )}
             </div>
           )}
 
-        {/* Reimbursable Highlight Notice */}
-        {activeTags.includes("#reimburse") && (
-          <div className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-secondary)] flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)] shrink-0" />
-            <span>
-              {isIndonesian ? (
-                <>
-                  Tag <strong>#reimburse</strong> aktif · Ditandai untuk klaim
-                  penggantian biaya
-                </>
-              ) : (
-                <>
-                  Tag <strong>#reimburse</strong> active · Marked for expense
-                  reimbursement claim
-                </>
-              )}
-            </span>
-          </div>
-        )}
-
-        {/* Smart Merchant & Context Memory Suggestion Chip */}
+        {/* Smart Merchant Match Chip */}
         {(predictedCategory || predictedWallet) && (
           <motion.div
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-3 px-1 flex items-center gap-2"
+            className="mb-2.5 px-1 flex items-center gap-2"
           >
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("medium");
-                if (predictedCategory)
-                  setCategoryId(predictedCategory.id);
-                if (predictedWallet)
-                  setWalletId(predictedWallet.id);
+                if (predictedCategory) setCategoryId(predictedCategory.id);
+                if (predictedWallet) setWalletId(predictedWallet.id);
               }}
-              className="px-3 py-1.5 rounded-xl text-[11px] font-medium flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer select-none"
+              className="px-3 py-1 rounded-full text-[11px] font-medium flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer select-none"
               style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
                 color: "var(--text-secondary)",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
               }}
             >
-              <Sparkles size={12} className="text-[var(--accent)] shrink-0" />
+              <Sparkles size={11} className="text-zinc-400 shrink-0" />
               <span>{isIndonesian ? "Cocok pintar:" : "Smart match:"}</span>
               {predictedCategory && (
-                <span
-                  className="font-bold"
-                  style={{ color: "var(--text-primary)" }}
-                >
+                <span className="font-bold text-[var(--text-primary)]">
                   {predictedCategory.name}
                 </span>
               )}
               {predictedWallet && (
-                <span style={{ color: "var(--text-tertiary)" }}>
+                <span className="text-[var(--text-tertiary)]">
                   ({predictedWallet.name})
                 </span>
               )}
-              <span
-                className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-                style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
-                }}
-              >
+              <span className="ml-1 text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-white text-black">
                 {isIndonesian ? "Terapkan" : "Apply"}
               </span>
             </button>
           </motion.div>
         )}
 
-        {/* Action Button Bar: Scan (Left), Save (Center), Quick Add (Right) */}
-        <div className="flex items-center gap-2.5 mt-4 mb-2 select-none">
+        {/* ── 7. Action Button Bar (Scan, Save, Voice/Delete) ── */}
+        <div className="flex items-center gap-2 mt-3 mb-1 select-none">
           {transaction ? (
             <button
               type="button"
               onClick={handleDelete}
-              className="w-12 h-12 rounded-2xl flex items-center justify-center active:scale-95 shrink-0 transition-all cursor-pointer select-none"
+              className="w-11 h-11 rounded-2xl flex items-center justify-center active:scale-95 shrink-0 transition-all cursor-pointer select-none"
               style={{
-                background: "var(--glass-fill)",
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
                 color: "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
-                touchAction: "manipulation",
-                WebkitTouchCallout: "none",
-                WebkitUserSelect: "none",
-                userSelect: "none",
               }}
               title={isIndonesian ? "Hapus Transaksi" : "Delete Transaction"}
             >
-              <Trash2 size={18} strokeWidth={1.75} />
+              <Trash2 size={16} strokeWidth={1.8} />
             </button>
           ) : onOpenScan ? (
             <button
@@ -1829,42 +1728,29 @@ export function TransactionSheet({
                 triggerHaptic("light");
                 onOpenScan();
               }}
-              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
+              className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 active:scale-95 transition-all cursor-pointer select-none"
               style={{
-                background: isDark
-                  ? "linear-gradient(155deg, #1f1f24 0%, #121215 100%)"
-                  : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
-                border: "1px solid var(--glass-border)",
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
                 color: "var(--text-primary)",
-                boxShadow: isDark
-                  ? "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
-                  : "0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #ffffff",
-                touchAction: "manipulation",
-                WebkitTouchCallout: "none",
-                WebkitUserSelect: "none",
-                userSelect: "none",
               }}
               title={
-                isIndonesian
-                  ? "Pindai Struk / Bukti Transfer"
-                  : "Scan Receipt / Slip"
-              }
-              aria-label={
-                isIndonesian
-                  ? "Pindai Struk atau Bukti Transfer"
-                  : "Scan Receipt or Slip"
+                isIndonesian ? "Pindai Struk / Bukti Transfer" : "Scan Receipt"
               }
             >
-              <ScanLine size={18} strokeWidth={1.75} />
+              <ScanLine size={16} strokeWidth={1.8} />
             </button>
           ) : null}
 
           <button
             type="button"
             onTouchStart={(e) => {
-              // 1. Prevent default immediately suppresses iOS native text selection, magnifying glass, and Paste callout
               e.preventDefault();
-              if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+              if (
+                typeof document !== "undefined" &&
+                document.activeElement instanceof HTMLElement
+              ) {
                 document.activeElement.blur();
               }
               const touch = e.touches[0];
@@ -1877,7 +1763,6 @@ export function TransactionSheet({
               if (touch) {
                 const dx = Math.abs(touch.clientX - touchStartPos.current.x);
                 const dy = Math.abs(touch.clientY - touchStartPos.current.y);
-                // Clean tap (< 14px movement) triggers immediate save
                 if (dx < 14 && dy < 14) {
                   e.preventDefault();
                   touchHandledRef.current = true;
@@ -1891,13 +1776,8 @@ export function TransactionSheet({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              // If touch already handled save on mobile device, ignore duplicate synthetic click
               if (touchHandledRef.current) return;
               executeSave();
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
             }}
             disabled={
               currentUserRole === "viewer" ||
@@ -1906,38 +1786,28 @@ export function TransactionSheet({
               addTx.isPending ||
               updateTx.isPending
             }
-            className="flex-1 h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none"
+            className="flex-1 h-11 rounded-full font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none shadow-sm"
             style={{
-              background: isDark
-                ? "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)"
-                : "linear-gradient(180deg, #18181b 0%, #09090b 100%)",
+              background: isDark ? "#ffffff" : "#18181b",
               color: isDark ? "#000000" : "#ffffff",
-              border: isDark
-                ? "1px solid rgba(255, 255, 255, 0.8)"
-                : "1px solid #18181b",
               boxShadow: isDark
-                ? "inset 0 1px 0 0 #ffffff, inset 0 -1px 0 0 rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.4)"
-                : "inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 4px 14px rgba(0, 0, 0, 0.15)",
-              letterSpacing: "-0.01em",
-              touchAction: "manipulation",
-              WebkitTouchCallout: "none",
-              WebkitUserSelect: "none",
-              userSelect: "none",
+                ? "0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 #ffffff"
+                : "0 4px 14px rgba(0, 0, 0, 0.15)",
             }}
           >
             {currentUserRole === "viewer" ? (
-              <span className="font-semibold flex items-center gap-1.5 opacity-75 select-none pointer-events-none">
-                <Lock size={15} strokeWidth={2} />
-                {isIndonesian ? "Hanya Lihat (Viewer)" : "Read-Only (Viewer)"}
+              <span className="font-semibold flex items-center gap-1.5 opacity-75">
+                <Lock size={14} strokeWidth={2} />
+                {isIndonesian ? "Hanya Lihat" : "Read-Only"}
               </span>
             ) : isSaving || addTx.isPending || updateTx.isPending ? (
-              <span className="font-semibold select-none pointer-events-none">
+              <span className="font-semibold">
                 {isIndonesian ? "Menyimpan..." : "Saving..."}
               </span>
             ) : (
-              <div className="flex items-center justify-center gap-2 select-none pointer-events-none">
-                <Check size={16} strokeWidth={2.25} />
-                <span className="font-semibold select-none pointer-events-none">
+              <div className="flex items-center justify-center gap-1.5">
+                <Check size={15} strokeWidth={2.8} />
+                <span className="font-semibold">
                   {transaction
                     ? isIndonesian
                       ? "Perbarui Transaksi"
@@ -1957,33 +1827,22 @@ export function TransactionSheet({
                 triggerHaptic("light");
                 onOpenVoiceAdd();
               }}
-              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 active:scale-90 transition-transform cursor-pointer select-none"
+              className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 active:scale-95 transition-all cursor-pointer select-none"
               style={{
-                background: isDark
-                  ? "linear-gradient(155deg, #1f1f24 0%, #121215 100%)"
-                  : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
-                border: "1px solid var(--glass-border)",
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
                 color: "var(--text-primary)",
-                boxShadow: isDark
-                  ? "0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
-                  : "0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #ffffff",
               }}
-              title={
-                isIndonesian
-                  ? "Pencatatan Suara Cerdas"
-                  : "Smart Voice Logging"
-              }
-              aria-label={isIndonesian ? "Pencatatan Suara" : "Voice Logging"}
+              title={isIndonesian ? "Pencatatan Suara" : "Voice Logging"}
             >
-              <Mic size={18} strokeWidth={1.75} />
+              <Mic size={16} strokeWidth={1.8} />
             </button>
           )}
         </div>
       </div>
 
-      {/* ================================================================
-    MORE CATEGORIES — MILKY LIQUID GLASS / 3-COLUMN PILL GRID
-    ================================================================ */}
+      {/* ── More Categories Sub-Sheet (Frosted 3-Column Pill Grid) ── */}
       <BottomSheet
         isOpen={moreCatOpen}
         onClose={() => {
@@ -1991,91 +1850,48 @@ export function TransactionSheet({
           setSearchCatQuery("");
         }}
       >
-        <div className="px-4 pt-1 pb-7">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="min-w-0">
-              <h3
-                className="
-            font-semibold
-            text-[17px]
-            leading-[1.15]
-            tracking-[-0.02em]
-          "
-                style={{
-                  color: "var(--text-primary)",
-                }}
-              >
+        <div className="px-5 pt-1 pb-7 max-w-lg mx-auto select-none">
+          <div className="flex items-center justify-between mb-3.5">
+            <div>
+              <h3 className="font-semibold text-[16px] text-[var(--text-primary)] leading-tight">
                 {isIndonesian ? "Pilih Kategori" : "Select Category"}
               </h3>
-
-              <p
-                className="text-[10px] font-medium mt-1"
-                style={{
-                  color: "var(--text-tertiary)",
-                }}
-              >
+              <p className="text-[10.5px] font-medium text-[var(--text-tertiary)] mt-0.5">
                 {filteredMoreCategories.length}{" "}
                 {isIndonesian ? "kategori tersedia" : "categories available"}
               </p>
             </div>
 
-            {/* Close */}
             <button
               type="button"
               onClick={() => {
                 setMoreCatOpen(false);
                 setSearchCatQuery("");
               }}
-              className="
-          shrink-0
-          h-8
-          px-3.5
-          rounded-full
-          text-[11px]
-          font-semibold
-          cursor-pointer
-          select-none
-          transition-all
-          duration-150
-          active:scale-[0.96]
-        "
+              className="h-7 px-3 rounded-full text-[11px] font-semibold active:scale-95 transition-all cursor-pointer"
               style={{
-                background: isDark
-                  ? "linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.045) 100%)"
-                  : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.8) 100%)",
+                background: controlBg,
+                border: controlBorder,
                 color: "var(--text-secondary)",
-                border: isDark
-                  ? "1px solid rgba(255,255,255,0.12)"
-                  : "1px solid rgba(255,255,255,0.92)",
-                boxShadow: isDark
-                  ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 3px 10px rgba(0,0,0,0.18)"
-                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.1)",
-                backdropFilter: "blur(18px) saturate(155%)",
-                WebkitBackdropFilter: "blur(18px) saturate(155%)",
               }}
             >
               {isIndonesian ? "Tutup" : "Close"}
             </button>
           </div>
 
-          {/* Search */}
-          <div className="relative mb-4">
+          {/* Search Pill */}
+          <div
+            className="flex items-center gap-2 px-3.5 h-10 rounded-2xl mb-3.5 transition-all"
+            style={{
+              background: controlBg,
+              border: controlBorder,
+              boxShadow: controlShadow,
+            }}
+          >
             <Search
-              size={15}
-              strokeWidth={1.8}
-              className="
-          absolute
-          left-3.5
-          top-1/2
-          -translate-y-1/2
-          pointer-events-none
-        "
-              style={{
-                color: "var(--text-tertiary)",
-              }}
+              size={14}
+              className="text-[var(--text-tertiary)] shrink-0"
             />
-
             <input
               type="text"
               value={searchCatQuery}
@@ -2083,94 +1899,29 @@ export function TransactionSheet({
               placeholder={
                 isIndonesian ? "Cari kategori..." : "Search category..."
               }
-              className="
-          w-full
-          h-11
-          pl-10
-          pr-9
-          rounded-[14px]
-          text-[12px]
-          font-medium
-          outline-none
-          transition-all
-          duration-200
-        "
-              style={{
-                background: isDark
-                  ? "linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.035) 100%)"
-                  : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.70) 100%)",
-                border: isDark
-                  ? "1px solid rgba(255,255,255,0.10)"
-                  : "1px solid rgba(205,205,205,0.38)",
-                color: "var(--text-primary)",
-                fontFamily: "Urbanist, sans-serif",
-                boxShadow: isDark
-                  ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.12)"
-                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 12px rgba(15,23,42,0.145)",
-                backdropFilter: "blur(20px) saturate(160%)",
-                WebkitBackdropFilter: "blur(20px) saturate(160%)",
-              }}
+              className="flex-1 bg-transparent text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
             />
-
             {searchCatQuery && (
               <button
                 type="button"
                 onClick={() => setSearchCatQuery("")}
-                className="
-            absolute
-            right-2.5
-            top-1/2
-            -translate-y-1/2
-            w-6
-            h-6
-            rounded-full
-            flex
-            items-center
-            justify-center
-            cursor-pointer
-            active:scale-90
-            transition-transform
-          "
-                style={{
-                  background: isDark
-                    ? "rgba(255,255,255,0.09)"
-                    : "rgba(255,255,255,0.82)",
-                  color: "var(--text-tertiary)",
-                  border: isDark
-                    ? "1px solid rgba(255,255,255,0.10)"
-                    : "1px solid rgba(255,255,255,0.78)",
-                  boxShadow: isDark
-                    ? "inset 0 1px 0 rgba(255,255,255,0.10)"
-                    : "inset 0 1px 0 rgba(255,255,255,1)",
-                }}
+                className="cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
               >
-                <X size={12} strokeWidth={2} />
+                <X size={13} />
               </button>
             )}
           </div>
 
-          {/* Empty State */}
           {filteredMoreCategories.length === 0 ? (
-            <div className="py-12 text-center">
-              <p
-                className="text-[12px] font-medium"
-                style={{
-                  color: "var(--text-tertiary)",
-                }}
-              >
-                {isIndonesian
-                  ? `Kategori "${searchCatQuery}" tidak ditemukan`
-                  : `No categories found matching "${searchCatQuery}"`}
-              </p>
+            <div className="py-12 text-center text-[12px] text-[var(--text-tertiary)]">
+              {isIndonesian
+                ? `Kategori "${searchCatQuery}" tidak ditemukan`
+                : `No categories matching "${searchCatQuery}"`}
             </div>
           ) : (
-            /* ============================================================
-         3-COLUMN CATEGORY PILL GRID
-         ============================================================ */
-            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5">
+            <div className="grid grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto no-scrollbar pr-0.5">
               {filteredMoreCategories.map((cat) => {
                 const isSelected = categoryId === cat.id;
-
                 return (
                   <button
                     key={cat.id}
@@ -2181,118 +1932,34 @@ export function TransactionSheet({
                       setSearchCatQuery("");
                       triggerHaptic("light");
                     }}
-                    className="
-                relative
-                min-w-0
-                w-full
-                h-10
-                px-2.5
-                rounded-full
-                flex
-                items-center
-                justify-start
-                gap-1.5
-                cursor-pointer
-                select-none
-                transition-all
-                duration-150
-                active:scale-[0.96]
-              "
+                    className="h-10 px-2.5 rounded-full flex items-center justify-start gap-2 cursor-pointer select-none active:scale-95 transition-all"
                     style={{
                       background: isSelected
                         ? isDark
-                          ? "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.10) 100%)"
-                          : "linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.90) 48%, rgba(240,241,244,0.94) 100%)"
-                        : isDark
-                          ? "linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.028) 100%)"
-                          : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.84) 48%, rgba(244,245,247,0.90) 100%)",
-
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.98) 48%, rgba(244,245,247,0.95) 100%)"
+                          : "#18181b"
+                        : controlBg,
                       color: isSelected
                         ? isDark
-                          ? "rgba(255,255,255,0.96)"
-                          : "var(--text-primary)"
+                          ? "#000000"
+                          : "#ffffff"
                         : "var(--text-secondary)",
-
                       border: isSelected
                         ? isDark
-                          ? "1px solid rgba(255,255,255,0.24)"
-                          : "1px solid rgba(255,255,255,0.96)"
-                        : isDark
-                          ? "1px solid rgba(255,255,255,0.09)"
-                          : "1px solid rgba(255,255,255,0.86)",
-
+                          ? "1px solid rgba(255,255,255,0.86)"
+                          : "1px solid #18181b"
+                        : controlBorder,
                       boxShadow: isSelected
-                        ? isDark
-                          ? [
-                              "inset 0 1px 0 rgba(255,255,255,0.20)",
-                              "inset 0 -1px 0 rgba(255,255,255,0.04)",
-                              "0 4px 12px rgba(0,0,0,0.18)",
-                            ].join(", ")
-                          : [
-                              "inset 0 1px 0 rgba(255,255,255,1)",
-                              "inset 0 -1px 0 rgba(15,23,42,0.025)",
-                              "0 5px 14px rgba(15,23,42,0.185)",
-                            ].join(", ")
-                        : isDark
-                          ? "inset 0 1px 0 rgba(255,255,255,0.075)"
-                          : [
-                              "inset 0 1px 0 rgba(255,255,255,1)",
-                              "inset 0 -1px 0 rgba(255,255,255,0.40)",
-                              "0 3px 10px rgba(15,23,42,0.185)",
-                            ].join(", "),
-
-                      backdropFilter: "blur(18px) saturate(155%)",
+                        ? "0 3px 10px rgba(0, 0, 0, 0.25)"
+                        : controlShadow,
+                      backdropFilter: "blur(18px) saturate(255%)",
                       WebkitBackdropFilter: "blur(18px) saturate(155%)",
                     }}
                   >
-                    {/* Icon */}
-                    <span
-                      className="
-                  w-[23px]
-                  h-[23px]
-                  rounded-full
-                  flex
-                  items-center
-                  justify-center
-                  shrink-0
-                "
-                      style={{
-                        background: isSelected
-                          ? isDark
-                            ? "rgba(255,255,255,0.10)"
-                            : "linear-gradient(180deg, rgba(255,255,255,0.90), rgba(235,236,240,0.82))"
-                          : isDark
-                            ? "rgba(255,255,255,0.055)"
-                            : "linear-gradient(180deg, rgba(255,255,255,0.84), rgba(238,239,243,0.72))",
-
-                        border: isSelected
-                          ? isDark
-                            ? "1px solid rgba(255,255,255,0.14)"
-                            : "1px solid rgba(255,255,255,0.92)"
-                          : isDark
-                            ? "1px solid rgba(255,255,255,0.075)"
-                            : "1px solid rgba(255,255,255,0.80)",
-
-                        boxShadow: isDark
-                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
-                          : "inset 0 1px 0 rgba(255,255,255,1)",
-                      }}
-                    >
-                      <IconRenderer icon={cat.emoji} size="w-[15px] h-[15px]" />
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 bg-white/[0.08]">
+                      <IconRenderer icon={cat.emoji} size="w-3.5 h-3.5" />
                     </span>
-
-                    {/* Category Name */}
-                    <span
-                      className="
-                  min-w-0
-                  text-[10.5px]
-                  leading-none
-                  font-semibold
-                  tracking-[-0.012em]
-                  whitespace-nowrap
-                  truncate
-                "
-                    >
+                    <span className="text-[11px] font-semibold truncate leading-none">
                       {cat.name}
                     </span>
                   </button>
@@ -2303,9 +1970,7 @@ export function TransactionSheet({
         </div>
       </BottomSheet>
 
-      {/* ================================================================
-    MORE ACCOUNTS / WALLET — MILKY LIQUID GLASS / 3-COLUMN PILL GRID
-    ================================================================ */}
+      {/* ── More Accounts Sub-Sheet (Frosted 3-Column Pill Grid) ── */}
       <BottomSheet
         isOpen={moreWalletOpen}
         onClose={() => {
@@ -2313,32 +1978,13 @@ export function TransactionSheet({
           setSearchWalletQuery("");
         }}
       >
-        <div className="px-4 pt-1 pb-7">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="min-w-0 pr-3">
-              <h3
-                className="
-            font-semibold
-            text-[17px]
-            leading-[1.15]
-            tracking-[-0.02em]
-          "
-                style={{
-                  color: "var(--text-primary)",
-                }}
-              >
-                {isIndonesian
-                  ? "Pilih Akun"
-                  : "Select Account"}
+        <div className="px-5 pt-1 pb-7 max-w-lg mx-auto select-none">
+          <div className="flex items-center justify-between mb-3.5">
+            <div>
+              <h3 className="font-semibold text-[16px] text-[var(--text-primary)] leading-tight">
+                {isIndonesian ? "Pilih Akun" : "Select Account"}
               </h3>
-
-              <p
-                className="text-[10px] font-medium mt-1"
-                style={{
-                  color: "var(--text-tertiary)",
-                }}
-              >
+              <p className="text-[10.5px] font-medium text-[var(--text-tertiary)] mt-0.5">
                 {walletTarget === "from"
                   ? isIndonesian
                     ? "Akun Asal"
@@ -2351,158 +1997,64 @@ export function TransactionSheet({
               </p>
             </div>
 
-            {/* Close */}
             <button
               type="button"
               onClick={() => {
                 setMoreWalletOpen(false);
                 setSearchWalletQuery("");
               }}
-              className="
-          shrink-0
-          h-8
-          px-3.5
-          rounded-full
-          text-[11px]
-          font-semibold
-          cursor-pointer
-          select-none
-          transition-all
-          duration-150
-          active:scale-[0.96]
-        "
+              className="h-7 px-3 rounded-full text-[11px] font-semibold active:scale-95 transition-all cursor-pointer"
               style={{
-                background: isDark
-                  ? "linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.045) 100%)"
-                  : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.78) 100%)",
+                background: controlBg,
+                border: controlBorder,
                 color: "var(--text-secondary)",
-                border: isDark
-                  ? "1px solid rgba(255,255,255,0.12)"
-                  : "1px solid rgba(255,255,255,0.92)",
-                boxShadow: isDark
-                  ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 3px 10px rgba(0,0,0,0.18)"
-                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.06)",
-                backdropFilter: "blur(18px) saturate(155%)",
-                WebkitBackdropFilter: "blur(18px) saturate(155%)",
               }}
             >
               {isIndonesian ? "Tutup" : "Close"}
             </button>
           </div>
 
-          {/* Search */}
-          <div className="relative mb-4">
+          <div
+            className="flex items-center gap-2 px-3.5 h-10 rounded-2xl mb-3.5 transition-all"
+            style={{
+              background: controlBg,
+              border: controlBorder,
+              boxShadow: controlShadow,
+            }}
+          >
             <Search
-              size={15}
-              strokeWidth={1.8}
-              className="
-          absolute
-          left-3.5
-          top-1/2
-          -translate-y-1/2
-          pointer-events-none
-        "
-              style={{
-                color: "var(--text-tertiary)",
-              }}
+              size={14}
+              className="text-[var(--text-tertiary)] shrink-0"
             />
-
             <input
               type="text"
               value={searchWalletQuery}
               onChange={(e) => setSearchWalletQuery(e.target.value)}
-              placeholder={
-                isIndonesian ? "Cari akun..." : "Search account..."
-              }
-              className="
-          w-full
-          h-11
-          pl-10
-          pr-9
-          rounded-[14px]
-          text-[12px]
-          font-medium
-          outline-none
-          transition-all
-          duration-200
-        "
-              style={{
-                background: isDark
-                  ? "linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.035) 100%)"
-                  : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.70) 100%)",
-                border: isDark
-                  ? "1px solid rgba(255,255,255,0.10)"
-                  : "1px solid rgba(255,255,255,0.88)",
-                color: "var(--text-primary)",
-                fontFamily: "Urbanist, sans-serif",
-                boxShadow: isDark
-                  ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.12)"
-                  : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 12px rgba(15,23,42,0.045)",
-                backdropFilter: "blur(20px) saturate(160%)",
-                WebkitBackdropFilter: "blur(20px) saturate(160%)",
-              }}
+              placeholder={isIndonesian ? "Cari akun..." : "Search account..."}
+              className="flex-1 bg-transparent text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
             />
-
             {searchWalletQuery && (
               <button
                 type="button"
                 onClick={() => setSearchWalletQuery("")}
-                className="
-            absolute
-            right-2.5
-            top-1/2
-            -translate-y-1/2
-            w-6
-            h-6
-            rounded-full
-            flex
-            items-center
-            justify-center
-            cursor-pointer
-            active:scale-90
-            transition-transform
-          "
-                style={{
-                  background: isDark
-                    ? "rgba(255,255,255,0.09)"
-                    : "rgba(255,255,255,0.82)",
-                  color: "var(--text-tertiary)",
-                  border: isDark
-                    ? "1px solid rgba(255,255,255,0.10)"
-                    : "1px solid rgba(255,255,255,0.78)",
-                  boxShadow: isDark
-                    ? "inset 0 1px 0 rgba(255,255,255,0.10)"
-                    : "inset 0 1px 0 rgba(255,255,255,1)",
-                }}
+                className="cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
               >
-                <X size={12} strokeWidth={2} />
+                <X size={13} />
               </button>
             )}
           </div>
 
-          {/* Empty State */}
           {filteredMoreWallets.length === 0 ? (
-            <div className="py-12 text-center">
-              <p
-                className="text-[12px] font-medium"
-                style={{
-                  color: "var(--text-tertiary)",
-                }}
-              >
-                {isIndonesian
-                  ? `Akun "${searchWalletQuery}" tidak ditemukan`
-                  : `No accounts found matching "${searchWalletQuery}"`}
-              </p>
+            <div className="py-12 text-center text-[12px] text-[var(--text-tertiary)]">
+              {isIndonesian
+                ? `Akun "${searchWalletQuery}" tidak ditemukan`
+                : `No accounts matching "${searchWalletQuery}"`}
             </div>
           ) : (
-            /* ============================================================
-         3-COLUMN ACCOUNT PILL GRID
-         ============================================================ */
-            <div className="grid grid-cols-3 gap-x-2.5 gap-y-2.5">
+            <div className="grid grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto no-scrollbar pr-0.5">
               {filteredMoreWallets.map((w) => {
                 const isSelected =
                   (walletTarget === "from" ? walletId : toWalletId) === w.id;
-
                 return (
                   <button
                     key={w.id}
@@ -2513,123 +2065,38 @@ export function TransactionSheet({
                       } else {
                         setToWalletId(w.id);
                       }
-
                       setMoreWalletOpen(false);
                       setSearchWalletQuery("");
                       triggerHaptic("light");
                     }}
-                    className="
-                relative
-                min-w-0
-                w-full
-                h-10
-                px-2.5
-                rounded-full
-                flex
-                items-center
-                justify-start
-                gap-1.5
-                cursor-pointer
-                select-none
-                transition-all
-                duration-150
-                active:scale-[0.96]
-              "
+                    className="h-10 px-2.5 rounded-full flex items-center justify-start gap-2 cursor-pointer select-none active:scale-95 transition-all"
                     style={{
                       background: isSelected
                         ? isDark
-                          ? "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.10) 100%)"
-                          : "linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.90) 48%, rgba(240,241,244,0.94) 100%)"
-                        : isDark
-                          ? "linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.028) 100%)"
-                          : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.84) 48%, rgba(244,245,247,0.90) 100%)",
-
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.98) 48%, rgba(244,245,247,0.95) 100%)"
+                          : "#18181b"
+                        : controlBg,
                       color: isSelected
                         ? isDark
-                          ? "rgba(255,255,255,0.96)"
-                          : "var(--text-primary)"
+                          ? "#000000"
+                          : "#ffffff"
                         : "var(--text-secondary)",
-
                       border: isSelected
                         ? isDark
-                          ? "1px solid rgba(255,255,255,0.24)"
-                          : "1px solid rgba(255,255,255,0.96)"
-                        : isDark
-                          ? "1px solid rgba(255,255,255,0.09)"
-                          : "1px solid rgba(255,255,255,0.86)",
-
+                          ? "1px solid rgba(255,255,255,0.86)"
+                          : "1px solid #18181b"
+                        : controlBorder,
                       boxShadow: isSelected
-                        ? isDark
-                          ? [
-                              "inset 0 1px 0 rgba(255,255,255,0.20)",
-                              "inset 0 -1px 0 rgba(255,255,255,0.04)",
-                              "0 4px 12px rgba(0,0,0,0.18)",
-                            ].join(", ")
-                          : [
-                              "inset 0 1px 0 rgba(255,255,255,1)",
-                              "inset 0 -1px 0 rgba(15,23,42,0.025)",
-                              "0 5px 14px rgba(15,23,42,0.085)",
-                            ].join(", ")
-                        : isDark
-                          ? "inset 0 1px 0 rgba(255,255,255,0.075)"
-                          : [
-                              "inset 0 1px 0 rgba(255,255,255,1)",
-                              "inset 0 -1px 0 rgba(255,255,255,0.30)",
-                              "0 3px 10px rgba(15,23,42,0.045)",
-                            ].join(", "),
-
-                      backdropFilter: "blur(18px) saturate(155%)",
+                        ? "0 3px 10px rgba(0, 0, 0, 0.25)"
+                        : controlShadow,
+                      backdropFilter: "blur(18px) saturate(255%)",
                       WebkitBackdropFilter: "blur(18px) saturate(155%)",
                     }}
                   >
-                    {/* Account Icon */}
-                    <span
-                      className="
-                  w-[23px]
-                  h-[23px]
-                  rounded-full
-                  flex
-                  items-center
-                  justify-center
-                  shrink-0
-                "
-                      style={{
-                        background: isSelected
-                          ? isDark
-                            ? "rgba(255,255,255,0.10)"
-                            : "linear-gradient(180deg, rgba(255,255,255,0.90), rgba(235,236,240,0.82))"
-                          : isDark
-                            ? "rgba(255,255,255,0.055)"
-                            : "linear-gradient(180deg, rgba(255,255,255,0.84), rgba(238,239,243,0.72))",
-
-                        border: isSelected
-                          ? isDark
-                            ? "1px solid rgba(255,255,255,0.14)"
-                            : "1px solid rgba(255,255,255,0.92)"
-                          : isDark
-                            ? "1px solid rgba(255,255,255,0.075)"
-                            : "1px solid rgba(255,255,255,0.80)",
-
-                        boxShadow: isDark
-                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
-                          : "inset 0 1px 0 rgba(255,255,255,1)",
-                      }}
-                    >
-                      <IconRenderer icon={w.icon} size="w-[15px] h-[15px]" />
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 bg-white/[0.08]">
+                      <IconRenderer icon={w.icon} size="w-3.5 h-3.5" />
                     </span>
-
-                    {/* Account Name */}
-                    <span
-                      className="
-                  min-w-0
-                  text-[10.5px]
-                  leading-none
-                  font-semibold
-                  tracking-[-0.012em]
-                  whitespace-nowrap
-                  truncate
-                "
-                    >
+                    <span className="text-[11px] font-semibold truncate leading-none">
                       {w.name}
                     </span>
                   </button>
@@ -2661,25 +2128,20 @@ export function TransactionSheet({
 
       {/* Glass Time Picker Sheet */}
       <BottomSheet isOpen={timeOpen} onClose={() => setTimeOpen(false)}>
-        <div className="p-5 pb-12 flex flex-col items-center">
-          <h3
-            className="font-semibold text-lg mb-1"
-            style={{ color: "var(--text-primary)" }}
-          >
+        <div className="p-5 pb-10 flex flex-col items-center max-w-sm mx-auto">
+          <h3 className="font-semibold text-lg mb-1 text-[var(--text-primary)]">
             {isIndonesian ? "Pilih Waktu" : "Select Time"}
           </h3>
-          <p
-            className="text-[12px] font-medium mb-5"
-            style={{ color: "var(--text-tertiary)" }}
-          >
+          <p className="text-[12px] font-medium mb-5 text-[var(--text-tertiary)]">
             {isIndonesian ? "Waktu transaksi" : "Transaction timestamp"}
           </p>
 
           <div
-            className="p-4 rounded-3xl w-full max-w-[280px] flex items-center justify-center gap-3 glass-surface"
+            className="p-4 rounded-3xl w-full max-w-[260px] flex items-center justify-center gap-3"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--glass-border)",
+              background: controlBg,
+              border: controlBorder,
+              boxShadow: controlShadow,
             }}
           >
             <input
@@ -2687,11 +2149,13 @@ export function TransactionSheet({
               value={time}
               onChange={(e) => setTime(e.target.value)}
               className="bg-transparent text-3xl font-semibold amount text-center outline-none cursor-pointer"
-              style={{ color: "var(--text-primary)", colorScheme: "dark" }}
+              style={{
+                color: "var(--text-primary)",
+                colorScheme: isDark ? "dark" : "light",
+              }}
             />
           </div>
 
-          {/* Quick preset buttons */}
           <div className="flex gap-2 mt-5">
             {[
               { label: isIndonesian ? "Pagi" : "Morning", time: "08:00" },
@@ -2705,10 +2169,10 @@ export function TransactionSheet({
                   setTime(preset.time);
                   setTimeOpen(false);
                 }}
-                className="px-2.5 py-1.5 rounded-full text-[11px] font-bold active:scale-95 transition-all"
+                className="px-3 py-1.5 rounded-full text-[11px] font-semibold active:scale-95 transition-all"
                 style={{
-                  background: "var(--glass-fill)",
-                  border: "1px solid var(--glass-border)",
+                  background: controlBg,
+                  border: controlBorder,
                   color: "var(--text-secondary)",
                 }}
               >
@@ -2720,12 +2184,10 @@ export function TransactionSheet({
           <button
             type="button"
             onClick={() => setTimeOpen(false)}
-            className="w-full max-w-[280px] h-11 mt-6 rounded-2xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer border border-white/80"
+            className="w-full max-w-[260px] h-11 mt-6 rounded-full font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer shadow-sm"
             style={{
-              background: "linear-gradient(180deg, #ffffff 0%, #ececf0 100%)",
-              color: "#000000",
-              boxShadow:
-                "inset 0 1px 0 0 #ffffff, 0 8px 20px -4px rgba(0, 0, 0, 0.45)",
+              background: isDark ? "#ffffff" : "#18181b",
+              color: isDark ? "#000000" : "#ffffff",
             }}
           >
             {isIndonesian ? "Selesai" : "Done"}
@@ -2746,9 +2208,7 @@ export function TransactionSheet({
           setIsKeypadOpen(false);
           const evaluated = evaluateMathSafe(amountInput);
           setAmount(String(evaluated));
-          setAmountInput(
-            evaluated === 0 ? "" : formatDisplayNumber(evaluated),
-          );
+          setAmountInput(evaluated === 0 ? "" : formatDisplayNumber(evaluated));
         }}
       />
 

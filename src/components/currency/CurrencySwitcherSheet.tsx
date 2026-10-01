@@ -15,6 +15,7 @@ import {
 } from "../../contexts/CurrencyContext";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { formatRupiah } from "../../lib/utils";
 
 interface CurrencySwitcherSheetProps {
@@ -22,7 +23,10 @@ interface CurrencySwitcherSheetProps {
   onClose: () => void;
 }
 
-export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheetProps) {
+export function CurrencySwitcherSheet({
+  isOpen,
+  onClose,
+}: CurrencySwitcherSheetProps) {
   const {
     preferredCurrency,
     setPreferredCurrency,
@@ -32,6 +36,8 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
     refreshRates,
   } = useCurrency();
 
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -44,7 +50,7 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
         c.code.toLowerCase().includes(q) ||
         c.name.toLowerCase().includes(q) ||
         c.symbol.toLowerCase().includes(q) ||
-        c.countryCode.toLowerCase().includes(q)
+        c.countryCode.toLowerCase().includes(q),
     );
   }, [searchQuery]);
 
@@ -59,112 +65,145 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
     triggerHaptic("light");
     try {
       await refreshRates();
-      showToast("Exchange rates updated to latest market quotes", "update", () => {});
+      showToast(
+        "Exchange rates updated to latest market quotes",
+        "update",
+        () => {},
+      );
     } catch {
       showToast("Failed to refresh live exchange rates", "delete", () => {});
     }
   };
 
   const formattedLastUpdated = useMemo(() => {
-    if (!lastUpdated) return "Offline defaults";
+    if (!lastUpdated) return "Offline";
     const date = new Date(lastUpdated);
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }, [lastUpdated]);
 
+  // ── Frosted Liquid Glass Materials ───────────────────────────────────────
+  const controlBg = isDark
+    ? "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)"
+    : "linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(245, 247, 250, 0.72) 100%)";
+
+  const controlBorder = isDark
+    ? "1px solid rgba(255, 255, 255, 0.09)"
+    : "1px solid rgba(0, 0, 0, 0.06)";
+
+  const controlShadow = isDark
+    ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 7px rgba(0, 0, 0, 0.22)"
+    : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.035)";
+
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-8 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div
+        className="px-5 sm:px-6 pt-1 space-y-3 select-none max-w-lg mx-auto"
+        style={{
+          paddingBottom:
+            "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+        }}
+      >
+        {/* ── Top Header ────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between pb-1">
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
-              style={{
-                background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-              }}
-            >
-              <Coins size={16} strokeWidth={1.75} />
-            </div>
             <div>
-              <h2
-                className="text-[16px] font-semibold tracking-tight"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Base Currency & Rates
+              <h2 className="text-[22px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
+                Valuation Currency
               </h2>
-              <p
-                className="text-[11px] font-medium"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Choose your default viewing & valuation currency
-              </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold inline-flex items-center gap-1.5 glass-surface border border-[var(--glass-border)] active:scale-95 transition-all cursor-pointer select-none"
-            style={{ color: "var(--text-primary)" }}
-            title="Refresh Live Market Quotes"
-          >
-            <RefreshCw
-              size={12}
-              strokeWidth={1.75}
-              className={isLoading ? "animate-spin" : ""}
-            />
-            <span>{isLoading ? "Syncing..." : "Sync"}</span>
-          </button>
-        </div>
-
-        {/* Live Rates Status Bar */}
-        <div
-          className="px-3 py-2 rounded-xl flex items-center justify-between text-[11px] border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)]"
-        >
-          <div className="flex items-center gap-1.5">
-            <ArrowRightLeft size={12} strokeWidth={1.75} className="opacity-70" />
-            <span className="font-medium">Market Rates (Open Exchange API)</span>
-          </div>
-          <span className=" text-[10px] opacity-70">
-            Updated {formattedLastUpdated}
-          </span>
-        </div>
-
-        {/* Search Input */}
-        <div
-          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--glass-border)] bg-[var(--bg-elevated)]"
-        >
-          <Search size={14} style={{ color: "var(--text-tertiary)" }} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search currency, code, or country..."
-            className="flex-1 bg-transparent text-[13px] font-medium outline-none placeholder:text-[var(--text-tertiary)]"
-            style={{ color: "var(--text-primary)" }}
-          />
-          {searchQuery && (
+          <div className="flex items-center gap-2">
+            {/* Sync Rates Button */}
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
-              className="p-0.5 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="h-8 px-3 rounded-full text-[11px] font-semibold inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer select-none"
+              style={{
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
+                color: "var(--text-primary)",
+              }}
+              title="Perbarui kurs langsung"
             >
-              <X size={12} />
+              <RefreshCw
+                size={11.5}
+                strokeWidth={1.8}
+                className={isLoading ? "animate-spin" : ""}
+              />
+              <span>{isLoading ? "Syncing..." : "Sync FX"}</span>
             </button>
-          )}
+
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Tutup"
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-transform active:scale-90 cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              style={{
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
+              }}
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
-        {/* Apple iOS Grouped Currency List */}
-        <div className="pb-4">
+        {/* ── Search Input & Minimal Telemetry ──────────────────────── */}
+        <div className="space-y-2">
+          <div
+            className="flex items-center gap-2.5 px-3.5 h-10 rounded-2xl transition-all"
+            style={{
+              background: controlBg,
+              border: controlBorder,
+              boxShadow: controlShadow,
+            }}
+          >
+            <Search
+              size={14}
+              className="text-[var(--text-tertiary)] shrink-0"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari kode atau nama mata uang..."
+              className="flex-1 bg-transparent text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between px-1 text-[10.5px] text-[var(--text-tertiary)]">
+            <span className="opacity-80">Open Exchange Live Quote</span>
+            <span className="opacity-70">Update: {formattedLastUpdated}</span>
+          </div>
+        </div>
+
+        {/* ── 2-Column Minimalist Frosted Glass Currency Grid ───────── */}
+        <div className="overflow-y-auto no-scrollbar pr-0.5">
           {currenciesList.length === 0 ? (
-            <div className="py-8 text-center text-[12px] text-[var(--text-tertiary)]">
-              No currencies match &quot;{searchQuery}&quot;
+            <div className="py-12 text-center space-y-1">
+              <p className="text-[13px] font-semibold text-[var(--text-secondary)]">
+                Tidak ada mata uang yang cocok
+              </p>
+              <p className="text-[11px] text-[var(--text-tertiary)]">
+                Coba gunakan simbol atau kode negara lain.
+              </p>
             </div>
           ) : (
-            <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] divide-y divide-[var(--glass-border)] overflow-hidden">
+            <div className="grid grid-cols-2 gap-2">
               {currenciesList.map((currency) => {
                 const isSelected = preferredCurrency === currency.code;
                 const foreignPerIdr = rates[currency.code] || 1;
@@ -175,69 +214,96 @@ export function CurrencySwitcherSheet({ isOpen, onClose }: CurrencySwitcherSheet
                     key={currency.code}
                     type="button"
                     onClick={() => handleSelect(currency.code)}
-                    className={`w-full flex items-center justify-between py-2.5 px-3.5 transition-colors cursor-pointer text-left select-none ${
-                      isSelected
-                        ? "bg-black/[0.04] dark:bg-white/[0.06]"
-                        : "hover:bg-black/[0.02] dark:hover:bg-white/[0.02] active:bg-black/[0.04] dark:active:bg-white/[0.04]"
-                    }`}
+                    className="p-3 rounded-2xl text-left transition-all duration-150 cursor-pointer active:scale-[0.97] flex flex-col justify-between min-h-[82px] relative overflow-hidden select-none group"
+                    style={{
+                      background: isSelected
+                        ? isDark
+                          ? "#ffffff"
+                          : "#18181b"
+                        : isDark
+                          ? "linear-gradient(135deg, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.02) 100%)"
+                          : "linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(246, 247, 250, 0.75) 100%)",
+                      border: isSelected
+                        ? isDark
+                          ? "1px solid #ffffff"
+                          : "1px solid #18181b"
+                        : isDark
+                          ? "1px solid rgba(255, 255, 255, 0.085)"
+                          : "1px solid rgba(0, 0, 0, 0.06)",
+                      boxShadow: isSelected
+                        ? isDark
+                          ? "0 4px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 #ffffff"
+                          : "0 4px 14px rgba(0, 0, 0, 0.16)"
+                        : isDark
+                          ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.2)"
+                          : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.035)",
+                      color: isSelected
+                        ? isDark
+                          ? "#000000"
+                          : "#ffffff"
+                        : "inherit",
+                    }}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0  font-bold text-[10px] tracking-wider border border-[var(--glass-border)] bg-[var(--glass-fill)]"
-                        style={{
-                          color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
-                        }}
-                      >
-                        {currency.countryCode}
+                    {/* Top Row: Code + Symbol & Indicator */}
+                    <div className="flex items-center justify-between gap-1 w-full">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-bold text-[14.5px] tracking-tight leading-none">
+                          {currency.code}
+                        </span>
+                        <span className="text-[10.5px] font-medium leading-none opacity-60">
+                          {currency.symbol}
+                        </span>
                       </div>
 
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className="text-[13px] font-medium"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {currency.code}
-                          </span>
-                          <span
-                            className="text-[11px]  opacity-70"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            ({currency.symbol})
-                          </span>
-                        </div>
-                        <p
-                          className="text-[11px] truncate mt-0.5"
-                          style={{ color: "var(--text-tertiary)" }}
+                      {isSelected ? (
+                        <div
+                          className="w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 shadow-xs"
+                          style={{
+                            background: isDark ? "#000000" : "#ffffff",
+                            color: isDark ? "#ffffff" : "#000000",
+                          }}
                         >
-                          {currency.name}
-                        </p>
-                      </div>
+                          <Check size={10.5} strokeWidth={3} />
+                        </div>
+                      ) : (
+                        <span
+                          className="text-[9.5px] font-semibold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0"
+                          style={{
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.06)"
+                              : "rgba(0, 0, 0, 0.04)",
+                            color: isDark
+                              ? "rgba(255, 255, 255, 0.65)"
+                              : "rgba(0, 0, 0, 0.55)",
+                            border: isDark
+                              ? "1px solid rgba(255, 255, 255, 0.08)"
+                              : "1px solid rgba(0, 0, 0, 0.06)",
+                          }}
+                        >
+                          {currency.countryCode}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <div className="text-right">
-                        <span
-                          className="text-[11px] font-medium  block"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {currency.code === "IDR"
-                            ? "Base (1:1)"
-                            : `1 ${currency.code} ≈ ${formatRupiah(Math.round(idrPerUnit))}`}
-                        </span>
-                        <span
-                          className="text-[9px] font-medium opacity-60 block"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {currency.decimals} decimals
-                        </span>
-                      </div>
-
-                      {isSelected && (
-                        <div className="w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 bg-black dark:bg-white text-white dark:text-black">
-                          <Check size={11} strokeWidth={2.5} />
-                        </div>
-                      )}
+                    {/* Bottom Row: Name & Live Conversion Rate */}
+                    <div className="mt-2.5 w-full">
+                      <p className="text-[10px] truncate leading-tight font-medium opacity-65">
+                        {currency.name}
+                      </p>
+                      <p
+                        className="text-[11.5px] font-semibold leading-tight mt-1 truncate"
+                        style={{
+                          color: isSelected
+                            ? isDark
+                              ? "#000000"
+                              : "#ffffff"
+                            : "var(--text-primary)",
+                        }}
+                      >
+                        {currency.code === "IDR"
+                          ? "Base (1:1)"
+                          : `1 ${currency.code} ≈ ${formatRupiah(Math.round(idrPerUnit))}`}
+                      </p>
                     </div>
                   </button>
                 );
