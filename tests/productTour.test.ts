@@ -77,6 +77,10 @@ describe("Interactive Product Tour State & Lifecycle System", () => {
       expect(step.selector).toMatch(/^\[data-tour=".*"\]$/);
       expect(step.highlightsId.length).toBeGreaterThanOrEqual(3);
       expect(step.highlightsEn.length).toBeGreaterThanOrEqual(3);
+      expect(step.proTipId).toBeTruthy();
+      expect(step.proTipEn).toBeTruthy();
+      expect(step.actionLabelId).toBeTruthy();
+      expect(step.actionLabelEn).toBeTruthy();
     }
   });
 

@@ -102,7 +102,7 @@ export function evaluateMathSafe(expr: string): number {
 
     const res = parseExpression();
     if (typeof res === "number" && !isNaN(res) && isFinite(res) && res >= 0) {
-      return Math.round(res);
+      return Number(res.toFixed(4));
     }
     return 0;
   } catch {

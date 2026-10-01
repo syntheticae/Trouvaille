@@ -28,6 +28,15 @@ describe("evaluateMathSafe (Zero-Eval Arithmetic Evaluator)", () => {
     expect(evaluateMathSafe("50.000 + 1.200.000")).toBe(1250000);
   });
 
+  it("handles decimal inputs with commas and dots correctly", () => {
+    expect(evaluateMathSafe("50000,50")).toBe(50000.5);
+    expect(evaluateMathSafe("50000.50")).toBe(50000.5);
+    expect(evaluateMathSafe("50.000,50")).toBe(50000.5);
+    expect(evaluateMathSafe("10.000,50 + 5.000,25")).toBe(15000.75);
+    expect(evaluateMathSafe("12,5 * 2")).toBe(25);
+    expect(evaluateMathSafe("0,5 + 0,5")).toBe(1);
+  });
+
   it("handles raw digits and empty/invalid input safely without crashing", () => {
     expect(evaluateMathSafe("")).toBe(0);
     expect(evaluateMathSafe("50000")).toBe(50000);

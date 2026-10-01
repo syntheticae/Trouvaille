@@ -58,6 +58,7 @@ import {
   UnifiedCapitalAllocationCard,
   PortfolioHoldingsDeck,
   WealthHistoryTrajectoryCard,
+  WealthTacticalInsightsDeck,
   AssetsModalsContainer,
   CashAccountDetailSheet,
   type BalanceSheetRange,
@@ -1231,7 +1232,15 @@ export function AssetsPage() {
         onOpenConsolidatedDrawer={() => setIsConsolidatedDrawerOpen(true)}
       />
 
-      {/* ── 8. Modals, Drawers & Drill-Down Sheets Container ── */}
+      {/* ── 8. Wealth Intelligence & Actionable Insights Deck (Pinned at Bottom) ── */}
+      <WealthTacticalInsightsDeck
+        holdings={holdings}
+        wallets={wallets}
+        netWorth={netWorth}
+        totalLiabilities={liabilitiesTotal}
+      />
+
+      {/* ── 9. Modals, Drawers & Drill-Down Sheets Container ── */}
       <AssetsModalsContainer
         userId={user?.id}
         isAddAssetModalOpen={isAddAssetModalOpen}

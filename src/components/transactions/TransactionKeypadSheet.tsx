@@ -29,8 +29,8 @@ export function TransactionKeypadSheet({
   const { isIndonesian } = useLanguage();
   const { preferredCurrency, currencyMeta } = useCurrency();
   const isDark = theme !== "light";
-  const allowDecimals = currencyMeta.decimals > 0;
-  const maxDecimals = currencyMeta.decimals || 2;
+  const allowDecimals = true;
+  const maxDecimals = Math.max(currencyMeta.decimals, 2);
 
   const currentVal = evaluateMathSafe(expression);
   const isExpression = /[+\-*/×÷−]/.test(expression);
@@ -40,6 +40,7 @@ export function TransactionKeypadSheet({
     const res = applyKeypadInput(expression, key, {
       allowDecimals,
       maxDecimals,
+      isIndonesian,
     });
     onExpressionChange(res.expression, res.numericValue);
   };
@@ -95,6 +96,7 @@ export function TransactionKeypadSheet({
     const res = applyKeypadInput(expression, "=", {
       allowDecimals,
       maxDecimals,
+      isIndonesian,
     });
     onExpressionChange(res.expression, res.numericValue);
     if (onDone) {
@@ -109,6 +111,7 @@ export function TransactionKeypadSheet({
     const res = applyKeypadInput(expression, "clear", {
       allowDecimals,
       maxDecimals,
+      isIndonesian,
     });
     onExpressionChange(res.expression, res.numericValue);
   };
@@ -470,7 +473,7 @@ export function TransactionKeypadSheet({
             </button>
             <button
               type="button"
-              onClick={() => handleKey(".")}
+              onClick={() => handleKey(isIndonesian ? "," : ".")}
               className="h-11 rounded-2xl text-[20px] font-bold flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -478,7 +481,7 @@ export function TransactionKeypadSheet({
                 boxShadow: keyNumShadow,
               }}
             >
-              ,
+              {isIndonesian ? "," : "."}
             </button>
             <button
               type="button"

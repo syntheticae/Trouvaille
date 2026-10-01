@@ -100,21 +100,18 @@ export function TransactionSheet({
   const { isIndonesian } = useLanguage();
   const { preferredCurrency, currencyMeta, convertToIdr, convertFromIdr } =
     useCurrency();
-  const allowDecimals = currencyMeta.decimals > 0;
-  const maxDecimals = currencyMeta.decimals || 2;
+  const allowDecimals = true;
+  const maxDecimals = Math.max(currencyMeta.decimals, 2);
 
   const formatDisplayNumber = useCallback(
     (num: number) => {
       if (!num || isNaN(num) || num <= 0) return "";
-      if (allowDecimals) {
-        return num.toLocaleString("en-US", {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: maxDecimals,
-        });
-      }
-      return Math.round(num).toLocaleString("id-ID");
+      return num.toLocaleString(isIndonesian ? "id-ID" : "en-US", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: maxDecimals,
+      });
     },
-    [allowDecimals, maxDecimals],
+    [isIndonesian, maxDecimals],
   );
 
   const [activeTab, setActiveTab] = useState<TabType>(
@@ -1236,7 +1233,7 @@ export function TransactionSheet({
                   } else {
                     const { raw, formatted } = formatLiveAmountInput(
                       val,
-                      isIndonesian && !allowDecimals,
+                      isIndonesian,
                       allowDecimals,
                       maxDecimals,
                     );
@@ -1275,18 +1272,18 @@ export function TransactionSheet({
 
           {/* Quick Increment Chips (Pill Row) */}
           <div className="flex items-center justify-center gap-1.5 mt-2.5 px-2">
-            {(allowDecimals
+            {(currencyMeta.code === "IDR" || currencyMeta.code === "JPY"
               ? [
-                  { label: `+${currencyMeta.symbol}5`, add: 5 },
-                  { label: `+${currencyMeta.symbol}10`, add: 10 },
-                  { label: `+${currencyMeta.symbol}50`, add: 50 },
-                  { label: `+${currencyMeta.symbol}100`, add: 100 },
-                ]
-              : [
                   { label: "+10K", add: 10000 },
                   { label: "+50K", add: 50000 },
                   { label: "+100K", add: 100000 },
                   { label: "+500K", add: 500000 },
+                ]
+              : [
+                  { label: `+${currencyMeta.symbol}5`, add: 5 },
+                  { label: `+${currencyMeta.symbol}10`, add: 10 },
+                  { label: `+${currencyMeta.symbol}50`, add: 50 },
+                  { label: `+${currencyMeta.symbol}100`, add: 100 },
                 ]
             ).map((preset) => (
               <button

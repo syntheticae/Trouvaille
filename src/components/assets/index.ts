@@ -22,3 +22,4 @@ export { AssetDetailSheet } from "../settings/AssetDetailSheet";
 export { AssetValuationSheet } from "../settings/AssetValuationSheet";
 export { StakingYieldModal } from "../settings/StakingYieldModal";
 export { CashAccountDetailSheet } from "./CashAccountDetailSheet";
+export { WealthTacticalInsightsDeck } from "./WealthTacticalInsightsDeck";

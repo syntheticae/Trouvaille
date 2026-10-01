@@ -71,4 +71,42 @@ describe("Transaction Keypad Input Helper", () => {
     expect(state.expression).toBe("");
     expect(state.numericValue).toBe(0);
   });
+
+  it("handles decimal inputs with commas and dots seamlessly in Indonesian mode", () => {
+    // 50.000 + , -> 50.000,
+    let state = applyKeypadInput("50.000", ",");
+    expect(state.expression).toBe("50.000,");
+    expect(state.numericValue).toBe(50000);
+
+    state = applyKeypadInput(state.expression, "5");
+    expect(state.expression).toBe("50.000,5");
+    expect(state.numericValue).toBe(50000.5);
+
+    state = applyKeypadInput(state.expression, "0");
+    expect(state.expression).toBe("50.000,50");
+    expect(state.numericValue).toBe(50000.5);
+
+    // Pressing . also maps to decimal separator in Indonesian mode
+    let stateDot = applyKeypadInput("10.000", ".");
+    expect(stateDot.expression).toBe("10.000,");
+    expect(stateDot.numericValue).toBe(10000);
+
+    stateDot = applyKeypadInput(stateDot.expression, "7");
+    expect(stateDot.expression).toBe("10.000,7");
+    expect(stateDot.numericValue).toBe(10000.7);
+  });
+
+  it("handles decimal inputs in English mode with dot separator", () => {
+    let stateUS = applyKeypadInput("50,000", ".", { isIndonesian: false });
+    expect(stateUS.expression).toBe("50,000.");
+    expect(stateUS.numericValue).toBe(50000);
+
+    stateUS = applyKeypadInput(stateUS.expression, "2", { isIndonesian: false });
+    expect(stateUS.expression).toBe("50,000.2");
+    expect(stateUS.numericValue).toBe(50000.2);
+
+    stateUS = applyKeypadInput(stateUS.expression, "5", { isIndonesian: false });
+    expect(stateUS.expression).toBe("50,000.25");
+    expect(stateUS.numericValue).toBe(50000.25);
+  });
 });

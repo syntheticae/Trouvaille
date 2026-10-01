@@ -26,6 +26,7 @@ import {
   Check,
   Sparkles,
   Eye,
+  Compass,
 } from "lucide-react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
@@ -49,6 +50,10 @@ interface TourStep {
   icon: typeof Home;
   highlightsId: string[];
   highlightsEn: string[];
+  proTipId: string;
+  proTipEn: string;
+  actionLabelId: string;
+  actionLabelEn: string;
 }
 
 export const TOUR_STEPS: TourStep[] = [
@@ -75,6 +80,12 @@ export const TOUR_STEPS: TourStep[] = [
       "Safe Spending Velocity",
       "Shared Money Spaces",
     ],
+    proTipId:
+      "Gestur: Tarik ke bawah untuk sinkronisasi kurs live. Ketuk kartu saldo untuk melihat rincian mutasi dompet.",
+    proTipEn:
+      "Gesture: Pull down to sync live rates. Tap any balance card to inspect account details.",
+    actionLabelId: "Lihat Dasbor Kokpit",
+    actionLabelEn: "Inspect Cockpit View",
   },
   {
     id: "quick-add",
@@ -99,6 +110,12 @@ export const TOUR_STEPS: TourStep[] = [
       "Natural Voice Logging (AI Voice)",
       "Receipt & Slip Camera Scan",
     ],
+    proTipId:
+      "Cara Pakai: Tekan tombol mikrofon untuk mendikte mutasi secara bebas, atau pindai struk fisik dengan kamera AI.",
+    proTipEn:
+      "How to Use: Tap the mic icon to dictate transactions naturally, or scan paper receipts with AI.",
+    actionLabelId: "Coba Intip Pencatatan",
+    actionLabelEn: "Peek Instant Capture",
   },
   {
     id: "assets",
@@ -123,6 +140,12 @@ export const TOUR_STEPS: TourStep[] = [
       "100% Debt-Free Solvency Score",
       "Auto-Reconciliation Engine",
     ],
+    proTipId:
+      "Solvabilitas: Pantau rasio utang vs aset likuid Anda. Aset kripto USDT dan emas terkonversi otomatis ke Rupiah.",
+    proTipEn:
+      "Solvency: Monitor your debt vs liquid capital ratio. USDT crypto and gold convert automatically to Rupiah.",
+    actionLabelId: "Jelajahi Neraca Aset",
+    actionLabelEn: "Explore Balance Sheet",
   },
   {
     id: "transactions",
@@ -147,6 +170,12 @@ export const TOUR_STEPS: TourStep[] = [
       "Bank Statement Importer (Excel/PDF)",
       "Custom Categories & Vector Icons",
     ],
+    proTipId:
+      "Alur Kerja: Geser item mutasi ke kiri untuk edit atau hapus. Gunakan Impor Rekening untuk unggah file rekening koran.",
+    proTipEn:
+      "Workflow: Swipe any transaction row to edit or delete. Use Bank Statement Import to upload bank PDFs/CSVs.",
+    actionLabelId: "Periksa Buku Besar",
+    actionLabelEn: "Audit Ledger Entries",
   },
   {
     id: "calendar",
@@ -171,6 +200,12 @@ export const TOUR_STEPS: TourStep[] = [
       "Recurring Bill Reminders",
       "Liquidity Runway Forecasting",
     ],
+    proTipId:
+      "Indikator: Titik pada tanggal menandai jadwal tagihan. Ketuk tanggal untuk proyeksi sisa uang kas di hari tersebut.",
+    proTipEn:
+      "Indicator: Calendar dots mark bill due dates. Tap any date to view projected cash runway.",
+    actionLabelId: "Buka Jadwal Arus Kas",
+    actionLabelEn: "Open Cashflow Schedule",
   },
   {
     id: "statistics",
@@ -195,6 +230,12 @@ export const TOUR_STEPS: TourStep[] = [
       "Official Report Export (Excel/PDF)",
       "Annual Financial Wrapped Review",
     ],
+    proTipId:
+      "Laporan Eksekutif: Buka Kilas Balik Finansial (Wrapped) untuk analisis 10 slide dan unduh laporan resmi format PDF.",
+    proTipEn:
+      "Executive Report: Open Financial Wrapped for a 10-slide dossier and download your official PDF report.",
+    actionLabelId: "Mulai Eksplorasi Analisis",
+    actionLabelEn: "Explore Diagnostics",
   },
 ];
 
@@ -353,8 +394,8 @@ export function ProductTourOverlay({
             width: targetRect.width + 16,
             height: targetRect.height + 16,
             boxShadow:
-              "0 0 0 9999px rgba(0, 0, 0, 0.38), 0 0 24px 2px rgba(255, 255, 255, 0.45)",
-            border: "1.75px solid rgba(255, 255, 255, 0.92)",
+              "0 0 0 9999px rgba(0, 0, 0, 0.45), 0 0 32px 6px rgba(255, 255, 255, 0.5), inset 0 0 16px rgba(255, 255, 255, 0.35)",
+            border: "1.75px solid rgba(255, 255, 255, 0.95)",
           }}
         />
       )}
@@ -509,7 +550,7 @@ export function ProductTourOverlay({
               </p>
 
               {/* ── 3 Rich Power Highlights (Interactive Detail Pills) ── */}
-              <div className="flex flex-wrap gap-1.5 mb-4">
+              <div className="flex flex-wrap gap-1.5 mb-3">
                 {highlights.map((highlight, hIdx) => (
                   <div
                     key={hIdx}
@@ -529,6 +570,46 @@ export function ProductTourOverlay({
                   </div>
                 ))}
               </div>
+
+              {/* ── Practical Usage & Gesture Tip Box ── */}
+              <div
+                className="p-2.5 rounded-xl text-[11px] leading-relaxed mb-3 flex items-start gap-2 select-none"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                <Compass
+                  size={14}
+                  className="text-[var(--text-primary)] shrink-0 mt-0.5"
+                />
+                <div>
+                  <span className="font-semibold text-[var(--text-primary)] mr-1">
+                    {isIndonesian ? "Cara Pakai & Gestur:" : "How to Use & Gestures:"}
+                  </span>
+                  <span>{isIndonesian ? step.proTipId : step.proTipEn}</span>
+                </div>
+              </div>
+
+              {/* ── Direct Interactive Inspection Button ── */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("medium");
+                  setIsPeekMode(true);
+                }}
+                className="w-full py-2 px-3 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[11.5px] font-semibold text-[var(--text-primary)] flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer mb-3.5"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Eye size={13} className="text-[var(--text-secondary)]" />
+                  <span>{isIndonesian ? step.actionLabelId : step.actionLabelEn}</span>
+                </span>
+                <span className="text-[10px] text-[var(--text-tertiary)] flex items-center gap-0.5 font-medium">
+                  {isIndonesian ? "Sentuh Halaman" : "Touch Page"}
+                  <ChevronRight size={12} />
+                </span>
+              </button>
 
               {/* Step Progress Indicators & Action Buttons */}
               <div className="flex items-center justify-between pt-2 border-t border-[var(--glass-border)]">

@@ -5,17 +5,14 @@ import {
   X,
   Check,
   Sparkles,
-  Share2,
+  FileText,
   TrendingUp,
   Calendar,
   ShieldCheck,
   Activity,
   Loader2,
   Pause,
-  Copy,
-  ExternalLink,
 } from "lucide-react";
-import { toBlob } from "html-to-image";
 import type { Transaction, Category } from "../../lib/types";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
@@ -70,18 +67,12 @@ export function FinancialWrappedModal({
   const [isPaused, setIsPaused] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [sharePreviewData, setSharePreviewData] = useState<{
-    url: string;
-    file: File;
-    blob: Blob;
-  } | null>(null);
-  const [isPreviewCopied, setIsPreviewCopied] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
   const totalSlides = 10;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slideContainerRef = useRef<HTMLDivElement>(null);
   const pointerDownTime = useRef<number>(0);
   const wasHolding = useRef<boolean>(false);
-  const cachedSlideFilesRef = useRef<Map<number, File>>(new Map());
 
   const handleCenterPointerDown = () => {
     pointerDownTime.current = Date.now();
@@ -564,122 +555,39 @@ export function FinancialWrappedModal({
       setCurrentSlide(0);
       setDirection(1);
       setIsCopied(false);
-      setSharePreviewData(null);
-      cachedSlideFilesRef.current.clear();
+      setExportProgress(0);
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    return () => {
-      if (sharePreviewData?.url) {
-        URL.revokeObjectURL(sharePreviewData.url);
-      }
-    };
-  }, [sharePreviewData]);
-
-  // Pre-render current slide image in background so direct navigator.share has zero delay on tap
-  useEffect(() => {
-    if (!isOpen) return;
-    const timer = setTimeout(async () => {
-      const element = slideContainerRef.current;
-      if (!element || cachedSlideFilesRef.current.has(currentSlide)) return;
-      try {
-        const b = await toBlob(element, {
-          quality: 0.95,
-          pixelRatio: 2,
-          backgroundColor: isDark ? "#0A0A0D" : "#F5F5F7",
-          fontEmbedCSS: "",
-          skipFonts: true,
-          filter: (node) => {
-            if (
-              node instanceof HTMLElement &&
-              (node.dataset.html2canvasIgnore === "true" ||
-                node.getAttribute("data-ignore-export") === "true")
-            ) {
-              return false;
-            }
-            return true;
-          },
-        });
-        if (b) {
-          const fileName = `trouvaille-wrapped-slide-${currentSlide + 1}.png`;
-          const f = new File([b], fileName, { type: "image/png" });
-          cachedSlideFilesRef.current.set(currentSlide, f);
-        }
-      } catch {
-        // Silently ignore background render errors; on-demand handleShare handles fallback
-      }
-    }, 450);
-
-    return () => clearTimeout(timer);
-  }, [currentSlide, isOpen, isDark]);
-
-  const handleShare = async () => {
+  const handleDownloadPDF = async () => {
     triggerHaptic("medium");
     if (isExporting) return;
-
-    // Fast-path: If slide was pre-rendered in background, trigger navigator.share synchronously in same tick!
-    const cachedFile = cachedSlideFilesRef.current.get(currentSlide);
-    if (
-      cachedFile &&
-      typeof navigator !== "undefined" &&
-      typeof navigator.share === "function" &&
-      typeof navigator.canShare === "function" &&
-      navigator.canShare({ files: [cachedFile] })
-    ) {
-      try {
-        await navigator.share({
-          files: [cachedFile],
-          title: isIndonesian
-            ? "Trouvaille Financial Wrapped"
-            : "Trouvaille Financial Wrapped",
-        });
-        return;
-      } catch (shareErr: any) {
-        if (shareErr.name === "AbortError") {
-          return;
-        }
-        console.warn(
-          "Direct cached share failed, falling back to on-demand export:",
-          shareErr,
-        );
-      }
-    }
-
     setIsExporting(true);
     setIsPaused(true);
-    try {
-      const element = slideContainerRef.current;
-      if (!element) {
-        throw new Error("Slide element not found");
-      }
+    setExportProgress(1);
+    const originalSlide = currentSlide;
 
-      // Render high-res PNG image blob using html-to-image (preserves oklch, gradients, modern CSS)
-      let blob: Blob | null = null;
-      try {
-        blob = await toBlob(element, {
-          quality: 0.95,
-          pixelRatio: 2,
-          backgroundColor: isDark ? "#0A0A0D" : "#F5F5F7",
-          fontEmbedCSS: "", // Skip remote font scans so capture completes in ~200ms
-          skipFonts: true,
-          filter: (node) => {
-            if (
-              node instanceof HTMLElement &&
-              (node.dataset.html2canvasIgnore === "true" ||
-                node.getAttribute("data-ignore-export") === "true")
-            ) {
-              return false;
-            }
-            return true;
-          },
-        });
-      } catch (toBlobErr) {
-        console.warn(
-          "html-to-image toBlob error, falling back to html2canvas:",
-          toBlobErr,
-        );
-        const { default: html2canvas } = await import("html2canvas");
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const { jsPDF } = await import("jspdf");
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      for (let i = 0; i < totalSlides; i++) {
+        setExportProgress(i + 1);
+        setCurrentSlide(i);
+        await new Promise((resolve) => setTimeout(resolve, 280));
+
+        const element = slideContainerRef.current;
+        if (!element) continue;
+
         const canvas = await html2canvas(element, {
           scale: 2,
           useCORS: true,
@@ -687,88 +595,46 @@ export function FinancialWrappedModal({
           backgroundColor: isDark ? "#0A0A0D" : "#F5F5F7",
           logging: false,
         });
-        blob = await new Promise<Blob | null>((resolve) => {
-          canvas.toBlob((b) => resolve(b), "image/png", 0.95);
-        });
-      }
 
-      if (!blob) throw new Error("Canvas export produced an empty blob");
-
-      const fileName = `trouvaille-wrapped-slide-${currentSlide + 1}.png`;
-      const file = new File([blob], fileName, { type: "image/png" });
-      cachedSlideFilesRef.current.set(currentSlide, file);
-
-      let shared = false;
-      // 1. Mobile Web Share API with photo (opens device's native share sheet: Simpan Foto, WhatsApp, AirDrop, etc.)
-      if (
-        typeof navigator !== "undefined" &&
-        typeof navigator.share === "function" &&
-        typeof navigator.canShare === "function" &&
-        navigator.canShare({ files: [file] })
-      ) {
-        try {
-          // Note: On iOS WebKit, do NOT pass text alongside files as it causes native share sheets to fail
-          await navigator.share({
-            files: [file],
-            title: isIndonesian
-              ? "Trouvaille Financial Wrapped"
-              : "Trouvaille Financial Wrapped",
-          });
-          shared = true;
-        } catch (shareErr: any) {
-          if (shareErr.name === "AbortError") {
-            // User dismissed native share sheet
-            setIsExporting(false);
-            return;
-          }
-          console.warn(
-            "Direct navigator.share error or gesture expired:",
-            shareErr,
-          );
+        const imgData = canvas.toDataURL("image/png");
+        if (i > 0) {
+          pdf.addPage();
         }
-      }
 
-      const isMobileDevice =
-        typeof navigator !== "undefined" &&
-        (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
-          (typeof window !== "undefined" && window.innerWidth < 768));
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = Math.min((pdfWidth - 20) / imgWidth, (pdfHeight - 20) / imgHeight);
+        const renderW = imgWidth * ratio;
+        const renderH = imgHeight * ratio;
+        const marginX = (pdfWidth - renderW) / 2;
+        const marginY = (pdfHeight - renderH) / 2;
 
-      if (!shared) {
-        if (isMobileDevice) {
-          // On mobile phones: if direct share failed or gesture timed out, present the instant share preview sheet.
-          // Tapping "Buka Menu Berbagi" in this sheet has a 100% fresh user gesture with the pre-rendered file!
-          const previewUrl = URL.createObjectURL(blob);
-          setSharePreviewData({ url: previewUrl, file, blob });
+        if (isDark) {
+          pdf.setFillColor(10, 10, 13);
         } else {
-          // 2. Laptop / Desktop fallback: Download image file directly
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = fileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          pdf.setFillColor(245, 245, 247);
         }
+        pdf.rect(0, 0, pdfWidth, pdfHeight, "F");
 
-        // Also copy image to clipboard if ClipboardItem supported
-        if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({ "image/png": blob }),
-            ]);
-          } catch {
-            // ClipboardItem error ignored
-          }
-        }
+        pdf.addImage(imgData, "PNG", marginX, marginY, renderW, renderH);
       }
+
+      const periodLabel =
+        mode === "month"
+          ? format(targetDate, "yyyy-MM")
+          : format(targetDate, "yyyy");
+      const fileName = `Trouvaille-Financial-Wrapped-${periodLabel}.pdf`;
+      pdf.save(fileName);
 
       setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2500);
+      setTimeout(() => setIsCopied(false), 3000);
     } catch (err) {
-      console.error("Slide image capture failed:", err);
+      console.error("Failed to generate Financial Wrapped PDF:", err);
     } finally {
+      setCurrentSlide(originalSlide);
       setIsExporting(false);
+      setExportProgress(0);
+      setIsPaused(false);
     }
   };
 
@@ -925,7 +791,7 @@ export function FinancialWrappedModal({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleShare();
+                    handleDownloadPDF();
                   }}
                   disabled={isExporting}
                   className={`h-8 px-3 rounded-full border flex items-center gap-1.5 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer backdrop-blur-xl ${
@@ -934,7 +800,9 @@ export function FinancialWrappedModal({
                       : "bg-black/[0.05] border-black/10 text-black/90 hover:text-black hover:bg-black/[0.09] shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
                   }`}
                   title={
-                    isIndonesian ? "Bagikan Foto Slide" : "Share Slide Photo"
+                    isIndonesian
+                      ? "Unduh Laporan PDF (10 Slide)"
+                      : "Download PDF Report (10 Slides)"
                   }
                 >
                   {isExporting ? (
@@ -945,20 +813,20 @@ export function FinancialWrappedModal({
                       className={isDark ? "text-white" : "text-black"}
                     />
                   ) : (
-                    <Share2 size={12} />
+                    <FileText size={12} />
                   )}
                   <span>
                     {isExporting
                       ? isIndonesian
-                        ? "Menyimpan..."
-                        : "Capturing..."
+                        ? `Membuat (${exportProgress}/10)...`
+                        : `Building (${exportProgress}/10)...`
                       : isCopied
                         ? isIndonesian
                           ? "Tersimpan"
                           : "Saved"
                         : isIndonesian
-                          ? "Bagikan"
-                          : "Share"}
+                          ? "Unduh PDF"
+                          : "Download PDF"}
                   </span>
                 </button>
 
@@ -3730,220 +3598,45 @@ export function FinancialWrappedModal({
                     </div>
                   </div>
 
-                  {/* Share Action Pill */}
+                  {/* Download PDF Action Button */}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleShare();
+                      handleDownloadPDF();
                     }}
                     disabled={isExporting}
-                    className={`w-full py-3 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-lg relative z-40 ${
+                    className={`w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-lg relative z-40 ${
                       isDark
                         ? "bg-white text-black hover:bg-zinc-100"
                         : "bg-black text-white hover:bg-zinc-900"
                     }`}
                   >
                     {isExporting ? (
-                      <Loader2 size={15} className="animate-spin" />
+                      <Loader2 size={16} className="animate-spin" />
                     ) : isCopied ? (
-                      <Check size={15} />
+                      <Check size={16} />
                     ) : (
-                      <Share2 size={15} />
+                      <FileText size={16} />
                     )}
                     <span>
                       {isExporting
                         ? isIndonesian
-                          ? "Menyimpan Foto Slide..."
-                          : "Capturing Slide Photo..."
+                          ? `Membuat Laporan PDF (${exportProgress}/10)...`
+                          : `Generating PDF Dossier (${exportProgress}/10)...`
                         : isCopied
                           ? isIndonesian
-                            ? "Foto Tersimpan"
-                            : "Photo Saved"
+                            ? "Laporan PDF Berhasil Diunduh!"
+                            : "PDF Report Successfully Saved!"
                           : isIndonesian
-                            ? "Bagikan Foto Slide"
-                            : "Share Slide Photo"}
+                            ? "Unduh Laporan Lengkap PDF (10 Slide)"
+                            : "Download Complete 10-Slide PDF Report"}
                     </span>
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-        </motion.div>
-      )}
-
-      {/* Mobile Share Preview Sheet / Fallback Dialog */}
-      {sharePreviewData && (
-        <motion.div
-          key="share-preview-modal"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-4 bg-black/75 backdrop-blur-md"
-          onClick={() => {
-            if (sharePreviewData.url) URL.revokeObjectURL(sharePreviewData.url);
-            setSharePreviewData(null);
-            setIsPreviewCopied(false);
-          }}
-        >
-          <motion.div
-            initial={{ y: 40, opacity: 0, scale: 0.95 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 40, opacity: 0, scale: 0.95 }}
-            transition={{ type: "spring", damping: 26, stiffness: 320 }}
-            className="w-full max-w-sm rounded-[28px] p-5 border shadow-2xl space-y-3.5 max-h-[90vh] overflow-y-auto"
-            style={{
-              background: "var(--bg-elevated)",
-              borderColor: "var(--glass-border)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] flex items-center justify-center text-[var(--text-primary)]">
-                  <Share2 size={15} strokeWidth={1.75} />
-                </div>
-                <div>
-                  <h4 className="text-[13px] font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Bagikan Foto Slide" : "Share Slide Photo"}
-                  </h4>
-                  <p className="text-[10px] text-[var(--text-tertiary)]">
-                    {isIndonesian
-                      ? "Kilas Balik Finansial"
-                      : "Financial Wrapped"}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (sharePreviewData.url)
-                    URL.revokeObjectURL(sharePreviewData.url);
-                  setSharePreviewData(null);
-                  setIsPreviewCopied(false);
-                }}
-                className="w-8 h-8 rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            {/* High-res Image Preview */}
-            <div className="rounded-2xl overflow-hidden border border-[var(--glass-border)] bg-black/5 dark:bg-white/5 relative group max-h-[42vh] flex items-center justify-center">
-              <img
-                src={sharePreviewData.url}
-                alt="Slide preview"
-                className="w-full h-auto max-h-[42vh] object-contain rounded-xl select-none"
-              />
-            </div>
-
-            <p className="text-[10px] text-center text-[var(--text-tertiary)] leading-relaxed">
-              {isIndonesian
-                ? "Sentuh & tahan foto di atas untuk 'Simpan ke Foto', atau gunakan opsi di bawah:"
-                : "Tap & hold image above to 'Save to Photos', or use options below:"}
-            </p>
-
-            {/* Action Buttons */}
-            <div className="space-y-2 pt-1">
-              {typeof navigator !== "undefined" &&
-                typeof navigator.share === "function" && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      triggerHaptic("medium");
-                      try {
-                        if (
-                          navigator.canShare &&
-                          navigator.canShare({ files: [sharePreviewData.file] })
-                        ) {
-                          await navigator.share({
-                            files: [sharePreviewData.file],
-                            title: isIndonesian
-                              ? "Kilas Balik Finansial Trouvaille"
-                              : "Trouvaille Financial Wrapped",
-                          });
-                        } else {
-                          await navigator.share({
-                            title: isIndonesian
-                              ? "Kilas Balik Finansial Trouvaille"
-                              : "Trouvaille Financial Wrapped",
-                            text: isIndonesian
-                              ? `Kilas Balik Finansial ${periodTitle}`
-                              : `Financial Wrapped ${periodTitle}`,
-                          });
-                        }
-                      } catch (err: any) {
-                        if (err.name !== "AbortError") {
-                          console.warn("Share retry error:", err);
-                        }
-                      }
-                    }}
-                    className="w-full py-3 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 border active:scale-98 transition-all cursor-pointer"
-                    style={{
-                      background: "var(--text-primary)",
-                      color: "var(--bg-canvas)",
-                      borderColor: "transparent",
-                    }}
-                  >
-                    <Share2 size={15} strokeWidth={1.75} />
-                    <span>
-                      {isIndonesian
-                        ? "Buka Menu Berbagi Bawaan"
-                        : "Open System Share"}
-                    </span>
-                  </button>
-                )}
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    triggerHaptic("light");
-                    try {
-                      if (
-                        navigator.clipboard &&
-                        typeof ClipboardItem !== "undefined"
-                      ) {
-                        await navigator.clipboard.write([
-                          new ClipboardItem({
-                            "image/png": sharePreviewData.blob,
-                          }),
-                        ]);
-                        setIsPreviewCopied(true);
-                        setTimeout(() => setIsPreviewCopied(false), 2000);
-                      }
-                    } catch {
-                      // ignore
-                    }
-                  }}
-                  className="flex-1 py-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[12px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  {isPreviewCopied ? (
-                    <>
-                      <Check size={13} strokeWidth={1.75} />
-                      <span>{isIndonesian ? "Foto Disalin!" : "Copied!"}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={13} strokeWidth={1.75} />
-                      <span>{isIndonesian ? "Salin Foto" : "Copy Photo"}</span>
-                    </>
-                  )}
-                </button>
-
-                <a
-                  href={sharePreviewData.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-1 py-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-[12px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors text-center"
-                >
-                  <ExternalLink size={13} strokeWidth={1.75} />
-                  <span>{isIndonesian ? "Buka Tab Baru" : "Open in Tab"}</span>
-                </a>
-              </div>
-            </div>
-          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>,
