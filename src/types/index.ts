@@ -45,6 +45,10 @@ export interface InvestmentHolding {
   avg_buy_price: number;
   current_price: number;
   currency?: string;
+  native_price?: number;
+  native_currency?: string;
+  change_24h_pct?: number;
+  price_source?: string;
   last_price_updated_at?: string;
   notes?: string;
   icon?: string;

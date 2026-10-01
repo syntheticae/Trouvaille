@@ -1189,23 +1189,12 @@ export function AssetsPage() {
         }}
       />
 
-
-      {/* ── 5. Holdings Deck ─────────────────────────────────────────────── */}
-      <PortfolioHoldingsDeck
+      {/* ── 5. Portfolio Health & Risk Intelligence Deck (Performance & Risk) ── */}
+      <PortfolioIntelligenceDeck
         holdings={holdings}
-        displayHoldings={displayHoldings}
-        usdtPref={usdtPref}
-        recordedCryptoBalance={recordedCryptoBalance}
-        suggestedUsdtUnits={suggestedUsdtUnits}
-        usdtMarketValue={usdtMarketValue}
-        usdtFloatingPnLPct={usdtFloatingPnLPct}
-        totalGrossAssets={totalGrossAssets}
-        isStealthMode={isStealthMode}
-        isIndonesian={isIndonesian}
-        onOpenAddAsset={() => setIsAddAssetModalOpen(true)}
-        onOpenUsdtDetail={openUsdtDetail}
-        onOpenHoldingDetail={handleOpenHoldingDetail}
-        onOpenConsolidatedDrawer={() => setIsConsolidatedDrawerOpen(true)}
+        wallets={wallets}
+        netWorth={netWorth}
+        totalLiabilities={liabilitiesTotal}
       />
 
       {/* ── 6. Wealth History Card — Quiet Wealth × Liquid Island ── */}
@@ -1224,12 +1213,22 @@ export function AssetsPage() {
         isDark={isDark}
       />
 
-      {/* ── 7. Portfolio Health & Risk Intelligence Deck ── */}
-      <PortfolioIntelligenceDeck
+      {/* ── 7. Live Holdings Workstation Deck (Web Parity Ergonomics) ── */}
+      <PortfolioHoldingsDeck
         holdings={holdings}
-        wallets={wallets}
-        netWorth={netWorth}
-        totalLiabilities={liabilitiesTotal}
+        displayHoldings={displayHoldings}
+        usdtPref={usdtPref}
+        recordedCryptoBalance={recordedCryptoBalance}
+        suggestedUsdtUnits={suggestedUsdtUnits}
+        usdtMarketValue={usdtMarketValue}
+        usdtFloatingPnLPct={usdtFloatingPnLPct}
+        totalGrossAssets={totalGrossAssets}
+        isStealthMode={isStealthMode}
+        isIndonesian={isIndonesian}
+        onOpenAddAsset={() => setIsAddAssetModalOpen(true)}
+        onOpenUsdtDetail={openUsdtDetail}
+        onOpenHoldingDetail={handleOpenHoldingDetail}
+        onOpenConsolidatedDrawer={() => setIsConsolidatedDrawerOpen(true)}
       />
 
       {/* ── 8. Modals, Drawers & Drill-Down Sheets Container ── */}
