@@ -12,8 +12,6 @@ import {
   updateLastActiveTimestamp,
   isLockTimeoutExceeded,
   isBiometricAvailable,
-  registerBiometricPasskey,
-  verifyBiometricPasskey,
   verifySecurityPin,
   setSecurityPin,
   clearSecurityPin,
@@ -74,20 +72,7 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const unlockWithBiometric = useCallback(async (): Promise<boolean> => {
-    try {
-      const verified = await verifyBiometricPasskey();
-      if (verified) {
-        setIsLocked(false);
-        updateLastActiveTimestamp();
-        triggerHaptic("medium");
-        return true;
-      }
-      triggerHaptic("heavy");
-      return false;
-    } catch {
-      triggerHaptic("heavy");
-      return false;
-    }
+    return false;
   }, []);
 
   const unlockWithPin = useCallback(async (pin: string): Promise<boolean> => {
@@ -109,26 +94,9 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
     }
   }, [securitySettings.enabled]);
 
-  const enrollBiometric = useCallback(
-    async (userEmail?: string): Promise<boolean> => {
-      try {
-        const success = await registerBiometricPasskey(
-          "trouvaille-user",
-          userEmail || "owner@trouvaille.app",
-        );
-        if (success) {
-          updateSettings({ hasBiometric: true });
-          triggerSuccessHaptic();
-          return true;
-        }
-        return false;
-      } catch (e) {
-        triggerHaptic("heavy");
-        throw e;
-      }
-    },
-    [updateSettings],
-  );
+  const enrollBiometric = useCallback(async (): Promise<boolean> => {
+    return false;
+  }, []);
 
   const enrollPin = useCallback(
     async (pin: string): Promise<boolean> => {

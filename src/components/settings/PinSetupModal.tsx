@@ -52,8 +52,8 @@ export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
       onClose();
       showToast(
         isIndonesian
-          ? "PIN cadangan berhasil disimpan"
-          : "Backup PIN saved successfully",
+          ? "PIN Keamanan berhasil disimpan"
+          : "Security PIN saved successfully",
         "update",
         () => {},
       );
@@ -65,7 +65,7 @@ export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
     resetForm();
     onClose();
     showToast(
-      isIndonesian ? "PIN cadangan dihapus" : "Backup PIN removed",
+      isIndonesian ? "PIN Keamanan dinonaktifkan" : "Security PIN disabled",
       "delete",
       () => {},
     );
@@ -81,11 +81,15 @@ export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
           >
             {pinStep === "create"
               ? isIndonesian
-                ? "Buat PIN Cadangan"
-                : "Enter Backup PIN"
+                ? securitySettings.hasPin
+                  ? "Ubah PIN Keamanan"
+                  : "Buat PIN Keamanan"
+                : securitySettings.hasPin
+                  ? "Change Security PIN"
+                  : "Set Up Security PIN"
               : isIndonesian
-                ? "Konfirmasi PIN Cadangan"
-                : "Confirm Backup PIN"}
+                ? "Konfirmasi PIN Keamanan"
+                : "Confirm Security PIN"}
           </h3>
           <button
             onClick={handleClose}
@@ -102,8 +106,8 @@ export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
         <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
           {pinStep === "create"
             ? isIndonesian
-              ? "Pilih 4 hingga 6 digit angka PIN sebagai akses darurat pembuka kunci."
-              : "Choose a 4 to 6-digit numeric PIN to use as an emergency backup unlock."
+              ? "Pilih 4 hingga 6 digit angka PIN untuk mengamankan brankas Anda."
+              : "Choose a 4 to 6-digit PIN to secure your vault."
             : isIndonesian
               ? "Masukkan kembali PIN Anda untuk mengonfirmasi."
               : "Re-enter your PIN to confirm."}

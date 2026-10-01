@@ -889,17 +889,17 @@ export function SettingsPage({
     "Privacy Shield",
     "mask hide numbers balance monetary figures",
   );
-  const showFaceID = matches(
-    "Require Face ID / PIN",
-    "biometrics face id touch pin lock resume",
+  const showPinLock = matches(
+    "Kunci PIN Keamanan Security PIN Lock",
+    "pin lock privacy sandi brankas security timeout passcode kunci aplikasi",
   );
   const showTimeout = matches(
-    "Lock Timeout",
-    "inactivity duration delay minutes",
+    "Batas Waktu Kunci Lock Timeout",
+    "inactivity duration delay minutes waktu durasi kunci",
   );
-  const showBackupPin = matches(
-    "Backup PIN Option",
-    "passcode fallback pin change",
+  const showPinConfig = matches(
+    "Atur PIN Keamanan Setup Security PIN",
+    "passcode pin change ubah atur sandi security",
   );
   const showMedia = matches(
     "Camera & Photos Access",
@@ -907,9 +907,9 @@ export function SettingsPage({
   );
   const hasSecurity =
     showPrivacyShield ||
-    showFaceID ||
+    showPinLock ||
     showTimeout ||
-    showBackupPin ||
+    showPinConfig ||
     showMedia;
 
   // Section 6: Data & Vault
@@ -1934,8 +1934,8 @@ export function SettingsPage({
               </div>
             )}
 
-            {/* Require Face ID / PIN Toggle */}
-            {showFaceID && (
+            {/* Require Security PIN Lock Toggle */}
+            {showPinLock && (
               <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[52px]">
                 <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
@@ -1953,7 +1953,15 @@ export function SettingsPage({
                       className="text-[13px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {isIndonesian ? "Kunci Aplikasi" : "Security PIN Lock"}
+                      {isIndonesian ? "Kunci PIN Keamanan" : "Security PIN Lock"}
+                    </span>
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {isIndonesian
+                        ? "Kunci aplikasi dengan PIN saat beralih aplikasi"
+                        : "Lock app with PIN when switching apps"}
                     </span>
                   </div>
                 </div>
@@ -1999,7 +2007,7 @@ export function SettingsPage({
               </div>
             )}
 
-            {/* Lock Timeout & PIN (shown when Face ID enabled) */}
+            {/* Lock Timeout & PIN Config (shown when lock enabled) */}
             {securitySettings.enabled && (
               <>
                 {showTimeout && (
@@ -2061,7 +2069,7 @@ export function SettingsPage({
                   </div>
                 )}
 
-                {showBackupPin && (
+                {showPinConfig && (
                   <button
                     type="button"
                     onClick={() => {
@@ -2087,11 +2095,11 @@ export function SettingsPage({
                       >
                         {isIndonesian
                           ? securitySettings.hasPin
-                            ? "Ubah PIN Cadangan"
-                            : "Atur PIN Cadangan"
+                            ? "Ubah PIN Keamanan"
+                            : "Atur PIN Keamanan"
                           : securitySettings.hasPin
-                            ? "Change Backup PIN"
-                            : "Setup Backup PIN"}
+                            ? "Change Security PIN"
+                            : "Set Up Security PIN"}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -2109,7 +2117,7 @@ export function SettingsPage({
                             : "Belum Diatur"
                           : securitySettings.hasPin
                             ? "Configured"
-                            : "Setup"}
+                            : "Not Set"}
                       </span>
                       <ChevronRight
                         size={15}

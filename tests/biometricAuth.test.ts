@@ -13,7 +13,7 @@ import {
   savePersistentSession,
   getPersistentSession,
   clearPersistentSession,
-  authenticateWithBiometrics,
+  authenticateWithPin,
 } from "../src/lib/biometricAuth";
 import { supabase } from "../src/lib/supabase";
 
@@ -191,7 +191,9 @@ describe("Biometric & Security Engine Test Suite", () => {
     expect(getPersistentSession()).toBeNull();
   });
 
-  it("authenticates with biometrics and restores session via setSession", async () => {
+  it("authenticates with PIN and restores session via setSession", async () => {
+    await setSecurityPin("123456");
+
     const mockSession = {
       access_token: "fresh-access-token",
       refresh_token: "fresh-refresh-token",
@@ -202,23 +204,13 @@ describe("Biometric & Security Engine Test Suite", () => {
       refresh_token: "stored-refresh-token",
     });
 
-    // Mock navigator.credentials for WebAuthn in node test environment
-    const origCredentials = globalThis.navigator.credentials;
-    Object.defineProperty(globalThis.navigator, "credentials", {
-      value: {
-        get: vi.fn().mockResolvedValue({ id: "mock-assertion" }),
-      },
-      configurable: true,
-      writable: true,
-    });
-
     // Mock supabase.auth.setSession
     const setSessionSpy = vi.spyOn(supabase.auth, "setSession").mockResolvedValue({
       data: { session: mockSession as any, user: mockSession.user as any },
       error: null,
     });
 
-    const result = await authenticateWithBiometrics();
+    const result = await authenticateWithPin("123456");
     expect(result.success).toBe(true);
     expect(result.session).toEqual(mockSession);
     expect(setSessionSpy).toHaveBeenCalledWith({
@@ -228,14 +220,12 @@ describe("Biometric & Security Engine Test Suite", () => {
 
     // Restore
     setSessionSpy.mockRestore();
-    Object.defineProperty(globalThis.navigator, "credentials", {
-      value: origCredentials,
-      configurable: true,
-      writable: true,
-    });
+    clearSecurityPin();
   });
 
-  it("authenticates with biometrics and returns offline session fallback when offline", async () => {
+  it("authenticates with PIN and returns offline session fallback when offline", async () => {
+    await setSecurityPin("123456");
+
     const offlineSession = {
       access_token: "offline-token",
       refresh_token: "offline-refresh-token",
@@ -243,16 +233,6 @@ describe("Biometric & Security Engine Test Suite", () => {
     };
 
     saveBiometricLoginCredentials("offline@trouvaille.app", offlineSession);
-
-    // Mock navigator.credentials
-    const origCredentials = globalThis.navigator.credentials;
-    Object.defineProperty(globalThis.navigator, "credentials", {
-      value: {
-        get: vi.fn().mockResolvedValue({ id: "mock-assertion" }),
-      },
-      configurable: true,
-      writable: true,
-    });
 
     // Mock supabase.auth.setSession throwing network error
     const setSessionSpy = vi.spyOn(supabase.auth, "setSession").mockRejectedValue(
@@ -267,7 +247,7 @@ describe("Biometric & Security Engine Test Suite", () => {
       writable: true,
     });
 
-    const result = await authenticateWithBiometrics();
+    const result = await authenticateWithPin("123456");
     expect(result.success).toBe(true);
     expect(result.session).toEqual(offlineSession);
 
@@ -278,10 +258,6 @@ describe("Biometric & Security Engine Test Suite", () => {
       configurable: true,
       writable: true,
     });
-    Object.defineProperty(globalThis.navigator, "credentials", {
-      value: origCredentials,
-      configurable: true,
-      writable: true,
-    });
+    clearSecurityPin();
   });
 });

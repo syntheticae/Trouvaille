@@ -84,215 +84,15 @@ import { Capacitor } from "@capacitor/core";
 import { supabase } from "./supabase";
 
 export async function isBiometricAvailable(): Promise<boolean> {
-  if (typeof window === "undefined") return false;
-
-  // 1. Native iOS / Android Capacitor Platform
-  if (Capacitor.isNativePlatform()) {
-    try {
-      const result = await NativeBiometric.isAvailable();
-      return !!result.isAvailable;
-    } catch (err) {
-      console.warn("[biometricAuth] Native biometric check failed:", err);
-      return false;
-    }
-  }
-
-  // 2. Web Browser WebAuthn Fallback (Windows Hello / Mac Touch ID)
-  if (!window.PublicKeyCredential) {
-    return false;
-  }
-  try {
-    if (
-      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable &&
-      typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function"
-    ) {
-      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    }
-    return false;
-  } catch {
-    return false;
-  }
+  return false;
 }
 
-// Helpers for buffer conversions
-function bufferToBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  if (typeof btoa === "function") {
-    return btoa(binary);
-  }
-  const globalBuffer = (
-    globalThis as unknown as {
-      Buffer?: {
-        from: (data: string, enc: string) => { toString: (enc: string) => string };
-      };
-    }
-  ).Buffer;
-  if (globalBuffer) {
-    return globalBuffer.from(binary, "binary").toString("base64");
-  }
-  return "";
-}
-
-function base64ToBuffer(base64: string): ArrayBuffer {
-  const globalBuffer = (
-    globalThis as unknown as {
-      Buffer?: {
-        from: (data: string, enc: string) => { toString: (enc: string) => string };
-      };
-    }
-  ).Buffer;
-  const binary =
-    typeof atob === "function"
-      ? atob(base64)
-      : globalBuffer
-      ? globalBuffer.from(base64, "base64").toString("binary")
-      : "";
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-export async function registerBiometricPasskey(
-  userId = "trouvaille-user",
-  userEmail = "user@trouvaille.app",
-): Promise<boolean> {
-  // 1. Native iOS / Android Capacitor Platform
-  if (Capacitor.isNativePlatform()) {
-    const avail = await NativeBiometric.isAvailable();
-    if (!avail.isAvailable) {
-      throw new Error(
-        "Biometric authentication (Face ID / Fingerprint) is not enrolled or available on this device.",
-      );
-    }
-    // Verify identity once to register permission with iOS / Android
-    await NativeBiometric.verifyIdentity({
-      reason: "Authenticate with Face ID to secure your Trouvaille portfolio",
-      title: "Trouvaille Face ID",
-      subtitle: "Biometric security setup",
-      description: "Scan your face or fingerprint to protect your financial records.",
-      useFallback: true,
-    });
-    localStorage.setItem(BIOMETRIC_CREDENTIAL_KEY, "native_biometric_enrolled");
-    saveSecuritySettings({ hasBiometric: true });
-    return true;
-  }
-
-  // 2. Web Browser WebAuthn Fallback
-  if (!navigator.credentials || !navigator.credentials.create) {
-    throw new Error("Biometric authentication is not supported on this browser.");
-  }
-
-  const challenge = new Uint8Array(32);
-  globalThis.crypto.getRandomValues(challenge);
-
-  const userIdBytes = new TextEncoder().encode(userId);
-
-  const creationOptions: PublicKeyCredentialCreationOptions = {
-    challenge,
-    rp: {
-      name: "Trouvaille Financial Security",
-      id: (typeof window !== "undefined" ? window.location?.hostname : "localhost") || "localhost",
-    },
-    user: {
-      id: userIdBytes,
-      name: userEmail,
-      displayName: userEmail.split("@")[0] || "Trouvaille User",
-    },
-    pubKeyCredParams: [
-      { alg: -7, type: "public-key" }, // ES256
-      { alg: -257, type: "public-key" }, // RS256
-    ],
-    authenticatorSelection: {
-      authenticatorAttachment: "platform",
-      userVerification: "required",
-      residentKey: "preferred",
-    },
-    timeout: 60000,
-    attestation: "none",
-  };
-
-  try {
-    const credential = (await navigator.credentials.create({
-      publicKey: creationOptions,
-    })) as PublicKeyCredential | null;
-
-    if (!credential) return false;
-
-    const rawIdBase64 = bufferToBase64(credential.rawId);
-    localStorage.setItem(BIOMETRIC_CREDENTIAL_KEY, rawIdBase64);
-
-    saveSecuritySettings({ hasBiometric: true });
-    return true;
-  } catch (err: any) {
-    console.error("Failed to register biometric credential:", err);
-    throw err;
-  }
+export async function registerBiometricPasskey(): Promise<boolean> {
+  return false;
 }
 
 export async function verifyBiometricPasskey(): Promise<boolean> {
-  // 1. Native iOS / Android Capacitor Platform
-  if (Capacitor.isNativePlatform()) {
-    try {
-      await NativeBiometric.verifyIdentity({
-        reason: "Unlock Trouvaille using Face ID",
-        title: "Trouvaille Security Lock",
-        subtitle: "Biometric Authentication",
-        description: "Scan your face or fingerprint to access your portfolio.",
-        useFallback: true,
-      });
-      return true;
-    } catch (err: any) {
-      console.warn(
-        "[biometricAuth] Native biometric verification failed or cancelled:",
-        err,
-      );
-      return false;
-    }
-  }
-
-  // 2. Web Browser WebAuthn Fallback
-  if (!navigator.credentials || !navigator.credentials.get) {
-    throw new Error("Biometric authentication is not supported on this device.");
-  }
-
-  const challenge = new Uint8Array(32);
-  globalThis.crypto.getRandomValues(challenge);
-
-  const storedCredBase64 = localStorage.getItem(BIOMETRIC_CREDENTIAL_KEY);
-  const allowCredentials: PublicKeyCredentialDescriptor[] | undefined =
-    storedCredBase64
-      ? [
-          {
-            id: base64ToBuffer(storedCredBase64),
-            type: "public-key",
-            transports: ["internal"],
-          },
-        ]
-      : undefined;
-
-  const requestOptions: PublicKeyCredentialRequestOptions = {
-    challenge,
-    timeout: 60000,
-    rpId: (typeof window !== "undefined" ? window.location?.hostname : "localhost") || "localhost",
-    userVerification: "required",
-    allowCredentials,
-  };
-
-  try {
-    const assertion = await navigator.credentials.get({
-      publicKey: requestOptions,
-    });
-    return !!assertion;
-  } catch (err: any) {
-    console.warn("Biometric verification rejected or cancelled:", err);
-    return false;
-  }
+  return false;
 }
 
 export function clearBiometricCredential(): void {
@@ -371,6 +171,18 @@ async function derivePbkdf2PinHash(pin: string, salt: Uint8Array): Promise<strin
   return Array.from(new Uint8Array(derivedBits), (b) =>
     b.toString(16).padStart(2, "0"),
   ).join("");
+}
+
+function bufferToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  if (typeof btoa === "function") {
+    return btoa(binary);
+  }
+  return Buffer.from(binary, "binary").toString("base64");
 }
 
 export async function hashSecurityPin(pin: string): Promise<string> {
@@ -545,98 +357,9 @@ export interface BiometricAuthResult {
 }
 
 export async function authenticateWithBiometrics(): Promise<BiometricAuthResult> {
-  const verified = await verifyBiometricPasskey();
-  if (!verified) {
-    return {
-      success: false,
-      error: "Biometric verification cancelled or unavailable.",
-    };
-  }
-
-  // 1. Native iOS / Android: Try hardware-backed Keychain credentials
-  if (Capacitor.isNativePlatform()) {
-    try {
-      const creds = await NativeBiometric.getCredentials({ server: "trouvaille.app" });
-      if (creds?.username && creds?.password) {
-        const { data } = await supabase.auth.signInWithPassword({
-          email: creds.username,
-          password: creds.password,
-        });
-        if (data?.session) {
-          saveBiometricLoginCredentials(creds.username, data.session, creds.password);
-          return {
-            success: true,
-            session: data.session,
-            email: creds.username,
-          };
-        }
-      }
-    } catch (e) {
-      console.info("[biometricAuth] Native Keychain lookup skipped, proceeding to session vault:", e);
-    }
-  }
-
-  // 2. Try session vault or biometric credentials with refresh token
-  const hint = getBiometricLoginCredentials();
-  const vaultSession = hint?.session || getPersistentSession();
-
-  if (vaultSession?.refresh_token) {
-    try {
-      const { data, error } = await supabase.auth.setSession({
-        access_token: vaultSession.access_token || "",
-        refresh_token: vaultSession.refresh_token,
-      });
-
-      if (data?.session) {
-        saveBiometricLoginCredentials(hint?.email || data.session.user?.email || "", data.session);
-        return {
-          success: true,
-          session: data.session,
-          email: hint?.email || data.session.user?.email,
-        };
-      }
-
-      // If offline or network error occurred during refresh, return offline session
-      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
-      if (isOffline || error?.message?.toLowerCase().includes("fetch")) {
-        console.warn("[biometricAuth] Restoring session in offline mode");
-        return {
-          success: true,
-          session: vaultSession,
-          email: hint?.email || vaultSession.user?.email,
-        };
-      }
-    } catch (refreshErr: any) {
-      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
-      if (isOffline) {
-        return {
-          success: true,
-          session: vaultSession,
-          email: hint?.email || vaultSession.user?.email,
-        };
-      }
-      console.warn("[biometricAuth] Failed to restore session with refresh token:", refreshErr);
-    }
-  }
-
-  // 3. Fallback: check if active session already exists in memory
-  try {
-    const { data } = await supabase.auth.getSession();
-    if (data?.session) {
-      saveBiometricLoginCredentials(data.session.user?.email || "", data.session);
-      return {
-        success: true,
-        session: data.session,
-        email: data.session.user?.email,
-      };
-    }
-  } catch {}
-
-  // 4. If all token and credential renewals failed
   return {
     success: false,
-    email: hint?.email || vaultSession?.user?.email,
-    error: "Session expired on server. Please enter your password once to renew Face ID login.",
+    error: "Biometric authentication is not enabled. Please authenticate using your Security PIN.",
   };
 }
 
