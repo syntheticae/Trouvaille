@@ -728,6 +728,8 @@ export function ReceiptScanModal({
   };
 
   const lastSaveTriggeredAt = useRef<number>(0);
+  const touchHandledRef = useRef<boolean>(false);
+  const touchStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const executeSave = () => {
     const now = Date.now();
@@ -2351,22 +2353,38 @@ export function ReceiptScanModal({
                   <button
                     type="button"
                     disabled={addTx.isPending}
+                    onTouchStart={(e) => {
+                      // 1. Immediately dismiss any active virtual keyboard to prevent layout shift dropping the tap
+                      if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+                        document.activeElement.blur();
+                      }
+                      const touch = e.touches[0];
+                      if (touch) {
+                        touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      const touch = e.changedTouches[0];
+                      if (touch) {
+                        const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+                        const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+                        // Clean tap (< 14px movement) triggers immediate save
+                        if (dx < 14 && dy < 14) {
+                          e.preventDefault();
+                          touchHandledRef.current = true;
+                          setTimeout(() => {
+                            touchHandledRef.current = false;
+                          }, 600);
+                          executeSave();
+                        }
+                      }
+                    }}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      // If touch already handled save on mobile device, ignore duplicate synthetic click
+                      if (touchHandledRef.current) return;
                       executeSave();
-                    }}
-                    onTouchEnd={(e) => {
-                      // Direct touch response on iOS: saves immediately on touch release
-                      // preventing iOS 300ms tap delay and keyboard-dismiss dropped clicks
-                      e.preventDefault();
-                      executeSave();
-                    }}
-                    onPointerDown={(e) => {
-                      // Prevent iOS WebKit text callout / double-tap paste popup
-                      if (e.pointerType === "touch" || e.pointerType === "pen") {
-                        e.preventDefault();
-                      }
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault();

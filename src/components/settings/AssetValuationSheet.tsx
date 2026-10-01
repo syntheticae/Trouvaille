@@ -1040,6 +1040,7 @@ export function AssetValuationSheet({
                                 .filter(Boolean);
                               if (txIds.length > 0) {
                                 dismissReconciliationTxIds(txIds, user?.id);
+                                dismissReconciliationTxIds(txIds, undefined);
                               }
                             }}
                             className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-0.5 transition-colors cursor-pointer"

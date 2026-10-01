@@ -243,6 +243,33 @@ export function ExecutiveWalletCard({
     setPageState([targetIndex, dir]);
   };
 
+  const handleCardTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    // If the click originated from an explicit interactive button inside (such as "Detail"), ignore
+    const target = e.target as HTMLElement;
+    if (target.closest("button")) return;
+
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const ratio = clickX / rect.width;
+
+    if (ratio < 0.32) {
+      // Tap Left 32%: Previous card
+      if (cardCount > 1) {
+        paginate(-1);
+      }
+    } else if (ratio > 0.68) {
+      // Tap Right 32%: Next card
+      if (cardCount > 1) {
+        paginate(1);
+      }
+    } else {
+      // Tap Center 36%: Toggle expand / retract into wallet pocket
+      triggerHaptic("medium");
+      setIsExpanded((prev) => !prev);
+    }
+  };
+
   const isWhite = !isDark;
 
   return (
@@ -297,27 +324,6 @@ export function ExecutiveWalletCard({
 
       {/* ── Cards Stacking Slot (Clean Animated Single-Active-Card Deck) ── */}
       <div className="absolute inset-x-2 bottom-3 z-20 flex justify-center items-end pointer-events-auto">
-        {/* Subtle Stack Depth Rim (Frosted outline of cards tucked behind with zero text collision) */}
-        {cardCount > 1 && (
-          <div
-            className="absolute w-[92%] h-[126px] rounded-xl pointer-events-none transition-all duration-400 ease-out"
-            style={{
-              bottom: "54px",
-              transform: isExpanded ? "translateY(-100px) scale(0.96)" : "translateY(0) scale(0.98)",
-              zIndex: 21,
-              background: isWhite
-                ? "linear-gradient(155deg, rgba(245, 245, 248, 0.85) 0%, rgba(230, 231, 238, 0.65) 100%)"
-                : "linear-gradient(155deg, rgba(28, 29, 36, 0.85) 0%, rgba(14, 15, 18, 0.9) 100%)",
-              border: isWhite
-                ? "1px solid rgba(0, 0, 0, 0.08)"
-                : "1px solid rgba(255, 255, 255, 0.12)",
-              boxShadow: isWhite
-                ? "0 4px 14px -2px rgba(0,0,0,0.06)"
-                : "0 8px 20px -4px rgba(0,0,0,0.6)",
-            }}
-          />
-        )}
-
         {/* Minimalist Top Indicator Dots */}
         {cardCount > 1 && isExpanded && (
           <div className="absolute -top-6 inset-x-0 flex items-center justify-center gap-1.5 z-35 pointer-events-auto">
@@ -388,7 +394,7 @@ export function ExecutiveWalletCard({
                   paginate(-1);
                 }
               }}
-              className="absolute w-[92%] h-[126px] rounded-xl p-3 cursor-grab active:cursor-grabbing select-none transition-transform duration-300"
+              className="absolute w-[92%] h-[126px] rounded-xl p-3 cursor-pointer active:scale-[0.99] select-none transition-transform duration-300"
               style={{
                 bottom: "54px",
                 transform: isExpanded ? "translateY(-92px)" : "translateY(0)",
@@ -405,13 +411,7 @@ export function ExecutiveWalletCard({
                   : "0 14px 34px -4px rgba(0,0,0,0.85), inset 0 1.2px 0 rgba(255,255,255,0.25)",
                 touchAction: "pan-y",
               }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isExpanded) {
-                  triggerHaptic("medium");
-                  setIsExpanded(true);
-                }
-              }}
+              onClick={handleCardTap}
             >
               <div className="flex flex-col justify-between h-full relative z-10">
                 {/* Top Row: Account Name, Category Pill & Apple Titanium Chip */}

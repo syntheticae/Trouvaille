@@ -49,6 +49,7 @@ import {
 import {
   auditUsdtReconciliation,
   applyUsdtReconciliation,
+  dismissReconciliationTxIds,
   bridgeCryptoAccountToHolding,
 } from "../lib/holdingSyncEngine";
 import {
@@ -106,31 +107,57 @@ export function AssetsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dismissedReconciliation, setDismissedReconciliation] = useState(() => {
     try {
-      const stored = localStorage.getItem(`trouvaille_dismissed_recon_${user?.id || "guest"}`);
+      const stored =
+        localStorage.getItem(`trouvaille_dismissed_recon_${user?.id || "guest"}`) ||
+        localStorage.getItem("trouvaille_dismissed_recon_guest");
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Temporary dismissal valid for 24h
-        if (Date.now() - Number(parsed.timestamp || 0) < 24 * 60 * 60 * 1000) {
+        if (Date.now() - Number(parsed.timestamp || 0) < 30 * 24 * 60 * 60 * 1000) {
           return true;
         }
       }
     } catch {}
     return false;
   });
+
+  // Sync dismissal state as soon as user auth session finishes loading
+  useEffect(() => {
+    try {
+      const stored =
+        localStorage.getItem(`trouvaille_dismissed_recon_${user?.id || "guest"}`) ||
+        localStorage.getItem("trouvaille_dismissed_recon_guest");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Date.now() - Number(parsed.timestamp || 0) < 30 * 24 * 60 * 60 * 1000) {
+          setDismissedReconciliation(true);
+        }
+      }
+    } catch {}
+  }, [user?.id]);
+
   const [reconDismissDir, setReconDismissDir] = useState(1);
 
   const handleDismissReconciliation = (direction = 1) => {
     triggerHaptic("light");
     setReconDismissDir(direction);
     setDismissedReconciliation(true);
+
+    const txIds = reconciliationAudit.unreconciledTxs
+      .map((t) => t.id)
+      .filter(Boolean);
+    if (txIds.length > 0) {
+      dismissReconciliationTxIds(txIds, user?.id);
+      dismissReconciliationTxIds(txIds, undefined);
+    }
+
     try {
-      localStorage.setItem(
-        `trouvaille_dismissed_recon_${user?.id || "guest"}`,
-        JSON.stringify({
-          timestamp: Date.now(),
-          unreconciledCount: reconciliationAudit.unreconciledTxs.length,
-        }),
-      );
+      const payload = JSON.stringify({
+        timestamp: Date.now(),
+        unreconciledCount: reconciliationAudit.unreconciledTxs.length,
+        dismissedTxIds: txIds,
+      });
+      localStorage.setItem(`trouvaille_dismissed_recon_${user?.id || "guest"}`, payload);
+      localStorage.setItem("trouvaille_dismissed_recon_guest", payload);
     } catch {}
   };
 
@@ -479,19 +506,28 @@ export function AssetsPage() {
       units: res.updatedUnits,
     }));
     setDismissedReconciliation(true);
+
+    const txIds = reconciliationAudit.unreconciledTxs
+      .map((t) => t.id)
+      .filter(Boolean);
+    if (txIds.length > 0) {
+      dismissReconciliationTxIds(txIds, user?.id);
+      dismissReconciliationTxIds(txIds, undefined);
+    }
+
     try {
-      localStorage.setItem(
-        `trouvaille_dismissed_recon_${user?.id || "guest"}`,
-        JSON.stringify({
-          timestamp: Date.now(),
-          unreconciledCount: 0,
-        }),
-      );
+      const payload = JSON.stringify({
+        timestamp: Date.now(),
+        unreconciledCount: 0,
+        dismissedTxIds: txIds,
+      });
+      localStorage.setItem(`trouvaille_dismissed_recon_${user?.id || "guest"}`, payload);
+      localStorage.setItem("trouvaille_dismissed_recon_guest", payload);
     } catch {}
     showToast(
       isIndonesian
-        ? `Holding USDT disinkronkan ke ${res.updatedUnits} USDT`
-        : `USDT holding synced to ${res.updatedUnits} USDT`,
+        ? `Holding disinkronkan ke ${res.updatedUnits} USDT`
+        : `Holding synced to ${res.updatedUnits} USDT`,
       "update",
       () => {},
     );
@@ -1038,12 +1074,12 @@ export function AssetsPage() {
               <div className="min-w-0 space-y-0.5">
                 <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
                   {isIndonesian
-                    ? "Sinkronisasi Mutasi USDT Terdeteksi"
-                    : "USDT Discrepancy Detected"}
+                    ? "Sinkronisasi Mutasi Aset Investasi Terdeteksi"
+                    : "Investment Discrepancy Detected"}
                 </p>
                 <p className="text-[10.5px] text-[var(--text-secondary)] leading-tight">
                   {isIndonesian
-                    ? `Transaksi transfer keluar (${formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 0)}) belum dikurangkan dari unit holding.`
+                    ? `Transaksi mutasi (${formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 0)}) belum tercermin pada unit holding.`
                     : "A recent transfer has not yet been reflected in holding units."}
                 </p>
                 <p className="text-[9.5px] text-[var(--text-tertiary)] flex items-center gap-1 pt-0.5">
