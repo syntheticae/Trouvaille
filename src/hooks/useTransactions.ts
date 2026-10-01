@@ -625,7 +625,9 @@ export async function fetchAllTransactionsFromSupabase(
           for (const [id, tx] of pendingUpserts) {
             if (!pendingDeletes.has(id)) map.set(id, tx);
           }
-          emitSyncStatus({ status: "error", message: "Bekerja secara offline" });
+          if (filters?.showVisualIndicator) {
+            emitSyncStatus({ status: "error", message: "Bekerja secara offline" });
+          }
           return sortTransactionsDesc(Array.from(map.values()));
         }
       }
@@ -633,7 +635,9 @@ export async function fetchAllTransactionsFromSupabase(
       console.warn("[fetchAllTransactionsFromSupabase] Backup read failed:", backupErr);
     }
 
-    emitSyncStatus({ status: "error", message: "Network unavailable" });
+    if (filters?.showVisualIndicator) {
+      emitSyncStatus({ status: "error", message: "Network unavailable" });
+    }
     throw fetchError;
   }
 
@@ -751,7 +755,9 @@ export async function fetchAllTransactionsFromSupabase(
     console.warn(`[fetchAllTransactionsFromSupabase] Incomplete sync detected: ${uniqueRecords.length}/${totalCount} records.`);
     if (inMemoryTransactionsSnapshot && inMemoryTransactionsSnapshot.length > uniqueRecords.length) {
       console.warn(`[fetchAllTransactionsFromSupabase] Preserving healthier local snapshot of ${inMemoryTransactionsSnapshot.length} records.`);
-      emitSyncStatus({ status: "error", message: "Sinkronisasi belum lengkap" });
+      if (filters?.showVisualIndicator) {
+        emitSyncStatus({ status: "error", message: "Sinkronisasi belum lengkap" });
+      }
       return inMemoryTransactionsSnapshot;
     }
   }
