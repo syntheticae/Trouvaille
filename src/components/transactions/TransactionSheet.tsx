@@ -1039,10 +1039,15 @@ export function TransactionSheet({
     : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.035)";
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose}>
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      resetHeightKey={isKeypadOpen}
+      disableHeightLock={true}
+    >
       <div
-        className={`px-5 pt-1 transition-all duration-300 max-w-lg mx-auto ${
-          isKeypadOpen && useCustomKeypad ? "pb-[330px]" : "pb-8"
+        className={`px-5 pt-1 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] max-w-lg mx-auto ${
+          isKeypadOpen && useCustomKeypad ? "pb-[330px]" : "pb-2"
         }`}
       >
         {/* ── 1. Top Segmented Switcher (Expense / Income / Transfer) ── */}
@@ -1169,7 +1174,7 @@ export function TransactionSheet({
             onClick={() => {
               if (useCustomKeypad) {
                 triggerHaptic("light");
-                setIsKeypadOpen(true);
+                setIsKeypadOpen((prev) => !prev);
               } else {
                 amountInputRef.current?.focus();
               }

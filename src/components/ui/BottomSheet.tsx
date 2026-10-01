@@ -14,6 +14,8 @@ interface BottomSheetProps {
   children: React.ReactNode;
   title?: string;
   zIndex?: number;
+  resetHeightKey?: any;
+  disableHeightLock?: boolean;
 }
 
 export function BottomSheet({
@@ -22,12 +24,28 @@ export function BottomSheet({
   children,
   title,
   zIndex,
+  resetHeightKey,
+  disableHeightLock,
 }: BottomSheetProps) {
   const dragControls = useDragControls();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [lockedMinHeight, setLockedMinHeight] = useState<number | undefined>(undefined);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+
+  /**
+   * Reset lockedMinHeight whenever resetHeightKey changes (e.g. on-screen keypad closed/opened),
+   * allowing the modal to immediately remeasure its natural content height and auto-shrink smoothly.
+   */
+  useEffect(() => {
+    if (resetHeightKey !== undefined || disableHeightLock) {
+      setLockedMinHeight(undefined);
+      if (resetHeightKey === false && scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+  }, [resetHeightKey, disableHeightLock]);
 
   /**
    * Track virtual keyboard visibility & mobile viewport changes via window.visualViewport.
@@ -66,7 +84,7 @@ export function BottomSheet({
    * items inside, ensuring it doesn't get obscured or jump behind the mobile virtual keyboard.
    */
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || disableHeightLock) {
       const timer = setTimeout(() => {
         setLockedMinHeight(undefined);
       }, 300);
@@ -96,7 +114,7 @@ export function BottomSheet({
     return () => {
       observer.disconnect();
     };
-  }, [isOpen]);
+  }, [isOpen, disableHeightLock]);
 
   /**
    * Lock the underlying page while the sheet is open.
@@ -243,7 +261,7 @@ export function BottomSheet({
                   : "92dvh",
 
               transition:
-                "bottom 0.22s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.22s cubic-bezier(0.16, 1, 0.3, 1)",
+                "bottom 0.22s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.22s cubic-bezier(0.16, 1, 0.3, 1), min-height 0.28s cubic-bezier(0.22, 1, 0.36, 1), height 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
 
               /*
                * Prevent browser from trying to repaint the entire
@@ -444,6 +462,7 @@ export function BottomSheet({
                 so the final row can actually scroll above it.
                 ======================================================= */}
             <div
+              ref={scrollContainerRef}
               className="
                 relative
                 z-10

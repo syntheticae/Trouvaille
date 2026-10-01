@@ -32,8 +32,6 @@ export function TransactionKeypadSheet({
   const allowDecimals = currencyMeta.decimals > 0;
   const maxDecimals = currencyMeta.decimals || 2;
 
-  if (!isOpen) return null;
-
   const currentVal = evaluateMathSafe(expression);
   const isExpression = /[+\-*/×÷−]/.test(expression);
 
@@ -146,13 +144,22 @@ export function TransactionKeypadSheet({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-none">
+      {isOpen && (
         <motion.div
-          initial={{ y: "100%", opacity: 0.5 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: "100%", opacity: 0 }}
-          transition={{ type: "spring", damping: 32, stiffness: 390 }}
-          className="relative w-full max-w-[430px] rounded-t-[30px] sm:rounded-t-[34px] overflow-hidden select-none pointer-events-auto transition-all"
+          key="transaction-keypad-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-none"
+        >
+          <motion.div
+            key="transaction-keypad-panel"
+            initial={{ y: "100%", opacity: 0.5 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 32, stiffness: 390 }}
+            className="relative w-full max-w-[430px] rounded-t-[30px] sm:rounded-t-[34px] overflow-hidden select-none pointer-events-auto transition-all"
           style={{
             background: shellBg,
             backdropFilter: "blur(32px) saturate(190%)",
@@ -487,7 +494,8 @@ export function TransactionKeypadSheet({
             </button>
           </div>
         </motion.div>
-      </div>
-    </AnimatePresence>
+      </motion.div>
+    )}
+  </AnimatePresence>
   );
 }
